@@ -26,13 +26,14 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-このソフトウェアはQtを使って作られています。
-またQtの一部にはChromiumのスナップショットが使われています。
+このソフトウェアはQt(LGPL版)を使って作られており、
+Qtの一部にはChromiumのスナップショットが使われています。
 
 QtはGNU GPLおよびGNU LGPLで配布されています。
-詳しくは http://www.qt.io/licensing/ をご覧ください。
+ライセンスに関しては http://www.qt.io/licensing/ をご覧ください。
+またQtは http://www.qt.io/download/ からダウンロードできます。
 
-またChromiumのライセンスに関しては以下の通りです。
+Chromiumのライセンスに関しては以下の通りです。
 
 Copyright 2014 The Chromium Authors. All rights reserved.
 

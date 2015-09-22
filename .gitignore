@@ -3,6 +3,7 @@
 *.bak
 *.pro.user*
 *.qm
+*/#*#
 gen/*
 package/*
 Makefile*

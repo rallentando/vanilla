@@ -1,0 +1,3 @@
+#ifndef VANILLA_VERSION
+#define VANILLA_VERSION "0.1"
+#endif
