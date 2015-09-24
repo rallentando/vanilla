@@ -1868,15 +1868,29 @@ bool GraphicsTableView::ThumbList_CloneNode(){
     if(!m_CurrentNode || !IsDisplayingNode()) return false;
 
     if(IsDisplayingViewNode()){
-        ViewNode *vn = GetHoveredViewNode();
-        if(!vn && m_CurrentNode)
-            vn = m_CurrentNode->ToViewNode();
-        m_TreeBank->CloneViewNode(vn);
+        if(!m_NodesRegister.isEmpty()){
+            m_NodesRegister = m_NodesRegister.toSet().toList();
+            foreach(Node *nd, m_NodesRegister){
+                ViewNode *vn = nd->ToViewNode();
+                if(vn) m_TreeBank->CloneViewNode(vn);
+            }
+        } else if(ViewNode *vn = GetHoveredViewNode()){
+            if(!vn && m_CurrentNode)
+                vn = m_CurrentNode->ToViewNode();
+            m_TreeBank->CloneViewNode(vn);
+        }
     } else if(IsDisplayingHistNode()){
-        HistNode *hn = GetHoveredHistNode();
-        if(!hn && m_CurrentNode)
-            hn = m_CurrentNode->ToHistNode();
-        m_TreeBank->CloneHistNode(hn);
+        if(!m_NodesRegister.isEmpty()){
+            m_NodesRegister = m_NodesRegister.toSet().toList();
+            foreach(Node *nd, m_NodesRegister){
+                HistNode *hn = nd->ToHistNode();
+                if(hn) m_TreeBank->CloneHistNode(hn);
+            }
+        } else if(HistNode *hn = GetHoveredHistNode()){
+            if(!hn && m_CurrentNode)
+                hn = m_CurrentNode->ToHistNode();
+            m_TreeBank->CloneHistNode(hn);
+        }
     }
     ThumbList_RefreshNoScroll();
     return true;

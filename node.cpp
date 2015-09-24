@@ -715,20 +715,17 @@ ViewNode *ViewNode::Clone(ViewNode *parent){
 
     if(m_EnableDeepCopyOfNode){
         // HistNode::Clone sets ViewNode::m_Partner automatically.
-        if(m_Partner){
-            // not folder.
-            HistNode *root = m_Partner->GetRoot()->ToHistNode();
-            root->Clone(TreeBank::GetHistRoot(), clone);
-        } else {
-            // folder.
+        if(IsDirectory()){
             foreach(Node *child, m_Children){
                 ViewNode *vn = child->ToViewNode()->Clone(clone);
                 if(m_Primary == child) clone->m_Primary = vn;
             }
+        } else {
+            HistNode *root = m_Partner->GetRoot()->ToHistNode();
+            root->Clone(TreeBank::GetHistRoot(), clone);
         }
     } else {
-        if(m_Partner){
-            // not folder.
+        if(!IsDirectory()){
             m_Partner->ToHistNode()->Clone(TreeBank::GetHistRoot(), clone);
         }
     }

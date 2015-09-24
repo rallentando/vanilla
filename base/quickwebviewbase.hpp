@@ -254,6 +254,8 @@ public slots:
     void OnViewChanged();
     void OnScrollChanged();
 
+    void CallWithScroll(PointFCallBack callBack);
+
     void SetScroll(QPointF pos) DECL_OVERRIDE {
         QMetaObject::invokeMethod(m_QmlWebViewBase, "setScroll",
                                   Q_ARG(QVariant, QVariant::fromValue(pos)));

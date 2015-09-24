@@ -274,6 +274,23 @@ void QuickWebViewBase::OnScrollChanged(){
     SaveScroll();
 }
 
+void QuickWebViewBase::CallWithScroll(PointFCallBack callBack){
+    int requestId = m_RequestId++;
+    std::shared_ptr<QMetaObject::Connection> connection =
+        std::make_shared<QMetaObject::Connection>();
+    *connection =
+        connect(this, &QuickWebViewBase::CallBackResult,
+                [this, requestId, callBack, connection](int id, QVariant result){
+                    if(requestId != id) return;
+                    QObject::disconnect(*connection);
+                    callBack(result.toPointF());
+                });
+
+    QMetaObject::invokeMethod(m_QmlWebViewBase, "evaluateJavaScript",
+                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
+                              Q_ARG(QVariant, QVariant::fromValue(GetScrollRatioPointJsCode())));
+}
+
 void QuickWebViewBase::KeyEvent(QString key){
     TriggerKeyEvent(key);
 }
@@ -293,6 +310,15 @@ void QuickWebViewBase::hideEvent(QHideEvent *ev){
 void QuickWebViewBase::showEvent(QShowEvent *ev){
     QQuickBase::showEvent(ev);
     RestoreViewState();
+    // set only notifier.
+    if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
+    CallWithScroll([this](QPointF pos){
+            if(m_TreeBank){
+                if(Notifier *notifier = m_TreeBank->GetNotifier()){
+                    notifier->SetScroll(pos);
+                }
+            }
+        });
 }
 
 void QuickWebViewBase::keyPressEvent(QKeyEvent *ev){
@@ -391,23 +417,14 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
 void QuickWebViewBase::mousePressEvent(QMouseEvent *ev){
     QString mouse;
 
-    Application::AddModifiersToString(mouse);
+    Application::AddModifiersToString(mouse, ev->modifiers());
     Application::AddMouseButtonToString(mouse, ev->button());
 
-    switch(ev->button()){
-    case Qt::LeftButton:
-    case Qt::RightButton:
-    case Qt::MidButton:
-        GestureStarted(ev->pos());
-        QQuickBase::mousePressEvent(ev);
-        ev->setAccepted(true);
-        return;
-    }
     if(m_MouseMap.contains(mouse)){
 
         QString str = m_MouseMap[mouse];
         if(!str.isEmpty()){
-            if(!View::TriggerAction(str)){
+            if(!View::TriggerAction(str, ev->pos())){
                 ev->setAccepted(false);
                 return;
             }
@@ -415,7 +432,10 @@ void QuickWebViewBase::mousePressEvent(QMouseEvent *ev){
             return;
         }
     }
-    ev->setAccepted(false);
+
+    GestureStarted(ev->pos());
+    QQuickBase::mousePressEvent(ev);
+    ev->setAccepted(true);
 }
 
 void QuickWebViewBase::mouseReleaseEvent(QMouseEvent *ev){
@@ -497,7 +517,7 @@ void QuickWebViewBase::wheelEvent(QWheelEvent *ev){
     QString wheel;
     bool up = ev->delta() > 0;
 
-    Application::AddModifiersToString(wheel);
+    Application::AddModifiersToString(wheel, ev->modifiers());
     Application::AddMouseButtonsToString(wheel, ev->buttons());
     Application::AddWheelDirectionToString(wheel, up);
 
@@ -505,8 +525,9 @@ void QuickWebViewBase::wheelEvent(QWheelEvent *ev){
 
         QString str = m_MouseMap[wheel];
         if(!str.isEmpty()){
-            View::TriggerAction(str);
+            View::TriggerAction(str, ev->pos());
         }
+        ev->setAccepted(true);
 
     } else {
         QQuickBase::wheelEvent(ev);

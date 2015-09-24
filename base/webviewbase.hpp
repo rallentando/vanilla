@@ -420,10 +420,6 @@ public slots:
     void Load(const QString &url)         DECL_OVERRIDE { View::Load(url);}
     void Load(const QUrl &url)            DECL_OVERRIDE { View::Load(url);}
     void Load(const QNetworkRequest &req) DECL_OVERRIDE { View::Load(req);}
-    void LittleScrollUp()    DECL_OVERRIDE { View::LittleScrollUp();}
-    void LittleScrollDown()  DECL_OVERRIDE { View::LittleScrollDown();}
-    void LittleScrollRight() DECL_OVERRIDE { View::LittleScrollRight();}
-    void LittleScrollLeft()  DECL_OVERRIDE { View::LittleScrollLeft();}
 
     //[[!GWV]]
     void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE { hide();}
@@ -604,7 +600,7 @@ protected:
                             we->modifiers(),
                             we->orientation());
             m_View->wheelEvent(&we_);
-            return false;
+            return we_.isAccepted();
         }
         }
         return QObject::eventFilter(obj, ev);

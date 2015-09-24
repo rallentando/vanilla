@@ -1764,16 +1764,9 @@ void Gadgets::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
 void Gadgets::mousePressEvent(QGraphicsSceneMouseEvent *ev){
     QString mouse;
 
-    Application::AddModifiersToString(mouse);
+    Application::AddModifiersToString(mouse, ev->modifiers());
     Application::AddMouseButtonToString(mouse, ev->button());
 
-    switch(ev->button()){
-    case Qt::LeftButton:
-    case Qt::RightButton:
-    case Qt::MidButton:
-        GraphicsTableView::mousePressEvent(ev);
-        return;
-    }
     if(m_MouseMap.contains(mouse)){
 
         QString str = m_MouseMap[mouse];
@@ -1787,7 +1780,9 @@ void Gadgets::mousePressEvent(QGraphicsSceneMouseEvent *ev){
             return;
         }
     }
-    ev->setAccepted(false);
+
+    GraphicsTableView::mousePressEvent(ev);
+    ev->setAccepted(true);
 }
 
 void Gadgets::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
@@ -1825,7 +1820,7 @@ void Gadgets::wheelEvent(QGraphicsSceneWheelEvent *ev){
     bool up = ev->delta() > 0;
     bool ignoreStatusBarMessage = true;
 
-    Application::AddModifiersToString(wheel);
+    Application::AddModifiersToString(wheel, ev->modifiers());
     Application::AddMouseButtonsToString(wheel, ev->buttons());
     Application::AddWheelDirectionToString(wheel, up);
 

@@ -277,6 +277,7 @@ void NetworkAccessManager::SetUserAgent(QString ua){
     case QSysInfo::WV_WINDOWS7:   system = QStringLiteral("Windows NT 6.1");          break;
     case QSysInfo::WV_WINDOWS8:   system = QStringLiteral("Windows NT 6.2");          break;
     case QSysInfo::WV_WINDOWS8_1: system = QStringLiteral("Windows NT 6.3");          break;
+    case QSysInfo::WV_WINDOWS10:  system = QStringLiteral("Windows NT 10.0");         break;
     case QSysInfo::WV_CE:         system = QStringLiteral("Windows CE");              break;
     case QSysInfo::WV_CENET:      system = QStringLiteral("Windows CE .NET");         break;
     case QSysInfo::WV_CE_5:       system = QStringLiteral("Windows CE 5.x");          break;
@@ -316,6 +317,7 @@ void NetworkAccessManager::SetUserAgent(QString ua){
     case QSysInfo::MV_10_8:  system = QStringLiteral("Intel MacOS X 10.8");  break;
     case QSysInfo::MV_10_9:  system = QStringLiteral("Intel MacOS X 10.9");  break;
     case QSysInfo::MV_10_10: system = QStringLiteral("Intel MacOS X 10.10"); break;
+    case QSysInfo::MV_10_11: system = QStringLiteral("Intel MacOS X 10.11"); break;
     default:                 system = QStringLiteral("MacOS X");
     }
 #else

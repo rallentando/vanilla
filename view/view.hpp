@@ -122,18 +122,6 @@ public:
         Gv_NoMove
     };
 
-    enum ScrollVector{
-        Sv_Up,
-        Sv_Down,
-        Sv_Right,
-        Sv_Left,
-        Sv_UpperRight,
-        Sv_UpperLeft,
-        Sv_LowerRight,
-        Sv_LowerLeft,
-        Sv_NoMove
-    };
-
     enum FindFlag {
         FindBackward                      = 1 << 0,
         CaseSensitively                   = 1 << 1,
@@ -211,9 +199,6 @@ public:
 
     static void SetSwitchingState(bool switching);
     static bool GetSwitchingState();
-
-    static ScrollVector GetScrollVector();
-    static void SetScrollVector(ScrollVector);
 
     virtual QUrl BaseUrl(){ return QUrl();}
     virtual QUrl CurrentBaseUrl(){ return QUrl();}
@@ -385,10 +370,6 @@ public:
     virtual void Load(const QString &url);
     virtual void Load(const QUrl &url);
     virtual void Load(const QNetworkRequest &req);
-    virtual void LittleScrollUp();
-    virtual void LittleScrollDown();
-    virtual void LittleScrollRight();
-    virtual void LittleScrollLeft();
 
     virtual void OnFocusIn();
     virtual void OnFocusOut();
@@ -990,9 +971,6 @@ protected:
     static QMap<QString, QString> m_MouseMap;
     static QMap<QString, QString> m_LeftGestureMap;
     static QMap<QString, QString> m_RightGestureMap;
-
-    static bool m_UseSmoothScroll;
-    static ScrollVector m_CurrentScrollVector;
 
     static bool m_ActivateNewViewDefault;
     static bool m_NavigationBySpaceKey;

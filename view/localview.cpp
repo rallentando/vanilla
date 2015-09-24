@@ -360,6 +360,9 @@ void LocalView::show(){
     if(HistNode *hn = GetHistNode()) hn->SetLastAccessDateToCurrent();
 
     RestoreViewState();
+    // set only notifier.
+    if(!GetTreeBank() || !GetTreeBank()->GetNotifier()) return;
+    GetTreeBank()->GetNotifier()->SetScroll(GetScroll());
 }
 
 void LocalView::hide(){
@@ -1961,24 +1964,15 @@ void LocalView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 
     QString mouse;
 
-    Application::AddModifiersToString(mouse);
+    Application::AddModifiersToString(mouse, ev->modifiers());
     Application::AddMouseButtonToString(mouse, ev->button());
 
-    switch(ev->button()){
-    case Qt::LeftButton:
-    case Qt::RightButton:
-    case Qt::MidButton:
-        GraphicsTableView::mousePressEvent(ev);
-        GestureStarted(ev->pos().toPoint());
-        ev->setAccepted(true);
-        return;
-    }
     if(Gadgets::GetMouseMap().contains(mouse)){
 
         QString str = Gadgets::GetMouseMap()[mouse];
         if(!str.isEmpty()){
 
-            if(!TriggerAction(str)){
+            if(!TriggerAction(str, ev->pos().toPoint())){
                 ev->setAccepted(false);
                 return;
             }
@@ -1986,7 +1980,10 @@ void LocalView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
             return;
         }
     }
-    ev->setAccepted(false);
+
+    GraphicsTableView::mousePressEvent(ev);
+    GestureStarted(ev->pos().toPoint());
+    ev->setAccepted(true);
 }
 
 void LocalView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
@@ -2038,7 +2035,7 @@ void LocalView::wheelEvent(QGraphicsSceneWheelEvent *ev){
         return;
     }
 
-    Application::AddModifiersToString(wheel);
+    Application::AddModifiersToString(wheel, ev->modifiers());
     Application::AddMouseButtonsToString(wheel, ev->buttons());
     Application::AddWheelDirectionToString(wheel, up);
 
@@ -2047,13 +2044,16 @@ void LocalView::wheelEvent(QGraphicsSceneWheelEvent *ev){
         QString str = Gadgets::GetMouseMap()[wheel];
         if(!str.isEmpty()){
 
+            GestureAborted();
+
             // don't want to overwrite statusBarMessage in this event.
             // because these method may update statusBarMessage.
-            if(!TriggerAction(str)){
+            if(!TriggerAction(str, ev->pos().toPoint())){
                 ev->setAccepted(false);
                 return;
             }
         }
+
     } else if(ScrollToChangeDirectory() &&
               ThumbnailAreaRect().contains(ev->pos())){
 

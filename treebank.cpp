@@ -1606,6 +1606,7 @@ bool TreeBank::SetCurrent(Node *nd){
     if(qobject_cast<GraphicsWebView*>(m_CurrentView->base())){
 
         m_CurrentView->show();
+        DoUpdate();
         if(prev && prev != m_CurrentView){
             prev->lower();
             prev->hide();
@@ -1615,6 +1616,7 @@ bool TreeBank::SetCurrent(Node *nd){
     } else if(qobject_cast<LocalView*>(m_CurrentView->base())){
 
         m_CurrentView->show();
+        DoUpdate();
         if(prev && prev != m_CurrentView){
             m_CurrentView->SetMaster(prev);
             prev->SetSlave(m_CurrentView);
@@ -1628,8 +1630,10 @@ bool TreeBank::SetCurrent(Node *nd){
 
         if(m_Gadgets && m_Gadgets->IsActive()){
             /* do nothing. */
+            DoUpdate();
         } else {
             m_CurrentView->show();
+            DoUpdate();
             if(prev && prev != m_CurrentView){
                 prev->hide();
             }
@@ -1645,13 +1649,9 @@ bool TreeBank::SetCurrent(Node *nd){
     if(m_Notifier) m_Notifier->raise();
     if(m_Receiver) m_Receiver->raise();
 
-    // why was there here???
-    //m_CurrentView->EmitScrollChanged();
-
     if(m_Gadgets && !m_Gadgets->IsActive())
         m_CurrentView->setFocus(Qt::OtherFocusReason);
 
-    DoUpdate();
     AddToUpdateBox(m_CurrentView);
 
     return true;

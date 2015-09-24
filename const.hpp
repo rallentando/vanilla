@@ -13,9 +13,6 @@ static const QString VANILLA_SHARED_MEMORY_KEY_PREFIX = QStringLiteral("vanilla_
 
 static const QString DEFAULT_FONT = QStringLiteral("Arial");
 
-static const int SMOOTH_SCROLL_STEP  = 16; // about px/frame.
-static const int SMOOTH_SCROLL_TIMER = 16; // about ms/frame.
-
 static const int MAX_DRAGGING_PIXMAP_WIDTH  = 600;
 static const int MAX_DRAGGING_PIXMAP_HEIGHT = 600;
 
@@ -35,12 +32,12 @@ static const QString NODE_DATETIME_FORMAT = QStringLiteral("yyyyMMddhhmmss");
 
 // user agent
 static const QString DEFAULT_USER_AGENT_IE        = QStringLiteral("Mozilla/5.0 (%SYSTEM%; Trident/7.0; rv:11.0) like Gecko");
-static const QString DEFAULT_USER_AGENT_FIREFOX   = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:40.0) Gecko/20100101 Firefox/40.0");
+static const QString DEFAULT_USER_AGENT_FIREFOX   = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:41.0) Gecko/20100101 Firefox/41.0");
 static const QString DEFAULT_USER_AGENT_OPERA     = QStringLiteral("Opera/9.80 (%SYSTEM%) Presto/2.12.388 Version/12.17");
 static const QString DEFAULT_USER_AGENT_OPR       = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.85 Safari/537.36 OPR/32.0.1948.25");
 static const QString DEFAULT_USER_AGENT_SAFARI    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/534.57.2 (KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
-static const QString DEFAULT_USER_AGENT_CHROME    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.93 Safari/537.36");
-static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.130 Safari/537.36 Sleipnir/4.4.4");
+static const QString DEFAULT_USER_AGENT_CHROME    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.99 Safari/537.36");
+static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36 Sleipnir/4.4.5");
 static const QString DEFAULT_USER_AGENT_VIVALDI   = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.87 Safari/537.36 Vivaldi/1.0.279.3");
 static const QString DEFAULT_USER_AGENT_NETSCAPE  = QStringLiteral("Mozilla/5.0 (Windows; U; %SYSTEM%; en-US; rv:1.7.2) Gecko/20040804 Netscape/7.2 (ax)");
 static const QString DEFAULT_USER_AGENT_SEAMONKEY = QStringLiteral("Mozilla/5.0 (Windows; U; %SYSTEM%; rv:10.0.1) Gecko/20100101 Firefox/10.0.1 SeaMonkey/2.7.1");

@@ -58,9 +58,6 @@ int View::m_SameGestureVectorCount = 0;
 
 int View::m_GestureMode = 0;
 
-bool View::m_UseSmoothScroll = false;
-View::ScrollVector View::m_CurrentScrollVector = View::Sv_NoMove;
-
 const QList<float> View::m_ZoomFactorLevels = QList<float>()
 
     //`(0.1 ,@(map (^n (expt 5 (/ n 24))) (iota 49 -24)) 10.0)
@@ -762,7 +759,6 @@ void View::LoadSettings(){
 
     settings->beginGroup(QStringLiteral("webview"));{
         m_GestureMode          = settings->value(QStringLiteral("@GestureMode"),           4).value<int>();
-        m_UseSmoothScroll      = settings->value(QStringLiteral("@UseSmoothScroll"),   false).value<bool>();
         m_EnableLoadHack       = settings->value(QStringLiteral("@EnableLoadHack"),    false).value<bool>()
             ||                   settings->value(QStringLiteral("@EnableHistNode"),    false).value<bool>();
         m_EnableDragHack       = settings->value(QStringLiteral("@EnableDragHack"),    false).value<bool>()
@@ -1196,7 +1192,6 @@ void View::SaveSettings(){
 
     settings->beginGroup(QStringLiteral("webview"));{
         settings->setValue(QStringLiteral("@GestureMode"),          m_GestureMode);
-        settings->setValue(QStringLiteral("@UseSmoothScroll"),      m_UseSmoothScroll);
         settings->setValue(QStringLiteral("@EnableHistNode"),       m_EnableLoadHack);
         settings->setValue(QStringLiteral("@EnableDragGesture"),    m_EnableDragHack);
         settings->setValue(QStringLiteral("@ActivateNewViewDefault"), m_ActivateNewViewDefault);
@@ -1556,14 +1551,6 @@ bool View::GetSwitchingState(){
     return m_Switching;
 }
 
-View::ScrollVector View::GetScrollVector(){
-    return m_CurrentScrollVector;
-}
-
-void View::SetScrollVector(ScrollVector vector){
-    m_CurrentScrollVector = vector;
-}
-
 // no referer.
 void View::Load(){
     bool ok;
@@ -1651,94 +1638,6 @@ void View::Load(const QNetworkRequest &req){
             if(forbidden && !ForbidToOverlap()) m_TreeBank->JoinChildWidgetsIfNeed();
         }
     }
-}
-
-// this implementation is faster than current,
-// but behavior of that is incomplete.
-
-//void View::LittleScroll<Direction>(){
-//    if(View::GetScrollVector() == View::Sv_<Direction>) return;
-//
-//    QWebFrameBase *frame = currentFrame();
-//    if(!frame) return;
-//
-//    QPoint pos;
-//    do {
-//        pos = frame->scrollPosition();
-//        frame->scroll(<Direction>);
-//    } while(pos == frame->scrollPosition()
-//            && (frame = frame->parentFrame()));
-//    emit ScrollChanged(GetScroll());
-//}
-
-void View::LittleScrollUp(){
-    if(GetScrollVector() == Sv_Down) return;
-
-    QWheelEvent *ev = new QWheelEvent
-        (m_TreeBank->mapFromGlobal(QCursor::pos()),
-         SMOOTH_SCROLL_STEP*Application::WheelScrollRate(),
-         Qt::NoButton,
-         Qt::NoModifier);
-
-    WheelEvent(ev);
-
-    if(ev->isAccepted())
-        EmitScrollChanged();
-
-    delete ev;
-}
-
-void View::LittleScrollDown(){
-    if(View::GetScrollVector() == View::Sv_Up) return;
-
-    QWheelEvent *ev = new QWheelEvent
-        (m_TreeBank->mapFromGlobal(QCursor::pos()),
-         -SMOOTH_SCROLL_STEP*Application::WheelScrollRate(),
-         Qt::NoButton,
-         Qt::NoModifier);
-
-    WheelEvent(ev);
-
-    if(ev->isAccepted())
-        EmitScrollChanged();
-
-    delete ev;
-}
-
-void View::LittleScrollRight(){
-    if(View::GetScrollVector() == View::Sv_Left) return;
-
-    QWheelEvent *ev = new QWheelEvent
-        (m_TreeBank->mapFromGlobal(QCursor::pos()),
-         SMOOTH_SCROLL_STEP*Application::WheelScrollRate(),
-         Qt::NoButton,
-         Qt::NoModifier,
-         Qt::Horizontal);
-
-    WheelEvent(ev);
-
-    if(ev->isAccepted())
-        EmitScrollChanged();
-
-    delete ev;
-}
-
-void View::LittleScrollLeft(){
-    if(View::GetScrollVector() == View::Sv_Right) return;
-
-    QWheelEvent *ev = new QWheelEvent
-        (m_TreeBank->mapFromGlobal(QCursor::pos()),
-         -SMOOTH_SCROLL_STEP*Application::WheelScrollRate(),
-         Qt::NoButton,
-         Qt::NoModifier,
-         Qt::Horizontal);
-
-    WheelEvent(ev);
-
-    if(ev->isAccepted())
-        EmitScrollChanged();
-
-    delete ev;
 }
 
 void View::OnFocusIn(){

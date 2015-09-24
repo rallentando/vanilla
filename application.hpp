@@ -471,14 +471,15 @@ public:
         return key;
     }
 
-    static void AddModifiersToString(QString &str){
+    static void AddModifiersToString(QString &str, Qt::KeyboardModifiers modifiers){
         static const QMap<Qt::KeyboardModifier, QString> table = QMap<Qt::KeyboardModifier, QString>()
             << qMakePair(Qt::ControlModifier, QStringLiteral("Ctrl"))
             << qMakePair(Qt::AltModifier,     QStringLiteral("Alt"))
             << qMakePair(Qt::MetaModifier,    QStringLiteral("Meta"))
-            << qMakePair(Qt::ShiftModifier,   QStringLiteral("Shift"));
+            << qMakePair(Qt::ShiftModifier,   QStringLiteral("Shift"))
+            << qMakePair(Qt::KeypadModifier,  QStringLiteral("Keypad"));
         foreach(Qt::KeyboardModifier modifier, table.keys()){
-            if(keyboardModifiers() & modifier){
+            if(modifiers & modifier){
                 if(str.isEmpty()) str += table[modifier];
                 else str += QStringLiteral("+") + table[modifier];
             }

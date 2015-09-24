@@ -125,6 +125,10 @@ void WebViewBase::Connect(TreeBank *tb){
     connect(page()->mainFrame(), SIGNAL(contentsSizeChanged(const QSize&)),
             this, SIGNAL(ViewChanged()));
     //[[/!WEV]]
+    //[[WEV]]
+    connect(this, SIGNAL(loadProgress(int)),
+            this, SLOT(RestoreScroll()));
+    //[[/WEV]]
     if(Notifier *notifier = tb->GetNotifier()){
         connect(this, SIGNAL(statusBarMessage(const QString&)),
                 notifier, SLOT(SetStatus(const QString&)));
@@ -166,6 +170,10 @@ void WebViewBase::Disconnect(TreeBank *tb){
     disconnect(page()->mainFrame(), SIGNAL(contentsSizeChanged(const QSize&)),
                this, SIGNAL(ViewChanged()));
     //[[/!WEV]]
+    //[[WEV]]
+    disconnect(this, SIGNAL(loadProgress(int)),
+               this, SLOT(RestoreScroll()));
+    //[[/WEV]]
     if(Notifier *notifier = tb->GetNotifier()){
         disconnect(this, SIGNAL(statusBarMessage(const QString&)),
                    notifier, SLOT(SetStatus(const QString&)));
@@ -543,6 +551,20 @@ void WebViewBase::hideEvent(QHideEvent *ev){
 void WebViewBase::showEvent(QShowEvent *ev){
     QWebViewBase::showEvent(ev);
     RestoreViewState();
+    // set only notifier.
+    if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
+    //[[!WEV]]
+    m_TreeBank->GetNotifier()->SetScroll(GetScroll());
+    //[[/!WEV]]
+    //[[WEV]]
+    CallWithScroll([this](QPointF pos){
+            if(m_TreeBank){
+                if(Notifier *notifier = m_TreeBank->GetNotifier()){
+                    notifier->SetScroll(pos);
+                }
+            }
+        });
+    //[[/WEV]]
 }
 
 void WebViewBase::keyPressEvent(QKeyEvent *ev){
@@ -746,23 +768,14 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
 void WebViewBase::mousePressEvent(QMouseEventBase *ev){
     QString mouse;
 
-    Application::AddModifiersToString(mouse);
+    Application::AddModifiersToString(mouse, ev->modifiers());
     Application::AddMouseButtonToString(mouse, ev->button());
 
-    switch(ev->button()){
-    case Qt::LeftButton:
-    case Qt::RightButton:
-    case Qt::MidButton:
-        GestureStarted(LocalPos(ev));
-        QWebViewBase::mousePressEvent(ev);
-        ev->setAccepted(true);
-        return;
-    }
     if(m_MouseMap.contains(mouse)){
 
         QString str = m_MouseMap[mouse];
         if(!str.isEmpty()){
-            if(!View::TriggerAction(str)){
+            if(!View::TriggerAction(str, LocalPos(ev))){
                 ev->setAccepted(false);
                 return;
             }
@@ -770,7 +783,10 @@ void WebViewBase::mousePressEvent(QMouseEventBase *ev){
             return;
         }
     }
-    ev->setAccepted(false);
+
+    GestureStarted(LocalPos(ev));
+    QWebViewBase::mousePressEvent(ev);
+    ev->setAccepted(true);
 }
 
 void WebViewBase::mouseReleaseEvent(QMouseEventBase *ev){
@@ -968,7 +984,7 @@ void WebViewBase::wheelEvent(QWheelEventBase *ev){
     QString wheel;
     bool up = ev->delta() > 0;
 
-    Application::AddModifiersToString(wheel);
+    Application::AddModifiersToString(wheel, ev->modifiers());
     Application::AddMouseButtonsToString(wheel, ev->buttons());
     Application::AddWheelDirectionToString(wheel, up);
 
@@ -977,59 +993,15 @@ void WebViewBase::wheelEvent(QWheelEventBase *ev){
         QString str = m_MouseMap[wheel];
         if(!str.isEmpty()){
             GestureAborted();
-            View::TriggerAction(str);
+            View::TriggerAction(str, LocalPos(ev));
         }
+        ev->setAccepted(true);
 
-    } else if(m_UseSmoothScroll &&
-              //[[GWV]]
-              abs(ev->delta()) > SMOOTH_SCROLL_STEP*Application::WheelScrollRate()
-              //[[/GWV]]
-              //[[!GWV]]
-              abs(ev->delta()) > SMOOTH_SCROLL_STEP
-              //[[/!GWV]]
-              ){
-
-        //[[GWV]]
-        int delta = (ev->delta()/Application::WheelScrollRate())/SMOOTH_SCROLL_STEP;
-        //[[/GWV]]
-        //[[!GWV]]
-        int delta = ev->delta()/SMOOTH_SCROLL_STEP;
-        //[[/!GWV]]
-
-        //[[!WEV]]
-        if(QWebFrameBase *frame = page()->frameAt(LocalPos(ev)))
-            frame->setFocus();
-        //[[/!WEV]]
-
-        const char* slot;
-
-        if(up){
-            if(ev->orientation() == Qt::Vertical){
-                SetScrollVector(Sv_Up);
-                slot = SLOT(LittleScrollUp());
-            } else if(ev->orientation() == Qt::Horizontal){
-                SetScrollVector(Sv_Left);
-                slot = SLOT(LittleScrollLeft());
-            }
-        } else {
-            delta = -delta;
-            if(ev->orientation() == Qt::Vertical){
-                SetScrollVector(Sv_Down);
-                slot = SLOT(LittleScrollDown());
-            } else if(ev->orientation() == Qt::Horizontal){
-                SetScrollVector(Sv_Right);
-                slot = SLOT(LittleScrollRight());
-            }
-        }
-
-        for(int i = 0; i < delta; i++){
-            QTimer::singleShot(i*SMOOTH_SCROLL_TIMER, this, slot);
-        }
     } else {
         //[[GWV]]
         QWebViewBase::wheelEvent(ev);
         //[[/GWV]]
-        //[[!GWV]]
+        //[[WV]]
         QWheelEvent *new_ev = new QWheelEvent(ev->pos(),
                                               ev->delta()*Application::WheelScrollRate(),
                                               ev->buttons(),
@@ -1038,7 +1010,10 @@ void WebViewBase::wheelEvent(QWheelEventBase *ev){
         QWebViewBase::wheelEvent(new_ev);
         ev->setAccepted(true);
         delete new_ev;
-        //[[/!GWV]]
+        //[[/WV]]
+        //[[WEV]]
+        ev->setAccepted(false);
+        //[[/WEV]]
     }
 
     if(page()->settings()->testAttribute(QWebSettingsBase::ScrollAnimatorEnabled)){
