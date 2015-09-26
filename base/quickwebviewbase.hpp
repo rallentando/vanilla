@@ -2,6 +2,11 @@
 #define QUICKWEBVIEWBASE_HPP
 
 #include "switch.hpp"
+
+//[[!QWEV]]
+#ifdef QTWEBKIT
+//[[/!QWEV]]
+
 #include "webpagebase.hpp"
 #include "view.hpp"
 #include "treebank.hpp"
@@ -426,5 +431,9 @@ private:
              Q_ARG(QVariant, QVariant::fromValue(page()->settings()->fontSize(item))));
     }
 };
+
+//[[!QWEV]]
+#endif
+//[[/!QWEV]]
 
 #endif

@@ -52,6 +52,9 @@ public:
     static AutoSaver *GetAutoSaver(){
         return m_AutoSaver;
     }
+    static Application *GetInstance(){
+        return m_Instance;
+    }
 private:
     static Application *m_Instance;
     static NetworkController *m_NetworkController;

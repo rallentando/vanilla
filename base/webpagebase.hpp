@@ -3,6 +3,10 @@
 
 #include "switch.hpp"
 
+//[[!WEV]]
+#ifdef QTWEBKIT
+//[[/!WEV]]
+
 #include <QWebPageBase>
 #include <QWebSettingsBase>
 
@@ -77,6 +81,10 @@ public:
     }
     //[[/!WEV]]
     //[[WEV]]
+#if QT_VERSION >= 0x050600
+    bool isFullScreen() DECL_OVERRIDE;
+#endif
+    bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) DECL_OVERRIDE;
     QStringList chooseFiles(FileSelectionMode mode, const QStringList &oldFiles,
                             const QStringList &acceptedMimeTypes) DECL_OVERRIDE;
     bool certificateError(const QWebEngineCertificateError& error) DECL_OVERRIDE;
@@ -137,13 +145,14 @@ public slots:
     void HandleFeaturePermission(const QUrl&, QWebEnginePage::Feature);
     void HandleAuthentication(const QUrl&, QAuthenticator*);
     void HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&);
+#if QT_VERSION >= 0x050600
+    void HandleFullScreen(bool);
+#endif
     //[[/WEV]]
 
     void HandleUnsupportedContent(QNetworkReply *reply);
 
     void AddJsObject();
-
-    void CleanUpHtml();
 
     View *OpenInNew(QUrl url){ return m_Page->OpenInNew(url);}
     View *OpenInNew(QList<QUrl> urls){ return m_Page->OpenInNew(urls);}
@@ -191,5 +200,9 @@ private:
     QNetworkAccessManager *m_NetworkAccessManager;
     //[[/WEV]]
 };
+
+//[[!WEV]]
+#endif
+//[[/!WEV]]
 
 #endif

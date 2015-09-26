@@ -1,6 +1,10 @@
 #include "switch.hpp"
 #include "const.hpp"
 
+//[[!WEV]]
+#ifdef QTWEBKIT
+//[[/!WEV]]
+
 #include "webviewbase.hpp"
 
 #include <QWebViewBase>
@@ -30,7 +34,6 @@
 
 namespace {
     //[[GWV]]
-
     inline QPoint ToPoint(QPointF p){
         return p.toPoint();
     }
@@ -48,10 +51,8 @@ namespace {
     QPoint GlobalPos(T *t){
         return ToPoint(t->screenPos());
     }
-
     //[[/GWV]]
     //[[!GWV]]
-
     inline QPoint ToPoint(QPoint p){
         return p;
     }
@@ -69,7 +70,6 @@ namespace {
     QPoint GlobalPos(T *t){
         return t->globalPos();
     }
-
     //[[/!GWV]]
 }
 
@@ -86,6 +86,7 @@ WebViewBase::WebViewBase(TreeBank *parent, QString id, QStringList set)
     , QWebViewBase(TreeBank::PurgeView() ? 0 : static_cast<QWidget*>(parent))
       //[[/!GWV]]
 {
+    Initialize();
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
     m_Page = new WebPageBase(nam, this);
     ApplySpecificSettings(set);
@@ -1525,3 +1526,7 @@ void WebViewBase::CallWithEvaluatedJavaScriptResult(const QString &code, Variant
     page()->runJavaScript(code, callBack);
 }
 //[[/WEV]]
+
+//[[!WEV]]
+#endif
+//[[/!WEV]]

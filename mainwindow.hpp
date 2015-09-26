@@ -50,6 +50,7 @@ public:
     void RaiseAllEdgeWidgets();
     void AdjustAllEdgeWidgets();
 public slots:
+    void UpdateAllEdgeWidgets();
     void SetWindowTitle(const QString&);
     void ToggleNotifier();
     void ToggleReceiver();

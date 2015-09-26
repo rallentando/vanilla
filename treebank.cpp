@@ -30,10 +30,12 @@
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "view.hpp"
-#include "webview.hpp"
-#include "graphicswebview.hpp"
-#include "quickwebview.hpp"
-#include "webpage.hpp"
+#ifdef QTWEBKIT
+#  include "webview.hpp"
+#  include "graphicswebview.hpp"
+#  include "quickwebview.hpp"
+#  include "webpage.hpp"
+#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "webenginepage.hpp"
@@ -1603,6 +1605,7 @@ bool TreeBank::SetCurrent(Node *nd){
     // GraphicsWebView             V
     //                            low
 
+#ifdef QTWEBKIT
     if(qobject_cast<GraphicsWebView*>(m_CurrentView->base())){
 
         m_CurrentView->show();
@@ -1613,16 +1616,20 @@ bool TreeBank::SetCurrent(Node *nd){
         }
         m_CurrentView->raise();
 
-    } else if(qobject_cast<LocalView*>(m_CurrentView->base())){
+    } else
+#endif
+    if(qobject_cast<LocalView*>(m_CurrentView->base())){
 
         m_CurrentView->show();
         DoUpdate();
         if(prev && prev != m_CurrentView){
             m_CurrentView->SetMaster(prev);
             prev->SetSlave(m_CurrentView);
+#ifdef QTWEBKIT
             if(!qobject_cast<GraphicsWebView*>(prev->base())){
                 prev->hide();
             }
+#endif
         }
         m_CurrentView->raise();
 
@@ -3612,19 +3619,21 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
     } else {
         view = SharedView(
             // 'QStringList::indexOf' uses 'QRegExp::exactMatch'.
+#ifdef QTWEBKIT
             set.indexOf(QRegExp(QStringLiteral(""                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new WebView(tb, id, set) :
             set.indexOf(QRegExp(QStringLiteral("[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new GraphicsWebView(tb, id, set) :
             set.indexOf(QRegExp(QStringLiteral("[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new QuickWebView(tb, id, set) :
+#endif
             set.indexOf(QRegExp(QStringLiteral(""                 VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new WebEngineView(tb, id, set) :
             set.indexOf(QRegExp(QStringLiteral("[qQ](?:uick)?"    VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new QuickWebEngineView(tb, id, set) :
             set.indexOf(QRegExp(QStringLiteral(""                 VV"[lL](?:ocal)?"                  VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new LocalView(tb, id, set) :
-#ifdef WEBENGINEVIEW_DEFAULT
+#if defined(WEBENGINEVIEW_DEFAULT) || !defined(QTWEBKIT)
             static_cast<View*>(new WebEngineView(tb, id, set))
 #else
             static_cast<View*>(new GraphicsWebView(tb, id, set))

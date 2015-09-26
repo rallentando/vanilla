@@ -37,8 +37,8 @@ public:
     virtual QGraphicsObject *base() DECL_OVERRIDE {
         return static_cast<QGraphicsObject*>(this);
     }
-    virtual WebPage *page() DECL_OVERRIDE {
-        return static_cast<WebPage*>(View::page());
+    virtual Page *page() DECL_OVERRIDE {
+        return static_cast<Page*>(View::page());
     }
 
     virtual TreeBank *parent() DECL_OVERRIDE;
@@ -161,17 +161,11 @@ public:
 
     bool TriggerAction(QString str, QVariant data = QVariant()) DECL_OVERRIDE;
     void TriggerAction(Gadgets::GadgetsAction a);
-    void TriggerAction(QWebPage::WebAction a) DECL_OVERRIDE {
-        if(page()) page()->TriggerAction(a);
-    }
     void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
         Action(a, data)->trigger();
     }
 
     QAction *Action(Gadgets::GadgetsAction a);
-    QAction *Action(QWebPage::WebAction a) DECL_OVERRIDE {
-        return page() ? page()->Action(a) : 0;
-    }
     QAction *Action(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
         Q_UNUSED(data);
         switch(a){
@@ -328,6 +322,11 @@ public slots:
     void EndKey      ();
     void PageUpKey   ();
     void PageDownKey ();
+
+signals:
+    void linkHovered(const QString&, const QString&, const QString&);
+    void ButtonCleared();
+    void RenderFinished();
 
 private:
     QMap<Gadgets::GadgetsAction, QAction*> m_ActionTable;

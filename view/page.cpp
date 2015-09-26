@@ -3,10 +3,12 @@
 
 #include "page.hpp"
 
-#include <QWebPage>
-#include <QWebFrame>
-#include <QWebElement>
-#include <QMenu>
+#ifdef QTWEBKIT
+#  include <QWebPage>
+#  include <QWebFrame>
+#  include <QWebElement>
+#endif
+
 #include <QClipboard>
 #include <QList>
 #include <QSet>
@@ -16,7 +18,9 @@
 #include "view.hpp"
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
-#include "webpage.hpp"
+#ifdef QTWEBKIT
+#  include "webpage.hpp"
+#endif
 #include "webenginepage.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
@@ -31,10 +35,11 @@ QMap<QString, Bookmarklet> Page::m_BookmarkletMap = QMap<QString, Bookmarklet>()
 
 Page::OpenCommandOperation Page::m_OpenCommandOperation = Page::InNewViewNode;
 
-Page::Page(QObject *parent)
+Page::Page(QObject *parent, NetworkAccessManager *nam)
     : QObject(parent)
 {
     m_ActionTable = QMap<Page::CustomAction, QAction*>();
+    m_NetworkAccessManager = nam;
 
     switch(m_OpenCommandOperation){
     case InNewViewNode:
@@ -147,6 +152,19 @@ Page::Page(QObject *parent)
 }
 
 Page::~Page(){}
+
+NetworkAccessManager *Page::GetNetworkAccessManager(){
+    NetworkAccessManager *nam;
+#ifdef QTWEBKIT
+    if(WebPage *page = qobject_cast<WebPage*>(m_View->page()))
+        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
+    else
+#endif
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page()))
+        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
+    else nam = m_NetworkAccessManager;
+    return nam;
+}
 
 QUrl Page::CreateQueryUrl(QString query, QString key){
     SearchEngine engine;
@@ -441,12 +459,7 @@ bool Page::Activate(){
 void Page::Download(const QNetworkRequest &req,
                     const QString &file){
 
-    NetworkAccessManager *nam;
-    // can implement without WebPage and WebEnginePage?
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page()))
-        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
-    else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page()))
-        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
+    NetworkAccessManager *nam = GetNetworkAccessManager();
     if(!nam) return;
 
     DownloadItem *item = 0;
@@ -484,12 +497,7 @@ void Page::SetSource(const QUrl &url){
     QUrl other = QUrl::fromEncoded(url.toEncoded().mid(12));
     QNetworkRequest req(other);
     req.setRawHeader("Referer", other.toEncoded());
-    NetworkAccessManager *nam;
-    // can implement without WebPage and WebEnginePage?
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page()))
-        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
-    else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page()))
-        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
+    NetworkAccessManager *nam = GetNetworkAccessManager();
     if(!nam) return;
     DownloadItem *item =
         NetworkController::Download(nam, req, NetworkController::ToVariable);
@@ -587,64 +595,6 @@ void Page::SetSource(const QString &html){
     emit urlChanged(url);
     emit titleChanged(QString::fromUtf8(url.toEncoded()));
     emit loadFinished(true);
-}
-
-QMenu *Page::BookmarkletMenu(){
-    QMenu *menu = new QMenu(tr("Bookmarklet"));
-    foreach(QString key, GetBookmarkletMap().keys()){
-        menu->addAction(key, this, SLOT(OpenBookmarklet()));
-    }
-    return menu;
-}
-
-QMenu *Page::SearchMenu(){
-    QMenu *menu = new QMenu(tr("SearchWith"));
-    foreach(QString key, GetSearchEngineMap().keys()){
-        menu->addAction(key, this, SLOT(SearchWith()));
-    }
-    return menu;
-}
-
-QMenu *Page::OpenWithOtherBrowserMenu(){
-    QMenu *menu = new QMenu(tr("OpenWithOtherBrowser"));
-    if(!Application::BrowserPath_IE().isEmpty())       menu->addAction(Action(We_OpenWithIE));
-    if(!Application::BrowserPath_FF().isEmpty())       menu->addAction(Action(We_OpenWithFF));
-    if(!Application::BrowserPath_Opera().isEmpty())    menu->addAction(Action(We_OpenWithOpera));
-    if(!Application::BrowserPath_OPR().isEmpty())      menu->addAction(Action(We_OpenWithOPR));
-    if(!Application::BrowserPath_Safari().isEmpty())   menu->addAction(Action(We_OpenWithSafari));
-    if(!Application::BrowserPath_Chrome().isEmpty())   menu->addAction(Action(We_OpenWithChrome));
-    if(!Application::BrowserPath_Sleipnir().isEmpty()) menu->addAction(Action(We_OpenWithSleipnir));
-    if(!Application::BrowserPath_Vivaldi().isEmpty())  menu->addAction(Action(We_OpenWithVivaldi));
-    if(!Application::BrowserPath_Custom().isEmpty())   menu->addAction(Action(We_OpenWithCustom));
-    return menu;
-}
-
-QMenu *Page::OpenLinkWithOtherBrowserMenu(QPoint pos){
-    QMenu *menu = new QMenu(tr("OpenLinkWithOtherBrowser"));
-    if(!Application::BrowserPath_IE().isEmpty())       menu->addAction(Action(We_OpenLinkWithIE, pos));
-    if(!Application::BrowserPath_FF().isEmpty())       menu->addAction(Action(We_OpenLinkWithFF, pos));
-    if(!Application::BrowserPath_Opera().isEmpty())    menu->addAction(Action(We_OpenLinkWithOpera, pos));
-    if(!Application::BrowserPath_OPR().isEmpty())      menu->addAction(Action(We_OpenLinkWithOPR, pos));
-    if(!Application::BrowserPath_Safari().isEmpty())   menu->addAction(Action(We_OpenLinkWithSafari, pos));
-    if(!Application::BrowserPath_Chrome().isEmpty())   menu->addAction(Action(We_OpenLinkWithChrome, pos));
-    if(!Application::BrowserPath_Sleipnir().isEmpty()) menu->addAction(Action(We_OpenLinkWithSleipnir, pos));
-    if(!Application::BrowserPath_Vivaldi().isEmpty())  menu->addAction(Action(We_OpenLinkWithVivaldi, pos));
-    if(!Application::BrowserPath_Custom().isEmpty())   menu->addAction(Action(We_OpenLinkWithCustom, pos));
-    return menu;
-}
-
-QMenu *Page::OpenImageWithOtherBrowserMenu(QPoint pos){
-    QMenu *menu = new QMenu(tr("OpenImageWithOtherBrowser"));
-    if(!Application::BrowserPath_IE().isEmpty())       menu->addAction(Action(We_OpenImageWithIE, pos));
-    if(!Application::BrowserPath_FF().isEmpty())       menu->addAction(Action(We_OpenImageWithFF, pos));
-    if(!Application::BrowserPath_Opera().isEmpty())    menu->addAction(Action(We_OpenImageWithOpera, pos));
-    if(!Application::BrowserPath_OPR().isEmpty())      menu->addAction(Action(We_OpenImageWithOPR, pos));
-    if(!Application::BrowserPath_Safari().isEmpty())   menu->addAction(Action(We_OpenImageWithSafari, pos));
-    if(!Application::BrowserPath_Chrome().isEmpty())   menu->addAction(Action(We_OpenImageWithChrome, pos));
-    if(!Application::BrowserPath_Sleipnir().isEmpty()) menu->addAction(Action(We_OpenImageWithSleipnir, pos));
-    if(!Application::BrowserPath_Vivaldi().isEmpty())  menu->addAction(Action(We_OpenImageWithVivaldi, pos));
-    if(!Application::BrowserPath_Custom().isEmpty())   menu->addAction(Action(We_OpenImageWithCustom, pos));
-    return menu;
 }
 
 void Page::UpKey()       { m_View->UpKeyEvent();}
@@ -862,36 +812,48 @@ void Page::Copy(){
 
 void Page::Cut(){
     // can implement without WebPage and WebEnginePage?
+#ifdef QTWEBKIT
     if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
         page->triggerAction(QWebPage::Cut);
-    } else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
+    } else
+#endif
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Cut);
     }
 }
 
 void Page::Paste(){
     // can implement without WebPage and WebEnginePage?
+#ifdef QTWEBKIT
     if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
         page->triggerAction(QWebPage::Paste);
-    } else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
+    } else
+#endif
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Paste);
     }
 }
 
 void Page::Undo(){
     // can implement without WebPage and WebEnginePage?
+#ifdef QTWEBKIT
     if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
         page->triggerAction(QWebPage::Undo);
-    } else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
+    } else
+#endif
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Undo);
     }
 }
 
 void Page::Redo(){
     // can implement without WebPage and WebEnginePage?
+#ifdef QTWEBKIT
     if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
         page->triggerAction(QWebPage::Redo);
-    } else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
+    } else
+#endif
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Redo);
     }
 }
@@ -906,18 +868,24 @@ void Page::Unselect(){
 
 void Page::SelectAll(){
     // can implement without WebPage and WebEnginePage?
+#ifdef QTWEBKIT
     if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
         page->triggerAction(QWebPage::SelectAll);
-    } else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
+    } else
+#endif
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::SelectAll);
     }
 }
 
 void Page::Reload(){
     // can implement without WebPage and WebEnginePage?
+#ifdef QTWEBKIT
     if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
         page->triggerAction(QWebPage::Reload);
-    } else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
+    } else
+#endif
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Reload);
     }
 }
@@ -928,9 +896,12 @@ void Page::ReloadAndBypassCache(){
 
 void Page::Stop(){
     // can implement without WebPage and WebEnginePage?
+#ifdef QTWEBKIT
     if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
         page->triggerAction(QWebPage::Stop);
-    } else if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
+    } else
+#endif
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Stop);
     }
 }
@@ -1932,6 +1903,15 @@ QAction *Page::Action(CustomAction a, QVariant data){
         break;
     }
     return webaction;
+}
+
+void Page::DownloadSuggest(const QUrl& url){
+    QNetworkRequest req(url);
+    DownloadItem *item =
+        NetworkController::Download(static_cast<NetworkAccessManager*>(GetNetworkAccessManager()),
+                                    req, NetworkController::ToVariable);
+    connect(item, SIGNAL(DownloadResult(const QByteArray&)),
+            this, SIGNAL(SuggestResult(const QByteArray&)));
 }
 
 TreeBank *Page::GetTB(){

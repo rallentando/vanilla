@@ -43,11 +43,13 @@ class Page : public QObject{
     Q_OBJECT
 
 public:
-    Page(QObject *parent = 0);
+    Page(QObject *parent = 0, NetworkAccessManager *nam = 0);
     ~Page();
 
     void SetView(View *view){ m_View = view;}
     View *GetView(){ return m_View;}
+
+    NetworkAccessManager *GetNetworkAccessManager();
 
     enum OpenCommandOperation {
         InNewViewNode,
@@ -130,12 +132,6 @@ public slots:
     void SetSource(const QUrl&);
     void SetSource(const QByteArray&);
     void SetSource(const QString&);
-
-    QMenu *BookmarkletMenu();
-    QMenu *SearchMenu();
-    QMenu *OpenWithOtherBrowserMenu();
-    QMenu *OpenLinkWithOtherBrowserMenu(QPoint pos);
-    QMenu *OpenImageWithOtherBrowserMenu(QPoint pos);
 
     View *OpenInNew(QUrl url){ return (this->*m_OpenInNewMethod0)(url);}
     View *OpenInNew(QList<QUrl> urls){ return (this->*m_OpenInNewMethod1)(urls);}
@@ -1012,6 +1008,11 @@ public:
 
     QAction *Action(CustomAction a, QVariant data = QVariant());
 
+public slots:
+    void DownloadSuggest(const QUrl&);
+signals:
+    void SuggestResult(const QByteArray&);
+
 private:
     QMap<Page::CustomAction, QAction*> m_ActionTable;
 
@@ -1020,6 +1021,7 @@ private:
     static OpenCommandOperation m_OpenCommandOperation;
 
     View *m_View;
+    NetworkAccessManager *m_NetworkAccessManager;
 
     View *(Page::*m_OpenInNewMethod0)(QUrl);
     View *(Page::*m_OpenInNewMethod1)(QList<QUrl>);

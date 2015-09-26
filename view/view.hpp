@@ -12,7 +12,9 @@
 
 #include "callback.hpp"
 #include "page.hpp"
-#include "webpage.hpp"
+#ifdef QTWEBKIT
+#  include "webpage.hpp"
+#endif
 #include "webenginepage.hpp"
 
 class QKeySequence;
@@ -138,6 +140,7 @@ public:
     virtual QObject *base();
     virtual QObject *page();
 
+    void Initialize();
     void DeleteLater();
 
     TreeBank  *GetTreeBank();
@@ -163,6 +166,15 @@ public:
     QMimeData *CreateMimeDataFromSelection(NetworkAccessManager *nam);
     QMimeData *CreateMimeDataFromElement(NetworkAccessManager *nam);
     QPixmap CreatePixmapFromElement();
+
+    QMenu *BookmarkletMenu();
+    QMenu *SearchMenu();
+    QMenu *OpenWithOtherBrowserMenu();
+    QMenu *OpenLinkWithOtherBrowserMenu(QVariant data);
+    QMenu *OpenImageWithOtherBrowserMenu(QVariant data);
+
+    void AddContextMenu(QMenu *menu, SharedWebElement elem);
+    void AddRegularMenu(QMenu *menu, SharedWebElement elem);
 
     static void LoadSettings();
     static void SaveSettings();
@@ -240,11 +252,15 @@ public:
         return true;
     }
 
+#ifdef QTWEBKIT
     virtual void TriggerAction(QWebPage::WebAction){}
+#endif
     virtual void TriggerAction(QWebEnginePage::WebAction){}
     virtual void TriggerAction(Page::CustomAction, QVariant = QVariant()){}
 
+#ifdef QTWEBKIT
     virtual QAction *Action(QWebPage::WebAction){ return 0;}
+#endif
     virtual QAction *Action(QWebEnginePage::WebAction){ return 0;}
     virtual QAction *Action(Page::CustomAction, QVariant = QVariant()){ return 0;}
 
@@ -680,7 +696,7 @@ protected:
         //VV"        if(elems[i].tagName == \"FRAME\" ||\n"
         //VV"           elems[i].tagName == \"IFRAME\"){\n"
         //VV"            var frameDocument = elems[i].contentWindow.document;\n"
-        //VV"            elems = elems.concat(frameDocument.querySelectorAll(\"" + quoted + "\"));\n"
+        //VV"            elems = elems.concat(frameDocument.querySelectorAll(\"%1\"));\n"
         //VV"        }\n"
             // XPath
             // 1 : document.ELEMENT_NODE
@@ -981,7 +997,9 @@ protected:
     bool m_EnableDragHackLocal;
 
     static const QList<float> m_ZoomFactorLevels;
+#ifdef QTWEBKIT
     static const QMap<QWebSettings::WebAttribute, QString> m_WebSwitches;
+#endif
     static const QMap<QWebEngineSettings::WebAttribute, QString> m_WebEngineSwitches;
 
     static QString m_LinkMenu;

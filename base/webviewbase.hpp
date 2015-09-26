@@ -2,6 +2,11 @@
 #define WEBVIEWBASE_HPP
 
 #include "switch.hpp"
+
+//[[!WEV]]
+#ifdef QTWEBKIT
+//[[/!WEV]]
+
 #include "webpagebase.hpp"
 #include "view.hpp"
 #include "treebank.hpp"
@@ -125,6 +130,9 @@ public:
     void ReloadAndBypassCache()      DECL_OVERRIDE { if(page()) page()->ReloadAndBypassCache();}
     //[[/!WEV]]
     //[[WEV]]
+#if QT_VERSION >= 0x050600
+    void InspectElement()            DECL_OVERRIDE { if(page()) page()->InspectElement();}
+#endif
     void AddSearchEngine(QPoint pos) DECL_OVERRIDE { if(page()) page()->AddSearchEngine(pos);}
     void AddBookmarklet(QPoint pos)  DECL_OVERRIDE { if(page()) page()->AddBookmarklet(pos);}
     //[[/WEV]]
@@ -610,5 +618,9 @@ private:
     WebViewBase *m_View;
 };
 //[[/WEV]]
+
+//[[!WEV]]
+#endif
+//[[/!WEV]]
 
 #endif

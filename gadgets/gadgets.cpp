@@ -26,8 +26,10 @@
 #include "nodetitle.hpp"
 #include "accessiblewebelement.hpp"
 #include "view.hpp"
-#include "webview.hpp"
-#include "quickwebview.hpp"
+#ifdef QTWEBKIT
+#  include "webview.hpp"
+#  include "quickwebview.hpp"
+#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 
@@ -1571,11 +1573,14 @@ void Gadgets::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
+#ifdef QTWEBKIT
         if(WebView *w = qobject_cast<WebView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebView *w = qobject_cast<QuickWebView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
-        else if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
+        else
+#endif
+        if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;

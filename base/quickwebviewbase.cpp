@@ -1,6 +1,10 @@
 #include "switch.hpp"
 #include "const.hpp"
 
+//[[!QWEV]]
+#ifdef QTWEBKIT
+//[[/!QWEV]]
+
 #include "quickwebviewbase.hpp"
 
 #include <QQmlContext>
@@ -37,6 +41,7 @@ QuickWebViewBase::QuickWebViewBase(TreeBank *parent, QString id, QStringList set
 #endif
       //[[/QWEV]]
 {
+    Initialize();
     rootContext()->setContextProperty(QStringLiteral("viewInterface"), this);
 
     m_QmlWebViewBase = rootObject()->childItems().first();
@@ -800,3 +805,7 @@ void QuickWebViewBase::CallWithEvaluatedJavaScriptResult(const QString &code,
                               Q_ARG(QVariant, QVariant::fromValue(requestId)),
                               Q_ARG(QVariant, QVariant::fromValue(code)));
 }
+
+//[[!QWEV]]
+#endif
+//[[/!QWEV]]

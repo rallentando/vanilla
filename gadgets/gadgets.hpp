@@ -305,7 +305,7 @@ public:
     void RenderBackground(QPainter *painter) DECL_OVERRIDE;
 
     QGraphicsObject *base() DECL_OVERRIDE { return static_cast<QGraphicsObject*>(this);}
-    WebPage *page() DECL_OVERRIDE { return 0;}
+    Page *page() DECL_OVERRIDE { return 0;}
 
     QUrl url() DECL_OVERRIDE { return QUrl();}
     void setUrl(const QUrl &) DECL_OVERRIDE {}

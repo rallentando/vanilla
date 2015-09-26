@@ -22,8 +22,10 @@
 #include "nodetitle.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
-#include "webview.hpp"
-#include "quickwebview.hpp"
+#ifdef QTWEBKIT
+#  include "webview.hpp"
+#  include "quickwebview.hpp"
+#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "dialog.hpp"
@@ -32,6 +34,7 @@ LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
     : View(parent)
     , GraphicsTableView(parent)
 {
+    Initialize();
     setZValue(COVERING_VIEW_CONTENTS_LAYER);
 
     m_ParentNode = new LocalNode();
@@ -57,7 +60,8 @@ LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
     m_MediaPlayer->setVideoOutput(m_VideoItem);
 
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
-    m_Page = new WebPage(nam, this);
+    m_Page = new Page(this, nam);
+    page()->SetView(this);
     ApplySpecificSettings(set);
 
     if(parent) setParent(parent);
@@ -207,11 +211,14 @@ void LocalView::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
+#ifdef QTWEBKIT
         if(WebView *w = qobject_cast<WebView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebView *w = qobject_cast<QuickWebView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
-        else if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
+        else
+#endif
+        if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;

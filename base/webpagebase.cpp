@@ -1,6 +1,10 @@
 #include "switch.hpp"
 #include "const.hpp"
 
+//[[!WEV]]
+#ifdef QTWEBKIT
+//[[/!WEV]]
+
 #include "webpagebase.hpp"
 #include "page.hpp"
 
@@ -20,7 +24,6 @@
 #include <QPrinter>
 #include <QPrintDialog>
 #include <QClipboard>
-#include <QWebInspector>
 #include <QTextCodec>
 #include <QAuthenticator>
 #include <QPushButton>
@@ -29,6 +32,9 @@
 #include <QMenu>
 #include <QCursor>
 #include <QUrlQuery>
+//[[!WEV]]
+#include <QWebInspector>
+//[[/!WEV]]
 
 #include <functional>
 #include <memory>
@@ -43,7 +49,6 @@
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 //[[/WEV]]
-#include "localview.hpp"
 #include "application.hpp"
 #include "mainwindow.hpp"
 #include "networkcontroller.hpp"
@@ -61,23 +66,6 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
 //[[/!WEV]]
 {
     setNetworkAccessManager(nam);
-
-    connect(parent, SIGNAL(titleChanged(const QString&)),
-            parent, SLOT(OnTitleChanged(const QString&)));
-    connect(parent, SIGNAL(urlChanged(const QUrl&)),
-            parent, SLOT(OnUrlChanged(const QUrl&)));
-    connect(parent, SIGNAL(loadStarted()),
-            parent, SLOT(OnLoadStarted()));
-    connect(parent, SIGNAL(loadProgress(int)),
-            parent, SLOT(OnLoadProgress(int)));
-    connect(parent, SIGNAL(loadFinished(bool)),
-            parent, SLOT(OnLoadFinished(bool)));
-    connect(parent, SIGNAL(ViewChanged()),
-            parent, SLOT(OnViewChanged()));
-    connect(parent, SIGNAL(ScrollChanged(QPointF)),
-            parent, SLOT(OnViewChanged()));
-    connect(parent, SIGNAL(ScrollChanged(QPointF)),
-            parent, SLOT(OnScrollChanged()));
 
     connect(this,   SIGNAL(ViewChanged()),
             parent, SIGNAL(ViewChanged()));
@@ -127,15 +115,17 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
             this, SLOT(HandleAuthentication(const QUrl&, QAuthenticator*)));
     connect(this, SIGNAL(proxyAuthenticationRequired(const QUrl&, QAuthenticator*, const QString&)),
             this, SLOT(HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&)));
+#if QT_VERSION >= 0x050600
+    connect(this, SIGNAL(fullScreenRequested(bool)),
+            this, SLOT(HandleFullScreen(bool)));
+#endif
     //[[/WEV]]
 
     // instead of this.
     //m_View = (View *)parent;
     if(parent){
-        if(LocalView *w = qobject_cast<LocalView*>(parent))
-            m_View = w;
         //[[!WEV]]
-        else if(WebView *w = qobject_cast<WebView*>(parent))
+        if(WebView *w = qobject_cast<WebView*>(parent))
             m_View = w;
         else if(GraphicsWebView *w = qobject_cast<GraphicsWebView*>(parent))
             m_View = w;
@@ -143,7 +133,7 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
             m_View = w;
         //[[/!WEV]]
         //[[WEV]]
-        else if(WebEngineView *w = qobject_cast<WebEngineView*>(parent))
+        if(WebEngineView *w = qobject_cast<WebEngineView*>(parent))
             m_View = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(parent))
             m_View = w;
@@ -319,6 +309,18 @@ bool WebPageBase::supportsExtension(Extension extension) const{
 }
 //[[/!WEV]]
 //[[WEV]]
+#if QT_VERSION >= 0x050600
+bool WebPageBase::isFullScreen(){
+    if(TreeBank *tb = m_View->GetTreeBank())
+        return tb->GetMainWindow()->isFullScreen();
+    return false;
+}
+#endif
+
+bool WebPageBase::acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame){
+    return QWebPageBase::acceptNavigationRequest(url, type, isMainFrame);
+}
+
 QStringList WebPageBase::chooseFiles(FileSelectionMode mode, const QStringList &oldFiles,
                                      const QStringList &acceptedMimeTypes){
     Q_UNUSED(acceptedMimeTypes);
@@ -465,12 +467,8 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
     QMenu *menu = new QMenu(parent);
     menu->setToolTipsVisible(true);
 
-    QVariant data = QVariant::fromValue(elem);
-
     QUrl linkUrl  = elem ? elem->LinkUrl()  : QUrl();
     QUrl imageUrl = elem ? elem->ImageUrl() : QUrl();
-
-    static const int max_filename_length_at_contextmenu = 25;
 
     //[[!WEV]]
     updatePositionDependentActions(localPos);
@@ -515,54 +513,7 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
     }
     //[[/WEV]]
 
-    const QString comma = QStringLiteral(",");
-    const QString slash = QStringLiteral("/");
-
-    if(!linkUrl.isEmpty()){
-        if(!menu->isEmpty()) menu->addSeparator();
-        QStringList list = linkUrl.toString().split(slash);
-        QString name = QString();
-        while(name.isEmpty() && !list.isEmpty())
-            name = list.takeLast();
-        if(name.length() > max_filename_length_at_contextmenu)
-            name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
-
-        foreach(QString str, View::GetLinkMenu().split(comma)){
-            if     (str == QStringLiteral("Separator")) menu->addSeparator();
-            else if(str == QStringLiteral("LinkUrl"))   menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
-            else if(str == QStringLiteral("OpenLinkWithOtherBrowser"))
-                menu->addMenu(m_Page->OpenLinkWithOtherBrowserMenu(localPos));
-            else menu->addAction(Action(Page::StringToAction(str), data));
-        }
-    }
-
-    if(!imageUrl.isEmpty()){
-        if(!menu->isEmpty()) menu->addSeparator();
-        QStringList list = imageUrl.toString().split(slash);
-        QString name = QString();
-        while(name.isEmpty() && !list.isEmpty())
-            name = list.takeLast();
-        if(name.length() > max_filename_length_at_contextmenu)
-            name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
-
-        foreach(QString str, View::GetImageMenu().split(comma)){
-            if     (str == QStringLiteral("Separator")) menu->addSeparator();
-            else if(str == QStringLiteral("ImageUrl"))  menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
-            else if(str == QStringLiteral("OpenImageWithOtherBrowser"))
-                menu->addMenu(m_Page->OpenImageWithOtherBrowserMenu(localPos));
-            else menu->addAction(Action(Page::StringToAction(str), data));
-        }
-    }
-
-    if(!selectedText().isEmpty()){
-        if(!menu->isEmpty()) menu->addSeparator();
-
-        foreach(QString str, View::GetSelectionMenu().split(comma)){
-            if     (str == QStringLiteral("Separator"))  menu->addSeparator();
-            else if(str == QStringLiteral("SearchMenu")) menu->addMenu(m_Page->SearchMenu());
-            else menu->addAction(Action(Page::StringToAction(str), data));
-        }
-    }
+    m_View->AddContextMenu(menu, elem);
 
     //[[!WEV]]
     if(settings()->testAttribute(QWebSettings::DeveloperExtrasEnabled)){
@@ -570,28 +521,19 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
         menu->addAction(Action(Page::We_InspectElement));
     }
     //[[/!WEV]]
+    //[[WEV]]
+#if QT_VERSION >= 0x050600
+    menu->addSeparator();
+    menu->addAction(Action(Page::We_InspectElement));
+#endif
+    //[[/WEV]]
 
     if(elem && !elem->IsNull() && elem->IsQueryInputElement()){
         if(!menu->isEmpty()) menu->addSeparator();
         menu->addAction(Action(Page::We_AddSearchEngine, localPos));
     }
 
-    menu->addSeparator();
-
-    foreach(QString str, View::GetRegularMenu().split(comma)){
-        if     (str == QStringLiteral("Separator"))       menu->addSeparator();
-        else if(str == QStringLiteral("BookmarkletMenu")) menu->addMenu(m_Page->BookmarkletMenu());
-        else if(str == QStringLiteral("CleanUpHtml"))     menu->addAction(tr("CleanUpHtml"), this, SLOT(CleanUpHtml()));
-        else if(str == QStringLiteral("OpenWithOtherBrowser"))
-            menu->addMenu(m_Page->OpenWithOtherBrowserMenu());
-        else if(str == QStringLiteral("ViewOrApplySource")){
-            if(m_View->GetHistNode()->GetUrl().toEncoded().startsWith("view-source:")){
-                menu->addAction(Action(Page::We_ApplySource));
-            } else {
-                menu->addAction(Action(Page::We_ViewSource));
-            }
-        } else menu->addAction(Action(Page::StringToAction(str), data));
-    }
+    m_View->AddRegularMenu(menu, elem);
 
     menu->exec(globalPos);
     delete menu;
@@ -703,6 +645,13 @@ void WebPageBase::HandleProxyAuthentication(const QUrl &requestUrl,
 
     ModalDialog::Authentication(authenticator);
 }
+
+#if QT_VERSION >= 0x050600
+void WebPageBase::HandleFullScreen(bool on){
+    if(TreeBank *tb = m_View->GetTreeBank())
+        return tb->GetMainWindow()->SetFullScreen(on);
+}
+#endif
 //[[/WEV]]
 
 void WebPageBase::HandleUnsupportedContent(QNetworkReply *reply){
@@ -841,51 +790,6 @@ void WebPageBase::AddJsObject(){
         mainFrame()->addToJavaScriptWindowObject(QStringLiteral("_vanilla"), m_View->GetTreeBank()->GetJsObject());
         m_View->OnSetJsObject(m_View->GetTreeBank()->GetJsObject());
     }
-    //[[/!WEV]]
-}
-
-void WebPageBase::CleanUpHtml(){
-    //[[!WEV]]
-    // for QTBUG-28854 or QTBUG-33053 (or QTBUG-42588 or QTBUG-43024 or QTBUG-44401).
-    // https://bugreports.qt.io/browse/QTBUG-28854
-    // https://bugreports.qt.io/browse/QTBUG-33053
-    //(https://bugreports.qt.io/browse/QTBUG-42588
-    // https://bugreports.qt.io/browse/QTBUG-43024
-    // https://bugreports.qt.io/browse/QTBUG-44401)
-
-    std::function<void (QWebFrameBase*)> traverseFrame;
-
-    traverseFrame = [&](QWebFrameBase *frame){
-        bool needtochange = false;
-        QString source = frame->toHtml();
-
-        QRegExp re1 = QRegExp(QStringLiteral("(<param[ \t\n\r\f]+name[ \t\n\r\f]*=[ \t\n\r\f]*)([\\'\"])wmode\\2([ \t\n\r\f]+)(value=)([\\'\"])direct\\5([ \t\n\r\f]*/?>)"));
-        if(source.contains(re1)){
-            needtochange = true;
-            source.replace(re1, QStringLiteral("\\1\\2wmode\\2\\3\\4\\5transparent\\5\\6"));
-        }
-
-        QRegExp re2 = QRegExp(QStringLiteral("(<param[ \t\n\r\f]+value[ \t\n\r\f]*=[ \t\n\r\f]*)([\\'\"])direct\\2([ \t\n\r\f]+)(name=)([\\'\"])wmode\\5([ \t\n\r\f]*/?>)"));
-        if(source.contains(re2)){
-            needtochange = true;
-            source.replace(re2, QStringLiteral("\\1\\2transparent\\2\\3\\4\\5wmode\\5\\6"));
-        }
-
-        QRegExp re3 = QRegExp(QStringLiteral("([\\'\"]?)wmode\\1([ \t\n\r\f]*)([:=])([ \t\n\r\f]*)([\\'\"]?)direct\\5"));
-        if(source.contains(re3)){
-            needtochange = true;
-            source.replace(re3, QStringLiteral("\\1wmode\\1\\2\\3\\4\\5transparent\\5"));
-        }
-
-        if(needtochange){
-            frame->setHtml(source, frame->url());
-        }
-
-        foreach(QWebFrameBase *child, frame->childFrames()){
-            traverseFrame(child);
-        }
-    };
-    traverseFrame(mainFrame());
     //[[/!WEV]]
 }
 
@@ -1175,6 +1079,11 @@ void WebPageBase::InspectElement(){
     //[[!WEV]]
     QWebPageBase::triggerAction(QWebPageBase::InspectElement);
     //[[/!WEV]]
+    //[[WEV]]
+#if QT_VERSION >= 0x050600
+    QWebPageBase::triggerAction(QWebPageBase::InspectElement);
+#endif
+    //[[/WEV]]
 }
 
 void WebPageBase::ReloadAndBypassCache(){
@@ -1194,3 +1103,7 @@ void WebPageBase::DownloadSuggest(const QUrl& url){
     connect(item, SIGNAL(DownloadResult(const QByteArray&)),
             this, SIGNAL(SuggestResult(const QByteArray&)));
 }
+
+//[[!WEV]]
+#endif
+//[[/!WEV]]

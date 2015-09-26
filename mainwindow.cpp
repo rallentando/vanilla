@@ -25,7 +25,9 @@
 #include "receiver.hpp"
 #include "gadgets.hpp"
 #include "graphicstableview.hpp"
-#include "webview.hpp"
+#ifdef QTWEBKIT
+#  include "webview.hpp"
+#endif
 #include "webengineview.hpp"
 #include "dialog.hpp"
 
@@ -60,6 +62,8 @@ MainWindow::MainWindow(int id, QWidget *parent)
         m_SouthWestWidget = new MainWindowSouthWestWidget (this);
         m_SouthEastWidget = new MainWindowSouthEastWidget (this);
         AdjustAllEdgeWidgets();
+        connect(Application::GetInstance(), SIGNAL(focusChanged(QWidget*, QWidget*)),
+                this, SLOT(UpdateAllEdgeWidgets()));
     } else {
         m_TitleBar        = 0;
         m_NorthWidget     = 0;
@@ -272,9 +276,12 @@ void MainWindow::Shade(){
     setWindowOpacity(0.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
+#ifdef QTWEBKIT
             if(WebView *w = qobject_cast<WebView*>(view->base()))
                 w->hide();
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            else
+#endif
+            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->hide();
         }
     }
@@ -290,9 +297,12 @@ void MainWindow::Unshade(){
     setWindowOpacity(1.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
+#ifdef QTWEBKIT
             if(WebView *w = qobject_cast<WebView*>(view->base()))
                 w->show();
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            else
+#endif
+            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
         }
     }
@@ -369,6 +379,19 @@ void MainWindow::AdjustAllEdgeWidgets(){
     m_NorthEastWidget ->setGeometry(QRect(rect.right()+1-3, rect.top()-et, e+3, e+3));
     m_SouthWestWidget ->setGeometry(QRect(rect.left()-e, rect.bottom()+1-3, e+3, e+3));
     m_SouthEastWidget ->setGeometry(QRect(rect.right()+1-3, rect.bottom()+1-3, e+3, e+3));
+}
+
+void MainWindow::UpdateAllEdgeWidgets(){
+    if(!m_TitleBar) return;
+    m_TitleBar        ->update();
+    m_NorthWidget     ->update();
+    m_SouthWidget     ->update();
+    m_WestWidget      ->update();
+    m_EastWidget      ->update();
+    m_NorthWestWidget ->update();
+    m_NorthEastWidget ->update();
+    m_SouthWestWidget ->update();
+    m_SouthEastWidget ->update();
 }
 
 void MainWindow::SetWindowTitle(const QString &title){
@@ -532,9 +555,12 @@ void MainWindow::moveEvent(QMoveEvent *ev){
     QMainWindow::moveEvent(ev);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
+#ifdef QTWEBKIT
             if(WebView *w = qobject_cast<WebView*>(view->base()))
                 w->setGeometry(geometry());
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            else
+#endif
+            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->setGeometry(geometry());
         }
     }
@@ -556,9 +582,12 @@ void MainWindow::showEvent(QShowEvent *ev){
     QMainWindow::showEvent(ev);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
+#ifdef QTWEBKIT
             if(WebView *w = qobject_cast<WebView*>(view->base()))
                 w->show();
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            else
+#endif
+            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
         }
     }
@@ -572,9 +601,12 @@ void MainWindow::showEvent(QShowEvent *ev){
 void MainWindow::hideEvent(QHideEvent *ev){
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
+#ifdef QTWEBKIT
             if(WebView *w = qobject_cast<WebView*>(view->base()))
                 w->show();
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            else
+#endif
+            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
         }
     }
@@ -596,9 +628,12 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
 
             if(TreeBank::PurgeView()){
                 if(SharedView view = m_TreeBank->GetCurrentView()){
+#ifdef QTWEBKIT
                     if(WebView *w = qobject_cast<WebView*>(view->base()))
                         w->raise();
-                    else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+                    else
+#endif
+                    if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                         w->raise();
                 }
             }
@@ -646,14 +681,16 @@ TitleBar::TitleBar(MainWindow *mainwindow)
 void TitleBar::paintEvent(QPaintEvent *ev){
     QPainter painter(this);
 
+    bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
+
     if(m_MainWindow->isMaximized()){
         painter.setPen(QColor(255,255,255,200));
-        painter.setBrush(QColor(255,255,255,128));
+        painter.setBrush(QColor(255,255,255,isCurrent ? 200 : 128));
         painter.drawRect(QRect(width()-32-28*4 - 6, 0,
                                32+28*4 + 5, size().height()-1));
     } else {
         painter.setPen(QColor(255,255,255,200));
-        painter.setBrush(QColor(255,255,255,128));
+        painter.setBrush(QColor(255,255,255, isCurrent ? 200 : 128));
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
 
         painter.setPen(QColor(0,0,0,255));
@@ -946,18 +983,25 @@ void MainWindowNorthWidget::paintEvent(QPaintEvent *ev){
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
     } else {
         if(disp & shadow){
-            QImage image(size(), QImage::Format_ARGB32);
-            image.fill(0);
-            for(double i=0; i < width(); i++){
-                for(double j=0; j < height(); j++){
-                    double w = width();
-                    double c = 77*j*j/e/e;
-                    if(  i<25) c = c*sqrt(   i /25);
-                    if(w-i<25) c = c*sqrt((w-i)/25);
-                    image.setPixel(i, j, EDGE_SHADOW_COLOR);
+            bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
+            if(isCurrent){
+                QImage image(size(), QImage::Format_ARGB32);
+                image.fill(0);
+                for(double i=0; i < width(); i++){
+                    for(double j=0; j < height(); j++){
+                        double w = width();
+                        double c = 77*j*j/e/e;
+                        if(  i<25) c = c*sqrt(   i /25);
+                        if(w-i<25) c = c*sqrt((w-i)/25);
+                        image.setPixel(i, j, EDGE_SHADOW_COLOR);
+                    }
                 }
+                painter.drawImage(QPoint(), image);
+            } else {
+                painter.setPen(tpen);
+                painter.setBrush(tbrush);
+                painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
             }
-            painter.drawImage(QPoint(), image);
         }
         if(disp & edge){
             painter.setPen(bpen);
@@ -981,18 +1025,25 @@ void MainWindowSouthWidget::paintEvent(QPaintEvent *ev){
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
     } else {
         if(disp & shadow){
-            QImage image(size(), QImage::Format_ARGB32);
-            image.fill(0);
-            for(double i=0; i < width(); i++){
-                for(double j=0; j < height(); j++){
-                    double w = width();
-                    double c = 77*j*j/e/e;
-                    if(  i<25) c = c*sqrt(   i /25);
-                    if(w-i<25) c = c*sqrt((w-i)/25);
-                    image.setPixel(i, e-j-1, EDGE_SHADOW_COLOR);
+            bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
+            if(isCurrent){
+                QImage image(size(), QImage::Format_ARGB32);
+                image.fill(0);
+                for(double i=0; i < width(); i++){
+                    for(double j=0; j < height(); j++){
+                        double w = width();
+                        double c = 77*j*j/e/e;
+                        if(  i<25) c = c*sqrt(   i /25);
+                        if(w-i<25) c = c*sqrt((w-i)/25);
+                        image.setPixel(i, e-j-1, EDGE_SHADOW_COLOR);
+                    }
                 }
+                painter.drawImage(QPoint(), image);
+            } else {
+                painter.setPen(tpen);
+                painter.setBrush(tbrush);
+                painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
             }
-            painter.drawImage(QPoint(), image);
         }
         if(disp & edge){
             painter.setPen(bpen);
@@ -1016,18 +1067,25 @@ void MainWindowWestWidget::paintEvent(QPaintEvent *ev){
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
     } else {
         if(disp & shadow){
-            QImage image(size(), QImage::Format_ARGB32);
-            image.fill(0);
-            for(double i=0; i < height(); i++){
-                for(double j=0; j < width(); j++){
-                    double w = height();
-                    double c = 77*j*j/e/e;
-                    if(  i<25) c = c*sqrt(   i /25);
-                    if(w-i<25) c = c*sqrt((w-i)/25);
-                    image.setPixel(j, i, EDGE_SHADOW_COLOR);
+            bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
+            if(isCurrent){
+                QImage image(size(), QImage::Format_ARGB32);
+                image.fill(0);
+                for(double i=0; i < height(); i++){
+                    for(double j=0; j < width(); j++){
+                        double w = height();
+                        double c = 77*j*j/e/e;
+                        if(  i<25) c = c*sqrt(   i /25);
+                        if(w-i<25) c = c*sqrt((w-i)/25);
+                        image.setPixel(j, i, EDGE_SHADOW_COLOR);
+                    }
                 }
+                painter.drawImage(QPoint(), image);
+            } else {
+                painter.setPen(tpen);
+                painter.setBrush(tbrush);
+                painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
             }
-            painter.drawImage(QPoint(), image);
         }
         if(disp & edge){
             painter.setPen(bpen);
@@ -1051,18 +1109,25 @@ void MainWindowEastWidget::paintEvent(QPaintEvent *ev){
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
     } else {
         if(disp & shadow){
-            QImage image(size(), QImage::Format_ARGB32);
-            image.fill(0);
-            for(double i=0; i < height(); i++){
-                for(double j=0; j < width(); j++){
-                    double w = height();
-                    double c = 77*j*j/e/e;
-                    if(  i<25) c = c*sqrt(   i /25);
-                    if(w-i<25) c = c*sqrt((w-i)/25);
-                    image.setPixel(e-j-1, i, EDGE_SHADOW_COLOR);
+            bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
+            if(isCurrent){
+                QImage image(size(), QImage::Format_ARGB32);
+                image.fill(0);
+                for(double i=0; i < height(); i++){
+                    for(double j=0; j < width(); j++){
+                        double w = height();
+                        double c = 77*j*j/e/e;
+                        if(  i<25) c = c*sqrt(   i /25);
+                        if(w-i<25) c = c*sqrt((w-i)/25);
+                        image.setPixel(e-j-1, i, EDGE_SHADOW_COLOR);
+                    }
                 }
+                painter.drawImage(QPoint(), image);
+            } else {
+                painter.setPen(tpen);
+                painter.setBrush(tbrush);
+                painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
             }
-            painter.drawImage(QPoint(), image);
         }
         if(disp & edge){
             painter.setPen(bpen);

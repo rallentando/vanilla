@@ -41,4 +41,6 @@
 
 #define FAST_SAVER
 
+#define QTWEBKIT
+
 #endif
