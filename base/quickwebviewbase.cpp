@@ -315,15 +315,6 @@ void QuickWebViewBase::hideEvent(QHideEvent *ev){
 void QuickWebViewBase::showEvent(QShowEvent *ev){
     QQuickBase::showEvent(ev);
     RestoreViewState();
-    // set only notifier.
-    if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
-    CallWithScroll([this](QPointF pos){
-            if(m_TreeBank){
-                if(Notifier *notifier = m_TreeBank->GetNotifier()){
-                    notifier->SetScroll(pos);
-                }
-            }
-        });
 }
 
 void QuickWebViewBase::keyPressEvent(QKeyEvent *ev){
@@ -446,6 +437,43 @@ void QuickWebViewBase::mousePressEvent(QMouseEvent *ev){
 void QuickWebViewBase::mouseReleaseEvent(QMouseEvent *ev){
     emit statusBarMessage(QString());
 
+    QUrl link = m_ClickedElement ? m_ClickedElement->LinkUrl() : QUrl();
+
+    if(!link.isEmpty() &&
+       m_Gesture.isEmpty() &&
+       (ev->button() == Qt::LeftButton ||
+        ev->button() == Qt::MidButton)){
+
+        QNetworkRequest req(link);
+        req.setRawHeader("Referer", url().toEncoded());
+
+        if(Application::keyboardModifiers() & Qt::ShiftModifier ||
+           Application::keyboardModifiers() & Qt::ControlModifier ||
+           ev->button() == Qt::MidButton){
+
+            GestureAborted();
+            m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
+            ev->setAccepted(true);
+            return;
+
+        } else if(
+            // it's requirements of starting loadhack.
+            // loadhack uses new hist node instead of same view's `load()'.
+            m_EnableLoadHackLocal
+            // url is not empty.
+            && !url().isEmpty()
+            // link doesn't hold jump command.
+            && !link.toEncoded().contains("#")
+            // m_ClickedElement doesn't hold javascript function.
+            && !m_ClickedElement->IsJsCommandElement()){
+
+            GestureAborted();
+            m_TreeBank->OpenInNewHistNode(req, true, GetHistNode());
+            ev->setAccepted(true);
+            return;
+        }
+    }
+
     if(ev->button() == Qt::RightButton){
 
         if(!m_Gesture.isEmpty()){
@@ -470,42 +498,6 @@ void QuickWebViewBase::mouseReleaseEvent(QMouseEvent *ev){
         return;
     }
 
-    QUrl link = m_ClickedElement ? m_ClickedElement->LinkUrl() : QUrl();
-
-    if(!link.isEmpty() &&
-       (ev->button() == Qt::LeftButton ||
-        ev->button() == Qt::MidButton)){
-
-        QNetworkRequest req(link);
-        req.setRawHeader("Referer", url().toEncoded());
-
-        if(Application::keyboardModifiers() & Qt::ShiftModifier ||
-           ev->button() == Qt::MidButton){
-
-            GestureAborted();
-            m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
-            ev->setAccepted(true);
-            return;
-
-        } else if(
-            // it's requirements of starting loadhack.
-            // loadhack uses new hist node instead of same view's `load()'.
-            m_EnableLoadHackLocal
-            // ctrl is not pressed.
-            && Page::Activate()
-            // url is not empty.
-            && !url().isEmpty()
-            // link doesn't hold jump command.
-            && !link.toEncoded().contains("#")
-            // m_ClickedElement doesn't hold javascript function.
-            && !m_ClickedElement->IsJsCommandElement()){
-
-            GestureAborted();
-            m_TreeBank->OpenInNewHistNode(req, true, GetHistNode());
-            ev->setAccepted(true);
-            return;
-        }
-    }
     GestureAborted();
     QQuickBase::mouseReleaseEvent(ev);
     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");
@@ -549,38 +541,6 @@ void QuickWebViewBase::focusInEvent(QFocusEvent *ev){
 void QuickWebViewBase::focusOutEvent(QFocusEvent *ev){
     QQuickBase::focusOutEvent(ev);
     OnFocusOut();
-}
-
-namespace {
-    class Element : public JsWebElement{
-    public:
-        Element()
-            : JsWebElement()
-        {
-        }
-        Element(QQuickItem *provider, QVariant var)
-            : JsWebElement(provider, var)
-        {
-        }
-        ~Element(){}
-        bool SetFocus() DECL_OVERRIDE {
-            if(m_Provider){
-                QMetaObject::invokeMethod(m_Provider, "setFocusToElement",
-                                          Q_ARG(QVariant, QVariant::fromValue(m_XPath)));
-                return true;
-            }
-            return false;
-        }
-        bool ClickEvent() DECL_OVERRIDE {
-            if(m_Provider){
-                QMetaObject::invokeMethod(m_Provider, "FireClickEvent",
-                                          Q_ARG(QVariant, QVariant::fromValue(m_XPath)),
-                                          Q_ARG(QVariant, QVariant::fromValue(Position())));
-                return true;
-            }
-            return false;
-        }
-    };
 }
 
 void QuickWebViewBase::CallWithGotBaseUrl(UrlCallBack callBack){
@@ -640,8 +600,8 @@ void QuickWebViewBase::CallWithFoundElements(Page::FindElementsOption option,
                     QRect viewport = QRect(QPoint(), s);
 
                     for(int i = 0; i < list.length(); i++){
-                        std::shared_ptr<Element> e = std::make_shared<Element>();
-                        *e = Element(m_QmlWebViewBase, list[i]);
+                        std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
+                        *e = JsWebElement(this, list[i]);
                         if(!viewport.intersects(e->Rectangle()))
                             e->SetRectangle(QRect());
                         result << e;
@@ -668,8 +628,8 @@ void QuickWebViewBase::CallWithHitElement(const QPoint &pos,
                 [this, requestId, callBack, connection](int id, QVariant var){
                     if(requestId != id) return;
                     QObject::disconnect(*connection);
-                    std::shared_ptr<Element> e = std::make_shared<Element>();
-                    *e = Element(m_QmlWebViewBase, var);
+                    std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
+                    *e = JsWebElement(this, var);
                     callBack(e);
                 });
 

@@ -3626,6 +3626,13 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
               new GraphicsWebView(tb, id, set) :
             set.indexOf(QRegExp(QStringLiteral("[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new QuickWebView(tb, id, set) :
+#else
+            set.indexOf(QRegExp(QStringLiteral(""                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+              new WebEngineView(tb, id, set) :
+            set.indexOf(QRegExp(QStringLiteral("[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+              new WebEngineView(tb, id, set) :
+            set.indexOf(QRegExp(QStringLiteral("[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+              new QuickWebEngineView(tb, id, set) :
 #endif
             set.indexOf(QRegExp(QStringLiteral(""                 VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new WebEngineView(tb, id, set) :

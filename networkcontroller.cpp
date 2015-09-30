@@ -72,7 +72,7 @@ NetworkAccessManager::NetworkAccessManager(QString id)
     else
         m_Profile->setPersistentCookiesPolicy(QWebEngineProfile::AllowPersistentCookies);
 
-#ifdef WEBENGINEPROFILE_ACCEPTLANGUAGE
+#if QT_VERSION >= 0x050600
     m_Profile->setHttpAcceptLanguage(Application::GetAcceptLanguage());
 #endif
 

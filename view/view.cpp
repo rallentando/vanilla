@@ -2112,7 +2112,7 @@ JsWebElement::JsWebElement()
     m_Action       = QStringLiteral("None");
 }
 
-JsWebElement::JsWebElement(QObject *provider, QVariant var)
+JsWebElement::JsWebElement(View *provider, QVariant var)
     : WebElement()
 {
     QVariantMap map = var.toMap();
@@ -2140,7 +2140,7 @@ JsWebElement::~JsWebElement(){
 
 bool JsWebElement::SetFocus(){
     if(m_Provider){
-        QMetaObject::invokeMethod(m_Provider, "SetFocusToElement",
+        QMetaObject::invokeMethod(m_Provider->base(), "SetFocusToElement",
                                   Q_ARG(QString, m_XPath));
         return true;
     }
@@ -2149,7 +2149,7 @@ bool JsWebElement::SetFocus(){
 
 bool JsWebElement::ClickEvent(){
     if(m_Provider){
-        QMetaObject::invokeMethod(m_Provider, "FireClickEvent",
+        QMetaObject::invokeMethod(m_Provider->base(), "FireClickEvent",
                                   Q_ARG(QString, m_XPath),
                                   Q_ARG(QPoint, Position()));
         return true;
@@ -2204,7 +2204,12 @@ void JsWebElement::SetRectangle(QRect rect){
 }
 
 QPixmap JsWebElement::Pixmap(){
-    return QPixmap();
+    if(!m_Provider || IsNull()) return QPixmap();
+    QPixmap pixmap(Rectangle().size());
+    QPainter painter(&pixmap);
+    m_Provider->Render(&painter, Rectangle());
+    painter.end();
+    return pixmap;
 }
 
 bool JsWebElement::IsNull() const {

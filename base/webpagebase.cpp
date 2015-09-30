@@ -118,6 +118,8 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
 #if QT_VERSION >= 0x050600
     connect(this, SIGNAL(fullScreenRequested(bool)),
             this, SLOT(HandleFullScreen(bool)));
+    connect(this, SIGNAL(renderProcessTerminated(RenderProcessTerminationStatus, int)),
+            this, SLOT(HandleProcessTermination(RenderProcessTerminationStatus, int)));
 #endif
     //[[/WEV]]
 
@@ -472,7 +474,6 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
 
     //[[!WEV]]
     updatePositionDependentActions(localPos);
-    // broken on QuickWebEngineView?
     QMenu *standardMenu = createStandardContextMenu();
     if(standardMenu){
         foreach(QAction *action, standardMenu->actions()){
@@ -554,7 +555,7 @@ QAction *WebPageBase::Action(QWebPageBase::WebAction a){
 QAction *WebPageBase::Action(Page::CustomAction a, QVariant data){
     QAction *result = 0;
     switch(a){
-    // translations bug?
+    // set text manually.
     case Page::We_Copy:          result = action(Copy);                    result->setText(tr("Copy"));          return result;
     case Page::We_Cut:           result = action(Cut);                     result->setText(tr("Cut"));           return result;
     case Page::We_Paste:         result = action(Paste);                   result->setText(tr("Paste"));         return result;
@@ -578,9 +579,6 @@ QAction *WebPageBase::Action(Page::CustomAction a, QVariant data){
 
     //[[/!WEV]]
     }
-
-    // something is wrong?
-    //updatePositionDependentActions(data->toPoint());
     return m_Page->Action(a, data);
 }
 
@@ -650,6 +648,23 @@ void WebPageBase::HandleProxyAuthentication(const QUrl &requestUrl,
 void WebPageBase::HandleFullScreen(bool on){
     if(TreeBank *tb = m_View->GetTreeBank())
         return tb->GetMainWindow()->SetFullScreen(on);
+}
+
+void WebPageBase::HandleProcessTermination(RenderProcessTerminationStatus status, int code){
+    QString info = tr("A page is reloaded, because that's process is terminated.\n");
+    switch(status){
+    case NormalTerminationStatus:
+        info += tr("Normal termination. (code: %1)");   break;
+    case AbnormalTerminationStatus:
+        info += tr("Abnormal termination. (code: %1)"); break;
+    case CrashedTerminationStatus:
+        info += tr("Crashed termination. (code: %1)");  break;
+    case KilledTerminationStatus:
+        info += tr("Killed termination. (code: %1)");   break;
+    }
+    ModelessDialog::Information(tr("Render process terminated."),
+                                info.arg(code), m_View->base());
+    triggerAction(Reload);
 }
 #endif
 //[[/WEV]]

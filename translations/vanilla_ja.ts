@@ -4,33 +4,33 @@
 <context>
     <name>Application</name>
     <message>
-        <location filename="../application.cpp" line="869"/>
+        <location filename="../application.cpp" line="959"/>
         <source>Import Favorites</source>
         <translation>お気に入りのインポート</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="870"/>
+        <location filename="../application.cpp" line="960"/>
         <source>Select browser or file format</source>
         <translation>ブラウザまたはファイル形式を選択してください</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1228"/>
+        <location filename="../application.cpp" line="1309"/>
         <source>Export as Favorites</source>
         <translation>ツリーをブックマークとして保存します</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1229"/>
+        <location filename="../application.cpp" line="1310"/>
         <source>Select format</source>
         <translation>ファイル形式を選択してください</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1245"/>
+        <location filename="../application.cpp" line="1326"/>
         <source>Vanilla is a simple web browser.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1296"/>
-        <location filename="../application.cpp" line="1473"/>
+        <location filename="../application.cpp" line="1377"/>
+        <location filename="../application.cpp" line="1554"/>
         <source>Restored from a back up file</source>
         <translation>過去のデータを復元しました</translation>
     </message>
@@ -41,81 +41,81 @@ it was restored from a backup file.</source>
 過去のデータから復元しました.</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1297"/>
-        <location filename="../application.cpp" line="1474"/>
+        <location filename="../application.cpp" line="1378"/>
+        <location filename="../application.cpp" line="1555"/>
         <source>Because of a failure to read the latest file, it was restored from a backup file.</source>
         <translation>最新のデータの読み込みに失敗したため,過去のデータから復元しました.</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1382"/>
+        <location filename="../application.cpp" line="1463"/>
         <source>en-US</source>
         <translation>ja,en-US;q=0.8,en;q=0.6</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1510"/>
-        <location filename="../application.cpp" line="1511"/>
+        <location filename="../application.cpp" line="1591"/>
+        <location filename="../application.cpp" line="1592"/>
         <source>Input master password.</source>
         <translation>マスターパスワードを入力してください.</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1923"/>
-        <location filename="../application.cpp" line="1936"/>
+        <location filename="../application.cpp" line="2004"/>
+        <location filename="../application.cpp" line="2017"/>
         <source>BlockAccess</source>
         <translation>アクセスしない</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1924"/>
-        <location filename="../application.cpp" line="1938"/>
+        <location filename="../application.cpp" line="2005"/>
+        <location filename="../application.cpp" line="2019"/>
         <source>IgnoreSslErrors</source>
         <translation>SSLエラーを無視</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1925"/>
-        <location filename="../application.cpp" line="1940"/>
+        <location filename="../application.cpp" line="2006"/>
+        <location filename="../application.cpp" line="2021"/>
         <source>AskForEachAccess</source>
         <translation>アクセスごとに確認</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1926"/>
-        <location filename="../application.cpp" line="1942"/>
+        <location filename="../application.cpp" line="2007"/>
+        <location filename="../application.cpp" line="2023"/>
         <source>AskForEachHost</source>
         <translation>ホストごとに確認</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1930"/>
+        <location filename="../application.cpp" line="2011"/>
         <source>Ssl error policy</source>
         <translation>SSLエラーポリシー</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1931"/>
+        <location filename="../application.cpp" line="2012"/>
         <source>Select ssl error policy.</source>
         <translation>SSLエラーポリシーを選択してください.</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1954"/>
-        <location filename="../application.cpp" line="1966"/>
+        <location filename="../application.cpp" line="2035"/>
+        <location filename="../application.cpp" line="2047"/>
         <source>FixedLocale</source>
         <translation>固定ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1955"/>
-        <location filename="../application.cpp" line="1973"/>
+        <location filename="../application.cpp" line="2036"/>
+        <location filename="../application.cpp" line="2054"/>
         <source>DownloadFolder</source>
         <translation>ダウンロードフォルダ</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1956"/>
-        <location filename="../application.cpp" line="1976"/>
+        <location filename="../application.cpp" line="2037"/>
+        <location filename="../application.cpp" line="2057"/>
         <source>AskForEachDownload</source>
         <translation>ダウンロードごとに確認</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1960"/>
+        <location filename="../application.cpp" line="2041"/>
         <source>Download policy</source>
         <translation>ダウンロードポリシー</translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1961"/>
+        <location filename="../application.cpp" line="2042"/>
         <source>Select download policy.</source>
         <translation>ダウンロードポリシーを選択してください.</translation>
     </message>
@@ -3004,12 +3004,12 @@ Ctrl+クリック ：バックグラウンドで開く</translation>
         <translation>画像を別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="1848"/>
+        <location filename="../view/view.cpp" line="1858"/>
         <source>Url or Javascript</source>
         <translation>URLもしくはJavascript</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="1849"/>
+        <location filename="../view/view.cpp" line="1859"/>
         <source>Input Url or Javascript</source>
         <translation>URLもしくはJavascriptを入力してください</translation>
     </message>
@@ -3773,42 +3773,42 @@ and cannot use following charactor.
         <translation type="vanished">   (Ctrl キー：バックグラウンドで開く)</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="326"/>
+        <location filename="../gen/webenginepage.cpp" line="347"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="327"/>
+        <location filename="../gen/webenginepage.cpp" line="348"/>
         <source>Cut</source>
         <translation>切り取り</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="328"/>
+        <location filename="../gen/webenginepage.cpp" line="349"/>
         <source>Paste</source>
         <translation>張り付け</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="329"/>
+        <location filename="../gen/webenginepage.cpp" line="350"/>
         <source>Undo</source>
         <translation>元に戻す</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="330"/>
+        <location filename="../gen/webenginepage.cpp" line="351"/>
         <source>Redo</source>
         <translation>やり直す</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="331"/>
+        <location filename="../gen/webenginepage.cpp" line="352"/>
         <source>SelectAll</source>
         <translation>すべて選択</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="332"/>
+        <location filename="../gen/webenginepage.cpp" line="353"/>
         <source>Reload</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="333"/>
+        <location filename="../gen/webenginepage.cpp" line="354"/>
         <source>Stop</source>
         <translation>中止</translation>
     </message>
@@ -3829,15 +3829,15 @@ and cannot use following charactor.
         <translation type="vanished">画像をコピー</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="366"/>
-        <location filename="../gen/webenginepage.cpp" line="367"/>
+        <location filename="../gen/webenginepage.cpp" line="387"/>
+        <location filename="../gen/webenginepage.cpp" line="388"/>
         <source>Feature Permission Requested.</source>
         <translation>機能の許可をリクエストされました.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="212"/>
-        <location filename="../gen/webenginepage.cpp" line="235"/>
-        <location filename="../gen/webenginepage.cpp" line="369"/>
+        <location filename="../gen/webenginepage.cpp" line="229"/>
+        <location filename="../gen/webenginepage.cpp" line="252"/>
+        <location filename="../gen/webenginepage.cpp" line="390"/>
         <source>Url: </source>
         <translation>URL : </translation>
     </message>
@@ -3866,148 +3866,183 @@ and cannot use following charactor.
         <translation type="vanished">SSLエラーポリシーを選択してください.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="208"/>
-        <location filename="../gen/webenginepage.cpp" line="209"/>
+        <location filename="../gen/webenginepage.cpp" line="225"/>
+        <location filename="../gen/webenginepage.cpp" line="226"/>
         <source>Certificate error.</source>
         <translation>証明書エラー.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="210"/>
+        <location filename="../gen/webenginepage.cpp" line="227"/>
         <source>Ignore this error?</source>
         <translation>このエラーを無視しますか?</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="213"/>
-        <location filename="../gen/webenginepage.cpp" line="236"/>
+        <location filename="../gen/webenginepage.cpp" line="230"/>
+        <location filename="../gen/webenginepage.cpp" line="253"/>
         <source>Type: </source>
         <translation>タイプ:</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="231"/>
-        <location filename="../gen/webenginepage.cpp" line="232"/>
+        <location filename="../gen/webenginepage.cpp" line="248"/>
+        <location filename="../gen/webenginepage.cpp" line="249"/>
         <source>Certificate error on host:%1</source>
         <translation>ホスト:%1で証明書エラー</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="233"/>
+        <location filename="../gen/webenginepage.cpp" line="250"/>
         <source>Allow or Block this host?</source>
         <translation>このホストを許可しますか?</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="215"/>
-        <location filename="../gen/webenginepage.cpp" line="216"/>
-        <location filename="../gen/webenginepage.cpp" line="239"/>
-        <location filename="../gen/webenginepage.cpp" line="242"/>
+        <location filename="../gen/webenginepage.cpp" line="232"/>
+        <location filename="../gen/webenginepage.cpp" line="233"/>
+        <location filename="../gen/webenginepage.cpp" line="256"/>
+        <location filename="../gen/webenginepage.cpp" line="259"/>
         <source>Allow</source>
         <translation>許可</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="215"/>
-        <location filename="../gen/webenginepage.cpp" line="239"/>
-        <location filename="../gen/webenginepage.cpp" line="245"/>
+        <location filename="../gen/webenginepage.cpp" line="232"/>
+        <location filename="../gen/webenginepage.cpp" line="256"/>
+        <location filename="../gen/webenginepage.cpp" line="262"/>
         <source>Block</source>
         <translation>ブロック</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="239"/>
-        <location filename="../gen/webenginepage.cpp" line="372"/>
-        <location filename="../gen/webenginepage.cpp" line="382"/>
+        <location filename="../gen/webenginepage.cpp" line="256"/>
+        <location filename="../gen/webenginepage.cpp" line="393"/>
+        <location filename="../gen/webenginepage.cpp" line="403"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="370"/>
+        <location filename="../gen/webenginepage.cpp" line="391"/>
         <source>Feature: </source>
         <translation>機能 :</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="371"/>
+        <location filename="../gen/webenginepage.cpp" line="392"/>
         <source>Allow this feature?</source>
         <translation>この機能を有効にしますか?</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="372"/>
-        <location filename="../gen/webenginepage.cpp" line="376"/>
+        <location filename="../gen/webenginepage.cpp" line="393"/>
+        <location filename="../gen/webenginepage.cpp" line="397"/>
         <source>Yes</source>
         <translation>はい</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="372"/>
-        <location filename="../gen/webenginepage.cpp" line="379"/>
+        <location filename="../gen/webenginepage.cpp" line="393"/>
+        <location filename="../gen/webenginepage.cpp" line="400"/>
         <source>No</source>
         <translation>いいえ</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="516"/>
+        <location filename="../gen/webenginepage.cpp" line="431"/>
+        <source>A page is reloaded, because that&apos;s process is terminated.
+</source>
+        <translation>プロセスが停止したため,そのページを更新しました.</translation>
+    </message>
+    <message>
+        <location filename="../gen/webenginepage.cpp" line="434"/>
+        <source>Normal termination. (code: %1)</source>
+        <translation>通常終了. (終了コード: %1)</translation>
+    </message>
+    <message>
+        <location filename="../gen/webenginepage.cpp" line="436"/>
+        <source>Abnormal termination. (code: %1)</source>
+        <translation>異常終了. (終了コード: %1)</translation>
+    </message>
+    <message>
+        <location filename="../gen/webenginepage.cpp" line="438"/>
+        <source>Crashed termination. (code: %1)</source>
+        <translation>クラッシュ. (終了コード: %1)</translation>
+    </message>
+    <message>
+        <location filename="../gen/webenginepage.cpp" line="440"/>
+        <source>Killed termination. (code: %1)</source>
+        <translation>手動終了. (終了コード: %1)</translation>
+    </message>
+    <message>
+        <source>Render process exited.</source>
+        <translation type="vanished">描画プロセスが停止しました.</translation>
+    </message>
+    <message>
+        <location filename="../gen/webenginepage.cpp" line="442"/>
+        <source>Render process terminated.</source>
+        <translation>描画プロセスが停止しました.</translation>
+    </message>
+    <message>
+        <location filename="../gen/webenginepage.cpp" line="561"/>
         <source>Search button</source>
         <translation>検索ボタン</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="517"/>
+        <location filename="../gen/webenginepage.cpp" line="562"/>
         <source>Select search button.</source>
         <translation>検索ボタンを選んでください.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="527"/>
+        <location filename="../gen/webenginepage.cpp" line="572"/>
         <source>Search tag</source>
         <translation>検索タグ</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="528"/>
+        <location filename="../gen/webenginepage.cpp" line="573"/>
         <source>Input search tag.(It will be used as command)</source>
         <translation>検索タグを入力してください(コマンドとして使います)</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="554"/>
-        <location filename="../gen/webenginepage.cpp" line="570"/>
+        <location filename="../gen/webenginepage.cpp" line="599"/>
+        <location filename="../gen/webenginepage.cpp" line="615"/>
         <source>Link at Mouse Cursor</source>
         <translation>カーソル上のリンク</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="555"/>
-        <location filename="../gen/webenginepage.cpp" line="591"/>
+        <location filename="../gen/webenginepage.cpp" line="600"/>
+        <location filename="../gen/webenginepage.cpp" line="636"/>
         <source>Image at Mouse Cursor</source>
         <translation>カーソル上の画像</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="556"/>
-        <location filename="../gen/webenginepage.cpp" line="595"/>
+        <location filename="../gen/webenginepage.cpp" line="601"/>
+        <location filename="../gen/webenginepage.cpp" line="640"/>
         <source>Selected Text</source>
         <translation>選択したテキスト</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="558"/>
-        <location filename="../gen/webenginepage.cpp" line="599"/>
+        <location filename="../gen/webenginepage.cpp" line="603"/>
+        <location filename="../gen/webenginepage.cpp" line="644"/>
         <source>Manual Input</source>
         <translation>手動入力</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="563"/>
+        <location filename="../gen/webenginepage.cpp" line="608"/>
         <source>Input type</source>
         <translation>入力方法</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="564"/>
+        <location filename="../gen/webenginepage.cpp" line="609"/>
         <source>Select input type of bookmarklet.</source>
         <translation>ソースを選択してください.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="601"/>
+        <location filename="../gen/webenginepage.cpp" line="646"/>
         <source>Bookmarklet body</source>
         <translation>ブックマークレットの内容</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="602"/>
+        <location filename="../gen/webenginepage.cpp" line="647"/>
         <source>Input bookmarklet body.</source>
         <translation>ブックマークレットのソースを入力してください.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="609"/>
+        <location filename="../gen/webenginepage.cpp" line="654"/>
         <source>Bookmarklet Name</source>
         <translation>ブックマークレットの名前</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="610"/>
+        <location filename="../gen/webenginepage.cpp" line="655"/>
         <source>Input bookmarklet name.(It will be used as command)</source>
         <translation>ブックマークレットの名前を入力してください(コマンドとして使います)</translation>
     </message>

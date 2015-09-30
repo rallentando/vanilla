@@ -99,7 +99,7 @@ public:
     static void RemoveChosenFile(QString file);
     static QStringList ChosenFiles();
 private:
-    static int m_MaxBackUpFileCount;
+    static int m_MaxBackUpGenerationCount;
     static QString m_DownloadDirectory;
     static QString m_UploadDirectory;
     static QStringList m_ChosenFiles;
@@ -184,8 +184,8 @@ private:
     // xml files and it's backup.
 
 public:
-    static void SetMaxBackUpFileCount(int);
-    static int GetMaxBackupFileCount();
+    static void SetMaxBackUpGenerationCount(int);
+    static int GetMaxBackUpGenerationCount();
 
     static QStringList BackUpFileFilters();
 

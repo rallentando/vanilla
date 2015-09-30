@@ -71,7 +71,7 @@ int         Application::m_AutoSaveInterval  = 0;
 int         Application::m_AutoLoadInterval  = 0;
 int         Application::m_AutoSaveTimerID   = 0;
 int         Application::m_AutoLoadTimerID   = 0;
-int         Application::m_MaxBackUpFileCount= 0;
+int         Application::m_MaxBackUpGenerationCount = 0;
 double      Application::m_WheelScrollRate   = 0.0;
 QString     Application::m_DownloadDirectory = QString();
 QString     Application::m_UploadDirectory   = QString();
@@ -329,12 +329,19 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
  */
 
 void Application::Import(TreeBank *tb){
+
     /*
       IE:
 
       QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + QStringLiteral("/Favorites/");
 
     */
+    bool supportsIE =
+#if defined(Q_OS_WIN)
+        true;
+#else
+        false;
+#endif
     std::function<void()> importFromIE = [&](){
         std::function<void(ViewNode *parent, QString path)> traverse;
         std::function<ViewNode*(ViewNode *parent, QString path)> makenode;
@@ -392,24 +399,28 @@ void Application::Import(TreeBank *tb){
       "bookmarkbackups/bookmarks-yyyy-mm-dd_n.json";
 
     */
+    static const QString firefoxProfile =
+#if defined(Q_OS_WIN)
+        QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +
+        QStringLiteral("/AppData/Roaming/Mozilla/Firefox/Profiles")
+#elif defined(Q_OS_MAC)
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        QStringLiteral("/Firefox/Profiles")
+#else
+        QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +
+        QStringLiteral("/.mozilla/Firefox/Profiles")
+#endif
+        ;
+
+    bool supportsFirefox = QFile::exists(firefoxProfile);
+
     std::function<void()> importFromFirefox = [&](){
         std::function<void(ViewNode *parent, QJsonObject obj)> traverse;
         std::function<ViewNode*(ViewNode *parent, QJsonObject obj)> makenode;
 
         QString bookmarks;
 
-        QString profile =
-#if defined(Q_OS_WIN)
-            QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +
-            QStringLiteral("/AppData/Roaming/Mozilla/Firefox/Profiles")
-#elif defined(Q_OS_MAC)
-            QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-            QStringLiteral("/Firefox/Profiles")
-#else
-            QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +
-            QStringLiteral("/.mozilla/Firefox/Profiles")
-#endif
-        ;
+        QString profile = firefoxProfile;
         QDir profiledir = profile;
         QStringList list =
             profiledir.entryList(QStringList() << QStringLiteral("*.default"),
@@ -473,6 +484,8 @@ void Application::Import(TreeBank *tb){
         traverse(TreeBank::GetViewRoot(), root);
     };
 
+    std::function<void(QString)> importFromChromeFamily;
+
     /*
       Chrome:
 
@@ -480,29 +493,94 @@ void Application::Import(TreeBank *tb){
       "/Google/Chrome/User Data/Default/Bookmarks"
 
     */
-    std::function<void()> importFromChrome = [&](){
-        std::function<void(ViewNode *parent, QJsonObject obj)> traverse;
-        std::function<ViewNode*(ViewNode *parent, QJsonObject obj)> makenode;
-
-        QString bookmarks =
+    static const QString chromeBookmarks =
 #if defined(Q_OS_WIN)
-            QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-            QStringLiteral("/Google/Chrome/User Data/Default/Bookmarks")
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        QStringLiteral("/Google/Chrome/User Data/Default/Bookmarks")
 #elif defined(Q_OS_MAC)
-            QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-            QStringLiteral("/Google/Chrome/Default/Bookmarks")
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        QStringLiteral("/Google/Chrome/Default/Bookmarks")
 #else
-            QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) +
-            QStringLiteral("/google-chrome/Default/Bookmarks")
+        QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) +
+        QStringLiteral("/google-chrome/Default/Bookmarks")
 #endif
         ;
 
-        QString filename =
-            ModalDialog::GetOpenFileName_(QString::null, bookmarks, QStringLiteral("Bookmarks"));
+    bool supportsChrome = QFile::exists(chromeBookmarks);
 
-        if(filename.isEmpty()) return;
+    std::function<void()> importFromChrome = [&](){
+        importFromChromeFamily(chromeBookmarks);
+    };
 
-        QFile file(filename);
+    /*
+      OPR:
+
+      QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +
+      "/AppData/Roaming/Opera Software/Opera Stable/Bookmarks"
+
+    */
+    QString oprBookmarks =
+#if defined(Q_OS_WIN)
+        QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +
+        QStringLiteral("/AppData/Roaming/Opera Software/Opera Stable/Bookmarks")
+#elif defined(Q_OS_MAC)
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        QStringLiteral("/com.operasoftware.Opera/Bookmarks")
+#else
+        QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) +
+        QStringLiteral("/opera-software/Default/Bookmarks")
+#endif
+        ;
+
+    bool supportsOPR = QFile::exists(oprBookmarks);
+
+    std::function<void()> importFromOPR = [&](){
+        importFromChromeFamily(oprBookmarks);
+    };
+
+    /*
+      Vivaldi:
+
+      QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+      "/Google/Vivaldi/User Data/Default/Bookmarks"
+
+    */
+    QString vivaldiBookmarks =
+#if defined(Q_OS_WIN)
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        QStringLiteral("/Vivaldi/User Data/Default/Bookmarks")
+#elif defined(Q_OS_MAC)
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        QStringLiteral("/Vivaldi/Default/Bookmarks")
+#else
+        QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) +
+        QStringLiteral("/vivaldi/Default/Bookmarks")
+#endif
+        ;
+
+    bool supportsVivaldi = QFile::exists(vivaldiBookmarks);
+
+    std::function<void()> importFromVivaldi = [&](){
+        importFromChromeFamily(vivaldiBookmarks);
+    };
+
+    importFromChromeFamily = [&](QString fileName){
+        std::function<void(ViewNode *parent, QJsonObject obj)> traverse;
+        std::function<ViewNode*(ViewNode *parent, QJsonObject obj)> makenode;
+
+        if(fileName.isEmpty()){
+            fileName =
+                QStandardPaths::writableLocation(QStandardPaths::DesktopLocation) +
+                QStringLiteral("/Bookmarks");
+
+            fileName =
+                ModalDialog::GetOpenFileName_(QString::null, fileName,
+                                              QStringLiteral("Bookmarks"));
+        }
+
+        if(fileName.isEmpty()) return;
+
+        QFile file(fileName);
         if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
             return;
 
@@ -846,26 +924,29 @@ void Application::Import(TreeBank *tb){
 #endif
     };
 
+    QStringList list;
+    if(supportsIE) list << QStringLiteral("IE");
+    if(supportsFirefox) list << QStringLiteral("Firefox");
+    if(supportsChrome) list << QStringLiteral("Chrome");
+    if(supportsOPR) list << QStringLiteral("OPR");
+    if(supportsVivaldi) list << QStringLiteral("Vivaldi");
+    list << QStringLiteral("Chrome Family")
+         << QStringLiteral("Internal Format")
+         << QStringLiteral("Xbel")
+         << QStringLiteral("Html");
+
     bool ok = true;
-    QString which = ModalDialog::GetItem(tr("Import Favorites"),
-                                         tr("Select browser or file format"),
-                                         QStringList()
-#if defined(Q_OS_WIN)
-                                         << QStringLiteral("IE")
-#endif
-                                         << QStringLiteral("Firefox")
-                                         << QStringLiteral("Chrome")
-                                         << QStringLiteral("Internal Format")
-                                         << QStringLiteral("Xbel")
-                                         << QStringLiteral("Html")
-                                         ,
-                                         false, &ok);
+    QString which = ModalDialog::GetItem
+        (tr("Import Favorites"),
+         tr("Select browser or file format"),
+         list, false, &ok);
     if(!ok) return;
-#if defined(Q_OS_WIN)
     else if(which == QStringLiteral("IE")) importFromIE();
-#endif
     else if(which == QStringLiteral("Firefox")) importFromFirefox();
     else if(which == QStringLiteral("Chrome")) importFromChrome();
+    else if(which == QStringLiteral("OPR")) importFromOPR();
+    else if(which == QStringLiteral("Vivaldi")) importFromVivaldi();
+    else if(which == QStringLiteral("Chrome Family")) importFromChromeFamily(QString());
     else if(which == QStringLiteral("Internal Format")) importFromInternalFormat();
     else if(which == QStringLiteral("Xbel")) importFromXbel();
     else if(which == QStringLiteral("Html")) importFromHtml();
@@ -1286,22 +1367,22 @@ QSettings *Application::GlobalSettings(){
 void Application::SaveGlobalSettings(){
     QSettings *s = GlobalSettings();
     s->beginGroup(QStringLiteral("application"));{
-        s->setValue(QStringLiteral("@EnableGoogleSuggest"),   m_EnableGoogleSuggest);
-        s->setValue(QStringLiteral("@EnableFramelessWindow"), m_EnableFramelessWindow);
-        s->setValue(QStringLiteral("@EnableAutoSave"),        m_EnableAutoSave);
-        s->setValue(QStringLiteral("@EnableAutoLoad"),        m_EnableAutoLoad);
-        s->setValue(QStringLiteral("@AutoSaveInterval"),      m_AutoSaveInterval);
-        s->setValue(QStringLiteral("@AutoLoadInterval"),      m_AutoLoadInterval);
-        s->setValue(QStringLiteral("@WheelScrollRate"),       m_WheelScrollRate);
-        s->setValue(QStringLiteral("@MaxBackupFileCount"),    m_MaxBackUpFileCount);
-        s->setValue(QStringLiteral("@FileSaveDirectory"),     m_DownloadDirectory);
-        s->setValue(QStringLiteral("@FileOpenDirectory"),     m_UploadDirectory);
-        s->setValue(QStringLiteral("@SaveSessionCookie"),     m_SaveSessionCookie);
-#ifdef WEBENGINEPROFILE_ACCEPTLANGUAGE
-        s->setValue(QStringLiteral("@AcceptLanguage"),        m_AcceptLanguage);
+        s->setValue(QStringLiteral("@EnableGoogleSuggest"),      m_EnableGoogleSuggest);
+        s->setValue(QStringLiteral("@EnableFramelessWindow"),    m_EnableFramelessWindow);
+        s->setValue(QStringLiteral("@EnableAutoSave"),           m_EnableAutoSave);
+        s->setValue(QStringLiteral("@EnableAutoLoad"),           m_EnableAutoLoad);
+        s->setValue(QStringLiteral("@AutoSaveInterval"),         m_AutoSaveInterval);
+        s->setValue(QStringLiteral("@AutoLoadInterval"),         m_AutoLoadInterval);
+        s->setValue(QStringLiteral("@WheelScrollRate"),          m_WheelScrollRate);
+        s->setValue(QStringLiteral("@MaxBackUpGenerationCount"), m_MaxBackUpGenerationCount);
+        s->setValue(QStringLiteral("@FileSaveDirectory"),        m_DownloadDirectory);
+        s->setValue(QStringLiteral("@FileOpenDirectory"),        m_UploadDirectory);
+        s->setValue(QStringLiteral("@SaveSessionCookie"),        m_SaveSessionCookie);
+#if QT_VERSION >= 0x050600
+        s->setValue(QStringLiteral("@AcceptLanguage"),           m_AcceptLanguage);
 #endif
-        s->setValue(QStringLiteral("@AllowedHosts"),          m_AllowedHosts);
-        s->setValue(QStringLiteral("@BlockedHosts"),          m_BlockedHosts);
+        s->setValue(QStringLiteral("@AllowedHosts"),             m_AllowedHosts);
+        s->setValue(QStringLiteral("@BlockedHosts"),             m_BlockedHosts);
 
         SslErrorPolicy sslPolicy = m_SslErrorPolicy;
         if(sslPolicy == Undefined)             s->setValue(QStringLiteral("@SslErrorPolicy"), QStringLiteral("Undefined"));
@@ -1348,22 +1429,22 @@ void Application::SaveGlobalSettings(){
 void Application::LoadGlobalSettings(){
     QSettings *s = GlobalSettings();
     s->beginGroup(QStringLiteral("application"));{
-        m_EnableGoogleSuggest   = s->value(QStringLiteral("@EnableGoogleSuggest"), false).value<bool>();
-        m_EnableFramelessWindow = s->value(QStringLiteral("@EnableFramelessWindow"), false).value<bool>();
-        m_EnableAutoSave        = s->value(QStringLiteral("@EnableAutoSave"), true).value<bool>();
-        m_EnableAutoLoad        = s->value(QStringLiteral("@EnableAutoLoad"), true).value<bool>();
-        m_AutoSaveInterval      = s->value(QStringLiteral("@AutoSaveInterval"), 300000).value<int>();
-        m_AutoLoadInterval      = s->value(QStringLiteral("@AutoLoadInterval"),   1000).value<int>();
-        m_MaxBackUpFileCount    = s->value(QStringLiteral("@MaxBackupFileCount"),   50).value<int>();
-        m_WheelScrollRate       = s->value(QStringLiteral("@WheelScrollRate"),     1.0).value<double>();
-        m_DownloadDirectory     = s->value(QStringLiteral("@FileSaveDirectory"), QString()).value<QString>();
-        m_UploadDirectory       = s->value(QStringLiteral("@FileOpenDirectory"), QString()).value<QString>();
-        m_SaveSessionCookie     = s->value(QStringLiteral("@SaveSessionCookie"), false).value<bool>();
-#ifdef WEBENGINEPROFILE_ACCEPTLANGUAGE
-        m_AcceptLanguage        = s->value(QStringLiteral("@AcceptLanguage"), tr("en-US")).value<QString>();
+        m_EnableGoogleSuggest      = s->value(QStringLiteral("@EnableGoogleSuggest"), false).value<bool>();
+        m_EnableFramelessWindow    = s->value(QStringLiteral("@EnableFramelessWindow"), false).value<bool>();
+        m_EnableAutoSave           = s->value(QStringLiteral("@EnableAutoSave"), true).value<bool>();
+        m_EnableAutoLoad           = s->value(QStringLiteral("@EnableAutoLoad"), true).value<bool>();
+        m_AutoSaveInterval         = s->value(QStringLiteral("@AutoSaveInterval"), 300000).value<int>();
+        m_AutoLoadInterval         = s->value(QStringLiteral("@AutoLoadInterval"), 1000).value<int>();
+        m_MaxBackUpGenerationCount = s->value(QStringLiteral("@MaxBackUpGenerationCount"), 5).value<int>();
+        m_WheelScrollRate          = s->value(QStringLiteral("@WheelScrollRate"), 1.0).value<double>();
+        m_DownloadDirectory        = s->value(QStringLiteral("@FileSaveDirectory"), QString()).value<QString>();
+        m_UploadDirectory          = s->value(QStringLiteral("@FileOpenDirectory"), QString()).value<QString>();
+        m_SaveSessionCookie        = s->value(QStringLiteral("@SaveSessionCookie"), false).value<bool>();
+#if QT_VERSION >= 0x050600
+        m_AcceptLanguage           = s->value(QStringLiteral("@AcceptLanguage"), tr("en-US")).value<QString>();
 #endif
-        m_AllowedHosts          = s->value(QStringLiteral("@AllowedHosts"), QStringList()).value<QStringList>();
-        m_BlockedHosts          = s->value(QStringLiteral("@BlockedHosts"), QStringList()).value<QStringList>();
+        m_AllowedHosts             = s->value(QStringLiteral("@AllowedHosts"), QStringList()).value<QStringList>();
+        m_BlockedHosts             = s->value(QStringLiteral("@BlockedHosts"), QStringList()).value<QStringList>();
 
         QString sslPolicy = s->value(QStringLiteral("@SslErrorPolicy"), QStringLiteral("Undefined")).value<QString>();
         if(sslPolicy == QStringLiteral("Undefined"))             m_SslErrorPolicy = Undefined;
@@ -1651,12 +1732,12 @@ QString Application::GetUploadDirectory(){
     return m_UploadDirectory;
 }
 
-void Application::SetMaxBackUpFileCount(int count){
-    m_MaxBackUpFileCount = count;
+void Application::SetMaxBackUpGenerationCount(int count){
+    m_MaxBackUpGenerationCount = count;
 }
 
-int Application::GetMaxBackupFileCount(){
-    return m_MaxBackUpFileCount;
+int Application::GetMaxBackUpGenerationCount(){
+    return m_MaxBackUpGenerationCount;
 }
 
 QStringList Application::BackUpFileFilters(){
@@ -2444,7 +2525,7 @@ void Application::CreateBackUpFiles(){
 
     QStringList list = dir.entryList(BackUpFileFilters(), QDir::NoFilter, QDir::Name);
 
-    while(list.length() > m_MaxBackUpFileCount){
+    while(list.length() > m_MaxBackUpGenerationCount*backupfiles.length()){
         QFile::remove(Application::DataDirectory() + list.takeFirst());
     }
 }

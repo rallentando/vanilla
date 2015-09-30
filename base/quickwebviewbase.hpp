@@ -10,6 +10,7 @@
 #include "webpagebase.hpp"
 #include "view.hpp"
 #include "treebank.hpp"
+#include "notifier.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
 
@@ -201,6 +202,15 @@ public slots:
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
         if(HistNode *hn = GetHistNode()) hn->SetLastAccessDateToCurrent();
+        // set only notifier.
+        if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
+        CallWithScroll([this](QPointF pos){
+                if(m_TreeBank){
+                    if(Notifier *notifier = m_TreeBank->GetNotifier()){
+                        notifier->SetScroll(pos);
+                    }
+                }
+            });
     }
     void hide() DECL_OVERRIDE {
         base()->hide();
@@ -289,6 +299,16 @@ public slots:
 
     void KeyEvent(QString);
     bool SeekText(const QString&, View::FindFlags);
+
+    void SetFocusToElement(QString xpath){
+        QMetaObject::invokeMethod(m_QmlWebViewBase, "setFocusToElement",
+                                  Q_ARG(QVariant, QVariant::fromValue(xpath)));
+    }
+    void FireClickEvent(QString xpath, QPoint pos){
+        QMetaObject::invokeMethod(m_QmlWebViewBase, "fireClickEvent",
+                                  Q_ARG(QVariant, QVariant::fromValue(xpath)),
+                                  Q_ARG(QVariant, QVariant::fromValue(pos)));
+    }
 
     // dirty...
     int findBackwardIntValue()            { return static_cast<int>(FindBackward);}

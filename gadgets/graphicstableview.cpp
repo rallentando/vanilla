@@ -652,26 +652,31 @@ void GraphicsTableView::ToggleSortReverse(){
 
 void GraphicsTableView::ToggleSortByUrl(){
     m_SortFlags ^= ByUrl;
+    m_SortFlags &= (ByUrl | Reverse);
     ApplySort();
 }
 
 void GraphicsTableView::ToggleSortByTitle(){
     m_SortFlags ^= ByTitle;
+    m_SortFlags &= (ByTitle | Reverse);
     ApplySort();
 }
 
 void GraphicsTableView::ToggleSortByCreateDate(){
     m_SortFlags ^= ByCreateDate;
+    m_SortFlags &= (ByCreateDate | Reverse);
     ApplySort();
 }
 
 void GraphicsTableView::ToggleSortByLastUpdateDate(){
     m_SortFlags ^= ByLastUpdateDate;
+    m_SortFlags &= (ByLastUpdateDate | Reverse);
     ApplySort();
 }
 
 void GraphicsTableView::ToggleSortByLastAccessDate(){
     m_SortFlags ^= ByLastAccessDate;
+    m_SortFlags &= (ByLastAccessDate | Reverse);
     ApplySort();
 }
 

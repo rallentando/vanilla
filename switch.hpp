@@ -16,6 +16,10 @@
 #  define VV ""
 #endif
 
+#if QT_VERSION < 0x050600
+#  define QTWEBKIT
+#endif
+
 #define QT_ASCII_CAST_WARNINGS
 
 // 'QObject' for deletion of hist node.
@@ -25,10 +29,10 @@
 // by clearing thumbnail and nodetitle before deleting node.
 #define USE_LIGHTNODE
 
-//#define ENABLE_DEEP_COPY
-
 //#define OUT_OF_THREAD_UPDATE
+
 //#define WEBENGINE_DRAGDROP
+
 //#define WEBENGINEVIEW_DEFAULT
 
 // cannot render QuickWeb(Engine)View without this flag.
@@ -40,7 +44,5 @@
 //#define USE_WEBCHANNEL
 
 #define FAST_SAVER
-
-#define QTWEBKIT
 
 #endif

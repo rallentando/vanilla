@@ -10,6 +10,7 @@
 #include "webpagebase.hpp"
 #include "view.hpp"
 #include "treebank.hpp"
+#include "notifier.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
 
@@ -401,6 +402,20 @@ public slots:
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
         if(HistNode *hn = GetHistNode()) hn->SetLastAccessDateToCurrent();
+        // set only notifier.
+        if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
+        //[[!WEV]]
+        m_TreeBank->GetNotifier()->SetScroll(GetScroll());
+        //[[/!WEV]]
+        //[[WEV]]
+        CallWithScroll([this](QPointF pos){
+                if(m_TreeBank){
+                    if(Notifier *notifier = m_TreeBank->GetNotifier()){
+                        notifier->SetScroll(pos);
+                    }
+                }
+            });
+        //[[/WEV]]
     }
     // there is no sense to resize because plugins paint to window directly, but...
     void hide() DECL_OVERRIDE {
@@ -578,17 +593,42 @@ protected:
                 m_View->mousePressEvent(&me_);
                 return false;
             case QEvent::MouseButtonRelease:{
-                // WebEnginView made by QtWebEngine doesn't accept some mouse events.
+
                 QUrl link = m_View->m_ClickedElement ? m_View->m_ClickedElement->LinkUrl() : QUrl();
+
                 if(!link.isEmpty() &&
+                   m_View->m_Gesture.isEmpty() &&
                    (me_.button() == Qt::MidButton ||
-                    (me_.button() == Qt::LeftButton &&
-                     Application::keyboardModifiers() & Qt::ShiftModifier))){
+                    me_.button() == Qt::LeftButton)){
+
                     QNetworkRequest req(link);
-                    m_View->GestureAborted();
-                    m_View->m_TreeBank->OpenInNewViewNode(req, Page::Activate(), m_View->GetViewNode());
                     req.setRawHeader("Referer", m_View->url().toEncoded());
-                    return true;
+
+                    if(Application::keyboardModifiers() & Qt::ShiftModifier ||
+                       Application::keyboardModifiers() & Qt::ControlModifier ||
+                       me_.button() == Qt::MidButton){
+
+                        // WebEnginView made by QtWebEngine doesn't accept some mouse events.
+                        m_View->GestureAborted();
+                        m_View->m_TreeBank->OpenInNewViewNode(req, Page::Activate(), m_View->GetViewNode());
+                        return true;
+
+                    } else if(
+                        // it's requirements of starting loadhack.
+                        // loadhack uses new hist node instead of same view's `load()'.
+                        m_View->m_EnableLoadHackLocal
+                        // url is not empty.
+                        && !m_View->url().isEmpty()
+                        // link doesn't hold jump command.
+                        && !link.toEncoded().contains("#")
+                        // m_ClickedElement doesn't hold javascript function.
+                        && !m_View->m_ClickedElement->IsJsCommandElement()){
+
+                        // and HistNode.
+                        m_View->GestureAborted();
+                        m_View->m_TreeBank->OpenInNewHistNode(req, true, m_View->GetHistNode());
+                        return true;
+                    }
                 }
                 m_View->mouseReleaseEvent(&me_);
                 return false;

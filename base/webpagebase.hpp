@@ -147,6 +147,7 @@ public slots:
     void HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&);
 #if QT_VERSION >= 0x050600
     void HandleFullScreen(bool);
+    void HandleProcessTermination(RenderProcessTerminationStatus status, int code);
 #endif
     //[[/WEV]]
 

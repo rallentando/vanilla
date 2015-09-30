@@ -369,7 +369,6 @@ void WebViewBase::CallWithScroll(PointFCallBack callBack){
     page()->runJavaScript
         (GetScrollRatioPointJsCode(),
          [this, callBack](QVariant var){
-            // webengine's bug? why timeout in blank page?
             if(!var.isValid()){
                 callBack(QPointF(0.5f, 0.5f));
                 return;
@@ -391,18 +390,8 @@ QPointF WebViewBase::GetScroll(){
                    vmax == 0.0f ? 0.5f : vval / vmax);
     //[[/!WEV]]
     //[[WEV]]
-
-    // simple but heavy function...
-    // this code cause crash, when view is created by action...
-    //QVariant var = EvaluateJavaScript(GetScrollRatioPointJsCode());
-    //// webengine's bug? why timeout in blank page?
-    //if(!var.isValid()) return QPointF(0.5f, 0.5f);
-    //QVariantList list = var.toList();
-    //return QPointF(list[0].toFloat(), list[1].toFloat());
-
     // this function does not return actual value on WebEngineView.
     return QPointF(0.5f, 0.5f);
-
     //[[/WEV]]
 }
 
@@ -436,9 +425,7 @@ bool WebViewBase::SaveScroll(){
     page()->runJavaScript
         (GetScrollValuePointJsCode(),
          [this](QVariant var){
-            // webengine's bug? why timeout in blank page?
-            if(!var.isValid()) return;
-            if(!GetHistNode()) return;
+            if(!var.isValid() || !GetHistNode()) return;
             QVariantList list = var.toList();
             GetHistNode()->SetScrollX(list[0].toInt());
             GetHistNode()->SetScrollY(list[1].toInt());
@@ -552,20 +539,6 @@ void WebViewBase::hideEvent(QHideEvent *ev){
 void WebViewBase::showEvent(QShowEvent *ev){
     QWebViewBase::showEvent(ev);
     RestoreViewState();
-    // set only notifier.
-    if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
-    //[[!WEV]]
-    m_TreeBank->GetNotifier()->SetScroll(GetScroll());
-    //[[/!WEV]]
-    //[[WEV]]
-    CallWithScroll([this](QPointF pos){
-            if(m_TreeBank){
-                if(Notifier *notifier = m_TreeBank->GetNotifier()){
-                    notifier->SetScroll(pos);
-                }
-            }
-        });
-    //[[/WEV]]
 }
 
 void WebViewBase::keyPressEvent(QKeyEvent *ev){
@@ -632,7 +605,6 @@ void WebViewBase::resizeEvent(QResizeEventBase *ev){
 }
 
 void WebViewBase::contextMenuEvent(QContextMenuEventBase *ev){
-    /* when mouse pressed, do nothing(except WebEngineView). */
     ev->setAccepted(true);
 }
 
@@ -680,6 +652,7 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
 
 #ifndef WEBENGINE_DRAGDROP
     // Drag'n'Drop doesn't work correctly yet.
+    // execute link gesture intead of Drag'n'Drop for current.
 
     if(m_EnableDragHackLocal &&
        ev->buttons() & Qt::LeftButton &&
@@ -793,6 +766,45 @@ void WebViewBase::mousePressEvent(QMouseEventBase *ev){
 void WebViewBase::mouseReleaseEvent(QMouseEventBase *ev){
     emit statusBarMessage(QString());
 
+    //[[!WEV]]
+    QUrl link = m_ClickedElement ? m_ClickedElement->LinkUrl() : QUrl();
+
+    if(!link.isEmpty() &&
+       m_Gesture.isEmpty() &&
+       (ev->button() == Qt::LeftButton ||
+        ev->button() == Qt::MidButton)){
+
+        QNetworkRequest req(link);
+        req.setRawHeader("Referer", url().toEncoded());
+
+        if(Application::keyboardModifiers() & Qt::ShiftModifier ||
+           Application::keyboardModifiers() & Qt::ControlModifier ||
+           ev->button() == Qt::MidButton){
+
+            GestureAborted();
+            m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
+            ev->setAccepted(true);
+            return;
+
+        } else if(
+            // it's requirements of starting loadhack.
+            // loadhack uses new hist node instead of same view's `load()'.
+            m_EnableLoadHackLocal
+            // url is not empty.
+            && !url().isEmpty()
+            // link doesn't hold jump command.
+            && !link.toEncoded().contains("#")
+            // m_ClickedElement doesn't hold javascript function.
+            && !m_ClickedElement->IsJsCommandElement()){
+
+            GestureAborted();
+            m_TreeBank->OpenInNewHistNode(req, true, GetHistNode());
+            ev->setAccepted(true);
+            return;
+        }
+    }
+    //[[/!WEV]]
+
     if(ev->button() == Qt::RightButton){
 
         if(!m_Gesture.isEmpty()){
@@ -819,44 +831,6 @@ void WebViewBase::mouseReleaseEvent(QMouseEventBase *ev){
     }
     //[[/WEV]]
 
-    //[[!WEV]]
-    QUrl link = m_ClickedElement ? m_ClickedElement->LinkUrl() : QUrl();
-
-    if(!link.isEmpty() &&
-       (ev->button() == Qt::LeftButton ||
-        ev->button() == Qt::MidButton)){
-
-        QNetworkRequest req(link);
-        req.setRawHeader("Referer", url().toEncoded());
-
-        if(Application::keyboardModifiers() & Qt::ShiftModifier ||
-           ev->button() == Qt::MidButton){
-
-            GestureAborted();
-            m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
-            ev->setAccepted(true);
-            return;
-
-        } else if(
-            // it's requirements of starting loadhack.
-            // loadhack uses new hist node instead of same view's `load()'.
-            m_EnableLoadHackLocal
-            // ctrl is not pressed.
-            && Page::Activate()
-            // url is not empty.
-            && !url().isEmpty()
-            // link doesn't hold jump command.
-            && !link.toEncoded().contains("#")
-            // m_ClickedElement doesn't hold javascript function.
-            && !m_ClickedElement->IsJsCommandElement()){
-
-            GestureAborted();
-            m_TreeBank->OpenInNewHistNode(req, true, GetHistNode());
-            ev->setAccepted(true);
-            return;
-        }
-    }
-    //[[/!WEV]]
     GestureAborted();
     QWebViewBase::mouseReleaseEvent(ev);
     EmitScrollChangedIfNeed();
@@ -1061,8 +1035,8 @@ bool WebViewBase::nativeEvent(const QByteArray &eventType, void *message, long *
 #endif
 //[[/!GWV]]
 
+//[[!WEV]]
 namespace {
-    //[[!WEV]]
     class Element : public WebElement{
     public:
         Element()
@@ -1315,23 +1289,8 @@ namespace {
         bool m_CoordinateOverridden;
         QRect m_OverriddenRectangle;
     };
-    //[[/!WEV]]
-    //[[WEV]]
-    class Element : public JsWebElement{
-    public:
-        Element()
-            : JsWebElement()
-        {
-        }
-        Element(WebViewBase *provider, QVariant var)
-            : JsWebElement(provider, var)
-        {
-        }
-        ~Element(){
-        }
-    };
-    //[[/WEV]]
 }
+//[[/!WEV]]
 
 //[[!WEV]]
 SharedWebElementList WebViewBase::FindElements(Page::FindElementsOption option){
@@ -1390,7 +1349,6 @@ void WebViewBase::CallWithGotBaseUrl(UrlCallBack callBack){
     page()->runJavaScript
         (GetBaseUrlJsCode(),
          [this, callBack](QVariant url){
-            // webengine's bug? why timeout in blank page?
             callBack(url.isValid() ? url.toUrl() : QUrl());
         });
 }
@@ -1404,7 +1362,6 @@ void WebViewBase::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
     page()->runJavaScript
         (GetBaseUrlJsCode(),
          [this, callBack](QVariant url){
-            // webengine's bug? why timeout in blank page?
             callBack(url.isValid() ? url.toUrl() : QUrl());
         });
 }
@@ -1418,7 +1375,6 @@ void WebViewBase::CallWithFoundElements(Page::FindElementsOption option,
     page()->runJavaScript
         (FindElementsJsCode(option),
          [this, callBack](QVariant var){
-            // webengine's bug? why timeout in blank page?
             if(!var.isValid()){
                 callBack(SharedWebElementList());
                 return;
@@ -1435,8 +1391,8 @@ void WebViewBase::CallWithFoundElements(Page::FindElementsOption option,
             QRect viewport = QRect(QPoint(), s);
 
             for(int i = 0; i < list.length(); i++){
-                std::shared_ptr<Element> e = std::make_shared<Element>();
-                *e = Element(this, list[i]);
+                std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
+                *e = JsWebElement(this, list[i]);
                 if(!viewport.intersects(e->Rectangle()))
                     e->SetRectangle(QRect());
                 result << e;
@@ -1454,13 +1410,12 @@ void WebViewBase::CallWithHitElement(const QPoint &pos,
     page()->runJavaScript
         (HitElementJsCode(pos),
          [this, callBack](QVariant var){
-            // webengine's bug? why timeout in blank page?
             if(!var.isValid()){
                 callBack(SharedWebElement());
                 return;
             }
-            std::shared_ptr<Element> e = std::make_shared<Element>();
-            *e = Element(this, var);
+            std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
+            *e = JsWebElement(this, var);
             callBack(e);
         });
 }
@@ -1474,7 +1429,6 @@ void WebViewBase::CallWithHitLinkUrl(const QPoint &pos,
     page()->runJavaScript
         (HitLinkUrlJsCode(pos),
          [this, callBack](QVariant url){
-            // webengine's bug? why timeout in blank page?
             callBack(url.isValid() ? url.toUrl() : QUrl());
         });
 }
@@ -1488,7 +1442,6 @@ void WebViewBase::CallWithHitImageUrl(const QPoint &pos,
     page()->runJavaScript
         (HitImageUrlJsCode(pos),
          [this, callBack](QVariant url){
-            // webengine's bug? why timeout in blank page?
             callBack(url.isValid() ? url.toUrl() : QUrl());
         });
 }
@@ -1505,7 +1458,6 @@ void WebViewBase::CallWithSelectedHtml(StringCallBack callBack){
     page()->runJavaScript
         (SelectedHtmlJsCode(),
          [callBack](QVariant result){
-            // webengine's bug? why timeout in blank page?
             callBack(result.isValid() ? result.toString() : QString());
         });
 }

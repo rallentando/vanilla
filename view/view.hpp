@@ -1022,7 +1022,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS(View::FindFlags);
 class JsWebElement : public WebElement{
 public:
     explicit JsWebElement();
-    explicit JsWebElement(QObject *provider, QVariant var);
+    explicit JsWebElement(View *provider, QVariant var);
     virtual ~JsWebElement();
 
     virtual bool SetFocus() DECL_OVERRIDE;
@@ -1049,7 +1049,7 @@ public:
     virtual bool Equals(const WebElement&) const DECL_OVERRIDE;
 
 protected:
-    QObject *m_Provider;
+    View *m_Provider;
     QString m_TagName;
     QString m_InnerText;
     QUrl m_BaseUrl;
