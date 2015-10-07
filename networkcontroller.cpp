@@ -847,6 +847,13 @@ NetworkController::NetworkController()
     : QObject(0)
 {
     LoadAllCookies();
+
+    // first download is too slow.
+    Application::ClearTemporaryDirectory();
+    QMap<QString, NetworkAccessManager*> nams = m_NetworkAccessManagerTable;
+    if(!nams.isEmpty()){
+        Download(nams.first(), QUrl("about:blank"), QUrl(), NetworkController::TemporaryDirectory);
+    }
 }
 
 NetworkController::~NetworkController(){}
@@ -867,9 +874,8 @@ DownloadItem* NetworkController::Download(NetworkAccessManager *nam,
                                           DownloadType type){
     if(request.url().isEmpty()) return 0;
 
-    DownloadItem *item = Download(nam->get(request),
-                                  request.url().toString().split(QStringLiteral("/")).last().trimmed(), type);
-    return item;
+    return Download(nam->get(request),
+                    request.url().toString().split(QStringLiteral("/")).last().trimmed(), type);
 }
 
 DownloadItem* NetworkController::Download(QNetworkReply *reply,

@@ -31,8 +31,6 @@
 
 //#define OUT_OF_THREAD_UPDATE
 
-//#define WEBENGINE_DRAGDROP
-
 //#define WEBENGINEVIEW_DEFAULT
 
 // cannot render QuickWeb(Engine)View without this flag.

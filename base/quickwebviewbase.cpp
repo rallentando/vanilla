@@ -10,6 +10,7 @@
 #include <QQmlContext>
 #include <QAction>
 #include <QVariant>
+#include <QDrag>
 
 #include "view.hpp"
 #include "webpagebase.hpp"
@@ -296,6 +297,37 @@ void QuickWebViewBase::CallWithScroll(PointFCallBack callBack){
                               Q_ARG(QVariant, QVariant::fromValue(GetScrollRatioPointJsCode())));
 }
 
+void QuickWebViewBase::SetScrollBarState(){
+    //[[QWV]]
+    m_ScrollBarState = NoScrollBarEnabled;
+    //[[/QWV]]
+    //[[QWEV]]
+    int requestId = m_RequestId++;
+    std::shared_ptr<QMetaObject::Connection> connection =
+        std::make_shared<QMetaObject::Connection>();
+    *connection =
+        connect(this, &QuickWebViewBase::CallBackResult,
+                [this, requestId, connection](int id, QVariant result){
+                    if(requestId != id) return;
+                    QObject::disconnect(*connection);
+                    if(!result.isValid()) return;
+                    QVariantList list = result.toList();
+                    int hmax = list[0].toInt();
+                    int vmax = list[1].toInt();
+                    if(hmax < 0) hmax = 0;
+                    if(vmax < 0) vmax = 0;
+                    if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
+                    else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
+                    else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
+                    else             m_ScrollBarState = NoScrollBarEnabled;
+                });
+
+    QMetaObject::invokeMethod(m_QmlWebViewBase, "evaluateJavaScript",
+                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
+                              Q_ARG(QVariant, QVariant::fromValue(GetScrollBarStateJsCode())));
+    //[[/QWEV]]
+}
+
 void QuickWebViewBase::KeyEvent(QString key){
     TriggerKeyEvent(key);
 }
@@ -364,13 +396,18 @@ void QuickWebViewBase::resizeEvent(QResizeEvent *ev){
     QMetaObject::invokeMethod(m_QmlWebViewBase, "adjustContents");
 }
 
+#ifdef USE_QQUICKWIDGET
+void QuickWebViewBase::contextMenuEvent(QContextMenuEvent *ev){
+    ev->setAccepted(true);
+}
+#endif
+
 void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
     if(!m_TreeBank) return;
 
     Application::SetCurrentWindow(m_TreeBank->GetMainWindow());
 
     if(m_DragStarted){
-        GestureAborted();
         QQuickBase::mouseMoveEvent(ev);
         return;
     }
@@ -379,35 +416,104 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
 
         GestureMoved(ev->pos());
         QString gesture = GestureToString(m_Gesture);
-        QString action = (m_RightGestureMap.contains(gesture) &&
-                          Action(Page::StringToAction(m_RightGestureMap[gesture])))?
-            Action(Page::StringToAction(m_RightGestureMap[gesture]))->text() : tr("NoAction");
+        QString action =
+            !m_RightGestureMap.contains(gesture)
+              ? tr("NoAction")
+            : Page::IsValidAction(m_RightGestureMap[gesture])
+              ? Action(Page::StringToAction(m_RightGestureMap[gesture]))->text()
+            : m_RightGestureMap[gesture];
         emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
         return;
     }
-    if(m_EnableDragHackLocal &&
-       ev->buttons() & Qt::LeftButton &&
+
+    int scrollBarWidth = Application::style()->pixelMetric(QStyle::PM_ScrollBarExtent);
+    bool horizontal = m_ScrollBarState == BothScrollBarEnabled
+        ||            m_ScrollBarState == HorizontalScrollBarEnabled;
+    bool vertical   = m_ScrollBarState == BothScrollBarEnabled
+        ||            m_ScrollBarState == VerticalScrollBarEnabled;
+    QRect touchableRect =
+        QRect(QPoint(),
+              size() - QSize(vertical   ? scrollBarWidth : 0,
+                             horizontal ? scrollBarWidth : 0));
+
+    if(ev->buttons() & Qt::LeftButton &&
        !m_GestureStartedPos.isNull() &&
-       !m_HadSelection &&
+       touchableRect.contains(m_GestureStartedPos) &&
        (m_ClickedElement &&
         !m_ClickedElement->IsNull() &&
-        !m_ClickedElement->IsFrameElement() &&
-        (!m_ClickedElement->LinkUrl().isEmpty() ||
-         !m_ClickedElement->ImageUrl().isEmpty()))){
+        !m_ClickedElement->IsEditableElement())){
 
-        GestureMoved(ev->pos());
-        QString gesture = GestureToString(m_Gesture);
-        QString action =
-            !m_LeftGestureMap.contains(gesture)
-            ? tr("NoAction")
-            : Page::IsValidAction(m_LeftGestureMap[gesture])
-            ? Action(Page::StringToAction(m_LeftGestureMap[gesture]))->text()
-            : m_LeftGestureMap[gesture];
-        emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
-        return;
+        if(QLineF(ev->pos(), m_GestureStartedPos).length() < 2){
+            // gesture not aborted.
+            QQuickBase::mouseMoveEvent(ev);
+            return;
+        }
+
+#ifdef USE_QQUICKWIDGET
+        QDrag *drag = new QDrag(this);
+#else
+        QDrag *drag = new QDrag(m_TreeBank);
+#endif
+        // clear or make directory if need.
+        Application::ClearTemporaryDirectory();
+
+        NetworkAccessManager *nam =
+            static_cast<NetworkAccessManager*>(page()->networkAccessManager());
+        // create and download.
+        QMimeData *mime = m_HadSelection
+            ? CreateMimeDataFromSelection(nam)
+            : CreateMimeDataFromElement(nam);
+
+        if(!mime){
+            drag->deleteLater();
+
+            // call QtWebKit's drag.
+            GestureAborted();
+            QQuickBase::mouseMoveEvent(ev);
+            return;
+        }
+
+        QPixmap pixmap = m_HadSelection
+            ? CreatePixmapFromSelection()
+            : CreatePixmapFromElement();
+
+        //[[WEV]]
+        QRect rect = m_HadSelection
+            ? m_SelectionRegion.boundingRect()
+            : m_ClickedElement->Rectangle().intersected(QRect(QPoint(), size()));
+        QPoint pos = ev->pos() - rect.topLeft();
+        //[[/WEV]]
+
+        if(pixmap.size().width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
+           pixmap.size().height() > MAX_DRAGGING_PIXMAP_HEIGHT){
+
+            pos /= qMax(static_cast<float>(pixmap.size().width()) /
+                        static_cast<float>(MAX_DRAGGING_PIXMAP_WIDTH),
+                        static_cast<float>(pixmap.size().height()) /
+                        static_cast<float>(MAX_DRAGGING_PIXMAP_HEIGHT));
+            pixmap = pixmap.scaled(MAX_DRAGGING_PIXMAP_WIDTH,
+                                   MAX_DRAGGING_PIXMAP_HEIGHT,
+                                   Qt::KeepAspectRatio,
+                                   Qt::SmoothTransformation);
+        }
+
+        if(m_EnableDragHackLocal)
+            GestureMoved(ev->pos());
+        else
+            GestureAborted();
+        m_DragStarted = true;
+        mime->setImageData(pixmap.toImage());
+        drag->setMimeData(mime);
+        drag->setPixmap(pixmap);
+        drag->setHotSpot(pos);
+        drag->exec(Qt::CopyAction | Qt::MoveAction);
+        drag->deleteLater();
+        ev->setAccepted(true);
+    } else {
+        // call QtWebKit's drag.
+        GestureAborted();
+        QQuickBase::mouseMoveEvent(ev);
     }
-    GestureAborted();
-    QQuickBase::mouseMoveEvent(ev);
 }
 
 void QuickWebViewBase::mousePressEvent(QMouseEvent *ev){
@@ -508,6 +614,93 @@ void QuickWebViewBase::mouseDoubleClickEvent(QMouseEvent *ev){
     QQuickBase::mouseDoubleClickEvent(ev);
 }
 
+#ifdef USE_QQUICKWIDGET
+void QuickWebViewBase::dragEnterEvent(QDragEnterEvent *ev){
+    m_DragStarted = true;
+    ev->setDropAction(Qt::MoveAction);
+    ev->acceptProposedAction();
+    QQuickBase::dragEnterEvent(ev);
+    ev->setAccepted(true);
+}
+
+void QuickWebViewBase::dragMoveEvent(QDragMoveEvent *ev){
+    if(m_EnableDragHackLocal && !m_GestureStartedPos.isNull()){
+
+        GestureMoved(ev->pos());
+        QString gesture = GestureToString(m_Gesture);
+        QString action =
+            !m_LeftGestureMap.contains(gesture)
+              ? tr("NoAction")
+            : Page::IsValidAction(m_LeftGestureMap[gesture])
+              ? Action(Page::StringToAction(m_LeftGestureMap[gesture]))->text()
+            : m_LeftGestureMap[gesture];
+        emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
+    }
+    QQuickBase::dragMoveEvent(ev);
+    ev->setAccepted(true);
+}
+
+void QuickWebViewBase::dropEvent(QDropEvent *ev){
+    emit statusBarMessage(QString());
+    QPoint pos = ev->pos();
+    QList<QUrl> urls = ev->mimeData()->urls();
+    QObject *source = ev->source();
+#ifdef USE_QQUICKWIDGET
+    QWidget *widget = this;
+#else
+    QWidget *widget = m_TreeBank;
+#endif
+    QString text;
+    if(!ev->mimeData()->text().isEmpty()){
+        text = ev->mimeData()->text().replace(QStringLiteral("\""), QStringLiteral("\\\""));
+    } else if(!urls.isEmpty()){
+        foreach(QUrl u, urls){
+            if(text.isEmpty()) text = u.toString();
+            else text += QStringLiteral("\n") + u.toString();
+        }
+    }
+
+    CallWithHitElement(pos, [this, pos, urls, text, source, widget](SharedWebElement elem){
+
+    if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
+
+        GestureAborted();
+        elem->SetText(text);
+        return;
+    }
+
+    if(!m_Gesture.isEmpty() && source == widget){
+        GestureFinished(pos, Qt::LeftButton);
+        return;
+    }
+
+    GestureAborted();
+
+    if(urls.isEmpty() || source == widget){
+        // do nothing.
+    } else if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source)){
+        QList<QUrl> filtered;
+        foreach(QUrl u, urls){ if(!u.isLocalFile()) filtered << u;}
+        m_TreeBank->OpenInNewViewNode(filtered, true, GetViewNode());
+        return;
+    } else {
+        // foreign drag.
+        m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
+    }
+
+    });
+
+    QQuickBase::dropEvent(ev);
+    ev->setAccepted(true);
+}
+
+void QuickWebViewBase::dragLeaveEvent(QDragLeaveEvent *ev){
+    ev->setAccepted(false);
+    m_DragStarted = false;
+    QQuickBase::dragLeaveEvent(ev);
+}
+#endif
+
 void QuickWebViewBase::wheelEvent(QWheelEvent *ev){
     if(!visible()) return;
 
@@ -542,6 +735,14 @@ void QuickWebViewBase::focusOutEvent(QFocusEvent *ev){
     QQuickBase::focusOutEvent(ev);
     OnFocusOut();
 }
+
+#ifdef USE_QQUICKWIDGET
+bool QuickWebViewBase::focusNextPrevChild(bool next){
+    if(!m_Switching && visible())
+        return QQuickBase::focusNextPrevChild(next);
+    return false;
+}
+#endif
 
 void QuickWebViewBase::CallWithGotBaseUrl(UrlCallBack callBack){
     int requestId = m_RequestId++;
@@ -746,6 +947,37 @@ void QuickWebViewBase::CallWithWholeHtml(StringCallBack callBack){
     QMetaObject::invokeMethod(m_QmlWebViewBase, "evaluateJavaScript",
                               Q_ARG(QVariant, QVariant::fromValue(requestId)),
                               Q_ARG(QVariant, QVariant::fromValue(WholeHtmlJsCode())));
+}
+
+void QuickWebViewBase::CallWithSelectionRegion(RegionCallBack callBack){
+    int requestId = m_RequestId++;
+    std::shared_ptr<QMetaObject::Connection> connection =
+        std::make_shared<QMetaObject::Connection>();
+    *connection =
+        connect(this, &QuickWebViewBase::CallBackResult,
+                [this, requestId, callBack, connection](int id, QVariant var){
+                    if(requestId != id) return;
+                    QObject::disconnect(*connection);
+                    QRegion region;
+                    if(!var.isValid() || !var.canConvert(QMetaType::QVariantMap)){
+                        callBack(region);
+                        return;
+                    }
+                    QVariantMap map = var.toMap();
+                    QRect viewport = QRect(QPoint(), size());
+                    foreach(QString key, map.keys()){
+                        QVariantMap m = map[key].toMap();
+                        region |= QRect(m["x"].toInt(),
+                                        m["y"].toInt(),
+                                        m["width"].toInt(),
+                                        m["height"].toInt()).intersected(viewport);
+                    }
+                    callBack(region);
+                });
+
+    QMetaObject::invokeMethod(m_QmlWebViewBase, "evaluateJavaScript",
+                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
+                              Q_ARG(QVariant, QVariant::fromValue(SelectionRegionJsCode())));
 }
 
 void QuickWebViewBase::CallWithEvaluatedJavaScriptResult(const QString &code,

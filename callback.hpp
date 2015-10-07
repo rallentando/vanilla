@@ -12,6 +12,7 @@
 #include <QSizeF>
 #include <QRect>
 #include <QRectF>
+#include <QRegion>
 
 #include <functional>
 
@@ -25,5 +26,6 @@ typedef std::function<void(const QSize&)> SizeCallBack;
 typedef std::function<void(const QSizeF&)> SizeFCallBack;
 typedef std::function<void(const QRect&)> RectCallBack;
 typedef std::function<void(const QRectF&)> RectFCallBack;
+typedef std::function<void(const QRegion&)> RegionCallBack;
 
 #endif

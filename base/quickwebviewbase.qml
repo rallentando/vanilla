@@ -35,11 +35,9 @@ Rectangle {
                 restoreScroll()
                 viewChanged()
                 statusBarMessage(qsTr('finished loading.'))
-                progressBar.width = parent.width
             }
             if(status == WebViewBase.LoadFaliedStatus){
                 statusBarMessage(qsTr('failed to load.'))
-                progressBar.width = parent.width
             }
         }
 
@@ -49,7 +47,6 @@ Rectangle {
             viewChanged()
             statusBarMessage(qsTr('loading ... (%1 percent)')
                              .replace('%1', loadProgress.toString()))
-            progressBar.width = parent.width * loadProgress / 100
         }
 
         onLinkHovered: {
@@ -185,6 +182,11 @@ Rectangle {
         function fireClickEvent(xpath, pos){
             experimental.evaluateJavaScript
             (viewInterface.fireClickEventJsCode(xpath, pos/devicePixelRatio))
+        }
+
+        function setTextValue(xpath, text){
+            experimental.evaluateJavaScript
+            (viewInterface.setTextValueJsCode(xpath, text))
         }
 
         function adjustContents(){
@@ -504,13 +506,5 @@ Rectangle {
             }
             //[[/QWV]]
         }
-    }
-    Rectangle {
-        id: progressBar
-        anchors.left: parent.left
-        anchors.top: parent.top
-        width: 0
-        height: 5
-        color: (width == parent.width) ? 'transparent' : '#aa000000'
     }
 }

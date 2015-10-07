@@ -45,19 +45,20 @@ QKeyEvent *View::m_HomeKey     = new QKeyEvent(QEvent::KeyPress, Qt::Key_Home, 0
 QKeyEvent *View::m_EndKey      = new QKeyEvent(QEvent::KeyPress, Qt::Key_End, 0);
 
 SharedWebElement View::m_ClickedElement = 0;
+QRegion View::m_SelectionRegion = QRegion();
 
 bool View::m_ActivateNewViewDefault = false;
 bool View::m_NavigationBySpaceKey = false;
 bool View::m_DragStarted = false;
 bool View::m_HadSelection = false;
 bool View::m_Switching = false;
-bool View::m_DragDataPreparationCompleted = false;
 QPoint View::m_GestureStartedPos = QPoint();
 QPoint View::m_BeforeGesturePos = QPoint();
 View::Gesture View::m_Gesture = QList<View::GestureVector>();
 View::GestureVector View::m_CurrentGestureVector = Gv_NoMove;
 View::GestureVector View::m_BeforeGestureVector = Gv_NoMove;
 int View::m_SameGestureVectorCount = 0;
+View::ScrollBarState View::m_ScrollBarState = NoScrollBarEnabled;
 
 int View::m_GestureMode = 0;
 
@@ -677,31 +678,14 @@ QMimeData *View::CreateMimeDataFromSelection(NetworkAccessManager *nam){
     CallWithSelectedText([this, nam, mime, base](QString text){
     CallWithSelectedHtml([this, nam, mime, base, text](QString html){
 
-    QList<QUrl> urls;
-    {
-        QList<QUrl> us = Page::ExtractUrlFromHtml(html, base, Page::HaveReference);
-        foreach(QUrl u, us){
-            urls << NetworkController::Download(nam, u, url(), NetworkController::TemporaryDirectory)->GetUrls();
-        }
-    }
-    if(urls.isEmpty()){
-        QList<QUrl> us = Page::ExtractUrlFromText(text, base);
-        foreach(QUrl u, us){
-            urls << NetworkController::Download(nam, u, url(), NetworkController::TemporaryDirectory)->GetUrls();
-        }
-    }
-    if(urls.isEmpty()){
-        QList<QUrl> us = Page::ExtractUrlFromHtml(html, base, Page::HaveSource);
-        foreach(QUrl u, us){
-            urls << NetworkController::Download(nam, u, url(), NetworkController::TemporaryDirectory)->GetUrls();
-        }
-    }
+    QList<QUrl>        urls = Page::ExtractUrlFromHtml(html, base, Page::HaveReference);
+    if(urls.isEmpty()) urls = Page::ExtractUrlFromText(text, base);
+    if(urls.isEmpty()) urls = Page::ExtractUrlFromHtml(html, base, Page::HaveSource);
+
     // mime become untouchable on WebEngineView...
     mime->setText(text);
     mime->setHtml(html);
     mime->setUrls(urls);
-
-    m_DragDataPreparationCompleted = true;
 
     });});});
     return mime;
@@ -723,51 +707,60 @@ QMimeData *View::CreateMimeDataFromElement(NetworkAccessManager *nam){
     QList<QUrl> urls;
 
     if(!imageUrl.isEmpty()){
-
-        DownloadItem *item =
-            NetworkController::Download(nam, imageUrl, url(),
-                                        NetworkController::TemporaryDirectory);
+        urls << NetworkController::Download(nam, imageUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
         mime->setText(imageUrl.toString());
         mime->setHtml(m_ClickedElement->ImageHtml());
-        urls << item->GetUrls();
     }
     // overwrite text and html, if linkUrl is not empty.
     if(!linkUrl.isEmpty()){
-
-        DownloadItem *item =
-            NetworkController::Download(nam, linkUrl, url(),
-                                        NetworkController::TemporaryDirectory);
+        urls << NetworkController::Download(nam, linkUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
         mime->setText(linkUrl.toString());
         mime->setHtml(m_ClickedElement->LinkHtml());
-        urls << item->GetUrls();
     }
     mime->setUrls(urls);
-
-    m_DragDataPreparationCompleted = true;
 
     return mime;
 }
 
-QPixmap View::CreatePixmapFromElement(){
-    QPixmap pixmap = m_ClickedElement->Pixmap();
+QPixmap View::CreatePixmapFromSelection(){
+    QPixmap pixmap = QPixmap(size());
+    pixmap.fill(QColor(255,255,255,0));
+    QPainter painter(&pixmap);
+    painter.setOpacity(0.5);
+    Render(&painter, m_SelectionRegion);
+    painter.end();
+    pixmap = pixmap.copy(m_SelectionRegion.boundingRect());
+    return pixmap;
+}
 
-    if(pixmap.isNull()){
+QPixmap View::CreatePixmapFromElement(){
+    QPixmap source = m_ClickedElement->Pixmap();
+    QPixmap pixmap;
+
+    if(source.isNull()){
         pixmap = QPixmap(size());
         pixmap.fill(QColor(255,255,255,0));
-        QRect r = m_ClickedElement->Rectangle();
         QPainter painter(&pixmap);
-        Render(&painter, r);
+        painter.setOpacity(0.5);
+        QRect r;
+        QRegion region = m_ClickedElement->Region();
+        QRect rect = m_ClickedElement->Rectangle();
+        if(!region.isNull()){
+            Render(&painter, region);
+            r = region.boundingRect();
+        } else if(!rect.isNull()){
+            Render(&painter, rect);
+            r = rect;
+        }
         painter.end();
         pixmap = pixmap.copy(r);
-    }
-
-    if(pixmap.size().width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
-       pixmap.size().height() > MAX_DRAGGING_PIXMAP_HEIGHT){
-
-        pixmap = pixmap.scaled(MAX_DRAGGING_PIXMAP_WIDTH,
-                               MAX_DRAGGING_PIXMAP_HEIGHT,
-                               Qt::KeepAspectRatio,
-                               Qt::SmoothTransformation);
+    } else {
+        pixmap = QPixmap(source.size());
+        pixmap.fill(QColor(255,255,255,0));
+        QPainter painter(&pixmap);
+        painter.setOpacity(0.5);
+        painter.drawPixmap(QRect(QPoint(), pixmap.size()), source);
+        painter.end();
     }
     return pixmap;
 }
@@ -1903,6 +1896,7 @@ void View::Load(const QNetworkRequest &req){
 
 void View::OnFocusIn(){
     m_ClickedElement = 0;
+    m_SelectionRegion = QRegion();
 
     MainWindow *win;
     if(m_TreeBank){
@@ -1920,6 +1914,7 @@ void View::OnFocusIn(){
 
 void View::OnFocusOut(){
     m_ClickedElement = 0;
+    m_SelectionRegion = QRegion();
 }
 
 void View::GestureStarted(QPoint pos){
@@ -1927,8 +1922,16 @@ void View::GestureStarted(QPoint pos){
     m_GestureStartedPos = pos;
     m_BeforeGesturePos  = pos;
     m_SameGestureVectorCount = 0;
+    m_HadSelection = !SelectedText().isEmpty();
+    SetScrollBarState();
     CallWithHitElement(pos, [this](SharedWebElement elem){ m_ClickedElement = elem;});
-    CallWithSelectedHtml([this](QString html){ m_HadSelection = !html.isEmpty();});
+    if(m_HadSelection)
+        CallWithSelectionRegion([this, pos](QRegion region){
+                if(region.contains(pos))
+                    m_SelectionRegion = region;
+                else
+                    m_HadSelection = false;
+            });
 }
 
 void View::GestureMoved(QPoint pos){
@@ -1976,9 +1979,9 @@ void View::GestureAborted(){
     m_BeforeGesturePos  = QPoint();
     m_SameGestureVectorCount = 0;
     m_ClickedElement = 0;
+    m_SelectionRegion = QRegion();
     m_HadSelection = false;
     m_DragStarted = false;
-    m_DragDataPreparationCompleted = false;
 }
 
 void View::GestureFinished(QPoint pos, Qt::MouseButton button){
@@ -2005,9 +2008,9 @@ void View::GestureFinished(QPoint pos, Qt::MouseButton button){
     m_BeforeGesturePos  = QPoint();
     m_SameGestureVectorCount = 0;
     m_ClickedElement = 0;
+    m_SelectionRegion = QRegion();
     m_HadSelection = false;
     m_DragStarted = false;
-    m_DragDataPreparationCompleted = false;
 }
 
 void View::TriggerKeyEvent(QKeyEvent *ev){
@@ -2133,6 +2136,17 @@ JsWebElement::JsWebElement(View *provider, QVariant var)
     m_IsFrame      = map[QStringLiteral("isFrame")].toBool();
     m_XPath        = map[QStringLiteral("xPath")].toString();
     m_Action       = map[QStringLiteral("action")].toString();
+
+    m_Region = QRegion();
+    QVariantMap regionMap = map[QStringLiteral("region")].toMap();
+    QRect viewport = QRect(QPoint(), m_Provider->size());
+    foreach(QString key, regionMap.keys()){
+        QVariantMap m = regionMap[key].toMap();
+        m_Region |= QRect(m["x"].toInt(),
+                          m["y"].toInt(),
+                          m["width"].toInt(),
+                          m["height"].toInt()).intersected(viewport);
+    }
 }
 
 JsWebElement::~JsWebElement(){
@@ -2195,6 +2209,10 @@ QRect JsWebElement::Rectangle() const {
     return m_Rectangle;
 }
 
+QRegion JsWebElement::Region() const {
+    return m_Region;
+}
+
 void JsWebElement::SetPosition(QPoint pos){
     m_Rectangle.moveCenter(pos);
 }
@@ -2203,13 +2221,28 @@ void JsWebElement::SetRectangle(QRect rect){
     m_Rectangle = rect;
 }
 
+void JsWebElement::SetText(QString text){
+    if(m_Provider){
+        QMetaObject::invokeMethod(m_Provider->base(), "SetTextValue",
+                                  Q_ARG(QString, m_XPath),
+                                  Q_ARG(QString, text));
+    }
+}
+
 QPixmap JsWebElement::Pixmap(){
     if(!m_Provider || IsNull()) return QPixmap();
-    QPixmap pixmap(Rectangle().size());
+    QPixmap pixmap(m_Provider->size());
     QPainter painter(&pixmap);
-    m_Provider->Render(&painter, Rectangle());
+    QRect r;
+    if(!Region().isNull()){
+        m_Provider->Render(&painter, Region());
+        r = Region().boundingRect();
+    } else if(!Rectangle().isNull()){
+        m_Provider->Render(&painter, Rectangle());
+        r = Rectangle();
+    }
     painter.end();
-    return pixmap;
+    return pixmap.copy(r);
 }
 
 bool JsWebElement::IsNull() const {

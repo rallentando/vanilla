@@ -185,6 +185,7 @@ public:
     void CallWithSelectedHtml(StringCallBack) DECL_OVERRIDE;
     void CallWithWholeText(StringCallBack) DECL_OVERRIDE;
     void CallWithWholeHtml(StringCallBack) DECL_OVERRIDE;
+    void CallWithSelectionRegion(RegionCallBack) DECL_OVERRIDE;
     void CallWithEvaluatedJavaScriptResult(const QString&, VariantCallBack) DECL_OVERRIDE;
 
 public slots:
@@ -192,11 +193,15 @@ public slots:
     void resize(QSize size) DECL_OVERRIDE {
         rootObject()->setProperty("width", size.width());
         rootObject()->setProperty("height", size.height());
+#ifdef USE_QQUICKWIDGET
+        base()->setGeometry(QRect(QPoint(), size));
+#else
         MainWindow *win = m_TreeBank ? m_TreeBank->GetMainWindow() : 0;
         if(win && win->IsMenuBarEmpty())
             base()->setGeometry(QRect(QPoint(), size));
         else
             base()->setGeometry(QRect(QPoint(0, win->menuBar()->height()), size));
+#endif
     }
     void show() DECL_OVERRIDE {
         base()->show();
@@ -271,6 +276,8 @@ public slots:
 
     void CallWithScroll(PointFCallBack callBack);
 
+    void SetScrollBarState() DECL_OVERRIDE;
+
     void SetScroll(QPointF pos) DECL_OVERRIDE {
         QMetaObject::invokeMethod(m_QmlWebViewBase, "setScroll",
                                   Q_ARG(QVariant, QVariant::fromValue(pos)));
@@ -309,6 +316,11 @@ public slots:
                                   Q_ARG(QVariant, QVariant::fromValue(xpath)),
                                   Q_ARG(QVariant, QVariant::fromValue(pos)));
     }
+    void SetTextValue(QString xpath, QString text){
+        QMetaObject::invokeMethod(m_QmlWebViewBase, "setTextValue",
+                                  Q_ARG(QVariant, QVariant::fromValue(xpath)),
+                                  Q_ARG(QVariant, QVariant::fromValue(text)));
+    }
 
     // dirty...
     int findBackwardIntValue()            { return static_cast<int>(FindBackward);}
@@ -326,6 +338,7 @@ public slots:
 
     QString setFocusToElementJsCode(const QString &xpath){ return SetFocusToElementJsCode(xpath);}
     QString fireClickEventJsCode(const QString &xpath, const QPoint &pos){ return FireClickEventJsCode(xpath, pos);}
+    QString setTextValueJsCode(const QString &xpath, const QString &text){ return SetTextValueJsCode(xpath, text);}
     QString getScrollValuePointJsCode(){ return GetScrollValuePointJsCode();}
     QString setScrollValuePointJsCode(const QPoint &pos){ return SetScrollValuePointJsCode(pos);}
     QString getScrollRatioPointJsCode(){ return GetScrollRatioPointJsCode();}
@@ -407,20 +420,26 @@ protected:
     void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE;
     void keyReleaseEvent(QKeyEvent *ev) DECL_OVERRIDE;
     void resizeEvent(QResizeEvent *ev) DECL_OVERRIDE;
-  //void contextMenuEvent(QContextMenuEvent *ev) DECL_OVERRIDE;
+#ifdef USE_QQUICKWIDGET
+    void contextMenuEvent(QContextMenuEvent *ev) DECL_OVERRIDE;
+#endif
 
     void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE;
     void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE;
     void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
     void mouseDoubleClickEvent(QMouseEvent *ev) DECL_OVERRIDE;
-  //void dragEnterEvent(QDragEnterEvent *ev) DECL_OVERRIDE;
-  //void dragMoveEvent(QDragMoveEvent *ev) DECL_OVERRIDE;
-  //void dropEvent(QDropEvent *ev) DECL_OVERRIDE;
-  //void dragLeaveEvent(QDragLeaveEvent *ev) DECL_OVERRIDE;
+#ifdef USE_QQUICKWIDGET
+    void dragEnterEvent(QDragEnterEvent *ev) DECL_OVERRIDE;
+    void dragMoveEvent(QDragMoveEvent *ev) DECL_OVERRIDE;
+    void dropEvent(QDropEvent *ev) DECL_OVERRIDE;
+    void dragLeaveEvent(QDragLeaveEvent *ev) DECL_OVERRIDE;
+#endif
     void wheelEvent(QWheelEvent *ev) DECL_OVERRIDE;
     void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE;
     void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE;
-  //bool focusNextPrevChild(bool next) DECL_OVERRIDE;
+#ifdef USE_QQUICKWIDGET
+    bool focusNextPrevChild(bool next) DECL_OVERRIDE;
+#endif
 
 private:
     QQuickItem *m_QmlWebViewBase;

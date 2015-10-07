@@ -181,9 +181,9 @@ public:
             p.end();
             m_GrabedDisplayData = image;
 
-            render(painter, QPoint(), clip);
-
-        } else if(!m_GrabedDisplayData.isNull()){
+            //render(painter, QPoint(), clip);
+        }
+        if(!m_GrabedDisplayData.isNull()){
             foreach(QRect rect, clip.rects()){
                 painter->drawImage(rect, m_GrabedDisplayData.copy(rect));
             }
@@ -358,6 +358,21 @@ public:
     QString WholeHtml() DECL_OVERRIDE {
         return page() ? page()->mainFrame()->toHtml() : QString();
     }
+    QRegion SelectionRegion() DECL_OVERRIDE {
+        QRegion region;
+        QVariant var = EvaluateJavaScript(SelectionRegionJsCode());
+        if(!var.isValid() || !var.canConvert(QMetaType::QVariantMap)) return region;
+        QVariantMap map = var.toMap();
+        QRect viewport = QRect(QPoint(), size());
+        foreach(QString key, map.keys()){
+            QVariantMap m = map[key].toMap();
+            region |= QRect(m["x"].toInt()*zoomFactor(),
+                            m["y"].toInt()*zoomFactor(),
+                            m["width"].toInt()*zoomFactor(),
+                            m["height"].toInt()*zoomFactor()).intersected(viewport);
+        }
+        return region;
+    }
     QVariant EvaluateJavaScript(const QString &code) DECL_OVERRIDE {
         return page() ? page()->mainFrame()->evaluateJavaScript(code) : QVariant();
     }
@@ -373,6 +388,7 @@ public:
     void CallWithSelectedHtml(StringCallBack callBack) DECL_OVERRIDE;
     void CallWithWholeText(StringCallBack callBack) DECL_OVERRIDE;
     void CallWithWholeHtml(StringCallBack callBack) DECL_OVERRIDE;
+    void CallWithSelectionRegion(RegionCallBack callBack) DECL_OVERRIDE;
     void CallWithEvaluatedJavaScriptResult(const QString &code, VariantCallBack callBack) DECL_OVERRIDE;
     //[[/WEV]]
 
@@ -487,6 +503,7 @@ public slots:
     //[[WEV]]
     void CallWithScroll(PointFCallBack callBack);
     //[[/WEV]]
+    void SetScrollBarState() DECL_OVERRIDE;
     QPointF GetScroll() DECL_OVERRIDE;
     void SetScroll(QPointF pos) DECL_OVERRIDE;
     bool SaveScroll()     DECL_OVERRIDE;
@@ -502,6 +519,7 @@ public slots:
     //[[WEV]]
     void SetFocusToElement(QString);
     void FireClickEvent(QString, QPoint);
+    void SetTextValue(QString, QString);
     //[[/WEV]]
 
 signals:
@@ -562,10 +580,10 @@ public:
 
 private:
     QPointF MapToView(QWidget *widget, QPointF localPos){
-        return QPointF(widget->mapTo(m_View->base(), (localPos/m_View->zoomFactor()).toPoint()));
+        return QPointF(widget->mapTo(m_View->base(), localPos.toPoint()));
     }
     QPoint MapToView(QWidget *widget, QPoint pos){
-        return widget->mapTo(m_View->base(), pos)/m_View->zoomFactor();
+        return widget->mapTo(m_View->base(), pos);
     }
 
 protected:

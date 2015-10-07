@@ -118,6 +118,7 @@ public:
     QString SelectedHtml() DECL_OVERRIDE { return QString();}
     QString WholeText() DECL_OVERRIDE { return QString();}
     QString WholeHtml() DECL_OVERRIDE { return QString();}
+    QRegion SelectionRegion() DECL_OVERRIDE { return QRegion();}
     QVariant EvaluateJavaScript(const QString&) DECL_OVERRIDE { return QVariant();}
 
     void Connect(TreeBank*) DECL_OVERRIDE;

@@ -86,8 +86,10 @@ public:
     virtual QString ImageHtml() const { return QString();}
     virtual QPoint Position() const { return QPoint();}
     virtual QRect Rectangle() const { return QRect();}
+    virtual QRegion Region() const { return QRegion();}
     virtual void SetPosition(QPoint){}
     virtual void SetRectangle(QRect){}
+    virtual void SetText(QString){}
     virtual QPixmap Pixmap(){ return QPixmap();}
     virtual bool IsNull() const { return true;}
     virtual bool IsEditableElement() const { return false;}
@@ -123,6 +125,7 @@ public:
         Gv_LowerLeft,
         Gv_NoMove
     };
+    typedef QList<GestureVector> Gesture;
 
     enum FindFlag {
         FindBackward                      = 1 << 0,
@@ -135,7 +138,12 @@ public:
     };
     Q_DECLARE_FLAGS(FindFlags, FindFlag);
 
-    typedef QList<GestureVector> Gesture;
+    enum ScrollBarState{
+        NoScrollBarEnabled,
+        HorizontalScrollBarEnabled,
+        VerticalScrollBarEnabled,
+        BothScrollBarEnabled,
+    };
 
     virtual QObject *base();
     virtual QObject *page();
@@ -165,6 +173,7 @@ public:
 
     QMimeData *CreateMimeDataFromSelection(NetworkAccessManager *nam);
     QMimeData *CreateMimeDataFromElement(NetworkAccessManager *nam);
+    QPixmap CreatePixmapFromSelection();
     QPixmap CreatePixmapFromElement();
 
     QMenu *BookmarkletMenu();
@@ -363,6 +372,14 @@ public:
         callBack(WholeHtml());
     }
 
+    virtual QRegion SelectionRegion(){
+        return WaitForResult<QRegion>([&](RegionCallBack callBack){
+                CallWithSelectionRegion(callBack);});
+    }
+    virtual void CallWithSelectionRegion(RegionCallBack callBack){
+        callBack(SelectionRegion());
+    }
+
     virtual QVariant EvaluateJavaScript(const QString &source){
         return WaitForResult<QVariant>([&](VariantCallBack callBack){
                 CallWithEvaluatedJavaScriptResult(source, callBack);});
@@ -412,6 +429,7 @@ public:
     virtual void EmitScrollChangedIfNeed(){}
 
     // using scroll ratio position.
+    virtual void SetScrollBarState(){}
     virtual QPointF GetScroll(){ return QPointF();}
     virtual void SetScroll(QPointF){}
 
@@ -560,23 +578,36 @@ protected:
     }
 
     static inline QString SetScrollValuePointJsCode(const QPoint &pos){
-        return QStringLiteral("window.scrollTo(%1, %2);").arg(pos.x()).arg(pos.y());
+        return QStringLiteral("scrollTo(%1, %2);").arg(pos.x()).arg(pos.y());
+    }
+
+    // return value is js array. and it'll be callbacked.
+    static inline QString GetScrollBarStateJsCode(){
+        return QStringLiteral(
+            "[document.documentElement.scrollWidth - \n"
+          VV" document.documentElement.clientWidth,\n"
+          VV" document.documentElement.scrollHeight - \n"
+          VV" document.documentElement.clientHeight];\n");
     }
 
     // return value is js array. and it'll be callbacked.
     static inline QString GetScrollRatioPointJsCode(){
         return QStringLiteral(
-            "[document.body.scrollLeft / \n"
-          VV" (document.documentElement.scrollWidth - \n"
-          VV"  document.documentElement.clientWidth),\n"
-          VV" document.body.scrollTop / \n"
-          VV" (document.documentElement.scrollHeight - \n"
-          VV"  document.documentElement.clientHeight)];\n");
+            "(function(){\n"
+          VV"    var hval = document.body.scrollLeft;\n"
+          VV"    var vval = document.body.scrollTop;\n"
+          VV"    var hmax = document.documentElement.scrollWidth - \n"
+          VV"               document.documentElement.clientWidth;\n"
+          VV"    var vmax = document.documentElement.scrollHeight - \n"
+          VV"               document.documentElement.clientHeight;\n"
+          VV"    return [hmax <= 0 ? 0.5 : hval / hmax,\n"
+          VV"            vmax <= 0 ? 0.5 : vval / vmax];\n"
+          VV"})()");
     }
 
     static inline QString SetScrollRatioPointJsCode(const QPointF &pos){
         return QStringLiteral(
-            "window.scrollTo(\n"
+            "scrollTo(\n"
           VV"    (document.documentElement.scrollWidth - \n"
           VV"     document.documentElement.clientWidth) * \n"
           VV"     %1,\n"
@@ -613,11 +644,20 @@ protected:
           VV"        data.imageUrl = elems[i].src;\n"
           VV"        data.imageHtml = elems[i].innerHTML;\n" // roughly capture.
           VV"        data.baseUrl = baseUrl;\n"
-            // devicePixelRatio is not set to right value on QtWebKit2 api.
+            // devicePixelRatio is not set to right value on QtWebKit(2) api.
           VV"        data.x = elems[i].getBoundingClientRect().left * devicePixelRatio;\n"
           VV"        data.y = elems[i].getBoundingClientRect().top  * devicePixelRatio;\n"
           VV"        data.width  = elems[i].getBoundingClientRect().width  * devicePixelRatio;\n"
           VV"        data.height = elems[i].getBoundingClientRect().height * devicePixelRatio;\n"
+          VV"        data.region = {};\n"
+          VV"        var rects = elems[i].getClientRects();\n"
+          VV"        for(var j = 0; j < rects.length; j++){\n"
+          VV"            data.region[j] = {};\n"
+          VV"            data.region[j].x = rects[j].left * devicePixelRatio;\n"
+          VV"            data.region[j].y = rects[j].top  * devicePixelRatio;\n"
+          VV"            data.region[j].width  = rects[j].width  * devicePixelRatio;\n"
+          VV"            data.region[j].height = rects[j].height * devicePixelRatio;\n"
+          VV"        }\n"
           VV"        if(!data.width || !data.height) continue;\n"
           VV"        data.isJsCommand = \n"
           VV"            (elems[i].onclick ||\n"
@@ -770,11 +810,20 @@ protected:
           VV"        image = image.parentNode;\n"
           VV"    }\n"
           VV"    data.baseUrl = baseUrl;\n"
-            // devicePixelRatio is not set to right value on QtWebKit2 api.
+            // devicePixelRatio is not set to right value on QtWebKit(2) api.
           VV"    data.x = elem.getBoundingClientRect().left * devicePixelRatio;\n"
           VV"    data.y = elem.getBoundingClientRect().top  * devicePixelRatio;\n"
           VV"    data.width = elem.getBoundingClientRect().width   * devicePixelRatio;\n"
           VV"    data.height = elem.getBoundingClientRect().height * devicePixelRatio;\n"
+          VV"    data.region = {};\n"
+          VV"    var rects = elem.getClientRects();\n"
+          VV"    for(var i = 0; i < rects.length; i++){\n"
+          VV"        data.region[i] = {};\n"
+          VV"        data.region[i].x = rects[i].left * devicePixelRatio;\n"
+          VV"        data.region[i].y = rects[i].top  * devicePixelRatio;\n"
+          VV"        data.region[i].width  = rects[i].width  * devicePixelRatio;\n"
+          VV"        data.region[i].height = rects[i].height * devicePixelRatio;\n"
+          VV"    }\n"
           VV"    data.isJsCommand = \n"
           VV"        (elem.onclick ||\n"
           VV"         (elem.href &&\n"
@@ -906,14 +955,14 @@ protected:
     }
 
     static inline QString SelectedTextJsCode(){
-        return QStringLiteral("window.getSelection().toString()");
+        return QStringLiteral("getSelection().toString()");
     }
 
     static inline QString SelectedHtmlJsCode(){
         return QStringLiteral(
             "(function(){\n"
           VV"    var div = document.createElement(\"div\");\n"
-          VV"    div.appendChild(window.getSelection().getRangeAt(0).cloneContents());\n"
+          VV"    div.appendChild(getSelection().getRangeAt(0).cloneContents());\n"
           VV"    return div.innerHTML;\n"
           VV"})()");
     }
@@ -924,6 +973,34 @@ protected:
 
     static inline QString WholeHtmlJsCode(){
         return QStringLiteral("document.documentElement.outerHTML");
+    }
+
+    static inline QString SelectionRegionJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    var map = {};\n"
+          VV"    var rects = getSelection().getRangeAt(0).getClientRects();\n"
+          VV"    for(var i = 0; i < rects.length; i++){\n"
+          VV"        map[i] = {};\n"
+            // devicePixelRatio is not set to right value on QtWebKit(2) api.
+          VV"        map[i].x = rects[i].left * devicePixelRatio;\n"
+          VV"        map[i].y = rects[i].top  * devicePixelRatio;\n"
+          VV"        map[i].width  = rects[i].width  * devicePixelRatio;\n"
+          VV"        map[i].height = rects[i].height * devicePixelRatio;\n"
+          VV"    }\n"
+          VV"    return map;\n"
+          VV"})()");
+    }
+
+    static inline QString SetTextValueJsCode(const QString &xpath, const QString &text){
+        QString quotedXpath = QString(xpath).replace(QStringLiteral("\""), QStringLiteral("\\\""));
+        QString quotedText = QString(text).replace(QStringLiteral("\""), QStringLiteral("\\\""));
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    var elem = document.evaluate(\"%1\", document, null, 7, null).snapshotItem(0);\n"
+          VV"    elem.setAttribute(\"value\", \"%2\");\n"
+          VV"    elem.focus();\n"
+          VV"})()").arg(quotedXpath).arg(quotedText);
     }
 
 private:
@@ -971,10 +1048,10 @@ protected:
     static QKeyEvent *m_EndKey;
 
     static SharedWebElement m_ClickedElement;
+    static QRegion m_SelectionRegion;
     static bool m_DragStarted;
     static bool m_HadSelection;
     static bool m_Switching;
-    static bool m_DragDataPreparationCompleted;
     static QPoint m_GestureStartedPos;
     static QPoint m_BeforeGesturePos;
     static Gesture m_Gesture;
@@ -982,6 +1059,7 @@ protected:
     static GestureVector m_BeforeGestureVector;
     static int m_SameGestureVectorCount;
     static int m_GestureMode; // count of vector(4 or 8).
+    static ScrollBarState m_ScrollBarState;
 
     static QMap<QKeySequence, QString> m_KeyMap;
     static QMap<QString, QString> m_MouseMap;
@@ -1036,8 +1114,10 @@ public:
     virtual QString ImageHtml() const DECL_OVERRIDE;
     virtual QPoint Position() const DECL_OVERRIDE;
     virtual QRect Rectangle() const DECL_OVERRIDE;
+    virtual QRegion Region() const DECL_OVERRIDE;
     virtual void SetPosition(QPoint) DECL_OVERRIDE;
     virtual void SetRectangle(QRect) DECL_OVERRIDE;
+    virtual void SetText(QString) DECL_OVERRIDE;
     virtual QPixmap Pixmap() DECL_OVERRIDE;
     virtual bool IsNull() const DECL_OVERRIDE;
     virtual bool IsEditableElement() const DECL_OVERRIDE;
@@ -1058,6 +1138,7 @@ protected:
     QString m_LinkHtml;
     QString m_ImageHtml;
     QRect m_Rectangle;
+    QRegion m_Region;
     bool m_IsJsCommand;
     bool m_IsTextInput;
     bool m_IsQueryInput;

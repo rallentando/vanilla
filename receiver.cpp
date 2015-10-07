@@ -931,6 +931,7 @@ void Receiver::paintEvent(QPaintEvent *ev){
 }
 
 void Receiver::hideEvent(QHideEvent *ev){
+    if(SharedView view = m_TreeBank->GetCurrentView()) view->setFocus();
     QWidget::hideEvent(ev);
 }
 

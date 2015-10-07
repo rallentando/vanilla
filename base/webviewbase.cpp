@@ -379,6 +379,32 @@ void WebViewBase::CallWithScroll(PointFCallBack callBack){
 }
 //[[/WEV]]
 
+void WebViewBase::SetScrollBarState(){
+    if(!page()) return;
+    //[[!WEV]]
+    int hmax = page()->mainFrame()->scrollBarMaximum(Qt::Horizontal);
+    int vmax = page()->mainFrame()->scrollBarMaximum(Qt::Vertical);
+    //[[/!WEV]]
+    //[[WEV]]
+    page()->runJavaScript(GetScrollBarStateJsCode(), [this](QVariant var){
+    if(!var.isValid()) return;
+    QVariantList list = var.toList();
+    int hmax = list[0].toInt();
+    int vmax = list[1].toInt();
+    if(hmax < 0) hmax = 0;
+    if(vmax < 0) vmax = 0;
+    //[[/WEV]]
+
+    if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
+    else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
+    else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
+    else             m_ScrollBarState = NoScrollBarEnabled;
+
+    //[[WEV]]
+    });
+    //[[/WEV]]
+}
+
 QPointF WebViewBase::GetScroll(){
     if(!page()) return QPointF(0.5f, 0.5f);
     //[[!WEV]]
@@ -524,6 +550,10 @@ void WebViewBase::FireClickEvent(QString xpath, QPoint pos){
     page()->runJavaScript(FireClickEventJsCode(xpath, pos/zoomFactor()));
 }
 
+void WebViewBase::SetTextValue(QString xpath, QString text){
+    page()->runJavaScript(SetTextValueJsCode(xpath, text));
+}
+
 void WebViewBase::childEvent(QChildEvent *ev){
     QWebViewBase::childEvent(ev);
     if(ev->added())
@@ -622,7 +652,6 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
     Application::SetCurrentWindow(m_TreeBank->GetMainWindow());
 
     if(m_DragStarted){
-        GestureAborted();
         QWebViewBase::mouseMoveEvent(ev);
         return;
     }
@@ -641,50 +670,18 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
         return;
     }
 
-    //[[!WEV]]
     int scrollBarWidth = Application::style()->pixelMetric(QStyle::PM_ScrollBarExtent);
+    bool horizontal = m_ScrollBarState == BothScrollBarEnabled
+        ||            m_ScrollBarState == HorizontalScrollBarEnabled;
+    bool vertical   = m_ScrollBarState == BothScrollBarEnabled
+        ||            m_ScrollBarState == VerticalScrollBarEnabled;
     QRect touchableRect =
         QRect(QPoint(),
-              size() - QSize((page()->mainFrame()->scrollBarMaximum(Qt::Horizontal) ? scrollBarWidth : 0),
-                             (page()->mainFrame()->scrollBarMaximum(Qt::Vertical)   ? scrollBarWidth : 0)));
-    //[[/!WEV]]
-    //[[WEV]]
-
-#ifndef WEBENGINE_DRAGDROP
-    // Drag'n'Drop doesn't work correctly yet.
-    // execute link gesture intead of Drag'n'Drop for current.
-
-    if(m_EnableDragHackLocal &&
-       ev->buttons() & Qt::LeftButton &&
-       !m_GestureStartedPos.isNull() &&
-       !m_HadSelection &&
-       (m_ClickedElement &&
-        !m_ClickedElement->IsNull() &&
-        !m_ClickedElement->IsFrameElement() &&
-        (!m_ClickedElement->LinkUrl().isEmpty() ||
-         !m_ClickedElement->ImageUrl().isEmpty()))){
-
-        GestureMoved(LocalPos(ev));
-        QString gesture = GestureToString(m_Gesture);
-        QString action =
-            !m_LeftGestureMap.contains(gesture)
-              ? tr("NoAction")
-            : Page::IsValidAction(m_LeftGestureMap[gesture])
-              ? Action(Page::StringToAction(m_LeftGestureMap[gesture]))->text()
-            : m_LeftGestureMap[gesture];
-        emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
-
-    } else {
-        GestureAborted();
-    }
-    return;
-#endif
-
-    QRect touchableRect = QRect(QPoint(), size());
-    //[[/WEV]]
+              size() - QSize(vertical   ? scrollBarWidth : 0,
+                             horizontal ? scrollBarWidth : 0));
 
     if(ev->buttons() & Qt::LeftButton &&
-       m_EnableDragHackLocal &&
+       !m_GestureStartedPos.isNull() &&
        touchableRect.contains(m_GestureStartedPos) &&
        (m_ClickedElement &&
         !m_ClickedElement->IsNull() &&
@@ -696,7 +693,7 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
             return;
         }
         //[[GWV]]
-        QDrag *drag = new QDrag(ev->widget());
+        QDrag *drag = new QDrag(m_TreeBank);
         //[[/GWV]]
         //[[!GWV]]
         QDrag *drag = new QDrag(this);
@@ -721,14 +718,78 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
             return;
         }
 
-        QPixmap pixmap = CreatePixmapFromElement();
+        QPixmap pixmap = m_HadSelection
+            ? CreatePixmapFromSelection()
+            : CreatePixmapFromElement();
 
-        GestureMoved(LocalPos(ev));
+        //[[WEV]]
+        QRect rect = m_HadSelection
+            ? m_SelectionRegion.boundingRect()
+            : m_ClickedElement->Rectangle().intersected(QRect(QPoint(), size()));
+        QPoint pos = LocalPos(ev) - rect.topLeft();
+        //[[/WEV]]
+        //[[!WEV]]
+        QRect rect;
+        QPoint pos;
+        if(m_HadSelection){
+
+            rect = m_SelectionRegion.boundingRect();
+            pos = LocalPos(ev) - rect.topLeft();
+
+        } else {
+
+            rect = m_ClickedElement->Rectangle();
+
+            if(rect.topLeft().x() && rect.topLeft().y()){
+
+                pos = LocalPos(ev) - rect.topLeft();
+
+            } else if(rect.topRight().x() != size().width() &&
+                      rect.topRight().y()){
+
+                pos = LocalPos(ev) - QPoint(rect.topRight().x() - pixmap.width(),
+                                            rect.topRight().y());
+
+            } else if(rect.bottomLeft().x() &&
+                      rect.bottomLeft().y() != size().height()){
+
+                pos = LocalPos(ev) - QPoint(rect.bottomLeft().x(),
+                                            rect.bottomLeft().y() - pixmap.height());
+
+            } else if(rect.bottomRight().x() != size().width() &&
+                      rect.bottomRight().y() != size().height()){
+
+                pos = LocalPos(ev) - QPoint(rect.bottomRight().x() - pixmap.width(),
+                                            rect.bottomRight().y() - pixmap.height());
+            } else {
+
+                pos = LocalPos(ev) - rect.topLeft();
+            }
+        }
+        //[[/!WEV]]
+
+        if(pixmap.size().width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
+           pixmap.size().height() > MAX_DRAGGING_PIXMAP_HEIGHT){
+
+            pos /= qMax(static_cast<float>(pixmap.size().width()) /
+                        static_cast<float>(MAX_DRAGGING_PIXMAP_WIDTH),
+                        static_cast<float>(pixmap.size().height()) /
+                        static_cast<float>(MAX_DRAGGING_PIXMAP_HEIGHT));
+            pixmap = pixmap.scaled(MAX_DRAGGING_PIXMAP_WIDTH,
+                                   MAX_DRAGGING_PIXMAP_HEIGHT,
+                                   Qt::KeepAspectRatio,
+                                   Qt::SmoothTransformation);
+        }
+
+        if(m_EnableDragHackLocal)
+            GestureMoved(LocalPos(ev));
+        else
+            GestureAborted();
         m_DragStarted = true;
         mime->setImageData(pixmap.toImage());
         drag->setMimeData(mime);
         drag->setPixmap(pixmap);
-        drag->setHotSpot(QPoint(pixmap.width()/2, pixmap.height()/2));
+        drag->setHotSpot(pos);
         drag->exec(Qt::CopyAction | Qt::MoveAction);
         drag->deleteLater();
         ev->setAccepted(true);
@@ -868,8 +929,27 @@ void WebViewBase::dragMoveEvent(QDragMoveEventBase *ev){
 
 void WebViewBase::dropEvent(QDropEventBase *ev){
     emit statusBarMessage(QString());
+    QPoint pos = LocalPos(ev);
+    QList<QUrl> urls = ev->mimeData()->urls();
+    QObject *source = ev->source();
+    //[[!GWV]]
+    QWidget *widget = this;
+    //[[/!GWV]]
+    //[[GWV]]
+    QWidget *widget = m_TreeBank;
+    //[[/GWV]]
+    QString text;
+    if(!ev->mimeData()->text().isEmpty()){
+        text = ev->mimeData()->text().replace(QStringLiteral("\""), QStringLiteral("\\\""));
+    } else if(!urls.isEmpty()){
+        foreach(QUrl u, urls){
+            if(text.isEmpty()) text = u.toString();
+            else text += QStringLiteral("\n") + u.toString();
+        }
+    }
+
     //[[!WEV]]
-    SharedWebElement elem = HitElement(LocalPos(ev));
+    SharedWebElement elem = HitElement(pos);
 
     if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
 
@@ -879,70 +959,57 @@ void WebViewBase::dropEvent(QDropEventBase *ev){
         return;
     }
 
-    if(!m_Gesture.isEmpty()){
-        GestureFinished(LocalPos(ev), Qt::LeftButton);
+    if(!m_Gesture.isEmpty() && source == widget){
+        GestureFinished(pos, Qt::LeftButton);
         ev->setAccepted(true);
         return;
     }
 
     GestureAborted();
 
-    if(ev->mimeData()->urls().isEmpty()){
-        QWebViewBase::dropEvent(ev);
+    if(urls.isEmpty() || source == widget){
+        // do nothing.
+    } else if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source)){
+        QList<QUrl> filtered;
+        foreach(QUrl u, urls){ if(!u.isLocalFile()) filtered << u;}
+        m_TreeBank->OpenInNewViewNode(filtered, true, GetViewNode());
     } else {
         // foreign drag.
-        m_TreeBank->OpenInNewViewNode(ev->mimeData()->urls(), true, GetViewNode());
+        m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
     }
     ev->setAccepted(true);
     //[[/!WEV]]
     //[[WEV]]
-
-#ifdef WEBENGINE_DRAGDROP
-
-    // Drag'n'Drop doesn't work correctly yet.
-
-    //QDropEvent(const QPoint &pos,
-    //           Qt::DropActions actions,
-    //           const QMimeData *data,
-    //           Qt::MouseButtons buttons,
-    //           Qt::KeyboardModifiers modifiers,
-    //           Type type = Drop);
-
-    QPoint pos = ev->pos();
-    Qt::DropActions actions = ev->possibleActions();
-    const QMimeData *data = ev->mimeData();
-    Qt::MouseButtons buttons = ev->mouseButtons();
-    Qt::KeyboardModifiers modifiers = ev->keyboardModifiers();
-
-    CallWithHitElement
-        (LocalPos(ev),
-         [this, pos, actions, data, buttons, modifiers](SharedWebElement elem){
-
-    QDropEvent ev = QDropEvent(pos, actions, data, buttons, modifiers);
+    CallWithHitElement(pos, [this, pos, urls, text, source, widget](SharedWebElement elem){
 
     if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
 
         GestureAborted();
-        QWebViewBase::dropEvent(&ev);
+        elem->SetText(text);
         return;
     }
 
-    if(!m_Gesture.isEmpty()){
-        GestureFinished(LocalPos(&ev), Qt::LeftButton);
+    if(!m_Gesture.isEmpty() && source == widget){
+        GestureFinished(pos, Qt::LeftButton);
         return;
     }
 
     GestureAborted();
 
-    if(!m_DragDataPreparationCompleted || ev.mimeData()->urls().isEmpty()){
-        QWebViewBase::dropEvent(&ev);
+    if(urls.isEmpty() || source == widget){
+        // do nothing.
+    } else if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source)){
+        QList<QUrl> filtered;
+        foreach(QUrl u, urls){ if(!u.isLocalFile()) filtered << u;}
+        m_TreeBank->OpenInNewViewNode(filtered, true, GetViewNode());
+        return;
     } else {
         // foreign drag.
-        m_TreeBank->OpenInNewViewNode(ev.mimeData()->urls(), true, GetViewNode());
+        m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
     }
 
     });
-#endif
+
     QWebViewBase::dropEvent(ev);
     ev->setAccepted(true);
     //[[/WEV]]
@@ -1036,7 +1103,7 @@ bool WebViewBase::nativeEvent(const QByteArray &eventType, void *message, long *
 //[[/!GWV]]
 
 //[[!WEV]]
-namespace {
+namespace{
     class Element : public WebElement{
     public:
         Element()
@@ -1167,6 +1234,9 @@ namespace {
             m_CoordinateOverridden = true;
             m_OverriddenRectangle = rect;
         }
+        void SetText(QString text){
+            m_Element.setAttribute("value", text);
+        }
         QPixmap Pixmap() DECL_OVERRIDE {
             if(m_Pixmap.isNull()){
                 QPixmap pixmap(m_Element.geometry().size());
@@ -1290,9 +1360,7 @@ namespace {
         QRect m_OverriddenRectangle;
     };
 }
-//[[/!WEV]]
 
-//[[!WEV]]
 SharedWebElementList WebViewBase::FindElements(Page::FindElementsOption option){
 
     SharedWebElementList list;
@@ -1408,7 +1476,7 @@ void WebViewBase::CallWithHitElement(const QPoint &pos,
         return;
     }
     page()->runJavaScript
-        (HitElementJsCode(pos),
+        (HitElementJsCode(pos/zoomFactor()),
          [this, callBack](QVariant var){
             if(!var.isValid()){
                 callBack(SharedWebElement());
@@ -1427,7 +1495,7 @@ void WebViewBase::CallWithHitLinkUrl(const QPoint &pos,
         return;
     }
     page()->runJavaScript
-        (HitLinkUrlJsCode(pos),
+        (HitLinkUrlJsCode(pos/zoomFactor()),
          [this, callBack](QVariant url){
             callBack(url.isValid() ? url.toUrl() : QUrl());
         });
@@ -1440,7 +1508,7 @@ void WebViewBase::CallWithHitImageUrl(const QPoint &pos,
         return;
     }
     page()->runJavaScript
-        (HitImageUrlJsCode(pos),
+        (HitImageUrlJsCode(pos/zoomFactor()),
          [this, callBack](QVariant url){
             callBack(url.isValid() ? url.toUrl() : QUrl());
         });
@@ -1468,6 +1536,29 @@ void WebViewBase::CallWithWholeText(StringCallBack callBack){
 
 void WebViewBase::CallWithWholeHtml(StringCallBack callBack){
     if(page()) page()->toHtml(callBack);
+}
+
+void WebViewBase::CallWithSelectionRegion(RegionCallBack callBack){
+    if(!page() || !hasSelection()) callBack(QRegion());
+    page()->runJavaScript
+        (SelectionRegionJsCode(),
+         [this, callBack](QVariant var){
+            QRegion region;
+            if(!var.isValid() || !var.canConvert(QMetaType::QVariantMap)){
+                callBack(region);
+                return;
+            }
+            QVariantMap map = var.toMap();
+            QRect viewport = QRect(QPoint(), size());
+            foreach(QString key, map.keys()){
+                QVariantMap m = map[key].toMap();
+                region |= QRect(m["x"].toInt(),
+                                m["y"].toInt(),
+                                m["width"].toInt(),
+                                m["height"].toInt()).intersected(viewport);
+            }
+            callBack(region);
+        });
 }
 
 void WebViewBase::CallWithEvaluatedJavaScriptResult(const QString &code, VariantCallBack callBack){
