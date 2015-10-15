@@ -194,8 +194,8 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     if(!nd->GetParent()){
         if(nd->GetPrimary()){
             nd = nd->GetPrimary();
-        } else if(!nd->GetChildren().isEmpty()){
-            nd = nd->GetChildren().first();
+        } else if(!nd->HasNoChildren()){
+            nd = nd->GetFirstChild();
         } else if(nd->IsViewNode()){
             m_DummyViewNode->SetParent(nd);
             nd = m_DummyViewNode;
@@ -264,7 +264,7 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     switch (type){
     case Flat:{
 
-        foreach(Node *nd, nd->GetSibling()){
+        foreach(Node *nd, nd->GetSiblings()){
             convertOneNode(nd, 0);
         }
         break;
@@ -277,16 +277,16 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
         if(m_DisplayType == ViewTree || m_DisplayType == TrashTree){
             if(now->GetPrimary())
                 now = now->GetPrimary();
-            else if(!now->GetChildren().isEmpty())
-                now = now->GetChildren().first();
+            else if(!now->HasNoChildren())
+                now = now->GetFirstChild();
         }
 
         for(int i = 0; now != 0; i++){
             convertOneNode(now, i);
             if(now->GetPrimary())
                 now = now->GetPrimary();
-            else if(!now->GetChildren().isEmpty())
-                now = now->GetChildren().first();
+            else if(!now->HasNoChildren())
+                now = now->GetFirstChild();
             else
                 now = 0;
         }
@@ -304,7 +304,7 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
         };
 
         if(IsDisplayingViewNode()){
-            foreach(Node *nd, nd->GetSibling()){
+            foreach(Node *nd, nd->GetSiblings()){
                 convertNodeRec(nd, 0);
             }
         } else if(IsDisplayingHistNode()){
@@ -325,7 +325,7 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
         };
 
         if(IsDisplayingViewNode()){
-            foreach(Node *nd, nd->GetSibling()){
+            foreach(Node *nd, nd->GetSiblings()){
                 convertNodeRec(nd, 0);
             }
         } else if(IsDisplayingHistNode()){
@@ -601,7 +601,7 @@ void GraphicsTableView::SetSortPredicate(){
         if(m_SortFlags & Reverse){
             m_SortPredicate = [](Node *n1, Node *n2) -> bool {
                 if(n1->GetParent() == n2->GetParent())
-                    return n1->GetSibling().indexOf(n1) > n2->GetSibling().indexOf(n2);
+                    return n1->SiblingsIndexOf(n1) > n2->SiblingsIndexOf(n2);
                 if(n1->IsAncestorOf(n2)) return false;
                 if(n2->IsAncestorOf(n1)) return true;
 
@@ -615,12 +615,12 @@ void GraphicsTableView::SetSortPredicate(){
                 n1 = l1.last();
                 n2 = l2.last();
 
-                return n1->GetSibling().indexOf(n1) > n2->GetSibling().indexOf(n2);
+                return n1->SiblingsIndexOf(n1) > n2->SiblingsIndexOf(n2);
             };
         } else {
             m_SortPredicate = [](Node *n1, Node *n2) -> bool {
                 if(n1->GetParent() == n2->GetParent())
-                    return n1->GetSibling().indexOf(n1) < n2->GetSibling().indexOf(n2);
+                    return n1->SiblingsIndexOf(n1) < n2->SiblingsIndexOf(n2);
                 if(n1->IsAncestorOf(n2)) return true;
                 if(n2->IsAncestorOf(n1)) return false;
 
@@ -634,7 +634,7 @@ void GraphicsTableView::SetSortPredicate(){
                 n1 = l1.last();
                 n2 = l2.last();
 
-                return n1->GetSibling().indexOf(n1) < n2->GetSibling().indexOf(n2);
+                return n1->SiblingsIndexOf(n1) < n2->SiblingsIndexOf(n2);
             };
         }
     }
@@ -1445,9 +1445,13 @@ void GraphicsTableView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 
 void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     if(ev->button() == Qt::LeftButton){
-        QRectF rect = m_SelectRect->rect().normalized();
-        m_SelectRect->setRect(rect);
-        QList<QGraphicsItem*> collidings = scene()->collidingItems(m_SelectRect);
+        QRectF rect;
+        QList<QGraphicsItem*> collidings;
+        if(m_SelectRect){
+            rect = m_SelectRect->rect().normalized();
+            m_SelectRect->setRect(rect);
+            collidings = scene()->collidingItems(m_SelectRect);
+        }
 
         if(collidings.isEmpty() &&
            (Application::keyboardModifiers() & Qt::ControlModifier ||
@@ -1493,8 +1497,7 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
                 }
             }
 
-            if(m_SelectRect->rect().isNull() &&
-               ScrollBarAreaRect().contains(ev->pos())){
+            if(rect.isNull() && ScrollBarAreaRect().contains(ev->pos())){
 
                 if(ev->pos().y() <
                    (m_ScrollController->rect().center().y() +
@@ -1505,7 +1508,7 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
                     ThumbList_ScrollDown();
             }
         }
-        m_SelectRect->hide();
+        if(m_SelectRect) m_SelectRect->hide();
         Update(rect);
         ev->setAccepted(true);
 
@@ -1786,7 +1789,7 @@ bool GraphicsTableView::ThumbList_PasteNode(){
 
     Node *nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
     Node *parent = nd->GetParent();
-    NodeList sibling = nd->GetSibling();
+    NodeList sibling = nd->GetSiblings();
     NodeList neworder;
 
     // delete duplicates.
@@ -1929,11 +1932,11 @@ bool GraphicsTableView::ThumbList_DownDirectory(){
     Node *nd = GetHoveredNode();
     if(!nd) return false;
     if(nd->IsViewNode() && !nd->IsDirectory()) return false;
-    if(nd->IsHistNode() && nd->GetChildren().isEmpty()) return false;
+    if(nd->IsHistNode() && nd->HasNoChildren()) return false;
 
     Node *target = 0;
 
-    if(nd->GetChildren().isEmpty()){
+    if(nd->HasNoChildren()){
         if(IsDisplayingViewNode()){
             m_DummyViewNode->SetParent(nd);
             target = m_DummyViewNode;
@@ -1944,7 +1947,7 @@ bool GraphicsTableView::ThumbList_DownDirectory(){
     } else if(nd->GetPrimary()){
         target = nd->GetPrimary();
     } else {
-        target = nd->GetChildren().first();
+        target = nd->GetFirstChild();
     }
 
     // reset scroll.
@@ -2035,7 +2038,7 @@ bool GraphicsTableView::ThumbList_MakeDirectoryWithSameDomainNode(){
     ViewNode *parent = m_CurrentNode->GetParent()->ToViewNode();
     QMap<QString, QList<Node*>> groups;
 
-    foreach(Node *nd, m_CurrentNode->GetSibling()){
+    foreach(Node *nd, m_CurrentNode->GetSiblings()){
         // QUrl("about:blank") and invalid url has empty host,
         // so empty title directory will be made.
         if(!nd->IsDirectory()) groups[nd->GetUrl().host()] << nd;
@@ -2054,7 +2057,7 @@ bool GraphicsTableView::ThumbList_MakeDirectoryWithSameDomainNode(){
         m_TreeBank->SetChildrenOrder(directory, groups[domain]);
     }
 
-    m_CurrentNode = parent->GetChildren().first();
+    m_CurrentNode = parent->GetFirstChild();
 
     // 'ThumbList_Refresh' calls 'm_NodesRegister.clear()'.
     ThumbList_RefreshNoScroll();
@@ -2224,7 +2227,7 @@ bool GraphicsTableView::ThumbList_ToggleTrash(){
     switch (m_DisplayType){
     case HistTree: // fall through.
     case TrashTree:{
-        if(TreeBank::GetViewRoot()->GetChildren().isEmpty()) return false;
+        if(TreeBank::GetViewRoot()->HasNoChildren()) return false;
 
         // reset scroll.
         // want to scroll to 'PrimaryItem'.
@@ -2236,12 +2239,12 @@ bool GraphicsTableView::ThumbList_ToggleTrash(){
         if(TreeBank::GetViewRoot()->GetPrimary()){
             SetCurrent(TreeBank::GetViewRoot()->GetPrimary());
         } else {
-            SetCurrent(TreeBank::GetViewRoot()->GetChildren().first());
+            SetCurrent(TreeBank::GetViewRoot()->GetFirstChild());
         }
         return true;
     }
     case ViewTree:{
-        if(TreeBank::GetTrashRoot()->GetChildren().isEmpty()) return false;
+        if(TreeBank::GetTrashRoot()->HasNoChildren()) return false;
 
         // reset scroll.
         // want to scroll to 'PrimaryItem'.
@@ -2253,7 +2256,7 @@ bool GraphicsTableView::ThumbList_ToggleTrash(){
         if(TreeBank::GetTrashRoot()->GetPrimary()){
             SetCurrent(TreeBank::GetTrashRoot()->GetPrimary());
         } else {
-            SetCurrent(TreeBank::GetTrashRoot()->GetChildren().first());
+            SetCurrent(TreeBank::GetTrashRoot()->GetFirstChild());
         }
         return true;
     }
@@ -2828,7 +2831,7 @@ bool GraphicsTableView::ThumbList_TransferToUpDirectory(){
     m_NodesRegister = m_NodesRegister.toSet().toList();
 
     Node *nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
-    NodeList sibling = nd->GetSibling();
+    NodeList sibling = nd->GetSiblings();
 
     foreach(Node *nd, m_NodesRegister){
         if(!sibling.contains(nd))
@@ -2845,7 +2848,7 @@ bool GraphicsTableView::ThumbList_TransferToUpDirectory(){
     // reuse variable.
     nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
     m_TreeBank->SetChildrenOrder
-        (nd->GetParent(), nd->GetSibling() + m_NodesRegister);
+        (nd->GetParent(), nd->GetSiblings() + m_NodesRegister);
 
     bool hasSuspended = StatusBarMessageIsSuspended();
     if(!hasSuspended) SuspendStatusBarMessage();
@@ -2868,7 +2871,7 @@ bool GraphicsTableView::ThumbList_TransferToDownDirectory(){
     m_NodesRegister = m_NodesRegister.toSet().toList();
 
     Node *nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
-    NodeList sibling = nd->GetSibling();
+    NodeList sibling = nd->GetSiblings();
 
     foreach(Node *nd, m_NodesRegister){
         if(!sibling.contains(nd))
@@ -2885,7 +2888,7 @@ bool GraphicsTableView::ThumbList_TransferToDownDirectory(){
     // reuse variable.
     nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
     m_TreeBank->SetChildrenOrder
-        (nd->GetParent(), nd->GetSibling() + m_NodesRegister);
+        (nd->GetParent(), nd->GetSiblings() + m_NodesRegister);
 
     bool hasSuspended = StatusBarMessageIsSuspended();
     if(!hasSuspended) SuspendStatusBarMessage();
@@ -3333,11 +3336,11 @@ void InPlaceNotifier::paint(QPainter *painter,
     if(image.isNull()){
         Node *tempnode = m_Node;
         if(tempnode->IsViewNode() && tempnode->IsDirectory()){
-            while(!tempnode->GetChildren().isEmpty()){
+            while(!tempnode->HasNoChildren()){
                 if(tempnode->GetPrimary()){
                     tempnode = tempnode->GetPrimary();
                 } else {
-                    tempnode = tempnode->GetChildren().first();
+                    tempnode = tempnode->GetFirstChild();
                 }
             }
             if(!tempnode->GetImage().isNull()){

@@ -22,6 +22,7 @@
 #include "application.hpp"
 #include "mainwindow.hpp"
 #include "treebank.hpp"
+#include "notifier.hpp"
 #include "view.hpp"
 
 QLocalServer *Receiver::m_LocalServer = 0;
@@ -223,23 +224,38 @@ void Receiver::Join(){
 }
 
 void Receiver::ResizeNotify(QSize size){
+    Notifier *notifier = m_TreeBank->GetNotifier();
+
     int len = m_SuggestStrings.length();
 
-    int w = m_TreeBank->GetNotifier()
-        ? size.width() * NOTIFIER_WIDTH_PERCENTAGE / 100
-        : size.width();
+    int nw = notifier
+        ? qMax(size.width() * NOTIFIER_WIDTH_PERCENTAGE / 100,
+               NOTIFIER_MINIMUM_WIDTH)
+        : 0;
 
+    int w = size.width() - nw;
     int h = RECEIVER_HEIGHT + len * SUGGEST_HEIGHT;
-
-    QPoint pos = QPoint(m_TreeBank->GetNotifier()
-                        ? qMax(w, NOTIFIER_MINIMUM_WIDTH) : 0,
-                        size.height() - h);
-
-    setGeometry(QRect(IsPurged() ? m_TreeBank->mapToGlobal(pos) : pos,
-                      QSize(m_TreeBank->GetNotifier()
-                            ? size.width() - qMax(w, NOTIFIER_MINIMUM_WIDTH)
-                            : size.width(),
-                            h)));
+    QPoint pos;
+    if(notifier){
+        switch(notifier->m_Position){
+        case Notifier::NorthWest:
+            pos = QPoint(nw, 0);
+            break;
+        case Notifier::NorthEast:
+            pos = QPoint(0, 0);
+            break;
+        case Notifier::SouthWest:
+            pos = QPoint(nw, size.height() - h);
+            break;
+        case Notifier::SouthEast:
+            pos = QPoint(0, size.height() - h);
+            break;
+        }
+    } else {
+        pos = QPoint(0, size.height() - h);
+    }
+    if(IsPurged()) pos = m_TreeBank->mapToGlobal(pos);
+    setGeometry(QRect(pos, QSize(w, h)));
     m_LineEdit->setGeometry(0, h - LINEEDIT_HEIGHT,
                             width(), LINEEDIT_HEIGHT);
 }

@@ -781,12 +781,21 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
                                    Qt::SmoothTransformation);
         }
 
-        if(m_EnableDragHackLocal)
+        if(m_HadSelection){
+            mime->setImageData(pixmap.toImage());
+        } else {
+            QPixmap element = m_ClickedElement->Pixmap();
+            if(element.isNull())
+                mime->setImageData(pixmap.toImage());
+            else
+                mime->setImageData(element.toImage());
+        }
+        if(m_EnableDragHackLocal){
             GestureMoved(LocalPos(ev));
-        else
+        } else {
             GestureAborted();
+        }
         m_DragStarted = true;
-        mime->setImageData(pixmap.toImage());
         drag->setMimeData(mime);
         drag->setPixmap(pixmap);
         drag->setHotSpot(pos);
@@ -804,6 +813,7 @@ void WebViewBase::mousePressEvent(QMouseEventBase *ev){
     QString mouse;
 
     Application::AddModifiersToString(mouse, ev->modifiers());
+    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
     Application::AddMouseButtonToString(mouse, ev->button());
 
     if(m_MouseMap.contains(mouse)){
@@ -814,6 +824,7 @@ void WebViewBase::mousePressEvent(QMouseEventBase *ev){
                 ev->setAccepted(false);
                 return;
             }
+            GestureAborted();
             ev->setAccepted(true);
             return;
         }

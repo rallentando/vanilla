@@ -23,6 +23,13 @@ class Notifier : public QWidget{
     Q_OBJECT
 
 public:
+    enum Position{
+        NorthWest,
+        NorthEast,
+        SouthWest,
+        SouthEast,
+    } m_Position;
+
     Notifier(TreeBank *parent = 0, bool purge = false);
     ~Notifier();
     bool IsPurged();

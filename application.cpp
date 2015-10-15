@@ -230,6 +230,8 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
             foreach(int id, ids){
                 keys.removeOne(QStringLiteral("tableview%1").arg(id));
                 keys.removeOne(QStringLiteral( "geometry%1").arg(id));
+                keys.removeOne(QStringLiteral( "notifier%1").arg(id));
+                keys.removeOne(QStringLiteral( "receiver%1").arg(id));
                 keys.removeOne(QStringLiteral(  "menubar%1").arg(id));
                 keys.removeOne(QStringLiteral(   "status%1").arg(id));
             }

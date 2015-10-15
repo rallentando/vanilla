@@ -35,12 +35,6 @@
         <translation>過去のデータを復元しました</translation>
     </message>
     <message>
-        <source>Because of a failure to read the latest file,
-it was restored from a backup file.</source>
-        <translation type="vanished">最新のデータの読み込みに失敗したため,
-過去のデータから復元しました.</translation>
-    </message>
-    <message>
         <location filename="../application.cpp" line="1378"/>
         <location filename="../application.cpp" line="1555"/>
         <source>Because of a failure to read the latest file, it was restored from a backup file.</source>
@@ -119,393 +113,306 @@ it was restored from a backup file.</source>
         <source>Select download policy.</source>
         <translation>ダウンロードポリシーを選択してください.</translation>
     </message>
-    <message>
-        <source>Select browser</source>
-        <translation type="obsolete">ブラウザを選択してください</translation>
-    </message>
-    <message>
-        <source>Vanilla is a graphical web browser.
-Browser must be free.
-Browser must be minimal.
-</source>
-        <translation type="vanished">ブラウザは自由であるべきだ.
-ブラウザは最小であるべきだ.
-&apos;Vanilla&apos;.</translation>
-    </message>
-</context>
-<context>
-    <name>Dialog</name>
-    <message>
-        <source>OK</source>
-        <translation type="vanished">OK</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation type="vanished">キャンセル</translation>
-    </message>
-    <message>
-        <source>Allow</source>
-        <translation type="vanished">許可</translation>
-    </message>
-    <message>
-        <source>Block</source>
-        <translation type="vanished">ブロック</translation>
-    </message>
-    <message>
-        <source>Yes</source>
-        <translation type="vanished">はい</translation>
-    </message>
-    <message>
-        <source>No</source>
-        <translation type="vanished">いいえ</translation>
-    </message>
-    <message>
-        <source>Show Details</source>
-        <translation type="vanished">詳細を表示</translation>
-    </message>
-    <message>
-        <source>UserName:</source>
-        <translation type="vanished">ユーザ名:</translation>
-    </message>
-    <message>
-        <source>Password:</source>
-        <translation type="vanished">パスワード:</translation>
-    </message>
-    <message>
-        <source>User authentication.</source>
-        <translation type="vanished">ユーザ認証.</translation>
-    </message>
-</context>
-<context>
-    <name>DownloadItem</name>
-    <message>
-        <source>FixedLocale</source>
-        <translation type="vanished">固定ディレクトリ</translation>
-    </message>
-    <message>
-        <source>DownloadFolder</source>
-        <translation type="vanished">ダウンロードフォルダ</translation>
-    </message>
-    <message>
-        <source>AskForEachDownload</source>
-        <translation type="vanished">ダウンロードごとに確認</translation>
-    </message>
-    <message>
-        <source>Download policy</source>
-        <translation type="vanished">ダウンロードポリシー</translation>
-    </message>
-    <message>
-        <source>Select download policy.</source>
-        <translation type="vanished">ダウンロードポリシーを選択してください.</translation>
-    </message>
 </context>
 <context>
     <name>Gadgets</name>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2006"/>
+        <location filename="../gadgets/gadgets.cpp" line="2007"/>
         <source>Import</source>
         <translation>インポート</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2007"/>
+        <location filename="../gadgets/gadgets.cpp" line="2008"/>
         <source>Export</source>
         <translation>エクスポート</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2008"/>
+        <location filename="../gadgets/gadgets.cpp" line="2009"/>
         <source>AboutVanilla</source>
         <translation>Vanillaについて</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2063"/>
+        <location filename="../gadgets/gadgets.cpp" line="2064"/>
         <source>Deactivate</source>
         <translation>中止</translation>
     </message>
     <message>
-        <source>Reflesh</source>
-        <translation type="obsolete">画面の更新</translation>
-    </message>
-    <message>
-        <location filename="../gadgets/gadgets.cpp" line="2077"/>
+        <location filename="../gadgets/gadgets.cpp" line="2078"/>
         <source>OpenNode</source>
         <translation>開く(ノード)</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2078"/>
+        <location filename="../gadgets/gadgets.cpp" line="2079"/>
         <source>DeleteNode</source>
         <translation>削除(ノード)</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2082"/>
+        <location filename="../gadgets/gadgets.cpp" line="2083"/>
         <source>PasteNode</source>
         <translation>貼り付け(ノード)</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2083"/>
+        <location filename="../gadgets/gadgets.cpp" line="2084"/>
         <source>RestoreNode</source>
         <translation>ここに復元</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2086"/>
+        <location filename="../gadgets/gadgets.cpp" line="2087"/>
         <source>UpDirectory</source>
         <translation>上の階層</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2087"/>
+        <location filename="../gadgets/gadgets.cpp" line="2088"/>
         <source>DownDirectory</source>
         <translation>下の階層</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2090"/>
+        <location filename="../gadgets/gadgets.cpp" line="2091"/>
         <source>MakeDirectory</source>
         <translation>新規ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2088"/>
+        <location filename="../gadgets/gadgets.cpp" line="2089"/>
         <source>MakeLocalNode</source>
         <translation>ここにローカルノードを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2089"/>
+        <location filename="../gadgets/gadgets.cpp" line="2090"/>
         <source>MakeFtpNode</source>
         <translation>ここにFTPノードを開く</translation>
     </message>
     <message>
-        <source>RenameDirectory</source>
-        <translation type="obsolete">名前変更</translation>
-    </message>
-    <message>
-        <location filename="../gadgets/gadgets.cpp" line="2106"/>
+        <location filename="../gadgets/gadgets.cpp" line="2107"/>
         <source>ToggleTrash</source>
         <translation>ゴミ箱切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2107"/>
+        <location filename="../gadgets/gadgets.cpp" line="2108"/>
         <source>ScrollUp</source>
         <translation>上にスクロール</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2108"/>
+        <location filename="../gadgets/gadgets.cpp" line="2109"/>
         <source>ScrollDown</source>
         <translation>下にスクロール</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2109"/>
+        <location filename="../gadgets/gadgets.cpp" line="2110"/>
         <source>PageUp</source>
         <translation>一画面上に</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2110"/>
+        <location filename="../gadgets/gadgets.cpp" line="2111"/>
         <source>PageDown</source>
         <translation>一画面下に</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2111"/>
+        <location filename="../gadgets/gadgets.cpp" line="2112"/>
         <source>ZoomIn</source>
         <translation>ズームイン</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2112"/>
+        <location filename="../gadgets/gadgets.cpp" line="2113"/>
         <source>ZoomOut</source>
         <translation>ズームアウト</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2113"/>
+        <location filename="../gadgets/gadgets.cpp" line="2114"/>
         <source>MoveToUpperItem</source>
         <translation>上のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2114"/>
+        <location filename="../gadgets/gadgets.cpp" line="2115"/>
         <source>MoveToLowerItem</source>
         <translation>下のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2115"/>
+        <location filename="../gadgets/gadgets.cpp" line="2116"/>
         <source>MoveToRightItem</source>
         <translation>右のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2116"/>
+        <location filename="../gadgets/gadgets.cpp" line="2117"/>
         <source>MoveToLeftItem</source>
         <translation>左のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2119"/>
+        <location filename="../gadgets/gadgets.cpp" line="2120"/>
         <source>MoveToFirstItem</source>
         <translation>最初のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2120"/>
+        <location filename="../gadgets/gadgets.cpp" line="2121"/>
         <source>MoveToLastItem</source>
         <translation>最後のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2032"/>
+        <location filename="../gadgets/gadgets.cpp" line="2033"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1987"/>
+        <location filename="../gadgets/gadgets.cpp" line="1988"/>
         <source>UpKey</source>
         <translation>↑</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1988"/>
+        <location filename="../gadgets/gadgets.cpp" line="1989"/>
         <source>DownKey</source>
         <translation>↓</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1989"/>
+        <location filename="../gadgets/gadgets.cpp" line="1990"/>
         <source>RightKey</source>
         <translation>→</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1990"/>
+        <location filename="../gadgets/gadgets.cpp" line="1991"/>
         <source>LeftKey</source>
         <translation>←</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1991"/>
+        <location filename="../gadgets/gadgets.cpp" line="1992"/>
         <source>HomeKey</source>
         <translation>ホームキー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1992"/>
+        <location filename="../gadgets/gadgets.cpp" line="1993"/>
         <source>EndKey</source>
         <translation>エンドキー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1993"/>
+        <location filename="../gadgets/gadgets.cpp" line="1994"/>
         <source>PageUpKey</source>
         <translation>ページアップキー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1994"/>
+        <location filename="../gadgets/gadgets.cpp" line="1995"/>
         <source>PageDownKey</source>
         <translation>ページダウンキー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2018"/>
+        <location filename="../gadgets/gadgets.cpp" line="2019"/>
         <source>ToggleMinimized</source>
         <translation>最小化切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2017"/>
+        <location filename="../gadgets/gadgets.cpp" line="2018"/>
         <source>ToggleMaximized</source>
         <translation>最大化切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2016"/>
+        <location filename="../gadgets/gadgets.cpp" line="2017"/>
         <source>ToggleFullScreen</source>
         <translation>フルスクリーン切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2022"/>
+        <location filename="../gadgets/gadgets.cpp" line="2023"/>
         <source>NewWindow</source>
         <translation>新規ウィンドウ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2023"/>
+        <location filename="../gadgets/gadgets.cpp" line="2024"/>
         <source>CloseWindow</source>
         <translation>ウィンドウを閉じる</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2024"/>
+        <location filename="../gadgets/gadgets.cpp" line="2025"/>
         <source>SwitchWindow</source>
         <translation>ウィンドウ切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2033"/>
+        <location filename="../gadgets/gadgets.cpp" line="2034"/>
         <source>Restore</source>
         <translation>復元</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2034"/>
+        <location filename="../gadgets/gadgets.cpp" line="2035"/>
         <source>Recreate</source>
         <translation>再生成</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2036"/>
+        <location filename="../gadgets/gadgets.cpp" line="2037"/>
         <source>PrevView</source>
         <translation>前のビュー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2035"/>
+        <location filename="../gadgets/gadgets.cpp" line="2036"/>
         <source>NextView</source>
         <translation>次のビュー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2037"/>
+        <location filename="../gadgets/gadgets.cpp" line="2038"/>
         <source>BuryView</source>
         <translation>最前面のビューを最背面へ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2038"/>
+        <location filename="../gadgets/gadgets.cpp" line="2039"/>
         <source>DigView</source>
         <translation>最背面のビューを最前面へ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2039"/>
+        <location filename="../gadgets/gadgets.cpp" line="2040"/>
         <source>NewViewNode</source>
         <translation>新規ビューノード</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2040"/>
+        <location filename="../gadgets/gadgets.cpp" line="2041"/>
         <source>NewHistNode</source>
         <translation>新規ヒストノード</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2041"/>
+        <location filename="../gadgets/gadgets.cpp" line="2042"/>
         <source>CloneViewNode</source>
         <translation>ビューノード複製</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2042"/>
+        <location filename="../gadgets/gadgets.cpp" line="2043"/>
         <source>CloneHistNode</source>
         <translation>ヒストノード複製</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2047"/>
+        <location filename="../gadgets/gadgets.cpp" line="2048"/>
         <source>OpenTextSeeker</source>
         <translation>インクリメンタルサーチを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2048"/>
+        <location filename="../gadgets/gadgets.cpp" line="2049"/>
         <source>OpenQueryEditor</source>
         <translation>検索を開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2049"/>
+        <location filename="../gadgets/gadgets.cpp" line="2050"/>
         <source>OpenUrlEditor</source>
         <translation>URLエディタを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2050"/>
+        <location filename="../gadgets/gadgets.cpp" line="2051"/>
         <source>OpenCommand</source>
         <translation>コマンド</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2043"/>
+        <location filename="../gadgets/gadgets.cpp" line="2044"/>
         <source>DisplayAccessKey</source>
         <translation>アクセスーの表示</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2044"/>
+        <location filename="../gadgets/gadgets.cpp" line="2045"/>
         <source>DisplayViewTree</source>
         <translation>ビューツリーを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2045"/>
+        <location filename="../gadgets/gadgets.cpp" line="2046"/>
         <source>DisplayHistTree</source>
         <translation>ヒストツリーを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2046"/>
+        <location filename="../gadgets/gadgets.cpp" line="2047"/>
         <source>DisplayTrashTree</source>
         <translation>ゴミ箱を開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2013"/>
+        <location filename="../gadgets/gadgets.cpp" line="2014"/>
         <source>ToggleNotifier</source>
         <translation>通知領域切り替え</translation>
     </message>
@@ -515,301 +422,297 @@ Browser must be minimal.
         <translation>ノードを別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2014"/>
+        <location filename="../gadgets/gadgets.cpp" line="2015"/>
         <source>ToggleReceiver</source>
         <translation>コマンド領域切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2015"/>
+        <location filename="../gadgets/gadgets.cpp" line="2016"/>
         <source>ToggleMenuBar</source>
         <translation>メニューバー切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2019"/>
+        <location filename="../gadgets/gadgets.cpp" line="2020"/>
         <source>ToggleShaded</source>
         <translation>ロールアップ切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2020"/>
+        <location filename="../gadgets/gadgets.cpp" line="2021"/>
         <source>ShadeWindow</source>
         <translation>ウィンドウロールアップ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2021"/>
+        <location filename="../gadgets/gadgets.cpp" line="2022"/>
         <source>UnshadeWindow</source>
         <translation>ロールアップ解除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2025"/>
+        <location filename="../gadgets/gadgets.cpp" line="2026"/>
         <source>NextWindow</source>
         <translation>次のウィンドウ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2026"/>
+        <location filename="../gadgets/gadgets.cpp" line="2027"/>
         <source>PrevWindow</source>
         <translation>前のウィンドウ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2075"/>
+        <location filename="../gadgets/gadgets.cpp" line="2076"/>
         <source>Refresh</source>
         <translation>再描画</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2076"/>
+        <location filename="../gadgets/gadgets.cpp" line="2077"/>
         <source>RefreshNoScroll</source>
         <translation>再描画(スクロールなし)</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2079"/>
+        <location filename="../gadgets/gadgets.cpp" line="2080"/>
         <source>DeleteRightNode</source>
         <translation>右側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2080"/>
+        <location filename="../gadgets/gadgets.cpp" line="2081"/>
         <source>DeleteLeftNode</source>
         <translation>左側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2081"/>
+        <location filename="../gadgets/gadgets.cpp" line="2082"/>
         <source>DeleteOtherNode</source>
         <translation>このノード以外を削除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2084"/>
+        <location filename="../gadgets/gadgets.cpp" line="2085"/>
         <source>NewNode</source>
         <translation>新規ノード</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2085"/>
+        <location filename="../gadgets/gadgets.cpp" line="2086"/>
         <source>CloneNode</source>
         <translation>ノード複製</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2091"/>
+        <location filename="../gadgets/gadgets.cpp" line="2092"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation>選択ノードでディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2092"/>
+        <location filename="../gadgets/gadgets.cpp" line="2093"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation>ドメインごとにディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2093"/>
+        <location filename="../gadgets/gadgets.cpp" line="2094"/>
         <source>RenameNode</source>
         <translation>リネーム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2094"/>
+        <location filename="../gadgets/gadgets.cpp" line="2095"/>
         <source>CopyNodeUrl</source>
         <translation>ノードURLをコピー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2095"/>
+        <location filename="../gadgets/gadgets.cpp" line="2096"/>
         <source>CopyNodeTitle</source>
         <translation>ノードタイトルをコピー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2096"/>
+        <location filename="../gadgets/gadgets.cpp" line="2097"/>
         <source>CopyNodeAsLink</source>
         <translation>ノードをリンクとしてコピー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2097"/>
+        <location filename="../gadgets/gadgets.cpp" line="2098"/>
         <source>OpenNodeWithIE</source>
         <translation>ノードをIEで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2098"/>
+        <location filename="../gadgets/gadgets.cpp" line="2099"/>
         <source>OpenNodeWithFF</source>
         <translation>ノードをFirefoxで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2099"/>
+        <location filename="../gadgets/gadgets.cpp" line="2100"/>
         <source>OpenNodeWithOpera</source>
         <translation>ノードをOperaで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2100"/>
+        <location filename="../gadgets/gadgets.cpp" line="2101"/>
         <source>OpenNodeWithOPR</source>
         <translation>ノードをOPRで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2101"/>
+        <location filename="../gadgets/gadgets.cpp" line="2102"/>
         <source>OpenNodeWithSafari</source>
         <translation>ノードをSafariで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2102"/>
+        <location filename="../gadgets/gadgets.cpp" line="2103"/>
         <source>OpenNodeWithChrome</source>
         <translation>ノードをChromeで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2103"/>
+        <location filename="../gadgets/gadgets.cpp" line="2104"/>
         <source>OpenNodeWithSleipnir</source>
         <translation>ノードをSleipnirで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2104"/>
+        <location filename="../gadgets/gadgets.cpp" line="2105"/>
         <source>OpenNodeWithVivaldi</source>
         <translation>ノードをVivaldiで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2105"/>
+        <location filename="../gadgets/gadgets.cpp" line="2106"/>
         <source>OpenNodeWithCustom</source>
         <translation>ノードを他のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2117"/>
+        <location filename="../gadgets/gadgets.cpp" line="2118"/>
         <source>MoveToPrevPage</source>
         <translation>前のページ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2118"/>
+        <location filename="../gadgets/gadgets.cpp" line="2119"/>
         <source>MoveToNextPage</source>
         <translation>次のページ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2121"/>
+        <location filename="../gadgets/gadgets.cpp" line="2122"/>
         <source>SelectToUpperItem</source>
         <translation>上のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2122"/>
+        <location filename="../gadgets/gadgets.cpp" line="2123"/>
         <source>SelectToLowerItem</source>
         <translation>下のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2123"/>
+        <location filename="../gadgets/gadgets.cpp" line="2124"/>
         <source>SelectToRightItem</source>
         <translation>右のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2124"/>
+        <location filename="../gadgets/gadgets.cpp" line="2125"/>
         <source>SelectToLeftItem</source>
         <translation>左のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2125"/>
+        <location filename="../gadgets/gadgets.cpp" line="2126"/>
         <source>SelectToPrevPage</source>
         <translation>前のページまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2126"/>
+        <location filename="../gadgets/gadgets.cpp" line="2127"/>
         <source>SelectToNextPage</source>
         <translation>次のページまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2127"/>
+        <location filename="../gadgets/gadgets.cpp" line="2128"/>
         <source>SelectToFirstItem</source>
         <translation>最初のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2128"/>
+        <location filename="../gadgets/gadgets.cpp" line="2129"/>
         <source>SelectToLastItem</source>
         <translation>最後のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2129"/>
+        <location filename="../gadgets/gadgets.cpp" line="2130"/>
         <source>SelectItem</source>
         <translation>このアイテムを選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2130"/>
+        <location filename="../gadgets/gadgets.cpp" line="2131"/>
         <source>SelectRange</source>
         <translation>このアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2131"/>
+        <location filename="../gadgets/gadgets.cpp" line="2132"/>
         <source>SelectAll</source>
         <translation>すべて選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2132"/>
+        <location filename="../gadgets/gadgets.cpp" line="2133"/>
         <source>ClearSelection</source>
         <translation>選択解除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2133"/>
+        <location filename="../gadgets/gadgets.cpp" line="2134"/>
         <source>TransferToUpper</source>
         <translation>上に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2134"/>
+        <location filename="../gadgets/gadgets.cpp" line="2135"/>
         <source>TransferToLower</source>
         <translation>下に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2135"/>
+        <location filename="../gadgets/gadgets.cpp" line="2136"/>
         <source>TransferToRight</source>
         <translation>右に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2136"/>
+        <location filename="../gadgets/gadgets.cpp" line="2137"/>
         <source>TransferToLeft</source>
         <translation>左に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2137"/>
+        <location filename="../gadgets/gadgets.cpp" line="2138"/>
         <source>TransferToPrevPage</source>
         <translation>前のページに移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2138"/>
+        <location filename="../gadgets/gadgets.cpp" line="2139"/>
         <source>TransferToNextPage</source>
         <translation>次のページに移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2139"/>
+        <location filename="../gadgets/gadgets.cpp" line="2140"/>
         <source>TransferToFirst</source>
         <translation>先頭に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2140"/>
+        <location filename="../gadgets/gadgets.cpp" line="2141"/>
         <source>TransferToLast</source>
         <translation>末尾に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2141"/>
+        <location filename="../gadgets/gadgets.cpp" line="2142"/>
         <source>TransferToUpDirectory</source>
         <translation>上のディレクトリに移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2142"/>
+        <location filename="../gadgets/gadgets.cpp" line="2143"/>
         <source>TransferToDownDirectory</source>
         <translation>下のディレクトリに移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2143"/>
+        <location filename="../gadgets/gadgets.cpp" line="2144"/>
         <source>SwitchNodeCollectionType</source>
         <translation>ノードコレクションタイプを切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2144"/>
+        <location filename="../gadgets/gadgets.cpp" line="2145"/>
         <source>SwitchNodeCollectionTypeReverse</source>
         <translation>ノードコレクションタイプを切り替え(逆順)</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2175"/>
+        <location filename="../gadgets/gadgets.cpp" line="2176"/>
         <source>OpenNodeWith%1</source>
         <translation>ノードを%1で開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2419"/>
+        <location filename="../gadgets/gadgets.cpp" line="2420"/>
         <source>Current selection: %1</source>
         <translation>現在の選択: %1</translation>
     </message>
     <message>
-        <source>About</source>
-        <translation type="obsolete">Vanillaについて</translation>
-    </message>
-    <message>
-        <location filename="../gadgets/gadgets.cpp" line="2009"/>
+        <location filename="../gadgets/gadgets.cpp" line="2010"/>
         <source>AboutQt</source>
         <translation>Qtについて</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2010"/>
+        <location filename="../gadgets/gadgets.cpp" line="2011"/>
         <source>Quit</source>
         <translation>終了</translation>
     </message>
@@ -818,8 +721,8 @@ Browser must be minimal.
     <name>GraphicsTableView</name>
     <message>
         <location filename="../gadgets/graphicstableview.cpp" line="436"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2945"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2982"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2953"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2990"/>
         <source>Displaying %1 nodes.</source>
         <translation>表示: %1 ノード.</translation>
     </message>
@@ -854,40 +757,24 @@ Browser must be minimal.
         <translation>更新日時でソート</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2061"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2069"/>
         <source>Invalid directory contents.</source>
         <translation>無効なディレクトリ.</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2062"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2070"/>
         <source>This directory has no contents or all nodes have same domain.</source>
         <translation>このディレクトリは空であるかすべてのノードが同じドメインを持っています.</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2537"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2562"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2545"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2570"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>ズーム %1 %</translation>
     </message>
 </context>
 <context>
     <name>GraphicsWebView</name>
-    <message>
-        <source>started loading.</source>
-        <translation type="obsolete">開始.</translation>
-    </message>
-    <message>
-        <source>loading ... (%1 percent)</source>
-        <translation type="obsolete">読み込み中...(%1 %)</translation>
-    </message>
-    <message>
-        <source>finished loading.</source>
-        <translation type="obsolete">完了.</translation>
-    </message>
-    <message>
-        <source>failed to load.</source>
-        <translation type="obsolete">失敗.</translation>
-    </message>
     <message>
         <location filename="../gen/graphicswebview.cpp" line="164"/>
         <location filename="../gen/graphicswebview.cpp" line="170"/>
@@ -915,8 +802,8 @@ Browser must be minimal.
         <translation>失敗.</translation>
     </message>
     <message>
-        <location filename="../gen/graphicswebview.cpp" line="535"/>
-        <location filename="../gen/graphicswebview.cpp" line="702"/>
+        <location filename="../gen/graphicswebview.cpp" line="542"/>
+        <location filename="../gen/graphicswebview.cpp" line="781"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
@@ -1442,10 +1329,6 @@ Browser must be minimal.
         <translation>ノードを%1で開く</translation>
     </message>
     <message>
-        <source>Reflesh</source>
-        <translation type="obsolete">画面の更新</translation>
-    </message>
-    <message>
         <location filename="../view/localview.cpp" line="920"/>
         <source>OpenNode</source>
         <translation>開く(ノード)</translation>
@@ -1494,10 +1377,6 @@ Browser must be minimal.
         <location filename="../view/localview.cpp" line="936"/>
         <source>RenameNode</source>
         <translation>リネーム</translation>
-    </message>
-    <message>
-        <source>RenameDirectory</source>
-        <translation type="obsolete">名前変更</translation>
     </message>
     <message>
         <location filename="../view/localview.cpp" line="949"/>
@@ -1563,10 +1442,6 @@ Browser must be minimal.
         <location filename="../view/localview.cpp" line="963"/>
         <source>MoveToLastItem</source>
         <translation>最後のアイテム</translation>
-    </message>
-    <message>
-        <source>About</source>
-        <translation type="obsolete">Vanillaについて</translation>
     </message>
     <message>
         <location filename="../view/localview.cpp" line="852"/>
@@ -1694,19 +1569,6 @@ Browser must be minimal.
     </message>
 </context>
 <context>
-    <name>NetControl</name>
-    <message>
-        <source>Restored from a back up file</source>
-        <translation type="obsolete">過去のデータを復元しました</translation>
-    </message>
-    <message>
-        <source>Because of a failure to read the latest file,
-it was restored from a backup file.</source>
-        <translation type="obsolete">最新のデータの読み込みに失敗したため,
-過去のデータから復元しました.</translation>
-    </message>
-</context>
-<context>
     <name>NetworkAccessManager</name>
     <message>
         <location filename="../networkcontroller.cpp" line="136"/>
@@ -1718,34 +1580,6 @@ it was restored from a backup file.</source>
         <location filename="../networkcontroller.cpp" line="138"/>
         <source>Ignore errors in this access?</source>
         <translation>このアクセスでは無視しますか?</translation>
-    </message>
-    <message>
-        <source>Ssl errors: </source>
-        <translation type="vanished">SSLエラー:</translation>
-    </message>
-    <message>
-        <source>BlockAccess</source>
-        <translation type="vanished">アクセスしない</translation>
-    </message>
-    <message>
-        <source>IgnoreSslErrors</source>
-        <translation type="vanished">SSLエラーを無視</translation>
-    </message>
-    <message>
-        <source>AskForEachAccess</source>
-        <translation type="vanished">アクセスごとに確認</translation>
-    </message>
-    <message>
-        <source>AskForEachHost</source>
-        <translation type="vanished">ホストごとに確認</translation>
-    </message>
-    <message>
-        <source>Ssl error policy</source>
-        <translation type="vanished">SSLエラーポリシー</translation>
-    </message>
-    <message>
-        <source>Select ssl error policy.</source>
-        <translation type="vanished">SSLエラーポリシーを選択してください.</translation>
     </message>
     <message>
         <location filename="../networkcontroller.cpp" line="163"/>
@@ -1792,147 +1626,22 @@ it was restored from a backup file.</source>
 <context>
     <name>NetworkController</name>
     <message>
-        <location filename="../networkcontroller.cpp" line="1122"/>
+        <location filename="../networkcontroller.cpp" line="1128"/>
         <source>Restored from a back up file</source>
         <translation>過去のデータを復元しました</translation>
     </message>
     <message>
-        <location filename="../networkcontroller.cpp" line="1123"/>
+        <location filename="../networkcontroller.cpp" line="1129"/>
         <source>Because of a failure to read the latest file, it was restored from a backup file.</source>
         <translation>最新のデータの読み込みに失敗したため,過去のデータから復元しました.</translation>
-    </message>
-    <message>
-        <source>Because of a failure to read the latest file,
-it was restored from a backup file.</source>
-        <translation type="vanished">最新のデータの読み込みに失敗したため,
-過去のデータから復元しました.</translation>
-    </message>
-</context>
-<context>
-    <name>NonModalDialog</name>
-    <message>
-        <source>OK</source>
-        <translation type="vanished">OK</translation>
-    </message>
-    <message>
-        <source>Yes</source>
-        <translation type="vanished">はい</translation>
-    </message>
-    <message>
-        <source>No</source>
-        <translation type="vanished">いいえ</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation type="vanished">キャンセル</translation>
-    </message>
-    <message>
-        <source>Allow</source>
-        <translation type="vanished">許可</translation>
-    </message>
-    <message>
-        <source>Block</source>
-        <translation type="vanished">ブロック</translation>
     </message>
 </context>
 <context>
     <name>Notifier</name>
     <message>
-        <source>Load</source>
-        <translation type="obsolete">移動</translation>
-    </message>
-    <message>
-        <source>Reload</source>
-        <translation type="obsolete">更新</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation type="obsolete">中止</translation>
-    </message>
-    <message>
-        <source>Back</source>
-        <translation type="obsolete">戻る</translation>
-    </message>
-    <message>
-        <source>Forward</source>
-        <translation type="obsolete">進む</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation type="obsolete">閉じる</translation>
-    </message>
-    <message>
-        <source>Restore</source>
-        <translation type="obsolete">復元</translation>
-    </message>
-    <message>
-        <source>NextView</source>
-        <translation type="obsolete">次のビュー</translation>
-    </message>
-    <message>
-        <source>PrevView</source>
-        <translation type="obsolete">前のビュー</translation>
-    </message>
-    <message>
-        <source>DisplayHistTree</source>
-        <translation type="obsolete">ヒストツリーを開く</translation>
-    </message>
-    <message>
-        <source>DisplayViewTree</source>
-        <translation type="obsolete">ビューツリーを開く</translation>
-    </message>
-    <message>
-        <source>DisplayTrashTree</source>
-        <translation type="obsolete">ゴミ箱を開く</translation>
-    </message>
-    <message>
-        <source>AccessKey</source>
-        <translation type="obsolete">アクセスキーを開く</translation>
-    </message>
-    <message>
-        <source>WebSearch</source>
-        <translation type="obsolete">検索を開く</translation>
-    </message>
-    <message>
-        <source>UrlEdit</source>
-        <translation type="obsolete">URLを編集</translation>
-    </message>
-    <message>
-        <source>IncrementalSearch</source>
-        <translation type="obsolete">インクリメンタルサーチを開く</translation>
-    </message>
-    <message>
-        <source>Command</source>
-        <translation type="obsolete">コマンド</translation>
-    </message>
-    <message>
-        <source>About</source>
-        <translation type="obsolete">Vanillaについて</translation>
-    </message>
-    <message>
-        <source>AboutQt</source>
-        <translation type="obsolete">Qtについて</translation>
-    </message>
-    <message>
-        <source>Quit</source>
-        <translation type="obsolete">終了</translation>
-    </message>
-    <message>
-        <source>finished loading.</source>
-        <translation type="obsolete">完了.</translation>
-    </message>
-    <message>
-        <source>failed to load.</source>
-        <translation type="obsolete">失敗.</translation>
-    </message>
-    <message>
         <location filename="../notifier.cpp" line="155"/>
         <source>Auto save finished</source>
         <translation>オートセーブ完了</translation>
-    </message>
-    <message>
-        <source>zoom factor changed to</source>
-        <translation type="obsolete">ズーム</translation>
     </message>
     <message>
         <location filename="../notifier.cpp" line="182"/>
@@ -1970,26 +1679,9 @@ it was restored from a backup file.</source>
         <source>Auto save finished(%1).</source>
         <translation>オートセーブ完了(%1).</translation>
     </message>
-    <message>
-        <source>Auto save finished.</source>
-        <translation type="obsolete">オートセーブ完了.</translation>
-    </message>
-    <message>
-        <source>Vanilla is a graphical web browser.
-Browser must be free.
-Browser must be minimal.
-</source>
-        <translation type="obsolete">ブラウザは自由であるべきだ.
-ブラウザは最小であるべきだ.
-&apos;Vanilla&apos;.</translation>
-    </message>
 </context>
 <context>
     <name>Page</name>
-    <message>
-        <source>Bookmarklet</source>
-        <translation type="vanished">ブックマークレット</translation>
-    </message>
     <message>
         <location filename="../view/page.cpp" line="1672"/>
         <source>SearchWith</source>
@@ -2289,10 +1981,6 @@ Browser must be minimal.
         <translation>URLをコピー</translation>
     </message>
     <message>
-        <source>CopyTitleUrlHtml</source>
-        <translation type="vanished">タイトル/URLをHTMLとしてコピー</translation>
-    </message>
-    <message>
         <location filename="../view/page.cpp" line="1680"/>
         <source>CopySelectedHtml</source>
         <translation>選択HTMLをコピー</translation>
@@ -2326,10 +2014,6 @@ Browser must be minimal.
         <location filename="../view/page.cpp" line="1667"/>
         <source>ZoomOut</source>
         <translation>ズームアウト</translation>
-    </message>
-    <message>
-        <source>ClickEvent</source>
-        <translation type="vanished">クリックイベント</translation>
     </message>
     <message>
         <location filename="../view/page.cpp" line="1693"/>
@@ -2520,18 +2204,6 @@ Browser must be minimal.
         <location filename="../view/page.cpp" line="1608"/>
         <source>ToggleNotifier</source>
         <translation>通知領域切り替え</translation>
-    </message>
-    <message>
-        <source>OpenWithOtherBrowser</source>
-        <translation type="vanished">別のブラウザで開く</translation>
-    </message>
-    <message>
-        <source>OpenLinkWithOtherBrowser</source>
-        <translation type="vanished">リンクを別のブラウザで開く</translation>
-    </message>
-    <message>
-        <source>OpenImageWithOtherBrowser</source>
-        <translation type="vanished">画像を別のブラウザで開く</translation>
     </message>
     <message>
         <location filename="../view/page.cpp" line="1609"/>
@@ -2771,20 +2443,6 @@ Browser must be minimal.
  Ctrl+クリック：バックグラウンドで開く</translation>
     </message>
     <message>
-        <source>Shift+Click: InNewWindow
-Ctrl +Click: InBackground</source>
-        <translation type="vanished">Shiftキー：新しいウィンドウで開く
-Ctrl+クリック ：バックグラウンドで開く</translation>
-    </message>
-    <message>
-        <source>Shift+Click: InNewWindow</source>
-        <translation type="vanished">Shiftキー：新しいウィンドウで開く</translation>
-    </message>
-    <message>
-        <source>Ctrl+Click: InBackground</source>
-        <translation type="vanished">Ctrlキー：バックグラウンドで開く</translation>
-    </message>
-    <message>
         <location filename="../view/page.cpp" line="1737"/>
         <source>OpenInNewDirectory</source>
         <translation>新しいフォルダを作る</translation>
@@ -2850,38 +2508,6 @@ Ctrl+クリック ：バックグラウンドで開く</translation>
         <translation>画像を新しいフォルダ内で開く</translation>
     </message>
     <message>
-        <source>NewHistForeground</source>
-        <translation type="obsolete">新しいヒストノードで開く(フォアグラウンド)</translation>
-    </message>
-    <message>
-        <source>NewHistBackground</source>
-        <translation type="obsolete">新しいヒストノードで開く(バックグラウンド)</translation>
-    </message>
-    <message>
-        <source>SiblingForeground</source>
-        <translation type="obsolete">新しいビューノードで開く(フォアグラウンド)</translation>
-    </message>
-    <message>
-        <source>SiblingBackground</source>
-        <translation type="obsolete">新しいビューノードで開く(バックグラウンド)</translation>
-    </message>
-    <message>
-        <source>OnRootForeground</source>
-        <translation type="obsolete">最上層で開く(フォアグラウンド)</translation>
-    </message>
-    <message>
-        <source>OnRootBackground</source>
-        <translation type="obsolete">最上層で開く(バックグラウンド)</translation>
-    </message>
-    <message>
-        <source>NewDirForeground</source>
-        <translation type="obsolete">新しいディレクトリで開く(フォアグラウンド)</translation>
-    </message>
-    <message>
-        <source>NewDirBackground</source>
-        <translation type="obsolete">新しいディレクトリで開く(バックグラウンド)</translation>
-    </message>
-    <message>
         <location filename="../view/page.cpp" line="1787"/>
         <source>OpenAllUrl</source>
         <translation>すべてのURLを開く</translation>
@@ -2927,10 +2553,6 @@ Ctrl+クリック ：バックグラウンドで開く</translation>
         <translation>Vanillaについて</translation>
     </message>
     <message>
-        <source>About</source>
-        <translation type="obsolete">Vanillaについて</translation>
-    </message>
-    <message>
         <location filename="../view/page.cpp" line="1604"/>
         <source>AboutQt</source>
         <translation>Qtについて</translation>
@@ -2944,72 +2566,72 @@ Ctrl+クリック ：バックグラウンドで開く</translation>
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3430"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3438"/>
         <source>Title : </source>
         <translation>タイトル : </translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3431"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3439"/>
         <source>Url : </source>
         <translation>URL : </translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3432"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3440"/>
         <source>CreatedDate : </source>
         <translation>作成日時 : </translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3434"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3442"/>
         <source>LastAccessedDate : </source>
         <translation>アクセス日時 : </translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3433"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3441"/>
         <source>LastUpdatedDate : </source>
         <translation>更新日時 : </translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="426"/>
+        <location filename="../view/view.cpp" line="427"/>
         <source>(?:&lt;&lt;.*|.*&lt;&lt;|&lt;|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*reer.*|.*behind.*|.*before.*)</source>
         <translation>(?:&lt;&lt;.*|.*&lt;&lt;|&lt;|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*reer.*|.*behind.*|.*before.*|.*(?:進|すす)む.*|.*(?:前|まえ).*)</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="573"/>
+        <location filename="../view/view.cpp" line="574"/>
         <source>(?:&gt;&gt;.*|.*&gt;&gt;|&gt;|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*)</source>
         <translation>(?:&gt;&gt;.*|.*&gt;&gt;|&gt;|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*|.*(?:戻|もど)る.*|.*(?:後|あと).*|.*(?:次|つぎ).*|.*(?:続|つづ)(?:く|き).*)</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="799"/>
+        <location filename="../view/view.cpp" line="792"/>
         <source>Bookmarklet</source>
         <translation>ブックマークレット</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="809"/>
+        <location filename="../view/view.cpp" line="802"/>
         <source>SearchWith</source>
         <translation>検索エンジン</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="819"/>
+        <location filename="../view/view.cpp" line="812"/>
         <source>OpenWithOtherBrowser</source>
         <translation>別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="833"/>
+        <location filename="../view/view.cpp" line="826"/>
         <source>OpenLinkWithOtherBrowser</source>
         <translation>リンクを別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="847"/>
+        <location filename="../view/view.cpp" line="840"/>
         <source>OpenImageWithOtherBrowser</source>
         <translation>画像を別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="1858"/>
+        <location filename="../view/view.cpp" line="1851"/>
         <source>Url or Javascript</source>
         <translation>URLもしくはJavascript</translation>
     </message>
     <message>
-        <location filename="../view/view.cpp" line="1859"/>
+        <location filename="../view/view.cpp" line="1852"/>
         <source>Input Url or Javascript</source>
         <translation>URLもしくはJavascriptを入力してください</translation>
     </message>
@@ -3017,34 +2639,34 @@ Ctrl+クリック ：バックグラウンドで開く</translation>
 <context>
     <name>QuickWebEngineView</name>
     <message>
-        <location filename="../gen/quickwebengineview.cpp" line="190"/>
-        <location filename="../gen/quickwebengineview.cpp" line="196"/>
+        <location filename="../gen/quickwebengineview.cpp" line="191"/>
+        <location filename="../gen/quickwebengineview.cpp" line="197"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>ズーム %1 %</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebengineview.cpp" line="223"/>
+        <location filename="../gen/quickwebengineview.cpp" line="224"/>
         <source>Reload</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebengineview.cpp" line="227"/>
+        <location filename="../gen/quickwebengineview.cpp" line="228"/>
         <source>Stop</source>
         <translation>中止</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebengineview.cpp" line="231"/>
+        <location filename="../gen/quickwebengineview.cpp" line="232"/>
         <source>Back</source>
         <translation>戻る</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebengineview.cpp" line="235"/>
+        <location filename="../gen/quickwebengineview.cpp" line="236"/>
         <source>Forward</source>
         <translation>進む</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebengineview.cpp" line="364"/>
-        <location filename="../gen/quickwebengineview.cpp" line="382"/>
+        <location filename="../gen/quickwebengineview.cpp" line="387"/>
+        <location filename="../gen/quickwebengineview.cpp" line="609"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
@@ -3052,44 +2674,28 @@ Ctrl+クリック ：バックグラウンドで開く</translation>
 <context>
     <name>QuickWebView</name>
     <message>
-        <source>started loading.</source>
-        <translation type="obsolete">開始.</translation>
-    </message>
-    <message>
-        <source>loading ... (%1 percent)</source>
-        <translation type="obsolete">読み込み中...(%1 %)</translation>
-    </message>
-    <message>
-        <source>finished loading.</source>
-        <translation type="obsolete">完了.</translation>
-    </message>
-    <message>
-        <source>failed to load.</source>
-        <translation type="obsolete">失敗.</translation>
-    </message>
-    <message>
-        <location filename="../gen/quickwebview.cpp" line="354"/>
-        <location filename="../gen/quickwebview.cpp" line="372"/>
+        <location filename="../gen/quickwebview.cpp" line="355"/>
+        <location filename="../gen/quickwebview.cpp" line="577"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.cpp" line="213"/>
+        <location filename="../gen/quickwebview.cpp" line="214"/>
         <source>Reload</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.cpp" line="217"/>
+        <location filename="../gen/quickwebview.cpp" line="218"/>
         <source>Stop</source>
         <translation>中止</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.cpp" line="221"/>
+        <location filename="../gen/quickwebview.cpp" line="222"/>
         <source>Back</source>
         <translation>戻る</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.cpp" line="225"/>
+        <location filename="../gen/quickwebview.cpp" line="226"/>
         <source>Forward</source>
         <translation>進む</translation>
     </message>
@@ -3116,35 +2722,13 @@ Ctrl+クリック ：バックグラウンドで開く</translation>
         <source>Incremental Search</source>
         <translation>インクリメンタルサーチ</translation>
     </message>
-    <message>
-        <source>Input UserName.</source>
-        <translation type="vanished">ユーザ名を入力してください.</translation>
-    </message>
-    <message>
-        <source>Input Password.</source>
-        <translation type="vanished">パスワードを入力してください.</translation>
-    </message>
 </context>
 <context>
     <name>TreeBank</name>
     <message>
-        <source>Input Directory Name.</source>
-        <translation type="obsolete">ディレクトリ名を入力してください.</translation>
-    </message>
-    <message>
-        <source>Directory Name:</source>
-        <translation type="obsolete">ディレクトリ名:</translation>
-    </message>
-    <message>
         <location filename="../treebank.cpp" line="696"/>
         <source>Restored from a back up file</source>
         <translation>過去のデータを復元しました</translation>
-    </message>
-    <message>
-        <source>Because of a failure to read the latest file,
-it was restored from a backup file.</source>
-        <translation type="vanished">最新のデータの読み込みに失敗したため,
-過去のデータから復元しました.</translation>
     </message>
     <message>
         <location filename="../treebank.cpp" line="3626"/>
@@ -3234,30 +2818,6 @@ it was restored from a backup file.</source>
         <translation>ゴミ箱を開く</translation>
     </message>
     <message>
-        <source>AccessKey</source>
-        <translation type="vanished">アクセスキーを開く</translation>
-    </message>
-    <message>
-        <source>WebSearch</source>
-        <translation type="vanished">検索を開く</translation>
-    </message>
-    <message>
-        <source>UrlEdit</source>
-        <translation type="vanished">URLを編集</translation>
-    </message>
-    <message>
-        <source>IncrementalSearch</source>
-        <translation type="vanished">インクリメンタルサーチを開く</translation>
-    </message>
-    <message>
-        <source>Command</source>
-        <translation type="vanished">コマンド</translation>
-    </message>
-    <message>
-        <source>About</source>
-        <translation type="obsolete">Vanillaについて</translation>
-    </message>
-    <message>
         <location filename="../treebank.cpp" line="3582"/>
         <source>AboutQt</source>
         <translation>Qtについて</translation>
@@ -3286,16 +2846,6 @@ it was restored from a backup file.</source>
         <location filename="../treebank.cpp" line="332"/>
         <source>Invalid node name.</source>
         <translation>無効なノード名.</translation>
-    </message>
-    <message>
-        <source>Cannot change to empty title,
-and cannot use following charactor.
-\	/	:	*	?
-	&quot;	&lt;	&gt;	|</source>
-        <translation type="vanished">空のノード名は指定できません,
-また以下の文字は使用できません.
-\	/	:	*	?
-	&quot;	&lt;	&gt;	|</translation>
     </message>
     <message>
         <location filename="../treebank.cpp" line="3561"/>
@@ -3438,10 +2988,6 @@ and cannot use following charactor.
         <translation>%1で開く</translation>
     </message>
     <message>
-        <source>CopyTitleUrlHtml</source>
-        <translation type="vanished">タイトル/URLをHTMLとしてコピー</translation>
-    </message>
-    <message>
         <location filename="../treebank.cpp" line="3641"/>
         <source>Print</source>
         <translation>印刷</translation>
@@ -3547,14 +3093,6 @@ and cannot use following charactor.
         <translation>新規ウィンドウ</translation>
     </message>
     <message>
-        <source>Input New Node Name.</source>
-        <translation type="vanished">新しいノード名を入力してください.</translation>
-    </message>
-    <message>
-        <source>Node Name:</source>
-        <translation type="vanished">ノード名:</translation>
-    </message>
-    <message>
         <location filename="../treebank.cpp" line="3597"/>
         <source>SwitchWindow</source>
         <translation>ウィンドウ切り替え</translation>
@@ -3563,16 +3101,6 @@ and cannot use following charactor.
         <location filename="../treebank.cpp" line="3607"/>
         <source>Recreate</source>
         <translation>再生成</translation>
-    </message>
-    <message>
-        <source>Cannot change to empty title,
-and cannot use following charactor.
-\	/	:	*	?
-&quot;	&lt;	&gt;	|</source>
-        <translation type="vanished">空のノード名は指定できません,
-また以下の文字は使用できません.
-\	/	:	*	?
-&quot;	&lt;	&gt;	|</translation>
     </message>
     <message>
         <location filename="../treebank.cpp" line="2286"/>
@@ -3664,25 +3192,14 @@ and cannot use following charactor.
         <translation>ズーム %1 %</translation>
     </message>
     <message>
-        <location filename="../view/tridentview.cpp" line="2003"/>
-        <location filename="../view/tridentview.cpp" line="2078"/>
+        <location filename="../view/tridentview.cpp" line="2005"/>
+        <location filename="../view/tridentview.cpp" line="2082"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
 </context>
 <context>
-    <name>ULItem</name>
-    <message>
-        <source>unknown file (%1)</source>
-        <translation type="obsolete">不明なファイル (%1)</translation>
-    </message>
-</context>
-<context>
     <name>UploadItem</name>
-    <message>
-        <source>unknown file (%1)</source>
-        <translation type="vanished">不明なファイル (%1)</translation>
-    </message>
     <message>
         <location filename="../networkcontroller.cpp" line="859"/>
         <source>Unknown file (%1)</source>
@@ -3697,81 +3214,73 @@ and cannot use following charactor.
 <context>
     <name>VideoItem</name>
     <message>
-        <location filename="../view/localview.cpp" line="2245"/>
+        <location filename="../view/localview.cpp" line="2247"/>
         <source>play</source>
         <translation>再生</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2250"/>
+        <location filename="../view/localview.cpp" line="2252"/>
         <source>pause</source>
         <translation>一時停止</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2255"/>
+        <location filename="../view/localview.cpp" line="2257"/>
         <source>stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2260"/>
+        <location filename="../view/localview.cpp" line="2262"/>
         <source>volume up</source>
         <translation>音量を上げる</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2266"/>
+        <location filename="../view/localview.cpp" line="2268"/>
         <source>volume down</source>
         <translation>音量を下げる</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2294"/>
+        <location filename="../view/localview.cpp" line="2296"/>
         <source>10 minutes back</source>
         <translation>1分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2302"/>
+        <location filename="../view/localview.cpp" line="2304"/>
         <source>10 minutes forward</source>
         <translation>1分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2309"/>
+        <location filename="../view/localview.cpp" line="2311"/>
         <source>5 minutes back</source>
         <translation>5分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2316"/>
+        <location filename="../view/localview.cpp" line="2318"/>
         <source>5 minutes forward</source>
         <translation>5分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2323"/>
+        <location filename="../view/localview.cpp" line="2325"/>
         <source>1 minute back</source>
         <translation>1分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2330"/>
+        <location filename="../view/localview.cpp" line="2332"/>
         <source>1 minute forward</source>
         <translation>1分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2336"/>
+        <location filename="../view/localview.cpp" line="2338"/>
         <source>10 seconds back</source>
         <translation>10秒戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2342"/>
+        <location filename="../view/localview.cpp" line="2344"/>
         <source>10 seconds forward</source>
         <translation>10分進む</translation>
     </message>
 </context>
 <context>
     <name>WebEnginePage</name>
-    <message>
-        <source>   (Shift+Click:InNewWindow)</source>
-        <translation type="vanished">   (Shiftキー：新しいウィンドウで開く)</translation>
-    </message>
-    <message>
-        <source>   (Ctrl +Click:InBackground)</source>
-        <translation type="vanished">   (Ctrl キー：バックグラウンドで開く)</translation>
-    </message>
     <message>
         <location filename="../gen/webenginepage.cpp" line="347"/>
         <source>Copy</source>
@@ -3813,57 +3322,17 @@ and cannot use following charactor.
         <translation>中止</translation>
     </message>
     <message>
-        <source>OpenLink</source>
-        <translation type="vanished">リンクを開く</translation>
-    </message>
-    <message>
-        <source>CopyLinkUrl</source>
-        <translation type="vanished">リンク先をコピー</translation>
-    </message>
-    <message>
-        <source>OpenImage</source>
-        <translation type="vanished">画像を開く</translation>
-    </message>
-    <message>
-        <source>CopyImage</source>
-        <translation type="vanished">画像をコピー</translation>
-    </message>
-    <message>
-        <location filename="../gen/webenginepage.cpp" line="387"/>
-        <location filename="../gen/webenginepage.cpp" line="388"/>
+        <location filename="../gen/webenginepage.cpp" line="384"/>
+        <location filename="../gen/webenginepage.cpp" line="385"/>
         <source>Feature Permission Requested.</source>
         <translation>機能の許可をリクエストされました.</translation>
     </message>
     <message>
         <location filename="../gen/webenginepage.cpp" line="229"/>
         <location filename="../gen/webenginepage.cpp" line="252"/>
-        <location filename="../gen/webenginepage.cpp" line="390"/>
+        <location filename="../gen/webenginepage.cpp" line="387"/>
         <source>Url: </source>
         <translation>URL : </translation>
-    </message>
-    <message>
-        <source>BlockAccess</source>
-        <translation type="vanished">アクセスしない</translation>
-    </message>
-    <message>
-        <source>IgnoreSslErrors</source>
-        <translation type="vanished">SSLエラーを無視</translation>
-    </message>
-    <message>
-        <source>AskForEachAccess</source>
-        <translation type="vanished">アクセスごとに確認</translation>
-    </message>
-    <message>
-        <source>AskForEachHost</source>
-        <translation type="vanished">ホストごとに確認</translation>
-    </message>
-    <message>
-        <source>Ssl error policy</source>
-        <translation type="vanished">SSLエラーポリシー</translation>
-    </message>
-    <message>
-        <source>Select ssl error policy.</source>
-        <translation type="vanished">SSLエラーポリシーを選択してください.</translation>
     </message>
     <message>
         <location filename="../gen/webenginepage.cpp" line="225"/>
@@ -3910,165 +3379,137 @@ and cannot use following charactor.
     </message>
     <message>
         <location filename="../gen/webenginepage.cpp" line="256"/>
-        <location filename="../gen/webenginepage.cpp" line="393"/>
-        <location filename="../gen/webenginepage.cpp" line="403"/>
+        <location filename="../gen/webenginepage.cpp" line="390"/>
+        <location filename="../gen/webenginepage.cpp" line="400"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="391"/>
+        <location filename="../gen/webenginepage.cpp" line="388"/>
         <source>Feature: </source>
         <translation>機能 :</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="392"/>
+        <location filename="../gen/webenginepage.cpp" line="389"/>
         <source>Allow this feature?</source>
         <translation>この機能を有効にしますか?</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="393"/>
-        <location filename="../gen/webenginepage.cpp" line="397"/>
+        <location filename="../gen/webenginepage.cpp" line="390"/>
+        <location filename="../gen/webenginepage.cpp" line="394"/>
         <source>Yes</source>
         <translation>はい</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="393"/>
-        <location filename="../gen/webenginepage.cpp" line="400"/>
+        <location filename="../gen/webenginepage.cpp" line="390"/>
+        <location filename="../gen/webenginepage.cpp" line="397"/>
         <source>No</source>
         <translation>いいえ</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="431"/>
+        <location filename="../gen/webenginepage.cpp" line="428"/>
         <source>A page is reloaded, because that&apos;s process is terminated.
 </source>
         <translation>プロセスが停止したため,そのページを更新しました.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="434"/>
+        <location filename="../gen/webenginepage.cpp" line="431"/>
         <source>Normal termination. (code: %1)</source>
         <translation>通常終了. (終了コード: %1)</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="436"/>
+        <location filename="../gen/webenginepage.cpp" line="433"/>
         <source>Abnormal termination. (code: %1)</source>
         <translation>異常終了. (終了コード: %1)</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="438"/>
+        <location filename="../gen/webenginepage.cpp" line="435"/>
         <source>Crashed termination. (code: %1)</source>
         <translation>クラッシュ. (終了コード: %1)</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="440"/>
+        <location filename="../gen/webenginepage.cpp" line="437"/>
         <source>Killed termination. (code: %1)</source>
         <translation>手動終了. (終了コード: %1)</translation>
     </message>
     <message>
-        <source>Render process exited.</source>
-        <translation type="vanished">描画プロセスが停止しました.</translation>
-    </message>
-    <message>
-        <location filename="../gen/webenginepage.cpp" line="442"/>
+        <location filename="../gen/webenginepage.cpp" line="439"/>
         <source>Render process terminated.</source>
         <translation>描画プロセスが停止しました.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="561"/>
+        <location filename="../gen/webenginepage.cpp" line="558"/>
         <source>Search button</source>
         <translation>検索ボタン</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="562"/>
+        <location filename="../gen/webenginepage.cpp" line="559"/>
         <source>Select search button.</source>
         <translation>検索ボタンを選んでください.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="572"/>
+        <location filename="../gen/webenginepage.cpp" line="569"/>
         <source>Search tag</source>
         <translation>検索タグ</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="573"/>
+        <location filename="../gen/webenginepage.cpp" line="570"/>
         <source>Input search tag.(It will be used as command)</source>
         <translation>検索タグを入力してください(コマンドとして使います)</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="599"/>
-        <location filename="../gen/webenginepage.cpp" line="615"/>
+        <location filename="../gen/webenginepage.cpp" line="596"/>
+        <location filename="../gen/webenginepage.cpp" line="612"/>
         <source>Link at Mouse Cursor</source>
         <translation>カーソル上のリンク</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="600"/>
-        <location filename="../gen/webenginepage.cpp" line="636"/>
+        <location filename="../gen/webenginepage.cpp" line="597"/>
+        <location filename="../gen/webenginepage.cpp" line="633"/>
         <source>Image at Mouse Cursor</source>
         <translation>カーソル上の画像</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="601"/>
-        <location filename="../gen/webenginepage.cpp" line="640"/>
+        <location filename="../gen/webenginepage.cpp" line="598"/>
+        <location filename="../gen/webenginepage.cpp" line="637"/>
         <source>Selected Text</source>
         <translation>選択したテキスト</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="603"/>
-        <location filename="../gen/webenginepage.cpp" line="644"/>
+        <location filename="../gen/webenginepage.cpp" line="600"/>
+        <location filename="../gen/webenginepage.cpp" line="641"/>
         <source>Manual Input</source>
         <translation>手動入力</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="608"/>
+        <location filename="../gen/webenginepage.cpp" line="605"/>
         <source>Input type</source>
         <translation>入力方法</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="609"/>
+        <location filename="../gen/webenginepage.cpp" line="606"/>
         <source>Select input type of bookmarklet.</source>
         <translation>ソースを選択してください.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="646"/>
+        <location filename="../gen/webenginepage.cpp" line="643"/>
         <source>Bookmarklet body</source>
         <translation>ブックマークレットの内容</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="647"/>
+        <location filename="../gen/webenginepage.cpp" line="644"/>
         <source>Input bookmarklet body.</source>
         <translation>ブックマークレットのソースを入力してください.</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="654"/>
+        <location filename="../gen/webenginepage.cpp" line="651"/>
         <source>Bookmarklet Name</source>
         <translation>ブックマークレットの名前</translation>
     </message>
     <message>
-        <location filename="../gen/webenginepage.cpp" line="655"/>
+        <location filename="../gen/webenginepage.cpp" line="652"/>
         <source>Input bookmarklet name.(It will be used as command)</source>
         <translation>ブックマークレットの名前を入力してください(コマンドとして使います)</translation>
-    </message>
-    <message>
-        <source>Button</source>
-        <translation type="vanished">ボタン</translation>
-    </message>
-    <message>
-        <source>Select Input Type of Bookmarklet</source>
-        <translation type="vanished">ソースを選択してください</translation>
-    </message>
-    <message>
-        <source>Bookmarklet Body</source>
-        <translation type="vanished">ブックマークレットの内容</translation>
-    </message>
-    <message>
-        <source>Input Bookmarklet Body.</source>
-        <translation type="vanished">ブックマークレットのソースを入力してください.</translation>
-    </message>
-    <message>
-        <source>BookmarkletName</source>
-        <translation type="vanished">ブックマークレットの名前</translation>
-    </message>
-    <message>
-        <source>Input Bookmarklet Name.(It will be used as command)</source>
-        <translation type="vanished">ブックマークレットの名前を入力してください(コマンドとして使います)</translation>
     </message>
 </context>
 <context>
@@ -4100,9 +3541,8 @@ and cannot use following charactor.
         <translation>失敗.</translation>
     </message>
     <message>
-        <location filename="../gen/webengineview.cpp" line="487"/>
-        <location filename="../gen/webengineview.cpp" line="513"/>
-        <location filename="../gen/webengineview.cpp" line="655"/>
+        <location filename="../gen/webengineview.cpp" line="484"/>
+        <location filename="../gen/webengineview.cpp" line="665"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
@@ -4110,176 +3550,28 @@ and cannot use following charactor.
 <context>
     <name>WebPage</name>
     <message>
-        <source>CopyImageUrl</source>
-        <translation type="obsolete">画像URLをコピー</translation>
-    </message>
-    <message>
-        <source>CopyUrl</source>
-        <translation type="obsolete">URLをコピー</translation>
-    </message>
-    <message>
-        <source>Print</source>
-        <translation type="obsolete">印刷</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation type="obsolete">保存</translation>
-    </message>
-    <message>
-        <source>ZoomIn</source>
-        <translation type="obsolete">ズームイン</translation>
-    </message>
-    <message>
-        <source>ZoomOut</source>
-        <translation type="obsolete">ズームアウト</translation>
-    </message>
-    <message>
-        <source>ClickEvent</source>
-        <translation type="obsolete">クリックイベント</translation>
-    </message>
-    <message>
-        <source>FocusElement</source>
-        <translation type="obsolete">要素にフォーカス</translation>
-    </message>
-    <message>
-        <source>OpenInNewViewNode</source>
-        <translation type="obsolete">新しいビューノードで開く</translation>
-    </message>
-    <message>
-        <source>OpenInNewHistNode</source>
-        <translation type="obsolete">新しいヒストノードで開く</translation>
-    </message>
-    <message>
-        <source>OpenOnRoot</source>
-        <translation type="obsolete">最上層で開く</translation>
-    </message>
-    <message>
-        <source>OpenInNewDirectory</source>
-        <translation type="obsolete">新しいフォルダを作る</translation>
-    </message>
-    <message>
-        <source>OpenImageInNewViewNode</source>
-        <translation type="obsolete">画像を新しいビューノードで開く</translation>
-    </message>
-    <message>
-        <source>OpenImageInNewHistNode</source>
-        <translation type="obsolete">画像を新しいヒストノードで開く</translation>
-    </message>
-    <message>
-        <source>OpenImageOnRoot</source>
-        <translation type="obsolete">画像を最上層で開く</translation>
-    </message>
-    <message>
-        <source>OpenImageInNewDirectory</source>
-        <translation type="obsolete">画像を新しいフォルダ内で開く</translation>
-    </message>
-    <message>
-        <source>OpenAllUrl</source>
-        <translation type="obsolete">すべてのURLを開く</translation>
-    </message>
-    <message>
-        <source>OpenAllImage</source>
-        <translation type="obsolete">すべての画像を開く</translation>
-    </message>
-    <message>
-        <source>OpenTextAsUrl</source>
-        <translation type="obsolete">テキストをURLとして開く</translation>
-    </message>
-    <message>
-        <source>SaveAllUrl</source>
-        <translation type="obsolete">すべてのURLを保存</translation>
-    </message>
-    <message>
-        <source>SaveAllImage</source>
-        <translation type="obsolete">すべての画像を保存</translation>
-    </message>
-    <message>
-        <source>OpenBookmarklet</source>
-        <translation type="obsolete">ブックマークレットを開く</translation>
-    </message>
-    <message>
-        <source>SearchWith</source>
-        <translation type="obsolete">検索エンジン</translation>
-    </message>
-    <message>
-        <source>ViewSource</source>
-        <translation type="obsolete">ソースを見る</translation>
-    </message>
-    <message>
-        <source>ApplySource</source>
-        <translation type="obsolete">ソースの変更を反映</translation>
-    </message>
-    <message>
-        <source>NewViewNode</source>
-        <translation type="obsolete">新規ビューノード</translation>
-    </message>
-    <message>
-        <source>NewWindow</source>
-        <translation type="obsolete">新規ウィンドウ</translation>
-    </message>
-    <message>
-        <source>AddSearchEngine</source>
-        <translation type="obsolete">サーチエンジンの追加</translation>
-    </message>
-    <message>
-        <source>AddBookmarklet</source>
-        <translation type="obsolete">ブックマークレットの追加</translation>
-    </message>
-    <message>
-        <source>InspectElement</source>
-        <translation type="obsolete">要素の検証</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation type="obsolete">閉じる</translation>
-    </message>
-    <message>
-        <source>Restore</source>
-        <translation type="obsolete">復元</translation>
-    </message>
-    <message>
-        <source>UpDirectory</source>
-        <translation type="obsolete">上の階層</translation>
-    </message>
-    <message>
-        <source>Load</source>
-        <translation type="obsolete">移動</translation>
-    </message>
-    <message>
-        <source>Back</source>
-        <translation type="obsolete">前へ</translation>
-    </message>
-    <message>
-        <location filename="../gen/webpage.cpp" line="592"/>
-        <location filename="../gen/webpage.cpp" line="608"/>
+        <location filename="../gen/webpage.cpp" line="588"/>
+        <location filename="../gen/webpage.cpp" line="604"/>
         <source>Link at Mouse Cursor</source>
         <translation>カーソル上のリンク</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="593"/>
-        <location filename="../gen/webpage.cpp" line="629"/>
+        <location filename="../gen/webpage.cpp" line="589"/>
+        <location filename="../gen/webpage.cpp" line="625"/>
         <source>Image at Mouse Cursor</source>
         <translation>カーソル上の画像</translation>
     </message>
     <message>
-        <source>Image at Mouse CurSor</source>
-        <translation type="obsolete">選択した画像</translation>
-    </message>
-    <message>
-        <location filename="../gen/webpage.cpp" line="594"/>
-        <location filename="../gen/webpage.cpp" line="633"/>
+        <location filename="../gen/webpage.cpp" line="590"/>
+        <location filename="../gen/webpage.cpp" line="629"/>
         <source>Selected Text</source>
         <translation>選択したテキスト</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="596"/>
-        <location filename="../gen/webpage.cpp" line="637"/>
+        <location filename="../gen/webpage.cpp" line="592"/>
+        <location filename="../gen/webpage.cpp" line="633"/>
         <source>Manual Input</source>
         <translation>手動入力</translation>
-    </message>
-    <message>
-        <source>Select Input Type of Bookmarklet</source>
-        <translation type="vanished">ソースを選択してください</translation>
     </message>
     <message>
         <source>Multiple Decoding.</source>
@@ -4290,362 +3582,118 @@ and cannot use following charactor.
         <translation type="obsolete">何回デコードしますか?</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="331"/>
+        <location filename="../gen/webpage.cpp" line="330"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="332"/>
+        <location filename="../gen/webpage.cpp" line="331"/>
         <source>Cut</source>
         <translation>切り取り</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="333"/>
+        <location filename="../gen/webpage.cpp" line="332"/>
         <source>Paste</source>
         <translation>張り付け</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="334"/>
+        <location filename="../gen/webpage.cpp" line="333"/>
         <source>Undo</source>
         <translation>元に戻す</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="335"/>
+        <location filename="../gen/webpage.cpp" line="334"/>
         <source>Redo</source>
         <translation>やり直す</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="336"/>
+        <location filename="../gen/webpage.cpp" line="335"/>
         <source>SelectAll</source>
         <translation>すべて選択</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="338"/>
+        <location filename="../gen/webpage.cpp" line="337"/>
         <source>Stop</source>
         <translation>中止</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="342"/>
+        <location filename="../gen/webpage.cpp" line="341"/>
         <source>OpenLink</source>
         <translation>リンクを開く</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="344"/>
+        <location filename="../gen/webpage.cpp" line="343"/>
         <source>CopyLinkUrl</source>
         <translation>リンク先をコピー</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="346"/>
+        <location filename="../gen/webpage.cpp" line="345"/>
         <source>OpenImage</source>
         <translation>画像を開く</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="348"/>
+        <location filename="../gen/webpage.cpp" line="347"/>
         <source>CopyImage</source>
         <translation>画像をコピー</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="555"/>
+        <location filename="../gen/webpage.cpp" line="551"/>
         <source>Search button</source>
         <translation>検索ボタン</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="556"/>
+        <location filename="../gen/webpage.cpp" line="552"/>
         <source>Select search button.</source>
         <translation>検索ボタンを選んでください.</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="566"/>
+        <location filename="../gen/webpage.cpp" line="562"/>
         <source>Search tag</source>
         <translation>検索タグ</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="567"/>
+        <location filename="../gen/webpage.cpp" line="563"/>
         <source>Input search tag.(It will be used as command)</source>
         <translation>検索タグを入力してください(コマンドとして使います)</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="601"/>
+        <location filename="../gen/webpage.cpp" line="597"/>
         <source>Input type</source>
         <translation>入力方法</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="602"/>
+        <location filename="../gen/webpage.cpp" line="598"/>
         <source>Select input type of bookmarklet.</source>
         <translation>ソースを選択してください.</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="639"/>
+        <location filename="../gen/webpage.cpp" line="635"/>
         <source>Bookmarklet body</source>
         <translation>ブックマークレットの内容</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="640"/>
+        <location filename="../gen/webpage.cpp" line="636"/>
         <source>Input bookmarklet body.</source>
         <translation>ブックマークレットのソースを入力してください.</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="647"/>
+        <location filename="../gen/webpage.cpp" line="643"/>
         <source>Bookmarklet Name</source>
         <translation>ブックマークレットの名前</translation>
     </message>
     <message>
-        <location filename="../gen/webpage.cpp" line="648"/>
+        <location filename="../gen/webpage.cpp" line="644"/>
         <source>Input bookmarklet name.(It will be used as command)</source>
         <translation>ブックマークレットの名前を入力してください(コマンドとして使います)</translation>
     </message>
     <message>
-        <source>Zoom factor changed to %1 percent</source>
-        <translation type="vanished">ズーム %1 %</translation>
-    </message>
-    <message>
-        <source>Bookmarklet Body</source>
-        <translation type="vanished">ブックマークレットの内容</translation>
-    </message>
-    <message>
-        <source>Input Bookmarklet Body.</source>
-        <translation type="vanished">ブックマークレットのソースを入力してください.</translation>
-    </message>
-    <message>
-        <source>BookmarkletName</source>
-        <translation type="vanished">ブックマークレットの名前</translation>
-    </message>
-    <message>
-        <source>Input Bookmarklet Name.(It will be used as command)</source>
-        <translation type="vanished">ブックマークレットの名前を入力してください(コマンドとして使います)</translation>
-    </message>
-    <message>
-        <source>Bookmarklet</source>
-        <translation type="obsolete">ブックマークレット</translation>
-    </message>
-    <message>
-        <location filename="../gen/webpage.cpp" line="337"/>
+        <location filename="../gen/webpage.cpp" line="336"/>
         <source>Reload</source>
         <translation>更新</translation>
-    </message>
-    <message>
-        <source>Forward</source>
-        <translation type="obsolete">進む</translation>
-    </message>
-    <message>
-        <source>Inspect</source>
-        <translation type="obsolete">要素を検証</translation>
-    </message>
-    <message>
-        <source>Open Link</source>
-        <translation type="obsolete">リンクを開く</translation>
-    </message>
-    <message>
-        <source>Save Link...</source>
-        <translation type="obsolete">リンクの保存...</translation>
-    </message>
-    <message>
-        <source>Copy Link</source>
-        <translation type="obsolete">リンクのコピー</translation>
-    </message>
-    <message>
-        <source>Open Image</source>
-        <translation type="obsolete">画像を開く</translation>
-    </message>
-    <message>
-        <source>Save Image</source>
-        <translation type="obsolete">画像の保存</translation>
-    </message>
-    <message>
-        <source>Copy Image</source>
-        <translation type="obsolete">画像をコピー</translation>
-    </message>
-    <message>
-        <source>PrevView</source>
-        <translation type="obsolete">前のビュー</translation>
-    </message>
-    <message>
-        <source>NextView</source>
-        <translation type="obsolete">次のビュー</translation>
-    </message>
-    <message>
-        <source>NewHistNode</source>
-        <translation type="obsolete">新規ヒストノード</translation>
-    </message>
-    <message>
-        <source>OpenTextSeeker</source>
-        <translation type="obsolete">インクリメンタルサーチを開く</translation>
-    </message>
-    <message>
-        <source>OpenQueryEditor</source>
-        <translation type="obsolete">検索を開く</translation>
-    </message>
-    <message>
-        <source>OpenUrlEditor</source>
-        <translation type="obsolete">URLエディタを開く</translation>
-    </message>
-    <message>
-        <source>OpenCommand</source>
-        <translation type="obsolete">コマンド</translation>
-    </message>
-    <message>
-        <source>DisplayAccessKey</source>
-        <translation type="obsolete">アクセスーの表示</translation>
-    </message>
-    <message>
-        <source>DisplayViewTree</source>
-        <translation type="obsolete">ビューツリーを開く</translation>
-    </message>
-    <message>
-        <source>DisplayHistTree</source>
-        <translation type="obsolete">ヒストツリーを開く</translation>
-    </message>
-    <message>
-        <source>DisplayTrashTree</source>
-        <translation type="obsolete">ゴミ箱を開く</translation>
-    </message>
-    <message>
-        <source>NewHistForeground</source>
-        <translation type="obsolete">新しいヒストノードで開く(フォアグラウンド)</translation>
-    </message>
-    <message>
-        <source>NewHistBackground</source>
-        <translation type="obsolete">新しいヒストノードで開く(バックグラウンド)</translation>
-    </message>
-    <message>
-        <source>SiblingForeground</source>
-        <translation type="obsolete">新しいビューノードで開く(フォアグラウンド)</translation>
-    </message>
-    <message>
-        <source>SiblingBackground</source>
-        <translation type="obsolete">新しいビューノードで開く(バックグラウンド)</translation>
-    </message>
-    <message>
-        <source>OnRootForeground</source>
-        <translation type="obsolete">最上層で開く(フォアグラウンド)</translation>
-    </message>
-    <message>
-        <source>OnRootBackground</source>
-        <translation type="obsolete">最上層で開く(バックグラウンド)</translation>
-    </message>
-    <message>
-        <source>NewDirForeground</source>
-        <translation type="obsolete">新しいディレクトリで開く(フォアグラウンド)</translation>
-    </message>
-    <message>
-        <source>NewDirBackground</source>
-        <translation type="obsolete">新しいディレクトリで開く(バックグラウンド)</translation>
-    </message>
-    <message>
-        <source>Quit</source>
-        <translation type="obsolete">終了</translation>
-    </message>
-    <message>
-        <source>UpKey</source>
-        <translation type="obsolete">↑</translation>
-    </message>
-    <message>
-        <source>   (Shift+Click:InNewWindow)</source>
-        <translation type="vanished">   (Shiftキー：新しいウィンドウで開く)</translation>
-    </message>
-    <message>
-        <source>   (Ctrl +Click:InBackground)</source>
-        <translation type="vanished">   (Ctrl キー：バックグラウンドで開く)</translation>
-    </message>
-    <message>
-        <source>DownKey</source>
-        <translation type="obsolete">↓</translation>
-    </message>
-    <message>
-        <source>RightKey</source>
-        <translation type="obsolete">→</translation>
-    </message>
-    <message>
-        <source>LeftKey</source>
-        <translation type="obsolete">←</translation>
-    </message>
-    <message>
-        <source>HomeKey</source>
-        <translation type="obsolete">ホームキー</translation>
-    </message>
-    <message>
-        <source>EndKey</source>
-        <translation type="obsolete">エンドキー</translation>
-    </message>
-    <message>
-        <source>PageUpKey</source>
-        <translation type="obsolete">ページアップキー</translation>
-    </message>
-    <message>
-        <source>PageDownKey</source>
-        <translation type="obsolete">ページダウンキー</translation>
-    </message>
-    <message>
-        <source>ToggleMinimized</source>
-        <translation type="obsolete">最小化切り替え</translation>
-    </message>
-    <message>
-        <source>ToggleMaximized</source>
-        <translation type="obsolete">最大化切り替え</translation>
-    </message>
-    <message>
-        <source>ToggleFullScreen</source>
-        <translation type="obsolete">フルスクリーン切り替え</translation>
-    </message>
-    <message>
-        <source>SwitchWindow</source>
-        <translation type="obsolete">ウィンドウ切り替え</translation>
-    </message>
-    <message>
-        <source>About</source>
-        <translation type="obsolete">Vanillaについて</translation>
-    </message>
-    <message>
-        <source>AboutQt</source>
-        <translation type="obsolete">Qtについて</translation>
-    </message>
-    <message>
-        <source>zoom factor changed to %1 percent</source>
-        <translation type="obsolete">ズーム %1 %</translation>
-    </message>
-    <message>
-        <source>Too many links or images.</source>
-        <translation type="obsolete">選択中のURLまたは画像が多すぎます.</translation>
-    </message>
-    <message>
-        <source>Open anyway?</source>
-        <translation type="obsolete">それでも実行しますか?</translation>
-    </message>
-    <message>
-        <source>Button</source>
-        <translation type="vanished">ボタン</translation>
-    </message>
-    <message>
-        <source>Select Search Button</source>
-        <translation type="vanished">検索ボタンを選んでください</translation>
-    </message>
-    <message>
-        <source>SearchTag</source>
-        <translation type="vanished">検索タグ</translation>
-    </message>
-    <message>
-        <source>Input Search Tag.(It will be used as command)</source>
-        <translation type="vanished">検索タグを入力してください(コマンドとして使います)</translation>
     </message>
 </context>
 <context>
     <name>WebView</name>
-    <message>
-        <source>started loading.</source>
-        <translation type="obsolete">開始.</translation>
-    </message>
-    <message>
-        <source>loading ... (%1 percent)</source>
-        <translation type="obsolete">読み込み中...(%1 %)</translation>
-    </message>
-    <message>
-        <source>finished loading.</source>
-        <translation type="obsolete">完了.</translation>
-    </message>
-    <message>
-        <source>failed to load.</source>
-        <translation type="obsolete">失敗.</translation>
-    </message>
     <message>
         <location filename="../gen/webview.cpp" line="168"/>
         <location filename="../gen/webview.cpp" line="174"/>
@@ -4673,17 +3721,10 @@ and cannot use following charactor.
         <translation>失敗.</translation>
     </message>
     <message>
-        <location filename="../gen/webview.cpp" line="534"/>
-        <location filename="../gen/webview.cpp" line="701"/>
+        <location filename="../gen/webview.cpp" line="541"/>
+        <location filename="../gen/webview.cpp" line="780"/>
         <source>NoAction</source>
         <translation>未定義</translation>
-    </message>
-</context>
-<context>
-    <name>WebViewBase</name>
-    <message>
-        <source>Zoom factor changed to %1 percent</source>
-        <translation type="obsolete">ズーム %1 %</translation>
     </message>
 </context>
 <context>
@@ -4699,12 +3740,12 @@ and cannot use following charactor.
         <translation>完了.</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebengineview.qml" line="33"/>
+        <location filename="../gen/quickwebengineview.qml" line="32"/>
         <source>failed to load.</source>
         <translation>失敗.</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebengineview.qml" line="42"/>
+        <location filename="../gen/quickwebengineview.qml" line="40"/>
         <source>loading ... (%1 percent)</source>
         <translation>読み込み中...(%1 %)</translation>
     </message>
@@ -4722,33 +3763,29 @@ and cannot use following charactor.
         <translation>完了.</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.qml" line="32"/>
+        <location filename="../gen/quickwebview.qml" line="31"/>
         <source>failed to load.</source>
         <translation>失敗.</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.qml" line="41"/>
+        <location filename="../gen/quickwebview.qml" line="39"/>
         <source>loading ... (%1 percent)</source>
         <translation>読み込み中...(%1 %)</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.qml" line="270"/>
+        <location filename="../gen/quickwebview.qml" line="272"/>
         <source>Alert</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.qml" line="287"/>
+        <location filename="../gen/quickwebview.qml" line="289"/>
         <source>Please choose a file or files</source>
         <translation>ファイルを選んでください</translation>
     </message>
     <message>
-        <location filename="../gen/quickwebview.qml" line="304"/>
+        <location filename="../gen/quickwebview.qml" line="306"/>
         <source>Please choose a color</source>
         <translation>色を選んでください</translation>
-    </message>
-    <message>
-        <source>Please choose a file</source>
-        <translation type="obsolete">ファイルを選んでください</translation>
     </message>
 </context>
 </TS>

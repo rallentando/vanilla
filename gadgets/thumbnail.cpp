@@ -85,11 +85,11 @@ void Thumbnail::paint(QPainter *painter,
     if(image.isNull()){
         Node *tempnode = m_Node;
         if(tempnode->IsViewNode() && tempnode->IsDirectory()){
-            while(!tempnode->GetChildren().isEmpty()){
+            while(!tempnode->HasNoChildren()){
                 if(tempnode->GetPrimary()){
                     tempnode = tempnode->GetPrimary();
                 } else {
-                    tempnode = tempnode->GetChildren().first();
+                    tempnode = tempnode->GetFirstChild();
                 }
             }
             if(!tempnode->GetImage().isNull()){

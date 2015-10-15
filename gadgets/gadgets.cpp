@@ -1517,7 +1517,7 @@ QMenu *Gadgets::CreateNodeMenu(){
 
         Node *nd = GetHoveredNode();
         if((nd->IsViewNode() && nd->IsDirectory()) ||
-           (nd->IsHistNode() && !nd->GetChildren().isEmpty())){
+           (nd->IsHistNode() && !nd->HasNoChildren())){
 
             menu->addAction(Action(Ge_DownDirectory));
         }
@@ -1770,6 +1770,7 @@ void Gadgets::mousePressEvent(QGraphicsSceneMouseEvent *ev){
     QString mouse;
 
     Application::AddModifiersToString(mouse, ev->modifiers());
+    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
     Application::AddMouseButtonToString(mouse, ev->button());
 
     if(m_MouseMap.contains(mouse)){

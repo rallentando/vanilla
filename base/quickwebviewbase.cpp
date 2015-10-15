@@ -497,12 +497,21 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
                                    Qt::SmoothTransformation);
         }
 
-        if(m_EnableDragHackLocal)
+        if(m_HadSelection){
+            mime->setImageData(pixmap.toImage());
+        } else {
+            QPixmap element = m_ClickedElement->Pixmap();
+            if(element.isNull())
+                mime->setImageData(pixmap.toImage());
+            else
+                mime->setImageData(element.toImage());
+        }
+        if(m_EnableDragHackLocal){
             GestureMoved(ev->pos());
-        else
+        } else {
             GestureAborted();
+        }
         m_DragStarted = true;
-        mime->setImageData(pixmap.toImage());
         drag->setMimeData(mime);
         drag->setPixmap(pixmap);
         drag->setHotSpot(pos);
@@ -520,6 +529,7 @@ void QuickWebViewBase::mousePressEvent(QMouseEvent *ev){
     QString mouse;
 
     Application::AddModifiersToString(mouse, ev->modifiers());
+    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
     Application::AddMouseButtonToString(mouse, ev->button());
 
     if(m_MouseMap.contains(mouse)){
@@ -530,6 +540,7 @@ void QuickWebViewBase::mousePressEvent(QMouseEvent *ev){
                 ev->setAccepted(false);
                 return;
             }
+            GestureAborted();
             ev->setAccepted(true);
             return;
         }

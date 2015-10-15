@@ -26,6 +26,7 @@ Notifier::Notifier(TreeBank *parent, bool purge)
     : QWidget(purge ? 0 : parent)
     , m_TreeBank(parent)
     , m_HotSpot(QPoint())
+    , m_Position(SouthWest)
 #if defined(Q_OS_WIN)
     , m_Button(0)
     , m_Progress(0)
@@ -71,11 +72,26 @@ void Notifier::ResizeNotify(QSize size){
     int dlen = m_DownloadItemTable.size();
     int ulen = m_UploadItemTable.size();
     int len = dlen + ulen;
-    int w = size.width() * NOTIFIER_WIDTH_PERCENTAGE / 100;
+    int w = qMax(size.width() * NOTIFIER_WIDTH_PERCENTAGE / 100,
+                 NOTIFIER_MINIMUM_WIDTH);
     int h = NOTIFIER_HEIGHT + len * TRANSFER_ITEM_HEIGHT;
-    QPoint pos = QPoint(0, size.height() - h);
-    setGeometry(QRect(IsPurged() ?  m_TreeBank->mapToGlobal(pos) : pos,
-                      QSize(qMax(w, NOTIFIER_MINIMUM_WIDTH), h)));
+    QPoint pos;
+    switch(m_Position){
+    case NorthWest:
+        pos = QPoint(0, 0);
+        break;
+    case NorthEast:
+        pos = QPoint(size.width() - w, 0);
+        break;
+    case SouthWest:
+        pos = QPoint(0, size.height() - h);
+        break;
+    case SouthEast:
+        pos = QPoint(size.width() - w, size.height() - h);
+        break;
+    }
+    if(IsPurged()) pos = m_TreeBank->mapToGlobal(pos);
+    setGeometry(QRect(pos, QSize(w, h)));
 }
 
 void Notifier::RepaintIfNeed(const QRect &rect){
@@ -444,11 +460,33 @@ void Notifier::mousePressEvent(QMouseEvent *ev){
 void Notifier::mouseMoveEvent(QMouseEvent *ev){
     if(ev->buttons() & Qt::LeftButton){
         if(!EmitScrollRequest(ev->pos()) && !m_HotSpot.isNull()){
-            setGeometry(QRect((IsPurged()
-                               ? mapToGlobal(ev->pos())
-                               : mapToParent(ev->pos()))
-                              - m_HotSpot,
-                              size()));
+            QRect rect = QRect((IsPurged()
+                                ? mapToGlobal(ev->pos())
+                                : mapToParent(ev->pos()))
+                               - m_HotSpot,
+                               size());
+            setGeometry(rect);
+            bool north = true;
+            bool west = true;
+            QPoint center1 = rect.center();
+            QPoint center2 = QPoint(m_TreeBank->size().width()/2,
+                                    m_TreeBank->size().height()/2);
+            if(IsPurged()) center2 = m_TreeBank->mapToGlobal(center2);
+            if(center1.x() > center2.x()) west = false;
+            if(center1.y() > center2.y()) north = false;
+            if(north){
+                if(west){
+                    m_Position = NorthWest;
+                } else {
+                    m_Position = NorthEast;
+                }
+            } else {
+                if(west){
+                    m_Position = SouthWest;
+                } else {
+                    m_Position = SouthEast;
+                }
+            }
             ev->setAccepted(true);
         }
     } else if(ev->buttons() & Qt::RightButton){

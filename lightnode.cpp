@@ -36,7 +36,7 @@ Node::~Node(){
     if(m_View){
         m_View->DeleteLater();
     }
-    foreach(Node *nd, m_Children){
+    foreach(Node *nd, GetChildren()){
         delete nd;
     }
 }
@@ -213,7 +213,7 @@ HistNode *HistNode::MakeChild(){
     HistNode *child = new HistNode();
     child->SetParent(this);
     child->SetZoom(m_Zoom);
-    AddChild(child);
+    AppendChild(child);
     return child;
 }
 
@@ -230,25 +230,25 @@ HistNode *HistNode::MakeParent(){
 
     GetParent()->RemoveChild(this);
     if(GetParent()->GetPrimary() == this){
-        if(GetSibling().length() == 0)
+        if(SiblingsLength() == 0)
             GetParent()->SetPrimary(0);
         else
-            GetParent()->SetPrimary(GetSibling().first());
+            GetParent()->SetPrimary(GetFirstSibling());
     }
     HistNode *parent = new HistNode();
 
     // root doesn't have zoom factor.
-    GetParent()->AddChild(parent);
+    GetParent()->AppendChild(parent);
     parent->SetParent(GetParent());
     parent->SetZoom(m_Zoom);
-    parent->AddChild(this);
+    parent->AppendChild(this);
     SetParent(parent);
     return parent;
 }
 
 HistNode *HistNode::Next(){
-    if(m_Children.isEmpty()) return 0;
-    return (m_Primary ? m_Primary : m_Children.last())->ToHistNode();
+    if(HasNoChildren()) return 0;
+    return (m_Primary ? m_Primary : GetLastChild())->ToHistNode();
 }
 
 HistNode *HistNode::Prev(){
@@ -505,7 +505,7 @@ ViewNode *ViewNode::MakeChild(bool forceAppend){
 
     ViewNode *child = new ViewNode();
     child->SetParent(this);
-    GetChildren().append(child);
+    AppendChild(child);
     return child;
 }
 
@@ -517,49 +517,49 @@ ViewNode *ViewNode::MakeChild(){
     ViewNode *child = new ViewNode();
     child->SetParent(this);
 
-    int primaryIndex = m_Primary ? GetChildren().indexOf(m_Primary) : -1;
+    int primaryIndex = m_Primary ? ChildrenIndexOf(m_Primary) : -1;
 
     if(m_Booting){
-        GetChildren().append(child);
+        AppendChild(child);
         return child;
     }
 
     switch(m_AddChildViewNodePosition){
-    case RightEnd: GetChildren().append(child);  break;
-    case LeftEnd:  GetChildren().prepend(child); break;
+    case RightEnd: AppendChild(child);  break;
+    case LeftEnd:  PrependChild(child); break;
 
     case RightOfPrimary:
 
-        if(m_Primary && !GetChildren().isEmpty()){
-            GetChildren().insert(primaryIndex+1, child);
+        if(m_Primary && !HasNoChildren()){
+            InsertChild(primaryIndex+1, child);
         } else {
-            GetChildren().append(child);
+            AppendChild(child);
         }
         break;
 
     case LeftOfPrimary:
 
-        if(m_Primary && !GetChildren().isEmpty()){
-            GetChildren().insert(primaryIndex, child);
+        if(m_Primary && !HasNoChildren()){
+            InsertChild(primaryIndex, child);
         } else {
-            GetChildren().prepend(child);
+            PrependChild(child);
         }
         break;
 
     case TailOfRightUnreadsOfPrimary:
 
-        if(!m_Primary || GetChildren().isEmpty() ||
-           primaryIndex == GetChildren().length()-1){
+        if(!m_Primary || HasNoChildren() ||
+           primaryIndex == ChildrenLength()-1){
 
-            GetChildren().append(child);
+            AppendChild(child);
             break;
         }
-        for(int i = primaryIndex+1; i < GetChildren().length(); i++){
-            if(i == GetChildren().length()-1){
-                GetChildren().append(child);
+        for(int i = primaryIndex+1; i < ChildrenLength(); i++){
+            if(i == ChildrenLength()-1){
+                AppendChild(child);
                 break;
-            } else if(GetChildren()[i]->IsRead()){
-                GetChildren().insert(i, child);
+            } else if(GetChildAt(i)->IsRead()){
+                InsertChild(i, child);
                 break;
             }
         }
@@ -567,18 +567,18 @@ ViewNode *ViewNode::MakeChild(){
 
     case HeadOfLeftUnreadsOfPrimary:
 
-        if(!m_Primary || GetChildren().isEmpty() ||
+        if(!m_Primary || HasNoChildren() ||
            primaryIndex == 0){
 
-            GetChildren().prepend(child);
+            PrependChild(child);
             break;
         }
         for(int i = primaryIndex-1; i >= 0; i--){
             if(i == 0){
-                GetChildren().prepend(child);
+                PrependChild(child);
                 break;
-            } else if(GetChildren()[i]->IsRead()){
-                GetChildren().insert(i+1, child);
+            } else if(GetChildAt(i)->IsRead()){
+                InsertChild(i+1, child);
                 break;
             }
         }
@@ -596,16 +596,16 @@ ViewNode *ViewNode::MakeParent(){
     }
     GetParent()->RemoveChild(this);
     if(GetParent()->GetPrimary() == this){
-        if(GetSibling().length() == 0)
+        if(SiblingsLength() == 0)
             GetParent()->SetPrimary(0);
         else
-            GetParent()->SetPrimary(GetSibling().first());
+            GetParent()->SetPrimary(GetFirstSibling());
     }
     ViewNode *parent = new ViewNode();
 
-    GetParent()->AddChild(parent);
+    GetParent()->AppendChild(parent);
     parent->SetParent(GetParent());
-    parent->AddChild(this);
+    parent->AppendChild(this);
     SetParent(parent);
     return parent;
 }
@@ -614,31 +614,31 @@ ViewNode *ViewNode::MakeSibling(){
     ViewNode *young = new ViewNode();
     young->SetParent(m_Parent);
 
-    int primaryIndex = GetSibling().indexOf(this);
+    int primaryIndex = SiblingsIndexOf(this);
 
     if(m_Booting){
-        GetSibling().insert(primaryIndex+1, young);
+        InsertSibling(primaryIndex+1, young);
         return young;
     }
 
     switch(m_AddSiblingViewNodePosition){
-    case RightEnd: GetSibling().append(young);  break;
-    case LeftEnd:  GetSibling().prepend(young); break;
-    case RightOfPrimary: GetSibling().insert(primaryIndex+1, young); break;
-    case LeftOfPrimary:  GetSibling().insert(primaryIndex, young);   break;
+    case RightEnd: AppendSibling(young);  break;
+    case LeftEnd:  PrependSibling(young); break;
+    case RightOfPrimary: InsertSibling(primaryIndex+1, young); break;
+    case LeftOfPrimary:  InsertSibling(primaryIndex, young);   break;
 
     case TailOfRightUnreadsOfPrimary:
 
-        if(primaryIndex == GetSibling().length()-1){
-            GetSibling().append(young);
+        if(primaryIndex == SiblingsLength()-1){
+            AppendSibling(young);
             break;
         }
-        for(int i = primaryIndex+1; i < GetSibling().length(); i++){
-            if(GetSibling()[i]->IsRead()){
-                GetSibling().insert(i, young);
+        for(int i = primaryIndex+1; i < SiblingsLength(); i++){
+            if(GetSiblingAt(i)->IsRead()){
+                InsertSibling(i, young);
                 break;
-            } else if(i == GetSibling().length()-1){
-                GetSibling().append(young);
+            } else if(i == SiblingsLength()-1){
+                AppendSibling(young);
                 break;
             }
         }
@@ -647,15 +647,15 @@ ViewNode *ViewNode::MakeSibling(){
     case HeadOfLeftUnreadsOfPrimary:
 
         if(primaryIndex == 0){
-            GetSibling().prepend(young);
+            PrependSibling(young);
             break;
         }
         for(int i = primaryIndex-1; i >= 0; i--){
-            if(GetSibling()[i]->IsRead()){
-                GetSibling().insert(i+1, young);
+            if(GetSiblingAt(i)->IsRead()){
+                InsertSibling(i+1, young);
                 break;
             } else if(i == 0){
-                GetSibling().prepend(young);
+                PrependSibling(young);
                 break;
             }
         }
@@ -673,24 +673,24 @@ ViewNode *ViewNode::NewDir(){
 
 ViewNode *ViewNode::Next(){
     Node *nd = this;
-    if(!nd->GetChildren().isEmpty())
-        return nd->GetChildren().first()->ToViewNode();
-    while(nd->GetParent() && nd->GetSibling().last() == nd)
+    if(!nd->HasNoChildren())
+        return nd->GetFirstChild()->ToViewNode();
+    while(nd->GetParent() && nd->GetLastSibling() == nd)
         nd = nd->GetParent();
     if(nd->IsRoot()) return 0;
-    NodeList sibling = nd->GetSibling();
+    NodeList sibling = nd->GetSiblings();
     return sibling[sibling.indexOf(nd) + 1]->ToViewNode();
 }
 
 ViewNode *ViewNode::Prev(){
     Node *nd = this;
     if(nd->IsRoot()) return 0;
-    if(nd->GetSibling().first() == nd)
+    if(nd->GetFirstSibling() == nd)
         return nd->GetParent()->ToViewNode();
-    NodeList sibling = nd->GetSibling();
+    NodeList sibling = nd->GetSiblings();
     nd = sibling[sibling.indexOf(nd) - 1];
-    while(!nd->GetChildren().isEmpty())
-        nd = nd->GetChildren().last();
+    while(!nd->HasNoChildren())
+        nd = nd->GetLastChild();
     return nd->ToViewNode();
 }
 
@@ -716,7 +716,7 @@ ViewNode *ViewNode::Clone(ViewNode *parent){
     if(m_EnableDeepCopyOfNode){
         // HistNode::Clone sets ViewNode::m_Partner automatically.
         if(IsDirectory()){
-            foreach(Node *child, m_Children){
+            foreach(Node *child, GetChildren()){
                 ViewNode *vn = child->ToViewNode()->Clone(clone);
                 if(m_Primary == child) clone->m_Primary = vn;
             }

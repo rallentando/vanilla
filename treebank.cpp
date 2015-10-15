@@ -388,13 +388,15 @@ void TreeBank::ApplySpecificSettings(HistNode *hn, NetworkAccessManager *nam, QS
 
 // for renaming directory
 static QString GetNetworkSpaceID(ViewNode* vn){
+    QString title;
     forever{
+        title = vn->GetTitle();
         if(vn == TreeBank::GetViewRoot() || vn == TreeBank::GetTrashRoot() ||
-           (vn->IsDirectory() && !vn->GetTitle().isEmpty() &&
+           (vn->IsDirectory() && !title.isEmpty() &&
             // 'QStringList::indexOf' uses 'QRegExp::exactMatch'.
-            vn->GetTitle().split(QStringLiteral(";")).indexOf(QRegExp(QStringLiteral("[iI][dD]"))) != -1)){
+            title.split(QStringLiteral(";")).indexOf(QRegExp(QStringLiteral("[iI][dD]"))) != -1)){
 
-            return vn->GetTitle().split(QStringLiteral(";")).first();
+            return title.split(QStringLiteral(";")).first();
 
         } else {
             vn = vn->GetParent()->ToViewNode();
@@ -412,9 +414,11 @@ static QString GetNetworkSpaceID(SharedView view){
 
 static QStringList GetNodeSettings(ViewNode* vn){
     if(!vn) return QStringList();
+    QString title;
     forever{
-        if(vn->IsDirectory() && !vn->GetTitle().isEmpty()){
-            QStringList set = vn->GetTitle().split(QStringLiteral(";")).mid(1);
+        title = vn->GetTitle();
+        if(vn->IsDirectory() && !title.isEmpty()){
+            QStringList set = title.split(QStringLiteral(";")).mid(1);
             if(!set.isEmpty())
                 return set;
             else if(vn->IsRoot())
@@ -874,10 +878,10 @@ static void CollectHistNode(HistNode *nd, QDomElement &elem){
     child.setAttribute(QStringLiteral("partner"), nd->IsPartnerOfPartner() ? QStringLiteral("true") : QStringLiteral("false"));
     child.setAttribute(QStringLiteral("folded"),  nd->GetFolded()          ? QStringLiteral("true") : QStringLiteral("false"));
     child.setAttribute(QStringLiteral("index"), TreeBank::WinIndex(nd));
-    if(!nd->GetTitle().isEmpty()) child.setAttribute(QStringLiteral("title"), nd->GetTitle());
-    if(!nd->GetUrl().isEmpty())   child.setAttribute(QStringLiteral("url"), QString::fromUtf8(nd->GetUrl().toEncoded()));
-    if(nd->GetScrollX()) child.setAttribute(QStringLiteral("scrollx"), nd->GetScrollX());
-    if(nd->GetScrollY()) child.setAttribute(QStringLiteral("scrolly"), nd->GetScrollY());
+    child.setAttribute(QStringLiteral("title"), nd->GetTitle());
+    child.setAttribute(QStringLiteral("url"), QString::fromUtf8(nd->GetUrl().toEncoded()));
+    child.setAttribute(QStringLiteral("scrollx"), nd->GetScrollX());
+    child.setAttribute(QStringLiteral("scrolly"), nd->GetScrollY());
     child.setAttribute(QStringLiteral("zoom"), nd->GetZoom());
 
     child.setAttribute(QStringLiteral("create"),     nd->GetCreateDate().toString(NODE_DATETIME_FORMAT));
@@ -1109,10 +1113,10 @@ void TreeBank::QuarantineHistNode(HistNode *hn){
 void TreeBank::DisownNode(Node *nd){
     nd->GetParent()->RemoveChild(nd);
     if(nd->IsPrimaryOfParent()){
-        if(nd->GetSibling().isEmpty())
+        if(nd->HasNoSiblings())
             nd->GetParent()->SetPrimary(0);
         else
-            nd->GetParent()->SetPrimary(nd->GetSibling().first());
+            nd->GetParent()->SetPrimary(nd->GetFirstSibling());
     }
 }
 
@@ -1152,14 +1156,13 @@ bool TreeBank::DeleteHistory(HistNode *hn){
         // delete root and replace to primary.
         // (root need to have only one node.)
 
-        if(hn->GetChildren().length() == 0)
-            return false;
+        if(hn->HasNoChildren()) return false;
 
-        if(hn->GetChildren().length() > 1){
+        if(hn->ChildrenLength() > 1){
             HistNode *primary = hn->GetPrimary()->ToHistNode();
 
             if(!primary)
-                primary = hn->GetChildren().first()->ToHistNode();
+                primary = hn->GetFirstChild()->ToHistNode();
 
             Q_ASSERT(primary);
 
@@ -1174,14 +1177,14 @@ bool TreeBank::DeleteHistory(HistNode *hn){
         }
 
         // replace head of history.
-        HistNode *primary = hn->GetChildren().first()->ToHistNode();
+        HistNode *primary = hn->GetFirstChild()->ToHistNode();
         HistNode *parent  = hn->GetParent()->ToHistNode();
         ViewNode *partner = hn->GetPartner()->ToViewNode();
         TreeBank *tb = hn->GetView() ? hn->GetView()->GetTreeBank() : 0;
 
         // if allow non root node, the length of children is not 1.
-        Q_ASSERT(hn->GetChildren().length() == 1);
-        Q_ASSERT(m_HistRoot->GetChildren().contains(hn));
+        Q_ASSERT(hn->ChildrenLength() == 1);
+        Q_ASSERT(m_HistRoot->ChildrenContains(hn));
         Q_ASSERT(primary->GetParent() == hn);
         Q_ASSERT(parent == m_HistRoot);
         Q_ASSERT(partner);
@@ -1201,7 +1204,7 @@ bool TreeBank::DeleteHistory(HistNode *hn){
 
         // replace child(instead of disown).
         parent->RemoveChild(hn);
-        parent->AddChild(primary);
+        parent->AppendChild(primary);
         primary->SetParent(parent);
         hn->SetPrimary(0);
         hn->SetPartner(0);
@@ -1236,7 +1239,7 @@ bool TreeBank::MoveToTrash(ViewNode *vn){
     // when deleting node in main tree,
     // move node to trash.
     MoveNode(vn, m_TrashRoot, 0);
-    while(m_TrashRoot->GetChildren().length() > m_MaxTrashEntryCount){
+    while(m_TrashRoot->ChildrenLength() > m_MaxTrashEntryCount){
         Node *needless = m_TrashRoot->TakeLastChild();
         DisownNode(needless);
         StripSubTree(needless->ToViewNode());
@@ -1425,17 +1428,17 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
     if(nd->GetParent() == dir){
         // same directory(should use 'SetChildrenOrder', instead of this.).
         // using 'QList::move'.
-        dir->MoveChild(dir->GetChildren().indexOf(nd),
-                       (n < 0 || n >= dir->GetChildren().length()) ?
-                         dir->GetChildren().length() - 1 :
-                       (n > dir->GetChildren().indexOf(nd)) ?
+        dir->MoveChild(dir->ChildrenIndexOf(nd),
+                       (n < 0 || n >= dir->ChildrenLength()) ?
+                         dir->ChildrenLength() - 1 :
+                       (n > dir->ChildrenIndexOf(nd)) ?
                          n - 1 : n);
     } else {
         // move to other directory.
         DisownNode(nd);
         nd->SetParent(dir);
-        dir->InsertChild((n < 0 || n > dir->GetChildren().length()) ?
-                           dir->GetChildren().length() : n,
+        dir->InsertChild((n < 0 || n > dir->ChildrenLength()) ?
+                           dir->ChildrenLength() : n,
                          nd);
 
         if(nd->IsViewNode())
@@ -1449,7 +1452,7 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
 // this can only append or sort nodes.
 bool TreeBank::SetChildrenOrder(Node *parent, NodeList children){
     if(children.isEmpty() || !parent ||
-       children.length() < parent->GetChildren().length() ||
+       children.length() < parent->ChildrenLength() ||
        children.contains(parent) ||
        children.toSet().intersect(parent->GetAncestors().toSet()).count())
         return false;
@@ -1474,12 +1477,12 @@ bool TreeBank::SetCurrent(Node *nd){
     if(!nd) return false;
 
     if(!nd->GetPartner()){
-        if(nd->GetChildren().isEmpty()){
+        if(nd->HasNoChildren()){
             return false;
         } else if(nd->GetPrimary()){
             return SetCurrent(nd->GetPrimary());
         } else {
-            return SetCurrent(nd->GetChildren().first());
+            return SetCurrent(nd->GetFirstChild());
         }
     }
 
@@ -1924,7 +1927,7 @@ SharedView TreeBank::OpenInNewDirectory(QList<QNetworkRequest> reqs, bool activa
         if(first){
             view = OpenInNewDirectory(reqs[i], last && activate, older);
         } else {
-            NodeList sibling = older->GetSibling();
+            NodeList sibling = older->GetSiblings();
             view = OpenOnSuitableNode(reqs[i], last && activate,
                                       sibling[sibling.indexOf(older)+1]->ToViewNode());
         }
@@ -2724,7 +2727,7 @@ void TreeBank::Back(HistNode *hist){
     if(!hist) hist = m_CurrentHistNode;
     if(!hist) return;
 
-    if(hist->IsRoot() && hist->GetChildren().isEmpty() &&
+    if(hist->IsRoot() && hist->HasNoChildren() &&
        hist->GetView() && hist->GetView()->CanGoBack()){
 
         hist->GetView()->SetScroll(QPointF());
@@ -2745,7 +2748,7 @@ void TreeBank::Forward(HistNode *hist){
     if(!hist) hist = m_CurrentHistNode;
     if(!hist) return;
 
-    if(hist->IsRoot() && hist->GetChildren().isEmpty() &&
+    if(hist->IsRoot() && hist->HasNoChildren() &&
        hist->GetView() && hist->GetView()->CanGoForward()){
 
         hist->GetView()->SetScroll(QPointF());
@@ -2795,17 +2798,17 @@ void TreeBank::Close(ViewNode *vn){
 
 void TreeBank::Restore(ViewNode *vn, ViewNode *dir){
     m_TraverseMode = Neutral;
-    if(m_TrashRoot->GetChildren().isEmpty()) return;
+    if(m_TrashRoot->HasNoChildren()) return;
 
     if(vn){
         if(GetRoot(vn) == m_ViewRoot){
             // on tableview(viewnode).
             ViewNode *rest = m_TrashRoot->TakeFirstChild()->ToViewNode();
             if(!dir) dir = m_ViewRoot;
-            if(dir->GetChildren().contains(vn))
-                dir->InsertChild(dir->GetChildren().indexOf(vn) + 1, rest);
+            if(dir->ChildrenContains(vn))
+                dir->InsertChild(dir->ChildrenIndexOf(vn) + 1, rest);
             else
-                dir->AddChild(rest);
+                dir->AppendChild(rest);
 
             rest->SetParent(dir);
 
@@ -2816,7 +2819,7 @@ void TreeBank::Restore(ViewNode *vn, ViewNode *dir){
         }
     } else {
         if(dir){
-            MoveNode(m_TrashRoot->GetChildren().first(),
+            MoveNode(m_TrashRoot->GetFirstChild(),
                      GetRoot(dir) == m_ViewRoot ? dir : m_ViewRoot);
         } else {
             // on view.
@@ -2825,10 +2828,10 @@ void TreeBank::Restore(ViewNode *vn, ViewNode *dir){
             if(older){
                 Node *parent = older->GetParent();
                 young->SetParent(parent);
-                parent->InsertChild(parent->GetChildren().indexOf(older) + 1, young);
+                parent->InsertChild(parent->ChildrenIndexOf(older) + 1, young);
             } else {
                 young->SetParent(m_ViewRoot);
-                m_ViewRoot->AddChild(young);
+                m_ViewRoot->AppendChild(young);
             }
 
             ApplySpecificSettings(young);
@@ -2865,8 +2868,8 @@ void TreeBank::NextView(ViewNode *vn){
             ;
         } else {
             next = m_ViewRoot;
-            while(!next->GetChildren().isEmpty())
-                next = next->GetChildren().first();
+            while(!next->HasNoChildren())
+                next = next->GetFirstChild();
 
             // retry without do-while.
             // skip non openable node.
@@ -2884,7 +2887,7 @@ void TreeBank::NextView(ViewNode *vn){
             SetCurrent(next);
         }
     } else {
-        NodeList sibling = next->GetSibling();
+        NodeList sibling = next->GetSiblings();
 
         if(sibling.indexOf(next) < sibling.length() - 1){
             next = sibling[sibling.indexOf(next) + 1];
@@ -2929,8 +2932,8 @@ void TreeBank::PrevView(ViewNode *vn){
             ;
         } else {
             prev = m_ViewRoot;
-            while(!prev->GetChildren().isEmpty())
-                prev = prev->GetChildren().last();
+            while(!prev->HasNoChildren())
+                prev = prev->GetLastChild();
 
             // retry without do-while.
             // skip non openable node.
@@ -2948,7 +2951,7 @@ void TreeBank::PrevView(ViewNode *vn){
             SetCurrent(prev);
         }
     } else {
-        NodeList sibling = prev->GetSibling();
+        NodeList sibling = prev->GetSiblings();
 
         if(sibling.indexOf(prev) > 0){
             prev = sibling[sibling.indexOf(prev) - 1];
@@ -3165,16 +3168,16 @@ ViewNode *TreeBank::MakeSiblingDirectory(ViewNode *vn){
 void TreeBank::DisplayViewTree(ViewNode *vn){
     m_Gadgets->Activate(Gadgets::ViewTree);
     if(!vn) vn = m_CurrentViewNode;
-    if(!vn && !m_ViewRoot->GetChildren().isEmpty())
-        vn = m_ViewRoot->GetChildren().first()->ToViewNode();
+    if(!vn && !m_ViewRoot->HasNoChildren())
+        vn = m_ViewRoot->GetFirstChild()->ToViewNode();
     m_Gadgets->SetCurrent(vn);
 }
 
 void TreeBank::DisplayHistTree(HistNode *hn){
     m_Gadgets->Activate(Gadgets::HistTree);
     if(!hn) hn = m_CurrentHistNode;
-    if(!hn && !m_HistRoot->GetChildren().isEmpty())
-        hn = m_HistRoot->GetChildren().first()->ToHistNode();
+    if(!hn && !m_HistRoot->HasNoChildren())
+        hn = m_HistRoot->GetFirstChild()->ToHistNode();
     m_Gadgets->SetCurrent(hn);
 }
 
@@ -3182,8 +3185,8 @@ void TreeBank::DisplayTrashTree(ViewNode *vn){
     m_Gadgets->Activate(Gadgets::TrashTree);
     if(vn && IsTrash(vn))
         m_Gadgets->SetCurrent(vn);
-    else if(!m_TrashRoot->GetChildren().isEmpty())
-        m_Gadgets->SetCurrent(m_TrashRoot->GetChildren().first());
+    else if(!m_TrashRoot->HasNoChildren())
+        m_Gadgets->SetCurrent(m_TrashRoot->GetFirstChild());
 }
 
 void TreeBank::DisplayAccessKey(SharedView view){

@@ -89,9 +89,9 @@ protected:
     static AddNodePosition m_AddChildViewNodePosition;
     static AddNodePosition m_AddSiblingViewNodePosition;
 
-    bool m_Folded;
-
     View *m_View;
+
+    bool m_Folded;
     QString m_Title;
 
     Node* m_Parent;
@@ -137,11 +137,14 @@ public:
     Node *GetParent() { return m_Parent;}
     Node *GetPrimary(){ return m_Primary;}
     Node *GetPartner(){ return m_Partner;}
-    NodeList &GetChildren(){ return m_Children;}
-    NodeList &GetSibling(){
-        Q_ASSERT(m_Parent);
+    // return copy.
+    NodeList GetChildren(){ return m_Children;}
+    NodeList GetSiblings(){
+        static NodeList empty = NodeList();
+        if(!m_Parent) return empty;
         return m_Parent->GetChildren();
     }
+    // make list.
     NodeList GetAncestors(){
         NodeList list = NodeList();
         Node *nd = this;
@@ -166,6 +169,13 @@ public:
             nd = nd->GetParent();
         return nd;
     }
+    bool HasNoChildren(){
+        return m_Children.isEmpty();
+    }
+    bool HasNoSiblings(){
+        if(!m_Parent) return true;
+        return m_Parent->HasNoChildren();
+    }
     bool IsParentOf(Node *nd){
         return nd ? nd->GetParent() == this : false;
     }
@@ -176,10 +186,10 @@ public:
         return nd ? nd->GetPartner() == this : false;
     }
     bool IsChidOf(Node *nd){
-        return nd ? nd->GetChildren().contains(this) : false;
+        return nd ? nd->ChildrenContains(this) : false;
     }
     bool IsSiblingOf(Node *nd){
-        return nd ? nd->GetSibling().contains(this) : false;
+        return nd ? nd->SiblingsContains(this) : false;
     }
     bool IsAncestorOf(Node *nd){
         return nd ? nd->GetAncestors().contains(this) : false;
@@ -215,8 +225,20 @@ public:
     void ClearChildren(){
         m_Children.clear();
     }
-    void AddChild(Node *nd){
+    int ChildrenLength(){
+        return m_Children.length();
+    }
+    int ChildrenIndexOf(Node *nd){
+        return m_Children.indexOf(nd);
+    }
+    bool ChildrenContains(Node *nd){
+        return m_Children.contains(nd);
+    }
+    void AppendChild(Node *nd){
         m_Children.append(nd);
+    }
+    void PrependChild(Node *nd){
+        m_Children.prepend(nd);
     }
     void RemoveChild(Node *nd){
         m_Children.removeOne(nd);
@@ -227,11 +249,71 @@ public:
     void MoveChild(int from, int to){
         m_Children.move(from, to);
     }
-    Node *TakeLastChild(){
-        return m_Children.takeLast();
+    Node *GetChildAt(int i){
+        return m_Children.at(i);
+    }
+    Node *GetFirstChild(){
+        if(m_Children.isEmpty()) return 0;
+        return m_Children.first();
+    }
+    Node *GetLastChild(){
+        if(m_Children.isEmpty()) return 0;
+        return m_Children.last();
     }
     Node *TakeFirstChild(){
+        if(m_Children.isEmpty()) return 0;
         return m_Children.takeFirst();
+    }
+    Node *TakeLastChild(){
+        if(m_Children.isEmpty()) return 0;
+        return m_Children.takeLast();
+    }
+    int SiblingsLength(){
+        if(!m_Parent) return 0;
+        return m_Parent->ChildrenLength();
+    }
+    int SiblingsIndexOf(Node *nd){
+        if(!m_Parent) return 0;
+        return m_Parent->ChildrenIndexOf(nd);
+    }
+    bool SiblingsContains(Node *nd){
+        if(!m_Parent) return false;
+        return m_Parent->ChildrenContains(nd);
+    }
+    void AppendSibling(Node *nd){
+        if(m_Parent) m_Parent->AppendChild(nd);
+    }
+    void PrependSibling(Node *nd){
+        if(m_Parent) m_Parent->PrependSibling(nd);
+    }
+    void RemoveSibling(Node *nd){
+        if(m_Parent) m_Parent->RemoveChild(nd);
+    }
+    void InsertSibling(int i, Node *nd){
+        if(m_Parent) m_Parent->InsertChild(i, nd);
+    }
+    void MoveSibling(int from, int to){
+        if(m_Parent) m_Parent->MoveChild(from, to);
+    }
+    Node *GetSiblingAt(int i){
+        if(!m_Parent) return 0;
+        return m_Parent->GetChildAt(i);
+    }
+    Node *GetFirstSibling(){
+        if(!m_Parent) return 0;
+        return m_Parent->GetFirstChild();
+    }
+    Node *GetLastSibling(){
+        if(!m_Parent) return 0;
+        return m_Parent->GetLastChild();
+    }
+    Node *TakeFirstSibling(){
+        if(!m_Parent) return 0;
+        return m_Parent->TakeFirstChild();
+    }
+    Node *TakeLastSibling(){
+        if(!m_Parent) return 0;
+        return m_Parent->TakeLastChild();
     }
 
     virtual QUrl GetUrl()    { return QUrl();}

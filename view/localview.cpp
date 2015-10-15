@@ -118,7 +118,7 @@ void LocalView::Load(const QUrl &url){
     // when not displaying pixmap or media, 'm_CurrentNode' is dummy,
     // and 'm_(Hist|View)Node' url is directory.
 
-    if(!m_ParentNode->GetChildren().isEmpty() && supported){
+    if(!m_ParentNode->HasNoChildren() && supported){
         NodeList children = m_ParentNode->GetChildren();
         for(int i = 0; i < children.length(); i++){
             if(children[i]->GetUrl() == url){
@@ -298,7 +298,7 @@ void LocalView::RegisterNodes(const QUrl &url){
                 nd->SetUrl(QUrl::fromLocalFile(rootpath));
                 nd->SetTitle(rootpath);
                 nd->SetParent(m_ParentNode);
-                m_ParentNode->AddChild(nd);
+                m_ParentNode->AppendChild(nd);
             }
         }
     } else
@@ -318,7 +318,7 @@ void LocalView::RegisterNodes(const QUrl &url){
             nd->SetUrl(QUrl::fromLocalFile(filepath));
             nd->SetTitle(file);
             nd->SetParent(m_ParentNode);
-            m_ParentNode->AddChild(nd);
+            m_ParentNode->AppendChild(nd);
         }
     }
 }
@@ -1622,7 +1622,7 @@ void LocalView::LoadImageRequestReverse(int scope){
 
 void LocalView::LoadImageToCache(Node *nd){
     if(nd->GetUrl().isEmpty() || !nd->GetImage().isNull() ||
-       !m_ParentNode->GetChildren().contains(nd))
+       !m_ParentNode->ChildrenContains(nd))
         return;
     LoadImageToCache(nd->GetUrl().toLocalFile());
 }
@@ -1665,7 +1665,7 @@ void LocalView::LoadImageToCache(const QString &path){
 }
 
 void LocalView::SwapMediaItem(int index){
-    if(m_ParentNode->GetChildren().isEmpty()) return;
+    if(m_ParentNode->HasNoChildren()) return;
 
     if(index == -1){
         m_PixmapItem->setPixmap(QPixmap());
@@ -1678,7 +1678,7 @@ void LocalView::SwapMediaItem(int index){
         m_VideoItem->setEnabled(false);
         m_VideoItem->hide();
 
-        m_CurrentNode = m_ParentNode->GetChildren().first();
+        m_CurrentNode = m_ParentNode->GetFirstChild();
         QString path = m_ParentNode->GetUrl().toLocalFile();
         emit urlChanged(QUrl::fromLocalFile(path));
         emit titleChanged(path);
@@ -1972,6 +1972,7 @@ void LocalView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
     QString mouse;
 
     Application::AddModifiersToString(mouse, ev->modifiers());
+    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
     Application::AddMouseButtonToString(mouse, ev->button());
 
     if(Gadgets::GetMouseMap().contains(mouse)){
@@ -1983,13 +1984,14 @@ void LocalView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
                 ev->setAccepted(false);
                 return;
             }
+            GestureAborted();
             ev->setAccepted(true);
             return;
         }
     }
 
-    GraphicsTableView::mousePressEvent(ev);
     GestureStarted(ev->pos().toPoint());
+    GraphicsTableView::mousePressEvent(ev);
     ev->setAccepted(true);
 }
 

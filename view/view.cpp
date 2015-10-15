@@ -146,7 +146,9 @@ const QMap<QWebEngineSettings::WebAttribute, QString> View::m_WebEngineSwitches 
   //<< qMakePair(QWebEngineSettings::DnsPrefetchEnabled,       QString::fromLatin1("[dD][nN][sS][pP]refetch"))
   //<< qMakePair(QWebEngineSettings::FrameFlatteningEnabled,   QString::fromLatin1("[fF]rame[fF]latten"))
     << qMakePair(QWebEngineSettings::JavascriptEnabled,        QString::fromLatin1("[jJ](?:ava)?[sS](?:cript)?"))
-  //<< qMakePair(QWebEngineSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugin"))
+#if QT_VERSION >= 0x050600
+    << qMakePair(QWebEngineSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugin"))
+#endif
   //<< qMakePair(QWebEngineSettings::PrivateBrowsingEnabled,   QString::fromLatin1("(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"))
     << qMakePair(QWebEngineSettings::SpatialNavigationEnabled, QString::fromLatin1("[sS]patial(?:[nN]avigation)?"))
   //<< qMakePair(QWebEngineSettings::TiledBackingStoreEnabled, QString::fromLatin1("[tT]iled[bB]acking[sS]tore"))
@@ -998,7 +1000,9 @@ void View::LoadSettings(){
             gwes->setAttribute(QWebEngineSettings::LocalStorageEnabled,               settings->value(QStringLiteral("LocalStorageEnabled"),               gwes->testAttribute(QWebEngineSettings::LocalStorageEnabled)              ).value<bool>());
           //gwes->setAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled,     settings->value(QStringLiteral("OfflineStorageDatabaseEnabled"),     gwes->testAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled)    ).value<bool>());
           //gwes->setAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled, settings->value(QStringLiteral("OfflineWebApplicationCacheEnabled"), gwes->testAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled)).value<bool>());
-          //gwes->setAttribute(QWebEngineSettings::PluginsEnabled,                    settings->value(QStringLiteral("PluginsEnabled"),                    gwes->testAttribute(QWebEngineSettings::PluginsEnabled)                   ).value<bool>());
+#if QT_VERSION >= 0x050600
+            gwes->setAttribute(QWebEngineSettings::PluginsEnabled,                    settings->value(QStringLiteral("PluginsEnabled"),                    gwes->testAttribute(QWebEngineSettings::PluginsEnabled)                   ).value<bool>());
+#endif
           //gwes->setAttribute(QWebEngineSettings::PrintElementBackgrounds,           settings->value(QStringLiteral("PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)          ).value<bool>());
           //gwes->setAttribute(QWebEngineSettings::PrivateBrowsingEnabled,            settings->value(QStringLiteral("PrivateBrowsingEnabled"),            gwes->testAttribute(QWebEngineSettings::PrivateBrowsingEnabled)           ).value<bool>());
           //gwes->setAttribute(QWebEngineSettings::SiteSpecificQuirksEnabled,         settings->value(QStringLiteral("SiteSpecificQuirksEnabled"),         gwes->testAttribute(QWebEngineSettings::SiteSpecificQuirksEnabled)        ).value<bool>());
@@ -1441,7 +1445,9 @@ void View::SaveSettings(){
             settings->setValue(QStringLiteral("LocalStorageEnabled"),               gwes->testAttribute(QWebEngineSettings::LocalStorageEnabled)               );
           //settings->setValue(QStringLiteral("OfflineStorageDatabaseEnabled"),     gwes->testAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled)     );
           //settings->setValue(QStringLiteral("OfflineWebApplicationCacheEnabled"), gwes->testAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled) );
-          //settings->setValue(QStringLiteral("PluginsEnabled"),                    gwes->testAttribute(QWebEngineSettings::PluginsEnabled)                    );
+#  if QT_VERSION >= 0x050600
+            settings->setValue(QStringLiteral("PluginsEnabled"),                    gwes->testAttribute(QWebEngineSettings::PluginsEnabled)                    );
+#  endif
           //settings->setValue(QStringLiteral("PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)           );
           //settings->setValue(QStringLiteral("PrivateBrowsingEnabled"),            gwes->testAttribute(QWebEngineSettings::PrivateBrowsingEnabled)            );
           //settings->setValue(QStringLiteral("SiteSpecificQuirksEnabled"),         gwes->testAttribute(QWebEngineSettings::SiteSpecificQuirksEnabled)         );
