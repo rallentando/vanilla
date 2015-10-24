@@ -591,6 +591,28 @@ protected:
         QWidget *widget = qobject_cast<QWidget*>(obj);
 
         switch(ev->type()){
+        case QEvent::KeyPress:
+            return false;
+        case QEvent::KeyRelease:{
+            QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
+            int k = ke->key();
+            int delay = m_View->page()->settings()->testAttribute(QWebSettingsBase::ScrollAnimatorEnabled)
+                ? 500
+                : 100;
+            if(k == Qt::Key_Space ||
+               k == Qt::Key_Up ||
+               k == Qt::Key_Down ||
+               k == Qt::Key_Right ||
+               k == Qt::Key_Left ||
+               k == Qt::Key_PageUp ||
+               k == Qt::Key_PageDown ||
+               k == Qt::Key_Home ||
+               k == Qt::Key_End){
+
+                QTimer::singleShot(delay, m_View, SLOT(EmitScrollChangedIfNeed()));
+            }
+            return false;
+        }
         case QEvent::MouseMove:
         case QEvent::MouseButtonPress:
         case QEvent::MouseButtonRelease:
@@ -606,54 +628,16 @@ protected:
             switch(ev->type()){
             case QEvent::MouseMove:
                 m_View->mouseMoveEvent(&me_);
-                return false;
+                return me_.isAccepted();
             case QEvent::MouseButtonPress:
                 m_View->mousePressEvent(&me_);
-                return false;
-            case QEvent::MouseButtonRelease:{
-
-                QUrl link = m_View->m_ClickedElement ? m_View->m_ClickedElement->LinkUrl() : QUrl();
-
-                if(!link.isEmpty() &&
-                   m_View->m_Gesture.isEmpty() &&
-                   (me_.button() == Qt::MidButton ||
-                    me_.button() == Qt::LeftButton)){
-
-                    QNetworkRequest req(link);
-                    req.setRawHeader("Referer", m_View->url().toEncoded());
-
-                    if(Application::keyboardModifiers() & Qt::ShiftModifier ||
-                       Application::keyboardModifiers() & Qt::ControlModifier ||
-                       me_.button() == Qt::MidButton){
-
-                        // WebEnginView made by QtWebEngine doesn't accept some mouse events.
-                        m_View->GestureAborted();
-                        m_View->m_TreeBank->OpenInNewViewNode(req, Page::Activate(), m_View->GetViewNode());
-                        return true;
-
-                    } else if(
-                        // it's requirements of starting loadhack.
-                        // loadhack uses new hist node instead of same view's `load()'.
-                        m_View->m_EnableLoadHackLocal
-                        // url is not empty.
-                        && !m_View->url().isEmpty()
-                        // link doesn't hold jump command.
-                        && !link.toEncoded().contains("#")
-                        // m_ClickedElement doesn't hold javascript function.
-                        && !m_View->m_ClickedElement->IsJsCommandElement()){
-
-                        // and HistNode.
-                        m_View->GestureAborted();
-                        m_View->m_TreeBank->OpenInNewHistNode(req, true, m_View->GetHistNode());
-                        return true;
-                    }
-                }
+                return me_.isAccepted();
+            case QEvent::MouseButtonRelease:
                 m_View->mouseReleaseEvent(&me_);
-                return false;
-            }
+                return me_.isAccepted();
             case QEvent::MouseButtonDblClick:
                 m_View->mouseDoubleClickEvent(&me_);
-                return false;
+                return me_.isAccepted();
             }
             break;
         }

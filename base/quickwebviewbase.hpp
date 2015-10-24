@@ -335,6 +335,11 @@ public slots:
     void changeNodeUrl(const QUrl &url){
         ChangeNodeUrl(url);
     }
+    void setFullScreen(bool on){
+        if(TreeBank *tb = GetTreeBank()){
+            tb->GetMainWindow()->SetFullScreen(on);
+        }
+    }
 
     QString setFocusToElementJsCode(const QString &xpath){ return SetFocusToElementJsCode(xpath);}
     QString fireClickEventJsCode(const QString &xpath, const QPoint &pos){ return FireClickEventJsCode(xpath, pos);}

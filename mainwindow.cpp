@@ -621,11 +621,25 @@ void MainWindow::hideEvent(QHideEvent *ev){
 #if defined(Q_OS_WIN)
 
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result){
+
     bool ret = QMainWindow::nativeEvent(eventType, message, result);
 
     if(eventType == "windows_generic_MSG"){
-        if(static_cast<MSG*>(message)->message == WM_WINDOWPOSCHANGED){
+        MSG *msg = static_cast<MSG*>(message);
 
+        switch(msg->message){
+        case WM_SYSCOMMAND:{
+            if(IsMenuBarEmpty() && (msg->wParam & 0xFFF0) == SC_MOUSEMENU){
+                QTimer::singleShot(0, [this](){
+                        QMenu *menu = GetTreeBank()->CreateTitlebarMenu();
+                        menu->exec(QCursor::pos());
+                        delete menu;
+                    });
+                return true;
+            }
+            break;
+        }
+        case WM_WINDOWPOSCHANGED:{
             if(TreeBank::PurgeView()){
                 if(SharedView view = m_TreeBank->GetCurrentView()){
 #ifdef QTWEBKIT
@@ -642,6 +656,8 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
             if(notifier && notifier->IsPurged()) notifier->raise();
             Receiver *receiver = m_TreeBank->GetReceiver();
             if(receiver && receiver->IsPurged()) receiver->raise();
+            break;
+        }
         }
     }
     return ret;

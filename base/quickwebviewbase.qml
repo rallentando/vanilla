@@ -111,6 +111,11 @@ Rectangle {
         //}
 
         //[[QWEV]]
+        onFullScreenRequested: {
+            viewInterface.setFullScreen(request.toggleOn)
+            request.accept()
+        }
+
         onDevicePixelRatioChanged: {
             experimental.viewport.devicePixelRatio = devicePixelRatio
         }

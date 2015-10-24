@@ -35,6 +35,11 @@
 //[[!WEV]]
 #include <QWebInspector>
 //[[/!WEV]]
+//[[WEV]]
+#if QT_VERSION >= 0x050600
+#  include <QWebEngineFullScreenRequest>
+#endif
+//[[/WEV]]
 
 #include <functional>
 #include <memory>
@@ -116,8 +121,8 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
     connect(this, SIGNAL(proxyAuthenticationRequired(const QUrl&, QAuthenticator*, const QString&)),
             this, SLOT(HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&)));
 #if QT_VERSION >= 0x050600
-    connect(this, SIGNAL(fullScreenRequested(bool)),
-            this, SLOT(HandleFullScreen(bool)));
+    connect(this, SIGNAL(fullScreenRequested(const QWebEngineFullScreenRequest&)),
+            this, SLOT(HandleFullScreen(const QWebEngineFullScreenRequest&)));
     connect(this, SIGNAL(renderProcessTerminated(RenderProcessTerminationStatus, int)),
             this, SLOT(HandleProcessTermination(RenderProcessTerminationStatus, int)));
 #endif
@@ -311,14 +316,6 @@ bool WebPageBase::supportsExtension(Extension extension) const{
 }
 //[[/!WEV]]
 //[[WEV]]
-#if QT_VERSION >= 0x050600
-bool WebPageBase::isFullScreen(){
-    if(TreeBank *tb = m_View->GetTreeBank())
-        return tb->GetMainWindow()->isFullScreen();
-    return false;
-}
-#endif
-
 bool WebPageBase::acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame){
     return QWebPageBase::acceptNavigationRequest(url, type, isMainFrame);
 }
@@ -645,9 +642,13 @@ void WebPageBase::HandleProxyAuthentication(const QUrl &requestUrl,
 }
 
 #if QT_VERSION >= 0x050600
-void WebPageBase::HandleFullScreen(bool on){
-    if(TreeBank *tb = m_View->GetTreeBank())
-        return tb->GetMainWindow()->SetFullScreen(on);
+void WebPageBase::HandleFullScreen(const QWebEngineFullScreenRequest &request){
+    if(TreeBank *tb = m_View->GetTreeBank()){
+        tb->GetMainWindow()->SetFullScreen(request.toggleOn());
+        request.accept();
+    } else {
+        request.reject();
+    }
 }
 
 void WebPageBase::HandleProcessTermination(RenderProcessTerminationStatus status, int code){

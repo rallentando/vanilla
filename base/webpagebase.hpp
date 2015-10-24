@@ -32,6 +32,10 @@ class ViewNode;
 class HistNode;
 class WebElement;
 
+//[[WEV]]
+class QWebEngineFullScreenRequest;
+//[[/WEV]]
+
 typedef std::shared_ptr<WebElement> SharedWebElement;
 typedef QList<std::shared_ptr<WebElement>> SharedWebElementList;
 
@@ -81,9 +85,6 @@ public:
     }
     //[[/!WEV]]
     //[[WEV]]
-#if QT_VERSION >= 0x050600
-    bool isFullScreen() DECL_OVERRIDE;
-#endif
     bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) DECL_OVERRIDE;
     QStringList chooseFiles(FileSelectionMode mode, const QStringList &oldFiles,
                             const QStringList &acceptedMimeTypes) DECL_OVERRIDE;
@@ -146,7 +147,7 @@ public slots:
     void HandleAuthentication(const QUrl&, QAuthenticator*);
     void HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&);
 #if QT_VERSION >= 0x050600
-    void HandleFullScreen(bool);
+    void HandleFullScreen(const QWebEngineFullScreenRequest &request);
     void HandleProcessTermination(RenderProcessTerminationStatus status, int code);
 #endif
     //[[/WEV]]

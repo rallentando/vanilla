@@ -409,6 +409,7 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
 
     if(m_DragStarted){
         QQuickBase::mouseMoveEvent(ev);
+        ev->setAccepted(false);
         return;
     }
     if(ev->buttons() & Qt::RightButton &&
@@ -423,6 +424,7 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
               ? Action(Page::StringToAction(m_RightGestureMap[gesture]))->text()
             : m_RightGestureMap[gesture];
         emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
+        ev->setAccepted(false);
         return;
     }
 
@@ -446,6 +448,7 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
         if(QLineF(ev->pos(), m_GestureStartedPos).length() < 2){
             // gesture not aborted.
             QQuickBase::mouseMoveEvent(ev);
+            ev->setAccepted(false);
             return;
         }
 
@@ -459,7 +462,7 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
 
         NetworkAccessManager *nam =
             static_cast<NetworkAccessManager*>(page()->networkAccessManager());
-        // create and download.
+
         QMimeData *mime = m_HadSelection
             ? CreateMimeDataFromSelection(nam)
             : CreateMimeDataFromElement(nam);
@@ -467,9 +470,10 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
         if(!mime){
             drag->deleteLater();
 
-            // call QtWebKit's drag.
+            // call default behavior.
             GestureAborted();
             QQuickBase::mouseMoveEvent(ev);
+            ev->setAccepted(false);
             return;
         }
 
@@ -519,9 +523,10 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
         drag->deleteLater();
         ev->setAccepted(true);
     } else {
-        // call QtWebKit's drag.
+        // call default behavior.
         GestureAborted();
         QQuickBase::mouseMoveEvent(ev);
+        ev->setAccepted(false);
     }
 }
 
@@ -623,6 +628,7 @@ void QuickWebViewBase::mouseReleaseEvent(QMouseEvent *ev){
 
 void QuickWebViewBase::mouseDoubleClickEvent(QMouseEvent *ev){
     QQuickBase::mouseDoubleClickEvent(ev);
+    ev->setAccepted(false);
 }
 
 #ifdef USE_QQUICKWIDGET

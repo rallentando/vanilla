@@ -653,6 +653,7 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
 
     if(m_DragStarted){
         QWebViewBase::mouseMoveEvent(ev);
+        ev->setAccepted(false);
         return;
     }
     if(ev->buttons() & Qt::RightButton &&
@@ -667,6 +668,7 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
               ? Action(Page::StringToAction(m_RightGestureMap[gesture]))->text()
             : m_RightGestureMap[gesture];
         emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
+        ev->setAccepted(false);
         return;
     }
 
@@ -690,6 +692,7 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
         if(QLineF(LocalPos(ev), m_GestureStartedPos).length() < 2){
             // gesture not aborted.
             QWebViewBase::mouseMoveEvent(ev);
+            ev->setAccepted(false);
             return;
         }
         //[[GWV]]
@@ -704,7 +707,7 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
 
         NetworkAccessManager *nam =
             static_cast<NetworkAccessManager*>(page()->networkAccessManager());
-        // create and download.
+
         QMimeData *mime = m_HadSelection
             ? CreateMimeDataFromSelection(nam)
             : CreateMimeDataFromElement(nam);
@@ -712,9 +715,10 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
         if(!mime){
             drag->deleteLater();
 
-            // call QtWebKit's drag.
+            // call default behavior.
             GestureAborted();
             QWebViewBase::mouseMoveEvent(ev);
+            ev->setAccepted(false);
             return;
         }
 
@@ -803,9 +807,10 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
         drag->deleteLater();
         ev->setAccepted(true);
     } else {
-        // call QtWebKit's drag.
+        // call default behavior.
         GestureAborted();
         QWebViewBase::mouseMoveEvent(ev);
+        ev->setAccepted(false);
     }
 }
 
@@ -832,13 +837,17 @@ void WebViewBase::mousePressEvent(QMouseEventBase *ev){
 
     GestureStarted(LocalPos(ev));
     QWebViewBase::mousePressEvent(ev);
+    //[[WEV]]
+    ev->setAccepted(false);
+    //[[/WEV]]
+    //[[!WEV]]
     ev->setAccepted(true);
+    //[[/!WEV]]
 }
 
 void WebViewBase::mouseReleaseEvent(QMouseEventBase *ev){
     emit statusBarMessage(QString());
 
-    //[[!WEV]]
     QUrl link = m_ClickedElement ? m_ClickedElement->LinkUrl() : QUrl();
 
     if(!link.isEmpty() &&
@@ -875,7 +884,6 @@ void WebViewBase::mouseReleaseEvent(QMouseEventBase *ev){
             return;
         }
     }
-    //[[/!WEV]]
 
     if(ev->button() == Qt::RightButton){
 
@@ -889,28 +897,21 @@ void WebViewBase::mouseReleaseEvent(QMouseEventBase *ev){
         ev->setAccepted(true);
         return;
     }
-    //[[WEV]]
-    if(ev->button() == Qt::LeftButton &&
-       m_EnableDragHackLocal && !m_GestureStartedPos.isNull()){
-
-        if(!m_Gesture.isEmpty()){
-            GestureFinished(LocalPos(ev), ev->button());
-        } else {
-            GestureAborted();
-        }
-        ev->setAccepted(true);
-        return;
-    }
-    //[[/WEV]]
 
     GestureAborted();
     QWebViewBase::mouseReleaseEvent(ev);
     EmitScrollChangedIfNeed();
+    //[[WEV]]
+    ev->setAccepted(false);
+    //[[/WEV]]
+    //[[!WEV]]
     ev->setAccepted(true);
+    //[[/!WEV]]
 }
 
 void WebViewBase::mouseDoubleClickEvent(QMouseEventBase *ev){
     QWebViewBase::mouseDoubleClickEvent(ev);
+    ev->setAccepted(false);
 }
 
 void WebViewBase::dragEnterEvent(QDragEnterEventBase *ev){

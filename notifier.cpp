@@ -497,4 +497,5 @@ void Notifier::mouseMoveEvent(QMouseEvent *ev){
 void Notifier::mouseReleaseEvent(QMouseEvent *ev){
     m_HotSpot = QPoint();
     ev->setAccepted(true);
+    if(IsPurged()) m_TreeBank->GetMainWindow()->SetFocus();
 }

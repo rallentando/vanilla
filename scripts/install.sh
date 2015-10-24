@@ -3,12 +3,28 @@
 TARGET_DIR="package/vanilla"
 
 SYSTEM_DIR="C:/Windows/System32"
-OPENSSL_DIR="C:/OpenSSL-Win32/bin"
-QT5_DIR="D:/Qt/Qt5.5.0/5.5/msvc2013"
 
-#SYSTEM_DIR="C:/Windows/System32"
-#OPENSSL_DIR="C:/OpenSSL-Win64/bin"
-#QT5_DIR="D:/Qt/Qt5.5.0/5.5/msvc2013_64"
+for drive in C D E F G
+do
+    if   [ -e   $drive:/Qt/Qt5.5.1/5.5/msvc2013 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.5.1/5.5/msvc2013
+        break
+    elif [ -e   $drive:/Qt/Qt5.5.1/5.5/msvc2013_64 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.5.1/5.5/msvc2013_64
+        break
+    fi
+done
+
+for drive in C D E F G
+do
+    if   [ -e       $drive:/OpenSSL-Win32/bin ]; then
+        OPENSSL_DIR=$drive:/OpenSSL-Win32/bin
+        break
+    elif [ -e       $drive:/OpenSSL-Win64/bin ]; then
+        OPENSSL_DIR=$drive:/OpenSSL-Win64/bin
+        break
+    fi
+done
 
 mkdir -p $TARGET_DIR/
 mkdir -p $TARGET_DIR/translations/
@@ -166,6 +182,8 @@ cp $QT5_DIR/translations/qtbase_*.qm $TARGET_DIR/translations/
 
 cp $QT5_DIR/icudtl.dat $TARGET_DIR/
 cp $QT5_DIR/qtwebengine_resources.pak $TARGET_DIR/
+cp $QT5_DIR/qtwebengine_resources_100p.pak $TARGET_DIR/
+cp $QT5_DIR/qtwebengine_resources_200p.pak $TARGET_DIR/
 cp $QT5_DIR/translations/qtwebengine_locales/*.pak $TARGET_DIR/translations/qtwebengine_locales/
 
 cp translations/*.qm $TARGET_DIR/translations/

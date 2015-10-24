@@ -2313,10 +2313,11 @@ QString Application::BrowserPath_Sleipnir(){
     if(QFile::exists(path)) return path;
     path = QStringLiteral("C:/Program Files (x86)/Fenrir Inc/Sleipnir/bin/Sleipnir.exe");
     if(QFile::exists(path)) return path;
-    path = QStringLiteral("C:/Program Files/Fenrir Inc/Sleipnir5/bin/Sleipnir.exe");
+    for(int i = 2; i <= 6; i++){
+    path = QStringLiteral("C:/Program Files/Fenrir Inc/Sleipnir%1/bin/Sleipnir.exe").arg(i);
     if(QFile::exists(path)) return path;
-    path = QStringLiteral("C:/Program Files (x86)/Fenrir Inc/Sleipnir5/bin/Sleipnir.exe");
-    if(QFile::exists(path)) return path;
+    path = QStringLiteral("C:/Program Files (x86)/Fenrir Inc/Sleipnir%1/bin/Sleipnir.exe").arg(i);
+    if(QFile::exists(path)) return path; }
 #elif defined(Q_OS_MAC)
     path = QStringLiteral("/Applications/Sleipnir.app/Contents/MacOS/Sleipnir");
     if(QFile::exists(path)) return path;

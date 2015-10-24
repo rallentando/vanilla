@@ -671,7 +671,6 @@ void View::GoForwardToInferedUrl(){
 }
 
 QMimeData *View::CreateMimeDataFromSelection(NetworkAccessManager *nam){
-    // when loading another page, drag and drop cause crash on WebEngineView.
     if(!nam) return 0;
 
     QMimeData *mime = new QMimeData;
@@ -684,7 +683,6 @@ QMimeData *View::CreateMimeDataFromSelection(NetworkAccessManager *nam){
     if(urls.isEmpty()) urls = Page::ExtractUrlFromText(text, base);
     if(urls.isEmpty()) urls = Page::ExtractUrlFromHtml(html, base, Page::HaveSource);
 
-    // mime become untouchable on WebEngineView...
     mime->setText(text);
     mime->setHtml(html);
     mime->setUrls(urls);
@@ -694,7 +692,6 @@ QMimeData *View::CreateMimeDataFromSelection(NetworkAccessManager *nam){
 }
 
 QMimeData *View::CreateMimeDataFromElement(NetworkAccessManager *nam){
-    // when loading another page, drag and drop cause crash on WebEngineView.
     if(!nam) return 0;
 
     QUrl linkUrl  = m_ClickedElement ? m_ClickedElement->LinkUrl()  : QUrl();
@@ -709,13 +706,17 @@ QMimeData *View::CreateMimeDataFromElement(NetworkAccessManager *nam){
     QList<QUrl> urls;
 
     if(!imageUrl.isEmpty()){
-        urls << NetworkController::Download(nam, imageUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
+        // should be switchable?
+        //urls << NetworkController::Download(nam, imageUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
+        urls << imageUrl;
         mime->setText(imageUrl.toString());
         mime->setHtml(m_ClickedElement->ImageHtml());
     }
     // overwrite text and html, if linkUrl is not empty.
     if(!linkUrl.isEmpty()){
-        urls << NetworkController::Download(nam, linkUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
+        // should be switchable?
+        //urls << NetworkController::Download(nam, linkUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
+        urls << linkUrl;
         mime->setText(linkUrl.toString());
         mime->setHtml(m_ClickedElement->LinkHtml());
     }
@@ -1941,42 +1942,42 @@ void View::GestureStarted(QPoint pos){
 }
 
 void View::GestureMoved(QPoint pos){
-    if(m_GestureStartedPos != QPoint()){
-        Action(Page::We_NoAction); // for action guard.
-        QPoint delta = m_BeforeGesturePos - pos;
-        m_BeforeGestureVector = m_CurrentGestureVector;
-        m_CurrentGestureVector = GetGestureVector(delta.x(), delta.y());
+    if(m_GestureStartedPos.isNull()) return;
 
-        if(m_CurrentGestureVector == Gv_NoMove){
-            m_BeforeGesturePos = pos;
-            return;
-        }
+    Action(Page::We_NoAction); // for action guard.
+    QPoint delta = m_BeforeGesturePos - pos;
+    m_BeforeGestureVector = m_CurrentGestureVector;
+    m_CurrentGestureVector = GetGestureVector(delta.x(), delta.y());
 
-        if(!m_Gesture.isEmpty() &&
-           m_Gesture.last() == m_CurrentGestureVector){
-            m_BeforeGesturePos = pos;
-            return;
-        }
-
-        if(m_BeforeGestureVector == m_CurrentGestureVector){
-            m_SameGestureVectorCount++;
-        } else {
-            m_SameGestureVectorCount = 0;
-        }
-
-        // on flash context menu, mouse cursor jumps.
-        if(m_SameGestureVectorCount <= 1){
-            m_BeforeGesturePos = pos;
-            return;
-        }
-
-        if(m_SameGestureVectorCount >= GESTURE_TRIGGER_COUNT ||
-           delta.manhattanLength() >= GESTURE_TRIGGER_LENGTH){
-            m_SameGestureVectorCount = 0;
-            m_Gesture << m_CurrentGestureVector;
-        }
+    if(m_CurrentGestureVector == Gv_NoMove){
         m_BeforeGesturePos = pos;
+        return;
     }
+
+    if(!m_Gesture.isEmpty() &&
+       m_Gesture.last() == m_CurrentGestureVector){
+        m_BeforeGesturePos = pos;
+        return;
+    }
+
+    if(m_BeforeGestureVector == m_CurrentGestureVector){
+        m_SameGestureVectorCount++;
+    } else {
+        m_SameGestureVectorCount = 0;
+    }
+
+    // on flash context menu, mouse cursor jumps.
+    if(m_SameGestureVectorCount <= 1){
+        m_BeforeGesturePos = pos;
+        return;
+    }
+
+    if(m_SameGestureVectorCount >= GESTURE_TRIGGER_COUNT ||
+       delta.manhattanLength() >= GESTURE_TRIGGER_LENGTH){
+        m_SameGestureVectorCount = 0;
+        m_Gesture << m_CurrentGestureVector;
+    }
+    m_BeforeGesturePos = pos;
 }
 
 void View::GestureAborted(){

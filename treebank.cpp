@@ -2227,7 +2227,8 @@ QMenu *TreeBank::WindowMenu(){
     menu->addAction(Action(Te_ToggleFullScreen));
     menu->addAction(Action(Te_ToggleMaximized));
     menu->addAction(Action(Te_ToggleMinimized));
-    menu->addAction(Action(Te_ToggleShaded));
+    if(Application::EnableFramelessWindow())
+        menu->addAction(Action(Te_ToggleShaded));
     menu->addAction(Action(Te_NewWindow));
     menu->addAction(Action(Te_CloseWindow));
     menu->addAction(Action(Te_SwitchWindow));
