@@ -854,7 +854,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem){
             else if(str == QStringLiteral("LinkUrl"))   menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
             else if(str == QStringLiteral("OpenLinkWithOtherBrowser"))
                 menu->addMenu(OpenLinkWithOtherBrowserMenu(data));
-            else menu->addAction(Action(Page::StringToAction(str), data));
+            else menu->addAction(Action(str, data));
         }
     }
 
@@ -872,7 +872,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem){
             else if(str == QStringLiteral("ImageUrl"))  menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
             else if(str == QStringLiteral("OpenImageWithOtherBrowser"))
                 menu->addMenu(OpenImageWithOtherBrowserMenu(data));
-            else menu->addAction(Action(Page::StringToAction(str), data));
+            else menu->addAction(Action(str, data));
         }
     }
 
@@ -882,7 +882,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem){
         foreach(QString str, View::GetSelectionMenu().split(comma)){
             if     (str == QStringLiteral("Separator"))  menu->addSeparator();
             else if(str == QStringLiteral("SearchMenu")) menu->addMenu(SearchMenu());
-            else menu->addAction(Action(Page::StringToAction(str), data));
+            else menu->addAction(Action(str, data));
         }
     }
 }
@@ -906,7 +906,7 @@ void View::AddRegularMenu(QMenu *menu, SharedWebElement elem){
             } else {
                 menu->addAction(Action(Page::We_ViewSource));
             }
-        } else menu->addAction(Action(Page::StringToAction(str), data));
+        } else menu->addAction(Action(str, data));
     }
 }
 

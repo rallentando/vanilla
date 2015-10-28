@@ -6,11 +6,11 @@ SYSTEM_DIR="C:/Windows/System32"
 
 for drive in C D E F G
 do
-    if   [ -e   $drive:/Qt/Qt5.6.0/5.6/msvc2013 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.6.0/5.6/msvc2013
+    if   [ -e   $drive:/Qt/Qt5.5.1/5.5/msvc2013 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.5.1/5.5/msvc2013
         break
-    elif [ -e   $drive:/Qt/Qt5.6.0/5.6/msvc2013_64 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.6.0/5.6/msvc2013_64
+    elif [ -e   $drive:/Qt/Qt5.5.1/5.5/msvc2013_64 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.5.1/5.5/msvc2013_64
         break
     fi
 done
@@ -51,6 +51,8 @@ mkdir -p $TARGET_DIR/QtQuick/Dialogs/
 mkdir -p $TARGET_DIR/QtQuick/Dialogs/Private/
 mkdir -p $TARGET_DIR/QtQuick/Window.2/
 mkdir -p $TARGET_DIR/QtQuick.2/
+mkdir -p $TARGET_DIR/QtWebKit/
+mkdir -p $TARGET_DIR/QtWebKit/experimental/
 mkdir -p $TARGET_DIR/QtWebEngine/
 mkdir -p $TARGET_DIR/QtWebEngine/experimental/
 mkdir -p $TARGET_DIR/QtWebEngine/UIDelegates/
@@ -77,6 +79,8 @@ cp $QT5_DIR/bin/Qt5Sensors.dll           $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Sql.dll               $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Svg.dll               $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WebChannel.dll        $TARGET_DIR/
+cp $QT5_DIR/bin/Qt5WebKit.dll            $TARGET_DIR/
+cp $QT5_DIR/bin/Qt5WebKitWidgets.dll     $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WebEngine.dll         $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WebEngineCore.dll     $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WebEngineWidgets.dll  $TARGET_DIR/
@@ -90,6 +94,7 @@ cp $QT5_DIR/bin/icuuc54.dll              $TARGET_DIR/
 cp $QT5_DIR/bin/libEGL.dll               $TARGET_DIR/
 cp $QT5_DIR/bin/libGLESv2.dll            $TARGET_DIR/
 cp $QT5_DIR/bin/opengl32sw.dll           $TARGET_DIR/
+cp $QT5_DIR/bin/QtWebProcess.exe         $TARGET_DIR/
 cp $QT5_DIR/bin/QtWebEngineProcess.exe   $TARGET_DIR/
 
 cp $QT5_DIR/plugins/audio/qtaudio_windows.dll              $TARGET_DIR/audio/
@@ -126,13 +131,9 @@ cp $QT5_DIR/plugins/position/qtposition_positionpoll.dll   $TARGET_DIR/position/
 
 cp $QT5_DIR/plugins/printsupport/windowsprintersupport.dll $TARGET_DIR/printsupport/
 
-#cp $QT5_DIR/plugins/qmltooling/qmldbg_qtquick2.dll         $TARGET_DIR/qmltooling/
-cp $QT5_DIR/plugins/qmltooling/qmldbg_debugger.dll          $TARGET_DIR/qmltooling/
-cp $QT5_DIR/plugins/qmltooling/qmldbg_inspector.dll         $TARGET_DIR/qmltooling/
-cp $QT5_DIR/plugins/qmltooling/qmldbg_local.dll             $TARGET_DIR/qmltooling/
-cp $QT5_DIR/plugins/qmltooling/qmldbg_profiler.dll          $TARGET_DIR/qmltooling/
-cp $QT5_DIR/plugins/qmltooling/qmldbg_server.dll            $TARGET_DIR/qmltooling/
-cp $QT5_DIR/plugins/qmltooling/qmldbg_tcp.dll               $TARGET_DIR/qmltooling/
+cp $QT5_DIR/plugins/qmltooling/qmldbg_qtquick2.dll         $TARGET_DIR/qmltooling/
+
+cp $QT5_DIR/plugins/qtwebengine/ffmpegsumo.dll             $TARGET_DIR/qtwebengine/
 
 cp $QT5_DIR/plugins/sensorgestures/qtsensorgestures_plugin.dll $TARGET_DIR/sensorgestures/
 cp $QT5_DIR/plugins/sensorgestures/qtsensorgestures_shakeplugin.dll $TARGET_DIR/sensorgestures/
@@ -140,9 +141,9 @@ cp $QT5_DIR/plugins/sensorgestures/qtsensorgestures_shakeplugin.dll $TARGET_DIR/
 cp $QT5_DIR/plugins/sensors/qtsensors_generic.dll          $TARGET_DIR/sensors/
 
 cp $QT5_DIR/plugins/sqldrivers/qsqlite.dll                 $TARGET_DIR/sqldrivers/
-#cp $QT5_DIR/plugins/sqldrivers/qsqlmysql.dll               $TARGET_DIR/sqldrivers/
-#cp $QT5_DIR/plugins/sqldrivers/qsqlodbc.dll                $TARGET_DIR/sqldrivers/
-#cp $QT5_DIR/plugins/sqldrivers/qsqlpsql.dll                $TARGET_DIR/sqldrivers/
+cp $QT5_DIR/plugins/sqldrivers/qsqlmysql.dll               $TARGET_DIR/sqldrivers/
+cp $QT5_DIR/plugins/sqldrivers/qsqlodbc.dll                $TARGET_DIR/sqldrivers/
+cp $QT5_DIR/plugins/sqldrivers/qsqlpsql.dll                $TARGET_DIR/sqldrivers/
 
 cp $QT5_DIR/qml/QtQuick/Controls/qtquickcontrolsplugin.dll            $TARGET_DIR/QtQuick/Controls/
 cp $QT5_DIR/qml/QtQuick/Controls/qmldir                               $TARGET_DIR/QtQuick/Controls/
@@ -152,9 +153,9 @@ cp $QT5_DIR/qml/QtQuick/Controls/Styles                               $TARGET_DI
 
 cp $QT5_DIR/qml/QtQuick/Dialogs/dialogplugin.dll                      $TARGET_DIR/QtQuick/Dialogs/
 cp $QT5_DIR/qml/QtQuick/Dialogs/qmldir                                $TARGET_DIR/QtQuick/Dialogs/
-#cp $QT5_DIR/qml/QtQuick/Dialogs/*.qml                                 $TARGET_DIR/QtQuick/Dialogs/
-#cp $QT5_DIR/qml/QtQuick/Dialogs/images                                $TARGET_DIR/QtQuick/Dialogs/ -R
-#cp $QT5_DIR/qml/QtQuick/Dialogs/qml                                   $TARGET_DIR/QtQuick/Dialogs/ -R
+cp $QT5_DIR/qml/QtQuick/Dialogs/*.qml                                 $TARGET_DIR/QtQuick/Dialogs/
+cp $QT5_DIR/qml/QtQuick/Dialogs/images                                $TARGET_DIR/QtQuick/Dialogs/ -R
+cp $QT5_DIR/qml/QtQuick/Dialogs/qml                                   $TARGET_DIR/QtQuick/Dialogs/ -R
 cp $QT5_DIR/qml/QtQuick/Dialogs/Private/dialogsprivateplugin.dll      $TARGET_DIR/QtQuick/Dialogs/Private/
 cp $QT5_DIR/qml/QtQuick/Dialogs/Private/qmldir                        $TARGET_DIR/QtQuick/Dialogs/Private/
 
@@ -163,6 +164,11 @@ cp $QT5_DIR/qml/QtQuick/Window.2/qmldir                               $TARGET_DI
 
 cp $QT5_DIR/qml/QtQuick.2/qtquick2plugin.dll                          $TARGET_DIR/QtQuick.2/
 cp $QT5_DIR/qml/QtQuick.2/qmldir                                      $TARGET_DIR/QtQuick.2/
+
+cp $QT5_DIR/qml/QtWebKit/qmlwebkitplugin.dll                          $TARGET_DIR/QtWebKit/
+cp $QT5_DIR/qml/QtWebKit/qmldir                                       $TARGET_DIR/QtWebKit/
+cp $QT5_DIR/qml/QtWebKit/experimental/qmlwebkitexperimentalplugin.dll $TARGET_DIR/QtWebKit/experimental/
+cp $QT5_DIR/qml/QtWebKit/experimental/qmldir                          $TARGET_DIR/QtWebKit/experimental/
 
 cp $QT5_DIR/qml/QtWebEngine/qtwebengineplugin.dll                          $TARGET_DIR/QtWebEngine/
 cp $QT5_DIR/qml/QtWebEngine/qmldir                                         $TARGET_DIR/QtWebEngine/

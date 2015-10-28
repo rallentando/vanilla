@@ -695,6 +695,13 @@ void LocalView::TriggerAction(Gadgets::GadgetsAction a){
     Action(a)->trigger();
 }
 
+QAction *LocalView::Action(QString str, QVariant data){
+    Q_UNUSED(data);
+    if(Gadgets::IsValidAction(str))
+        return Action(Gadgets::StringToAction(str));
+    return 0;
+}
+
 QAction *LocalView::Action(Gadgets::GadgetsAction a){
     // forbid many times call of same action.
     static const QList<Gadgets::GadgetsAction> exclude = QList<Gadgets::GadgetsAction>()

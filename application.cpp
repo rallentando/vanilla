@@ -177,7 +177,16 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         QStringList list;
         // skip first.
         for(int i = 1; i < argc; i++){
-            list << QLatin1String(argv[i]);
+            QString arg = QLatin1String(argv[i]);
+            if(arg.startsWith(QStringLiteral("--"))){
+                // not yet implemented.
+                break;
+            }
+            if(arg.startsWith(QStringLiteral("-"))){
+                // not yet implemented.
+                break;
+            }
+            list << arg;
         }
         t->SendCommandAndQuit(list.join(QStringLiteral(" ")));
         return;
@@ -254,7 +263,16 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         QStringList list;
         // skip first.
         for(int i = 1; i < argc; i++){
-            list << QLatin1String(argv[i]);
+            QString arg = QLatin1String(argv[i]);
+            if(arg.startsWith(QStringLiteral("--"))){
+                // not yet implemented.
+                break;
+            }
+            if(arg.startsWith(QStringLiteral("-"))){
+                // not yet implemented.
+                break;
+            }
+            list << arg;
         }
         if(m_CurrentWindow->GetTreeBank()->GetReceiver())
             m_CurrentWindow->GetTreeBank()->GetReceiver()->ReceiveCommand(list.join(QStringLiteral(" ")));

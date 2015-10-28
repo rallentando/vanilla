@@ -166,6 +166,7 @@ public:
         Action(a, data)->trigger();
     }
 
+    QAction *Action(QString str, QVariant data = QVariant()) DECL_OVERRIDE;
     QAction *Action(Gadgets::GadgetsAction a);
     QAction *Action(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
         Q_UNUSED(data);

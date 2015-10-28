@@ -3410,7 +3410,8 @@
         <location filename="../gen/webenginepage.cpp" line="428"/>
         <source>A page is reloaded, because that&apos;s process is terminated.
 </source>
-        <translation>プロセスが停止したため,そのページを更新しました.</translation>
+        <translation>プロセスが停止したため,そのページを更新しました.
+</translation>
     </message>
     <message>
         <location filename="../gen/webenginepage.cpp" line="431"/>

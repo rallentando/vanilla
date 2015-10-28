@@ -105,8 +105,8 @@ void Thumbnail::paint(QPainter *painter,
         QLinearGradient hasviewgrad;
         hasviewgrad.setStart(0, start);
         hasviewgrad.setFinalStop(0, stop);
-        hasviewgrad.setColorAt(static_cast<qreal>(0), QColor(0,125,100,0));
-        hasviewgrad.setColorAt(static_cast<qreal>(1), QColor(0,125,100,77));
+        hasviewgrad.setColorAt(static_cast<qreal>(0), QColor(255,255,200,0));
+        hasviewgrad.setColorAt(static_cast<qreal>(1), QColor(255,255,200,44));
         const QBrush hasviewbrush(hasviewgrad);
 
         painter->setPen(Qt::NoPen);

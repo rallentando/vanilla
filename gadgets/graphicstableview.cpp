@@ -166,10 +166,10 @@ void GraphicsTableView::Deactivate(){
 
 void GraphicsTableView::SetCurrent(Node *nd){
     if(!nd || !nd->GetParent()){
-        if(IsDisplayingViewNode() && nd->IsViewNode()){
+        if(IsDisplayingViewNode() && (!nd || nd->IsViewNode())){
             m_DummyViewNode->SetParent(m_TreeBank->GetViewRoot());
             nd = m_DummyViewNode;
-        } else if(IsDisplayingHistNode() && nd->IsHistNode()){
+        } else if(IsDisplayingHistNode() && (!nd || nd->IsHistNode())){
             m_DummyHistNode->SetParent(m_TreeBank->GetHistRoot());
             nd = m_DummyHistNode;
         } else {
@@ -952,8 +952,9 @@ void GraphicsTableView::RelocateContents(){
     const float zoom = m_CurrentThumbnailZoomFactor; // alias
 
     int col = THUMBNAIL_DEFAULT_COLUMN_COUNT / zoom;
-    int width = (m_Size.width() * THUMBNAIL_WIDTH_PERCENTAGE / 100) * zoom;
-    int areaWidth = (m_Size.width() * THUMBNAIL_AREA_WIDTH_PERCENTAGE / 100);
+    int wholeWidth = m_Size.width() - DISPLAY_PADDING_X * 2;
+    int thumbWidth = (wholeWidth * THUMBNAIL_WIDTH_PERCENTAGE / 100) * zoom;
+    int areaWidth = (wholeWidth * THUMBNAIL_AREA_WIDTH_PERCENTAGE / 100);
 
     int minWidth = MINIMUM_THUMBNAIL_WHOLE_SIZE.width();
     int defWidth = DEFAULT_THUMBNAIL_WHOLE_SIZE.width() * zoom;
@@ -962,14 +963,14 @@ void GraphicsTableView::RelocateContents(){
 
     if(defWidth < minWidth) defWidth = minWidth;
 
-    if(width > defWidth){
-        col += (areaWidth-(defWidth * col)) / defWidth;
-        width = defWidth;
+    if(thumbWidth > defWidth){
+        col += (areaWidth - (defWidth * col)) / defWidth;
+        thumbWidth = defWidth;
     }
 
-    if(width < minWidth){
-        col -= ((minWidth - width) * col) / minWidth;
-        width = minWidth;
+    if(thumbWidth < minWidth){
+        col -= ((minWidth - thumbWidth) * col) / minWidth;
+        thumbWidth = minWidth;
         if(col > 1) col -= 1;
         if(col == 0) col = 1;
     }
@@ -981,15 +982,15 @@ void GraphicsTableView::RelocateContents(){
         static_cast<double>(DEFAULT_THUMBNAIL_SIZE.height()) /
         static_cast<double>(DEFAULT_THUMBNAIL_SIZE.width());
 
-    int height = ((width - marginWidth) * aspect) + marginHeight;
-    int line = (m_Size.height() - DISPLAY_PADDING_Y) / height;
+    int thumbHeight = ((thumbWidth - marginWidth) * aspect) + marginHeight;
+    int line = (m_Size.height() - DISPLAY_PADDING_Y) / thumbHeight;
 
     if(line < 1) line = 1;
 
     m_CurrentThumbnailColumnCount = col;
     m_CurrentThumbnailLineCount = line;
-    m_CurrentThumbnailWidth = width;
-    m_CurrentThumbnailHeight = height;
+    m_CurrentThumbnailWidth = thumbWidth;
+    m_CurrentThumbnailHeight = thumbHeight;
 
     int length = m_DisplayThumbnails.length();
     for(int i = 0; i < length; i++){
@@ -1002,10 +1003,10 @@ void GraphicsTableView::RelocateContents(){
         if(!thumb->isSelected() || thumb->pos() == QPointF(0,0)){
             thumb->setPos(0,0);
             thumb->setRect
-                (QRectF(QPointF(DISPLAY_PADDING_X + (i % col) * width,
-                                DISPLAY_PADDING_Y + (i / col) * height)
+                (QRectF(QPointF(DISPLAY_PADDING_X + (i % col) * thumbWidth,
+                                DISPLAY_PADDING_Y + (i / col) * thumbHeight)
                         + CurrentThumbnailOffset(),
-                        QSizeF(width, height)));
+                        QSizeF(thumbWidth, thumbHeight)));
         }
 
         title->setParentItem(this);
@@ -1015,7 +1016,7 @@ void GraphicsTableView::RelocateContents(){
             title->setPos(0,0);
             title->setRect
                 (QRectF(QPointF(DISPLAY_PADDING_X
-                                + width * col
+                                + thumbWidth * col
                                 + GADGETS_SCROLL_BAR_MARGIN * 2
                                 + GADGETS_SCROLL_BAR_WIDTH,
                                 DISPLAY_PADDING_Y + NODE_TITLE_HEIGHT * i)
@@ -1025,7 +1026,7 @@ void GraphicsTableView::RelocateContents(){
                                - (NODE_TITLE_DRAW_BORDER ?
                                   DISPLAY_PADDING_X * 2 :
                                   DISPLAY_PADDING_X)
-                               - width * col
+                               - thumbWidth * col
                                - GADGETS_SCROLL_BAR_MARGIN * 2
                                - GADGETS_SCROLL_BAR_WIDTH,
                                NODE_TITLE_HEIGHT)));
@@ -3168,10 +3169,10 @@ void SpotLight::paint(QPainter *painter,
             endy = y1e + (yerange * progress);
             yrange = endy - begy;
             for(y = begy+1; y < endy-1; y++)
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(  0, 125, 100, 77*(y-begy)/yrange));
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(  0, 125, 100, 50*(y-begy)/yrange));
+            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 200, 44*(y-begy)/yrange));
+            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 200, 30*(y-begy)/yrange));
         }
-        pen.setColor(QColor(  0, 125, 100, 50));
+        pen.setColor(QColor(255, 255, 200, 30));
     }
 
     painter->drawImage(QPoint(), image);

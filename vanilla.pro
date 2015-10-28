@@ -20,8 +20,11 @@ QT += \
     printsupport widgets \
     multimedia multimediawidgets \
     webengine webenginewidgets \
-    webkit webkitwidgets \
     quick quickwidgets
+
+lessThan(QT_MINOR_VERSION, 6){
+    QT += webkit webkitwidgets
+}
 
 win32: QT += winextras axcontainer
 

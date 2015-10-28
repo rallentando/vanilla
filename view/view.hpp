@@ -267,6 +267,35 @@ public:
     virtual void TriggerAction(QWebEnginePage::WebAction){}
     virtual void TriggerAction(Page::CustomAction, QVariant = QVariant()){}
 
+    virtual QAction *Action(QString str, QVariant data = QVariant()){
+        if(Page::IsValidAction(str))
+            return Action(Page::StringToAction(str), data);
+        if(!base() || !page()) return 0;
+        QAction *action = 0;
+        if(Page::GetBookmarkletMap().contains(str)){
+            action = new QAction(base());
+            action->setText(str);
+            base()->connect(action, &QAction::triggered,
+                 [this, str, action](){
+                    Load(Page::GetBookmarklet(str).first());
+                    action->deleteLater();
+                });
+        } else if(Page::GetSearchEngineMap().contains(str)){
+            action = new QAction(base());
+            action->setText(str);
+            base()->connect(action, &QAction::triggered,
+                 [this, str, action](){
+                    CallWithSelectedText([this, str, action](QString text){
+                            if(!text.isEmpty())
+                                QMetaObject::invokeMethod(page(), "OpenInNew",
+                                                          Q_ARG(QString, str),
+                                                          Q_ARG(QString, text));
+                            action->deleteLater();
+                        });
+                });
+        }
+        return action;
+    }
 #ifdef QTWEBKIT
     virtual QAction *Action(QWebPage::WebAction){ return 0;}
 #endif

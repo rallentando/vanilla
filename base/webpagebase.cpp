@@ -476,6 +476,8 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
         foreach(QAction *action, standardMenu->actions()){
             if((action != Action(QWebPageBase::Copy)) &&
                (action != Action(QWebPageBase::OpenLink)) &&
+               //(action != Action(QWebPageBase::OpenLinkInThisWindow)) &&
+               //(action != Action(QWebPageBase::OpenLinkInNewTab)) &&
                (action != Action(QWebPageBase::OpenLinkInNewWindow)) &&
                (action != Action(QWebPageBase::DownloadLinkToDisk)) &&
                (action != Action(QWebPageBase::CopyLinkToClipboard)) &&
@@ -492,7 +494,8 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
     }
     //[[/!WEV]]
     //[[WEV]]
-    if(linkUrl.isEmpty() && imageUrl.isEmpty()){
+    // 'selectedText' only work for WebEngineView.
+    if(linkUrl.isEmpty() && imageUrl.isEmpty() && selectedText().isEmpty()){
         QAction *backAction    = Action(QWebPageBase::Back);
         QAction *forwardAction = Action(QWebPageBase::Forward);
         QAction *stopAction    = Action(QWebPageBase::Stop);
@@ -665,7 +668,7 @@ void WebPageBase::HandleProcessTermination(RenderProcessTerminationStatus status
     }
     ModelessDialog::Information(tr("Render process terminated."),
                                 info.arg(code), m_View->base());
-    triggerAction(Reload);
+    QTimer::singleShot(0, m_Page, SLOT(Reload()));
 }
 #endif
 //[[/WEV]]
