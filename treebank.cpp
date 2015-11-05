@@ -3021,94 +3021,82 @@ void TreeBank::DigView(ViewNode *vn){
 
 ViewNode *TreeBank::NewViewNode(ViewNode *vn){
     m_TraverseMode = ViewMode;
+    if(!vn) vn = m_CurrentViewNode;
+    if(!vn) return 0;
 
-    if(vn){
-        return vn->New();
+    if(m_Gadgets && m_Gadgets->IsActive()) return vn->New();
 
-    } else if(vn = m_CurrentViewNode){
-
-        ViewNode *newNode = vn->New();
-        if(!newNode) return 0;
-        SharedView view = LoadWithLink(newNode);
-        if(Page::Activate()){
-            SetCurrent(newNode);
-        } else {
-            view->hide();
-            // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
-            RaiseDisplayedViewPriority();
-        }
-        return newNode;
+    ViewNode *newNode = vn->New();
+    if(!newNode) return 0;
+    SharedView view = LoadWithLink(newNode);
+    if(Page::Activate()){
+        SetCurrent(newNode);
+    } else {
+        view->hide();
+        // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
+        RaiseDisplayedViewPriority();
     }
-    return 0;
+    return newNode;
 }
 
 HistNode *TreeBank::NewHistNode(HistNode *hn){
     m_TraverseMode = HistMode;
+    if(!hn) hn = m_CurrentHistNode;
+    if(!hn) return 0;
 
-    if(hn){
-        return hn->New();
+    if(m_Gadgets && m_Gadgets->IsActive()) return hn->New();
 
-    } else if(hn = m_CurrentHistNode){
-
-        HistNode *newNode = hn->New();
-        if(!newNode) return 0;
-        SharedView view = LoadWithLink(newNode);
-        if(Page::Activate()){
-            SetCurrent(newNode);
-        } else {
-            view->hide();
-            // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
-            RaiseDisplayedViewPriority();
-        }
-        return newNode;
+    HistNode *newNode = hn->New();
+    if(!newNode) return 0;
+    SharedView view = LoadWithLink(newNode);
+    if(Page::Activate()){
+        SetCurrent(newNode);
+    } else {
+        view->hide();
+        // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
+        RaiseDisplayedViewPriority();
     }
-    return 0;
+    return newNode;
 }
 
 ViewNode *TreeBank::CloneViewNode(ViewNode *vn){
     m_TraverseMode = ViewMode;
+    if(!vn) vn = m_CurrentViewNode;
+    if(!vn) return 0;
 
-    if(vn){
-        return vn->Clone();
+    if(m_Gadgets && m_Gadgets->IsActive()) return vn->Clone();
 
-    } else if(vn = m_CurrentViewNode){
-
-        ViewNode *clone = vn->Clone();
-        if(!clone) return 0;
-        SharedView view = LoadWithLink(clone);
-        if(Page::Activate()){
-            SetCurrent(clone);
-        } else {
-            view->hide();
-            // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
-            RaiseDisplayedViewPriority();
-        }
-        return clone;
+    ViewNode *clone = vn->Clone();
+    if(!clone) return 0;
+    SharedView view = LoadWithLink(clone);
+    if(Page::Activate()){
+        SetCurrent(clone);
+    } else {
+        view->hide();
+        // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
+        RaiseDisplayedViewPriority();
     }
-    return 0;
+    return clone;
 }
 
 HistNode *TreeBank::CloneHistNode(HistNode *hn){
     m_TraverseMode = HistMode;
+    if(!hn) hn = m_CurrentHistNode;
+    if(!hn) return 0;
 
-    if(hn){
-        return hn->Clone();
+    if(m_Gadgets && m_Gadgets->IsActive()) return hn->Clone();
 
-    } else if(hn = m_CurrentHistNode){
-
-        HistNode *clone = hn->Clone();
-        if(!clone) return 0;
-        SharedView view = LoadWithLink(clone);
-        if(Page::Activate()){
-            SetCurrent(clone);
-        } else {
-            view->hide();
-            // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
-            RaiseDisplayedViewPriority();
-        }
-        return clone;
+    HistNode *clone = hn->Clone();
+    if(!clone) return 0;
+    SharedView view = LoadWithLink(clone);
+    if(Page::Activate()){
+        SetCurrent(clone);
+    } else {
+        view->hide();
+        // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
+        RaiseDisplayedViewPriority();
     }
-    return 0;
+    return clone;
 }
 
 ViewNode *TreeBank::MakeLocalNode(ViewNode *older){

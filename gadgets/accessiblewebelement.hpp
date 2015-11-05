@@ -33,6 +33,12 @@ public:
     QMap<QString, QRect> KeyRects() const;
     QMap<QString, QRect> ExpRects() const;
 
+    Gadgets *GetGadgets(){ return m_Gadgets;}
+    static QFontMetrics GetInfoMetrics(){ return m_InfoMetrics;}
+    static QFontMetrics GetSmallMetrics(){ return m_SmallMetrics;}
+    static QFontMetrics GetMediumMetrics(){ return m_MediumMetrics;}
+    static QFontMetrics GetLargeMetrics(){ return m_LargeMetrics;}
+
     bool IsCurrentBlock() const;
     bool IsSelected() const;
 

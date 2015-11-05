@@ -15,6 +15,7 @@ public:
     Thumbnail(Node *nd, int nest, QGraphicsItem *parent = 0);
     ~Thumbnail();
     Node *GetNode();
+    GraphicsTableView *GetTableView();
 
     static void Initialize();
 
@@ -22,6 +23,10 @@ public:
 
     void SetNest(int nest);
     int GetNest();
+    void SetPrimary(bool isPrimary);
+
+    bool IsPrimary();
+    bool IsHovered();
 
     QPointF RealTopLeft()    { return pos() + rect().topLeft();}
     QPointF RealTopRight()   { return pos() + rect().topRight();}

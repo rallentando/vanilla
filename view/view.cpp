@@ -12,6 +12,7 @@
 #include <QSettings>
 #include <QPixmap>
 #include <QMenu>
+#include <QWebEngineProfile>
 
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
@@ -992,7 +993,7 @@ void View::LoadSettings(){
           //gwes->setAttribute(QWebEngineSettings::JavaEnabled,                       settings->value(QStringLiteral("JavaEnabled"),                       gwes->testAttribute(QWebEngineSettings::JavaEnabled)                      ).value<bool>());
             gwes->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard,      settings->value(QStringLiteral("JavascriptCanAccessClipboard"),      gwes->testAttribute(QWebEngineSettings::JavascriptCanAccessClipboard)     ).value<bool>());
           //gwes->setAttribute(QWebEngineSettings::JavascriptCanCloseWindows,         settings->value(QStringLiteral("JavascriptCanCloseWindows"),         gwes->testAttribute(QWebEngineSettings::JavascriptCanCloseWindows)        ).value<bool>());
-            gwes->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows,          settings->value(QStringLiteral("JavascriptCanOpenWindows"),          gwes->testAttribute(QWebEngineSettings::JavascriptCanOpenWindows)         ).value<bool>());
+            gwes->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows,          settings->value(QStringLiteral("JavascriptCanOpenWindows"),        /*gwes->testAttribute(QWebEngineSettings::JavascriptCanOpenWindows)*/  true ).value<bool>());
             gwes->setAttribute(QWebEngineSettings::JavascriptEnabled,                 settings->value(QStringLiteral("JavascriptEnabled"),                 gwes->testAttribute(QWebEngineSettings::JavascriptEnabled)                ).value<bool>());
             gwes->setAttribute(QWebEngineSettings::LinksIncludedInFocusChain,         settings->value(QStringLiteral("LinksIncludedInFocusChain"),         gwes->testAttribute(QWebEngineSettings::LinksIncludedInFocusChain)        ).value<bool>());
             gwes->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls,     settings->value(QStringLiteral("LocalContentCanAccessFileUrls"),     gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls)    ).value<bool>());
@@ -1002,7 +1003,7 @@ void View::LoadSettings(){
           //gwes->setAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled,     settings->value(QStringLiteral("OfflineStorageDatabaseEnabled"),     gwes->testAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled)    ).value<bool>());
           //gwes->setAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled, settings->value(QStringLiteral("OfflineWebApplicationCacheEnabled"), gwes->testAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled)).value<bool>());
 #if QT_VERSION >= 0x050600
-            gwes->setAttribute(QWebEngineSettings::PluginsEnabled,                    settings->value(QStringLiteral("PluginsEnabled"),                    gwes->testAttribute(QWebEngineSettings::PluginsEnabled)                   ).value<bool>());
+            gwes->setAttribute(QWebEngineSettings::PluginsEnabled,                    settings->value(QStringLiteral("PluginsEnabled"),                  /*gwes->testAttribute(QWebEngineSettings::PluginsEnabled)*/            true ).value<bool>());
 #endif
           //gwes->setAttribute(QWebEngineSettings::PrintElementBackgrounds,           settings->value(QStringLiteral("PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)          ).value<bool>());
           //gwes->setAttribute(QWebEngineSettings::PrivateBrowsingEnabled,            settings->value(QStringLiteral("PrivateBrowsingEnabled"),            gwes->testAttribute(QWebEngineSettings::PrivateBrowsingEnabled)           ).value<bool>());
@@ -1022,7 +1023,7 @@ void View::LoadSettings(){
           //gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        settings->value(QStringLiteral("Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
             gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  settings->value(QStringLiteral("ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
 #if QT_VERSION >= 0x050600
-            gwes->setAttribute(QWebEngineSettings::FullScreenSupportEnabled,          settings->value(QStringLiteral("FullScreenSupportEnabled"),          gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)         ).value<bool>());
+            gwes->setAttribute(QWebEngineSettings::FullScreenSupportEnabled,          settings->value(QStringLiteral("FullScreenSupportEnabled"),        /*gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)*/  true ).value<bool>());
 #endif
         }
         settings->endGroup();
@@ -1651,6 +1652,42 @@ void View::ApplySpecificSettings(QStringList set){
     if(WebEnginePage *p = qobject_cast<WebEnginePage*>(page())){
         QWebEngineSettings *s = p->settings();
         QWebEngineSettings *g = QWebEngineSettings::globalSettings();
+
+        // why not copied from globalSettings?
+
+        s->setDefaultTextEncoding(g->defaultTextEncoding());
+
+        s->setAttribute(QWebEngineSettings::AutoLoadImages, g->testAttribute(QWebEngineSettings::AutoLoadImages));
+        s->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, g->testAttribute(QWebEngineSettings::JavascriptCanAccessClipboard));
+        s->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows, g->testAttribute(QWebEngineSettings::JavascriptCanOpenWindows));
+        s->setAttribute(QWebEngineSettings::JavascriptEnabled, g->testAttribute(QWebEngineSettings::JavascriptEnabled));
+        s->setAttribute(QWebEngineSettings::LinksIncludedInFocusChain, g->testAttribute(QWebEngineSettings::LinksIncludedInFocusChain));
+        s->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, g->testAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls));
+        s->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, g->testAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls));
+        s->setAttribute(QWebEngineSettings::LocalStorageEnabled, g->testAttribute(QWebEngineSettings::LocalStorageEnabled));
+#if QT_VERSION >= 0x050600
+        s->setAttribute(QWebEngineSettings::PluginsEnabled, g->testAttribute(QWebEngineSettings::PluginsEnabled));
+#endif
+        s->setAttribute(QWebEngineSettings::SpatialNavigationEnabled, g->testAttribute(QWebEngineSettings::SpatialNavigationEnabled));
+        s->setAttribute(QWebEngineSettings::XSSAuditingEnabled, g->testAttribute(QWebEngineSettings::XSSAuditingEnabled));
+        s->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled, g->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled));
+        s->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, g->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled));
+        s->setAttribute(QWebEngineSettings::ErrorPageEnabled, g->testAttribute(QWebEngineSettings::ErrorPageEnabled));
+#if QT_VERSION >= 0x050600
+        s->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, g->testAttribute(QWebEngineSettings::FullScreenSupportEnabled));
+#endif
+
+        s->setFontFamily(QWebEngineSettings::StandardFont, g->fontFamily(QWebEngineSettings::StandardFont));
+        s->setFontFamily(QWebEngineSettings::FixedFont, g->fontFamily(QWebEngineSettings::FixedFont));
+        s->setFontFamily(QWebEngineSettings::SerifFont, g->fontFamily(QWebEngineSettings::SerifFont));
+        s->setFontFamily(QWebEngineSettings::SansSerifFont, g->fontFamily(QWebEngineSettings::SansSerifFont));
+        s->setFontFamily(QWebEngineSettings::CursiveFont, g->fontFamily(QWebEngineSettings::CursiveFont));
+        s->setFontFamily(QWebEngineSettings::FantasyFont, g->fontFamily(QWebEngineSettings::FantasyFont));
+
+        s->setFontSize(QWebEngineSettings::MinimumFontSize, g->fontSize(QWebEngineSettings::MinimumFontSize));
+        s->setFontSize(QWebEngineSettings::MinimumLogicalFontSize, g->fontSize(QWebEngineSettings::MinimumLogicalFontSize));
+        s->setFontSize(QWebEngineSettings::DefaultFontSize, g->fontSize(QWebEngineSettings::DefaultFontSize));
+        s->setFontSize(QWebEngineSettings::DefaultFixedFontSize, g->fontSize(QWebEngineSettings::DefaultFixedFontSize));
 
         int pos = set.indexOf(QRegExp(QStringLiteral("^(?:[dD]efault)?(?:[tT]ext)?(?:[eE]ncod(?:e|ing)|[cC]odecs?) [^ ].*")));
         if(pos != -1)

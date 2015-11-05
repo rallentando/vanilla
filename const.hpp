@@ -32,13 +32,13 @@ static const QString NODE_DATETIME_FORMAT = QStringLiteral("yyyyMMddhhmmss");
 
 // user agent
 static const QString DEFAULT_USER_AGENT_IE        = QStringLiteral("Mozilla/5.0 (%SYSTEM%; Trident/7.0; rv:11.0) like Gecko");
-static const QString DEFAULT_USER_AGENT_FIREFOX   = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:41.0) Gecko/20100101 Firefox/41.0");
+static const QString DEFAULT_USER_AGENT_FIREFOX   = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:42.0) Gecko/20100101 Firefox/42.0");
 static const QString DEFAULT_USER_AGENT_OPERA     = QStringLiteral("Opera/9.80 (%SYSTEM%) Presto/2.12.388 Version/12.17");
-static const QString DEFAULT_USER_AGENT_OPR       = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.93 Safari/537.36 OPR/32.0.1948.69");
+static const QString DEFAULT_USER_AGENT_OPR       = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36 OPR/33.0.1990.58");
 static const QString DEFAULT_USER_AGENT_SAFARI    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/534.57.2 (KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
 static const QString DEFAULT_USER_AGENT_CHROME    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36");
 static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36 Sleipnir/4.4.5");
-static const QString DEFAULT_USER_AGENT_VIVALDI   = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.99 Safari/537.36 Vivaldi/1.0.303.32");
+static const QString DEFAULT_USER_AGENT_VIVALDI   = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.99 Safari/537.36 Vivaldi/1.0.303.48");
 static const QString DEFAULT_USER_AGENT_NETSCAPE  = QStringLiteral("Mozilla/5.0 (Windows; U; %SYSTEM%; en-US; rv:1.7.2) Gecko/20040804 Netscape/7.2 (ax)");
 static const QString DEFAULT_USER_AGENT_SEAMONKEY = QStringLiteral("Mozilla/5.0 (Windows; U; %SYSTEM%; rv:10.0.1) Gecko/20100101 Firefox/10.0.1 SeaMonkey/2.7.1");
 static const QString DEFAULT_USER_AGENT_GECKO     = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:14.0) Gecko/20100101");
@@ -86,31 +86,6 @@ static const QSize MINIMUM_THUMBNAIL_SIZE = QSize( 20,  15);
 // gadgets
 static const int DISPLAY_PADDING_X = 25;
 static const int DISPLAY_PADDING_Y = 15;
-
-static const QFont THUMBNAIL_TITLE_FONT = QFont(DEFAULT_FONT, 10);
-
-static const int THUMBNAIL_PADDING_X = 2;
-static const int THUMBNAIL_PADDING_Y = 2;
-static const int THUMBNAIL_TITLE_HEIGHT = 20;
-static const int THUMBNAIL_WIDTH_PERCENTAGE = 15;
-static const int THUMBNAIL_DEFAULT_COLUMN_COUNT = 4;
-static const int THUMBNAIL_AREA_WIDTH_PERCENTAGE =
-    THUMBNAIL_WIDTH_PERCENTAGE * THUMBNAIL_DEFAULT_COLUMN_COUNT;
-
-static const bool THUMBNAIL_DRAW_BORDER = false;
-
-static const QSize DEFAULT_THUMBNAIL_WHOLE_SIZE =
-    QSize(DEFAULT_THUMBNAIL_SIZE.width()  + THUMBNAIL_PADDING_X * 2,
-          DEFAULT_THUMBNAIL_SIZE.height() + THUMBNAIL_PADDING_Y * 2 + THUMBNAIL_TITLE_HEIGHT);
-
-static const QSize MINIMUM_THUMBNAIL_WHOLE_SIZE =
-    QSize(MINIMUM_THUMBNAIL_SIZE.width()  + THUMBNAIL_PADDING_X * 2,
-          MINIMUM_THUMBNAIL_SIZE.height() + THUMBNAIL_PADDING_Y * 2 + THUMBNAIL_TITLE_HEIGHT);
-
-static const QFont NODE_TITLE_FONT = QFont(DEFAULT_FONT, 13);
-
-static const int NODE_TITLE_HEIGHT = 20;
-static const bool NODE_TITLE_DRAW_BORDER = false;
 
 static const int GADGETS_SCROLL_BAR_MARGIN = 10;
 static const int GADGETS_SCROLL_BAR_WIDTH = 15;
@@ -162,12 +137,6 @@ static const int GESTURE_TRIGGER_COUNT = 3;
 static const int GESTURE_TRIGGER_LENGTH = 20;
 
 static const int DEFAULT_LOCALVIEW_MAX_FILEIMAGE = 100;
-
-static const int INPLACENOTIFIER_WIDTH =
-    500 + DEFAULT_THUMBNAIL_SIZE.width() + THUMBNAIL_PADDING_X * 3;
-static const int INPLACENOTIFIER_HEIGHT =
-    DEFAULT_THUMBNAIL_SIZE.height() + THUMBNAIL_PADDING_Y * 2;
-static const bool INPLACENOTIFIER_DRAW_BORDER = false;
 
 static const int MAX_SAME_ACTION_COUNT = 100;
 

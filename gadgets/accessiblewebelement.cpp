@@ -113,79 +113,9 @@ QPainterPath AccessibleWebElement::shape() const{
     return path;
 }
 
-void AccessibleWebElement::paint(QPainter *painter,
-                                 const QStyleOptionGraphicsItem *option, QWidget *widget){
+void AccessibleWebElement::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget){
     Q_UNUSED(option); Q_UNUSED(widget);
-
-    if(m_Pos.isNull() || !m_Element || m_Element->IsNull()) return;
-
-    QUrl url = m_Element->LinkUrl();
-    QString str = url.isEmpty() ? QStringLiteral("Blank Entry") : url.toString();
-
-    if(!IsSelected()){
-
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(0,0,0,IsCurrentBlock() ? 100 : 50));
-        painter->drawRect(CharChipRect());
-
-        painter->setFont(CharChipFont());
-        painter->setPen(QColor(255,255,255,IsCurrentBlock() ? 200 : 100));
-        painter->setBrush(Qt::NoBrush);
-        painter->drawText(CharChipRect(), Qt::AlignCenter, m_Gadgets->IndexToString(m_Index));
-
-    } else {
-        int width = m_InfoMetrics.boundingRect(str).width();
-        // is there any good way?
-        width = width + 15 - str.length()*0.4;
-
-        if(width > ACCESSKEY_INFO_MAX_WIDTH)
-            width = ACCESSKEY_INFO_MAX_WIDTH;
-
-        QPoint base(m_Pos - QPoint(width/2, ACCESSKEY_INFO_HEIGHT/2));
-        QRect rect = QRect(base, QSize(width, ACCESSKEY_INFO_HEIGHT));
-
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(0,0,0,100));
-        painter->drawRect(rect);
-
-        rect = QRect(QPoint(base.x()+2, base.y()), QSize(width-2, ACCESSKEY_INFO_HEIGHT));
-
-        painter->setFont(ACCESSKEY_INFO_FONT);
-        painter->setPen(QColor(255,255,255,200));
-        painter->setBrush(Qt::NoBrush);
-        painter->drawText(rect, str);
-
-        QMap<QString, QRect> keyrectmap = KeyRects();
-        QMap<QString, QRect> exprectmap = ExpRects();
-
-        foreach(QString action, m_Gadgets->GetAccessKeyKeyMap().values().toSet()){
-
-            QStringList list;
-
-            foreach(QKeySequence seq, m_Gadgets->GetAccessKeyKeyMap().keys(action)){
-                list << seq.toString();
-            }
-
-            QString key = list.join(QStringLiteral(" or "));
-            QString exp = action;
-            QRect keyrect = keyrectmap[action];
-            QRect exprect = exprectmap[action];
-
-            painter->setPen(Qt::NoPen);
-            painter->setBrush(QColor(0,0,0,100));
-            painter->drawRect(keyrect);
-            painter->drawRect(exprect);
-
-            painter->setPen(QColor(255,255,255,200));
-            painter->setBrush(Qt::NoBrush);
-
-            painter->setFont(ACCESSKEY_CHAR_CHIP_S_FONT);
-            painter->drawText(keyrect, Qt::AlignCenter, key);
-
-            painter->setFont(ACCESSKEY_INFO_FONT);
-            painter->drawText(exprect.translated(QPoint(0,-1)), Qt::AlignCenter, exp);
-        }
-    }
+    m_Gadgets->GetStyle()->Render(this, painter);
 }
 
 void AccessibleWebElement::SetIndex(int index){
@@ -198,6 +128,7 @@ void AccessibleWebElement::SetBoundingPos(QPoint pos){
 
 void AccessibleWebElement::SetElement(SharedWebElement elem){
     m_Element = elem;
+    m_Gadgets->GetStyle()->OnSetElement(this, elem);
 }
 
 int AccessibleWebElement::GetIndex() const{

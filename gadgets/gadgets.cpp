@@ -2321,7 +2321,10 @@ void Gadgets::AccessKey_NextBlock(){
         m_CurrentAccessKeyBlockIndex = m_AccessKeyLastBlockIndex;
 
     foreach(AccessibleWebElement *elem, m_AccessibleWebElementCache){
-        elem->UpdateMinimal();
+        if(GetStyle()->UseGraphicsItemUpdate())
+            elem->update();
+        else
+            elem->UpdateMinimal();
     }
 }
 
@@ -2333,7 +2336,10 @@ void Gadgets::AccessKey_PrevBlock(){
         m_CurrentAccessKeyBlockIndex = 0;
 
     foreach(AccessibleWebElement *elem, m_AccessibleWebElementCache){
-        elem->UpdateMinimal();
+        if(GetStyle()->UseGraphicsItemUpdate())
+            elem->update();
+        else
+            elem->UpdateMinimal();
     }
 }
 
@@ -2343,7 +2349,10 @@ void Gadgets::AccessKey_FirstBlock(){
     m_CurrentAccessKeyBlockIndex = 0;
 
     foreach(AccessibleWebElement *elem, m_AccessibleWebElementCache){
-        elem->UpdateMinimal();
+        if(GetStyle()->UseGraphicsItemUpdate())
+            elem->update();
+        else
+            elem->UpdateMinimal();
     }
 }
 
@@ -2353,7 +2362,10 @@ void Gadgets::AccessKey_LastBlock(){
     m_CurrentAccessKeyBlockIndex = m_AccessKeyLastBlockIndex;
 
     foreach(AccessibleWebElement *elem, m_AccessibleWebElementCache){
-        elem->UpdateMinimal();
+        if(GetStyle()->UseGraphicsItemUpdate())
+            elem->update();
+        else
+            elem->UpdateMinimal();
     }
 }
 
@@ -2364,7 +2376,10 @@ void Gadgets::AccessKey_NthBlock(int n){
         m_CurrentAccessKeyBlockIndex = n;
 
     foreach(AccessibleWebElement *elem, m_AccessibleWebElementCache){
-        elem->UpdateMinimal();
+        if(GetStyle()->UseGraphicsItemUpdate())
+            elem->update();
+        else
+            elem->UpdateMinimal();
     }
 }
 

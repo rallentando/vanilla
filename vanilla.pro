@@ -70,6 +70,7 @@ HEADERS += \
     gen/quickwebengineview.hpp \
     gadgets/graphicstableview.hpp \
     gadgets/gadgets.hpp \
+    gadgets/gadgetsstyle.hpp \
     gadgets/thumbnail.hpp \
     gadgets/nodetitle.hpp \
     gadgets/accessiblewebelement.hpp
@@ -99,6 +100,7 @@ SOURCES += \
     gen/quickwebengineview.cpp \
     gadgets/graphicstableview.cpp \
     gadgets/gadgets.cpp \
+    gadgets/gadgetsstyle.cpp \
     gadgets/thumbnail.cpp \
     gadgets/nodetitle.cpp \
     gadgets/accessiblewebelement.cpp
@@ -146,6 +148,7 @@ lupdate_only {
         gen/quickwebengineview.hpp \
         gadgets/graphicstableview.hpp \
         gadgets/gadgets.hpp \
+        gadgets/gadgetsstyle.hpp \
         gadgets/thumbnail.hpp \
         gadgets/nodetitle.hpp \
         gadgets/accessiblewebelement.hpp \
@@ -173,6 +176,7 @@ lupdate_only {
         gen/quickwebengineview.cpp \
         gadgets/graphicstableview.cpp \
         gadgets/gadgets.cpp \
+        gadgets/gadgetsstyle.cpp \
         gadgets/thumbnail.cpp \
         gadgets/nodetitle.cpp \
         gadgets/accessiblewebelement.cpp

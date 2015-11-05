@@ -8,6 +8,7 @@
 
 #include "thumbnail.hpp"
 #include "nodetitle.hpp"
+#include "gadgetsstyle.hpp"
 
 #include <functional>
 
@@ -24,6 +25,7 @@ class TreeBank;
 class SpotLight;
 class ScrollController;
 class InPlaceNotifier;
+class UpDirectoryButton;
 
 class GraphicsTableView : public QGraphicsObject{
     Q_OBJECT
@@ -166,8 +168,10 @@ public:
     QRectF NodeTitleAreaRect();
     QRectF ScrollBarAreaRect();
 
-    static bool ScrollToChangeDirectory(){ return m_ScrollToChangeDirectory;}
-    static bool RightClickToRenameNode() { return m_RightClickToRenameNode;}
+    static GadgetsStyle *GetStyle(){ return m_Style;}
+
+    static bool ScrollToChangeDirectory(){ return GetStyle()->ScrollToChangeDirectory(m_ScrollToChangeDirectory);}
+    static bool RightClickToRenameNode() { return GetStyle()->RightClickToRenameNode(m_RightClickToRenameNode);}
 
     enum SortFlag {
         NoSort           = 0,
@@ -333,6 +337,7 @@ private:
     HistNode *m_DummyHistNode;
 
     // settings.
+    static GadgetsStyle *m_Style;
     static bool m_ScrollToChangeDirectory;
     static bool m_RightClickToRenameNode;
     static bool m_EnablePrimarySpotLight;
@@ -385,6 +390,9 @@ protected:
 
     // in place notifier.
     InPlaceNotifier *m_InPlaceNotifier;
+
+    // up directory button.
+    UpDirectoryButton *m_UpDirectoryButton;
 
     inline bool IsDisplayingNode() const {
         return m_DisplayType == HistTree
@@ -467,6 +475,9 @@ protected:
 
     friend class SpotLight;
     friend class ScrollController;
+    friend class GadgetsStyle;
+    friend class GlassStyle;
+    friend class FlatStyle;
 };
 
 class SpotLight : public QGraphicsItem {
@@ -483,6 +494,7 @@ private:
     GraphicsTableView::SpotLightType m_Type;
     int m_Index; // for only LoadedSpotLight.
 public:
+    GraphicsTableView::SpotLightType GetType(){ return m_Type;}
     int GetIndex(){ return m_Index;}
     void SetIndex(int index){ m_Index = index;}
 };
@@ -520,6 +532,7 @@ public:
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
 
+    Node *GetNode(){ return m_Node;}
     void SetNode(Node *nd);
 
 protected:
@@ -533,7 +546,34 @@ protected:
     void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
 
 private:
+    GraphicsTableView *m_TableView;
     Node *m_Node;
+};
+
+class UpDirectoryButton : public QGraphicsRectItem {
+
+public:
+    UpDirectoryButton(QGraphicsItem *parent = 0);
+    ~UpDirectoryButton();
+
+    QPixmap GetIcon(){ return m_Icon;}
+    bool GetHovered(){ return m_Hovered;}
+    void SetHovered(bool hovered);
+
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+
+protected:
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
+
+private:
+    GraphicsTableView *m_TableView;
+    bool m_Hovered;
+    QPixmap m_Icon;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(GraphicsTableView::SortFlags);

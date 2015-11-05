@@ -15,6 +15,7 @@ public:
     NodeTitle(Node *nd, int nest, QGraphicsItem *parent = 0);
     ~NodeTitle();
     Node *GetNode();
+    GraphicsTableView *GetTableView();
 
     static void Initialize();
 
@@ -22,6 +23,9 @@ public:
 
     void SetNest(int);
     int GetNest();
+
+    bool IsPrimary();
+    bool IsHovered();
 
     QPointF RealTopLeft()    { return pos() + rect().topLeft();}
     QPointF RealTopRight()   { return pos() + rect().topRight();}

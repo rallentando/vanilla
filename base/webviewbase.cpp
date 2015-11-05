@@ -556,12 +556,20 @@ void WebViewBase::SetTextValue(QString xpath, QString text){
 
 void WebViewBase::childEvent(QChildEvent *ev){
     QWebViewBase::childEvent(ev);
-    if(ev->added())
+    if(ev->added() &&
+       0 == strcmp(ev->child()->metaObject()->className(),
+                   "QtWebEngineCore::RenderWidgetHostViewQtDelegateWidget")){
         ev->child()->installEventFilter(new EventEater(this, ev->child()));
+    }
 }
 //[[/WEV]]
 
 void WebViewBase::hideEvent(QHideEvent *ev){
+    //[[WEV]]
+#if QT_VERSION >= 0x050600
+    if(page()->ObscureDisplay()) page()->triggerAction(QWebEnginePage::ExitFullScreen);
+#endif
+    //[[/WEV]]
     SaveViewState();
     QWebViewBase::hideEvent(ev);
 }

@@ -155,6 +155,7 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
 #ifdef USE_WEBCHANNEL
     AddJsObject();
 #endif
+    m_ObscureDisplay = false;
     //[[/WEV]]
     //[[!WEV]]
     setForwardUnsupportedContent(true);
@@ -458,6 +459,10 @@ QString WebPageBase::userAgentForUrl(const QUrl &url) const{
     Q_UNUSED(url);
     return static_cast<NetworkAccessManager*>(networkAccessManager())->GetUserAgent();
 }
+
+bool WebEnginePage::ObscureDisplay(){
+    return m_ObscureDisplay;
+}
 //[[/WEV]]
 
 void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
@@ -500,6 +505,10 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
         QAction *forwardAction = Action(QWebPageBase::Forward);
         QAction *stopAction    = Action(QWebPageBase::Stop);
         QAction *reloadAction  = Action(QWebPageBase::Reload);
+        backAction->setText(tr("Back"));
+        forwardAction->setText(tr("Forward"));
+        stopAction->setText(tr("Stop"));
+        reloadAction->setText(tr("Reload"));
 
         if(backAction->isEnabled())
             menu->addAction(backAction);
@@ -647,7 +656,20 @@ void WebPageBase::HandleProxyAuthentication(const QUrl &requestUrl,
 #if QT_VERSION >= 0x050600
 void WebPageBase::HandleFullScreen(const QWebEngineFullScreenRequest &request){
     if(TreeBank *tb = m_View->GetTreeBank()){
-        tb->GetMainWindow()->SetFullScreen(request.toggleOn());
+        bool fullScreen = request.toggleOn();
+        tb->GetMainWindow()->SetFullScreen(fullScreen);
+        m_ObscureDisplay = fullScreen;
+        if(fullScreen){
+            ModelessDialog *dialog = new ModelessDialog();
+            connect(this, &WebPageBase::destroyed, dialog, &ModelessDialog::Aborted);
+            connect(this, &WebPageBase::fullScreenRequested, dialog, &ModelessDialog::Aborted);
+            dialog->SetTitle(tr("This page becomes full screen mode."));
+            dialog->SetCaption(tr("Press Esc to exit."));
+            dialog->SetButtons(QStringList() << tr("OK") << tr("Cancel"));
+            dialog->SetDefaultValue(true);
+            dialog->SetCallBack([this](bool ok){ if(!ok) triggerAction(ExitFullScreen);});
+            QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+        }
         request.accept();
     } else {
         request.reject();

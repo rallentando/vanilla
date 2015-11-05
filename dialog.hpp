@@ -139,6 +139,7 @@ public:
     void SetTitle(QString title){ m_Title = title;}
     void SetCaption(QString caption){ m_Caption = caption;}
     void SetButtons(QStringList buttons){ m_Buttons = buttons;}
+    void SetDefaultValue(bool value){ m_DefaultValue = value;}
     void SetCallBack(BoolCallBack callBack){ m_CallBack = callBack;}
 
 protected:
@@ -158,6 +159,7 @@ private:
 
     Type m_Type;
     QStringList m_Buttons;
+    bool m_DefaultValue;
     QString m_Title;
     QString m_Caption;
     int m_TimerID;

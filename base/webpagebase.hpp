@@ -116,6 +116,7 @@ public:
     QNetworkAccessManager *networkAccessManager() const;
     void setNetworkAccessManager(QNetworkAccessManager *nam);
     QString userAgentForUrl(const QUrl &url) const;
+    bool ObscureDisplay();
     //[[/WEV]]
 
     void DisplayContextMenu(QWidget *parent, SharedWebElement elem,
@@ -200,6 +201,7 @@ private:
     Page *m_Page;
     //[[WEV]]
     QNetworkAccessManager *m_NetworkAccessManager;
+    bool m_ObscureDisplay;
     //[[/WEV]]
 };
 

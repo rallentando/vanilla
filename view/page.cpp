@@ -744,25 +744,25 @@ void Page::DigView(){
 
 void Page::NewViewNode(){
     View::SetSwitchingState(true);
-    SuitTB()->NewViewNode();
+    SuitTB()->NewViewNode(m_View->GetViewNode());
     View::SetSwitchingState(false);
 }
 
 void Page::NewHistNode(){
     View::SetSwitchingState(true);
-    SuitTB()->NewHistNode();
+    SuitTB()->NewHistNode(m_View->GetHistNode());
     View::SetSwitchingState(false);
 }
 
 void Page::CloneViewNode(){
     View::SetSwitchingState(true);
-    SuitTB()->CloneViewNode();
+    SuitTB()->CloneViewNode(m_View->GetViewNode());
     View::SetSwitchingState(false);
 }
 
 void Page::CloneHistNode(){
     View::SetSwitchingState(true);
-    SuitTB()->CloneHistNode();
+    SuitTB()->CloneHistNode(m_View->GetHistNode());
     View::SetSwitchingState(false);
 }
 

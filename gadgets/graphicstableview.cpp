@@ -11,6 +11,7 @@
 #include "treebank.hpp"
 #include "mainwindow.hpp"
 #include "view.hpp"
+#include "gadgetsstyle.hpp"
 
 /*
   ZValue
@@ -30,6 +31,8 @@
  */
 
 NodeList GraphicsTableView::m_NodesRegister = NodeList();
+
+GadgetsStyle *GraphicsTableView::m_Style = 0;
 
 bool GraphicsTableView::m_ScrollToChangeDirectory = false;
 bool GraphicsTableView::m_RightClickToRenameNode  = false;
@@ -70,6 +73,8 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
         m_EnableInPlaceNotifier  ? new InPlaceNotifier(this) : 0;
 
     m_ScrollController = new ScrollController(this);
+    m_UpDirectoryButton = new UpDirectoryButton(this);
+
     m_CurrentThumbnailZoomFactor = 1.0f;
     m_CurrentOffsetValue = 0;
     m_SelectRect = 0;
@@ -104,6 +109,19 @@ GraphicsTableView::~GraphicsTableView(){
 void GraphicsTableView::LoadSettings(){
     QSettings *settings = Application::GlobalSettings();
     settings->beginGroup(QStringLiteral("gadgets"));{
+        QString style = settings->value(QStringLiteral("@Style"), QStringLiteral("GlassStyle")).value<QString>();
+
+        GadgetsStyle *style_ = m_Style;
+
+        if(style == QStringLiteral("GlassStyle")){
+            m_Style = new GlassStyle;
+        }
+        if(style == QStringLiteral("FlatStyle")){
+            m_Style = new FlatStyle;
+        }
+
+        if(style_) delete style_;
+
         settings->beginGroup(QStringLiteral("thumblist"));{
             m_ScrollToChangeDirectory = settings->value(QStringLiteral("@ScrollToChangeDirectory"), false).value<bool>();
             m_RightClickToRenameNode  = settings->value(QStringLiteral("@RightClickToRenameNode"),  false).value<bool>();
@@ -122,6 +140,9 @@ void GraphicsTableView::LoadSettings(){
 void GraphicsTableView::SaveSettings(){
     QSettings *settings = Application::GlobalSettings();
     settings->beginGroup(QStringLiteral("gadgets"));{
+
+        settings->setValue(QStringLiteral("@Style"), GetStyle()->StyleName());
+
         settings->beginGroup(QStringLiteral("thumblist"));{
             settings->setValue(QStringLiteral("@ScrollToChangeDirectory"), m_ScrollToChangeDirectory);
             settings->setValue(QStringLiteral("@RightClickToRenameNode"),  m_RightClickToRenameNode);
@@ -254,6 +275,8 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
             title = new NodeTitle(nd, nest, this);
             m_NodeTitleCache[nd] = title;
         }
+
+        thumb->SetPrimary(nd->IsPrimaryOfParent());
 
         m_DisplayThumbnails << thumb;
         m_DisplayNodeTitles << title;
@@ -405,6 +428,15 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
 
     m_ScrollController->setEnabled(true);
     m_ScrollController->setVisible(true);
+
+    if(IsDisplayingViewNode() && nd && nd->GetParent() && nd->GetParent()->GetParent()){
+        m_UpDirectoryButton->SetHovered(false);
+        m_UpDirectoryButton->setEnabled(true);
+        m_UpDirectoryButton->setVisible(true);
+    } else {
+        m_UpDirectoryButton->setEnabled(false);
+        m_UpDirectoryButton->setVisible(false);
+    }
 
     RelocateContents();
     RelocateScrollBar();
@@ -715,23 +747,37 @@ void GraphicsTableView::SetHoveredItem(int index){
     if(m_HoveredItemIndex == index) return;
 
     QList<QRectF> list;
+    QList<QGraphicsItem*> glist;
 
     if(m_HoveredItemIndex != -1){
         if(m_HoveredSpotLight) list << m_HoveredSpotLight->boundingRect();
-        list << GetHoveredThumbnail()->boundingRect();
-        list << GetHoveredNodeTitle()->boundingRect();
+        if(GetStyle()->UseGraphicsItemUpdate()){
+            glist << GetHoveredThumbnail();
+            glist << GetHoveredNodeTitle();
+        } else {
+            list << GetHoveredThumbnail()->boundingRect();
+            list << GetHoveredNodeTitle()->boundingRect();
+        }
     }
 
     m_HoveredItemIndex = index;
 
     if(m_HoveredItemIndex != -1){
         if(m_HoveredSpotLight) list << m_HoveredSpotLight->boundingRect();
-        list << GetHoveredThumbnail()->boundingRect();
-        list << GetHoveredNodeTitle()->boundingRect();
+        if(GetStyle()->UseGraphicsItemUpdate()){
+            glist << GetHoveredThumbnail();
+            glist << GetHoveredNodeTitle();
+        } else {
+            list << GetHoveredThumbnail()->boundingRect();
+            list << GetHoveredNodeTitle()->boundingRect();
+        }
     }
 
     foreach(QRectF rect, list){
         Update(rect);
+    }
+    foreach(QGraphicsItem *item, glist){
+        item->update();
     }
 
     if(Node *nd = GetHoveredNode()){
@@ -949,48 +995,12 @@ QSizeF GraphicsTableView::Size(){
 
 void GraphicsTableView::RelocateContents(){
 
-    const float zoom = m_CurrentThumbnailZoomFactor; // alias
-
-    int col = THUMBNAIL_DEFAULT_COLUMN_COUNT / zoom;
-    int wholeWidth = m_Size.width() - DISPLAY_PADDING_X * 2;
-    int thumbWidth = (wholeWidth * THUMBNAIL_WIDTH_PERCENTAGE / 100) * zoom;
-    int areaWidth = (wholeWidth * THUMBNAIL_AREA_WIDTH_PERCENTAGE / 100);
-
-    int minWidth = MINIMUM_THUMBNAIL_WHOLE_SIZE.width();
-    int defWidth = DEFAULT_THUMBNAIL_WHOLE_SIZE.width() * zoom;
-
-    if(col < 1) col = 1;
-
-    if(defWidth < minWidth) defWidth = minWidth;
-
-    if(thumbWidth > defWidth){
-        col += (areaWidth - (defWidth * col)) / defWidth;
-        thumbWidth = defWidth;
-    }
-
-    if(thumbWidth < minWidth){
-        col -= ((minWidth - thumbWidth) * col) / minWidth;
-        thumbWidth = minWidth;
-        if(col > 1) col -= 1;
-        if(col == 0) col = 1;
-    }
-
-    // compute height from width.
-    const int marginWidth  = DEFAULT_THUMBNAIL_WHOLE_SIZE.width()  - DEFAULT_THUMBNAIL_SIZE.width();
-    const int marginHeight = DEFAULT_THUMBNAIL_WHOLE_SIZE.height() - DEFAULT_THUMBNAIL_SIZE.height();
-    const double aspect =
-        static_cast<double>(DEFAULT_THUMBNAIL_SIZE.height()) /
-        static_cast<double>(DEFAULT_THUMBNAIL_SIZE.width());
-
-    int thumbHeight = ((thumbWidth - marginWidth) * aspect) + marginHeight;
-    int line = (m_Size.height() - DISPLAY_PADDING_Y) / thumbHeight;
-
-    if(line < 1) line = 1;
-
-    m_CurrentThumbnailColumnCount = col;
-    m_CurrentThumbnailLineCount = line;
-    m_CurrentThumbnailWidth = thumbWidth;
-    m_CurrentThumbnailHeight = thumbHeight;
+    GetStyle()->ComputeContentsLayout
+        (this,
+         m_CurrentThumbnailColumnCount,
+         m_CurrentThumbnailLineCount,
+         m_CurrentThumbnailWidth,
+         m_CurrentThumbnailHeight);
 
     int length = m_DisplayThumbnails.length();
     for(int i = 0; i < length; i++){
@@ -1003,10 +1013,10 @@ void GraphicsTableView::RelocateContents(){
         if(!thumb->isSelected() || thumb->pos() == QPointF(0,0)){
             thumb->setPos(0,0);
             thumb->setRect
-                (QRectF(QPointF(DISPLAY_PADDING_X + (i % col) * thumbWidth,
-                                DISPLAY_PADDING_Y + (i / col) * thumbHeight)
+                (QRectF(QPointF(DISPLAY_PADDING_X + (i % m_CurrentThumbnailColumnCount) * m_CurrentThumbnailWidth,
+                                DISPLAY_PADDING_Y + (i / m_CurrentThumbnailColumnCount) * m_CurrentThumbnailHeight)
                         + CurrentThumbnailOffset(),
-                        QSizeF(thumbWidth, thumbHeight)));
+                        QSizeF(m_CurrentThumbnailWidth, m_CurrentThumbnailHeight)));
         }
 
         title->setParentItem(this);
@@ -1016,20 +1026,20 @@ void GraphicsTableView::RelocateContents(){
             title->setPos(0,0);
             title->setRect
                 (QRectF(QPointF(DISPLAY_PADDING_X
-                                + thumbWidth * col
+                                + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
                                 + GADGETS_SCROLL_BAR_MARGIN * 2
                                 + GADGETS_SCROLL_BAR_WIDTH,
-                                DISPLAY_PADDING_Y + NODE_TITLE_HEIGHT * i)
+                                DISPLAY_PADDING_Y + GetStyle()->NodeTitleHeight() * i)
                         + CurrentNodeTitleOffset(),
 
                         QSizeF(m_Size.width()
-                               - (NODE_TITLE_DRAW_BORDER ?
+                               - (GetStyle()->NodeTitleDrawBorder() ?
                                   DISPLAY_PADDING_X * 2 :
                                   DISPLAY_PADDING_X)
-                               - thumbWidth * col
+                               - m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
                                - GADGETS_SCROLL_BAR_MARGIN * 2
                                - GADGETS_SCROLL_BAR_WIDTH,
-                               NODE_TITLE_HEIGHT)));
+                               GetStyle()->NodeTitleHeight())));
         }
     }
 }
@@ -1314,12 +1324,7 @@ bool GraphicsTableView::TransferTo(bool toRight, bool basedOnScroll,
 }
 
 void GraphicsTableView::RenderBackground(QPainter *painter){
-    // background.
-    QColor black(0, 0, 0, IsDisplayingNode() ? 170 : 100);
-    QBrush brush(black);
-    painter->setBrush(brush);
-    painter->setPen(Qt::NoPen);
-    painter->drawRect(boundingRect());
+    GetStyle()->RenderBackground(this, painter);
 }
 
 QRectF GraphicsTableView::boundingRect() const{
@@ -1338,7 +1343,7 @@ void GraphicsTableView::paint(QPainter *painter,
 
     painter->save();
 
-    if(GADGETS_SCROLL_BAR_DRAW_BORDER || NODE_TITLE_DRAW_BORDER)
+    if(GADGETS_SCROLL_BAR_DRAW_BORDER || GetStyle()->NodeTitleDrawBorder())
         painter->setRenderHint(QPainter::Antialiasing, false);
 
     if(GADGETS_SCROLL_BAR_DRAW_BORDER){
@@ -1354,7 +1359,7 @@ void GraphicsTableView::paint(QPainter *painter,
         painter->drawRect(ScrollBarAreaRect());
     }
 
-    if(NODE_TITLE_DRAW_BORDER){
+    if(GetStyle()->NodeTitleDrawBorder()){
         // node title list area.
         const QColor white(255,255,255,255);
         const QPen pen(white);
@@ -1374,34 +1379,15 @@ void GraphicsTableView::paint(QPainter *painter,
 }
 
 QRectF GraphicsTableView::ThumbnailAreaRect(){
-    return QRectF(DISPLAY_PADDING_X, 0,
-                  m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount,
-                  m_Size.height());
+    return GetStyle()->ThumbnailAreaRect(this);
 }
 
 QRectF GraphicsTableView::NodeTitleAreaRect(){
-    return QRectF(DISPLAY_PADDING_X
-                  + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
-                  + GADGETS_SCROLL_BAR_MARGIN * 2
-                  + GADGETS_SCROLL_BAR_WIDTH,
-                  (NODE_TITLE_DRAW_BORDER ? DISPLAY_PADDING_Y : 0),
-                  m_Size.width()
-                  - DISPLAY_PADDING_X
-                  - m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
-                  - GADGETS_SCROLL_BAR_MARGIN * 2
-                  - GADGETS_SCROLL_BAR_WIDTH -
-                  (NODE_TITLE_DRAW_BORDER ? DISPLAY_PADDING_X : 0),
-                  m_Size.height() -
-                  (NODE_TITLE_DRAW_BORDER ? DISPLAY_PADDING_Y * 2 : 0));
+    return GetStyle()->NodeTitleAreaRect(this);
 }
 
 QRectF GraphicsTableView::ScrollBarAreaRect(){
-    return QRectF(DISPLAY_PADDING_X
-                  + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
-                  + GADGETS_SCROLL_BAR_MARGIN,
-                  DISPLAY_PADDING_Y,
-                  GADGETS_SCROLL_BAR_WIDTH,
-                  m_Size.height() - DISPLAY_PADDING_Y * 2);
+    return GetStyle()->ScrollBarAreaRect(this);
 }
 
 void GraphicsTableView::dragEnterEvent(QGraphicsSceneDragDropEvent *ev){
@@ -1424,12 +1410,11 @@ void GraphicsTableView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
     switch(ev->button()){
     case Qt::LeftButton:
         if(m_SelectRect){
+            GetStyle()->OnReshow(m_SelectRect);
             m_SelectRect->setRect(QRectF(ev->pos(), ev->pos()));
             m_SelectRect->show();
         } else {
-            m_SelectRect = scene()->addRect(QRectF(ev->pos(), ev->pos()),
-                                            QPen(QColor(255,255,255,255)),
-                                            QBrush(QColor(255,255,255,50)));
+            m_SelectRect = GetStyle()->CreateSelectRect(this, ev->pos());
         }
         m_SelectRect->setParentItem(this);
         m_SelectRect->setZValue(SELECT_RECT_LAYER);
@@ -1571,7 +1556,7 @@ void GraphicsTableView::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev){
     if(!ScrollBarAreaRect().contains(ev->pos())){
 
         if(IsDisplayingHistNode() ||
-           m_ScrollToChangeDirectory ||
+           ScrollToChangeDirectory() ||
            !ThumbList_UpDirectory()){
 
             Deactivate();
@@ -1609,7 +1594,7 @@ void GraphicsTableView::wheelEvent(QGraphicsSceneWheelEvent *ev){
     bool up = ev->delta() > 0;
     bool ignoreStatusBarMessage = true;
 
-    if(m_ScrollToChangeDirectory &&
+    if(ScrollToChangeDirectory() &&
        ThumbnailAreaRect().contains(ev->pos())){
 
         // don't want to overwrite statusBarMessage in this event.
@@ -1685,7 +1670,7 @@ bool GraphicsTableView::ThumbList_OpenNode(){
 
         // return value is not accurate.
         if(!nd->IsDirectory() ||
-           m_ScrollToChangeDirectory ||
+           ScrollToChangeDirectory() ||
            !ThumbList_DownDirectory()){
 
             if(m_TreeBank->SetCurrent(nd)){
@@ -2460,7 +2445,7 @@ void GraphicsTableView::SetScrollSoft(int offset){
 
         int nodetitlescroll = offset + m_CurrentThumbnailColumnCount -
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
-            NODE_TITLE_HEIGHT;
+            GetStyle()->NodeTitleHeight();
         if(nodetitlescroll < 0) nodetitlescroll = 0;
 
         int thumbnailcount =
@@ -2469,7 +2454,7 @@ void GraphicsTableView::SetScrollSoft(int offset){
 
         int nodetitlecount =
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
-            NODE_TITLE_HEIGHT;
+            GetStyle()->NodeTitleHeight();
 
         SetScroll(qMax(m_CurrentOffsetValue,
                        thumbnailcount  < nodetitlecount ?
@@ -2991,7 +2976,7 @@ QPointF GraphicsTableView::CurrentNodeTitleOffset(){
                    - m_CurrentOffsetValue
                    / m_CurrentThumbnailColumnCount
                    * m_CurrentThumbnailColumnCount
-                   * NODE_TITLE_HEIGHT);
+                   * GetStyle()->NodeTitleHeight());
 }
 
 SpotLight::SpotLight(GraphicsTableView::SpotLightType type, QGraphicsItem *parent)
@@ -3086,105 +3071,9 @@ QPainterPath SpotLight::shape() const{
     return path;
 }
 
-void SpotLight::paint(QPainter *painter,
-                      const QStyleOptionGraphicsItem *option, QWidget *widget){
+void SpotLight::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget){
     Q_UNUSED(option); Q_UNUSED(widget);
-
-    const GraphicsTableView* parent = static_cast<GraphicsTableView*>(parentItem());
-
-    const bool p = m_Type == GraphicsTableView::PrimarySpotLight;
-    const bool h = m_Type == GraphicsTableView::HoveredSpotLight;
-    const bool l = m_Type == GraphicsTableView::LoadedSpotLight;
-
-    const int index =
-        p ? parent->m_PrimaryItemIndex :
-        h ? parent->m_HoveredItemIndex :
-        l ? m_Index : -1; // default : -1
-
-    if(index == -1 ||
-       index >= parent->m_DisplayThumbnails.length())
-        return;
-
-    painter->save();
-
-    const QSize size = parent->m_Size.toSize() + QSize(1, 1);
-
-    const Thumbnail *thumb = parent->m_DisplayThumbnails[index];
-    const NodeTitle *title = parent->m_DisplayNodeTitles[index];
-
-    const int x1  = thumb->pos().x() + thumb->rect().right();
-    const int x2  = title->pos().x() + title->rect().left();
-
-    const int y1b = thumb->pos().y() + thumb->rect().top();
-    const int y1e = thumb->pos().y() + thumb->rect().bottom();
-
-    const int y2b = title->pos().y() + title->rect().top();
-    const int y2e = title->pos().y() + title->rect().bottom();
-
-    const int ybrange = y2b - y1b;
-    const int yerange = y2e - y1e;
-
-    const double xrange = x2 - x1;
-    const int begx = qMin(x1, x2);
-    const int endx = qMax(x1, x2);
-
-    double yrange, begy, endy;
-    double progress;
-    int x, y;
-
-    const QRectF bound = boundingRect();
-    const QRectF rect = QRectF(bound.topLeft(), bound.size());
-
-    QImage image(size, QImage::Format_ARGB32);
-    image.fill(0);
-
-    QPen pen;
-
-    if(p){
-        for(x = begx; x < endx; x++){
-            progress = (x - x1)/xrange;
-            begy = y1b + (ybrange * progress);
-            endy = y1e + (yerange * progress);
-            yrange = endy - begy;
-            for(y = begy+1; y < endy-1; y++)
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(  0, 100, 255, 77*(y-begy)/yrange));
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(  0, 100, 255, 50*(y-begy)/yrange));
-        }
-        pen.setColor(QColor(  0, 100, 255, 50));
-    } else if(h){
-        for(x = begx; x < endx; x++){
-            progress = (x - x1)/xrange;
-            begy = y1b + (ybrange * progress);
-            endy = y1e + (yerange * progress);
-            yrange = endy - begy;
-            for(y = begy+1; y < endy-1; y++)
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 255, 77*(y-begy)/yrange));
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 255, 50*(y-begy)/yrange));
-        }
-        pen.setColor(QColor(255, 255, 255, 50));
-    } else if(l){
-        for(x = begx; x < endx; x++){
-            progress = (x - x1)/xrange;
-            begy = y1b + (ybrange * progress);
-            endy = y1e + (yerange * progress);
-            yrange = endy - begy;
-            for(y = begy+1; y < endy-1; y++)
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 200, 44*(y-begy)/yrange));
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 200, 30*(y-begy)/yrange));
-        }
-        pen.setColor(QColor(255, 255, 200, 30));
-    }
-
-    painter->drawImage(QPoint(), image);
-
-    painter->setRenderHint(QPainter::Antialiasing, true);
-
-    painter->setPen(pen);
-    painter->drawLine(x1, y1e,
-                      x2, y2e);
-    painter->drawLine(x1, y1e-1,
-                      x2, y2e-1);
-    painter->restore();
+    static_cast<GraphicsTableView*>(parentItem())->GetStyle()->Render(this, painter);
 }
 
 ScrollController::ScrollController(QGraphicsItem *parent)
@@ -3300,121 +3189,24 @@ void ScrollController::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
 InPlaceNotifier::InPlaceNotifier(QGraphicsItem *parent)
     : QGraphicsRectItem(parent)
 {
+    m_TableView = static_cast<GraphicsTableView*>(parent);
     setPen(QPen(QColor(0,0,0,0)));
     setBrush(QBrush(QColor(0,0,0,0)));
     setZValue(IN_PLACE_NOTIFIER_LAYER);
     setAcceptHoverEvents(false);
     setAcceptDrops(false);
     setRect(QRectF(QPoint(0, 0),
-                   QSize(INPLACENOTIFIER_WIDTH,
-                         INPLACENOTIFIER_HEIGHT)));
+                   QSize(m_TableView->GetStyle()->InPlaceNotifierWidth(),
+                         m_TableView->GetStyle()->InPlaceNotifierHeight())));
     hide();
 }
 
 InPlaceNotifier::~InPlaceNotifier(){
 }
 
-void InPlaceNotifier::paint(QPainter *painter,
-                            const QStyleOptionGraphicsItem *option, QWidget *widget){
+void InPlaceNotifier::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget){
     Q_UNUSED(option); Q_UNUSED(widget);
-
-    if(!m_Node) return;
-
-    painter->save();
-
-    painter->setRenderHint(QPainter::Antialiasing, false);
-
-    const QRectF bound = boundingRect();
-    const QRectF rect = QRectF(bound.topLeft(), bound.size() - QSizeF(1,1));
-
-    QImage image = m_Node->GetImage();
-    const QString title = m_Node->GetTitle().replace(QStringLiteral("\n"), QStringLiteral(" ")).trimmed();
-    const QString url = m_Node->GetUrl().toString().replace(QStringLiteral("\n"), QStringLiteral(" ")).trimmed();
-    const QString create = m_Node->GetCreateDate().toString(Qt::SystemLocaleLongDate);
-    const QString lastUpdate = m_Node->GetLastUpdateDate().toString(Qt::SystemLocaleLongDate);
-    const QString lastAccess = m_Node->GetLastAccessDate().toString(Qt::SystemLocaleLongDate);
-
-    if(image.isNull()){
-        Node *tempnode = m_Node;
-        if(tempnode->IsViewNode() && tempnode->IsDirectory()){
-            while(!tempnode->HasNoChildren()){
-                if(tempnode->GetPrimary()){
-                    tempnode = tempnode->GetPrimary();
-                } else {
-                    tempnode = tempnode->GetFirstChild();
-                }
-            }
-            if(!tempnode->GetImage().isNull()){
-                image = tempnode->GetImage();
-            }
-        }
-    }
-
-    const QColor black(0,0,0,128);
-    const QBrush brush(black);
-    painter->setBrush(brush);
-    painter->setPen(Qt::NoPen);
-    painter->drawRect(rect);
-
-    if(INPLACENOTIFIER_DRAW_BORDER){
-        painter->setPen(QColor(255,255,255,255));
-        painter->setBrush(Qt::NoBrush);
-        painter->drawRect(boundingRect());
-    }
-
-    const QRect image_rect =
-        QRect(QPoint(THUMBNAIL_PADDING_X,
-                     THUMBNAIL_PADDING_Y),
-              DEFAULT_THUMBNAIL_SIZE);
-
-    if(!image.isNull()){
-        QSize size = image.size();
-        size.scale(image_rect.size(), Qt::KeepAspectRatio);
-        const int width_diff  = image_rect.width()  - size.width();
-        const int height_diff = image_rect.height() - size.height();
-        painter->drawImage(QRect(image_rect.topLeft()
-                                 + QPoint(width_diff/2, height_diff/2),
-                                 size),
-                           image,
-                           QRect(QPoint(), image.size()));
-    } else if(m_Node->IsDirectory()){
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(50, 100, 100, 150));
-        painter->drawRect(image_rect);
-
-        painter->setPen(QColor(255, 255, 255, 255));
-        painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("Directory"));
-    } else {
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(50, 100, 120, 150));
-        painter->drawRect(image_rect);
-
-        painter->setPen(QColor(255, 255, 255, 255));
-        painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("NoImage"));
-    }
-
-    painter->setPen(QColor(255,255,255,255));
-    painter->setBrush(QColor(255,255,255,100));
-    painter->setFont(NOTIFIER_FONT);
-
-    const int basex = THUMBNAIL_PADDING_X * 3 + image_rect.size().width();
-    const int basey = 17;
-    const int width = 495;
-    const int height = 25;
-
-    painter->drawText(QRect(basex, basey+25*0, width, height), Qt::AlignLeft, QObject::tr("Title : ") + title);
-    painter->drawText(QRect(basex, basey+25*1, width, height), Qt::AlignLeft, QObject::tr("Url : ") + url);
-    painter->drawText(QRect(basex, basey+25*2, width, height), Qt::AlignLeft, QObject::tr("CreatedDate : ") + create);
-    painter->drawText(QRect(basex, basey+25*4, width, height), Qt::AlignLeft, QObject::tr("LastUpdatedDate : ") + lastUpdate);
-    painter->drawText(QRect(basex, basey+25*3, width, height), Qt::AlignLeft, QObject::tr("LastAccessedDate : ") + lastAccess);
-
-    painter->restore();
+    m_TableView->GetStyle()->Render(this, painter);
 }
 
 void InPlaceNotifier::SetNode(Node *nd){
@@ -3432,3 +3224,61 @@ void InPlaceNotifier::mouseMoveEvent    (QGraphicsSceneMouseEvent *ev){ ev->setA
 void InPlaceNotifier::hoverEnterEvent   (QGraphicsSceneHoverEvent *ev){ ev->setAccepted(false);}
 void InPlaceNotifier::hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev){ ev->setAccepted(false);}
 void InPlaceNotifier::hoverMoveEvent    (QGraphicsSceneHoverEvent *ev){ ev->setAccepted(false);}
+
+UpDirectoryButton::UpDirectoryButton(QGraphicsItem *parent)
+    : QGraphicsRectItem(parent)
+{
+    m_TableView = static_cast<GraphicsTableView*>(parent);
+    m_Icon = Application::style()->standardIcon(QStyle::SP_TitleBarShadeButton).pixmap(QSize(10, 10));
+    setAcceptHoverEvents(true);
+    setZValue(MAIN_CONTENTS_LAYER);
+    setPos(0,0);
+    setRect(QRectF(-5, -5, 23, 23));
+    SetHovered(false);
+    hide();
+}
+
+UpDirectoryButton::~UpDirectoryButton(){}
+
+void UpDirectoryButton::SetHovered(bool hovered){
+    m_Hovered = hovered;
+    m_TableView->GetStyle()->OnSetHovered(this, hovered);
+}
+
+void UpDirectoryButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
+    Q_UNUSED(item); Q_UNUSED(widget);
+    m_TableView->GetStyle()->Render(this, painter);
+}
+
+void UpDirectoryButton::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    QGraphicsRectItem::mousePressEvent(ev);
+    ev->setAccepted(true);
+}
+
+void UpDirectoryButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    QGraphicsRectItem::mousePressEvent(ev);
+    m_TableView->ThumbList_UpDirectory();
+    ev->setAccepted(true);
+}
+
+void UpDirectoryButton::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
+    QGraphicsRectItem::mouseMoveEvent(ev);
+    ev->setAccepted(true);
+}
+
+void UpDirectoryButton::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
+    QGraphicsRectItem::hoverMoveEvent(ev);
+    SetHovered(true);
+    ev->setAccepted(true);
+}
+
+void UpDirectoryButton::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
+    QGraphicsRectItem::hoverLeaveEvent(ev);
+    SetHovered(false);
+    ev->setAccepted(true);
+}
+
+void UpDirectoryButton::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
+    QGraphicsRectItem::hoverMoveEvent(ev);
+    ev->setAccepted(true);
+}

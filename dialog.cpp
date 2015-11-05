@@ -443,7 +443,8 @@ ModelessDialog::ModelessDialog()
     : QWidget(0)
     , m_Type(None)
     , m_Buttons(QStringList())
-    , m_Title(QString())
+    , m_DefaultValue(false)
+    , m_Title(QString(tr("Cancel")))
     , m_Caption(QString())
     , m_TimerID(0)
     , m_CallBack([](bool){})
@@ -583,8 +584,12 @@ void ModelessDialog::keyPressEvent(QKeyEvent *ev){
 
 void ModelessDialog::timerEvent(QTimerEvent *ev){
     QWidget::timerEvent(ev);
-    if(ev->timerId() == m_TimerID)
-        emit Aborted();
+    if(ev->timerId() == m_TimerID){
+        if(m_DefaultValue)
+            emit Returned();
+        else
+            emit Aborted();
+    }
 }
 
 void ModelessDialog::paintEvent(QPaintEvent *ev){
