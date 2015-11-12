@@ -178,10 +178,12 @@ public:
 
 protected:
     void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QLineEdit::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
     void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QLineEdit::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
@@ -224,10 +226,12 @@ public:
 
 protected:
     void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QComboBox::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
     void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QComboBox::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
@@ -270,10 +274,12 @@ public:
 
 protected:
     void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QSpinBox::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
     void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QSpinBox::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
@@ -312,10 +318,12 @@ public:
 
 protected:
     void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QDoubleSpinBox::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
     void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QDoubleSpinBox::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }

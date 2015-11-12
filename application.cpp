@@ -195,7 +195,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     // corner-cutting prohibition of multiple launch.
     static QSharedMemory mem(SharedMemoryKey());
     if(!mem.create(1)){
-        QTimer::singleShot(100, instance, SLOT(quit()));
+        QTimer::singleShot(100, instance, &Application::quit);
         return;
     }
 
@@ -251,8 +251,8 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         s->endGroup();
     }
 
-    connect(instance,    SIGNAL(SaveAllDataRequest()),
-            m_AutoSaver, SLOT(SaveAll()));
+    connect(m_Instance,  &Application::SaveAllDataRequest,
+            m_AutoSaver, &AutoSaver::SaveAll);
     m_AutoSaver->moveToThread(m_SaverThread);
     m_SaverThread->start();
 
@@ -1334,6 +1334,9 @@ void Application::AboutQt(QWidget *parent){
 }
 
 void Application::Quit(){
+    StopAutoLoadTimer();
+    StopAutoSaveTimer();
+
     foreach(MainWindow *win, m_MainWindows.values()){
         win->hide();
     }
@@ -1341,7 +1344,11 @@ void Application::Quit(){
     // can't release QuickWebView...
     TreeBank::ReleaseAllView();
 
-    connect(m_AutoSaver, SIGNAL(Finished()), m_Instance, SLOT(quit()));
+    connect(m_AutoSaver, &AutoSaver::Finished,
+            [](){
+                Application::GetInstance()->disconnect();
+                QTimer::singleShot(0, Application::GetInstance(), &Application::quit);
+            });
     if(!m_AutoSaver->IsSaving()) m_Instance->SaveAllDataAsync();
 }
 

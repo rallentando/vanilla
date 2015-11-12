@@ -276,7 +276,7 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
             m_NodeTitleCache[nd] = title;
         }
 
-        thumb->SetPrimary(nd->IsPrimaryOfParent());
+        thumb->OnSetPrimary(nd->IsPrimaryOfParent());
 
         m_DisplayThumbnails << thumb;
         m_DisplayNodeTitles << title;
@@ -533,43 +533,43 @@ QMenu *GraphicsTableView::CreateSortMenu(){
         m_ToggleSortReverseAction = new QAction(this);
         m_ToggleSortReverseAction->setText(tr("Reverse"));
         m_ToggleSortReverseAction->setCheckable(true);
-        connect(m_ToggleSortReverseAction, SIGNAL(triggered()),
-                this, SLOT(ToggleSortReverse()));
+        connect(m_ToggleSortReverseAction, &QAction::triggered,
+                this, &GraphicsTableView::ToggleSortReverse);
     }
     if(!m_ToggleSortByUrlAction){
         m_ToggleSortByUrlAction = new QAction(this);
         m_ToggleSortByUrlAction->setText(tr("SortByUrl"));
         m_ToggleSortByUrlAction->setCheckable(true);
-        connect(m_ToggleSortByUrlAction, SIGNAL(triggered()),
-                this, SLOT(ToggleSortByUrl()));
+        connect(m_ToggleSortByUrlAction, &QAction::triggered,
+                this, &GraphicsTableView::ToggleSortByUrl);
     }
     if(!m_ToggleSortByTitleAction){
         m_ToggleSortByTitleAction = new QAction(this);
         m_ToggleSortByTitleAction->setText(tr("SortByTitle"));
         m_ToggleSortByTitleAction->setCheckable(true);
-        connect(m_ToggleSortByTitleAction, SIGNAL(triggered()),
-                this, SLOT(ToggleSortByTitle()));
+        connect(m_ToggleSortByTitleAction, &QAction::triggered,
+                this, &GraphicsTableView::ToggleSortByTitle);
     }
     if(!m_ToggleSortByCreateDateAction){
         m_ToggleSortByCreateDateAction = new QAction(this);
         m_ToggleSortByCreateDateAction->setText(tr("SortByCreateDate"));
         m_ToggleSortByCreateDateAction->setCheckable(true);
-        connect(m_ToggleSortByCreateDateAction, SIGNAL(triggered()),
-                this, SLOT(ToggleSortByCreateDate()));
+        connect(m_ToggleSortByCreateDateAction, &QAction::triggered,
+                this, &GraphicsTableView::ToggleSortByCreateDate);
     }
     if(!m_ToggleSortByLastUpdateDateAction){
         m_ToggleSortByLastUpdateDateAction = new QAction(this);
         m_ToggleSortByLastUpdateDateAction->setText(tr("SortByLastUpdateDate"));
         m_ToggleSortByLastUpdateDateAction->setCheckable(true);
-        connect(m_ToggleSortByLastUpdateDateAction, SIGNAL(triggered()),
-                this, SLOT(ToggleSortByLastUpdateDate()));
+        connect(m_ToggleSortByLastUpdateDateAction, &QAction::triggered,
+                this, &GraphicsTableView::ToggleSortByLastUpdateDate);
     }
     if(!m_ToggleSortByLastAccessDateAction){
         m_ToggleSortByLastAccessDateAction = new QAction(this);
         m_ToggleSortByLastAccessDateAction->setText(tr("SortByLastAccessDate"));
         m_ToggleSortByLastAccessDateAction->setCheckable(true);
-        connect(m_ToggleSortByLastAccessDateAction, SIGNAL(triggered()),
-                this, SLOT(ToggleSortByLastAccessDate()));
+        connect(m_ToggleSortByLastAccessDateAction, &QAction::triggered,
+                this, &GraphicsTableView::ToggleSortByLastAccessDate);
     }
 
     m_ToggleSortReverseAction->setChecked(m_SortFlags & Reverse);

@@ -91,8 +91,8 @@ Receiver::Receiver(TreeBank *parent, bool purge)
         m_LocalServer = new QLocalServer();
         m_LocalServer->listen(Application::LocalServerName());
     }
-    connect(m_LocalServer, SIGNAL(newConnection()),
-            this, SLOT(ForeignCommandReceived()));
+    connect(m_LocalServer, &QLocalServer::newConnection,
+            this, &Receiver::ForeignCommandReceived);
 
     m_LineEdit = new LineEdit(this);
     m_LineEdit->show();
@@ -102,12 +102,12 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     m_SuggestStrings = QStringList();
     m_CurrentSuggestIndex = -1;
 
-    connect(m_LineEdit, SIGNAL(textChanged(QString)), this, SLOT(SetString(QString)));
-    connect(m_LineEdit, SIGNAL(editingFinished()),    this, SLOT(EditingFinished()));
-    connect(m_LineEdit, SIGNAL(SelectNextSuggest()),  this, SLOT(SelectNextSuggest()));
-    connect(m_LineEdit, SIGNAL(SelectPrevSuggest()),  this, SLOT(SelectPrevSuggest()));
-    connect(m_LineEdit, SIGNAL(Returned()),           this, SLOT(OnReturned()));
-    connect(m_LineEdit, SIGNAL(Aborted()),            this, SLOT(OnAborted()));
+    connect(m_LineEdit, &LineEdit::textChanged,        this, &Receiver::SetString);
+    connect(m_LineEdit, &LineEdit::editingFinished,    this, &Receiver::EditingFinished);
+    connect(m_LineEdit, &LineEdit::SelectNextSuggest,  this, &Receiver::SelectNextSuggest);
+    connect(m_LineEdit, &LineEdit::SelectPrevSuggest,  this, &Receiver::SelectPrevSuggest);
+    connect(m_LineEdit, &LineEdit::Returned,           this, &Receiver::OnReturned);
+    connect(m_LineEdit, &LineEdit::Aborted,            this, &Receiver::OnAborted);
 
     connect(this, SIGNAL(Up()),               parent, SLOT(Up()));
     connect(this, SIGNAL(Down()),             parent, SLOT(Down()));
@@ -903,46 +903,56 @@ void Receiver::paintEvent(QPaintEvent *ev){
     QPainter painter(this);
     painter.setFont(RECEIVER_FONT);
 
-    int len = m_SuggestStrings.length();
+    const int len = m_SuggestStrings.length();
 
     for(int i = len; i > 0; i--){
-        QRect back_rect = QRect(-1, (len-i) * SUGGEST_HEIGHT - 1,
-                                width()+1, SUGGEST_HEIGHT);
+        const QRect back_rect = QRect(-1, (len-i) * SUGGEST_HEIGHT - 1,
+                                      width()+1, SUGGEST_HEIGHT);
         if(m_CurrentSuggestIndex == i - 1){
-            painter.setBrush(QColor(255, 255, 255, 128));
+            static const QBrush b = QBrush(QColor(255, 255, 255, 128));
+            painter.setBrush(b);
         } else {
-            painter.setBrush(QColor(  0,   0,   0, 128));
+            static const QBrush b = QBrush(QColor(  0,   0,   0, 128));
+            painter.setBrush(b);
         }
-        painter.setPen(QColor(0, 0, 0, 0));
+        painter.setPen(Qt::NoPen);
         painter.drawRect(back_rect);
 
-        QRect text_rect = QRect(5, (len-i) * SUGGEST_HEIGHT + 4,
-                                width()-4, SUGGEST_HEIGHT);
+        const QRect text_rect = QRect(5, (len-i) * SUGGEST_HEIGHT + 4,
+                                      width()-4, SUGGEST_HEIGHT);
         if(m_CurrentSuggestIndex == i - 1){
-            painter.setPen(QColor(  0,   0,   0, 255));
+            static const QPen p = QPen(QColor(  0,   0,   0, 255));
+            painter.setPen(p);
         } else {
-            painter.setPen(QColor(255, 255, 255, 255));
+            static const QPen p = QPen(QColor(255, 255, 255, 255));
+            painter.setPen(p);
         }
-        painter.setBrush(QColor(0, 0, 0, 0));
+        painter.setBrush(Qt::NoBrush);
         painter.drawText(text_rect, Qt::AlignLeft, m_SuggestStrings[i-1]);
     }
 
-    QRect back_rect = QRect(-1, len * SUGGEST_HEIGHT -1,
-                            width()+1, RECEIVER_HEIGHT);
-    painter.setPen  (QColor(0, 0, 0, 0));
-    painter.setBrush(QColor(0, 0, 0, 128));
-    painter.drawRect(back_rect);
+    const QRect back_rect = QRect(-1, len * SUGGEST_HEIGHT -1,
+                                  width()+1, RECEIVER_HEIGHT);
+    {
+        static const QBrush b = QBrush(QColor(0, 0, 0, 128));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(b);
+        painter.drawRect(back_rect);
+    }
 
-    QRect text_rect = QRect(5, len * SUGGEST_HEIGHT + 4,
-                            width()-4, RECEIVER_HEIGHT);
-    painter.setPen  (QColor(255, 255, 255, 255));
-    painter.setBrush(QColor(  0,   0,   0, 0));
-    switch(m_Mode){
-    case Command  : painter.drawText(text_rect, Qt::AlignLeft, tr("Command Mode.")); break;
-    case Query    : painter.drawText(text_rect, Qt::AlignLeft, tr("Input Query.")); break;
-    case UrlEdit  : painter.drawText(text_rect, Qt::AlignLeft, tr("Input Url.")); break;
-    case Search   : painter.drawText(text_rect, Qt::AlignLeft, tr("Incremental Search")+ QStringLiteral(" : \"") + m_LineString + QStringLiteral("\".")); break;
-    default : break;
+    const QRect text_rect = QRect(5, len * SUGGEST_HEIGHT + 4,
+                                  width()-4, RECEIVER_HEIGHT);
+    {
+        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        painter.setPen(p);
+        painter.setBrush(Qt::NoBrush);
+        switch(m_Mode){
+        case Command  : painter.drawText(text_rect, Qt::AlignLeft, tr("Command Mode.")); break;
+        case Query    : painter.drawText(text_rect, Qt::AlignLeft, tr("Input Query.")); break;
+        case UrlEdit  : painter.drawText(text_rect, Qt::AlignLeft, tr("Input Url.")); break;
+        case Search   : painter.drawText(text_rect, Qt::AlignLeft, tr("Incremental Search")+ QStringLiteral(" : \"") + m_LineString + QStringLiteral("\".")); break;
+        default : break;
+        }
     }
 
     ev->setAccepted(true);

@@ -62,8 +62,8 @@ MainWindow::MainWindow(int id, QWidget *parent)
         m_SouthWestWidget = new MainWindowSouthWestWidget (this);
         m_SouthEastWidget = new MainWindowSouthEastWidget (this);
         AdjustAllEdgeWidgets();
-        connect(Application::GetInstance(), SIGNAL(focusChanged(QWidget*, QWidget*)),
-                this, SLOT(UpdateAllEdgeWidgets()));
+        connect(Application::GetInstance(), &Application::focusChanged,
+                this, &MainWindow::UpdateAllEdgeWidgets);
     } else {
         m_TitleBar        = 0;
         m_NorthWidget     = 0;
@@ -999,14 +999,14 @@ void MainWindowNorthWidget::paintEvent(QPaintEvent *ev){
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
     } else {
         if(disp & shadow){
-            bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
-            if(isCurrent){
+            if(m_MainWindow == Application::GetCurrentWindow()){
                 QImage image(size(), QImage::Format_ARGB32);
                 image.fill(0);
-                for(double i=0; i < width(); i++){
-                    for(double j=0; j < height(); j++){
-                        double w = width();
-                        double c = 77*j*j/e/e;
+                double i, j, w, c;
+                for(i=0; i < width(); i++){
+                    for(j=0; j < height(); j++){
+                        w = width();
+                        c = 77*j*j/e/e;
                         if(  i<25) c = c*sqrt(   i /25);
                         if(w-i<25) c = c*sqrt((w-i)/25);
                         image.setPixel(i, j, EDGE_SHADOW_COLOR);
@@ -1041,14 +1041,14 @@ void MainWindowSouthWidget::paintEvent(QPaintEvent *ev){
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
     } else {
         if(disp & shadow){
-            bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
-            if(isCurrent){
+            if(m_MainWindow == Application::GetCurrentWindow()){
                 QImage image(size(), QImage::Format_ARGB32);
                 image.fill(0);
-                for(double i=0; i < width(); i++){
-                    for(double j=0; j < height(); j++){
-                        double w = width();
-                        double c = 77*j*j/e/e;
+                double i, j, w, c;
+                for(i=0; i < width(); i++){
+                    for(j=0; j < height(); j++){
+                        w = width();
+                        c = 77*j*j/e/e;
                         if(  i<25) c = c*sqrt(   i /25);
                         if(w-i<25) c = c*sqrt((w-i)/25);
                         image.setPixel(i, e-j-1, EDGE_SHADOW_COLOR);
@@ -1083,14 +1083,14 @@ void MainWindowWestWidget::paintEvent(QPaintEvent *ev){
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
     } else {
         if(disp & shadow){
-            bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
-            if(isCurrent){
+            if(m_MainWindow == Application::GetCurrentWindow()){
                 QImage image(size(), QImage::Format_ARGB32);
                 image.fill(0);
-                for(double i=0; i < height(); i++){
-                    for(double j=0; j < width(); j++){
-                        double w = height();
-                        double c = 77*j*j/e/e;
+                double i, j, w, c;
+                for(i=0; i < height(); i++){
+                    for(j=0; j < width(); j++){
+                        w = height();
+                        c = 77*j*j/e/e;
                         if(  i<25) c = c*sqrt(   i /25);
                         if(w-i<25) c = c*sqrt((w-i)/25);
                         image.setPixel(j, i, EDGE_SHADOW_COLOR);
@@ -1125,14 +1125,14 @@ void MainWindowEastWidget::paintEvent(QPaintEvent *ev){
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
     } else {
         if(disp & shadow){
-            bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
-            if(isCurrent){
+            if(m_MainWindow == Application::GetCurrentWindow()){
                 QImage image(size(), QImage::Format_ARGB32);
                 image.fill(0);
-                for(double i=0; i < height(); i++){
-                    for(double j=0; j < width(); j++){
-                        double w = height();
-                        double c = 77*j*j/e/e;
+                double i, j, w, c;
+                for(i=0; i < height(); i++){
+                    for(j=0; j < width(); j++){
+                        w = height();
+                        c = 77*j*j/e/e;
                         if(  i<25) c = c*sqrt(   i /25);
                         if(w-i<25) c = c*sqrt((w-i)/25);
                         image.setPixel(e-j-1, i, EDGE_SHADOW_COLOR);

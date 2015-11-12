@@ -65,8 +65,8 @@ Gadgets::Gadgets(TreeBank *parent)
     m_AccessKeyLabels = QStringList();
     m_AccessKeyCurrentSelection = QString();
 
-    connect(this, SIGNAL(titleChanged(const QString&)),  this, SLOT(OnTitleChanged(const QString&)));
-    connect(this, SIGNAL(urlChanged(const QUrl&)),       this, SLOT(OnUrlChanged(const QUrl&)));
+    connect(this, &Gadgets::titleChanged, this, &Gadgets::OnTitleChanged);
+    connect(this, &Gadgets::urlChanged,   this, &Gadgets::OnUrlChanged);
 
     bool isNumber = m_AccessKeySelectBlockMethod == Number;
     int size = isNumber ? 10 : AccessKeyBlockSize();

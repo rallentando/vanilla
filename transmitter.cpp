@@ -16,8 +16,8 @@ Transmitter::Transmitter(QObject *parent)
     : QObject(parent)
 {
     m_LocalSocket = new QLocalSocket();
-    connect(m_LocalSocket, SIGNAL(disconnected()),
-            m_LocalSocket, SLOT(deleteLater()));
+    connect(m_LocalSocket, &QLocalSocket::disconnected,
+            m_LocalSocket, &QLocalSocket::deleteLater);
 }
 
 Transmitter::~Transmitter(){}

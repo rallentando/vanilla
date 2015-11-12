@@ -156,6 +156,7 @@ public:
     void SetSelectionRange(Node*, Node*);
     void SetSelectionRange(Thumbnail*);
     void SetSelectionRange(NodeTitle*);
+
     bool MoveTo(bool, std::function<int(int, int)>);
     bool SelectTo(std::function<void()>);
     bool TransferTo(bool, bool, std::function<int(Thumbnail*, int, int)>);

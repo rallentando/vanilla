@@ -71,6 +71,7 @@ HEADERS += \
     gadgets/graphicstableview.hpp \
     gadgets/gadgets.hpp \
     gadgets/gadgetsstyle.hpp \
+    gadgets/abstractnodeitem.hpp \
     gadgets/thumbnail.hpp \
     gadgets/nodetitle.hpp \
     gadgets/accessiblewebelement.hpp
@@ -101,6 +102,7 @@ SOURCES += \
     gadgets/graphicstableview.cpp \
     gadgets/gadgets.cpp \
     gadgets/gadgetsstyle.cpp \
+    gadgets/abstractnodeitem.cpp \
     gadgets/thumbnail.cpp \
     gadgets/nodetitle.cpp \
     gadgets/accessiblewebelement.cpp
@@ -149,6 +151,7 @@ lupdate_only {
         gadgets/graphicstableview.hpp \
         gadgets/gadgets.hpp \
         gadgets/gadgetsstyle.hpp \
+        gadgets/abstractnodeitem.hpp \
         gadgets/thumbnail.hpp \
         gadgets/nodetitle.hpp \
         gadgets/accessiblewebelement.hpp \
@@ -177,6 +180,7 @@ lupdate_only {
         gadgets/graphicstableview.cpp \
         gadgets/gadgets.cpp \
         gadgets/gadgetsstyle.cpp \
+        gadgets/abstractnodeitem.cpp \
         gadgets/thumbnail.cpp \
         gadgets/nodetitle.cpp \
         gadgets/accessiblewebelement.cpp

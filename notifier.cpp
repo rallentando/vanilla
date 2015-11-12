@@ -103,14 +103,14 @@ void Notifier::RepaintIfNeed(const QRect &rect){
 
 void Notifier::RegisterDownload(DownloadItem *item){
     if(!item) return;
-    connect(item, SIGNAL(Progress(QString, qint64, qint64)),
-            this, SLOT(SetSaveProgress(QString, qint64, qint64)));
+    connect(item, &DownloadItem::Progress,
+            this, &Notifier::SetSaveProgress);
 }
 
 void Notifier::RegisterUpload(UploadItem *item){
     if(!item) return;
-    connect(item, SIGNAL(Progress(QString, qint64, qint64)),
-            this, SLOT(SetOpenProgress(QString, qint64, qint64)));
+    connect(item, &UploadItem::Progress,
+            this, &Notifier::SetOpenProgress);
 }
 
 void Notifier::AddDownloadItem(DownloadItem *item){
@@ -333,14 +333,12 @@ void Notifier::timerEvent(QTimerEvent *ev){
 }
 
 void Notifier::paintEvent(QPaintEvent *ev){
-    int dlen = m_DownloadItemTable.size();
-    int ulen = m_UploadItemTable.size();
-    int len = dlen + ulen;
-    QList<DownloadItem*> dkeys = m_DownloadItemTable.keys();
-    QList<UploadItem*> ukeys = m_UploadItemTable.keys();
-    int offset = (dlen + ulen) * TRANSFER_ITEM_HEIGHT;
-
-    QColor black = QColor(0, 0, 0, 128);
+    const int dlen = m_DownloadItemTable.size();
+    const int ulen = m_UploadItemTable.size();
+    const int len = dlen + ulen;
+    const QList<DownloadItem*> dkeys = m_DownloadItemTable.keys();
+    const QList<UploadItem*> ukeys = m_UploadItemTable.keys();
+    const int offset = (dlen + ulen) * TRANSFER_ITEM_HEIGHT;
 
     static const QColor white255 = QColor(255, 255, 255, 255);
     static const QColor white200 = QColor(255, 255, 255, 200);
@@ -351,92 +349,113 @@ void Notifier::paintEvent(QPaintEvent *ev){
     painter.setFont(NOTIFIER_FONT);
 
     {   // background.
+        static const QBrush b = QBrush(QColor(0, 0, 0, 128));
         painter.setPen(Qt::NoPen);
-        painter.setBrush(black);
+        painter.setBrush(b);
         painter.drawRect(-1, -1, width()+1, height()+1);
     }
 
     {   // transfer item.
-        int progress_offset = (width() * (100 - TRANSFER_PROGRESS_PERCENTAGE) / 100);
-        int progress_width = (width() * TRANSFER_PROGRESS_PERCENTAGE / 100);
-        int filename_width = progress_offset;
-        painter.setPen(white128);
-        painter.setBrush(Qt::NoBrush);
-        for(int i = 0; i < dlen; i++){
-            painter.drawRect(progress_offset + 2, i * TRANSFER_ITEM_HEIGHT + 3,
-                             progress_width - 5, TRANSFER_ITEM_HEIGHT - 6);
-        }
-        for(int i = dlen; i < len; i++){
-            painter.drawRect(progress_offset + 2, i * TRANSFER_ITEM_HEIGHT + 3,
-                             progress_width - 5, TRANSFER_ITEM_HEIGHT - 6);
+        const int progress_offset = (width() * (100 - TRANSFER_PROGRESS_PERCENTAGE) / 100);
+        const int progress_width = (width() * TRANSFER_PROGRESS_PERCENTAGE / 100);
+        const int filename_width = progress_offset;
+        {
+            static const QPen p = QPen(QColor(255, 255, 255, 128));
+            painter.setPen(p);
+            painter.setBrush(Qt::NoBrush);
+            for(int i = 0; i < dlen; i++){
+                painter.drawRect(progress_offset + 2, i * TRANSFER_ITEM_HEIGHT + 3,
+                                 progress_width - 5, TRANSFER_ITEM_HEIGHT - 6);
+            }
+            for(int i = dlen; i < len; i++){
+                painter.drawRect(progress_offset + 2, i * TRANSFER_ITEM_HEIGHT + 3,
+                                 progress_width - 5, TRANSFER_ITEM_HEIGHT - 6);
+            }
         }
 
         painter.setPen(Qt::NoPen);
         //#4169e1 65 150 225 misty blue
-        //painter.setBrush(QColor(65, 150, 225, 200));
         //#6478ff 100 120 255 dark blue
-        painter.setBrush(QColor(100, 120, 255, 200));
+        static const QBrush dlbrush = QBrush(QColor(100, 120, 255, 200));
+        painter.setBrush(dlbrush);
         for(int i = 0; i < dlen; i++){
             painter.drawRect(progress_offset + 3, i * TRANSFER_ITEM_HEIGHT + 4,
                              (progress_width - 6) * m_DownloadItemTable[dkeys[i]] / 100,
                              TRANSFER_ITEM_HEIGHT - 7);
         }
         //#9932cc 153 50 204 purple
-        //painter.setBrush(QColor(153, 50, 204, 200));
         //#c87864 200 120 100 dark pink
-        painter.setBrush(QColor(200, 120, 100, 200));
+        static const QBrush ulbrush = QBrush(QColor(200, 120, 100, 200));
+        painter.setBrush(ulbrush);
         for(int i = dlen; i < len; i++){
             painter.drawRect(progress_offset + 3, i * TRANSFER_ITEM_HEIGHT + 4,
                              (progress_width - 6) * m_UploadItemTable[ukeys[i-dlen]] / 100,
                              TRANSFER_ITEM_HEIGHT - 7);
         }
 
-        painter.setPen(white200);
-        painter.setBrush(Qt::NoBrush);
-        for(int i = 0; i < dlen; i++){
-            QRect f = QRect(5, i * TRANSFER_ITEM_HEIGHT + 4,
-                            filename_width - 6, TRANSFER_ITEM_HEIGHT);
-            QRect p = QRect(progress_offset + 3, i * TRANSFER_ITEM_HEIGHT + 4,
-                            progress_width - 6, TRANSFER_ITEM_HEIGHT - 7);
-            painter.drawText(f, Qt::AlignLeft, dkeys[i]->GetPath().split(QStringLiteral("/")).last());
-            painter.drawText(p, Qt::AlignCenter, QStringLiteral("%1%").arg(m_DownloadItemTable[dkeys[i]]));
-        }
-        for(int i = dlen; i < len; i++){
-            QRect f = QRect(5, i * TRANSFER_ITEM_HEIGHT + 4,
-                            filename_width - 6, TRANSFER_ITEM_HEIGHT);
-            QRect p = QRect(progress_offset + 3, i * TRANSFER_ITEM_HEIGHT + 4,
-                            progress_width - 6, TRANSFER_ITEM_HEIGHT - 7);
-            painter.drawText(f, Qt::AlignLeft, ukeys[i-dlen]->GetPath().split(QStringLiteral("/")).last());
-            painter.drawText(p, Qt::AlignCenter, QStringLiteral("%1%").arg(m_UploadItemTable[ukeys[i-dlen]]));
+        {
+            static const QPen p = QPen(QColor(255, 255, 255, 200));
+            painter.setPen(p);
+            painter.setBrush(Qt::NoBrush);
+            for(int i = 0; i < dlen; i++){
+                QRect f = QRect(5, i * TRANSFER_ITEM_HEIGHT + 4,
+                                filename_width - 6, TRANSFER_ITEM_HEIGHT);
+                QRect p = QRect(progress_offset + 3, i * TRANSFER_ITEM_HEIGHT + 4,
+                                progress_width - 6, TRANSFER_ITEM_HEIGHT - 7);
+                painter.drawText(f, Qt::AlignLeft, dkeys[i]->GetPath().split(QStringLiteral("/")).last());
+                painter.drawText(p, Qt::AlignCenter, QStringLiteral("%1%").arg(m_DownloadItemTable[dkeys[i]]));
+            }
+            for(int i = dlen; i < len; i++){
+                QRect f = QRect(5, i * TRANSFER_ITEM_HEIGHT + 4,
+                                filename_width - 6, TRANSFER_ITEM_HEIGHT);
+                QRect p = QRect(progress_offset + 3, i * TRANSFER_ITEM_HEIGHT + 4,
+                                progress_width - 6, TRANSFER_ITEM_HEIGHT - 7);
+                painter.drawText(f, Qt::AlignLeft, ukeys[i-dlen]->GetPath().split(QStringLiteral("/")).last());
+                painter.drawText(p, Qt::AlignCenter, QStringLiteral("%1%").arg(m_UploadItemTable[ukeys[i-dlen]]));
+            }
         }
     }
 
     {   // status area.
-        painter.setPen(white128);
-        painter.setBrush(Qt::NoBrush);
-        painter.drawRect(0, offset, SCROLL_AREA_WIDTH, SCROLL_AREA_HEIGHT - 1);
+        {
+            static const QPen p = QPen(QColor(255, 255, 255, 128));
+            painter.setPen(p);
+            painter.setBrush(Qt::NoBrush);
+            painter.drawRect(0, offset, SCROLL_AREA_WIDTH, SCROLL_AREA_HEIGHT - 1);
+        }
 
-        painter.setPen(white200);
-        painter.setBrush(white200);
-        painter.drawEllipse(m_ScrollPos.x() * SCROLL_AREA_WIDTH - 2,
-                            m_ScrollPos.y() * SCROLL_AREA_HEIGHT - 2 + offset,
-                            4, 4);
+        {
+            static const QPen   p = QPen(QColor(255, 255, 255, 200));
+            static const QBrush b = QBrush(QColor(255, 255, 255, 200));
+            painter.setPen(p);
+            painter.setBrush(b);
+            painter.drawEllipse(m_ScrollPos.x() * SCROLL_AREA_WIDTH - 2,
+                                m_ScrollPos.y() * SCROLL_AREA_HEIGHT - 2 + offset,
+                                4, 4);
+        }
 
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(white100);
-        painter.drawRect(0, m_ScrollPos.y() * SCROLL_AREA_HEIGHT + offset,
-                         SCROLL_AREA_WIDTH, 1);
-        painter.drawRect(m_ScrollPos.x() * SCROLL_AREA_WIDTH, offset,
-                         1, SCROLL_AREA_HEIGHT);
+        {
+            static const QBrush b = QBrush(QColor(255, 255, 255, 100));
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(b);
+            painter.drawRect(0, m_ScrollPos.y() * SCROLL_AREA_HEIGHT + offset,
+                             SCROLL_AREA_WIDTH, 1);
+            painter.drawRect(m_ScrollPos.x() * SCROLL_AREA_WIDTH, offset,
+                             1, SCROLL_AREA_HEIGHT);
+        }
 
-        painter.setPen(white255);
-        painter.setBrush(white100);
-        painter.drawText(QRect(SCROLL_AREA_WIDTH + 5, offset + 4,
-                               width()-5, NOTIFIER_HEIGHT/2), Qt::AlignLeft,
-                         m_UpperText.replace(QStringLiteral("\n"), QStringLiteral(" ")));
-        painter.drawText(QRect(SCROLL_AREA_WIDTH + 5, offset + 4 + (NOTIFIER_HEIGHT/2),
-                               width()-5, NOTIFIER_HEIGHT/2), Qt::AlignLeft,
-                         m_LowerText.replace(QStringLiteral("\n"), QStringLiteral(" ")));
+        {
+            static const QPen   p = QPen(QColor(255, 255, 255, 255));
+            static const QBrush b = QBrush(QColor(255, 255, 255, 100));
+            painter.setPen(p);
+            painter.setBrush(b);
+            painter.drawText(QRect(SCROLL_AREA_WIDTH + 5, offset + 4,
+                                   width()-5, NOTIFIER_HEIGHT/2), Qt::AlignLeft,
+                             m_UpperText.replace(QStringLiteral("\n"), QStringLiteral(" ")));
+            painter.drawText(QRect(SCROLL_AREA_WIDTH + 5, offset + 4 + (NOTIFIER_HEIGHT/2),
+                                   width()-5, NOTIFIER_HEIGHT/2), Qt::AlignLeft,
+                             m_LowerText.replace(QStringLiteral("\n"), QStringLiteral(" ")));
+        }
     }
     painter.end();
 

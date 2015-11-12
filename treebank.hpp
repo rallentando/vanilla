@@ -50,6 +50,7 @@ public:
     static inline SharedViewList GetAllViews(){ return m_AllViews;}
     static inline void AppendToAllViews(SharedView view){ m_AllViews.append(view);}
     static inline void PrependToAllViews(SharedView view){ m_AllViews.prepend(view);}
+    static inline void RemoveFromAllViews(SharedView view){ m_AllViews.removeOne(view);}
 
     inline MainWindow *GetMainWindow() const { return static_cast<MainWindow*>(parentWidget());}
     inline Notifier *GetNotifier() const { return m_Notifier;}

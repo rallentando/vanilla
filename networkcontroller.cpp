@@ -76,12 +76,12 @@ NetworkAccessManager::NetworkAccessManager(QString id)
     m_Profile->setHttpAcceptLanguage(Application::GetAcceptLanguage());
 #endif
 
-    connect(m_Profile, SIGNAL(downloadRequested(QWebEngineDownloadItem*)),
-            this, SLOT(HandleDownload(QWebEngineDownloadItem*)));
-    connect(this, SIGNAL(authenticationRequired(QNetworkReply*, QAuthenticator*)),
-            this, SLOT(HandleAuthentication(QNetworkReply*, QAuthenticator*)));
-    connect(this, SIGNAL(proxyAuthenticationRequired(const QNetworkProxy&, QAuthenticator*)),
-            this, SLOT(HandleProxyAuthentication(const QNetworkProxy&, QAuthenticator*)));
+    connect(m_Profile, &QWebEngineProfile::downloadRequested,
+            this, &NetworkAccessManager::HandleDownload);
+    connect(this, &NetworkAccessManager::authenticationRequired,
+            this, &NetworkAccessManager::HandleAuthentication);
+    connect(this, &NetworkAccessManager::proxyAuthenticationRequired,
+            this, &NetworkAccessManager::HandleProxyAuthentication);
 }
 
 NetworkAccessManager::~NetworkAccessManager(){
@@ -233,10 +233,11 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op,
 
     QNetworkReply *rep = QNetworkAccessManager::createRequest(op, newreq, out);
 
+    // QNetworkReply::error is overloaded.
     connect(rep,  SIGNAL(error(QNetworkReply::NetworkError)),
             this, SLOT(HandleError(QNetworkReply::NetworkError)));
-    connect(rep,  SIGNAL(sslErrors(const QList<QSslError>&)),
-            this, SLOT(HandleSslErrors(const QList<QSslError>&)));
+    connect(rep,  &QNetworkReply::sslErrors,
+            this, &NetworkAccessManager::HandleSslErrors);
 
     QString type = newreq.header(QNetworkRequest::ContentTypeHeader).value<QString>();
     if(type.toLower().contains(QStringLiteral("multipart/form-data;"))){
@@ -485,10 +486,10 @@ DownloadItem::DownloadItem(QNetworkReply *reply, QString defaultfilename)
 
     m_DownloadReply = reply;
     m_DownloadItem = 0;
-    connect(m_DownloadReply, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
-    connect(m_DownloadReply, SIGNAL(finished()), this, SLOT(Finished()));
-    connect(m_DownloadReply, SIGNAL(downloadProgress(qint64, qint64)),
-            this, SLOT(DownloadProgress(qint64, qint64)));
+    connect(m_DownloadReply, &QNetworkReply::readyRead, this, &DownloadItem::ReadyRead);
+    connect(m_DownloadReply, &QNetworkReply::finished,  this, &DownloadItem::Finished);
+    connect(m_DownloadReply, &QNetworkReply::downloadProgress,
+            this, &DownloadItem::DownloadProgress);
     m_GettingPath = false;
 
     if(defaultfilename.isEmpty()){
@@ -513,9 +514,10 @@ DownloadItem::DownloadItem(QWebEngineDownloadItem *item)
     m_DefaultFileName = QString();
     m_DownloadItem = item;
     m_DownloadReply = 0;
-    connect(m_DownloadItem, SIGNAL(finished()), this, SLOT(Finished()));
-    connect(m_DownloadItem, SIGNAL(downloadProgress(qint64, qint64)),
-            this, SLOT(DownloadProgress(qint64, qint64)));
+    connect(m_DownloadItem, &QWebEngineDownloadItem::finished,
+            this,           &DownloadItem::Finished);
+    connect(m_DownloadItem, &QWebEngineDownloadItem::downloadProgress,
+            this,           &DownloadItem::DownloadProgress);
     // for disabling ReadyRead.
     m_GettingPath = true;
     m_RemoteUrl = item->url();
@@ -759,9 +761,9 @@ UploadItem::UploadItem(QNetworkReply *reply, qint64 size)
     : QObject(0)
 {
     m_UploadReply = reply;
-    connect(m_UploadReply, SIGNAL(finished()), this, SLOT(Finished()));
-    connect(m_UploadReply, SIGNAL(uploadProgress(qint64, qint64)),
-            this, SLOT(UploadProgress(qint64, qint64)));
+    connect(m_UploadReply, &QNetworkReply::finished, this, &UploadItem::Finished);
+    connect(m_UploadReply, &QNetworkReply::uploadProgress,
+            this, &UploadItem::UploadProgress);
     m_FileSize = size;
     m_Path = ExpectFileName();
 }
@@ -770,9 +772,9 @@ UploadItem::UploadItem(QNetworkReply *reply, QString name)
     : QObject(0)
 {
     m_UploadReply = reply;
-    connect(m_UploadReply, SIGNAL(finished()), this, SLOT(Finished()));
-    connect(m_UploadReply, SIGNAL(uploadProgress(qint64, qint64)),
-            this, SLOT(UploadProgress(qint64, qint64)));
+    connect(m_UploadReply, &QNetworkReply::finished, this, &UploadItem::Finished);
+    connect(m_UploadReply, &QNetworkReply::uploadProgress,
+            this, &UploadItem::UploadProgress);
     m_FileSize = -1;
     m_Path = name;
 }

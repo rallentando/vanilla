@@ -465,15 +465,11 @@ void TreeBank::AddToDeleteBox(Node *nd){
 }
 
 void TreeBank::RemoveFromUpdateBox(SharedView view){
-    if(m_ViewUpdateBox.contains(view)){
-        m_ViewUpdateBox.removeOne(view);
-    }
+    m_ViewUpdateBox.removeOne(view);
 }
 
 void TreeBank::RemoveFromDeleteBox(Node *nd){
-    if(m_NodeDeleteBox.contains(nd)){
-        m_NodeDeleteBox.removeOne(nd);
-    }
+    m_NodeDeleteBox.removeOne(nd);
 }
 
 // for auto loading
@@ -1282,12 +1278,15 @@ void TreeBank::StripSubTree(Node *nd){
 }
 
 void TreeBank::ReleaseView(SharedView view){
-    m_AllViews.removeOne(view);
-    m_ViewUpdateBox.removeOne(view);
+    RemoveFromAllViews(view);
+    RemoveFromUpdateBox(view);
 }
 
 void TreeBank::ReleaseAllView(){
     // when quit application.
+
+    m_ViewUpdateBox.clear();
+
     foreach(SharedView view, m_AllViews){
         view->DeleteLater();
     }
@@ -2508,8 +2507,7 @@ void TreeBank::keyPressEvent(QKeyEvent *ev){
         ev->setAccepted(true);
         return;
     }
-    if(!Application::IsOnlyModifier(ev) &&
-       Application::HasNoModifier(ev)){
+    if(!Application::IsOnlyModifier(ev)){
 
         TriggerKeyEvent(ev);
         ev->setAccepted(true);
@@ -2987,7 +2985,7 @@ void TreeBank::BuryView(ViewNode *vn){
     if(View *v = vn->GetView()){
         if(SharedView view = v->GetThis().lock()){
             view->lower();
-            m_AllViews.removeOne(view);
+            RemoveFromAllViews(view);
             AppendToAllViews(view);
         }
     }

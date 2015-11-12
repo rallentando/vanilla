@@ -80,7 +80,7 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     if(m_Buttons.contains(tr("OK"))){
         QPushButton *returnButton = new QPushButton(tr("OK"), this);
         connect(returnButton, &QPushButton::clicked, [this](){ m_ClickedButton = tr("OK"); });
-        connect(returnButton, SIGNAL(clicked()), this, SIGNAL(Returned()));
+        connect(returnButton, &QPushButton::clicked, this, &ModalDialog::Returned);
         hlayout->addWidget(returnButton);
         returnButton->setDefault(true);
     }
@@ -88,28 +88,28 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     if(m_Buttons.contains(tr("Allow"))){
         QPushButton *allowButton = new QPushButton(tr("Allow"), this);
         connect(allowButton, &QPushButton::clicked, [this](){ m_ClickedButton = tr("Allow"); });
-        connect(allowButton, SIGNAL(clicked()), this, SIGNAL(Returned()));
+        connect(allowButton, &QPushButton::clicked, this, &ModalDialog::Returned);
         hlayout->addWidget(allowButton);
     }
 
     if(m_Buttons.contains(tr("Block"))){
         QPushButton *blockButton = new QPushButton(tr("Block"), this);
         connect(blockButton, &QPushButton::clicked, [this](){ m_ClickedButton = tr("Block"); });
-        connect(blockButton, SIGNAL(clicked()), this, SIGNAL(Returned()));
+        connect(blockButton, &QPushButton::clicked, this, &ModalDialog::Returned);
         hlayout->addWidget(blockButton);
     }
 
     if(m_Buttons.contains(tr("Yes"))){
         QPushButton *yesButton = new QPushButton(tr("Yes"), this);
         connect(yesButton, &QPushButton::clicked, [this](){ m_ClickedButton = tr("Yes"); });
-        connect(yesButton, SIGNAL(clicked()), this, SIGNAL(Returned()));
+        connect(yesButton, &QPushButton::clicked, this, &ModalDialog::Returned);
         hlayout->addWidget(yesButton);
     }
 
     if(m_Buttons.contains(tr("No"))){
         QPushButton *noButton = new QPushButton(tr("No"), this);
         connect(noButton, &QPushButton::clicked, [this](){ m_ClickedButton = tr("No"); });
-        connect(noButton, SIGNAL(clicked()), this, SIGNAL(Aborted()));
+        connect(noButton, &QPushButton::clicked, this, &ModalDialog::Aborted);
         hlayout->addWidget(noButton);
     }
 
@@ -131,7 +131,7 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     if(m_Buttons.contains(tr("Cancel"))){
         QPushButton *cancelButton = new QPushButton(tr("Cancel"), this);
         connect(cancelButton, &QPushButton::clicked, [this](){ m_ClickedButton = tr("Cancel"); });
-        connect(cancelButton, SIGNAL(clicked()), this, SIGNAL(Aborted()));
+        connect(cancelButton, &QPushButton::clicked, this, &ModalDialog::Aborted);
         hlayout->addWidget(cancelButton);
     }
 
@@ -205,8 +205,8 @@ int ModalDialog::GetInt(QString title, QString caption, int val, int min, int ma
     dialog->m_InputWidget = intSpinBox;
     dialog->m_Title = title;
     dialog->m_Caption = caption;
-    connect(intSpinBox, SIGNAL(Returned()), dialog, SIGNAL(Returned()));
-    connect(intSpinBox, SIGNAL(Aborted()),  dialog, SIGNAL(Aborted()));
+    connect(intSpinBox, &DialogIntSpinBox::Returned, dialog, &ModalDialog::Returned);
+    connect(intSpinBox, &DialogIntSpinBox::Aborted,  dialog, &ModalDialog::Aborted);
     bool result = dialog->Execute(intSpinBox);
     if(ok) *ok = result;
     if(result) return intSpinBox->value();
@@ -222,8 +222,8 @@ double ModalDialog::GetDouble(QString title, QString caption, double val, double
     dialog->m_InputWidget = doubleSpinBox;
     dialog->m_Title = title;
     dialog->m_Caption = caption;
-    connect(doubleSpinBox, SIGNAL(Returned()), dialog, SIGNAL(Returned()));
-    connect(doubleSpinBox, SIGNAL(Aborted()),  dialog, SIGNAL(Aborted()));
+    connect(doubleSpinBox, &DialogDoubleSpinBox::Returned, dialog, &ModalDialog::Returned);
+    connect(doubleSpinBox, &DialogDoubleSpinBox::Aborted,  dialog, &ModalDialog::Aborted);
     bool result = dialog->Execute(doubleSpinBox);
     if(ok) *ok = result;
     if(result) return doubleSpinBox->value();
@@ -238,8 +238,8 @@ QString ModalDialog::GetItem(QString title, QString caption, QStringList items, 
     dialog->m_InputWidget = comboBox;
     dialog->m_Title = title;
     dialog->m_Caption = caption;
-    connect(comboBox, SIGNAL(Returned()), dialog, SIGNAL(Returned()));
-    connect(comboBox, SIGNAL(Aborted()),  dialog, SIGNAL(Aborted()));
+    connect(comboBox, &DialogComboBox::Returned, dialog, &ModalDialog::Returned);
+    connect(comboBox, &DialogComboBox::Aborted,  dialog, &ModalDialog::Aborted);
     bool result = dialog->Execute(comboBox);
     if(ok) *ok = result;
     if(result) return comboBox->currentText();
@@ -254,8 +254,8 @@ QString ModalDialog::GetText(QString title, QString caption, QString text, bool 
     dialog->m_InputWidget = lineEdit;
     dialog->m_Title = title;
     dialog->m_Caption = caption;
-    connect(lineEdit, SIGNAL(Returned()), dialog, SIGNAL(Returned()));
-    connect(lineEdit, SIGNAL(Aborted()),  dialog, SIGNAL(Aborted()));
+    connect(lineEdit, &DialogLineEdit::Returned, dialog, &ModalDialog::Returned);
+    connect(lineEdit, &DialogLineEdit::Aborted,  dialog, &ModalDialog::Aborted);
     bool result = dialog->Execute(lineEdit);
     if(ok) *ok = result;
     if(result) return lineEdit->text();
@@ -271,8 +271,8 @@ QString ModalDialog::GetPass(QString title, QString caption, QString text, bool 
     dialog->m_InputWidget = lineEdit;
     dialog->m_Title = title;
     dialog->m_Caption = caption;
-    connect(lineEdit, SIGNAL(Returned()), dialog, SIGNAL(Returned()));
-    connect(lineEdit, SIGNAL(Aborted()),  dialog, SIGNAL(Aborted()));
+    connect(lineEdit, &DialogLineEdit::Returned, dialog, &ModalDialog::Returned);
+    connect(lineEdit, &DialogLineEdit::Aborted,  dialog, &ModalDialog::Aborted);
     bool result = dialog->Execute(lineEdit);
     if(ok) *ok = result;
     if(result) return lineEdit->text();
@@ -331,10 +331,10 @@ void ModalDialog::Authentication(QAuthenticator *authenticator){
     widget->setLayout(layout);
     dialog->m_InputWidget = widget;
     dialog->m_Title = tr("User authentication.");
-    connect(userNameEdit, SIGNAL(Returned()), dialog, SIGNAL(Returned()));
-    connect(userNameEdit, SIGNAL(Aborted()),  dialog, SIGNAL(Aborted()));
-    connect(passwordEdit, SIGNAL(Returned()), dialog, SIGNAL(Returned()));
-    connect(passwordEdit, SIGNAL(Aborted()),  dialog, SIGNAL(Aborted()));
+    connect(userNameEdit, &DialogLineEdit::Returned, dialog, &ModalDialog::Returned);
+    connect(userNameEdit, &DialogLineEdit::Aborted,  dialog, &ModalDialog::Aborted);
+    connect(passwordEdit, &DialogLineEdit::Returned, dialog, &ModalDialog::Returned);
+    connect(passwordEdit, &DialogLineEdit::Aborted,  dialog, &ModalDialog::Aborted);
 
     if(dialog->Execute(userNameEdit)){
         authenticator->setUser(userNameEdit->text());
@@ -451,7 +451,7 @@ ModelessDialog::ModelessDialog()
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
     setAttribute(Qt::WA_TranslucentBackground);
-    connect(this, SIGNAL(destroyed()), this, SIGNAL(Aborted()));
+    connect(this, &ModelessDialog::destroyed, this, &ModelessDialog::Aborted);
 }
 
 ModelessDialog::~ModelessDialog(){
@@ -484,37 +484,37 @@ void ModelessDialog::Execute(){
 
     if(m_Buttons.contains(tr("OK"))){
         QPushButton *returnButton = new QPushButton(tr("OK"), this);
-        connect(returnButton, SIGNAL(clicked()), this, SIGNAL(Returned()));
+        connect(returnButton, &QPushButton::clicked, this, &ModelessDialog::Returned);
         hlayout2->addWidget(returnButton);
     }
 
     if(m_Buttons.contains(tr("Allow"))){
         QPushButton *allowButton = new QPushButton(tr("Allow"), this);
-        connect(allowButton, SIGNAL(clicked()), this, SIGNAL(Returned()));
+        connect(allowButton, &QPushButton::clicked, this, &ModelessDialog::Returned);
         hlayout2->addWidget(allowButton);
     }
 
     if(m_Buttons.contains(tr("Block"))){
         QPushButton *blockButton = new QPushButton(tr("Block"), this);
-        connect(blockButton, SIGNAL(clicked()), this, SIGNAL(Returned()));
+        connect(blockButton, &QPushButton::clicked, this, &ModelessDialog::Returned);
         hlayout2->addWidget(blockButton);
     }
 
     if(m_Buttons.contains(tr("Yes"))){
         QPushButton *yesButton = new QPushButton(tr("Yes"), this);
-        connect(yesButton, SIGNAL(clicked()), this, SIGNAL(Returned()));
+        connect(yesButton, &QPushButton::clicked, this, &ModelessDialog::Returned);
         hlayout2->addWidget(yesButton);
     }
 
     if(m_Buttons.contains(tr("No"))){
         QPushButton *noButton = new QPushButton(tr("No"), this);
-        connect(noButton, SIGNAL(clicked()), this, SIGNAL(Aborted()));
+        connect(noButton, &QPushButton::clicked, this, &ModelessDialog::Aborted);
         hlayout2->addWidget(noButton);
     }
 
     if(m_Buttons.contains(tr("Cancel"))){
         QPushButton *cancelButton = new QPushButton(tr("Cancel"), this);
-        connect(cancelButton, SIGNAL(clicked()), this, SIGNAL(Aborted()));
+        connect(cancelButton, &QPushButton::clicked, this, &ModelessDialog::Aborted);
         hlayout2->addWidget(cancelButton);
     }
 
@@ -539,7 +539,7 @@ void ModelessDialog::Execute(){
 
 void ModelessDialog::Information(const QString &title, const QString &text, QObject *caller){
     ModelessDialog *dialog = new ModelessDialog();
-    if(caller) connect(caller, SIGNAL(destroyed()), dialog, SIGNAL(Aborted()));
+    if(caller) connect(caller, &QObject::destroyed, dialog, &ModelessDialog::Aborted);
     dialog->m_Title = title;
     dialog->m_Caption = text;
     dialog->m_Buttons << tr("OK");
@@ -548,7 +548,7 @@ void ModelessDialog::Information(const QString &title, const QString &text, QObj
 
 void ModelessDialog::Question(const QString &title, const QString &text, BoolCallBack callBack, QObject *caller){
     ModelessDialog *dialog = new ModelessDialog();
-    if(caller) connect(caller, SIGNAL(destroyed()), dialog, SIGNAL(Aborted()));
+    if(caller) connect(caller, &QObject::destroyed, dialog, &ModelessDialog::Aborted);
     dialog->m_Title = title;
     dialog->m_Caption = text;
     dialog->m_Buttons << tr("Yes") << tr("No");

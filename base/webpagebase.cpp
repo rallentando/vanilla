@@ -1141,8 +1141,7 @@ void WebPageBase::DownloadSuggest(const QUrl& url){
     DownloadItem *item =
         NetworkController::Download(static_cast<NetworkAccessManager*>(networkAccessManager()),
                                     req, NetworkController::ToVariable);
-    connect(item, SIGNAL(DownloadResult(const QByteArray&)),
-            this, SIGNAL(SuggestResult(const QByteArray&)));
+    connect(item, &DownloadItem::DownloadResult, this, &WebPageBase::SuggestResult);
 }
 
 //[[!WEV]]

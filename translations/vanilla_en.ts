@@ -29,87 +29,87 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1397"/>
-        <location filename="../application.cpp" line="1574"/>
+        <location filename="../application.cpp" line="1404"/>
+        <location filename="../application.cpp" line="1581"/>
         <source>Restored from a back up file</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1398"/>
-        <location filename="../application.cpp" line="1575"/>
+        <location filename="../application.cpp" line="1405"/>
+        <location filename="../application.cpp" line="1582"/>
         <source>Because of a failure to read the latest file, it was restored from a backup file.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1483"/>
+        <location filename="../application.cpp" line="1490"/>
         <source>en-US</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="1611"/>
-        <location filename="../application.cpp" line="1612"/>
+        <location filename="../application.cpp" line="1618"/>
+        <location filename="../application.cpp" line="1619"/>
         <source>Input master password.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2024"/>
-        <location filename="../application.cpp" line="2037"/>
+        <location filename="../application.cpp" line="2031"/>
+        <location filename="../application.cpp" line="2044"/>
         <source>BlockAccess</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2025"/>
-        <location filename="../application.cpp" line="2039"/>
+        <location filename="../application.cpp" line="2032"/>
+        <location filename="../application.cpp" line="2046"/>
         <source>IgnoreSslErrors</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2026"/>
-        <location filename="../application.cpp" line="2041"/>
+        <location filename="../application.cpp" line="2033"/>
+        <location filename="../application.cpp" line="2048"/>
         <source>AskForEachAccess</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2027"/>
-        <location filename="../application.cpp" line="2043"/>
+        <location filename="../application.cpp" line="2034"/>
+        <location filename="../application.cpp" line="2050"/>
         <source>AskForEachHost</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2031"/>
+        <location filename="../application.cpp" line="2038"/>
         <source>Ssl error policy</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2032"/>
+        <location filename="../application.cpp" line="2039"/>
         <source>Select ssl error policy.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2055"/>
-        <location filename="../application.cpp" line="2067"/>
+        <location filename="../application.cpp" line="2062"/>
+        <location filename="../application.cpp" line="2074"/>
         <source>FixedLocale</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2056"/>
-        <location filename="../application.cpp" line="2074"/>
+        <location filename="../application.cpp" line="2063"/>
+        <location filename="../application.cpp" line="2081"/>
         <source>DownloadFolder</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2057"/>
-        <location filename="../application.cpp" line="2077"/>
+        <location filename="../application.cpp" line="2064"/>
+        <location filename="../application.cpp" line="2084"/>
         <source>AskForEachDownload</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2061"/>
+        <location filename="../application.cpp" line="2068"/>
         <source>Download policy</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../application.cpp" line="2062"/>
+        <location filename="../application.cpp" line="2069"/>
         <source>Select download policy.</source>
         <translation></translation>
     </message>
@@ -712,7 +712,7 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2420"/>
+        <location filename="../gadgets/gadgets.cpp" line="2435"/>
         <source>Current selection: %1</source>
         <translation></translation>
     </message>
@@ -720,55 +720,55 @@
 <context>
     <name>GraphicsTableView</name>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="481"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2999"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="3036"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="468"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2939"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2976"/>
         <source>Displaying %1 nodes.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="551"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="538"/>
         <source>Reverse</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="558"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="545"/>
         <source>SortByUrl</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="565"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="552"/>
         <source>SortByTitle</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="572"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="559"/>
         <source>SortByCreateDate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="586"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="573"/>
         <source>SortByLastAccessDate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="579"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="566"/>
         <source>SortByLastUpdateDate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2115"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2055"/>
         <source>Invalid directory contents.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2116"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2056"/>
         <source>This directory has no contents or all nodes have same domain.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2591"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2616"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2531"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2556"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation></translation>
     </message>
@@ -2560,27 +2560,27 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3484"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="556"/>
         <source>Title : </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3485"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="557"/>
         <source>Url : </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3486"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="558"/>
         <source>CreatedDate : </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3488"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="560"/>
         <source>LastAccessedDate : </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="3487"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="559"/>
         <source>LastUpdatedDate : </source>
         <translation></translation>
     </message>
@@ -2697,22 +2697,22 @@
 <context>
     <name>Receiver</name>
     <message>
-        <location filename="../receiver.cpp" line="943"/>
+        <location filename="../receiver.cpp" line="945"/>
         <source>Command Mode.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="944"/>
+        <location filename="../receiver.cpp" line="946"/>
         <source>Input Query.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="945"/>
+        <location filename="../receiver.cpp" line="947"/>
         <source>Input Url.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="946"/>
+        <location filename="../receiver.cpp" line="948"/>
         <source>Incremental Search</source>
         <translation></translation>
     </message>
@@ -2743,142 +2743,142 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3618"/>
+        <location filename="../treebank.cpp" line="3620"/>
         <source>Load</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3628"/>
+        <location filename="../treebank.cpp" line="3630"/>
         <source>Reload</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3630"/>
+        <location filename="../treebank.cpp" line="3632"/>
         <source>Stop</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3594"/>
+        <location filename="../treebank.cpp" line="3596"/>
         <source>Back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3595"/>
+        <location filename="../treebank.cpp" line="3597"/>
         <source>Forward</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3597"/>
+        <location filename="../treebank.cpp" line="3599"/>
         <source>Close</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3598"/>
+        <location filename="../treebank.cpp" line="3600"/>
         <source>Restore</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3600"/>
+        <location filename="../treebank.cpp" line="3602"/>
         <source>NextView</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3601"/>
+        <location filename="../treebank.cpp" line="3603"/>
         <source>PrevView</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3587"/>
+        <location filename="../treebank.cpp" line="3589"/>
         <source>NewWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3588"/>
+        <location filename="../treebank.cpp" line="3590"/>
         <source>CloseWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3589"/>
+        <location filename="../treebank.cpp" line="3591"/>
         <source>SwitchWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3611"/>
+        <location filename="../treebank.cpp" line="3613"/>
         <source>DisplayHistTree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3610"/>
+        <location filename="../treebank.cpp" line="3612"/>
         <source>DisplayViewTree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3612"/>
+        <location filename="../treebank.cpp" line="3614"/>
         <source>DisplayTrashTree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3641"/>
+        <location filename="../treebank.cpp" line="3643"/>
         <source>CopyTitle</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3642"/>
+        <location filename="../treebank.cpp" line="3644"/>
         <source>CopyPageAsLink</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3584"/>
+        <location filename="../treebank.cpp" line="3586"/>
         <source>ToggleShaded</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3585"/>
+        <location filename="../treebank.cpp" line="3587"/>
         <source>ShadeWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3586"/>
+        <location filename="../treebank.cpp" line="3588"/>
         <source>UnshadeWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3590"/>
+        <location filename="../treebank.cpp" line="3592"/>
         <source>NextWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3591"/>
+        <location filename="../treebank.cpp" line="3593"/>
         <source>PrevWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3571"/>
+        <location filename="../treebank.cpp" line="3573"/>
         <source>Import</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3572"/>
+        <location filename="../treebank.cpp" line="3574"/>
         <source>Export</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3573"/>
+        <location filename="../treebank.cpp" line="3575"/>
         <source>AboutVanilla</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3574"/>
+        <location filename="../treebank.cpp" line="3576"/>
         <source>AboutQt</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3575"/>
+        <location filename="../treebank.cpp" line="3577"/>
         <source>Quit</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3552"/>
+        <location filename="../treebank.cpp" line="3554"/>
         <source>UpKey</source>
         <translation></translation>
     </message>
@@ -2909,287 +2909,287 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2289"/>
+        <location filename="../treebank.cpp" line="2292"/>
         <source>Node</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2311"/>
+        <location filename="../treebank.cpp" line="2314"/>
         <source>Window</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2329"/>
+        <location filename="../treebank.cpp" line="2332"/>
         <source>Page</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2351"/>
+        <location filename="../treebank.cpp" line="2354"/>
         <source>Application</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3553"/>
+        <location filename="../treebank.cpp" line="3555"/>
         <source>DownKey</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3554"/>
+        <location filename="../treebank.cpp" line="3556"/>
         <source>RightKey</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3555"/>
+        <location filename="../treebank.cpp" line="3557"/>
         <source>LeftKey</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3556"/>
+        <location filename="../treebank.cpp" line="3558"/>
         <source>HomeKey</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3557"/>
+        <location filename="../treebank.cpp" line="3559"/>
         <source>EndKey</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3558"/>
+        <location filename="../treebank.cpp" line="3560"/>
         <source>PageUpKey</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3559"/>
+        <location filename="../treebank.cpp" line="3561"/>
         <source>PageDownKey</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3621"/>
+        <location filename="../treebank.cpp" line="3623"/>
         <source>Copy</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3622"/>
+        <location filename="../treebank.cpp" line="3624"/>
         <source>Cut</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3623"/>
+        <location filename="../treebank.cpp" line="3625"/>
         <source>Paste</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3624"/>
+        <location filename="../treebank.cpp" line="3626"/>
         <source>Undo</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3625"/>
+        <location filename="../treebank.cpp" line="3627"/>
         <source>Redo</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3626"/>
+        <location filename="../treebank.cpp" line="3628"/>
         <source>SelectAll</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3627"/>
+        <location filename="../treebank.cpp" line="3629"/>
         <source>Unselect</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3629"/>
+        <location filename="../treebank.cpp" line="3631"/>
         <source>ReloadAndBypassCache</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3631"/>
+        <location filename="../treebank.cpp" line="3633"/>
         <source>StopAndUnselect</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3640"/>
+        <location filename="../treebank.cpp" line="3642"/>
         <source>CopyUrl</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3643"/>
+        <location filename="../treebank.cpp" line="3645"/>
         <source>CopySelectedHtml</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3644"/>
+        <location filename="../treebank.cpp" line="3646"/>
         <source>OpenWithIE</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3645"/>
+        <location filename="../treebank.cpp" line="3647"/>
         <source>OpenWithFF</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3646"/>
+        <location filename="../treebank.cpp" line="3648"/>
         <source>OpenWithOpera</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3647"/>
+        <location filename="../treebank.cpp" line="3649"/>
         <source>OpenWithOPR</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3648"/>
+        <location filename="../treebank.cpp" line="3650"/>
         <source>OpenWithSafari</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3649"/>
+        <location filename="../treebank.cpp" line="3651"/>
         <source>OpenWithChrome</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3650"/>
+        <location filename="../treebank.cpp" line="3652"/>
         <source>OpenWithSleipnir</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3651"/>
+        <location filename="../treebank.cpp" line="3653"/>
         <source>OpenWithVivaldi</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3652"/>
+        <location filename="../treebank.cpp" line="3654"/>
         <source>OpenWithCustom</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3683"/>
+        <location filename="../treebank.cpp" line="3685"/>
         <source>OpenWith%1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3633"/>
+        <location filename="../treebank.cpp" line="3635"/>
         <source>Print</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3634"/>
+        <location filename="../treebank.cpp" line="3636"/>
         <source>Save</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3635"/>
+        <location filename="../treebank.cpp" line="3637"/>
         <source>ZoomIn</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3636"/>
+        <location filename="../treebank.cpp" line="3638"/>
         <source>ZoomOut</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3637"/>
+        <location filename="../treebank.cpp" line="3639"/>
         <source>ViewSource</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3638"/>
+        <location filename="../treebank.cpp" line="3640"/>
         <source>ApplySource</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3578"/>
+        <location filename="../treebank.cpp" line="3580"/>
         <source>ToggleNotifier</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3579"/>
+        <location filename="../treebank.cpp" line="3581"/>
         <source>ToggleReceiver</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3580"/>
+        <location filename="../treebank.cpp" line="3582"/>
         <source>ToggleMenuBar</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3583"/>
+        <location filename="../treebank.cpp" line="3585"/>
         <source>ToggleMinimized</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3582"/>
+        <location filename="../treebank.cpp" line="3584"/>
         <source>ToggleMaximized</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3581"/>
+        <location filename="../treebank.cpp" line="3583"/>
         <source>ToggleFullScreen</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3599"/>
+        <location filename="../treebank.cpp" line="3601"/>
         <source>Recreate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3596"/>
+        <location filename="../treebank.cpp" line="3598"/>
         <source>UpDirectory</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3602"/>
+        <location filename="../treebank.cpp" line="3604"/>
         <source>BuryView</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3603"/>
+        <location filename="../treebank.cpp" line="3605"/>
         <source>DigView</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3604"/>
+        <location filename="../treebank.cpp" line="3606"/>
         <source>NewViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3605"/>
+        <location filename="../treebank.cpp" line="3607"/>
         <source>NewHistNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3606"/>
+        <location filename="../treebank.cpp" line="3608"/>
         <source>CloneViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3607"/>
+        <location filename="../treebank.cpp" line="3609"/>
         <source>CloneHistNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3614"/>
+        <location filename="../treebank.cpp" line="3616"/>
         <source>OpenTextSeeker</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3615"/>
+        <location filename="../treebank.cpp" line="3617"/>
         <source>OpenQueryEditor</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3616"/>
+        <location filename="../treebank.cpp" line="3618"/>
         <source>OpenUrlEditor</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3617"/>
+        <location filename="../treebank.cpp" line="3619"/>
         <source>OpenCommand</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3609"/>
+        <location filename="../treebank.cpp" line="3611"/>
         <source>DisplayAccessKey</source>
         <translation></translation>
     </message>
@@ -3580,8 +3580,8 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="../gen/webengineview.cpp" line="490"/>
-        <location filename="../gen/webengineview.cpp" line="701"/>
+        <location filename="../gen/webengineview.cpp" line="491"/>
+        <location filename="../gen/webengineview.cpp" line="702"/>
         <source>NoAction</source>
         <translation></translation>
     </message>

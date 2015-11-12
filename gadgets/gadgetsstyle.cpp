@@ -14,39 +14,39 @@
 #include "gadgets.hpp"
 #include "accessiblewebelement.hpp"
 
-QFont GlassStyle::m_ThumbnailTitleFont = QFont(DEFAULT_FONT, 10);
+const QFont GlassStyle::m_ThumbnailTitleFont = QFont(DEFAULT_FONT, 10);
 
-int GlassStyle::m_ThumbnailPaddingX = 2;
-int GlassStyle::m_ThumbnailPaddingY = 2;
-int GlassStyle::m_ThumbnailTitleHeight = 20;
-int GlassStyle::m_ThumbnailWidthPercentage = 15;
-int GlassStyle::m_ThumbnailDefaultColumnCount = 4;
-int GlassStyle::m_ThumbnailAreaWidthPercentage =
+const int GlassStyle::m_ThumbnailPaddingX = 2;
+const int GlassStyle::m_ThumbnailPaddingY = 2;
+const int GlassStyle::m_ThumbnailTitleHeight = 20;
+const int GlassStyle::m_ThumbnailWidthPercentage = 15;
+const int GlassStyle::m_ThumbnailDefaultColumnCount = 4;
+const int GlassStyle::m_ThumbnailAreaWidthPercentage =
     GlassStyle::m_ThumbnailWidthPercentage *
     GlassStyle::m_ThumbnailDefaultColumnCount;
 
-bool GlassStyle::m_ThumbnailDrawBorder = false;
+const bool GlassStyle::m_ThumbnailDrawBorder = false;
 
-QSize GlassStyle::m_DefaultThumbnailWholeSize =
+const QSize GlassStyle::m_DefaultThumbnailWholeSize =
     QSize(DEFAULT_THUMBNAIL_SIZE.width()  + GlassStyle::m_ThumbnailPaddingX * 2,
           DEFAULT_THUMBNAIL_SIZE.height() + GlassStyle::m_ThumbnailPaddingY * 2 + GlassStyle::m_ThumbnailTitleHeight);
 
-QSize GlassStyle::m_MinimumThumbnailWholeSize =
+const QSize GlassStyle::m_MinimumThumbnailWholeSize =
     QSize(MINIMUM_THUMBNAIL_SIZE.width()  + GlassStyle::m_ThumbnailPaddingX * 2,
           MINIMUM_THUMBNAIL_SIZE.height() + GlassStyle::m_ThumbnailPaddingY * 2 + GlassStyle::m_ThumbnailTitleHeight);;
 
-QFont GlassStyle::m_NodeTitleFont = QFont(DEFAULT_FONT, 13);
+const QFont GlassStyle::m_NodeTitleFont = QFont(DEFAULT_FONT, 13);
 
-int GlassStyle::m_NodeTitleHeight = 20;
-bool GlassStyle::m_NodeTitleDrawBorder = false;
+const int GlassStyle::m_NodeTitleHeight = 20;
+const bool GlassStyle::m_NodeTitleDrawBorder = false;
 
-int GlassStyle::m_InPlaceNotifierWidth =
+const int GlassStyle::m_InPlaceNotifierWidth =
     500 + DEFAULT_THUMBNAIL_SIZE.width() + GlassStyle::m_ThumbnailPaddingX * 3;
-int GlassStyle::m_InPlaceNotifierHeight =
+const int GlassStyle::m_InPlaceNotifierHeight =
     DEFAULT_THUMBNAIL_SIZE.height() + GlassStyle::m_ThumbnailPaddingY * 2;
-bool GlassStyle::m_InPlaceNotifierDrawBorder = false;
+const bool GlassStyle::m_InPlaceNotifierDrawBorder = false;
 
-void GlassStyle::ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight){
+void GlassStyle::ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const {
     const float zoom = gtv->m_CurrentThumbnailZoomFactor; // alias
 
     int wholeWidth = gtv->m_Size.width() - DISPLAY_PADDING_X * 2;
@@ -86,7 +86,7 @@ void GlassStyle::ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &li
     if(line < 1) line = 1;
 }
 
-void GlassStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter){
+void GlassStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) const {
     QColor black(0, 0, 0, gtv->IsDisplayingNode() ? 170 : 100);
     QBrush brush(black);
     painter->setBrush(brush);
@@ -94,7 +94,7 @@ void GlassStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter){
     painter->drawRect(gtv->boundingRect());
 }
 
-void GlassStyle::Render(Thumbnail *thumb, QPainter *painter){
+void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     if(!thumb->GetNode() ||
        !thumb->boundingRect().translated(thumb->pos()).intersects(thumb->scene()->sceneRect()))
         return;
@@ -131,11 +131,13 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter){
     const qreal stop  = bound.bottom();
 
     if(thumb->GetNode()->GetView()){
+        static const QColor beg = QColor(255,255,200,0);
+        static const QColor end = QColor(255,255,200,44);
         QLinearGradient hasviewgrad;
         hasviewgrad.setStart(0, start);
         hasviewgrad.setFinalStop(0, stop);
-        hasviewgrad.setColorAt(static_cast<qreal>(0), QColor(255,255,200,0));
-        hasviewgrad.setColorAt(static_cast<qreal>(1), QColor(255,255,200,44));
+        hasviewgrad.setColorAt(static_cast<qreal>(0), beg);
+        hasviewgrad.setColorAt(static_cast<qreal>(1), end);
         const QBrush hasviewbrush(hasviewgrad);
 
         painter->setPen(Qt::NoPen);
@@ -144,11 +146,13 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter){
     }
 
     if(thumb->IsPrimary()){
+        static const QColor beg = QColor(0,100,255,0);
+        static const QColor end = QColor(0,100,255,77);
         QLinearGradient primarygrad;
         primarygrad.setStart(0, start);
         primarygrad.setFinalStop(0, stop);
-        primarygrad.setColorAt(static_cast<qreal>(0), QColor(0,100,255,0));
-        primarygrad.setColorAt(static_cast<qreal>(1), QColor(0,100,255,77));
+        primarygrad.setColorAt(static_cast<qreal>(0), beg);
+        primarygrad.setColorAt(static_cast<qreal>(1), end);
         const QBrush primarybrush(primarygrad);
 
         painter->setPen(Qt::NoPen);
@@ -157,11 +161,13 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter){
     }
 
     if(thumb->IsHovered()){
+        static const QColor beg = QColor(255,255,255,0);
+        static const QColor end = QColor(255,255,255,77);
         QLinearGradient hoveredgrad;
         hoveredgrad.setStart(0, start);
         hoveredgrad.setFinalStop(0, stop);
-        hoveredgrad.setColorAt(static_cast<qreal>(0), QColor(255,255,255,0));
-        hoveredgrad.setColorAt(static_cast<qreal>(1), QColor(255,255,255,77));
+        hoveredgrad.setColorAt(static_cast<qreal>(0), beg);
+        hoveredgrad.setColorAt(static_cast<qreal>(1), end);
         const QBrush hoveredbrush(hoveredgrad);
 
         painter->setPen(Qt::NoPen);
@@ -170,11 +176,13 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter){
     }
 
     if(thumb->isSelected()){
+        static const QColor beg = QColor(255,200,220,0);
+        static const QColor end = QColor(255,200,220,170);
         QLinearGradient selectedgrad;
         selectedgrad.setStart(0, start);
         selectedgrad.setFinalStop(0, stop);
-        selectedgrad.setColorAt(static_cast<qreal>(0), QColor(255,200,220,0));
-        selectedgrad.setColorAt(static_cast<qreal>(1), QColor(255,200,220,170));
+        selectedgrad.setColorAt(static_cast<qreal>(0), beg);
+        selectedgrad.setColorAt(static_cast<qreal>(1), end);
         const QBrush selectedbrush(selectedgrad);
 
         painter->setPen(Qt::NoPen);
@@ -183,7 +191,8 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter){
     }
 
     if(m_ThumbnailDrawBorder){
-        painter->setPen(QColor(255,255,255,255));
+        static const QPen p = QPen(QColor(255,255,255,255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->drawRect(rect);
     }
@@ -220,44 +229,51 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter){
                            image,
                            QRect(QPoint(), image.size()));
     } else if(thumb->GetNode()->IsDirectory()){
+        static const QBrush b = QBrush(QColor(50, 100, 100, 150));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(50, 100, 100, 150));
+        painter->setBrush(b);
         painter->drawRect(image_rect);
 
-        painter->setPen(QColor(255, 255, 255, 255));
+        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("Directory"));
     } else {
+        static const QBrush b = QBrush(QColor(50, 100, 120, 150));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(50, 100, 120, 150));
+        painter->setBrush(b);
         painter->drawRect(image_rect);
 
-        painter->setPen(QColor(255, 255, 255, 255));
+        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("NoImage"));
     }
 
-    painter->setFont(m_ThumbnailTitleFont);
-    painter->setPen(QPen(QColor(255,255,255,255)));
-    painter->setBrush(Qt::NoBrush);
+    {
+        static const QPen p = QPen(QColor(255,255,255,255));
+        painter->setFont(m_ThumbnailTitleFont);
+        painter->setPen(p);
+        painter->setBrush(Qt::NoBrush);
 
-    if(!title.isEmpty()){
-        painter->drawText(title_rect, Qt::AlignLeft,
-                          thumb->GetNode()->IsDirectory() ?
-                          QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first() : title);
-    } else {
-        painter->drawText(title_rect, Qt::AlignLeft,
-                          !url.isEmpty() ? url.toString() :
-                          thumb->GetNode()->IsDirectory() ? QStringLiteral("Directory") : QStringLiteral("No Title"));
+        if(!title.isEmpty()){
+            painter->drawText(title_rect, Qt::AlignLeft,
+                              thumb->GetNode()->IsDirectory() ?
+                              QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first() : title);
+        } else {
+            painter->drawText(title_rect, Qt::AlignLeft,
+                              !url.isEmpty() ? url.toString() :
+                              thumb->GetNode()->IsDirectory() ? QStringLiteral("Directory") : QStringLiteral("No Title"));
+        }
     }
     painter->restore();
 }
 
-void GlassStyle::Render(NodeTitle *title, QPainter *painter){
+void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     QRectF bound = title->boundingRect();
     QSize size = bound.size().toSize();
     QRectF rect = title->GetTableView()->NodeTitleAreaRect();
@@ -281,11 +297,13 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter){
     const qreal stop  = bound.bottom();
 
     if(title->GetNode()->GetView()){
+        static const QColor beg = QColor(255,255,200,0);
+        static const QColor end = QColor(255,255,200,44);
         QLinearGradient hasviewgrad;
         hasviewgrad.setStart(0, start);
         hasviewgrad.setFinalStop(0, stop);
-        hasviewgrad.setColorAt(static_cast<qreal>(0), QColor(255,255,200,0));
-        hasviewgrad.setColorAt(static_cast<qreal>(1), QColor(255,255,200,44));
+        hasviewgrad.setColorAt(static_cast<qreal>(0), beg);
+        hasviewgrad.setColorAt(static_cast<qreal>(1), end);
         const QBrush hasviewbrush(hasviewgrad);
 
         painter->setPen(Qt::NoPen);
@@ -294,11 +312,13 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter){
     }
 
     if(title->IsPrimary()){
+        static const QColor beg = QColor(0,100,255,0);
+        static const QColor end = QColor(0,100,255,77);
         QLinearGradient primarygrad;
         primarygrad.setStart(0, start);
         primarygrad.setFinalStop(0, stop);
-        primarygrad.setColorAt(static_cast<qreal>(0), QColor(0,100,255,0));
-        primarygrad.setColorAt(static_cast<qreal>(1), QColor(0,100,255,77));
+        primarygrad.setColorAt(static_cast<qreal>(0), beg);
+        primarygrad.setColorAt(static_cast<qreal>(1), end);
         const QBrush primarybrush(primarygrad);
 
         painter->setPen(Qt::NoPen);
@@ -307,11 +327,13 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter){
     }
 
     if(title->IsHovered()){
+        static const QColor beg = QColor(255,255,255,0);
+        static const QColor end = QColor(255,255,255,77);
         QLinearGradient hoveredgrad;
         hoveredgrad.setStart(0, start);
         hoveredgrad.setFinalStop(0, stop);
-        hoveredgrad.setColorAt(static_cast<qreal>(0), QColor(255,255,255,0));
-        hoveredgrad.setColorAt(static_cast<qreal>(1), QColor(255,255,255,77));
+        hoveredgrad.setColorAt(static_cast<qreal>(0), beg);
+        hoveredgrad.setColorAt(static_cast<qreal>(1), end);
         const QBrush hoveredbrush(hoveredgrad);
 
         painter->setPen(Qt::NoPen);
@@ -320,21 +342,19 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter){
     }
 
     if(title->isSelected()){
+        static const QColor beg = QColor(255,200,220,0);
+        static const QColor end = QColor(255,200,220,170);
         QLinearGradient selectedgrad;
         selectedgrad.setStart(0, start);
         selectedgrad.setFinalStop(0, stop);
-        selectedgrad.setColorAt(static_cast<qreal>(0), QColor(255,200,220,0));
-        selectedgrad.setColorAt(static_cast<qreal>(1), QColor(255,200,220,170));
+        selectedgrad.setColorAt(static_cast<qreal>(0), beg);
+        selectedgrad.setColorAt(static_cast<qreal>(1), end);
         const QBrush selectedbrush(selectedgrad);
 
         painter->setPen(Qt::NoPen);
         painter->setBrush(selectedbrush);
         painter->drawRect(rect);
     }
-
-    painter->setFont(m_NodeTitleFont);
-    painter->setPen(QPen(QColor(255,255,255,255)));
-    painter->setBrush(Qt::NoBrush);
 
     QRectF title_rect = rect.
         intersected(QRectF(bound.topLeft() +
@@ -347,22 +367,29 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter){
         else
             title_ = url.toString();
 
-    const QString prefix = title->GetTableView()->GetDirectoryPrefix(title->GetNode());
+    {
+        static const QPen p = QPen(QColor(255,255,255,255));
+        painter->setFont(m_NodeTitleFont);
+        painter->setPen(p);
+        painter->setBrush(Qt::NoBrush);
 
-    if(!prefix.isEmpty()){
-        painter->drawText(title_rect, Qt::AlignLeft, prefix);
-        title_rect = QRect(title_rect.x() + 15,
-                           title_rect.y(),
-                           title_rect.width() - 15,
-                           title_rect.height());
+        const QString prefix = title->GetTableView()->GetDirectoryPrefix(title->GetNode());
+
+        if(!prefix.isEmpty()){
+            painter->drawText(title_rect, Qt::AlignLeft, prefix);
+            title_rect = QRect(title_rect.x() + 15,
+                               title_rect.y(),
+                               title_rect.width() - 15,
+                               title_rect.height());
+        }
+        painter->drawText(title_rect, Qt::AlignLeft,
+                          title->GetNode()->IsDirectory() ?
+                          QStringLiteral("Dir - ") + title_.split(QStringLiteral(";")).first() : title_);
     }
-    painter->drawText(title_rect, Qt::AlignLeft,
-                      title->GetNode()->IsDirectory() ?
-                      QStringLiteral("Dir - ") + title_.split(QStringLiteral(";")).first() : title_);
     painter->restore();
 }
 
-void GlassStyle::Render(SpotLight *light, QPainter *painter){
+void GlassStyle::Render(SpotLight *light, QPainter *painter) const {
     const GraphicsTableView* parent = static_cast<GraphicsTableView*>(light->parentItem());
 
     const bool p = light->GetType() == GraphicsTableView::PrimarySpotLight;
@@ -462,7 +489,7 @@ void GlassStyle::Render(SpotLight *light, QPainter *painter){
     painter->restore();
 }
 
-void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter){
+void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
     if(!notifier->GetNode()) return;
 
     painter->save();
@@ -495,14 +522,16 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter){
         }
     }
 
-    const QColor black(0,0,0,128);
-    const QBrush brush(black);
-    painter->setBrush(brush);
-    painter->setPen(Qt::NoPen);
-    painter->drawRect(rect);
+    {
+        static const QBrush b = QBrush(QColor(0,0,0,128));
+        painter->setBrush(b);
+        painter->setPen(Qt::NoPen);
+        painter->drawRect(rect);
+    }
 
     if(m_InPlaceNotifierDrawBorder){
-        painter->setPen(QColor(255,255,255,255));
+        static const QPen p = QPen(QColor(255,255,255,255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->drawRect(notifier->boundingRect());
     }
@@ -523,46 +552,53 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter){
                            image,
                            QRect(QPoint(), image.size()));
     } else if(notifier->GetNode()->IsDirectory()){
+        static const QBrush b = QBrush(QColor(50, 100, 100, 150));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(50, 100, 100, 150));
+        painter->setBrush(b);
         painter->drawRect(image_rect);
 
-        painter->setPen(QColor(255, 255, 255, 255));
+        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("Directory"));
     } else {
+        static const QBrush b = QBrush(QColor(50, 100, 120, 150));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(50, 100, 120, 150));
+        painter->setBrush(b);
         painter->drawRect(image_rect);
 
-        painter->setPen(QColor(255, 255, 255, 255));
+        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("NoImage"));
     }
 
-    painter->setPen(QColor(255,255,255,255));
-    painter->setBrush(QColor(255,255,255,100));
-    painter->setFont(NOTIFIER_FONT);
-
     const int basex = m_ThumbnailPaddingX * 3 + image_rect.size().width();
     const int basey = 17;
     const int width = 495;
     const int height = 25;
 
-    painter->drawText(QRect(basex, basey+25*0, width, height), Qt::AlignLeft, QObject::tr("Title : ") + title);
-    painter->drawText(QRect(basex, basey+25*1, width, height), Qt::AlignLeft, QObject::tr("Url : ") + url);
-    painter->drawText(QRect(basex, basey+25*2, width, height), Qt::AlignLeft, QObject::tr("CreatedDate : ") + create);
-    painter->drawText(QRect(basex, basey+25*4, width, height), Qt::AlignLeft, QObject::tr("LastUpdatedDate : ") + lastUpdate);
-    painter->drawText(QRect(basex, basey+25*3, width, height), Qt::AlignLeft, QObject::tr("LastAccessedDate : ") + lastAccess);
+    {
+        static const QPen p = QPen(QColor(255,255,255,255));
+        painter->setPen(p);
+        painter->setBrush(Qt::NoBrush);
+        painter->setFont(NOTIFIER_FONT);
+
+        painter->drawText(QRect(basex, basey+25*0, width, height), Qt::AlignLeft, QObject::tr("Title : ") + title);
+        painter->drawText(QRect(basex, basey+25*1, width, height), Qt::AlignLeft, QObject::tr("Url : ") + url);
+        painter->drawText(QRect(basex, basey+25*2, width, height), Qt::AlignLeft, QObject::tr("CreatedDate : ") + create);
+        painter->drawText(QRect(basex, basey+25*4, width, height), Qt::AlignLeft, QObject::tr("LastUpdatedDate : ") + lastUpdate);
+        painter->drawText(QRect(basex, basey+25*3, width, height), Qt::AlignLeft, QObject::tr("LastAccessedDate : ") + lastAccess);
+    }
 
     painter->restore();
 }
 
-void GlassStyle::Render(UpDirectoryButton *button, QPainter *painter){
+void GlassStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
 
@@ -577,7 +613,7 @@ void GlassStyle::Render(UpDirectoryButton *button, QPainter *painter){
     painter->restore();
 }
 
-void GlassStyle::Render(AccessibleWebElement *awe, QPainter *painter){
+void GlassStyle::Render(AccessibleWebElement *awe, QPainter *painter) const {
     if(awe->GetBoundingPos().isNull() || !awe->GetElement() || awe->GetElement()->IsNull()) return;
 
     QUrl url = awe->GetElement()->LinkUrl();
@@ -607,16 +643,22 @@ void GlassStyle::Render(AccessibleWebElement *awe, QPainter *painter){
         QPoint base(awe->GetBoundingPos() - QPoint(width/2, ACCESSKEY_INFO_HEIGHT/2));
         QRect rect = QRect(base, QSize(width, ACCESSKEY_INFO_HEIGHT));
 
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(0,0,0,100));
-        painter->drawRect(rect);
+        {
+            static const QBrush b = QBrush(QColor(0,0,0,100));
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(b);
+            painter->drawRect(rect);
+        }
 
         rect = QRect(QPoint(base.x()+2, base.y()), QSize(width-2, ACCESSKEY_INFO_HEIGHT));
 
-        painter->setFont(ACCESSKEY_INFO_FONT);
-        painter->setPen(QColor(255,255,255,200));
-        painter->setBrush(Qt::NoBrush);
-        painter->drawText(rect, str);
+        {
+            static const QPen p = QPen(QColor(255,255,255,200));
+            painter->setFont(ACCESSKEY_INFO_FONT);
+            painter->setPen(p);
+            painter->setBrush(Qt::NoBrush);
+            painter->drawText(rect, str);
+        }
 
         QMap<QString, QRect> keyrectmap = awe->KeyRects();
         QMap<QString, QRect> exprectmap = awe->ExpRects();
@@ -634,12 +676,14 @@ void GlassStyle::Render(AccessibleWebElement *awe, QPainter *painter){
             QRect keyrect = keyrectmap[action];
             QRect exprect = exprectmap[action];
 
+            static const QBrush b = QBrush(QColor(0,0,0,100));
             painter->setPen(Qt::NoPen);
-            painter->setBrush(QColor(0,0,0,100));
+            painter->setBrush(b);
             painter->drawRect(keyrect);
             painter->drawRect(exprect);
 
-            painter->setPen(QColor(255,255,255,200));
+            static const QPen p = QColor(255,255,255,200);
+            painter->setPen(p);
             painter->setBrush(Qt::NoBrush);
 
             painter->setFont(ACCESSKEY_CHAR_CHIP_S_FONT);
@@ -652,37 +696,37 @@ void GlassStyle::Render(AccessibleWebElement *awe, QPainter *painter){
     painter->restore();
 }
 
-void GlassStyle::OnSetNest(Thumbnail *thumb, int nest){
+void GlassStyle::OnSetNest(Thumbnail *thumb, int nest) const {
     qreal opacity = 1.0;
     for(int i = 0; i < nest && opacity >= 0.3; i++)
         opacity *= 0.8;
     thumb->setOpacity(opacity);
 }
 
-void GlassStyle::OnSetNest(NodeTitle *title, int nest){
+void GlassStyle::OnSetNest(NodeTitle *title, int nest) const {
     qreal opacity = 1.0;
     for(int i = 0; i < nest && opacity >= 0.3; i++)
         opacity *= 0.8;
     title->setOpacity(opacity);
 }
 
-void GlassStyle::OnSetPrimary(Thumbnail *thumb, bool){
+void GlassStyle::OnSetPrimary(Thumbnail *thumb, bool) const {
     if(thumb->graphicsEffect()) thumb->setGraphicsEffect(0);
 }
 
-void GlassStyle::OnSetPrimary(NodeTitle *title, bool){
+void GlassStyle::OnSetPrimary(NodeTitle *title, bool) const {
     if(title->graphicsEffect()) title->setGraphicsEffect(0);
 }
 
-void GlassStyle::OnSetHovered(Thumbnail *thumb, bool hovered){
+void GlassStyle::OnSetHovered(Thumbnail *thumb, bool hovered) const {
     Q_UNUSED(thumb); Q_UNUSED(hovered);
 }
 
-void GlassStyle::OnSetHovered(NodeTitle *title, bool hovered){
+void GlassStyle::OnSetHovered(NodeTitle *title, bool hovered) const {
     Q_UNUSED(title); Q_UNUSED(hovered);
 }
 
-void GlassStyle::OnSetHovered(UpDirectoryButton *button, bool hovered){
+void GlassStyle::OnSetHovered(UpDirectoryButton *button, bool hovered) const {
     if(button->graphicsEffect()) button->setGraphicsEffect(0);
     if(hovered){
         button->setCursor(Qt::PointingHandCursor);
@@ -692,23 +736,25 @@ void GlassStyle::OnSetHovered(UpDirectoryButton *button, bool hovered){
     button->update();
 }
 
-void GlassStyle::OnSetElement(AccessibleWebElement *awe, SharedWebElement elem){
+void GlassStyle::OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const {
     Q_UNUSED(elem);
     if(awe->graphicsEffect()) awe->setGraphicsEffect(0);
 }
 
-void GlassStyle::OnReshow(QGraphicsRectItem *gri){
-    gri->setPen(QPen(QColor(255,255,255,255)));
-    gri->setBrush(QBrush(QColor(255,255,255,50)));
+void GlassStyle::OnReshow(QGraphicsRectItem *gri) const {
+    static const QPen   p = QPen(QColor(255,255,255,255));
+    static const QBrush b = QBrush(QColor(255,255,255,50));
+    gri->setPen(p);
+    gri->setBrush(b);
 }
 
-QRectF GlassStyle::ThumbnailAreaRect(GraphicsTableView *gtv){
+QRectF GlassStyle::ThumbnailAreaRect(GraphicsTableView *gtv) const {
     return QRectF(DISPLAY_PADDING_X, 0,
                   gtv->m_CurrentThumbnailWidth * gtv->m_CurrentThumbnailColumnCount,
                   gtv->m_Size.height());
 }
 
-QRectF GlassStyle::NodeTitleAreaRect(GraphicsTableView *gtv){
+QRectF GlassStyle::NodeTitleAreaRect(GraphicsTableView *gtv) const {
     return QRectF(DISPLAY_PADDING_X
                   + gtv->m_CurrentThumbnailWidth * gtv->m_CurrentThumbnailColumnCount
                   + GADGETS_SCROLL_BAR_MARGIN * 2
@@ -724,7 +770,7 @@ QRectF GlassStyle::NodeTitleAreaRect(GraphicsTableView *gtv){
                   (m_NodeTitleDrawBorder ? DISPLAY_PADDING_Y * 2 : 0));
 }
 
-QRectF GlassStyle::ScrollBarAreaRect(GraphicsTableView *gtv){
+QRectF GlassStyle::ScrollBarAreaRect(GraphicsTableView *gtv) const {
     return QRectF(DISPLAY_PADDING_X
                   + gtv->m_CurrentThumbnailWidth * gtv->m_CurrentThumbnailColumnCount
                   + GADGETS_SCROLL_BAR_MARGIN,
@@ -733,35 +779,35 @@ QRectF GlassStyle::ScrollBarAreaRect(GraphicsTableView *gtv){
                   gtv->m_Size.height() - DISPLAY_PADDING_Y * 2);
 }
 
-QGraphicsRectItem *GlassStyle::CreateSelectRect(GraphicsTableView *gtv, QPointF pos){
+QGraphicsRectItem *GlassStyle::CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const {
     return gtv->scene()->addRect(QRectF(pos, pos),
                                  QPen(QColor(255,255,255,255)),
                                  QBrush(QColor(255,255,255,50)));
 }
 
 
-QFont FlatStyle::m_ThumbnailTitleFont = QFont(DEFAULT_FONT, 10);
+const QFont FlatStyle::m_ThumbnailTitleFont = QFont(DEFAULT_FONT, 10);
 
-int FlatStyle::m_ThumbnailPaddingX = 15;
-int FlatStyle::m_ThumbnailPaddingY = 15;
-int FlatStyle::m_ThumbnailTitleHeight = 20;
-int FlatStyle::m_ThumbnailWidthPercentage = 20;
-int FlatStyle::m_ThumbnailDefaultColumnCount = 5;
-int FlatStyle::m_ThumbnailAreaWidthPercentage =
+const int FlatStyle::m_ThumbnailPaddingX = 15;
+const int FlatStyle::m_ThumbnailPaddingY = 15;
+const int FlatStyle::m_ThumbnailTitleHeight = 20;
+const int FlatStyle::m_ThumbnailWidthPercentage = 20;
+const int FlatStyle::m_ThumbnailDefaultColumnCount = 5;
+const int FlatStyle::m_ThumbnailAreaWidthPercentage =
     FlatStyle::m_ThumbnailWidthPercentage *
     FlatStyle::m_ThumbnailDefaultColumnCount;
 
-bool FlatStyle::m_ThumbnailDrawBorder = false;
+const bool FlatStyle::m_ThumbnailDrawBorder = false;
 
-QSize FlatStyle::m_DefaultThumbnailWholeSize =
+const QSize FlatStyle::m_DefaultThumbnailWholeSize =
     QSize(DEFAULT_THUMBNAIL_SIZE.width()  + FlatStyle::m_ThumbnailPaddingX * 2,
           DEFAULT_THUMBNAIL_SIZE.height() + FlatStyle::m_ThumbnailPaddingY * 2);
 
-QSize FlatStyle::m_MinimumThumbnailWholeSize =
+const QSize FlatStyle::m_MinimumThumbnailWholeSize =
     QSize(MINIMUM_THUMBNAIL_SIZE.width()  + FlatStyle::m_ThumbnailPaddingX * 2,
           MINIMUM_THUMBNAIL_SIZE.height() + FlatStyle::m_ThumbnailPaddingY * 2);
 
-void FlatStyle::ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight){
+void FlatStyle::ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const {
     const float zoom = gtv->m_CurrentThumbnailZoomFactor; // alias
 
     int wholeWidth = gtv->m_Size.width() - DISPLAY_PADDING_X * 2;
@@ -801,7 +847,7 @@ void FlatStyle::ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &lin
     if(line < 1) line = 1;
 }
 
-void FlatStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter){
+void FlatStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) const {
     QColor white(255, 255, 255, gtv->IsDisplayingNode() ? 170 : 100);
     QBrush brush(white);
     painter->setBrush(brush);
@@ -809,7 +855,7 @@ void FlatStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter){
     painter->drawRect(gtv->boundingRect());
 }
 
-void FlatStyle::Render(Thumbnail *thumb, QPainter *painter){
+void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     if(!thumb->GetNode() ||
        !thumb->boundingRect().translated(thumb->pos()).intersects(thumb->scene()->sceneRect()))
         return;
@@ -843,7 +889,8 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter){
     }
 
     if(m_ThumbnailDrawBorder){
-        painter->setPen(QColor(255,255,255,255));
+        static const QPen p = QPen(QColor(255,255,255,255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->drawRect(rect);
     }
@@ -874,10 +921,12 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter){
     // selected : frame
     // loaded : none
 
-    image_rect = QRect(image_rect.topLeft() - QPoint(3, 3),
-                       image_rect.size() + QSize(6, 6));
-    title_rect = QRect(title_rect.topLeft() + QPoint(-3, 2),
-                       title_rect.size() + QSize(7, 0));
+    if(thumb->IsHovered()){
+        image_rect = QRect(image_rect.topLeft() - QPoint(3, 3),
+                           image_rect.size() + QSize(6, 6));
+        title_rect = QRect(title_rect.topLeft() + QPoint(-3, 2),
+                           title_rect.size() + QSize(7, 0));
+    }
 
     if(!image.isNull()){
         QSize size = image.size();
@@ -890,76 +939,85 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter){
                            image,
                            QRect(QPoint(), image.size()));
     } else if(thumb->GetNode()->IsDirectory()){
+        static const QBrush b = QBrush(QColor(50, 100, 100, 150));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(50, 100, 100, 150));
+        painter->setBrush(b);
         painter->drawRect(image_rect);
 
-        painter->setPen(QColor(255, 255, 255, 255));
+        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("Directory"));
     } else {
+        static const QBrush b = QBrush(QColor(50, 100, 120, 150));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(50, 100, 120, 150));
+        painter->setBrush(b);
         painter->drawRect(image_rect);
 
-        painter->setPen(QColor(255, 255, 255, 255));
+        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("NoImage"));
     }
 
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(QBrush(QColor(0,0,0,128)));
-    painter->drawRect(title_rect);
-
-    painter->setFont(m_ThumbnailTitleFont);
-    painter->setPen(QPen(QColor(255,255,255,255)));
-    painter->setBrush(Qt::NoBrush);
+    {
+        static const QBrush b = QBrush(QColor(0,0,0,128));
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(b);
+        painter->drawRect(title_rect);
+    }
 
     title_rect = QRect(title_rect.topLeft() + QPoint(2,0),
                        title_rect.size() - QSize(4,0));
 
-    if(!title.isEmpty()){
-        painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter,
-                          thumb->GetNode()->IsDirectory() ?
-                          QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first() : title);
-    } else {
-        painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter,
-                          !url.isEmpty() ? url.toString() :
-                          thumb->GetNode()->IsDirectory() ? QStringLiteral("Directory") : QStringLiteral("No Title"));
-    }
+    {
+        static const QPen p = QPen(QColor(255,255,255,255));
+        painter->setFont(m_ThumbnailTitleFont);
+        painter->setPen(p);
+        painter->setBrush(Qt::NoBrush);
 
-    if(thumb->isSelected()){
-        painter->setPen(QColor(100,100,255,255));
-        painter->setBrush(QColor(100,100,255,50));
-        painter->drawRect(QRect(image_rect.topLeft(),
-                                image_rect.size()-QSize(1,1)));
+        if(!title.isEmpty()){
+            painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter,
+                              thumb->GetNode()->IsDirectory() ?
+                              QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first() : title);
+        } else {
+            painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter,
+                              !url.isEmpty() ? url.toString() :
+                              thumb->GetNode()->IsDirectory() ? QStringLiteral("Directory") : QStringLiteral("No Title"));
+        }
+
+        if(thumb->isSelected()){
+            painter->setPen(QColor(100,100,255,255));
+            painter->setBrush(QColor(100,100,255,50));
+            painter->drawRect(QRect(image_rect.topLeft(),
+                                    image_rect.size()-QSize(1,1)));
+        }
     }
     painter->restore();
 }
 
-void FlatStyle::Render(NodeTitle *title, QPainter *painter){
+void FlatStyle::Render(NodeTitle *title, QPainter *painter) const {
     Q_UNUSED(title); Q_UNUSED(painter);
 }
 
-void FlatStyle::Render(SpotLight *title, QPainter *painter){
+void FlatStyle::Render(SpotLight *title, QPainter *painter) const {
     Q_UNUSED(title); Q_UNUSED(painter);
 }
 
-void FlatStyle::Render(InPlaceNotifier *notifier, QPainter *painter){
+void FlatStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
     Q_UNUSED(notifier); Q_UNUSED(painter);
 }
 
-void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter){
+void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
 
-    QColor white(255, 255, 255, 255);
-    QBrush brush(white);
-    painter->setBrush(brush);
+    static const QBrush b = QBrush(QColor(255, 255, 255, 255));
+    painter->setBrush(b);
     painter->setPen(Qt::NoPen);
     painter->drawRoundedRect(button->boundingRect(), 3, 3);
 
@@ -968,7 +1026,7 @@ void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter){
     painter->restore();
 }
 
-void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter){
+void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter) const {
     if(awe->GetBoundingPos().isNull() || !awe->GetElement() || awe->GetElement()->IsNull()) return;
 
     QUrl url = awe->GetElement()->LinkUrl();
@@ -978,8 +1036,9 @@ void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter){
 
     if(!awe->IsSelected()){
 
+        static const QBrush b = QBrush(QColor(255,255,255,255));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(255,255,255,255));
+        painter->setBrush(b);
         painter->drawRect(awe->CharChipRect());
 
         painter->setFont(awe->CharChipFont());
@@ -998,16 +1057,22 @@ void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter){
         QPoint base(awe->GetBoundingPos() - QPoint(width/2, ACCESSKEY_INFO_HEIGHT/2));
         QRect rect = QRect(base, QSize(width, ACCESSKEY_INFO_HEIGHT));
 
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(255,255,255,255));
-        painter->drawRect(rect);
+        {
+            static const QBrush b = QBrush(QColor(255,255,255,255));
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(b);
+            painter->drawRect(rect);
+        }
 
         rect = QRect(QPoint(base.x()+2, base.y()), QSize(width-2, ACCESSKEY_INFO_HEIGHT));
 
-        painter->setFont(ACCESSKEY_INFO_FONT);
-        painter->setPen(QColor(0,0,0,255));
-        painter->setBrush(Qt::NoBrush);
-        painter->drawText(rect, str);
+        {
+            static const QPen p = QPen(QColor(0,0,0,255));
+            painter->setFont(ACCESSKEY_INFO_FONT);
+            painter->setPen(p);
+            painter->setBrush(Qt::NoBrush);
+            painter->drawText(rect, str);
+        }
 
         QMap<QString, QRect> keyrectmap = awe->KeyRects();
         QMap<QString, QRect> exprectmap = awe->ExpRects();
@@ -1025,12 +1090,14 @@ void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter){
             QRect keyrect = keyrectmap[action];
             QRect exprect = exprectmap[action];
 
+            static const QBrush b = QBrush(QColor(255,255,255,255));
             painter->setPen(Qt::NoPen);
-            painter->setBrush(QColor(255,255,255,255));
+            painter->setBrush(b);
             painter->drawRect(keyrect);
             painter->drawRect(exprect);
 
-            painter->setPen(QColor(0,0,0,255));
+            static const QPen p = QPen(QColor(0,0,0,255));
+            painter->setPen(p);
             painter->setBrush(Qt::NoBrush);
 
             painter->setFont(ACCESSKEY_CHAR_CHIP_S_FONT);
@@ -1043,15 +1110,15 @@ void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter){
     painter->restore();
 }
 
-void FlatStyle::OnSetNest(Thumbnail *thumb, int nest){
+void FlatStyle::OnSetNest(Thumbnail *thumb, int nest) const {
     Q_UNUSED(thumb); Q_UNUSED(nest);
 }
 
-void FlatStyle::OnSetNest(NodeTitle *title, int nest){
+void FlatStyle::OnSetNest(NodeTitle *title, int nest) const {
     Q_UNUSED(title); Q_UNUSED(nest);
 }
 
-void FlatStyle::OnSetPrimary(Thumbnail *thumb, bool primary){
+void FlatStyle::OnSetPrimary(Thumbnail *thumb, bool primary) const {
     if(!thumb->graphicsEffect()){
         QGraphicsDropShadowEffect *effect = new QGraphicsDropShadowEffect();
         thumb->setGraphicsEffect(effect);
@@ -1059,25 +1126,27 @@ void FlatStyle::OnSetPrimary(Thumbnail *thumb, bool primary){
         effect->setOffset(QPointF());
     }
     if(primary){
-        static_cast<QGraphicsDropShadowEffect*>(thumb->graphicsEffect())->setColor(QColor(0,0,100,255));
+        static const QColor c = QColor(0,0,100,255);
+        static_cast<QGraphicsDropShadowEffect*>(thumb->graphicsEffect())->setColor(c);
     } else {
-        static_cast<QGraphicsDropShadowEffect*>(thumb->graphicsEffect())->setColor(QColor(0,0,0,255));
+        static const QColor c = QColor(0,0,0,255);
+        static_cast<QGraphicsDropShadowEffect*>(thumb->graphicsEffect())->setColor(c);
     }
 }
 
-void FlatStyle::OnSetPrimary(NodeTitle *title, bool primary){
+void FlatStyle::OnSetPrimary(NodeTitle *title, bool primary) const {
     Q_UNUSED(title); Q_UNUSED(primary);
 }
 
-void FlatStyle::OnSetHovered(Thumbnail *thumb, bool hovered){
+void FlatStyle::OnSetHovered(Thumbnail *thumb, bool hovered) const {
     Q_UNUSED(thumb); Q_UNUSED(hovered);
 }
 
-void FlatStyle::OnSetHovered(NodeTitle *title, bool hovered){
+void FlatStyle::OnSetHovered(NodeTitle *title, bool hovered) const {
     Q_UNUSED(title); Q_UNUSED(hovered);
 }
 
-void FlatStyle::OnSetHovered(UpDirectoryButton *button, bool hovered){
+void FlatStyle::OnSetHovered(UpDirectoryButton *button, bool hovered) const {
     if(!button->graphicsEffect()){
         QGraphicsDropShadowEffect *effect = new QGraphicsDropShadowEffect();
         button->setGraphicsEffect(effect);
@@ -1085,37 +1154,42 @@ void FlatStyle::OnSetHovered(UpDirectoryButton *button, bool hovered){
         effect->setOffset(QPointF());
     }
     if(hovered){
-        static_cast<QGraphicsDropShadowEffect*>(button->graphicsEffect())->setColor(QColor(0,0,0,255));
+        static const QColor c = QColor(0,0,0,255);
+        static_cast<QGraphicsDropShadowEffect*>(button->graphicsEffect())->setColor(c);
         button->setCursor(Qt::PointingHandCursor);
     } else {
-        static_cast<QGraphicsDropShadowEffect*>(button->graphicsEffect())->setColor(QColor(0,0,0,127));
+        static const QColor c = QColor(0,0,0,127);
+        static_cast<QGraphicsDropShadowEffect*>(button->graphicsEffect())->setColor(c);
         button->setCursor(Qt::ArrowCursor);
     }
     button->update();
 }
 
-void FlatStyle::OnSetElement(AccessibleWebElement *awe, SharedWebElement elem){
+void FlatStyle::OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const {
     Q_UNUSED(elem);
     if(awe->graphicsEffect()) return;
     QGraphicsDropShadowEffect *effect = new QGraphicsDropShadowEffect();
-    effect->setColor(QColor(0,0,0,255));
+    static const QColor c = QColor(0,0,0,255);
+    effect->setColor(c);
     effect->setBlurRadius(10);
     effect->setOffset(QPointF());
     awe->setGraphicsEffect(effect);
 }
 
-void FlatStyle::OnReshow(QGraphicsRectItem *gri){
-    gri->setPen(QPen(QColor(100,100,255,255)));
-    gri->setBrush(QBrush(QColor(100,100,255,50)));
+void FlatStyle::OnReshow(QGraphicsRectItem *gri) const {
+    static const QPen   p = QPen(QColor(100,100,255,255));
+    static const QBrush b = QBrush(QColor(100,100,255,50));
+    gri->setPen(p);
+    gri->setBrush(b);
 }
 
-QRectF FlatStyle::ThumbnailAreaRect(GraphicsTableView *gtv){
+QRectF FlatStyle::ThumbnailAreaRect(GraphicsTableView *gtv) const {
     return QRectF(DISPLAY_PADDING_X, 0,
                   gtv->m_CurrentThumbnailWidth * gtv->m_CurrentThumbnailColumnCount,
                   gtv->m_Size.height());
 }
 
-QRectF FlatStyle::NodeTitleAreaRect(GraphicsTableView *gtv){
+QRectF FlatStyle::NodeTitleAreaRect(GraphicsTableView *gtv) const {
     return QRectF(DISPLAY_PADDING_X
                   + gtv->m_CurrentThumbnailWidth * gtv->m_CurrentThumbnailColumnCount
                   + GADGETS_SCROLL_BAR_MARGIN * 2
@@ -1124,7 +1198,7 @@ QRectF FlatStyle::NodeTitleAreaRect(GraphicsTableView *gtv){
                   0,0);
 }
 
-QRectF FlatStyle::ScrollBarAreaRect(GraphicsTableView *gtv){
+QRectF FlatStyle::ScrollBarAreaRect(GraphicsTableView *gtv) const {
     return QRectF(gtv->m_Size.width() - DISPLAY_PADDING_X - 1
                   + GADGETS_SCROLL_BAR_MARGIN,
                   DISPLAY_PADDING_Y,
@@ -1132,7 +1206,7 @@ QRectF FlatStyle::ScrollBarAreaRect(GraphicsTableView *gtv){
                   gtv->m_Size.height() - DISPLAY_PADDING_Y * 2);
 }
 
-QGraphicsRectItem *FlatStyle::CreateSelectRect(GraphicsTableView *gtv, QPointF pos){
+QGraphicsRectItem *FlatStyle::CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const {
     return gtv->scene()->addRect(QRectF(pos, pos),
                                  QPen(QColor(100,100,255,255)),
                                  QBrush(QColor(100,100,255,50)));
