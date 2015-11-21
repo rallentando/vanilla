@@ -2057,22 +2057,22 @@ void View::GestureFinished(QPoint pos, Qt::MouseButton button){
     m_DragStarted = false;
 }
 
-void View::TriggerKeyEvent(QKeyEvent *ev){
+bool View::TriggerKeyEvent(QKeyEvent *ev){
     QKeySequence seq = Application::MakeKeySequence(ev);
-    if(seq.isEmpty()) return;
+    if(seq.isEmpty()) return false;
     QString str = m_KeyMap[seq];
-    if(str.isEmpty()) return;
+    if(str.isEmpty()) return false;
 
-    TriggerAction(str);
+    return TriggerAction(str);
 }
 
-void View::TriggerKeyEvent(QString str){
+bool View::TriggerKeyEvent(QString str){
     QKeySequence seq = Application::MakeKeySequence(str);
-    if(seq.isEmpty()) return;
+    if(seq.isEmpty()) return false;
     str = m_KeyMap[seq]; // sequence => action
-    if(str.isEmpty()) return;
+    if(str.isEmpty()) return false;
 
-    TriggerAction(str);
+    return TriggerAction(str);
 }
 
 void View::ChangeNodeTitle(const QString &title){

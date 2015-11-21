@@ -157,8 +157,8 @@ public:
 
     virtual void UpdateThumbnail() DECL_OVERRIDE;
 
-    virtual void TriggerKeyEvent(QKeyEvent *ev) DECL_OVERRIDE;
-    virtual void TriggerKeyEvent(QString str) DECL_OVERRIDE;
+    virtual bool TriggerKeyEvent(QKeyEvent *ev) DECL_OVERRIDE;
+    virtual bool TriggerKeyEvent(QString str) DECL_OVERRIDE;
 
     bool TriggerAction(QString str, QVariant data = QVariant()) DECL_OVERRIDE;
     void TriggerAction(Gadgets::GadgetsAction a);

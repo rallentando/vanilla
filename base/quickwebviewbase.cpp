@@ -358,8 +358,7 @@ void QuickWebViewBase::keyPressEvent(QKeyEvent *ev){
        // 'HasAnyModifier' ignores ShiftModifier.
        Application::IsFunctionKey(ev)){
 
-        TriggerKeyEvent(ev);
-        ev->setAccepted(true);
+        ev->setAccepted(TriggerKeyEvent(ev));
         return;
     }
     QQuickBase::keyPressEvent(ev);
@@ -379,8 +378,7 @@ void QuickWebViewBase::keyPressEvent(QKeyEvent *ev){
             return;
         }
 
-        TriggerKeyEvent(ev);
-        ev->setAccepted(true);
+        ev->setAccepted(TriggerKeyEvent(ev));
     }
 }
 

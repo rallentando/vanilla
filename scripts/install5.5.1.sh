@@ -17,12 +17,16 @@ done
 
 for drive in C D E F G
 do
-    if   [ -e       $drive:/OpenSSL-Win32/bin ]; then
-        OPENSSL_DIR=$drive:/OpenSSL-Win32/bin
-        break
-    elif [ -e       $drive:/OpenSSL-Win64/bin ]; then
-        OPENSSL_DIR=$drive:/OpenSSL-Win64/bin
-        break
+    if [[ $QT5_DIR == *"_64" ]]; then
+        if [ -e $drive:/OpenSSL-Win64/bin ]; then
+            OPENSSL_DIR=$drive:/OpenSSL-Win64/bin
+            break
+        fi
+    else
+        if [ -e $drive:/OpenSSL-Win32/bin ]; then
+            OPENSSL_DIR=$drive:/OpenSSL-Win32/bin
+            break
+        fi
     fi
 done
 

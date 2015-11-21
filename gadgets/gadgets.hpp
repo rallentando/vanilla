@@ -400,8 +400,8 @@ public:
 
     void UpdateThumbnail() DECL_OVERRIDE;
 
-    void TriggerKeyEvent(QKeyEvent *ev) DECL_OVERRIDE;
-    void TriggerKeyEvent(QString str) DECL_OVERRIDE;
+    bool TriggerKeyEvent(QKeyEvent *ev) DECL_OVERRIDE;
+    bool TriggerKeyEvent(QString str) DECL_OVERRIDE;
 
 protected:
     void CreateLabelSequence();

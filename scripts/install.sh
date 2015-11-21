@@ -17,12 +17,16 @@ done
 
 for drive in C D E F G
 do
-    if   [ -e       $drive:/OpenSSL-Win32/bin ]; then
-        OPENSSL_DIR=$drive:/OpenSSL-Win32/bin
-        break
-    elif [ -e       $drive:/OpenSSL-Win64/bin ]; then
-        OPENSSL_DIR=$drive:/OpenSSL-Win64/bin
-        break
+    if [[ $QT5_DIR == *"_64" ]]; then
+        if [ -e $drive:/OpenSSL-Win64/bin ]; then
+            OPENSSL_DIR=$drive:/OpenSSL-Win64/bin
+            break
+        fi
+    else
+        if [ -e $drive:/OpenSSL-Win32/bin ]; then
+            OPENSSL_DIR=$drive:/OpenSSL-Win32/bin
+            break
+        fi
     fi
 done
 
@@ -114,7 +118,7 @@ cp $QT5_DIR/plugins/imageformats/qwebp.dll                 $TARGET_DIR/imageform
 
 cp $QT5_DIR/plugins/mediaservice/dsengine.dll              $TARGET_DIR/mediaservice/
 cp $QT5_DIR/plugins/mediaservice/qtmedia_audioengine.dll   $TARGET_DIR/mediaservice/
-cp $QT5_DIR/plugins/mediaservice/wmfengine.dll             $TARGET_DIR/mediaservice/
+#cp $QT5_DIR/plugins/mediaservice/wmfengine.dll             $TARGET_DIR/mediaservice/
 
 cp $QT5_DIR/plugins/platforms/qminimal.dll                 $TARGET_DIR/platforms/
 cp $QT5_DIR/plugins/platforms/qoffscreen.dll               $TARGET_DIR/platforms/
@@ -140,9 +144,9 @@ cp $QT5_DIR/plugins/sensorgestures/qtsensorgestures_shakeplugin.dll $TARGET_DIR/
 cp $QT5_DIR/plugins/sensors/qtsensors_generic.dll          $TARGET_DIR/sensors/
 
 cp $QT5_DIR/plugins/sqldrivers/qsqlite.dll                 $TARGET_DIR/sqldrivers/
-#cp $QT5_DIR/plugins/sqldrivers/qsqlmysql.dll               $TARGET_DIR/sqldrivers/
+cp $QT5_DIR/plugins/sqldrivers/qsqlmysql.dll               $TARGET_DIR/sqldrivers/
 #cp $QT5_DIR/plugins/sqldrivers/qsqlodbc.dll                $TARGET_DIR/sqldrivers/
-#cp $QT5_DIR/plugins/sqldrivers/qsqlpsql.dll                $TARGET_DIR/sqldrivers/
+cp $QT5_DIR/plugins/sqldrivers/qsqlpsql.dll                $TARGET_DIR/sqldrivers/
 
 cp $QT5_DIR/qml/QtQuick/Controls/qtquickcontrolsplugin.dll            $TARGET_DIR/QtQuick/Controls/
 cp $QT5_DIR/qml/QtQuick/Controls/qmldir                               $TARGET_DIR/QtQuick/Controls/
@@ -152,9 +156,9 @@ cp $QT5_DIR/qml/QtQuick/Controls/Styles                               $TARGET_DI
 
 cp $QT5_DIR/qml/QtQuick/Dialogs/dialogplugin.dll                      $TARGET_DIR/QtQuick/Dialogs/
 cp $QT5_DIR/qml/QtQuick/Dialogs/qmldir                                $TARGET_DIR/QtQuick/Dialogs/
-#cp $QT5_DIR/qml/QtQuick/Dialogs/*.qml                                 $TARGET_DIR/QtQuick/Dialogs/
-#cp $QT5_DIR/qml/QtQuick/Dialogs/images                                $TARGET_DIR/QtQuick/Dialogs/ -R
-#cp $QT5_DIR/qml/QtQuick/Dialogs/qml                                   $TARGET_DIR/QtQuick/Dialogs/ -R
+cp $QT5_DIR/qml/QtQuick/Dialogs/*.qml                                 $TARGET_DIR/QtQuick/Dialogs/
+cp $QT5_DIR/qml/QtQuick/Dialogs/images                                $TARGET_DIR/QtQuick/Dialogs/ -R
+cp $QT5_DIR/qml/QtQuick/Dialogs/qml                                   $TARGET_DIR/QtQuick/Dialogs/ -R
 cp $QT5_DIR/qml/QtQuick/Dialogs/Private/dialogsprivateplugin.dll      $TARGET_DIR/QtQuick/Dialogs/Private/
 cp $QT5_DIR/qml/QtQuick/Dialogs/Private/qmldir                        $TARGET_DIR/QtQuick/Dialogs/Private/
 

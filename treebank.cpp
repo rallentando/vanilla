@@ -232,8 +232,8 @@ TreeBank::TreeBank(QWidget *parent)
     m_ActionTable = QMap<TreeBankAction, QAction*>();
 
     // gadgets become too slow when using reconnection.
-    connect(m_Gadgets,  SIGNAL(titleChanged(QString)),
-            parent,     SLOT(SetWindowTitle(QString)));
+    connect(m_Gadgets, &Gadgets::titleChanged,
+            GetMainWindow(), &MainWindow::SetWindowTitle);
 
     ConnectToNotifier();
     ConnectToReceiver();
@@ -2503,14 +2503,12 @@ void TreeBank::keyPressEvent(QKeyEvent *ev){
     if(Application::HasAnyModifier(ev) ||
        Application::IsFunctionKey(ev)){
 
-        TriggerKeyEvent(ev);
-        ev->setAccepted(true);
+        ev->setAccepted(TriggerKeyEvent(ev));
         return;
     }
     if(!Application::IsOnlyModifier(ev)){
 
-        TriggerKeyEvent(ev);
-        ev->setAccepted(true);
+        ev->setAccepted(TriggerKeyEvent(ev));
     }
 }
 
@@ -3379,6 +3377,12 @@ void TreeBank::TriggerAction(TreeBankAction a){
     Action(a)->trigger();
 }
 
+QAction *TreeBank::Action(QString str){
+    if(IsValidAction(str))
+        return Action(StringToAction(str));
+    return 0;
+}
+
 QAction *TreeBank::Action(TreeBankAction a){
     // forbid many times call of same action.
     static const QList<TreeBankAction> exclude = QList<TreeBankAction>()
@@ -3566,22 +3570,22 @@ QAction *TreeBank::Action(TreeBankAction a){
     return action;
 }
 
-void TreeBank::TriggerKeyEvent(QKeyEvent *ev){
+bool TreeBank::TriggerKeyEvent(QKeyEvent *ev){
     QKeySequence seq = Application::MakeKeySequence(ev);
-    if(seq.isEmpty()) return;
+    if(seq.isEmpty()) return false;
     QString str = m_KeyMap[seq];
-    if(str.isEmpty()) return;
+    if(str.isEmpty()) return false;
 
-    TriggerAction(str);
+    return TriggerAction(str);
 }
 
-void TreeBank::TriggerKeyEvent(QString str){
+bool TreeBank::TriggerKeyEvent(QString str){
     QKeySequence seq = Application::MakeKeySequence(str);
-    if(seq.isEmpty()) return;
+    if(seq.isEmpty()) return false;
     str = m_KeyMap[seq]; // sequence => action
-    if(str.isEmpty()) return;
+    if(str.isEmpty()) return false;
 
-    TriggerAction(str);
+    return TriggerAction(str);
 }
 
 void TreeBank::DeleteView(View *view){

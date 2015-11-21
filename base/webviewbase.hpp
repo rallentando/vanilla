@@ -591,17 +591,23 @@ protected:
         QWidget *widget = qobject_cast<QWidget*>(obj);
 
         switch(ev->type()){
-        case QEvent::KeyPress:
+        case QEvent::KeyPress:{
+            QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
+
 #if QT_VERSION >= 0x050600
             if(m_View->page()->ObscureDisplay()){
-                QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
                 if(ke->key() == Qt::Key_Escape || ke->key() == Qt::Key_F11){
                     m_View->page()->triggerAction(QWebEnginePage::ExitFullScreen);
                     return true;
                 }
             }
 #endif
+            if(Application::HasAnyModifier(ke) ||
+               Application::IsFunctionKey(ke)){
+                return m_View->TriggerKeyEvent(ke);
+            }
             return false;
+        }
         case QEvent::KeyRelease:{
             QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
             int k = ke->key();

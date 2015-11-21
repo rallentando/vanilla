@@ -1039,22 +1039,22 @@ void Gadgets::UpdateThumbnail(){
     }
 }
 
-void Gadgets::TriggerKeyEvent(QKeyEvent *ev){
+bool Gadgets::TriggerKeyEvent(QKeyEvent *ev){
     QKeySequence seq = Application::MakeKeySequence(ev);
-    if(seq.isEmpty()) return;
+    if(seq.isEmpty()) return false;
     QString str = m_ThumbListKeyMap[seq];
-    if(str.isEmpty()) return;
+    if(str.isEmpty()) return false;
 
-    TriggerAction(str);
+    return TriggerAction(str);
 }
 
-void Gadgets::TriggerKeyEvent(QString str){
+bool Gadgets::TriggerKeyEvent(QString str){
     QKeySequence seq = Application::MakeKeySequence(str);
-    if(seq.isEmpty()) return;
+    if(seq.isEmpty()) return false;
     str = m_ThumbListKeyMap[seq]; // sequence => action
-    if(str.isEmpty()) return;
+    if(str.isEmpty()) return false;
 
-    TriggerAction(str);
+    return TriggerAction(str);
 }
 
 QMap<QKeySequence, QString> Gadgets::GetThumbListKeyMap(){
@@ -1616,8 +1616,7 @@ void Gadgets::keyPressEvent(QKeyEvent *ev){
            Application::IsFunctionKey(ev) ||
            ev->modifiers() & Qt::ShiftModifier){
 
-            TriggerKeyEvent(ev);
-            ev->setAccepted(true);
+            ev->setAccepted(TriggerKeyEvent(ev));
             return;
         }
         QGraphicsObject::keyPressEvent(ev);
@@ -1625,8 +1624,7 @@ void Gadgets::keyPressEvent(QKeyEvent *ev){
         if(!ev->isAccepted() &&
            !Application::IsOnlyModifier(ev)){
 
-            TriggerKeyEvent(ev);
-            ev->setAccepted(true);
+            ev->setAccepted(TriggerKeyEvent(ev));
         }
         return;
     }
@@ -1643,14 +1641,12 @@ void Gadgets::keyPressEvent(QKeyEvent *ev){
                m_ThumbListKeyMap[seq] == QStringLiteral("OpenTextSeeker")){
 
                 Deactivate();
-                TriggerKeyEvent(ev);
-                ev->setAccepted(true);
+                ev->setAccepted(TriggerKeyEvent(ev));
                 return;
 
             } else if(m_ThumbListKeyMap[seq] == QStringLiteral("OpenCommand")){
 
-                TriggerKeyEvent(ev);
-                ev->setAccepted(true);
+                ev->setAccepted(TriggerKeyEvent(ev));
                 return;
             }
         }

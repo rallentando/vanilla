@@ -639,9 +639,10 @@ private slots:
 private:
     bool TriggerAction(QString str);
     void TriggerAction(TreeBankAction a);
+    QAction *Action(QString str);
     QAction *Action(TreeBankAction a);
-    void TriggerKeyEvent(QKeyEvent *ev);
-    void TriggerKeyEvent(QString str);
+    bool TriggerKeyEvent(QKeyEvent *ev);
+    bool TriggerKeyEvent(QString str);
 
 private:
     QGraphicsScene *m_Scene;

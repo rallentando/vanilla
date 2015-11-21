@@ -673,14 +673,22 @@ void LocalView::UpdateThumbnail(){
     }
 }
 
-void LocalView::TriggerKeyEvent(QKeyEvent *ev){
+bool LocalView::TriggerKeyEvent(QKeyEvent *ev){
     QKeySequence seq = Application::MakeKeySequence(ev);
-    if(!seq.isEmpty()) TriggerAction(Gadgets::StringToAction(Gadgets::GetThumbListKeyMap()[seq]));
+    if(seq.isEmpty()) return false;
+    QString str = Gadgets::GetThumbListKeyMap()[seq];
+    if(str.isEmpty()) return false;
+    TriggerAction(Gadgets::StringToAction(str));
+    return true;
 }
 
-void LocalView::TriggerKeyEvent(QString str){
+bool LocalView::TriggerKeyEvent(QString str){
     QKeySequence seq = Application::MakeKeySequence(str);
-    if(!seq.isEmpty()) TriggerAction(Gadgets::StringToAction(Gadgets::GetThumbListKeyMap()[seq]));
+    if(seq.isEmpty()) return false;
+    str = Gadgets::GetThumbListKeyMap()[seq];
+    if(str.isEmpty()) return false;
+    TriggerAction(Gadgets::StringToAction(str));
+    return true;
 }
 
 bool LocalView::TriggerAction(QString str, QVariant data){
@@ -1914,8 +1922,7 @@ void LocalView::keyPressEvent(QKeyEvent *ev){
     if(Application::HasAnyModifier(ev) ||
        Application::IsFunctionKey(ev)){
 
-        TriggerKeyEvent(ev);
-        ev->setAccepted(true);
+        ev->setAccepted(TriggerKeyEvent(ev));
         return;
     }
     QGraphicsObject::keyPressEvent(ev);
@@ -1923,8 +1930,7 @@ void LocalView::keyPressEvent(QKeyEvent *ev){
     if(!ev->isAccepted() &&
        !Application::IsOnlyModifier(ev)){
 
-        TriggerKeyEvent(ev);
-        ev->setAccepted(true);
+        ev->setAccepted(TriggerKeyEvent(ev));
     }
 }
 

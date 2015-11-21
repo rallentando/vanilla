@@ -396,6 +396,7 @@ protected:
     UpDirectoryButton *m_UpDirectoryButton;
 
     inline bool IsDisplayingNode() const {
+        if(!isVisible()) return false;
         return m_DisplayType == HistTree
             || m_DisplayType == ViewTree
             || m_DisplayType == TrashTree
@@ -403,14 +404,17 @@ protected:
     }
 
     inline bool IsDisplayingViewNode() const {
+        if(!isVisible()) return false;
         return m_DisplayType == ViewTree || m_DisplayType == TrashTree;
     }
 
     inline bool IsDisplayingHistNode() const {
+        if(!isVisible()) return false;
         return m_DisplayType == HistTree;
     }
 
     inline bool IsDisplayingAccessKey() const {
+        if(!isVisible()) return false;
         return m_DisplayType == AccessKey;
     }
 

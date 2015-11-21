@@ -475,8 +475,8 @@ protected:
     void GestureAborted();
     void GestureFinished(QPoint, Qt::MouseButton);
 
-    virtual void TriggerKeyEvent(QKeyEvent*);
-    virtual void TriggerKeyEvent(QString);
+    virtual bool TriggerKeyEvent(QKeyEvent*);
+    virtual bool TriggerKeyEvent(QString);
 
     void ChangeNodeTitle(const QString &title);
     void ChangeNodeUrl(const QUrl &url);

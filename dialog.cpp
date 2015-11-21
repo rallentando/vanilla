@@ -451,7 +451,6 @@ ModelessDialog::ModelessDialog()
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
     setAttribute(Qt::WA_TranslucentBackground);
-    connect(this, &ModelessDialog::destroyed, this, &ModelessDialog::Aborted);
 }
 
 ModelessDialog::~ModelessDialog(){
@@ -525,12 +524,14 @@ void ModelessDialog::Execute(){
     connect(this, &ModelessDialog::Returned, [this](){
             ModelessDialogFrame::DeregisterDialog(this);
             m_CallBack(true);
+            disconnect();
             deleteLater();
         });
 
     connect(this, &ModelessDialog::Aborted, [this](){
             ModelessDialogFrame::DeregisterDialog(this);
             m_CallBack(false);
+            disconnect();
             deleteLater();
         });
 
