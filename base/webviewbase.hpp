@@ -132,7 +132,18 @@ public:
     //[[/!WEV]]
     //[[WEV]]
 #if QT_VERSION >= 0x050600
-    void InspectElement()            DECL_OVERRIDE { if(page()) page()->InspectElement();}
+    void InspectElement()            DECL_OVERRIDE {
+        if(!m_Inspector){
+            m_Inspector = new QWebViewBase();
+            m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
+            m_Inspector->load(m_InspectorTable[this]);
+        } else {
+            m_Inspector->reload();
+        }
+        m_Inspector->show();
+        m_Inspector->raise();
+        //if(page()) page()->InspectElement();
+    }
 #endif
     void AddSearchEngine(QPoint pos) DECL_OVERRIDE { if(page()) page()->AddSearchEngine(pos);}
     void AddBookmarklet(QPoint pos)  DECL_OVERRIDE { if(page()) page()->AddBookmarklet(pos);}
@@ -520,6 +531,7 @@ public slots:
     void SetFocusToElement(QString);
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
+    void AssignInspector();
     //[[/WEV]]
 
 signals:
@@ -530,10 +542,15 @@ signals:
     void ViewChanged();
     void ScrollChanged(QPointF);
 
+private:
+    //[[WEV]]
+    QImage m_GrabedDisplayData;
+    static QMap<View*, QUrl> m_InspectorTable;
+    QWebViewBase *m_Inspector;
+    //[[/WEV]]
+
 protected:
     //[[WEV]]
-    static QKeySequence m_PressedKey;
-    QImage m_GrabedDisplayData;
     void childEvent(QChildEvent *ev) DECL_OVERRIDE;
     //[[/WEV]]
     void hideEvent(QHideEvent *ev) DECL_OVERRIDE;

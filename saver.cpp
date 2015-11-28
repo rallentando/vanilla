@@ -7,6 +7,7 @@
 #include "mainwindow.hpp"
 #include "networkcontroller.hpp"
 #include "treebank.hpp"
+#include "treebar.hpp"
 
 AutoSaver::AutoSaver()
     : QObject(0)
@@ -55,6 +56,14 @@ void AutoSaver::SaveAll(){
     // save global settings.
     TRY{
         Application::SaveGlobalSettings();
+    } CATCH{
+        emit Failed();
+        return;
+    }
+
+    // save treebar settings.
+    TRY{
+        TreeBar::SaveSettings();
     } CATCH{
         emit Failed();
         return;

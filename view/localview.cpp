@@ -763,6 +763,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         case Gadgets::Ge_ToggleNotifier:
         case Gadgets::Ge_ToggleReceiver:
         case Gadgets::Ge_ToggleMenuBar:
+        case Gadgets::Ge_ToggleTreeBar:
         case Gadgets::Ge_ToggleFullScreen:
         case Gadgets::Ge_ToggleMaximized:
         case Gadgets::Ge_ToggleMinimized:
@@ -855,6 +856,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(ToggleNotifier,   tr("ToggleNotifier"));
         DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));
         DEFINE_ACTION(ToggleMenuBar,    tr("ToggleMenuBar"));
+        DEFINE_ACTION(ToggleTreeBar,    tr("ToggleTreeBar"));
         DEFINE_ACTION(ToggleFullScreen, tr("ToggleFullScreen"));
         DEFINE_ACTION(ToggleMaximized,  tr("ToggleMaximized"));
         DEFINE_ACTION(ToggleMinimized,  tr("ToggleMinimized"));
@@ -987,6 +989,24 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
 #undef  DEFINE_ACTION
     }
     switch(a){
+
+    case Gadgets::Ge_ToggleNotifier:
+        action->setCheckable(true);
+        action->setText(tr("Notifier"));
+        break;
+    case Gadgets::Ge_ToggleReceiver:
+        action->setCheckable(true);
+        action->setText(tr("Receiver"));
+        break;
+    case Gadgets::Ge_ToggleMenuBar:
+        action->setCheckable(true);
+        action->setText(tr("MenuBar"));
+        break;
+    case Gadgets::Ge_ToggleTreeBar:
+        action->setCheckable(true);
+        action->setText(tr("TreeBar"));
+        break;
+
     case Gadgets::Ge_OpenNodeWithIE:
         action->setIcon(Application::BrowserIcon_IE());
         break;

@@ -469,7 +469,7 @@ void Notifier::mousePressEvent(QMouseEvent *ev){
             ev->setAccepted(true);
         }
     } else if(ev->button() == Qt::RightButton){
-        QMenu *menu = m_TreeBank->CreateGlobalContextMenu();
+        QMenu *menu = m_TreeBank->GlobalContextMenu();
         menu->exec(ev->globalPos());
         delete menu;
         ev->setAccepted(true);

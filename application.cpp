@@ -41,6 +41,7 @@
 #include "gadgets.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
+#include "treebar.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
 #include "saver.hpp"
@@ -119,6 +120,7 @@ Application::Application(int &argc, char **argv)
     m_AutoSaver = 0;
     m_SaverThread = 0;
     srand(static_cast<unsigned int>(time(NULL)));
+    qputenv("QTWEBENGINE_REMOTE_DEBUGGING", VANILLA_REMOTE_DEBUGGING_PORT);
 }
 
 Application::~Application(){
@@ -226,6 +228,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     m_NetworkController = new NetworkController();
     m_AutoSaver = new AutoSaver();
     m_SaverThread = new QThread();
+    TreeBar::Initialize();
     TreeBank::Initialize();
     TreeBank::LoadTree();
     if(m_MainWindows.isEmpty()){
@@ -1531,6 +1534,7 @@ void Application::LoadGlobalSettings(){
 void Application::Reconfigure(){
     m_GlobalSettings->sync();
     LoadGlobalSettings();
+    TreeBar::LoadSettings();
     // 'TreeBank::LoadSettings' calls 'View::LoadSettings' and 'Gadgets::LoadSettings'.
     TreeBank::LoadSettings();
 }

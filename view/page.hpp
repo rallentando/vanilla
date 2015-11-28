@@ -156,6 +156,7 @@ public slots:
     void ToggleNotifier();
     void ToggleReceiver();
     void ToggleMenuBar();
+    void ToggleTreeBar();
     void ToggleFullScreen();
     void ToggleMaximized();
     void ToggleMinimized();
@@ -424,6 +425,7 @@ public:
         We_ToggleNotifier,
         We_ToggleReceiver,
         We_ToggleMenuBar,
+        We_ToggleTreeBar,
         We_ToggleFullScreen,
         We_ToggleMaximized,
         We_ToggleMinimized,
@@ -623,6 +625,7 @@ public:
         if(str == QStringLiteral("ToggleNotifier"))                    return We_ToggleNotifier;
         if(str == QStringLiteral("ToggleReceiver"))                    return We_ToggleReceiver;
         if(str == QStringLiteral("ToggleMenuBar"))                     return We_ToggleMenuBar;
+        if(str == QStringLiteral("ToggleTreeBar"))                     return We_ToggleTreeBar;
         if(str == QStringLiteral("ToggleFullScreen"))                  return We_ToggleFullScreen;
         if(str == QStringLiteral("ToggleMaximized"))                   return We_ToggleMaximized;
         if(str == QStringLiteral("ToggleMinimized"))                   return We_ToggleMinimized;
@@ -823,6 +826,7 @@ public:
         if(action == We_ToggleNotifier)                    return QStringLiteral("ToggleNotifier");
         if(action == We_ToggleReceiver)                    return QStringLiteral("ToggleReceiver");
         if(action == We_ToggleMenuBar)                     return QStringLiteral("ToggleMenuBar");
+        if(action == We_ToggleTreeBar)                     return QStringLiteral("ToggleTreeBar");
         if(action == We_ToggleFullScreen)                  return QStringLiteral("ToggleFullScreen");
         if(action == We_ToggleMaximized)                   return QStringLiteral("ToggleMaximized");
         if(action == We_ToggleMinimized)                   return QStringLiteral("ToggleMinimized");

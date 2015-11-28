@@ -2,5 +2,12 @@
 <qresource>
     <file>gen/quickwebview.qml</file>
     <file>gen/quickwebengineview.qml</file>
+    <file>resources/treebar/close.png</file>
+    <file>resources/treebar/up.png</file>
+    <file>resources/treebar/down.png</file>
+    <file>resources/treebar/left.png</file>
+    <file>resources/treebar/right.png</file>
+    <file>resources/treebar/table.png</file>
+    <file>resources/treebar/plus.png</file>
 </qresource>
 </RCC>

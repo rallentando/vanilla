@@ -19,6 +19,7 @@
 
 #include "application.hpp"
 #include "mainwindow.hpp"
+#include "treebar.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
@@ -1973,6 +1974,7 @@ QAction *Gadgets::Action(GadgetsAction a){
         DEFINE_ACTION(ToggleNotifier,   tr("ToggleNotifier"));
         DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));
         DEFINE_ACTION(ToggleMenuBar,    tr("ToggleMenuBar"));
+        DEFINE_ACTION(ToggleTreeBar,    tr("ToggleTreeBar"));
         DEFINE_ACTION(ToggleFullScreen, tr("ToggleFullScreen"));
         DEFINE_ACTION(ToggleMaximized,  tr("ToggleMaximized"));
         DEFINE_ACTION(ToggleMinimized,  tr("ToggleMinimized"));
@@ -2105,6 +2107,24 @@ QAction *Gadgets::Action(GadgetsAction a){
 #undef  DEFINE_ACTION
     }
     switch(a){
+
+    case Ge_ToggleNotifier:
+        action->setCheckable(true);
+        action->setText(tr("Notifier"));
+        break;
+    case Ge_ToggleReceiver:
+        action->setCheckable(true);
+        action->setText(tr("Receiver"));
+        break;
+    case Ge_ToggleMenuBar:
+        action->setCheckable(true);
+        action->setText(tr("MenuBar"));
+        break;
+    case Ge_ToggleTreeBar:
+        action->setCheckable(true);
+        action->setText(tr("TreeBar"));
+        break;
+
     case Ge_OpenNodeWithIE:
         action->setIcon(Application::BrowserIcon_IE());
         break;

@@ -30,6 +30,7 @@
 #endif
 #include "webengineview.hpp"
 #include "dialog.hpp"
+#include "treebar.hpp"
 
 MainWindow::MainWindow(int id, QWidget *parent)
     : QMainWindow(parent)
@@ -38,6 +39,9 @@ MainWindow::MainWindow(int id, QWidget *parent)
 
     m_TreeBank = new TreeBank(this);
     setCentralWidget(m_TreeBank);
+
+    m_TreeBar = new TreeBar(m_TreeBank, this);
+    addToolBar(m_TreeBar);
 
     if(m_DialogFrame = Application::GetTemporaryDialogFrame()){
         Application::SetTemporaryDialogFrame(0);
@@ -115,6 +119,7 @@ void MainWindow::SaveSettings(){
         s->setValue(QStringLiteral("notifier%1").arg(m_Index), m_TreeBank->GetNotifier() ? true : false);
         s->setValue(QStringLiteral("receiver%1").arg(m_Index), m_TreeBank->GetReceiver() ? true : false);
         s->setValue(QStringLiteral("menubar%1").arg(m_Index), !IsMenuBarEmpty());
+        s->setValue(QStringLiteral("toolbar%1").arg(m_Index), saveState());
         s->setValue(QStringLiteral("status%1").arg(m_Index), static_cast<int>(windowState()));
         if(!isFullScreen() && !isMaximized() && !isMinimized())
             s->setValue(QStringLiteral("geometry%1").arg(m_Index), geometry());
@@ -132,6 +137,7 @@ void MainWindow::LoadSettings(){
         QVariant notifier_data  = s->value(QStringLiteral("notifier%1").arg(m_Index), QVariant());
         QVariant receiver_data  = s->value(QStringLiteral("receiver%1").arg(m_Index), QVariant());
         QVariant menubar_data   = s->value(QStringLiteral("menubar%1").arg(m_Index), QVariant());
+        QVariant toolbar_data   = s->value(QStringLiteral("toolbar%1").arg(m_Index), QVariant());
 
         if(tableview_data.isNull()){
 
@@ -187,6 +193,10 @@ void MainWindow::LoadSettings(){
         } else if(receiver_data.canConvert<bool>()){
             if(receiver_data.toBool() != static_cast<bool>(GetTreeBank()->GetReceiver()))
                 GetTreeBank()->ToggleReceiver();
+        }
+
+        if(!toolbar_data.isNull()){
+            restoreState(toolbar_data.toByteArray());
         }
 
         if(menubar_data.isNull()){
@@ -248,6 +258,10 @@ TreeBank *MainWindow::GetTreeBank(){
     return m_TreeBank;
 }
 
+TreeBar *MainWindow::GetTreeBar(){
+    return m_TreeBar;
+}
+
 ModelessDialogFrame *MainWindow::DialogFrame(){
     return m_DialogFrame;
 }
@@ -263,6 +277,7 @@ void MainWindow::ClearMenuBar(){
 void MainWindow::CreateMenuBar(){
     menuBar()->addMenu(m_TreeBank->ApplicationMenu(true));
     menuBar()->addMenu(m_TreeBank->NodeMenu());
+    menuBar()->addMenu(m_TreeBank->DisplayMenu());
     menuBar()->addMenu(m_TreeBank->WindowMenu());
     menuBar()->addMenu(m_TreeBank->PageMenu());
 }
@@ -421,6 +436,14 @@ void MainWindow::ToggleMenuBar(){
     }
 }
 
+void MainWindow::ToggleTreeBar(){
+    if(m_TreeBar->isVisible()){
+        m_TreeBar->hide();
+    } else {
+        m_TreeBar->show();
+    }
+}
+
 void MainWindow::ToggleFullScreen(){
     if(isFullScreen()){
         showNormal();
@@ -462,6 +485,14 @@ void MainWindow::SetMenuBar(bool on){
         CreateMenuBar();
     } else if(!IsMenuBarEmpty()){
         ClearMenuBar();
+    }
+}
+
+void MainWindow::SetTreeBar(bool on){
+    if(on && m_TreeBar->isHidden()){
+        m_TreeBar->show();
+    } else if(!m_TreeBar->isVisible()){
+        m_TreeBar->hide();
     }
 }
 
@@ -631,7 +662,7 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
         case WM_SYSCOMMAND:{
             if(IsMenuBarEmpty() && (msg->wParam & 0xFFF0) == SC_MOUSEMENU){
                 QTimer::singleShot(0, [this](){
-                        QMenu *menu = GetTreeBank()->CreateTitlebarMenu();
+                        QMenu *menu = GetTreeBank()->GlobalContextMenu();
                         menu->exec(QCursor::pos());
                         delete menu;
                     });
@@ -805,7 +836,7 @@ void TitleBar::mouseReleaseEvent(QMouseEvent *ev){
         ev->setAccepted(true);
     } else if(ev->button() == Qt::LeftButton){
         if(MenuAreaRect1().contains(ev->pos())){
-            QMenu *menu = m_MainWindow->GetTreeBank()->CreateTitlebarMenu();
+            QMenu *menu = m_MainWindow->GetTreeBank()->GlobalContextMenu();
             menu->exec(ev->globalPos());
             delete menu;
             m_MainWindow->SetFocus();

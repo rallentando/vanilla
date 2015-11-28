@@ -127,6 +127,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     connect(this, SIGNAL(ToggleNotifier()),   parent, SLOT(ToggleNotifier()));
     connect(this, SIGNAL(ToggleReceiver()),   parent, SLOT(ToggleReceiver()));
     connect(this, SIGNAL(ToggleMenuBar()),    parent, SLOT(ToggleMenuBar()));
+    connect(this, SIGNAL(ToggleTreeBar()),    parent, SLOT(ToggleTreeBar()));
     connect(this, SIGNAL(ToggleFullScreen()), parent, SLOT(ToggleFullScreen()));
     connect(this, SIGNAL(ToggleMaximized()),  parent, SLOT(ToggleMaximized()));
     connect(this, SIGNAL(ToggleMinimized()),  parent, SLOT(ToggleMinimized()));
@@ -577,6 +578,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[nN]otifier")).exactMatch(cmd)){        emit ToggleNotifier();       return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[rR]eceiver")).exactMatch(cmd)){        emit ToggleReceiver();       return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[mM]enu[bB]ar")).exactMatch(cmd)){      emit ToggleMenuBar();        return; }
+    if(QRegExp(QStringLiteral("(?:[tT]oggle)?[tT]ree[bB]ar")).exactMatch(cmd)){      emit ToggleTreeBar();        return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[fF]ull[sS]creen")).exactMatch(cmd)){   emit ToggleFullScreen();     return; }
     if(QRegExp(QStringLiteral("[tT]oggle[mM]aximized")).exactMatch(cmd)){            emit ToggleMaximized();      return; }
     if(QRegExp(QStringLiteral("[mM]aximize(?:[wW]indow)?")).exactMatch(cmd)){        emit ToggleMaximized();      return; }

@@ -74,7 +74,7 @@ namespace {
 }
 
 //[[WEV]]
-QKeySequence WebViewBase::m_PressedKey = QKeySequence();
+QMap<View*, QUrl> WebViewBase::m_InspectorTable = QMap<View*, QUrl>();
 //[[/WEV]]
 
 WebViewBase::WebViewBase(TreeBank *parent, QString id, QStringList set)
@@ -105,12 +105,19 @@ WebViewBase::WebViewBase(TreeBank *parent, QString id, QStringList set)
     }
     setMouseTracking(true);
     //[[/!GWV]]
+    //[[WEV]]
+    m_Inspector = 0;
+    //[[/WEV]]
 
     setAcceptDrops(true);
 }
 
 WebViewBase::~WebViewBase(){
     setPage(0);
+//[[WEV]]
+    m_InspectorTable.remove(this);
+    m_Inspector->deleteLater();
+//[[/WEV]]
 }
 
 void WebViewBase::Connect(TreeBank *tb){
@@ -238,6 +245,9 @@ void WebViewBase::OnLoadStarted(){
         }
     }
     emit statusBarMessage(tr("Started loading."));
+    //[[WEV]]
+    AssignInspector();
+    //[[/WEV]]
 }
 
 void WebViewBase::OnLoadProgress(int progress){
@@ -303,6 +313,9 @@ void WebViewBase::OnLoadFinished(bool ok){
     }
     });
     //[[/!WEV]]
+    //[[WEV]]
+    AssignInspector();
+    //[[/WEV]]
 }
 
 void WebViewBase::OnTitleChanged(const QString &title){
@@ -552,6 +565,36 @@ void WebViewBase::FireClickEvent(QString xpath, QPoint pos){
 
 void WebViewBase::SetTextValue(QString xpath, QString text){
     page()->runJavaScript(SetTextValueJsCode(xpath, text));
+}
+
+void WebViewBase::AssignInspector(){
+    static const QString addr = QStringLiteral("http://localhost:%1").arg(VANILLA_REMOTE_DEBUGGING_PORT);
+    static const QNetworkRequest req(QUrl(addr + QStringLiteral("/json")));
+
+    if(m_InspectorTable.contains(this)) return;
+
+    DownloadItem *item = NetworkController::Download
+        (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
+         req, NetworkController::ToVariable);
+
+    connect(item, &DownloadItem::DownloadResult, [=](const QByteArray &result){
+
+            foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
+
+                QString debuggeeValue = value.toObject()["url"].toString();
+                QString debuggerValue = value.toObject()["devtoolsFrontendUrl"].toString();
+
+                if(debuggeeValue.isEmpty() || debuggerValue.isEmpty()) break;
+
+                QUrl debuggee = QUrl(debuggeeValue);
+                QUrl debugger = QUrl(addr + debuggerValue);
+
+                if(url() == debuggee && !m_InspectorTable.values().contains(debugger)){
+                    m_InspectorTable[this] = debugger;
+                    break;
+                }
+            }
+        });
 }
 
 void WebViewBase::childEvent(QChildEvent *ev){

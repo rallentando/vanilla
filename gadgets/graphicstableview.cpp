@@ -188,10 +188,10 @@ void GraphicsTableView::Deactivate(){
 void GraphicsTableView::SetCurrent(Node *nd){
     if(!nd || !nd->GetParent()){
         if(IsDisplayingViewNode() && (!nd || nd->IsViewNode())){
-            m_DummyViewNode->SetParent(m_TreeBank->GetViewRoot());
+            m_DummyViewNode->SetParent(TreeBank::GetViewRoot());
             nd = m_DummyViewNode;
         } else if(IsDisplayingHistNode() && (!nd || nd->IsHistNode())){
-            m_DummyHistNode->SetParent(m_TreeBank->GetHistRoot());
+            m_DummyHistNode->SetParent(TreeBank::GetHistRoot());
             nd = m_DummyHistNode;
         } else {
             return;
@@ -1507,7 +1507,7 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
             menu = CreateNodeMenu();
 
         if(!menu)
-            menu = m_TreeBank->CreateGlobalContextMenu();
+            menu = m_TreeBank->GlobalContextMenu();
 
         if(menu){
             menu->exec(ev->screenPos());
@@ -2213,8 +2213,6 @@ bool GraphicsTableView::ThumbList_ToggleTrash(){
     switch (m_DisplayType){
     case HistTree: // fall through.
     case TrashTree:{
-        if(TreeBank::GetViewRoot()->HasNoChildren()) return false;
-
         // reset scroll.
         // want to scroll to 'PrimaryItem'.
         m_HoveredItemIndex = -1;
@@ -2224,14 +2222,15 @@ bool GraphicsTableView::ThumbList_ToggleTrash(){
 
         if(TreeBank::GetViewRoot()->GetPrimary()){
             SetCurrent(TreeBank::GetViewRoot()->GetPrimary());
-        } else {
+        } else if(!TreeBank::GetViewRoot()->HasNoChildren()){
             SetCurrent(TreeBank::GetViewRoot()->GetFirstChild());
+        } else {
+            m_DummyViewNode->SetParent(TreeBank::GetViewRoot());
+            SetCurrent(m_DummyViewNode);
         }
         return true;
     }
     case ViewTree:{
-        if(TreeBank::GetTrashRoot()->HasNoChildren()) return false;
-
         // reset scroll.
         // want to scroll to 'PrimaryItem'.
         m_HoveredItemIndex = -1;
@@ -2241,8 +2240,11 @@ bool GraphicsTableView::ThumbList_ToggleTrash(){
 
         if(TreeBank::GetTrashRoot()->GetPrimary()){
             SetCurrent(TreeBank::GetTrashRoot()->GetPrimary());
-        } else {
+        } else if(!TreeBank::GetTrashRoot()->HasNoChildren()){
             SetCurrent(TreeBank::GetTrashRoot()->GetFirstChild());
+        } else {
+            m_DummyViewNode->SetParent(TreeBank::GetTrashRoot());
+            SetCurrent(m_DummyViewNode);
         }
         return true;
     }

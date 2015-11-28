@@ -288,7 +288,7 @@ HistNode *HistNode::Clone(HistNode *parent, ViewNode *partner){
     }
     clone->m_HistoryData = QByteArray(m_HistoryData);
     if(!m_HistoryFileName.isEmpty()){
-        clone->m_ImageFileName = QUuid::createUuid().toString() + QStringLiteral(".dat");
+        clone->m_HistoryFileName = QUuid::createUuid().toString() + QStringLiteral(".dat");
         QFile::copy(Application::HistoryDirectory() + m_HistoryFileName,
                     Application::HistoryDirectory() + clone->m_HistoryFileName);
     }

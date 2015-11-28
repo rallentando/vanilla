@@ -110,8 +110,6 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     QImage image = thumb->GetNode()->GetImage();
     QString title = thumb->GetNode()->GetTitle();
 
-    const QUrl url = thumb->GetNode()->GetUrl();
-
     if(image.isNull()){
         Node *tempnode = thumb->GetNode();
         if(tempnode->IsViewNode() && tempnode->IsDirectory()){
@@ -247,6 +245,7 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->setBrush(Qt::NoBrush);
 
         if(title.isEmpty()){
+            const QUrl url = thumb->GetNode()->GetUrl();
             if(url.isEmpty()){
                 if(thumb->GetNode()->IsDirectory()){
                     title = QStringLiteral("Directory");
@@ -280,7 +279,6 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     if(m_NodeTitleDrawBorder) port = port.intersected(bound);
 
     QString title_ = title->GetNode()->GetTitle();
-    const QUrl url = title->GetNode()->GetUrl();
 
     const qreal start = bound.top();
     const qreal stop  = bound.bottom();
@@ -351,6 +349,7 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     title_rect.intersected(port);
 
     if(title_.isEmpty()){
+        const QUrl url = title->GetNode()->GetUrl();
         if(url.isEmpty()){
             if(title->GetNode()->IsDirectory()){
                 title_ = QStringLiteral("Directory");
@@ -864,8 +863,6 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     QImage image = thumb->GetNode()->GetImage();
     QString title = thumb->GetNode()->GetTitle();
 
-    const QUrl url = thumb->GetNode()->GetUrl();
-
     if(image.isNull()){
         Node *tempnode = thumb->GetNode();
         if(tempnode->IsViewNode() && tempnode->IsDirectory()){
@@ -905,7 +902,7 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     if(thumb->IsHovered()){
         image_rect = QRect(image_rect.topLeft() - QPoint(3, 3),
                            image_rect.size() + QSize(6, 6));
-        title_rect = QRect(title_rect.topLeft() + QPoint(-3, 4),
+        title_rect = QRect(title_rect.topLeft() + QPoint(-3, 3),
                            title_rect.size() + QSize(6, 0));
     }
 
@@ -917,35 +914,37 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         image_rect.translate(width_diff/2, height_diff/2);
         painter->drawImage(image_rect, image, QRect(QPoint(), image.size()));
     } else if(thumb->GetNode()->IsDirectory()){
-        static const QBrush b = QBrush(QColor(50, 100, 100, 150));
+        static const QBrush b = QBrush(QColor(200, 255, 200, 255));
         painter->setPen(Qt::NoPen);
         painter->setBrush(b);
         painter->drawRect(image_rect);
 
-        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        static const QPen p = QPen(QColor(100, 100, 100, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
-        image_rect.setBottom(title_rect.center().y());
-        painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("Directory"));
+        QRect image_rect_ = image_rect;
+        image_rect_.setBottom(title_rect.center().y());
+        painter->drawText(image_rect_, Qt::AlignCenter, QStringLiteral("Directory"));
     } else {
-        static const QBrush b = QBrush(QColor(50, 100, 120, 150));
+        static const QBrush b = QBrush(QColor(200, 255, 255, 255));
         painter->setPen(Qt::NoPen);
         painter->setBrush(b);
         painter->drawRect(image_rect);
 
-        static const QPen p = QPen(QColor(255, 255, 255, 255));
+        static const QPen p = QPen(QColor(100, 100, 100, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
-        image_rect.setBottom(title_rect.center().y());
-        painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("NoImage"));
+        QRect image_rect_ = image_rect;
+        image_rect_.setBottom(title_rect.center().y());
+        painter->drawText(image_rect_, Qt::AlignCenter, QStringLiteral("NoImage"));
     }
 
     {
-        static const QBrush b = QBrush(QColor(0,0,0,128));
+        static const QBrush b = QBrush(QColor(255,255,255,200));
         painter->setPen(Qt::NoPen);
         painter->setBrush(b);
         painter->drawRect(title_rect);
@@ -955,12 +954,13 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
                        title_rect.size() - QSize(4,0));
 
     {
-        static const QPen p = QPen(QColor(255,255,255,255));
+        static const QPen p = QPen(QColor(100,100,100,255));
         painter->setFont(m_ThumbnailTitleFont);
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
 
         if(title.isEmpty()){
+            const QUrl url = thumb->GetNode()->GetUrl();
             if(url.isEmpty()){
                 if(thumb->GetNode()->IsDirectory()){
                     title = QStringLiteral("Directory");
@@ -974,13 +974,19 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
             title = QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first();
         }
         painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, title);
+    }
 
-        if(thumb->isSelected()){
-            painter->setPen(QColor(100,100,255,255));
-            painter->setBrush(QColor(100,100,255,50));
-            painter->drawRect(QRect(image_rect.topLeft(),
-                                    image_rect.size()-QSize(1,1)));
-        }
+    painter->setRenderHint(QPainter::Antialiasing, false);
+    if(thumb->isSelected()){
+        painter->setPen(QColor(100,100,255,255));
+        painter->setBrush(QColor(100,100,255,50));
+        painter->drawRect(QRect(image_rect.topLeft(),
+                                image_rect.size()-QSize(1,1)));
+    } else if(thumb->IsPrimary()){
+        painter->setPen(QColor(100,255,255,255));
+        painter->setBrush(Qt::NoBrush);
+        painter->drawRect(QRect(image_rect.topLeft(),
+                                image_rect.size()-QSize(1,1)));
     }
     painter->restore();
 }
@@ -1027,7 +1033,7 @@ void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter) const {
         painter->drawRect(awe->CharChipRect());
 
         painter->setFont(awe->CharChipFont());
-        painter->setPen(QColor(0,0,0, awe->IsCurrentBlock() ? 255 : 127));
+        painter->setPen(QColor(100,100,100, awe->IsCurrentBlock() ? 255 : 127));
         painter->setBrush(Qt::NoBrush);
         painter->drawText(awe->CharChipRect(), Qt::AlignCenter, awe->GetGadgets()->IndexToString(awe->GetIndex()));
 
@@ -1052,7 +1058,7 @@ void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter) const {
         rect = QRect(QPoint(base.x()+2, base.y()), QSize(width-2, ACCESSKEY_INFO_HEIGHT));
 
         {
-            static const QPen p = QPen(QColor(0,0,0,255));
+            static const QPen p = QPen(QColor(100,100,100,255));
             painter->setFont(ACCESSKEY_INFO_FONT);
             painter->setPen(p);
             painter->setBrush(Qt::NoBrush);
@@ -1081,7 +1087,7 @@ void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter) const {
             painter->drawRect(keyrect);
             painter->drawRect(exprect);
 
-            static const QPen p = QPen(QColor(0,0,0,255));
+            static const QPen p = QPen(QColor(100,100,100,255));
             painter->setPen(p);
             painter->setBrush(Qt::NoBrush);
 

@@ -9,6 +9,7 @@
 class QGraphicsScene;
 
 class TreeBank;
+class TreeBar;
 class ModelessDialogFrame;
 
 class TitleBar;
@@ -37,6 +38,7 @@ public:
     void RemoveSettings();
 
     TreeBank *GetTreeBank();
+    TreeBar *GetTreeBar();
     ModelessDialogFrame *DialogFrame();
 
     bool IsMenuBarEmpty();
@@ -55,11 +57,13 @@ public slots:
     void ToggleNotifier();
     void ToggleReceiver();
     void ToggleMenuBar();
+    void ToggleTreeBar();
     void ToggleFullScreen();
     void ToggleMaximized();
     void ToggleMinimized();
     void ToggleShaded();
     void SetMenuBar(bool on);
+    void SetTreeBar(bool on);
     void SetFullScreen(bool on);
     void SetMaximized(bool on);
     void SetMinimized(bool on);
@@ -78,6 +82,7 @@ protected:
 private:
     int m_Index;
     TreeBank *m_TreeBank;
+    TreeBar *m_TreeBar;
     ModelessDialogFrame *m_DialogFrame;
     TitleBar *m_TitleBar;
     MainWindowNorthWidget *m_NorthWidget;

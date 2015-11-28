@@ -26,6 +26,7 @@
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "mainwindow.hpp"
+#include "treebar.hpp"
 #include "networkcontroller.hpp"
 #include "application.hpp"
 #include "dialog.hpp"
@@ -636,6 +637,10 @@ void Page::ToggleReceiver(){
 
 void Page::ToggleMenuBar(){
     GetTB()->GetMainWindow()->ToggleMenuBar();
+}
+
+void Page::ToggleTreeBar(){
+    GetTB()->GetMainWindow()->ToggleTreeBar();
 }
 
 void Page::ToggleFullScreen(){
@@ -1608,6 +1613,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(ToggleNotifier,        tr("ToggleNotifier"));
         DEFINE_ACTION(ToggleReceiver,        tr("ToggleReceiver"));
         DEFINE_ACTION(ToggleMenuBar,         tr("ToggleMenuBar"));
+        DEFINE_ACTION(ToggleTreeBar,         tr("ToggleTreeBar"));
         DEFINE_ACTION(ToggleFullScreen,      tr("ToggleFullScreen"));
         DEFINE_ACTION(ToggleMaximized,       tr("ToggleMaximized"));
         DEFINE_ACTION(ToggleMinimized,       tr("ToggleMinimized"));
@@ -1794,6 +1800,24 @@ QAction *Page::Action(CustomAction a, QVariant data){
 #undef  DEFINE_ACTION
     }
     switch(a){
+
+    case We_ToggleNotifier:
+        webaction->setCheckable(true);
+        webaction->setText(tr("Notifier"));
+        break;
+    case We_ToggleReceiver:
+        webaction->setCheckable(true);
+        webaction->setText(tr("Receiver"));
+        break;
+    case We_ToggleMenuBar:
+        webaction->setCheckable(true);
+        webaction->setText(tr("MenuBar"));
+        break;
+    case We_ToggleTreeBar:
+        webaction->setCheckable(true);
+        webaction->setText(tr("TreeBar"));
+        break;
+
     case We_OpenWithIE:
     case We_OpenLinkWithIE:
     case We_OpenImageWithIE:
@@ -1908,7 +1932,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
 void Page::DownloadSuggest(const QUrl& url){
     QNetworkRequest req(url);
     DownloadItem *item =
-        NetworkController::Download(static_cast<NetworkAccessManager*>(GetNetworkAccessManager()),
+        NetworkController::Download(GetNetworkAccessManager(),
                                     req, NetworkController::ToVariable);
     connect(item, SIGNAL(DownloadResult(const QByteArray&)),
             this, SIGNAL(SuggestResult(const QByteArray&)));

@@ -75,6 +75,10 @@ public:
     inline void SetHistIterForward(HistNode *hn){ m_HistIterForward = hn;}
     inline void SetHistIterBackward(HistNode *hn){ m_HistIterBackward = hn;}
 
+signals:
+    void TreeStructureChanged();
+    void NodeAttributeChanged(Node *nd, QVariant before, QVariant after);
+
 private:
     void ConnectToNotifier();
     void ConnectToReceiver();
@@ -145,6 +149,7 @@ public:
 private:
     void ClearCache(Node *nd);
     static void RaiseDisplayedViewPriority();
+    static void EmitTreeStructureChangedForAll();
 
 public:
     // deleting function.
@@ -160,7 +165,7 @@ public:
     bool SetCurrent(Node *nd);
     bool SetCurrent(SharedView view);
 
-private:
+public:
     enum TreeBankAction {
         Te_NoAction,
 
@@ -185,6 +190,7 @@ private:
         Te_ToggleNotifier,
         Te_ToggleReceiver,
         Te_ToggleMenuBar,
+        Te_ToggleTreeBar,
         Te_ToggleFullScreen,
         Te_ToggleMaximized,
         Te_ToggleMinimized,
@@ -296,12 +302,13 @@ public:
     SharedView OpenInNewHistNodeBackward(QUrl            url, bool activate, HistNode *child = 0);
 
     QMenu *NodeMenu();
+    QMenu *DisplayMenu();
     QMenu *WindowMenu();
     QMenu *PageMenu();
     QMenu *ApplicationMenu(bool expanded = false);
 
-    QMenu *CreateGlobalContextMenu();
-    QMenu *CreateTitlebarMenu();
+    QMenu *GlobalContextMenu();
+
     void PurgeChildWidgetsIfNeed();
     void JoinChildWidgetsIfNeed();
 
@@ -346,6 +353,7 @@ protected:
         if(str == QStringLiteral("ToggleNotifier"))       return Te_ToggleNotifier;
         if(str == QStringLiteral("ToggleReceiver"))       return Te_ToggleReceiver;
         if(str == QStringLiteral("ToggleMenuBar"))        return Te_ToggleMenuBar;
+        if(str == QStringLiteral("ToggleTreeBar"))        return Te_ToggleTreeBar;
         if(str == QStringLiteral("ToggleFullScreen"))     return Te_ToggleFullScreen;
         if(str == QStringLiteral("ToggleMaximized"))      return Te_ToggleMaximized;
         if(str == QStringLiteral("ToggleMinimized"))      return Te_ToggleMinimized;
@@ -443,6 +451,7 @@ protected:
         if(action == Te_ToggleNotifier)       return QStringLiteral("ToggleNotifier");
         if(action == Te_ToggleReceiver)       return QStringLiteral("ToggleReceiver");
         if(action == Te_ToggleMenuBar)        return QStringLiteral("ToggleMenuBar");
+        if(action == Te_ToggleTreeBar)        return QStringLiteral("ToggleTreeBar");
         if(action == Te_ToggleFullScreen)     return QStringLiteral("ToggleFullScreen");
         if(action == Te_ToggleMaximized)      return QStringLiteral("ToggleMaximized");
         if(action == Te_ToggleMinimized)      return QStringLiteral("ToggleMinimized");
@@ -551,6 +560,7 @@ public slots:
     void ToggleNotifier();
     void ToggleReceiver();
     void ToggleMenuBar();
+    void ToggleTreeBar();
     void ToggleFullScreen();
     void ToggleMaximized();
     void ToggleMinimized();
@@ -636,7 +646,8 @@ private slots:
     void PageUpKey()   { PageUp();}
     void PageDownKey() { PageDown();}
 
-private:
+public:
+    void UpdateAction();
     bool TriggerAction(QString str);
     void TriggerAction(TreeBankAction a);
     QAction *Action(QString str);

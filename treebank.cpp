@@ -41,6 +41,7 @@
 #include "webenginepage.hpp"
 #include "gadgets.hpp"
 #include "mainwindow.hpp"
+#include "treebar.hpp"
 #include "localview.hpp"
 #include "jsobject.hpp"
 #include "dialog.hpp"
@@ -234,6 +235,9 @@ TreeBank::TreeBank(QWidget *parent)
     // gadgets become too slow when using reconnection.
     connect(m_Gadgets, &Gadgets::titleChanged,
             GetMainWindow(), &MainWindow::SetWindowTitle);
+
+    connect(this, &TreeBank::TreeStructureChanged,
+            m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
 
     ConnectToNotifier();
     ConnectToReceiver();
@@ -676,6 +680,9 @@ void TreeBank::LoadTree(){
         for(uint i = 0; i < static_cast<uint>(children.length()); i++){
             CollectViewDom(children.item(i).toElement(), root);
         }
+
+        if(root == m_ViewRoot)
+            EmitTreeStructureChangedForAll();
     }
     Node::SetBooting(false);
 }
@@ -1322,6 +1329,12 @@ void TreeBank::RaiseDisplayedViewPriority(){
     }
 }
 
+void TreeBank::EmitTreeStructureChangedForAll(){
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        emit win->GetTreeBank()->TreeStructureChanged();
+    }
+}
+
 // deleting function.
 // histnode : delete histnode(recursive) completely.
 // viewnode(not trash) : move to trash.
@@ -1351,6 +1364,7 @@ bool TreeBank::DeleteNode(NodeList list){
             deleted = MoveToTrash(nd->ToViewNode()) || deleted;
         }
         if(!deleted) return false;
+        EmitTreeStructureChangedForAll();
 
     } else if(sample->IsHistNode()){
         // delete completely.
@@ -1443,6 +1457,7 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
         if(nd->IsViewNode())
             ApplySpecificSettings(nd->ToViewNode(), dir->ToViewNode());
     }
+    EmitTreeStructureChangedForAll();
     return true;
 }
 
@@ -1468,6 +1483,7 @@ bool TreeBank::SetChildrenOrder(Node *parent, NodeList children){
                 ApplySpecificSettings(child->ToViewNode(), parent->ToViewNode());
         }
     }
+    EmitTreeStructureChangedForAll();
     return true;
 }
 
@@ -1663,6 +1679,7 @@ bool TreeBank::SetCurrent(Node *nd){
 
     AddToUpdateBox(m_CurrentView);
 
+    emit TreeStructureChanged();
     return true;
 }
 
@@ -2219,6 +2236,19 @@ QMenu *TreeBank::NodeMenu(){
     return menu;
 }
 
+QMenu *TreeBank::DisplayMenu(){
+    QMenu *menu = new QMenu(tr("Display"), this);
+    menu->setToolTipsVisible(true);
+
+    menu->addAction(Action(Te_ToggleNotifier));
+    menu->addAction(Action(Te_ToggleReceiver));
+    menu->addAction(Action(Te_ToggleMenuBar));
+    menu->addAction(Action(Te_ToggleTreeBar));
+    UpdateAction();
+
+    return menu;
+}
+
 QMenu *TreeBank::WindowMenu(){
     QMenu *menu = new QMenu(tr("Window"), this);
     menu->setToolTipsVisible(true);
@@ -2275,56 +2305,18 @@ QMenu *TreeBank::ApplicationMenu(bool expanded){
         menu->addAction(Action(Te_OpenUrlEditor));
         menu->addAction(Action(Te_OpenCommand));
         menu->addSeparator();
-        menu->addAction(Action(Te_ToggleMenuBar));
-        menu->addSeparator();
         menu->addAction(Action(Te_Quit));
     }
 
     return menu;
 }
 
-QMenu *TreeBank::CreateGlobalContextMenu(){
-    QMenu *menu = new QMenu(this);
-    menu->setToolTipsVisible(true);
-
-    menu->addAction(Action(Te_Load));
-    menu->addSeparator();
-    menu->addAction(Action(Te_Close));
-    menu->addAction(Action(Te_Restore));
-    menu->addSeparator();
-    menu->addAction(Action(Te_NextView));
-    menu->addAction(Action(Te_PrevView));
-    menu->addAction(Action(Te_NewWindow));
-    menu->addAction(Action(Te_CloseWindow));
-    menu->addAction(Action(Te_SwitchWindow));
-    menu->addSeparator();
-    menu->addAction(Action(Te_DisplayHistTree));
-    menu->addAction(Action(Te_DisplayViewTree));
-    menu->addAction(Action(Te_DisplayTrashTree));
-    menu->addAction(Action(Te_DisplayAccessKey));
-    menu->addSeparator();
-    menu->addAction(Action(Te_Import));
-    menu->addAction(Action(Te_Export));
-    menu->addAction(Action(Te_AboutVanilla));
-    menu->addAction(Action(Te_AboutQt));
-    menu->addSeparator();
-    menu->addAction(Action(Te_OpenQueryEditor));
-    menu->addAction(Action(Te_OpenUrlEditor));
-    menu->addAction(Action(Te_OpenTextSeeker));
-    menu->addAction(Action(Te_OpenCommand));
-    menu->addSeparator();
-    menu->addAction(Action(Te_ToggleMenuBar));
-    menu->addSeparator();
-    menu->addAction(Action(Te_Quit));
-
-    return menu;
-}
-
-QMenu *TreeBank::CreateTitlebarMenu(){
+QMenu *TreeBank::GlobalContextMenu(){
     QMenu *menu = new QMenu(this);
     menu->setToolTipsVisible(true);
 
     menu->addMenu(NodeMenu());
+    menu->addMenu(DisplayMenu());
     menu->addMenu(WindowMenu());
     menu->addMenu(PageMenu());
     menu->addMenu(ApplicationMenu(false));
@@ -2333,8 +2325,6 @@ QMenu *TreeBank::CreateTitlebarMenu(){
     menu->addAction(Action(Te_OpenQueryEditor));
     menu->addAction(Action(Te_OpenUrlEditor));
     menu->addAction(Action(Te_OpenCommand));
-    menu->addSeparator();
-    menu->addAction(Action(Te_ToggleMenuBar));
     menu->addSeparator();
     menu->addAction(Action(Te_Quit));
 
@@ -2433,7 +2423,7 @@ void TreeBank::mouseReleaseEvent(QMouseEvent *ev){
 
     // not decidable from 'ev'.
     //if(ev->button() == Qt::RightButton){
-    //    QMenu *menu = CreateGlobalContextMenu();
+    //    QMenu *menu = GlobalContextMenu();
     //    menu->exec(ev->globalPos());
     //    delete menu;
     //    ev->setAccepted(true);
@@ -2487,7 +2477,7 @@ void TreeBank::contextMenuEvent(QContextMenuEvent *ev){
     QGraphicsView::contextMenuEvent(ev);
     if(ev->isAccepted()) return;
 
-    QMenu *menu = CreateGlobalContextMenu();
+    QMenu *menu = GlobalContextMenu();
     menu->exec(ev->globalPos());
     delete menu;
     ev->setAccepted(true);
@@ -2645,6 +2635,7 @@ void TreeBank::ToggleNotifier(){
         if(m_Notifier->IsPurged())
             GetMainWindow()->SetFocus();
     }
+    UpdateAction();
 }
 
 void TreeBank::ToggleReceiver(){
@@ -2669,10 +2660,17 @@ void TreeBank::ToggleReceiver(){
 
         ConnectToReceiver();
     }
+    UpdateAction();
 }
 
 void TreeBank::ToggleMenuBar(){
     GetMainWindow()->ToggleMenuBar();
+    UpdateAction();
+}
+
+void TreeBank::ToggleTreeBar(){
+    GetMainWindow()->ToggleTreeBar();
+    UpdateAction();
 }
 
 void TreeBank::ToggleFullScreen(){
@@ -3366,6 +3364,13 @@ void TreeBank::OpenWithCustom(SharedView view){
     if(view) view->TriggerAction(Page::We_OpenWithCustom);
 }
 
+void TreeBank::UpdateAction(){
+    Action(Te_ToggleNotifier)->setChecked(m_Notifier);
+    Action(Te_ToggleReceiver)->setChecked(m_Receiver);
+    Action(Te_ToggleMenuBar)->setChecked(!GetMainWindow()->IsMenuBarEmpty());
+    Action(Te_ToggleTreeBar)->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
+}
+
 bool TreeBank::TriggerAction(QString str){
     if(IsValidAction(str))
         TriggerAction(StringToAction(str));
@@ -3406,7 +3411,23 @@ QAction *TreeBank::Action(TreeBankAction a){
     }
 
     QAction *action = m_ActionTable[a];
-    if(action) return action;
+    if(action){
+        switch(a){
+        case Te_ToggleNotifier:
+            action->setChecked(m_Notifier);
+            break;
+        case Te_ToggleReceiver:
+            action->setChecked(m_Receiver);
+            break;
+        case Te_ToggleMenuBar:
+            action->setChecked(!GetMainWindow()->IsMenuBarEmpty());
+            break;
+        case Te_ToggleTreeBar:
+            action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
+            break;
+        }
+        return action;
+    }
 
     m_ActionTable[a] = action = new QAction(this);
 
@@ -3462,6 +3483,7 @@ QAction *TreeBank::Action(TreeBankAction a){
         DEFINE_ACTION(ToggleNotifier,   tr("ToggleNotifier"));
         DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));
         DEFINE_ACTION(ToggleMenuBar,    tr("ToggleMenuBar"));
+        DEFINE_ACTION(ToggleTreeBar,    tr("ToggleTreeBar"));
         DEFINE_ACTION(ToggleFullScreen, tr("ToggleFullScreen"));
         DEFINE_ACTION(ToggleMaximized,  tr("ToggleMaximized"));
         DEFINE_ACTION(ToggleMinimized,  tr("ToggleMinimized"));
@@ -3538,6 +3560,24 @@ QAction *TreeBank::Action(TreeBankAction a){
 #undef  DEFINE_ACTION
     }
     switch(a){
+
+    case Te_ToggleNotifier:
+        action->setCheckable(true);
+        action->setText(tr("Notifier"));
+        break;
+    case Te_ToggleReceiver:
+        action->setCheckable(true);
+        action->setText(tr("Receiver"));
+        break;
+    case Te_ToggleMenuBar:
+        action->setCheckable(true);
+        action->setText(tr("MenuBar"));
+        break;
+    case Te_ToggleTreeBar:
+        action->setCheckable(true);
+        action->setText(tr("TreeBar"));
+        break;
+
     case Te_OpenWithIE:
         action->setIcon(Application::BrowserIcon_IE());
         break;
