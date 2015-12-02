@@ -20,6 +20,12 @@
 #include "application.hpp"
 #include "dialog.hpp"
 
+//[[WEV]]
+#if QT_VERSION >= 0x050600
+#  include <QWebEngineFullScreenRequest>
+#endif
+//[[/WEV]]
+
 class QMenu;
 class QObject;
 class QAction;
@@ -31,10 +37,6 @@ class MainWindow;
 class ViewNode;
 class HistNode;
 class WebElement;
-
-//[[WEV]]
-class QWebEngineFullScreenRequest;
-//[[/WEV]]
 
 typedef std::shared_ptr<WebElement> SharedWebElement;
 typedef QList<std::shared_ptr<WebElement>> SharedWebElementList;
@@ -148,7 +150,7 @@ public slots:
     void HandleAuthentication(const QUrl&, QAuthenticator*);
     void HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&);
 #if QT_VERSION >= 0x050600
-    void HandleFullScreen(const QWebEngineFullScreenRequest &request);
+    void HandleFullScreen(QWebEngineFullScreenRequest request);
     void HandleProcessTermination(RenderProcessTerminationStatus status, int code);
 #endif
     //[[/WEV]]

@@ -36,6 +36,10 @@ public:
     static bool DoubleClickToClose();
     static bool WheelClickToClose();
 
+    int GetVerticalNodeWidth();
+
+    void Adjust();
+
     QSize sizeHint() const DECL_OVERRIDE;
     QSize minimumSizeHint() const DECL_OVERRIDE;
 
@@ -48,6 +52,7 @@ protected:
     void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
     void resizeEvent(QResizeEvent *ev) DECL_OVERRIDE;
 
+    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
     void showEvent(QShowEvent *ev) DECL_OVERRIDE;
     void hideEvent(QHideEvent *ev) DECL_OVERRIDE;
     void enterEvent(QEvent *ev) DECL_OVERRIDE;
@@ -60,7 +65,10 @@ private:
     TreeBank *m_TreeBank;
     QGraphicsView *m_View;
     QGraphicsScene *m_Scene;
+    QWidget *m_ResizeGrip;
+    QSize m_OverrideSize;
     QList<LayerItem*> m_LayerList;
+    int m_AutoUpdateTimer;
 
     static bool m_EnableAnimation;
     static bool m_EnableCloseButton;
@@ -71,9 +79,10 @@ private:
 
 class LayerItem : public QGraphicsObject {
     Q_OBJECT
+    Q_PROPERTY(int scroll READ GetScroll WRITE SetScroll NOTIFY ScrollChanged)
 
 public:
-    LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent = 0);
+    LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd = 0, QGraphicsItem *parent = 0);
     ~LayerItem();
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE;
@@ -84,18 +93,29 @@ public:
     int GetNest();
     void SetNest(int);
 
-    int MaxOffset();
-    int MinOffset();
+    int MaxScroll();
+    int MinScroll();
 
-    int GetOffset();
-    void SetOffset(int);
-    void PlusOffset(int step);
-    void MinusOffset(int step);
+    int GetScroll();
+    void SetScroll(int scroll);
+    void ScrollDown(int step);
+    void ScrollUp(int step);
+    void AutoScrollDown();
+    void AutoScrollUp();
+    void AutoScrollStop();
+    void AutoScrollStopOrScrollDown(int step);
+    void AutoScrollStopOrScrollUp(int step);
+
+    void StartScrollDownTimer();
+    void StartScrollUpTimer();
+    void StopScrollDownTimer();
+    void StopScrollUpTimer();
 
     void OnResized();
     void OnScrolled();
 
-    QList<NodeItem*> &GetNodeItems(){ return m_NodeItems;}
+    void SetFocusedNode(NodeItem *item);
+    void CorrectOrder();
 
     Node *GetNode();
 
@@ -105,13 +125,18 @@ public:
 
     void TransferNodeItem(NodeItem *item, LayerItem *other);
 
+    QList<NodeItem*> &GetNodeItems();
     void AppendToNodeItems(NodeItem *item);
     void PrependToNodeItems(NodeItem *item);
     void RemoveFromNodeItems(NodeItem *item);
     void SwapWithNext(NodeItem *item);
     void SwapWithPrev(NodeItem *item);
 
+signals:
+    void ScrollChanged();
+
 protected:
+    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
     void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
@@ -125,12 +150,19 @@ private:
     TreeBank *m_TreeBank;
     TreeBar *m_TreeBar;
     Node *m_Node;
+    NodeItem *m_FocusedNode;
     int m_Nest;
-    int m_Offset;
+    int m_Scroll;
+    int m_ScrollDownTimer;
+    int m_ScrollUpTimer;
     QGraphicsItem *m_PrevScrollButton;
     QGraphicsItem *m_NextScrollButton;
     QList<NodeItem*> m_NodeItems;
     QGraphicsLineItem *m_Line;
+    QPropertyAnimation *m_ScrollAnimation;
+
+    // for empty directory.
+    Node *m_DummyNode;
 };
 
 class NodeItem : public QGraphicsObject {
@@ -152,6 +184,8 @@ public:
 
     LayerItem *Layer() const;
     Node *GetNode();
+
+    QPropertyAnimation *GetAnimation();
 
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
 

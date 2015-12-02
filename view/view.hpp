@@ -244,6 +244,7 @@ public:
     virtual void SetSource(const QByteArray&){}
     virtual void SetSource(const QString&){}
     virtual QString GetTitle(){ return QString();}
+    virtual QIcon GetIcon(){ return QIcon();}
 
     virtual bool TriggerAction(QString str, QVariant data = QVariant()){
         if(Page::IsValidAction(str))

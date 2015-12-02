@@ -706,6 +706,13 @@ void Page::UpDirectory(){
 }
 
 void Page::Close(){
+#if QT_VERSION >= 0x050600
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
+        if(page->ObscureDisplay()){
+            page->triggerAction(QWebEnginePage::ExitFullScreen);
+        }
+    }
+#endif
     View::SetSwitchingState(true);
     GetTB()->Close();
     View::SetSwitchingState(false);

@@ -3133,7 +3133,11 @@ ViewNode *TreeBank::MakeChildDirectory(ViewNode *vn){
     // make empty directory.
     m_TraverseMode = ViewMode;
     if(!vn) vn = m_ViewRoot;
-    if(vn) return vn->MakeChild();
+    if(vn){
+        ViewNode *child = vn->MakeChild();
+        EmitTreeStructureChangedForAll();
+        return child;
+    }
     return 0;
 }
 
@@ -3141,7 +3145,11 @@ ViewNode *TreeBank::MakeSiblingDirectory(ViewNode *vn){
     // make empty directory.
     m_TraverseMode = ViewMode;
     if(!vn) vn = m_ViewRoot;
-    if(vn) return vn->MakeSibling();
+    if(vn){
+        ViewNode *sibling = vn->MakeSibling();
+        EmitTreeStructureChangedForAll();
+        return sibling;
+    }
     return 0;
 }
 

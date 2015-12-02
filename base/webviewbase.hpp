@@ -230,6 +230,14 @@ public:
     QString GetTitle() DECL_OVERRIDE {
         return title();
     }
+    QIcon GetIcon() DECL_OVERRIDE {
+        //[[WEV]]
+        return m_Icon;
+        //[[/WEV]]
+        //[[!WEV]]
+        return icon();
+        //[[/!WEV]]
+    }
 
     void TriggerAction(QWebPageBase::WebAction a) DECL_OVERRIDE {
         if(page()) page()->TriggerAction(a);
@@ -532,10 +540,12 @@ public slots:
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
     void AssignInspector();
+    void UpdateIcon(const QUrl &url);
     //[[/WEV]]
 
 signals:
     //[[WEV]]
+    void iconChanged();
     void statusBarMessage(const QString&);
     //[[/WEV]]
     void statusBarMessage2(const QString&, const QString&);
@@ -544,9 +554,11 @@ signals:
 
 private:
     //[[WEV]]
+    QIcon m_Icon;
     QImage m_GrabedDisplayData;
     static QMap<View*, QUrl> m_InspectorTable;
     QWebViewBase *m_Inspector;
+    bool m_PreventScrollRestoration;
     //[[/WEV]]
 
 protected:
@@ -641,6 +653,7 @@ protected:
                k == Qt::Key_Home ||
                k == Qt::Key_End){
 
+                m_View->m_PreventScrollRestoration = true;
                 QTimer::singleShot(delay, m_View, SLOT(EmitScrollChangedIfNeed()));
             }
             return false;

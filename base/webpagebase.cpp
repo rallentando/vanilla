@@ -121,8 +121,8 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
     connect(this, SIGNAL(proxyAuthenticationRequired(const QUrl&, QAuthenticator*, const QString&)),
             this, SLOT(HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&)));
 #if QT_VERSION >= 0x050600
-    connect(this, SIGNAL(fullScreenRequested(const QWebEngineFullScreenRequest&)),
-            this, SLOT(HandleFullScreen(const QWebEngineFullScreenRequest&)));
+    connect(this, SIGNAL(fullScreenRequested(QWebEngineFullScreenRequest)),
+            this, SLOT(HandleFullScreen(QWebEngineFullScreenRequest)));
     connect(this, SIGNAL(renderProcessTerminated(RenderProcessTerminationStatus, int)),
             this, SLOT(HandleProcessTermination(RenderProcessTerminationStatus, int)));
 #endif
@@ -654,7 +654,7 @@ void WebPageBase::HandleProxyAuthentication(const QUrl &requestUrl,
 }
 
 #if QT_VERSION >= 0x050600
-void WebPageBase::HandleFullScreen(const QWebEngineFullScreenRequest &request){
+void WebPageBase::HandleFullScreen(QWebEngineFullScreenRequest request){
     if(TreeBank *tb = m_View->GetTreeBank()){
         bool fullScreen = request.toggleOn();
         tb->GetMainWindow()->SetFullScreen(fullScreen);

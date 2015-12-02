@@ -107,6 +107,10 @@ WebViewBase::WebViewBase(TreeBank *parent, QString id, QStringList set)
     //[[/!GWV]]
     //[[WEV]]
     m_Inspector = 0;
+    m_PreventScrollRestoration = false;
+    m_Icon = QIcon();
+    connect(this, SIGNAL(iconUrlChanged(const QUrl&)),
+            this, SLOT(UpdateIcon(const QUrl&)));
     //[[/WEV]]
 
     setAcceptDrops(true);
@@ -246,7 +250,10 @@ void WebViewBase::OnLoadStarted(){
     }
     emit statusBarMessage(tr("Started loading."));
     //[[WEV]]
+    m_PreventScrollRestoration = false;
     AssignInspector();
+    if(m_Icon.isNull())
+        UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
     //[[/WEV]]
 }
 
@@ -482,6 +489,7 @@ bool WebViewBase::RestoreScroll(){
         page()->mainFrame()->setScrollBarValue(Qt::Vertical,   GetHistNode()->GetScrollY());
     //[[/!WEV]]
     //[[WEV]]
+    if(m_PreventScrollRestoration) return false;
     QPoint pos = QPoint(GetHistNode()->GetScrollX(),
                         GetHistNode()->GetScrollY());
     page()->runJavaScript(SetScrollValuePointJsCode(pos));
@@ -577,6 +585,8 @@ void WebViewBase::AssignInspector(){
         (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
          req, NetworkController::ToVariable);
 
+    if(!item) return;
+
     connect(item, &DownloadItem::DownloadResult, [=](const QByteArray &result){
 
             foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
@@ -593,6 +603,24 @@ void WebViewBase::AssignInspector(){
                     m_InspectorTable[this] = debugger;
                     break;
                 }
+            }
+        });
+}
+
+void WebViewBase::UpdateIcon(const QUrl &url){
+    if(!page()) return;
+    QNetworkRequest req(url);
+    DownloadItem *item = NetworkController::Download
+        (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
+         req, NetworkController::ToVariable);
+
+    if(!item) return;
+
+    connect(item, &DownloadItem::DownloadResult, [=](const QByteArray &result){
+            QPixmap pixmap;
+            if(pixmap.loadFromData(result)){
+                m_Icon = QIcon(pixmap);
+                emit iconChanged();
             }
         });
 }
@@ -618,6 +646,9 @@ void WebViewBase::hideEvent(QHideEvent *ev){
 }
 
 void WebViewBase::showEvent(QShowEvent *ev){
+    //[[WEV]]
+    m_PreventScrollRestoration = false;
+    //[[/WEV]]
     QWebViewBase::showEvent(ev);
     RestoreViewState();
 }
@@ -1115,6 +1146,7 @@ void WebViewBase::wheelEvent(QWheelEventBase *ev){
         delete new_ev;
         //[[/WV]]
         //[[WEV]]
+        m_PreventScrollRestoration = true;
         ev->setAccepted(false);
         //[[/WEV]]
     }

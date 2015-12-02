@@ -896,15 +896,14 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     image_rect.setWidth (rect.width()  - (m_ThumbnailPaddingX * 2));
     image_rect.setHeight(rect.height() - (m_ThumbnailPaddingY * 2));
 
-    QRect title_rect = image_rect;
-    title_rect.setTop(image_rect.bottom() - m_ThumbnailTitleHeight);
-
     if(thumb->IsHovered()){
         image_rect = QRect(image_rect.topLeft() - QPoint(3, 3),
                            image_rect.size() + QSize(6, 6));
-        title_rect = QRect(title_rect.topLeft() + QPoint(-3, 3),
-                           title_rect.size() + QSize(6, 0));
     }
+
+    QRect title_rect = image_rect;
+    title_rect.setTop(image_rect.bottom() - m_ThumbnailTitleHeight);
+    title_rect.setRight(title_rect.right() - 1);
 
     if(!image.isNull()){
         QSize size = image.size();
