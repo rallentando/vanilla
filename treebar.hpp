@@ -4,6 +4,8 @@
 #include "switch.hpp"
 #include "const.hpp"
 
+#include "view.hpp"
+
 #include <QToolBar>
 #include <QGraphicsObject>
 
@@ -32,6 +34,7 @@ public:
 
     static bool EnableAnimation();
     static bool EnableCloseButton();
+    static bool EnableCloneButton();
     static bool ScrollToSwitchNode();
     static bool DoubleClickToClose();
     static bool WheelClickToClose();
@@ -45,8 +48,12 @@ public:
 
     QList<LayerItem*> &GetLayerList(){ return m_LayerList;}
 
+    QMenu *TreeBarMenu();
+
 public slots:
     void CollectNodes();
+    void OnUpdateRequested();
+    void OnCurrentChanged(SharedView from, SharedView to);
 
 protected:
     void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
@@ -72,6 +79,7 @@ private:
 
     static bool m_EnableAnimation;
     static bool m_EnableCloseButton;
+    static bool m_EnableCloneButton;
     static bool m_ScrollToSwitchNode;
     static bool m_DoubleClickToClose;
     static bool m_WheelClickToClose;
@@ -111,12 +119,13 @@ public:
     void StopScrollDownTimer();
     void StopScrollUpTimer();
 
-    void OnResized();
+    void Adjust();
     void OnScrolled();
 
     void SetFocusedNode(NodeItem *item);
     void CorrectOrder();
 
+    void SetNode(Node *nd);
     Node *GetNode();
 
     void SetLine(qreal x1, qreal y1, qreal x2, qreal y2);
@@ -131,6 +140,9 @@ public:
     void RemoveFromNodeItems(NodeItem *item);
     void SwapWithNext(NodeItem *item);
     void SwapWithPrev(NodeItem *item);
+
+    QMenu *LayerMenu();
+    QMenu *AddNodeMenu();
 
 signals:
     void ScrollChanged();
@@ -153,6 +165,7 @@ private:
     NodeItem *m_FocusedNode;
     int m_Nest;
     int m_Scroll;
+    int m_TargetScroll;
     int m_ScrollDownTimer;
     int m_ScrollUpTimer;
     QGraphicsItem *m_PrevScrollButton;
@@ -201,6 +214,8 @@ public:
     void MoveToNext();
     void MoveToPrev();
 
+    QMenu *NodeMenu();
+
 public slots:
     void ResetTargetPosition();
 
@@ -208,11 +223,13 @@ signals:
     void RectChanged();
 
 private:
-    enum CloseButtonState{
+    enum ButtonState{
         NotHovered,
-        Hovered,
-        Pressed,
-    } m_CloseButtonState;
+        CloseHovered,
+        ClosePressed,
+        CloneHovered,
+        ClonePressed,
+    } m_ButtonState;
 
     TreeBank *m_TreeBank;
     TreeBar *m_TreeBar;

@@ -196,22 +196,22 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->drawRect(rect);
     }
 
-    QRect image_rect = rect.toRect();
+    QRectF image_rect = rect;
     image_rect.translate(m_ThumbnailPaddingX, m_ThumbnailPaddingY);
     image_rect.setWidth (rect.width()  - (m_ThumbnailPaddingX * 2));
     image_rect.setHeight(rect.height() - (m_ThumbnailPaddingY * 2 + m_ThumbnailTitleHeight));
 
-    QRect title_rect = image_rect;
+    QRectF title_rect = image_rect;
     title_rect.moveTop(image_rect.bottom());
     title_rect.setHeight(m_ThumbnailTitleHeight);
 
     if(!image.isNull()){
-        QSize size = image.size();
+        QSizeF size = image.size();
         size.scale(image_rect.size(), Qt::KeepAspectRatio);
-        const int width_diff  = image_rect.width()  - size.width();
-        const int height_diff = image_rect.height() - size.height();
-        image_rect.translate(width_diff/2, height_diff/2);
-        painter->drawImage(image_rect, image, QRect(QPoint(), image.size()));
+        QPointF diff = QPointF(image_rect.width()  - size.width(),
+                               image_rect.height() - size.height());
+        painter->drawImage(QRectF(image_rect.topLeft() + diff / 2.0, size),
+                           image, QRectF(QPointF(), image.size()));
     } else if(thumb->GetNode()->IsDirectory()){
         static const QBrush b = QBrush(QColor(50, 100, 100, 150));
         painter->setPen(Qt::NoPen);
@@ -238,6 +238,9 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("NoImage"));
     }
 
+    title_rect = QRectF(title_rect.topLeft() + QPointF(2.0, 0.0),
+                        title_rect.size() + QSizeF(-5.0, -1.0));
+
     {
         static const QPen p = QPen(QColor(255,255,255,255));
         painter->setFont(m_ThumbnailTitleFont);
@@ -257,7 +260,13 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
             }
         } else if(thumb->GetNode()->IsDirectory()){
             title = QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first();
+        } else {
+            // some charactor is truncated.
+            title = QStringLiteral(" ") + title;
+            title_rect = QRectF(title_rect.topLeft() + QPointF(-2.0, 0.0),
+                                title_rect.size() + QSizeF(2.0, 0.0));
         }
+        painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, title);
     }
     painter->restore();
@@ -348,19 +357,6 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     title_rect.setLeft(bound.left() + title->GetNest() * 20 + 5);
     title_rect.intersected(port);
 
-    if(title_.isEmpty()){
-        const QUrl url = title->GetNode()->GetUrl();
-        if(url.isEmpty()){
-            if(title->GetNode()->IsDirectory()){
-                title_ = QStringLiteral("Directory");
-            } else {
-                title_ = QStringLiteral("No Title");
-            }
-        } else {
-            title_ = url.toString();
-        }
-    }
-
     {
         static const QPen p = QPen(QColor(255,255,255,255));
         painter->setFont(m_NodeTitleFont);
@@ -373,8 +369,25 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
             painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, prefix);
             title_rect.setLeft(title_rect.left() + 15);
         }
-        if(title->GetNode()->IsDirectory()){
+
+        if(title_.isEmpty()){
+            const QUrl url = title->GetNode()->GetUrl();
+            if(url.isEmpty()){
+                if(title->GetNode()->IsDirectory()){
+                    title_ = QStringLiteral("Directory");
+                } else {
+                    title_ = QStringLiteral("No Title");
+                }
+            } else {
+                title_ = url.toString();
+            }
+        } else if(title->GetNode()->IsDirectory()){
             title_ = QStringLiteral("Dir - ") + title_.split(QStringLiteral(";")).first();
+        } else {
+            // some charactor is truncated.
+            title_ = QStringLiteral(" ") + title_;
+            title_rect = QRectF(title_rect.topLeft() + QPointF(-3.0, 0.0),
+                                title_rect.size() + QSizeF(3.0, 0.0));
         }
         painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, title_);
     }
@@ -469,7 +482,7 @@ void GlassStyle::Render(SpotLight *light, QPainter *painter) const {
         pen.setColor(QColor(255, 255, 200, 30));
     }
 
-    painter->drawImage(QPoint(), image);
+    painter->drawImage(QPointF(), image);
 
     painter->setRenderHint(QPainter::Antialiasing, true);
 
@@ -528,21 +541,18 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
         painter->drawRect(notifier->boundingRect());
     }
 
-    const QRect image_rect =
-        QRect(QPoint(m_ThumbnailPaddingX,
-                     m_ThumbnailPaddingY),
-              DEFAULT_THUMBNAIL_SIZE);
+    const QRectF image_rect =
+        QRectF(QPointF(m_ThumbnailPaddingX,
+                       m_ThumbnailPaddingY),
+               QSizeF(DEFAULT_THUMBNAIL_SIZE));
 
     if(!image.isNull()){
-        QSize size = image.size();
+        QSizeF size = image.size();
         size.scale(image_rect.size(), Qt::KeepAspectRatio);
-        const int width_diff  = image_rect.width()  - size.width();
-        const int height_diff = image_rect.height() - size.height();
-        painter->drawImage(QRect(image_rect.topLeft()
-                                 + QPoint(width_diff/2, height_diff/2),
-                                 size),
-                           image,
-                           QRect(QPoint(), image.size()));
+        QPointF diff = QPointF(image_rect.width()  - size.width(),
+                               image_rect.height() - size.height());
+        painter->drawImage(QRectF(image_rect.topLeft() + diff / 2.0, size),
+                           image, QRectF(QPointF(), image.size()));
     } else if(notifier->GetNode()->IsDirectory()){
         static const QBrush b = QBrush(QColor(50, 100, 100, 150));
         painter->setPen(Qt::NoPen);
@@ -858,7 +868,7 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
 
     QRectF bound = thumb->boundingRect();
     QRectF rect = bound;
-    rect.setBottomRight(bound.bottomRight() - QPointF(1,1));
+    rect.setBottomRight(bound.bottomRight() - QPointF(1.0, 1.0));
 
     QImage image = thumb->GetNode()->GetImage();
     QString title = thumb->GetNode()->GetTitle();
@@ -891,27 +901,26 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     // selected : frame
     // loaded : none
 
-    QRect image_rect = rect.toRect();
+    QRectF image_rect = bound;
     image_rect.translate(m_ThumbnailPaddingX, m_ThumbnailPaddingY);
-    image_rect.setWidth (rect.width()  - (m_ThumbnailPaddingX * 2));
-    image_rect.setHeight(rect.height() - (m_ThumbnailPaddingY * 2));
+    image_rect.setWidth (bound.width()  - (m_ThumbnailPaddingX * 2.0));
+    image_rect.setHeight(bound.height() - (m_ThumbnailPaddingY * 2.0));
 
     if(thumb->IsHovered()){
-        image_rect = QRect(image_rect.topLeft() - QPoint(3, 3),
-                           image_rect.size() + QSize(6, 6));
+        image_rect = QRectF(image_rect.topLeft() - QPointF(3.0, 3.0),
+                            image_rect.size() + QSizeF(6.0, 6.0));
     }
 
-    QRect title_rect = image_rect;
+    QRectF title_rect = image_rect;
     title_rect.setTop(image_rect.bottom() - m_ThumbnailTitleHeight);
-    title_rect.setRight(title_rect.right() - 1);
 
     if(!image.isNull()){
-        QSize size = image.size();
+        QSizeF size = image.size();
         size.scale(image_rect.size(), Qt::KeepAspectRatio);
-        const int width_diff  = image_rect.width()  - size.width();
-        const int height_diff = image_rect.height() - size.height();
-        image_rect.translate(width_diff/2, height_diff/2);
-        painter->drawImage(image_rect, image, QRect(QPoint(), image.size()));
+        QPointF diff = QPointF(image_rect.width()  - size.width(),
+                               image_rect.height() - size.height());
+        painter->drawImage(QRectF(image_rect.topLeft() + diff / 2.0, size),
+                           image, QRectF(QPointF(), image.size()));
     } else if(thumb->GetNode()->IsDirectory()){
         static const QBrush b = QBrush(QColor(200, 255, 200, 255));
         painter->setPen(Qt::NoPen);
@@ -923,7 +932,7 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
-        QRect image_rect_ = image_rect;
+        QRectF image_rect_ = image_rect;
         image_rect_.setBottom(title_rect.center().y());
         painter->drawText(image_rect_, Qt::AlignCenter, QStringLiteral("Directory"));
     } else {
@@ -937,7 +946,7 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
-        QRect image_rect_ = image_rect;
+        QRectF image_rect_ = image_rect;
         image_rect_.setBottom(title_rect.center().y());
         painter->drawText(image_rect_, Qt::AlignCenter, QStringLiteral("NoImage"));
     }
@@ -946,11 +955,12 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         static const QBrush b = QBrush(QColor(255,255,255,200));
         painter->setPen(Qt::NoPen);
         painter->setBrush(b);
+        painter->setRenderHint(QPainter::Antialiasing, false);
         painter->drawRect(title_rect);
     }
 
-    title_rect = QRect(title_rect.topLeft() + QPoint(2,0),
-                       title_rect.size() - QSize(4,0));
+    title_rect = QRectF(title_rect.topLeft() + QPointF(2.0, 0.0),
+                        title_rect.size() + QSizeF(-5.0, -1.0));
 
     {
         static const QPen p = QPen(QColor(100,100,100,255));
@@ -971,7 +981,13 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
             }
         } else if(thumb->GetNode()->IsDirectory()){
             title = QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first();
+        } else {
+            // some charactor is truncated.
+            title = QStringLiteral(" ") + title;
+            title_rect = QRectF(title_rect.topLeft() + QPointF(-2.0, 0.0),
+                                title_rect.size() + QSizeF(2.0, 0.0));
         }
+        painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, title);
     }
 
@@ -979,13 +995,11 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     if(thumb->isSelected()){
         painter->setPen(QColor(100,100,255,255));
         painter->setBrush(QColor(100,100,255,50));
-        painter->drawRect(QRect(image_rect.topLeft(),
-                                image_rect.size()-QSize(1,1)));
+        painter->drawRect(image_rect);
     } else if(thumb->IsPrimary()){
         painter->setPen(QColor(100,255,255,255));
         painter->setBrush(Qt::NoBrush);
-        painter->drawRect(QRect(image_rect.topLeft(),
-                                image_rect.size()-QSize(1,1)));
+        painter->drawRect(image_rect);
     }
     painter->restore();
 }

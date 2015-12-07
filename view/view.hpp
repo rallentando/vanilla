@@ -1098,6 +1098,7 @@ protected:
 
     static bool m_ActivateNewViewDefault;
     static bool m_NavigationBySpaceKey;
+    static bool m_EnableDestinationInferrer;
     static bool m_EnableLoadHack;
     static bool m_EnableDragHack;
     // for view instance specific settings.

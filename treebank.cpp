@@ -1335,6 +1335,10 @@ void TreeBank::EmitTreeStructureChangedForAll(){
     }
 }
 
+void TreeBank::ConnectForUpdateForAll(){
+    // not yet implemented.
+}
+
 // deleting function.
 // histnode : delete histnode(recursive) completely.
 // viewnode(not trash) : move to trash.
@@ -1644,10 +1648,9 @@ bool TreeBank::SetCurrent(Node *nd){
             m_CurrentView->SetMaster(prev);
             prev->SetSlave(m_CurrentView);
 #ifdef QTWEBKIT
-            if(!qobject_cast<GraphicsWebView*>(prev->base())){
-                prev->hide();
-            }
+            if(!qobject_cast<GraphicsWebView*>(prev->base()))
 #endif
+                prev->hide();
         }
         m_CurrentView->raise();
 
@@ -3571,18 +3574,22 @@ QAction *TreeBank::Action(TreeBankAction a){
 
     case Te_ToggleNotifier:
         action->setCheckable(true);
+        action->setChecked(m_Notifier);
         action->setText(tr("Notifier"));
         break;
     case Te_ToggleReceiver:
         action->setCheckable(true);
+        action->setChecked(m_Receiver);
         action->setText(tr("Receiver"));
         break;
     case Te_ToggleMenuBar:
         action->setCheckable(true);
+        action->setChecked(!GetMainWindow()->IsMenuBarEmpty());
         action->setText(tr("MenuBar"));
         break;
     case Te_ToggleTreeBar:
         action->setCheckable(true);
+        action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
         action->setText(tr("TreeBar"));
         break;
 

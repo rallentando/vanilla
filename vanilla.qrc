@@ -3,6 +3,7 @@
     <file>gen/quickwebview.qml</file>
     <file>gen/quickwebengineview.qml</file>
     <file>resources/treebar/close.png</file>
+    <file>resources/treebar/clone.png</file>
     <file>resources/treebar/up.png</file>
     <file>resources/treebar/down.png</file>
     <file>resources/treebar/left.png</file>

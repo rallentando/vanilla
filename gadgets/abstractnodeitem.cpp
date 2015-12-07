@@ -145,7 +145,7 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
         SetSelectionRange();
     } else {
         ClearOtherSectionSelection();
-        m_TableView->ClearScrollControllerSelection();
+        m_TableView->ClearScrollIndicatorSelection();
         QGraphicsRectItem::mousePressEvent(ev);
     }
     ev->setAccepted(true);
@@ -205,7 +205,7 @@ void AbstractNodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     }
 
     ClearOtherSectionSelection();
-    m_TableView->ClearScrollControllerSelection();
+    m_TableView->ClearScrollIndicatorSelection();
 
     QList<QRectF> list;
 

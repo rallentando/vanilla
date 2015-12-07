@@ -407,21 +407,14 @@ void Receiver::SetString(QString str){
         base.setQuery(param);
         emit SuggestRequest(base);
     }
-    if(m_Mode == Command && (str.startsWith(QStringLiteral("set")) ||
-                             str.startsWith(QStringLiteral("unset")))){
+    QStringList list = str.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
+    if(m_Mode == Command &&
+       QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
         QSettings *settings = Application::GlobalSettings();
-        QStringList list = str.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
         switch (list.length()){
-        case 1:{
-            if(str != QStringLiteral("set") && str != QStringLiteral("unset")) break;
-
-            QStringList result;
-            foreach(QString key, settings->allKeys()){
-                result << str + QStringLiteral(" ") + key;
-            }
-            SetSuggest(result);
-            break;
-        }
+        case 1:
+            // fall through.
+            list << QString();
         case 2:{
             QStringList result;
             QStringList path = list[1].split(QStringLiteral("/"));
@@ -504,22 +497,13 @@ void Receiver::SuitableAction(){
     case Command:{
         if(!m_SuggestStrings.isEmpty() && m_CurrentSuggestIndex != -1){
             QString key = m_SuggestStrings[m_CurrentSuggestIndex];
-            if(key.startsWith(QStringLiteral("set "))){
-                key = key.mid(4).trimmed();
-                QSettings *settings = Application::GlobalSettings();
+            QStringList list = key.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
 
-                if(settings->value(key).toString().isEmpty())
-                    m_LineEdit->setText(QStringLiteral("set ") + key);
-                else
-                    m_LineEdit->setText(QStringLiteral("set ") + key + QStringLiteral(" ") + settings->value(key).toString());
-            } else if(key.startsWith(QStringLiteral("unset "))){
-                key = key.mid(6).trimmed();
+            if(QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
                 QSettings *settings = Application::GlobalSettings();
-
-                if(settings->value(key).toString().isEmpty())
-                    m_LineEdit->setText(QStringLiteral("unset ") + key);
-                else
-                    m_LineEdit->setText(QStringLiteral("unset ") + key + QStringLiteral(" ") + settings->value(key).toString());
+                if(!settings->value(list[1]).toString().isEmpty())
+                    list << settings->value(list[1]).toString();
+                m_LineEdit->setText(list.join(" "));
             }
         } else {
             ReceiveCommand(m_LineString);
@@ -990,26 +974,14 @@ void Receiver::mousePressEvent(QMouseEvent *ev){
     }
     if(m_Mode == Command){
         if(!m_SuggestStrings.isEmpty() && m_CurrentSuggestIndex != -1){
-            // segv...
-            //m_LineEdit->setText(m_SuggestStrings[m_CurrentSuggestIndex]);
-
             QString key = m_SuggestStrings[m_CurrentSuggestIndex];
-            if(key.startsWith(QStringLiteral("set "))){
-                key = key.mid(4).trimmed();
-                QSettings *settings = Application::GlobalSettings();
+            QStringList list = key.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
 
-                if(settings->value(key).toString().isEmpty())
-                    m_LineEdit->setText(QStringLiteral("set ") + key);
-                else
-                    m_LineEdit->setText(QStringLiteral("set ") + key + QStringLiteral(" ") + settings->value(key).toString());
-            } else if(key.startsWith(QStringLiteral("unset "))){
-                key = key.mid(6).trimmed();
+            if(QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
                 QSettings *settings = Application::GlobalSettings();
-
-                if(settings->value(key).toString().isEmpty())
-                    m_LineEdit->setText(QStringLiteral("unset ") + key);
-                else
-                    m_LineEdit->setText(QStringLiteral("unset ") + key + QStringLiteral(" ") + settings->value(key).toString());
+                if(!settings->value(list[1]).toString().isEmpty())
+                    list << settings->value(list[1]).toString();
+                m_LineEdit->setText(list.join(" "));
             } else {
                 m_LineEdit->setText(key);
             }
@@ -1026,16 +998,17 @@ void Receiver::mouseReleaseEvent(QMouseEvent *ev){
 void Receiver::mouseMoveEvent(QMouseEvent *ev){
     if(m_Mode == Query){
         if(!m_SuggestStrings.isEmpty()){
-            m_CurrentSuggestIndex = m_SuggestStrings.length() - ev->pos().y()/SUGGEST_HEIGHT - 1;
+            m_CurrentSuggestIndex = m_SuggestStrings.length() - ev->pos().y() / SUGGEST_HEIGHT - 1;
             if(m_CurrentSuggestIndex >= m_SuggestStrings.length())
                 m_CurrentSuggestIndex = -1;
             repaint();
         }
     }
-    if(m_Mode == Command && (m_LineString.startsWith(QStringLiteral("set")) ||
-                             m_LineString.startsWith(QStringLiteral("unset")))){
+    QStringList list = m_LineString.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
+    if(m_Mode == Command &&
+       QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
         if(!m_SuggestStrings.isEmpty()){
-            m_CurrentSuggestIndex = m_SuggestStrings.length() - ev->pos().y()/SUGGEST_HEIGHT - 1;
+            m_CurrentSuggestIndex = m_SuggestStrings.length() - ev->pos().y() / SUGGEST_HEIGHT - 1;
             if(m_CurrentSuggestIndex >= m_SuggestStrings.length())
                 m_CurrentSuggestIndex = -1;
             repaint();

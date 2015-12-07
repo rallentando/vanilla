@@ -77,7 +77,7 @@ public:
 
 signals:
     void TreeStructureChanged();
-    void NodeAttributeChanged(Node *nd, QVariant before, QVariant after);
+    void CurrentChanged(ViewNode *vn);
 
 private:
     void ConnectToNotifier();
@@ -150,6 +150,7 @@ private:
     void ClearCache(Node *nd);
     static void RaiseDisplayedViewPriority();
     static void EmitTreeStructureChangedForAll();
+    static void ConnectForUpdateForAll();
 
 public:
     // deleting function.

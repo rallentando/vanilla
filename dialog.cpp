@@ -45,7 +45,7 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     QEventLoop loop;
 
     QVBoxLayout *vlayout = new QVBoxLayout();
-    vlayout->setContentsMargins(10, 5, 10, 10);
+    vlayout->setContentsMargins(10, 10, 10, 10);
 
     QLabel *titleLabel = new QLabel(m_Title, this);
     titleLabel->setStyleSheet(DIALOG_TITLE_STYLE_SHEET);
@@ -315,7 +315,7 @@ void ModalDialog::Authentication(QAuthenticator *authenticator){
     ModalDialog *dialog = new ModalDialog();
     QWidget *widget = new QWidget();
     QGridLayout *layout = new QGridLayout();
-    layout->setContentsMargins(5, 2, 5, 3);
+    layout->setContentsMargins(5, 3, 5, 3);
     QLabel *userNameLabel = new QLabel(tr("UserName:"), dialog);
     userNameLabel->setStyleSheet(DIALOG_TEXT_STYLE_SHEET);
     layout->addWidget(userNameLabel, 0, 0);

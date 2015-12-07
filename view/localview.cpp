@@ -106,8 +106,10 @@ void LocalView::Load(const QUrl &url){
         nd->Delete();
     }
     m_ParentNode->ClearChildren();
+    // 'LocalNode::SetUrl' sets m_Title.
     m_ParentNode->SetUrl(directory);
-    m_ParentNode->SetTitle(path);
+    // don't call 'LocalNode::SetTitle' unless renaming.
+    //m_ParentNode->SetTitle(path);
 
     RegisterNodes(directory);
 
@@ -129,6 +131,15 @@ void LocalView::Load(const QUrl &url){
     } else {
         m_DummyLocalNode->SetParent(m_ParentNode);
         CollectNodes(m_DummyLocalNode);
+    }
+
+    if(url.toLocalFile() != QStringLiteral("/")){
+        m_UpDirectoryButton->SetHovered(false);
+        m_UpDirectoryButton->setEnabled(true);
+        m_UpDirectoryButton->setVisible(true);
+    } else {
+        m_UpDirectoryButton->setEnabled(false);
+        m_UpDirectoryButton->setVisible(false);
     }
 
     emit urlChanged(url);
@@ -295,8 +306,10 @@ void LocalView::RegisterNodes(const QUrl &url){
             QDir rootdir = QDir(rootpath);
             if(rootdir.exists() && rootdir.isReadable()){
                 LocalNode *nd = new LocalNode();
+                // 'LocalNode::SetUrl' sets m_Title.
                 nd->SetUrl(QUrl::fromLocalFile(rootpath));
-                nd->SetTitle(rootpath);
+                // don't call 'LocalNode::SetTitle' unless renaming.
+                //nd->SetTitle(rootpath);
                 nd->SetParent(m_ParentNode);
                 m_ParentNode->AppendChild(nd);
             }
@@ -315,8 +328,10 @@ void LocalView::RegisterNodes(const QUrl &url){
             LocalNode *nd = new LocalNode();
             QString filepath = path.endsWith(QStringLiteral("/")) ?
                 path + file : path + QStringLiteral("/") + file;
+            // 'LocalNode::SetUrl' sets m_Title.
             nd->SetUrl(QUrl::fromLocalFile(filepath));
-            nd->SetTitle(file);
+            // don't call 'LocalNode::SetTitle' unless renaming.
+            //nd->SetTitle(file);
             nd->SetParent(m_ParentNode);
             m_ParentNode->AppendChild(nd);
         }
@@ -341,6 +356,8 @@ void LocalView::Deactivate(){
             if(GetThis().lock() == master->GetSlave().lock())
                 master->SetSlave(WeakView());
             SetMaster(WeakView());
+
+            master->OnAfterFinishingDisplayGadgets();
         }
     }
 }
@@ -1325,7 +1342,7 @@ bool LocalView::SelectMediaItem(int index, std::function<void()> defaultAction){
 
     if(!m_PixmapItem->pixmap().isNull() ||
        !m_MediaPlayer->media().isNull()){
-        m_ScrollController->setSelected(false);
+        m_ScrollIndicator->setSelected(false);
         GraphicsTableView::SetScroll(index);
         SwapMediaItem(m_CurrentOffsetValue);
         result = true;
@@ -1510,7 +1527,7 @@ bool LocalView::ThumbList_ZoomOut(){
 
 void LocalView::OpenNode(Node *nd){
     if(IsSupported(nd->GetUrl())){
-        m_ScrollController->setSelected(false);
+        m_ScrollIndicator->setSelected(false);
         GraphicsTableView::SetScroll(m_HoveredItemIndex);
         SwapMediaItem(m_CurrentOffsetValue);
     } else if(nd->IsDirectory()){

@@ -23,7 +23,7 @@ class QMenu;
 class TreeBank;
 
 class SpotLight;
-class ScrollController;
+class ScrollIndicator;
 class InPlaceNotifier;
 class UpDirectoryButton;
 
@@ -143,7 +143,7 @@ public:
 
     void ClearThumbnailSelection();
     void ClearNodeTitleSelection();
-    void ClearScrollControllerSelection();
+    void ClearScrollIndicatorSelection();
 
     void ResizeNotify(QSize size);
     virtual void Resize(QSizeF size);
@@ -387,7 +387,7 @@ protected:
     int m_PrimaryItemIndex;
 
     // scroll controller.
-    ScrollController *m_ScrollController;
+    ScrollIndicator *m_ScrollIndicator;
 
     // in place notifier.
     InPlaceNotifier *m_InPlaceNotifier;
@@ -479,7 +479,7 @@ protected:
     }
 
     friend class SpotLight;
-    friend class ScrollController;
+    friend class ScrollIndicator;
     friend class GadgetsStyle;
     friend class GlassStyle;
     friend class FlatStyle;
@@ -504,11 +504,11 @@ public:
     void SetIndex(int index){ m_Index = index;}
 };
 
-class ScrollController : public QGraphicsRectItem {
+class ScrollIndicator : public QGraphicsRectItem {
 
 public:
-    ScrollController(QGraphicsItem *parent = 0);
-    ~ScrollController();
+    ScrollIndicator(QGraphicsItem *parent = 0);
+    ~ScrollIndicator();
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
 

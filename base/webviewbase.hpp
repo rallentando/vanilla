@@ -635,6 +635,21 @@ protected:
                Application::IsFunctionKey(ke)){
                 return m_View->TriggerKeyEvent(ke);
             }
+
+            int k = ke->key();
+            if(!m_View->m_PreventScrollRestoration &&
+               (k == Qt::Key_Space ||
+                k == Qt::Key_Up ||
+                k == Qt::Key_Down ||
+                k == Qt::Key_Right ||
+                k == Qt::Key_Left ||
+                k == Qt::Key_PageUp ||
+                k == Qt::Key_PageDown ||
+                k == Qt::Key_Home ||
+                k == Qt::Key_End)){
+
+                m_View->m_PreventScrollRestoration = true;
+            }
             return false;
         }
         case QEvent::KeyRelease:{
@@ -653,7 +668,6 @@ protected:
                k == Qt::Key_Home ||
                k == Qt::Key_End){
 
-                m_View->m_PreventScrollRestoration = true;
                 QTimer::singleShot(delay, m_View, SLOT(EmitScrollChangedIfNeed()));
             }
             return false;

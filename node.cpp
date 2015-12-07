@@ -824,7 +824,12 @@ LocalNode::LocalNode()
 LocalNode::~LocalNode(){}
 
 bool LocalNode::IsRoot(){
-    return m_Url.toString().endsWith(QStringLiteral(":/")) || m_Url.toString() == QStringLiteral("file:///");
+#ifdef Q_OS_WIN
+    return m_Url.toString().endsWith(QStringLiteral(":/"))
+        || m_Url.toString() == QStringLiteral("file:///");
+#else
+    return m_Url.toString() == QStringLiteral("file:///");
+#endif
 }
 
 bool LocalNode::IsDirectory(){
@@ -861,7 +866,6 @@ void LocalNode::SetTitle(const QString &title){
 #else
         Q_ASSERT(m_Title == name);
 #endif
-
         list << title;
         QString newPath = list.join(QStringLiteral("/"));
 
@@ -878,6 +882,19 @@ QUrl LocalNode::GetUrl(){
 
 void LocalNode::SetUrl(const QUrl &u){
     m_Url = u;
+    QString path = u.toLocalFile();
+#ifdef Q_OS_WIN
+    if(path.endsWith(QStringLiteral(":/"))){
+        m_Title = path.right(3);
+    } else
+#endif
+    if(path.endsWith(QStringLiteral("/"))){
+        QStringList list = path.split(QStringLiteral("/"));
+        list.removeLast();
+        m_Title = list.last() + QStringLiteral("/");
+    } else {
+        m_Title = path.split(QStringLiteral("/")).last();
+    }
 }
 
 QDateTime LocalNode::GetCreateDate(){

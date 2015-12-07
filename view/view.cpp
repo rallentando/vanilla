@@ -28,6 +28,7 @@
 #include "jsobject.hpp"
 #include "dialog.hpp"
 
+bool View::m_EnableDestinationInferrer = false;
 bool View::m_EnableLoadHack = false;
 bool View::m_EnableDragHack = false;
 
@@ -389,7 +390,7 @@ void View::GoForwardTo(QUrl target){
 }
 
 void View::GoBackToInferedUrl(){
-    if(!m_EnableLoadHackLocal) return;
+    if(!m_EnableDestinationInferrer || !m_EnableLoadHackLocal) return;
 
     CallWithFoundElements(Page::RelIsPrev, [this](SharedWebElementList prevs){
 
@@ -529,6 +530,7 @@ void View::GoBackToInferedUrl(){
 }
 
 void View::GoForwardToInferedUrl(){
+    if(!m_EnableDestinationInferrer) return;
 
     CallWithFoundElements
         (Page::RelIsNext,
@@ -923,6 +925,7 @@ void View::LoadSettings(){
 
     settings->beginGroup(QStringLiteral("webview"));{
         m_GestureMode          = settings->value(QStringLiteral("@GestureMode"),           4).value<int>();
+        m_EnableDestinationInferrer = settings->value(QStringLiteral("@EnableDestinationInferrer"), false).value<bool>();
         m_EnableLoadHack       = settings->value(QStringLiteral("@EnableLoadHack"),    false).value<bool>()
             ||                   settings->value(QStringLiteral("@EnableHistNode"),    false).value<bool>();
         m_EnableDragHack       = settings->value(QStringLiteral("@EnableDragHack"),    false).value<bool>()
@@ -1368,6 +1371,7 @@ void View::SaveSettings(){
 
     settings->beginGroup(QStringLiteral("webview"));{
         settings->setValue(QStringLiteral("@GestureMode"),          m_GestureMode);
+        settings->setValue(QStringLiteral("@EnableDestinationInferrer"), m_EnableDestinationInferrer);
         settings->setValue(QStringLiteral("@EnableHistNode"),       m_EnableLoadHack);
         settings->setValue(QStringLiteral("@EnableDragGesture"),    m_EnableDragHack);
         settings->setValue(QStringLiteral("@ActivateNewViewDefault"), m_ActivateNewViewDefault);

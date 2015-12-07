@@ -5,6 +5,7 @@
 
 #include "treebank.hpp"
 #include "gadgets.hpp"
+#include "webengineview.hpp"
 
 #include <QPainter>
 #include <QGraphicsView>
@@ -55,25 +56,24 @@
 
   close button.
 
-  resizable(when vertical).
+  clone button.
 
-  TODO: auto hide.
+  resizable(when vertical).
 
   TODO: save scroll or refreshment without delete.
     signal candidate.
-      * NodeTitleChanged.
+      * TitleChanged.
         * View::titleChanged.
-      * NodeAdded.
-        * TreeBank::CreateView.
-      * NodeDeleted.
-        * TreeBank::DeleteNode.
+      * IconChanged.
+        * View::iconChanged.
       * CurrentChanged.
         * TreeBank::SetCurrent.
-      * ChildrenOrderChanged(moved also).
-        * TreeBank::SetChildrenOrder.
       * TreeStructureChanged.
         * Application::Import.
         * TreeBank::LoadTree.
+        * TreeBank::SetChildrenOrder.
+        * TreeBank::CreateView.
+        * TreeBank::DeleteNode.
 
   ZValue
    0.0 : layer item layer.
@@ -102,11 +102,26 @@
 
 bool TreeBar::m_EnableAnimation    = false;
 bool TreeBar::m_EnableCloseButton  = false;
+bool TreeBar::m_EnableCloneButton  = false;
 bool TreeBar::m_ScrollToSwitchNode = false;
 bool TreeBar::m_DoubleClickToClose = false;
 bool TreeBar::m_WheelClickToClose  = false;
 
 namespace {
+
+    class GraphicsView : public QGraphicsView {
+    public:
+        GraphicsView(QGraphicsScene *scene, QWidget *parent = 0)
+            : QGraphicsView(scene, parent)
+        {
+        }
+        QSize sizeHint() const DECL_OVERRIDE {
+            return QSize(1, 1);
+        }
+        QSize minimumSizeHint() const DECL_OVERRIDE {
+            return QSize(1, 1);
+        }
+    };
 
     class ResizeGrip : public QWidget {
     public:
@@ -170,15 +185,13 @@ namespace {
 
     protected:
         virtual void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+            Q_UNUSED(ev);
             m_ButtonState = Pressed;
-            if(ev->button() == Qt::RightButton)
-                QGraphicsItem::mousePressEvent(ev);
             update();
         }
         virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+            Q_UNUSED(ev);
             m_ButtonState = Hovered;
-            if(ev->button() == Qt::RightButton)
-                QGraphicsItem::mouseReleaseEvent(ev);
             update();
         }
         virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
@@ -270,9 +283,15 @@ namespace {
         void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
 
-            Gadgets *g = m_TreeBank->GetGadgets();
-            if(g && g->IsActive()) g->Deactivate();
-            else m_TreeBank->DisplayViewTree();
+            if(ev->button() == Qt::LeftButton){
+                Gadgets *g = m_TreeBank->GetGadgets();
+                if(g && g->IsActive()) g->Deactivate();
+                else m_TreeBank->DisplayViewTree();
+            } else if(ev->button() == Qt::RightButton){
+                QMenu *menu = m_TreeBar->TreeBarMenu();
+                menu->exec(ev->screenPos());
+                delete menu;
+            }
         }
     };
 
@@ -325,11 +344,6 @@ namespace {
                        plus.size()),
                  plus, QRect(QPoint(), plus.size()));
         }
-    private:
-        ViewNode *GetViewNode(){
-            LayerItem *layer = static_cast<LayerItem*>(parentItem());
-            return layer->GetNode() ? layer->GetNode()->ToViewNode() : 0;
-        }
     protected:
         void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
             GraphicsButton::mousePressEvent(ev);
@@ -337,89 +351,15 @@ namespace {
         void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
 
-            QMenu *menu = new QMenu(m_TreeBar);
-
-            TreeBank *tb = m_TreeBank;
-            ViewNode *vn = GetViewNode();
-
-            QAction *newViewNode = new QAction(menu);
-            newViewNode->setText(QObject::tr("NewViewNode"));
-            newViewNode->connect(newViewNode, &QAction::triggered,
-                                 [tb, vn](){
-                                     if(vn) tb->NewViewNode(vn);
-                                     else tb->OpenOnSuitableNode(QUrl("about:blank"), true);
-                                 });
-            menu->addAction(newViewNode);
-
-            QAction *cloneViewNode = new QAction(menu);
-            cloneViewNode->setText(QObject::tr("CloneViewNode"));
-            cloneViewNode->connect(cloneViewNode, &QAction::triggered,
-                                   [tb, vn](){
-                                       if(vn) tb->CloneViewNode(vn);
-                                       else tb->OpenOnSuitableNode(QUrl("about:blank"), true);
-                                   });
-            menu->addAction(cloneViewNode);
-
-            NodeList trash = TreeBank::GetTrashRoot()->GetChildren();
-
-            QMenu *restoreMenu = menu;
-            int max = 20;
-            int i = 0;
-
-            if(trash.length())
-                restoreMenu->addSeparator();
-
-            for(int j = 0; j < 10; j++, max+=20){
-                for(; i < qMin(max, trash.length()); i++){
-                    ViewNode *t = trash[i]->ToViewNode();
-                    QAction *restore = new QAction(restoreMenu);
-                    QString title = t->GetTitle();
-
-                    if(title.isEmpty()){
-                        QUrl url = t->GetUrl();
-                        if(url.isEmpty()){
-                            if(t->IsDirectory()){
-                                title = QStringLiteral("Directory");
-                            } else {
-                                title = QStringLiteral("No Title");
-                            }
-                        } else {
-                            title = url.toString();
-                        }
-                    } else if(t->IsDirectory()){
-                        title = title.split(QStringLiteral(";")).first();
-                    }
-
-                    if(title.length() > 25)
-                        title = title.left(25) + QStringLiteral("...");
-                    restore->setText(title);
-                    restore->connect
-                        (restore, &QAction::triggered,
-                         [t, vn, tb](){
-                            // both function emits TreeStructureChanged for current.
-                            if(vn)
-                                tb->MoveNode(t, vn->GetParent(), vn->SiblingsIndexOf(vn) + 1);
-                            else
-                                tb->MoveNode(t, TreeBank::GetViewRoot());
-                            tb->SetCurrent(t);
-                        });
-                    restoreMenu->addAction(restore);
-                }
-                if(i >= trash.length()) break;
-                if(j < 9){
-                    QMenu *child = new QMenu(QObject::tr("More"), restoreMenu);
-                    restoreMenu->addMenu(child);
-                    restoreMenu = child;
-                }
+            if(ev->button() == Qt::LeftButton){
+                QMenu *menu = static_cast<LayerItem*>(parentItem())->AddNodeMenu();
+                menu->exec(ev->screenPos());
+                delete menu;
+            } else if(ev->button() == Qt::RightButton){
+                QMenu *menu = static_cast<LayerItem*>(parentItem())->LayerMenu();
+                menu->exec(ev->screenPos());
+                delete menu;
             }
-            QAction *displayTrashTree = new QAction(restoreMenu);
-            displayTrashTree->setText(QObject::tr("DisplayTrashTree"));
-            displayTrashTree->connect(displayTrashTree, &QAction::triggered,
-                                      [tb](){ tb->DisplayTrashTree();});
-            restoreMenu->addAction(displayTrashTree);
-
-            menu->exec(ev->screenPos());
-            delete menu;
         }
     };
 
@@ -667,7 +607,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     m_TreeBank = tb;
     m_Scene = new QGraphicsScene(this);
     m_Scene->setSceneRect(QRect(0, 0, width(), height()));
-    m_View = new QGraphicsView(m_Scene, this);
+    m_View = new GraphicsView(m_Scene, this);
     m_View->setFrameShape(QGraphicsView::NoFrame);
     m_View->setBackgroundBrush(QColor(240, 240, 240, 255));
     m_ResizeGrip = new ResizeGrip(this);
@@ -677,6 +617,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     addWidget(m_View);
     setObjectName(QStringLiteral("TreeBar"));
     setContextMenuPolicy(Qt::PreventContextMenu);
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     setMouseTracking(true);
 }
 
@@ -691,6 +632,7 @@ void TreeBar::LoadSettings(){
     settings->beginGroup("treebar");{
         m_EnableAnimation    = settings->value(QStringLiteral("@EnableAnimation"),    true ).value<bool>();
         m_EnableCloseButton  = settings->value(QStringLiteral("@EnableCloseButton"),  true ).value<bool>();
+        m_EnableCloneButton  = settings->value(QStringLiteral("@EnableCloneButton"),  false).value<bool>();
         m_ScrollToSwitchNode = settings->value(QStringLiteral("@ScrollToSwitchNode"), false).value<bool>();
         m_DoubleClickToClose = settings->value(QStringLiteral("@DoubleClickToClose"), false).value<bool>();
         m_WheelClickToClose  = settings->value(QStringLiteral("@WheelClickToClose"),  true ).value<bool>();
@@ -703,6 +645,7 @@ void TreeBar::SaveSettings(){
     settings->beginGroup("treebar");{
         settings->setValue(QStringLiteral("@EnableAnimation"),    m_EnableAnimation);
         settings->setValue(QStringLiteral("@EnableCloseButton"),  m_EnableCloseButton);
+        settings->setValue(QStringLiteral("@EnableCloneButton"),  m_EnableCloneButton);
         settings->setValue(QStringLiteral("@ScrollToSwitchNode"), m_ScrollToSwitchNode);
         settings->setValue(QStringLiteral("@DoubleClickToClose"), m_DoubleClickToClose);
         settings->setValue(QStringLiteral("@WheelClickToClose"),  m_WheelClickToClose);
@@ -716,6 +659,10 @@ bool TreeBar::EnableAnimation(){
 
 bool TreeBar::EnableCloseButton(){
     return m_EnableCloseButton;
+}
+
+bool TreeBar::EnableCloneButton(){
+    return m_EnableCloneButton;
 }
 
 bool TreeBar::ScrollToSwitchNode(){
@@ -736,16 +683,9 @@ int TreeBar::GetVerticalNodeWidth(){
 }
 
 void TreeBar::Adjust(){
-    switch(orientation()){
-    case Qt::Horizontal:
-        resize(0,0);
-        updateGeometry();
-        break;
-    case Qt::Vertical:
-        m_OverrideSize = QSize(size().width(), 1);
-        updateGeometry();
-        break;
-    }
+    if(orientation() == Qt::Vertical)
+        m_OverrideSize = QSize(size().width(), 300);
+    updateGeometry();
 }
 
 QSize TreeBar::sizeHint() const {
@@ -758,6 +698,15 @@ QSize TreeBar::minimumSizeHint() const {
     if(orientation() == Qt::Vertical && m_OverrideSize.isValid()) return m_OverrideSize;
     return QSize(TREEBAR_NODE_VERTICAL_DEFAULT_WIDTH + 7,
                  (TREEBAR_NODE_HORIZONTAL_DEFAULT_HEIGHT + 3) * m_LayerList.length() + 4);
+}
+
+QMenu *TreeBar::TreeBarMenu(){
+    QMenu *menu = new QMenu(this);
+
+    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleMenuBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleTreeBar));
+
+    return menu;
 }
 
 void TreeBar::CollectNodes(){
@@ -783,11 +732,11 @@ void TreeBar::CollectNodes(){
         }
         for(int i = 0; i < m_LayerList.length(); i++){
             LayerItem *layer = m_LayerList[i];
-            NodeList list = layer->GetNode()
+            NodeList siblings = layer->GetNode()
                 ? layer->GetNode()->GetSiblings()
                 : TreeBank::GetViewRoot()->GetChildren();
-            for(int j = 0; j < list.length(); j++){
-                NodeItem *item = new NodeItem(m_TreeBank, this, list[j], m_LayerList[i]);
+            for(int j = 0; j < siblings.length(); j++){
+                NodeItem *item = new NodeItem(m_TreeBank, this, siblings[j], m_LayerList[i]);
                 item->SetRect(QRectF(j * TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH + FRINGE_BUTTON_SIZE,
                                      i * (TREEBAR_NODE_HORIZONTAL_DEFAULT_HEIGHT + 3) + 1,
                                      TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH,
@@ -795,7 +744,6 @@ void TreeBar::CollectNodes(){
                 layer->AppendToNodeItems(item);
             }
         }
-        Adjust();
         break;
     }
     case Qt::Vertical:{
@@ -842,13 +790,33 @@ void TreeBar::CollectNodes(){
         foreach(Node *nd, root->GetChildren()){
             collectNode(nd, 0);
         }
-        Adjust();
-        foreach(LayerItem *layer, m_LayerList){
-            layer->OnResized();
-        }
         break;
     }
     }
+
+    Adjust();
+    foreach(LayerItem *layer, m_LayerList){
+        layer->Adjust();
+    }
+}
+
+void TreeBar::OnUpdateRequested(){
+    if(WebEngineView *view = qobject_cast<WebEngineView*>(sender())){
+        ViewNode *vn = view->GetViewNode();
+        foreach(LayerItem *layer, m_LayerList){
+            foreach(NodeItem *item, layer->GetNodeItems()){
+                if(item->GetNode() == vn){
+                    item->update();
+                    return;
+                }
+            }
+        }
+    }
+}
+
+void TreeBar::OnCurrentChanged(SharedView from, SharedView to){
+    Q_UNUSED(from); Q_UNUSED(to);
+    // not yet implemented.
 }
 
 void TreeBar::paintEvent(QPaintEvent *ev){
@@ -893,7 +861,7 @@ void TreeBar::resizeEvent(QResizeEvent *ev){
     QResizeEvent newev = QResizeEvent(QSize(width, height), ev->oldSize());
     QToolBar::resizeEvent(&newev);
     m_Scene->setSceneRect(0.0, 0.0, m_View->width(), m_View->height());
-    foreach(LayerItem *layer, m_LayerList){ layer->OnResized();}
+    foreach(LayerItem *layer, m_LayerList){ layer->Adjust();}
 }
 
 void TreeBar::timerEvent(QTimerEvent *ev){
@@ -955,6 +923,7 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     m_FocusedNode = 0;
     m_Nest = 0;
     m_Scroll = 0;
+    m_TargetScroll = 0;
     m_ScrollDownTimer = 0;
     m_ScrollUpTimer = 0;
     m_NodeItems = QList<NodeItem*>();
@@ -1052,27 +1021,55 @@ void LayerItem::ScrollDown(int step){
     int max = MaxScroll();
     if(max < 0) return;
 
-    m_Scroll+=step;
-    if(m_Scroll > max) m_Scroll = max;
-    OnScrolled();
-    scene()->update();
+    if(TreeBar::EnableAnimation()){
+
+        m_TargetScroll += step;
+        if(m_TargetScroll > max) m_TargetScroll = max;
+
+        m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
+        m_ScrollAnimation->setStartValue(m_Scroll);
+        m_ScrollAnimation->setEndValue(m_TargetScroll);
+        m_ScrollAnimation->setDuration(500);
+        m_ScrollAnimation->start();
+
+    } else {
+        m_Scroll+=step;
+        if(m_Scroll > max) m_Scroll = max;
+        OnScrolled();
+        scene()->update();
+    }
 }
 
 void LayerItem::ScrollUp(int step){
     int min = MinScroll();
 
-    m_Scroll-=step;
-    if(m_Scroll < min) m_Scroll = min;
-    OnScrolled();
-    scene()->update();
+    if(TreeBar::EnableAnimation()){
+
+        m_TargetScroll -= step;
+        if(m_TargetScroll < min) m_TargetScroll = min;
+
+        m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
+        m_ScrollAnimation->setStartValue(m_Scroll);
+        m_ScrollAnimation->setEndValue(m_TargetScroll);
+        m_ScrollAnimation->setDuration(500);
+        m_ScrollAnimation->start();
+
+    } else {
+        m_Scroll-=step;
+        if(m_Scroll < min) m_Scroll = min;
+        OnScrolled();
+        scene()->update();
+    }
 }
 
 void LayerItem::AutoScrollDown(){
     if(MaxScroll() <= 0 ||
        GetScroll() == MaxScroll() ||
-       m_ScrollAnimation->state() == QAbstractAnimation::Running)
+       (m_ScrollAnimation->state() == QAbstractAnimation::Running &&
+        m_ScrollAnimation->easingCurve() == QEasingCurve::Linear))
         return;
 
+    m_ScrollAnimation->setEasingCurve(QEasingCurve::Linear);
     m_ScrollAnimation->setStartValue(GetScroll());
     m_ScrollAnimation->setEndValue(MaxScroll());
     m_ScrollAnimation->setDuration((MaxScroll() - GetScroll()) * 2);
@@ -1082,9 +1079,11 @@ void LayerItem::AutoScrollDown(){
 void LayerItem::AutoScrollUp(){
     if(MaxScroll() <= 0 ||
        GetScroll() == MinScroll() ||
-       m_ScrollAnimation->state() == QAbstractAnimation::Running)
+       (m_ScrollAnimation->state() == QAbstractAnimation::Running &&
+        m_ScrollAnimation->easingCurve() == QEasingCurve::Linear))
         return;
 
+    m_ScrollAnimation->setEasingCurve(QEasingCurve::Linear);
     m_ScrollAnimation->setStartValue(GetScroll());
     m_ScrollAnimation->setEndValue(MinScroll());
     m_ScrollAnimation->setDuration((GetScroll() - MinScroll()) * 2);
@@ -1093,21 +1092,28 @@ void LayerItem::AutoScrollUp(){
 
 void LayerItem::AutoScrollStop(){
     m_ScrollAnimation->stop();
+    m_TargetScroll = m_Scroll;
+    StopScrollDownTimer();
+    StopScrollUpTimer();
 }
 
 void LayerItem::AutoScrollStopOrScrollDown(int step){
     StopScrollDownTimer();
 
-    if(m_ScrollAnimation->state() == QAbstractAnimation::Running)
+    if(m_ScrollAnimation->state() == QAbstractAnimation::Running){
         m_ScrollAnimation->stop();
+        m_TargetScroll = m_Scroll;
+    }
     else ScrollDown(step);
 }
 
 void LayerItem::AutoScrollStopOrScrollUp(int step){
     StopScrollUpTimer();
 
-    if(m_ScrollAnimation->state() == QAbstractAnimation::Running)
+    if(m_ScrollAnimation->state() == QAbstractAnimation::Running){
         m_ScrollAnimation->stop();
+        m_TargetScroll = m_Scroll;
+    }
     else ScrollUp(step);
 }
 
@@ -1137,24 +1143,21 @@ void LayerItem::StopScrollUpTimer(){
     }
 }
 
-void LayerItem::OnResized(){
+void LayerItem::Adjust(){
     int i = 0;
     if(m_Node && !m_Node->IsDummy()){
         for(; i < m_NodeItems.length(); i++){
             if(m_NodeItems[i]->GetNode() == m_Node) break;
         }
     }
-    i++;
     switch(m_TreeBar->orientation()){
     case Qt::Horizontal:{
-        if(TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH * i
-           > scene()->sceneRect().width() - FRINGE_BUTTON_SIZE * 2){
 
-            SetScroll(TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH * i
-                      - scene()->sceneRect().width() + FRINGE_BUTTON_SIZE * 2);
-        } else {
-            SetScroll(0);
-        }
+        SetScroll(TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH * (i + 0.5)
+                  - scene()->sceneRect().width() / 2.0 + FRINGE_BUTTON_SIZE);
+
+        m_TargetScroll = GetScroll();
+
         int width = boundingRect().width();
         SetLine(0.0,   (TREEBAR_NODE_HORIZONTAL_DEFAULT_HEIGHT + 3) * (Index() + 1) - 2,
                 width, (TREEBAR_NODE_HORIZONTAL_DEFAULT_HEIGHT + 3) * (Index() + 1) - 2);
@@ -1166,13 +1169,12 @@ void LayerItem::OnResized(){
             rect.setRight(m_TreeBar->GetVerticalNodeWidth() + 1);
             item->SetRect(rect);
         }
-        if(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * i
-           > scene()->sceneRect().height() - FRINGE_BUTTON_SIZE * 2){
-            SetScroll(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * i
-                      - scene()->sceneRect().height() + FRINGE_BUTTON_SIZE * 2);
-        } else {
-            SetScroll(0);
-        }
+
+        SetScroll(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * (i + 0.5)
+                  - scene()->sceneRect().height() / 2.0 + FRINGE_BUTTON_SIZE);
+
+        m_TargetScroll = GetScroll();
+
         int height = boundingRect().height();
         SetLine(m_TreeBar->GetVerticalNodeWidth() + 1, 0,
                 m_TreeBar->GetVerticalNodeWidth() + 1, height);
@@ -1319,6 +1321,10 @@ void LayerItem::CorrectOrder(){
     }
 }
 
+void LayerItem::SetNode(Node *nd){
+    m_Node = nd;
+}
+
 Node *LayerItem::GetNode(){
     return (!m_Node || m_Node->IsDummy()) ? 0 : m_Node;
 }
@@ -1432,6 +1438,166 @@ void LayerItem::SwapWithPrev(NodeItem *item){
                      m_NodeItems.indexOf(item));
 }
 
+QMenu *LayerItem::LayerMenu(){
+    QMenu *menu = new QMenu(m_TreeBar);
+
+    TreeBank *tb = m_TreeBank;
+    Node *nd = GetNode();
+    Node *pnd = m_DummyNode->GetParent();
+
+    menu->addAction(tb->Action(TreeBank::Te_ToggleMenuBar));
+    menu->addAction(tb->Action(TreeBank::Te_ToggleTreeBar));
+
+    menu->addSeparator();
+
+    QAction *newViewNode = new QAction(menu);
+    newViewNode->setText(QObject::tr("NewViewNode"));
+    newViewNode->connect(newViewNode, &QAction::triggered,
+                         [tb, nd, pnd](){
+                             if(nd) tb->NewViewNode(nd->ToViewNode());
+                             else if(pnd) tb->OpenOnSuitableNode(QUrl("about:blank"), true, pnd->ToViewNode());
+                             else tb->OpenOnSuitableNode(QUrl("about:blank"), true);
+                         });
+    menu->addAction(newViewNode);
+
+    QAction *cloneViewNode = new QAction(menu);
+    cloneViewNode->setText(QObject::tr("CloneViewNode"));
+    cloneViewNode->connect(cloneViewNode, &QAction::triggered,
+                           [tb, nd](){ if(nd) tb->CloneViewNode(nd->ToViewNode());});
+    menu->addAction(cloneViewNode);
+
+    menu->addSeparator();
+
+    QAction *makeDirectory = new QAction(menu);
+    makeDirectory->setText(QObject::tr("MakeDirectory"));
+    makeDirectory->connect(makeDirectory, &QAction::triggered,
+                           [tb, nd, pnd](){
+                               if(nd) tb->MakeSiblingDirectory(nd->ToViewNode());
+                               else if(pnd) tb->MakeChildDirectory(pnd->ToViewNode());
+                               else tb->MakeChildDirectory(TreeBank::GetViewRoot());
+                           });
+    menu->addAction(makeDirectory);
+    QAction *makeDirectoryWithSelected = new QAction(menu);
+    makeDirectoryWithSelected->setText(QObject::tr("MakeDirectoryWithSelectedNode"));
+    makeDirectoryWithSelected->connect
+        (makeDirectoryWithSelected, &QAction::triggered,
+         [tb, nd](){
+            if(!nd) return;
+            Node *parent = tb->MakeSiblingDirectory(nd->ToViewNode());
+            tb->SetChildrenOrder(parent, NodeList() << nd);
+        });
+    menu->addAction(makeDirectoryWithSelected);
+    QAction *makeDirectoryWithSameDomain = new QAction(menu);
+    makeDirectoryWithSameDomain->setText(QObject::tr("MakeDirectoryWithSameDomainNode"));
+    makeDirectoryWithSameDomain->connect
+        (makeDirectoryWithSameDomain, &QAction::triggered,
+         [tb, nd, pnd](){
+            ViewNode *parent =
+                nd ? nd->GetParent()->ToViewNode() :
+                pnd ? pnd->ToViewNode() : 0;
+            if(!parent) return;
+            QMap<QString, QList<Node*>> groups;
+            foreach(Node *n, parent->GetChildren()){
+                if(!n->IsDirectory()) groups[n->GetUrl().host()] << n;
+            }
+            if(groups.count() <= 1) return;
+            foreach(QString domain, groups.keys()){
+                Node *directory = parent->MakeChild();
+                directory->SetTitle(domain);
+                tb->SetChildrenOrder(directory, groups[domain]);
+            }
+        });
+    menu->addAction(makeDirectoryWithSameDomain);
+
+    return menu;
+}
+
+QMenu *LayerItem::AddNodeMenu(){
+    QMenu *menu = new QMenu(m_TreeBar);
+
+    TreeBank *tb = m_TreeBank;
+    Node *nd = GetNode();
+    Node *pnd = m_DummyNode->GetParent();
+
+    QAction *newViewNode = new QAction(menu);
+    newViewNode->setText(QObject::tr("NewViewNode"));
+    newViewNode->connect(newViewNode, &QAction::triggered,
+                         [tb, nd, pnd](){
+                             if(nd) tb->NewViewNode(nd->ToViewNode());
+                             else if(pnd) tb->OpenOnSuitableNode(QUrl("about:blank"), true, pnd->ToViewNode());
+                             else tb->OpenOnSuitableNode(QUrl("about:blank"), true);
+                         });
+    menu->addAction(newViewNode);
+
+    QAction *cloneViewNode = new QAction(menu);
+    cloneViewNode->setText(QObject::tr("CloneViewNode"));
+    cloneViewNode->connect(cloneViewNode, &QAction::triggered,
+                           [tb, nd](){ if(nd) tb->CloneViewNode(nd->ToViewNode());});
+    menu->addAction(cloneViewNode);
+
+    NodeList trash = TreeBank::GetTrashRoot()->GetChildren();
+
+    QMenu *restoreMenu = menu;
+    int max = 20;
+    int i = 0;
+
+    if(trash.length())
+        restoreMenu->addSeparator();
+
+    for(int j = 0; j < 10; j++, max+=20){
+        for(; i < qMin(max, trash.length()); i++){
+            ViewNode *t = trash[i]->ToViewNode();
+            QAction *restore = new QAction(restoreMenu);
+            QString title = t->GetTitle();
+
+            if(title.isEmpty()){
+                QUrl url = t->GetUrl();
+                if(url.isEmpty()){
+                    if(t->IsDirectory()){
+                        title = QStringLiteral("Directory");
+                    } else {
+                        title = QStringLiteral("No Title");
+                    }
+                } else {
+                    title = url.toString();
+                }
+            } else if(t->IsDirectory()){
+                title = title.split(QStringLiteral(";")).first();
+            }
+
+            if(title.length() > 25)
+                title = title.left(25) + QStringLiteral("...");
+            restore->setText(title);
+            restore->connect
+                (restore, &QAction::triggered,
+                 [t, nd, pnd, tb](){
+                    // both function emits TreeStructureChanged for current.
+                    if(nd)
+                        tb->MoveNode(t, nd->GetParent(), nd->SiblingsIndexOf(nd) + 1);
+                    else if(pnd)
+                        tb->MoveNode(t, pnd);
+                    else
+                        tb->MoveNode(t, TreeBank::GetViewRoot());
+                    tb->SetCurrent(t);
+                });
+            restoreMenu->addAction(restore);
+        }
+        if(i >= trash.length()) break;
+        if(j < 9){
+            QMenu *child = new QMenu(QObject::tr("More"), restoreMenu);
+            restoreMenu->addMenu(child);
+            restoreMenu = child;
+        }
+    }
+    QAction *displayTrashTree = new QAction(restoreMenu);
+    displayTrashTree->setText(QObject::tr("DisplayTrashTree"));
+    displayTrashTree->connect(displayTrashTree, &QAction::triggered,
+                              [tb](){ tb->DisplayTrashTree();});
+    restoreMenu->addAction(displayTrashTree);
+
+    return menu;
+}
+
 void LayerItem::timerEvent(QTimerEvent *ev){
     QGraphicsObject::timerEvent(ev);
     if(ev->timerId() == m_ScrollDownTimer){
@@ -1455,64 +1621,7 @@ void LayerItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     //QGraphicsObject::mouseReleaseEvent(ev);
 
     if(ev->button() == Qt::RightButton){
-
-        QMenu *menu = new QMenu(m_TreeBar);
-
-        TreeBank *tb = m_TreeBank;
-        ViewNode *vn = GetNode() ? GetNode()->ToViewNode() : 0;
-
-        menu->addAction(tb->Action(TreeBank::Te_ToggleMenuBar));
-        menu->addAction(tb->Action(TreeBank::Te_ToggleTreeBar));
-
-        menu->addSeparator();
-
-        QAction *newViewNode = new QAction(menu);
-        newViewNode->setText(QObject::tr("NewViewNode"));
-        newViewNode->connect(newViewNode, &QAction::triggered,
-                             [tb, vn](){ tb->NewViewNode(vn);});
-        menu->addAction(newViewNode);
-
-        QAction *cloneViewNode = new QAction(menu);
-        cloneViewNode->setText(QObject::tr("CloneViewNode"));
-        cloneViewNode->connect(cloneViewNode, &QAction::triggered,
-                               [tb, vn](){ tb->CloneViewNode(vn);});
-        menu->addAction(cloneViewNode);
-
-        menu->addSeparator();
-
-        QAction *makeDirectory = new QAction(menu);
-        makeDirectory->setText(QObject::tr("MakeDirectory"));
-        makeDirectory->connect(makeDirectory, &QAction::triggered,
-                               [tb, vn](){ tb->MakeSiblingDirectory(vn);});
-        menu->addAction(makeDirectory);
-        QAction *makeDirectoryWithSelected = new QAction(menu);
-        makeDirectoryWithSelected->setText(QObject::tr("MakeDirectoryWithSelectedNode"));
-        makeDirectoryWithSelected->connect
-            (makeDirectoryWithSelected, &QAction::triggered,
-             [tb, vn](){
-                Node *parent = tb->MakeSiblingDirectory(vn->ToViewNode());
-                tb->SetChildrenOrder(parent, NodeList() << vn);
-            });
-        menu->addAction(makeDirectoryWithSelected);
-        QAction *makeDirectoryWithSameDomain = new QAction(menu);
-        makeDirectoryWithSameDomain->setText(QObject::tr("MakeDirectoryWithSameDomainNode"));
-        makeDirectoryWithSameDomain->connect
-            (makeDirectoryWithSameDomain, &QAction::triggered,
-             [tb, vn](){
-                ViewNode *parent = vn->GetParent()->ToViewNode();
-                QMap<QString, QList<Node*>> groups;
-                foreach(Node *nd, vn->GetSiblings()){
-                    if(!nd->IsDirectory()) groups[nd->GetUrl().host()] << nd;
-                }
-                if(groups.count() <= 1) return;
-                foreach(QString domain, groups.keys()){
-                    Node *directory = parent->MakeChild();
-                    directory->SetTitle(domain);
-                    tb->SetChildrenOrder(directory, groups[domain]);
-                }
-            });
-        menu->addAction(makeDirectoryWithSameDomain);
-
+        QMenu *menu = LayerMenu();
         menu->exec(ev->screenPos());
         delete menu;
     }
@@ -1576,7 +1685,7 @@ NodeItem::NodeItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent)
     m_Nest = 0;
     m_IsPrimary = nd->IsPrimaryOfParent();
     m_IsHovered = false;
-    m_CloseButtonState = NotHovered;
+    m_ButtonState = NotHovered;
     m_TargetPosition = QPoint();
     if(TreeBar::EnableAnimation()){
         m_Animation = new QPropertyAnimation(this, "rect");
@@ -1609,7 +1718,10 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     QRect title_rect = bound.toRect();
     title_rect.setLeft(title_rect.left() + 4);
     title_rect.setTop(title_rect.top() + 1);
-    title_rect.setWidth(title_rect.width() - (m_IsHovered ? 21 : 4));
+    title_rect.setWidth(title_rect.width()
+                        - (!m_IsHovered ? 4 :
+                           (m_TreeBar->EnableCloseButton() !=
+                            m_TreeBar->EnableCloneButton()) ? 21 : 39));
 
     {
         static const QBrush b = QBrush(QColor(240,240,240,255));
@@ -1669,7 +1781,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         painter->drawRect(rect);
     }
 
-    if(m_IsPrimary){
+    if(m_Node->IsPrimaryOfParent()/*m_IsPrimary*/){
         static const QPen p = QPen(QColor(80,80,200,255));
         painter->setBrush(Qt::NoBrush);
         painter->setPen(p);
@@ -1696,11 +1808,32 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         }
     }
 
-    if(TreeBar::EnableCloseButton()){
-        if(m_CloseButtonState == Hovered || m_CloseButtonState == Pressed){
+    if(TreeBar::EnableCloneButton()){
+        if(m_ButtonState == CloneHovered || m_ButtonState == ClonePressed){
             static const QBrush h = QBrush(QColor(180, 180, 180, 255));
             static const QBrush p = QBrush(QColor(150, 150, 150, 255));
-            painter->setBrush(m_CloseButtonState == Hovered ? h : p);
+            painter->setBrush(m_ButtonState == CloneHovered ? h : p);
+            painter->setPen(Qt::NoPen);
+            painter->setRenderHint(QPainter::Antialiasing, true);
+            painter->drawRoundedRect(QRectF(bound.topRight() + QPointF(-36, 4),
+                                            QSizeF(14, 14)), 2, 2);
+        }
+
+        static QPixmap clone;
+        if(clone.isNull())
+            clone = QPixmap(":/resources/treebar/clone.png");
+
+        if(m_IsHovered)
+            painter->drawPixmap(QRect(bound.topRight().toPoint() + QPoint(-34, 6),
+                                      clone.size()),
+                                clone, QRect(QPoint(), clone.size()));
+    }
+
+    if(TreeBar::EnableCloseButton()){
+        if(m_ButtonState == CloseHovered || m_ButtonState == ClosePressed){
+            static const QBrush h = QBrush(QColor(180, 180, 180, 255));
+            static const QBrush p = QBrush(QColor(150, 150, 150, 255));
+            painter->setBrush(m_ButtonState == CloseHovered ? h : p);
             painter->setPen(Qt::NoPen);
             painter->setRenderHint(QPainter::Antialiasing, true);
             painter->drawRoundedRect(QRectF(bound.topRight() + QPointF(-18, 4),
@@ -1807,7 +1940,12 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
         if(TreeBar::EnableCloseButton() &&
            QRectF(boundingRect().topRight() + QPointF(-18, 4),
                   QSizeF(14, 14)).contains(ev->pos())){
-            m_CloseButtonState = Pressed;
+            m_ButtonState = ClosePressed;
+            update();
+        } else if(TreeBar::EnableCloneButton() &&
+           QRectF(boundingRect().topRight() + QPointF(-36, 4),
+                  QSizeF(14, 14)).contains(ev->pos())){
+            m_ButtonState = ClonePressed;
             update();
         }
 
@@ -1840,8 +1978,10 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         }
 
         if((ev->buttonDownScreenPos(Qt::LeftButton) - ev->screenPos()).manhattanLength() < 4){
-            if(m_CloseButtonState == Pressed){
+            if(m_ButtonState == ClosePressed){
                 m_TreeBank->DeleteNode(m_Node);
+            } else if(m_ButtonState == ClonePressed){
+                m_TreeBank->CloneViewNode(m_Node->ToViewNode());
             } else {
                 if(m_TreeBar->orientation() == Qt::Vertical && m_Node->IsDirectory()){
                     m_Node->SetFolded(!m_Node->GetFolded());
@@ -1888,125 +2028,7 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
             return;
         }
     } else if(ev->button() == Qt::RightButton){
-
-        QMenu *menu = new QMenu(m_TreeBar);
-
-        TreeBank *tb = m_TreeBank;
-        ViewNode *vn = GetNode() ? GetNode()->ToViewNode() : 0;
-
-        QAction *newViewNode = new QAction(menu);
-        newViewNode->setText(QObject::tr("NewViewNode"));
-        newViewNode->connect(newViewNode, &QAction::triggered,
-                             [tb, vn](){ tb->NewViewNode(vn);});
-        menu->addAction(newViewNode);
-
-        QAction *cloneViewNode = new QAction(menu);
-        cloneViewNode->setText(QObject::tr("CloneViewNode"));
-        cloneViewNode->connect(cloneViewNode, &QAction::triggered,
-                               [tb, vn](){ tb->CloneViewNode(vn);});
-        menu->addAction(cloneViewNode);
-
-        menu->addSeparator();
-
-        if(GetNode()->IsDirectory()){
-            QAction *rename = new QAction(menu);
-            rename->setText(QObject::tr("RenameViewNode"));
-            rename->connect(rename, &QAction::triggered,
-                            [tb, vn](){ tb->RenameNode(vn);});
-            menu->addAction(rename);
-        } else {
-            QAction *reload = new QAction(menu);
-            reload->setText(QObject::tr("ReloadViewNode"));
-            reload->connect(reload, &QAction::triggered,
-                            [vn](){
-                                if(View *view = vn->GetView())
-                                    view->TriggerAction(Page::We_Reload);
-                            });
-            menu->addAction(reload);
-        }
-
-        menu->addSeparator();
-
-        QAction *deleteViewNode = new QAction(menu);
-        deleteViewNode->setText(QObject::tr("DeleteViewNode"));
-        deleteViewNode->connect(deleteViewNode, &QAction::triggered,
-                                [tb, vn](){ tb->DeleteNode(vn);});
-        menu->addAction(deleteViewNode);
-        QAction *deleteRightNode = new QAction(menu);
-        deleteRightNode->setText(m_TreeBar->orientation() == Qt::Horizontal
-                                 ? QObject::tr("DeleteRightViewNode")
-                                 : QObject::tr("DeleteLowerViewNode"));
-        deleteRightNode->connect(deleteRightNode, &QAction::triggered,
-                                 [tb, vn](){
-                                     NodeList list;
-                                     NodeList siblings = vn->GetSiblings();
-                                     int index = siblings.indexOf(vn);
-                                     for(int i = index + 1; i < siblings.length(); i++){
-                                         list << siblings[i];
-                                     }
-                                     tb->DeleteNode(list);
-                                 });
-        menu->addAction(deleteRightNode);
-        QAction *deleteLeftNode = new QAction(menu);
-        deleteLeftNode->setText(m_TreeBar->orientation() == Qt::Horizontal
-                                ? QObject::tr("DeleteLeftViewNode")
-                                : QObject::tr("DeleteUpperViewNode"));
-        deleteLeftNode->connect(deleteLeftNode, &QAction::triggered,
-                                [tb, vn](){
-                                    NodeList list;
-                                    NodeList siblings = vn->GetSiblings();
-                                    int index = siblings.indexOf(vn);
-                                    for(int i = 0; i < index; i++){
-                                        list << siblings[i];
-                                    }
-                                    tb->DeleteNode(list);
-                                });
-        menu->addAction(deleteLeftNode);
-        QAction *deleteOtherNode = new QAction(menu);
-        deleteOtherNode->setText(QObject::tr("DeleteOtherViewNode"));
-        deleteOtherNode->connect(deleteOtherNode, &QAction::triggered,
-                                 [tb, vn](){
-                                     NodeList siblings = vn->GetSiblings();
-                                     siblings.removeOne(vn);
-                                     tb->DeleteNode(siblings);
-                                 });
-        menu->addAction(deleteOtherNode);
-
-        menu->addSeparator();
-
-        QAction *makeDirectory = new QAction(menu);
-        makeDirectory->setText(QObject::tr("MakeDirectory"));
-        makeDirectory->connect(makeDirectory, &QAction::triggered,
-                               [tb, vn](){ tb->MakeSiblingDirectory(vn);});
-        menu->addAction(makeDirectory);
-        QAction *makeDirectoryWithSelected = new QAction(menu);
-        makeDirectoryWithSelected->setText(QObject::tr("MakeDirectoryWithSelectedNode"));
-        makeDirectoryWithSelected->connect
-            (makeDirectoryWithSelected, &QAction::triggered,
-             [tb, vn](){
-                Node *parent = tb->MakeSiblingDirectory(vn->ToViewNode());
-                tb->SetChildrenOrder(parent, NodeList() << vn);
-            });
-        menu->addAction(makeDirectoryWithSelected);
-        QAction *makeDirectoryWithSameDomain = new QAction(menu);
-        makeDirectoryWithSameDomain->setText(QObject::tr("MakeDirectoryWithSameDomainNode"));
-        makeDirectoryWithSameDomain->connect
-            (makeDirectoryWithSameDomain, &QAction::triggered,
-             [tb, vn](){
-                ViewNode *parent = vn->GetParent()->ToViewNode();
-                QMap<QString, QList<Node*>> groups;
-                foreach(Node *nd, vn->GetSiblings()){
-                    if(!nd->IsDirectory()) groups[nd->GetUrl().host()] << nd;
-                }
-                if(groups.count() <= 1) return;
-                foreach(QString domain, groups.keys()){
-                    Node *directory = parent->MakeChild();
-                    directory->SetTitle(domain);
-                    tb->SetChildrenOrder(directory, groups[domain]);
-                }
-            });
-        menu->addAction(makeDirectoryWithSameDomain);
-
+        QMenu *menu = NodeMenu();
         menu->exec(ev->screenPos());
         delete menu;
         return;
@@ -2020,7 +2042,8 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
-    if(m_CloseButtonState == Pressed) return;
+    if(m_ButtonState == ClosePressed ||
+       m_ButtonState == ClonePressed) return;
 
     QGraphicsObject::mouseMoveEvent(ev);
 
@@ -2081,16 +2104,22 @@ void NodeItem::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
     if(TreeBar::EnableCloseButton() &&
        QRectF(boundingRect().topRight() + QPointF(-18, 4),
               QSizeF(14, 14)).contains(ev->pos())){
-        m_CloseButtonState = Hovered;
+        m_ButtonState = CloseHovered;
+        update();
+    } else if(TreeBar::EnableCloneButton() &&
+       QRectF(boundingRect().topRight() + QPointF(-36, 4),
+              QSizeF(14, 14)).contains(ev->pos())){
+        m_ButtonState = CloneHovered;
         update();
     }
+
     QGraphicsObject::hoverEnterEvent(ev);
 }
 
 void NodeItem::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
     m_IsHovered = false;
-    if(m_CloseButtonState != NotHovered){
-        m_CloseButtonState = NotHovered;
+    if(m_ButtonState != NotHovered){
+        m_ButtonState = NotHovered;
         update();
     }
     QGraphicsObject::hoverLeaveEvent(ev);
@@ -2101,13 +2130,20 @@ void NodeItem::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
     if(TreeBar::EnableCloseButton() &&
        QRectF(boundingRect().topRight() + QPointF(-18, 4),
               QSizeF(14, 14)).contains(ev->pos())){
-        if(m_CloseButtonState == NotHovered){
-            m_CloseButtonState = Hovered;
+        if(m_ButtonState == NotHovered){
+            m_ButtonState = CloseHovered;
+            update();
+        }
+    } else if(TreeBar::EnableCloneButton() &&
+       QRectF(boundingRect().topRight() + QPointF(-36, 4),
+              QSizeF(14, 14)).contains(ev->pos())){
+        if(m_ButtonState == NotHovered){
+            m_ButtonState = CloneHovered;
             update();
         }
     } else {
-        if(m_CloseButtonState != NotHovered){
-            m_CloseButtonState = NotHovered;
+        if(m_ButtonState != NotHovered){
+            m_ButtonState = NotHovered;
             update();
         }
     }
@@ -2190,6 +2226,128 @@ void NodeItem::MoveToPrev(){
         }
     }
     Layer()->SwapWithPrev(this);
+}
+
+QMenu *NodeItem::NodeMenu(){
+    QMenu *menu = new QMenu(m_TreeBar);
+
+    TreeBank *tb = m_TreeBank;
+    ViewNode *vn = GetNode() ? GetNode()->ToViewNode() : 0;
+
+    QAction *newViewNode = new QAction(menu);
+    newViewNode->setText(QObject::tr("NewViewNode"));
+    newViewNode->connect(newViewNode, &QAction::triggered,
+                         [tb, vn](){ tb->NewViewNode(vn);});
+    menu->addAction(newViewNode);
+
+    QAction *cloneViewNode = new QAction(menu);
+    cloneViewNode->setText(QObject::tr("CloneViewNode"));
+    cloneViewNode->connect(cloneViewNode, &QAction::triggered,
+                           [tb, vn](){ tb->CloneViewNode(vn);});
+    menu->addAction(cloneViewNode);
+
+    menu->addSeparator();
+
+    if(GetNode()->IsDirectory()){
+        QAction *rename = new QAction(menu);
+        rename->setText(QObject::tr("RenameViewNode"));
+        rename->connect(rename, &QAction::triggered,
+                        [tb, vn](){ tb->RenameNode(vn);});
+        menu->addAction(rename);
+    } else {
+        QAction *reload = new QAction(menu);
+        reload->setText(QObject::tr("ReloadViewNode"));
+        reload->connect(reload, &QAction::triggered,
+                        [vn](){
+                            if(View *view = vn->GetView())
+                                view->TriggerAction(Page::We_Reload);
+                        });
+        menu->addAction(reload);
+    }
+
+    menu->addSeparator();
+
+    QAction *deleteViewNode = new QAction(menu);
+    deleteViewNode->setText(QObject::tr("DeleteViewNode"));
+    deleteViewNode->connect(deleteViewNode, &QAction::triggered,
+                            [tb, vn](){ tb->DeleteNode(vn);});
+    menu->addAction(deleteViewNode);
+    QAction *deleteRightNode = new QAction(menu);
+    deleteRightNode->setText(m_TreeBar->orientation() == Qt::Horizontal
+                             ? QObject::tr("DeleteRightViewNode")
+                             : QObject::tr("DeleteLowerViewNode"));
+    deleteRightNode->connect(deleteRightNode, &QAction::triggered,
+                             [tb, vn](){
+                                 NodeList list;
+                                 NodeList siblings = vn->GetSiblings();
+                                 int index = siblings.indexOf(vn);
+                                 for(int i = index + 1; i < siblings.length(); i++){
+                                     list << siblings[i];
+                                 }
+                                 tb->DeleteNode(list);
+                             });
+    menu->addAction(deleteRightNode);
+    QAction *deleteLeftNode = new QAction(menu);
+    deleteLeftNode->setText(m_TreeBar->orientation() == Qt::Horizontal
+                            ? QObject::tr("DeleteLeftViewNode")
+                            : QObject::tr("DeleteUpperViewNode"));
+    deleteLeftNode->connect(deleteLeftNode, &QAction::triggered,
+                            [tb, vn](){
+                                NodeList list;
+                                NodeList siblings = vn->GetSiblings();
+                                int index = siblings.indexOf(vn);
+                                for(int i = 0; i < index; i++){
+                                    list << siblings[i];
+                                }
+                                tb->DeleteNode(list);
+                            });
+    menu->addAction(deleteLeftNode);
+    QAction *deleteOtherNode = new QAction(menu);
+    deleteOtherNode->setText(QObject::tr("DeleteOtherViewNode"));
+    deleteOtherNode->connect(deleteOtherNode, &QAction::triggered,
+                             [tb, vn](){
+                                 NodeList siblings = vn->GetSiblings();
+                                 siblings.removeOne(vn);
+                                 tb->DeleteNode(siblings);
+                             });
+    menu->addAction(deleteOtherNode);
+
+    menu->addSeparator();
+
+    QAction *makeDirectory = new QAction(menu);
+    makeDirectory->setText(QObject::tr("MakeDirectory"));
+    makeDirectory->connect(makeDirectory, &QAction::triggered,
+                           [tb, vn](){ tb->MakeSiblingDirectory(vn);});
+    menu->addAction(makeDirectory);
+    QAction *makeDirectoryWithSelected = new QAction(menu);
+    makeDirectoryWithSelected->setText(QObject::tr("MakeDirectoryWithSelectedNode"));
+    makeDirectoryWithSelected->connect
+        (makeDirectoryWithSelected, &QAction::triggered,
+         [tb, vn](){
+            Node *parent = tb->MakeSiblingDirectory(vn->ToViewNode());
+            tb->SetChildrenOrder(parent, NodeList() << vn);
+        });
+    menu->addAction(makeDirectoryWithSelected);
+    QAction *makeDirectoryWithSameDomain = new QAction(menu);
+    makeDirectoryWithSameDomain->setText(QObject::tr("MakeDirectoryWithSameDomainNode"));
+    makeDirectoryWithSameDomain->connect
+        (makeDirectoryWithSameDomain, &QAction::triggered,
+         [tb, vn](){
+            ViewNode *parent = vn->GetParent()->ToViewNode();
+            QMap<QString, QList<Node*>> groups;
+            foreach(Node *nd, vn->GetSiblings()){
+                if(!nd->IsDirectory()) groups[nd->GetUrl().host()] << nd;
+            }
+            if(groups.count() <= 1) return;
+            foreach(QString domain, groups.keys()){
+                Node *directory = parent->MakeChild();
+                directory->SetTitle(domain);
+                tb->SetChildrenOrder(directory, groups[domain]);
+            }
+        });
+    menu->addAction(makeDirectoryWithSameDomain);
+
+    return menu;
 }
 
 void NodeItem::ResetTargetPosition(){
