@@ -42,6 +42,7 @@
 #include "gadgets.hpp"
 #include "mainwindow.hpp"
 #include "treebar.hpp"
+#include "toolbar.hpp"
 #include "localview.hpp"
 #include "jsobject.hpp"
 #include "dialog.hpp"
@@ -188,8 +189,9 @@ static QStringList GetNodeSettings(HistNode*);
 static QStringList GetNodeSettings(SharedView);
 
 TreeBank::TreeBank(QWidget *parent)
-    : QGraphicsView(new QGraphicsScene(parent), parent)
-    , m_Scene(scene())
+    : QWidget(parent)
+    , m_Scene(new QGraphicsScene(this))
+    , m_View(new QGraphicsView(m_Scene, this))
   //, m_Gadgets(new Gadgets(this))
     , m_JsObject(new _Vanilla(this))
       // if m_PurgeView is true, Notifier and Receiver should be purged.
@@ -203,7 +205,7 @@ TreeBank::TreeBank(QWidget *parent)
     if(m_Viewport == GLWidget){
         // notifier and receiver become black (if not purged)...
         // scrollbar become invisible...
-        setViewport(new QGLWidget(QGLFormat(QGL::DoubleBuffer)));
+        m_View->setViewport(new QGLWidget(QGLFormat(QGL::DoubleBuffer)));
 
         // if displaying WebView, become not to repaint.
         // after resized, return to normal.
@@ -213,16 +215,20 @@ TreeBank::TreeBank(QWidget *parent)
         // but WebEngineView requests to paint in multi-thread.
     } else if(m_Viewport == OpenGLWidget){
         // font become dirty...
-        setViewport(new QOpenGLWidget());
+        m_View->setViewport(new QOpenGLWidget());
     }
 
-    setAcceptDrops(true);
-    setFrameShape(NoFrame);
-    setBackgroundBrush(Qt::black);
-    setCacheMode(QGraphicsView::CacheBackground);
-    setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate);
-    setOptimizationFlags(QGraphicsView::DontAdjustForAntialiasing |
-                         QGraphicsView::DontSavePainterState);
+    //setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+    setAttribute(Qt::WA_TranslucentBackground);
+
+    m_View->setAcceptDrops(true);
+    m_View->setFrameShape(QFrame::NoFrame);
+    m_View->setBackgroundBrush(Qt::transparent);
+    m_View->setStyleSheet("QGraphicsView{ background: transparent}");
+    m_View->setCacheMode(QGraphicsView::CacheBackground);
+    m_View->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate);
+    m_View->setOptimizationFlags(QGraphicsView::DontAdjustForAntialiasing |
+                                 QGraphicsView::DontSavePainterState);
 
     m_Scene->addItem(m_Gadgets);
     m_Scene->setSceneRect(QRect(0, 0, parent->width(), parent->height()));
@@ -1567,7 +1573,11 @@ bool TreeBank::SetCurrent(Node *nd){
         if(prev){
             AddToUpdateBox(prev);
             prev->Disconnect(this);
+            if(GetMainWindow()->GetToolBar()->isVisible())
+                GetMainWindow()->GetToolBar()->Disconnect(prev);
         }
+        if(GetMainWindow()->GetToolBar()->isVisible())
+            GetMainWindow()->GetToolBar()->Connect(m_CurrentView);
         m_CurrentView->Connect(this);
     }
     if(m_AllViews.length() > 1){
@@ -1647,11 +1657,8 @@ bool TreeBank::SetCurrent(Node *nd){
         if(prev && prev != m_CurrentView){
             m_CurrentView->SetMaster(prev);
             prev->SetSlave(m_CurrentView);
-#ifdef QTWEBKIT
-            if(!qobject_cast<GraphicsWebView*>(prev->base()))
-#endif
-                prev->hide();
         }
+        m_View->raise();
         m_CurrentView->raise();
 
     } else { // Web(Engine)View or QuickWeb(Engine)View.
@@ -1706,6 +1713,9 @@ void TreeBank::BeforeStartingDisplayGadgets(){
 
     if(m_CurrentView)
         m_CurrentView->OnBeforeStartingDisplayGadgets();
+
+    m_View->raise();
+    m_View->setFocus();
 }
 
 void TreeBank::AfterFinishingDisplayGadgets(){
@@ -1724,54 +1734,56 @@ void TreeBank::AfterFinishingDisplayGadgets(){
 
     if(m_CurrentView)
         m_CurrentView->OnAfterFinishingDisplayGadgets();
+
+    m_View->lower();
 }
 
 void TreeBank::MousePressEvent(QMouseEvent *ev){
-    QGraphicsView::mousePressEvent(ev);
+    QWidget::mousePressEvent(ev);
 }
 
 void TreeBank::MouseReleaseEvent(QMouseEvent *ev){
-    QGraphicsView::mouseReleaseEvent(ev);
+    QWidget::mouseReleaseEvent(ev);
 }
 
 void TreeBank::MouseMoveEvent(QMouseEvent *ev){
-    QGraphicsView::mouseMoveEvent(ev);
+    QWidget::mouseMoveEvent(ev);
 }
 
 void TreeBank::MouseDoubleClickEvent(QMouseEvent *ev){
-    QGraphicsView::mouseDoubleClickEvent(ev);
+    QWidget::mouseDoubleClickEvent(ev);
 }
 
 void TreeBank::WheelEvent(QWheelEvent *ev){
-    QGraphicsView::wheelEvent(ev);
+    QWidget::wheelEvent(ev);
 }
 
 void TreeBank::DragEnterEvent(QDragEnterEvent *ev){
-    QGraphicsView::dragEnterEvent(ev);
+    QWidget::dragEnterEvent(ev);
 }
 
 void TreeBank::DragMoveEvent(QDragMoveEvent *ev){
-    QGraphicsView::dragMoveEvent(ev);
+    QWidget::dragMoveEvent(ev);
 }
 
 void TreeBank::DragLeaveEvent(QDragLeaveEvent *ev){
-    QGraphicsView::dragLeaveEvent(ev);
+    QWidget::dragLeaveEvent(ev);
 }
 
 void TreeBank::DropEvent(QDropEvent *ev){
-    QGraphicsView::dropEvent(ev);
+    QWidget::dropEvent(ev);
 }
 
 void TreeBank::ContextMenuEvent(QContextMenuEvent *ev){
-    QGraphicsView::contextMenuEvent(ev);
+    QWidget::contextMenuEvent(ev);
 }
 
 void TreeBank::KeyPressEvent(QKeyEvent *ev){
-    QGraphicsView::keyPressEvent(ev);
+    QWidget::keyPressEvent(ev);
 }
 
 void TreeBank::KeyReleaseEvent(QKeyEvent *ev){
-    QGraphicsView::keyReleaseEvent(ev);
+    QWidget::keyReleaseEvent(ev);
 }
 
 // link event.
@@ -1798,7 +1810,7 @@ SharedView TreeBank::OpenInNewViewNode(QNetworkRequest req, bool activate, ViewN
         SetCurrent(hist);
     } else {
         view->hide();
-
+        EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -1860,8 +1872,8 @@ SharedView TreeBank::OpenOnSuitableNode(QNetworkRequest req, bool activate, View
         SetCurrent(hist);
     } else {
         view->hide();
-
-        // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
+        EmitTreeStructureChangedForAll();
+        // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
 
@@ -1921,7 +1933,7 @@ SharedView TreeBank::OpenInNewDirectory(QNetworkRequest req, bool activate, View
         SetCurrent(hist);
     } else {
         view->hide();
-
+        EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -1994,7 +2006,7 @@ SharedView TreeBank::OpenInNewHistNode(QNetworkRequest req, bool activate, HistN
         SetCurrent(hist);
     } else {
         view->hide();
-
+        EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -2055,7 +2067,7 @@ SharedView TreeBank::OpenInNewHistNodeBackward(QNetworkRequest req, bool activat
         SetCurrent(hist);
     } else {
         view->hide();
-
+        EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -2247,6 +2259,7 @@ QMenu *TreeBank::DisplayMenu(){
     menu->addAction(Action(Te_ToggleReceiver));
     menu->addAction(Action(Te_ToggleMenuBar));
     menu->addAction(Action(Te_ToggleTreeBar));
+    menu->addAction(Action(Te_ToggleToolBar));
     UpdateAction();
 
     return menu;
@@ -2347,9 +2360,10 @@ void TreeBank::JoinChildWidgetsIfNeed(){
 }
 
 void TreeBank::resizeEvent(QResizeEvent *ev){
-    setSceneRect(0.0, 0.0,
-                 ev->size().width(),
-                 ev->size().height());
+    m_View->setGeometry(QRect(QPoint(), ev->size()));
+    m_View->setSceneRect(0.0, 0.0,
+                         ev->size().width(),
+                         ev->size().height());
     if(m_CurrentView){
         m_CurrentView->resize(ev->size());
     }
@@ -2371,21 +2385,21 @@ void TreeBank::wheelEvent(QWheelEvent *ev){
                                           ev->buttons(),
                                           ev->modifiers(),
                                           ev->orientation());
-    QGraphicsView::wheelEvent(new_ev);
+    QWidget::wheelEvent(new_ev);
     ev->setAccepted(true);
     delete new_ev;
 }
 
 void TreeBank::mouseMoveEvent(QMouseEvent *ev){
-    QGraphicsView::mouseMoveEvent(ev);
+    QWidget::mouseMoveEvent(ev);
 }
 
 void TreeBank::mousePressEvent(QMouseEvent *ev){
-    QGraphicsView::mousePressEvent(ev);
+    QWidget::mousePressEvent(ev);
 }
 
 void TreeBank::dragEnterEvent(QDragEnterEvent *ev){
-    QGraphicsView::dragEnterEvent(ev);
+    QWidget::dragEnterEvent(ev);
     if(ev->isAccepted()) return;
 
     ev->setDropAction(Qt::MoveAction);
@@ -2394,19 +2408,19 @@ void TreeBank::dragEnterEvent(QDragEnterEvent *ev){
 }
 
 void TreeBank::dragMoveEvent(QDragMoveEvent *ev){
-    QGraphicsView::dragMoveEvent(ev);
+    QWidget::dragMoveEvent(ev);
     if(ev->isAccepted()) return;
     ev->setAccepted(true);
 }
 
 void TreeBank::dragLeaveEvent(QDragLeaveEvent *ev){
-    QGraphicsView::dragLeaveEvent(ev);
+    QWidget::dragLeaveEvent(ev);
     if(ev->isAccepted()) return;
     ev->setAccepted(true);
 }
 
 void TreeBank::dropEvent(QDropEvent *ev){
-    QGraphicsView::dropEvent(ev);
+    QWidget::dropEvent(ev);
 
     // always accepted?
     //if(ev->isAccepted()) return;
@@ -2419,7 +2433,7 @@ void TreeBank::dropEvent(QDropEvent *ev){
 }
 
 void TreeBank::mouseReleaseEvent(QMouseEvent *ev){
-    QGraphicsView::mouseReleaseEvent(ev);
+    QWidget::mouseReleaseEvent(ev);
 
     // always accepted?
     //if(ev->isAccepted()) return;
@@ -2477,7 +2491,7 @@ void TreeBank::mouseReleaseEvent(QMouseEvent *ev){
 
 void TreeBank::contextMenuEvent(QContextMenuEvent *ev){
     /* when mouse pressed, do nothing. */
-    QGraphicsView::contextMenuEvent(ev);
+    QWidget::contextMenuEvent(ev);
     if(ev->isAccepted()) return;
 
     QMenu *menu = GlobalContextMenu();
@@ -2487,7 +2501,7 @@ void TreeBank::contextMenuEvent(QContextMenuEvent *ev){
 }
 
 void TreeBank::keyPressEvent(QKeyEvent *ev){
-    QGraphicsView::keyPressEvent(ev);
+    QWidget::keyPressEvent(ev);
     if(ev->isAccepted()) return;
 
     QKeySequence seq = Application::MakeKeySequence(ev);
@@ -2673,6 +2687,11 @@ void TreeBank::ToggleMenuBar(){
 
 void TreeBank::ToggleTreeBar(){
     GetMainWindow()->ToggleTreeBar();
+    UpdateAction();
+}
+
+void TreeBank::ToggleToolBar(){
+    GetMainWindow()->ToggleToolBar();
     UpdateAction();
 }
 
@@ -3021,15 +3040,21 @@ ViewNode *TreeBank::NewViewNode(ViewNode *vn){
     if(!vn) vn = m_CurrentViewNode;
     if(!vn) return 0;
 
-    if(m_Gadgets && m_Gadgets->IsActive()) return vn->New();
-
     ViewNode *newNode = vn->New();
-    if(!newNode) return 0;
+    if(newNode){
+        if(m_Gadgets && m_Gadgets->IsActive()){
+            EmitTreeStructureChangedForAll();
+            return newNode;
+        }
+    } else {
+        return 0;
+    }
     SharedView view = LoadWithLink(newNode);
     if(Page::Activate()){
         SetCurrent(newNode);
     } else {
         view->hide();
+        EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -3041,15 +3066,21 @@ HistNode *TreeBank::NewHistNode(HistNode *hn){
     if(!hn) hn = m_CurrentHistNode;
     if(!hn) return 0;
 
-    if(m_Gadgets && m_Gadgets->IsActive()) return hn->New();
-
     HistNode *newNode = hn->New();
-    if(!newNode) return 0;
+    if(newNode){
+        if(m_Gadgets && m_Gadgets->IsActive()){
+            EmitTreeStructureChangedForAll();
+            return newNode;
+        }
+    } else {
+        return 0;
+    }
     SharedView view = LoadWithLink(newNode);
     if(Page::Activate()){
         SetCurrent(newNode);
     } else {
         view->hide();
+        EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -3061,15 +3092,21 @@ ViewNode *TreeBank::CloneViewNode(ViewNode *vn){
     if(!vn) vn = m_CurrentViewNode;
     if(!vn) return 0;
 
-    if(m_Gadgets && m_Gadgets->IsActive()) return vn->Clone();
-
     ViewNode *clone = vn->Clone();
-    if(!clone) return 0;
+    if(clone){
+        if(m_Gadgets && m_Gadgets->IsActive()){
+            EmitTreeStructureChangedForAll();
+            return clone;
+        }
+    } else {
+        return 0;
+    }
     SharedView view = LoadWithLink(clone);
     if(Page::Activate()){
         SetCurrent(clone);
     } else {
         view->hide();
+        EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -3081,15 +3118,21 @@ HistNode *TreeBank::CloneHistNode(HistNode *hn){
     if(!hn) hn = m_CurrentHistNode;
     if(!hn) return 0;
 
-    if(m_Gadgets && m_Gadgets->IsActive()) return hn->Clone();
-
     HistNode *clone = hn->Clone();
-    if(!clone) return 0;
+    if(clone){
+        if(m_Gadgets && m_Gadgets->IsActive()){
+            EmitTreeStructureChangedForAll();
+            return clone;
+        }
+    } else {
+         return 0;
+    }
     SharedView view = LoadWithLink(clone);
     if(Page::Activate()){
         SetCurrent(clone);
     } else {
         view->hide();
+        EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -3380,6 +3423,7 @@ void TreeBank::UpdateAction(){
     Action(Te_ToggleReceiver)->setChecked(m_Receiver);
     Action(Te_ToggleMenuBar)->setChecked(!GetMainWindow()->IsMenuBarEmpty());
     Action(Te_ToggleTreeBar)->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
+    Action(Te_ToggleToolBar)->setChecked(GetMainWindow()->GetToolBar()->isVisible());
 }
 
 bool TreeBank::TriggerAction(QString str){
@@ -3436,6 +3480,9 @@ QAction *TreeBank::Action(TreeBankAction a){
         case Te_ToggleTreeBar:
             action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
             break;
+        case Te_ToggleToolBar:
+            action->setChecked(GetMainWindow()->GetToolBar()->isVisible());
+            break;
         }
         return action;
     }
@@ -3447,10 +3494,10 @@ QAction *TreeBank::Action(TreeBankAction a){
     case Ke_Down:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
     case Ke_Right:   action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
     case Ke_Left:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-    case Te_Back:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowBack));     break;
-    case Te_Forward: action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowForward));  break;
-    case Te_Reload:  action->setIcon(Application::style()->standardIcon(QStyle::SP_BrowserReload)); break;
-    case Te_Stop:    action->setIcon(Application::style()->standardIcon(QStyle::SP_BrowserStop));   break;
+    case Te_Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
+    case Te_Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
+    case Te_Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
+    case Te_Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
 
     switch(a){
@@ -3495,6 +3542,7 @@ QAction *TreeBank::Action(TreeBankAction a){
         DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));
         DEFINE_ACTION(ToggleMenuBar,    tr("ToggleMenuBar"));
         DEFINE_ACTION(ToggleTreeBar,    tr("ToggleTreeBar"));
+        DEFINE_ACTION(ToggleToolBar,    tr("ToggleToolBar"));
         DEFINE_ACTION(ToggleFullScreen, tr("ToggleFullScreen"));
         DEFINE_ACTION(ToggleMaximized,  tr("ToggleMaximized"));
         DEFINE_ACTION(ToggleMinimized,  tr("ToggleMinimized"));
@@ -3591,6 +3639,11 @@ QAction *TreeBank::Action(TreeBankAction a){
         action->setCheckable(true);
         action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
         action->setText(tr("TreeBar"));
+        break;
+    case Te_ToggleToolBar:
+        action->setCheckable(true);
+        action->setChecked(GetMainWindow()->GetToolBar()->isVisible());
+        action->setText(tr("ToolBar"));
         break;
 
     case Te_OpenWithIE:

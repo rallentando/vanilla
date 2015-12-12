@@ -49,6 +49,7 @@ HEADERS += \
     jsobject.hpp \
     treebank.hpp \
     treebar.hpp \
+    toolbar.hpp \
     notifier.hpp \
     networkcontroller.hpp \
     switch.hpp \
@@ -86,6 +87,7 @@ SOURCES += \
     lightnode.cpp \
     treebank.cpp \
     treebar.cpp \
+    toolbar.cpp \
     notifier.cpp \
     networkcontroller.cpp \
     receiver.cpp \
@@ -131,6 +133,7 @@ lupdate_only {
         jsobject.hpp \
         treebank.hpp \
         treebar.hpp \
+        toolbar.hpp \
         notifier.hpp \
         networkcontroller.hpp \
         switch.hpp \
@@ -166,6 +169,7 @@ lupdate_only {
         lightnode.cpp \
         treebank.cpp \
         treebar.cpp \
+        toolbar.cpp \
         notifier.cpp \
         networkcontroller.cpp \
         receiver.cpp \

@@ -192,6 +192,9 @@ public:
     int GetNest();
     void SetNest(int);
 
+    bool GetFocused();
+    void SetFocused(bool);
+
     QRectF GetRect() const;
     void SetRect(QRectF rect);
 
@@ -236,7 +239,7 @@ private:
     Node *m_Node;
     int m_Nest;
     QRectF m_Rect;
-    bool m_IsPrimary;
+    bool m_IsFocused;
     bool m_IsHovered;
     QPropertyAnimation *m_Animation;
     QPointF m_TargetPosition;

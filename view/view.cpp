@@ -177,6 +177,7 @@ View::View(TreeBank *parent, QString id, QStringList set){
     m_EnableLoadHackLocal = m_EnableLoadHack;
     m_EnableDragHackLocal = m_EnableDragHack;
     m_JsObject = new _View(this);
+    m_IsLoading = false;
 }
 
 View::~View(){

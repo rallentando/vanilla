@@ -27,6 +27,7 @@
 #include "receiver.hpp"
 #include "mainwindow.hpp"
 #include "treebar.hpp"
+#include "toolbar.hpp"
 #include "networkcontroller.hpp"
 #include "application.hpp"
 #include "dialog.hpp"
@@ -641,6 +642,10 @@ void Page::ToggleMenuBar(){
 
 void Page::ToggleTreeBar(){
     GetTB()->GetMainWindow()->ToggleTreeBar();
+}
+
+void Page::ToggleToolBar(){
+    GetTB()->GetMainWindow()->ToggleToolBar();
 }
 
 void Page::ToggleFullScreen(){
@@ -1573,10 +1578,10 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case Ke_Down:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
     case Ke_Right:   webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
     case Ke_Left:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-    case We_Back:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowBack));     break;
-    case We_Forward: webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowForward));  break;
-    case We_Reload:  webaction->setIcon(Application::style()->standardIcon(QStyle::SP_BrowserReload)); break;
-    case We_Stop:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_BrowserStop));   break;
+    case We_Back:    webaction->setIcon(QIcon(":/resources/menu/back.png"));    break;
+    case We_Forward: webaction->setIcon(QIcon(":/resources/menu/forward.png")); break;
+    case We_Reload:  webaction->setIcon(QIcon(":/resources/menu/reload.png"));  break;
+    case We_Stop:    webaction->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
 
     switch(a){
@@ -1621,6 +1626,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(ToggleReceiver,        tr("ToggleReceiver"));
         DEFINE_ACTION(ToggleMenuBar,         tr("ToggleMenuBar"));
         DEFINE_ACTION(ToggleTreeBar,         tr("ToggleTreeBar"));
+        DEFINE_ACTION(ToggleToolBar,         tr("ToggleToolBar"));
         DEFINE_ACTION(ToggleFullScreen,      tr("ToggleFullScreen"));
         DEFINE_ACTION(ToggleMaximized,       tr("ToggleMaximized"));
         DEFINE_ACTION(ToggleMinimized,       tr("ToggleMinimized"));
@@ -1823,6 +1829,10 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case We_ToggleTreeBar:
         webaction->setCheckable(true);
         webaction->setText(tr("TreeBar"));
+        break;
+    case We_ToggleToolBar:
+        webaction->setCheckable(true);
+        webaction->setText(tr("ToolBar"));
         break;
 
     case We_OpenWithIE:

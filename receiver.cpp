@@ -22,6 +22,7 @@
 #include "application.hpp"
 #include "mainwindow.hpp"
 #include "treebank.hpp"
+#include "gadgets.hpp"
 #include "notifier.hpp"
 #include "view.hpp"
 
@@ -102,6 +103,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     m_SuggestStrings = QStringList();
     m_CurrentSuggestIndex = -1;
 
+    connect(m_LineEdit, &LineEdit::FocusIn, m_LineEdit, &QLineEdit::selectAll);
     connect(m_LineEdit, &LineEdit::textChanged,        this, &Receiver::SetString);
     connect(m_LineEdit, &LineEdit::editingFinished,    this, &Receiver::EditingFinished);
     connect(m_LineEdit, &LineEdit::SelectNextSuggest,  this, &Receiver::SelectNextSuggest);
@@ -128,6 +130,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     connect(this, SIGNAL(ToggleReceiver()),   parent, SLOT(ToggleReceiver()));
     connect(this, SIGNAL(ToggleMenuBar()),    parent, SLOT(ToggleMenuBar()));
     connect(this, SIGNAL(ToggleTreeBar()),    parent, SLOT(ToggleTreeBar()));
+    connect(this, SIGNAL(ToggleToolBar()),    parent, SLOT(ToggleToolBar()));
     connect(this, SIGNAL(ToggleFullScreen()), parent, SLOT(ToggleFullScreen()));
     connect(this, SIGNAL(ToggleMaximized()),  parent, SLOT(ToggleMaximized()));
     connect(this, SIGNAL(ToggleMinimized()),  parent, SLOT(ToggleMinimized()));
@@ -563,6 +566,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[rR]eceiver")).exactMatch(cmd)){        emit ToggleReceiver();       return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[mM]enu[bB]ar")).exactMatch(cmd)){      emit ToggleMenuBar();        return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[tT]ree[bB]ar")).exactMatch(cmd)){      emit ToggleTreeBar();        return; }
+    if(QRegExp(QStringLiteral("(?:[tT]oggle)?[tT]ool[bB]ar")).exactMatch(cmd)){      emit ToggleToolBar();        return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[fF]ull[sS]creen")).exactMatch(cmd)){   emit ToggleFullScreen();     return; }
     if(QRegExp(QStringLiteral("[tT]oggle[mM]aximized")).exactMatch(cmd)){            emit ToggleMaximized();      return; }
     if(QRegExp(QStringLiteral("[mM]aximize(?:[wW]indow)?")).exactMatch(cmd)){        emit ToggleMaximized();      return; }
@@ -945,7 +949,12 @@ void Receiver::paintEvent(QPaintEvent *ev){
 }
 
 void Receiver::hideEvent(QHideEvent *ev){
-    if(SharedView view = m_TreeBank->GetCurrentView()) view->setFocus();
+    if(m_TreeBank->GetGadgets()->IsActive()){
+        m_TreeBank->GetView()->setFocus();
+        m_TreeBank->GetGadgets()->setFocus();
+    } else if(SharedView view = m_TreeBank->GetCurrentView()){
+        view->setFocus();
+    }
     QWidget::hideEvent(ev);
 }
 

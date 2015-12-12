@@ -31,6 +31,7 @@
 #include "webengineview.hpp"
 #include "dialog.hpp"
 #include "treebar.hpp"
+#include "toolbar.hpp"
 
 MainWindow::MainWindow(int id, QWidget *parent)
     : QMainWindow(parent)
@@ -42,6 +43,11 @@ MainWindow::MainWindow(int id, QWidget *parent)
 
     m_TreeBar = new TreeBar(m_TreeBank, this);
     addToolBar(m_TreeBar);
+
+    addToolBarBreak();
+
+    m_ToolBar = new ToolBar(m_TreeBank, this);
+    addToolBar(m_ToolBar);
 
     if(m_DialogFrame = Application::GetTemporaryDialogFrame()){
         Application::SetTemporaryDialogFrame(0);
@@ -79,6 +85,7 @@ MainWindow::MainWindow(int id, QWidget *parent)
         m_SouthWestWidget = 0;
         m_SouthEastWidget = 0;
     }
+
     show();
 }
 
@@ -101,9 +108,10 @@ void MainWindow::SetFocus(){
     raise();
     activateWindow();
     if(GetTreeBank()->GetGadgets()->IsActive()){
-        GetTreeBank()->GetGadgets()->setFocus(Qt::OtherFocusReason);
+        GetTreeBank()->GetView()->setFocus();
+        GetTreeBank()->GetGadgets()->setFocus();
     } else if(SharedView view = GetTreeBank()->GetCurrentView()){
-        view->setFocus(Qt::OtherFocusReason);
+        view->setFocus();
     }
 }
 
@@ -260,6 +268,10 @@ TreeBank *MainWindow::GetTreeBank(){
 
 TreeBar *MainWindow::GetTreeBar(){
     return m_TreeBar;
+}
+
+ToolBar *MainWindow::GetToolBar(){
+    return m_ToolBar;
 }
 
 ModelessDialogFrame *MainWindow::DialogFrame(){
@@ -444,6 +456,14 @@ void MainWindow::ToggleTreeBar(){
     }
 }
 
+void MainWindow::ToggleToolBar(){
+    if(m_ToolBar->isVisible()){
+        m_ToolBar->hide();
+    } else {
+        m_ToolBar->show();
+    }
+}
+
 void MainWindow::ToggleFullScreen(){
     if(isFullScreen()){
         showNormal();
@@ -493,6 +513,14 @@ void MainWindow::SetTreeBar(bool on){
         m_TreeBar->show();
     } else if(!m_TreeBar->isVisible()){
         m_TreeBar->hide();
+    }
+}
+
+void MainWindow::SetToolBar(bool on){
+    if(on && m_ToolBar->isHidden()){
+        m_ToolBar->show();
+    } else if(!m_ToolBar->isVisible()){
+        m_ToolBar->hide();
     }
 }
 

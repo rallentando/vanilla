@@ -19,6 +19,7 @@
    0.0 : 'view' contents layer.
    5.0 : 'localview' contents layer.
   10.0 : gadgets' main contents layer.
+  15.0 : gadgets' button layer.
   20.0 : gadgets' spot light layer.
   30.0 : gadgets' dragging contents layer.
   40.0 : gadgets' selector layer.
@@ -40,6 +41,8 @@ bool GraphicsTableView::m_EnablePrimarySpotLight  = false;
 bool GraphicsTableView::m_EnableHoveredSpotLight  = false;
 bool GraphicsTableView::m_EnableLoadedSpotLight   = false;
 bool GraphicsTableView::m_EnableInPlaceNotifier   = false;
+bool GraphicsTableView::m_EnableCloseButton       = false;
+bool GraphicsTableView::m_EnableCloneButton       = false;
 
 GraphicsTableView::GraphicsTableView(TreeBank *parent)
     : QGraphicsObject(0)
@@ -71,6 +74,10 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
         m_EnableHoveredSpotLight ? new SpotLight(HoveredSpotLight, this) : 0;
     m_InPlaceNotifier =
         m_EnableInPlaceNotifier  ? new InPlaceNotifier(this) : 0;
+    m_CloseButton =
+        m_EnableCloseButton ? new CloseButton(this) : 0;
+    m_CloneButton =
+        m_EnableCloneButton ? new CloneButton(this) : 0;
 
     m_ScrollIndicator = new ScrollIndicator(this);
     m_UpDirectoryButton = new UpDirectoryButton(this);
@@ -129,6 +136,8 @@ void GraphicsTableView::LoadSettings(){
             m_EnableHoveredSpotLight  = settings->value(QStringLiteral("@EnableHoveredSpotLight"),   true).value<bool>();
             m_EnableLoadedSpotLight   = settings->value(QStringLiteral("@EnableLoadedSpotLight"),   false).value<bool>();
             m_EnableInPlaceNotifier   = settings->value(QStringLiteral("@EnableInPlaceNotifier"),    true).value<bool>();
+            m_EnableCloseButton       = settings->value(QStringLiteral("@EnableCloseButton"),        true).value<bool>();
+            m_EnableCloneButton       = settings->value(QStringLiteral("@EnableCloneButton"),       false).value<bool>();
         }
         settings->endGroup();
     }
@@ -150,6 +159,8 @@ void GraphicsTableView::SaveSettings(){
             settings->setValue(QStringLiteral("@EnableHoveredSpotLight"),  m_EnableHoveredSpotLight);
             settings->setValue(QStringLiteral("@EnableLoadedSpotLight"),   m_EnableLoadedSpotLight);
             settings->setValue(QStringLiteral("@EnableInPlaceNotifier"),   m_EnableInPlaceNotifier);
+            settings->setValue(QStringLiteral("@EnableCloseButton"),       m_EnableCloseButton);
+            settings->setValue(QStringLiteral("@EnableCloneButton"),       m_EnableCloneButton);
         }
         settings->endGroup();
     }
@@ -429,8 +440,9 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     m_ScrollIndicator->setEnabled(true);
     m_ScrollIndicator->setVisible(true);
 
+    m_UpDirectoryButton->SetState(GraphicsButton::NotHovered);
+
     if(IsDisplayingViewNode() && nd && nd->GetParent() && nd->GetParent()->GetParent()){
-        m_UpDirectoryButton->SetHovered(false);
         m_UpDirectoryButton->setEnabled(true);
         m_UpDirectoryButton->setVisible(true);
     } else {
@@ -798,10 +810,14 @@ void GraphicsTableView::SetHoveredItem(int index){
 }
 
 void GraphicsTableView::SetHoveredItem(Thumbnail *thumb){
+    if(m_CloseButton) m_CloseButton->SetItem(thumb);
+    if(m_CloneButton) m_CloneButton->SetItem(thumb);
     SetHoveredItem(m_DisplayThumbnails.indexOf(thumb));
 }
 
 void GraphicsTableView::SetHoveredItem(NodeTitle *title){
+    if(m_CloseButton) m_CloseButton->SetItem(title);
+    if(m_CloneButton) m_CloneButton->SetItem(title);
     SetHoveredItem(m_DisplayNodeTitles.indexOf(title));
 }
 
@@ -1388,6 +1404,26 @@ QRectF GraphicsTableView::NodeTitleAreaRect(){
 
 QRectF GraphicsTableView::ScrollBarAreaRect(){
     return GetStyle()->ScrollBarAreaRect(this);
+}
+
+GadgetsStyle *GraphicsTableView::GetStyle(){
+    return m_Style;
+}
+
+bool GraphicsTableView::ScrollToChangeDirectory(){
+    return GetStyle()->ScrollToChangeDirectory(m_ScrollToChangeDirectory);
+}
+
+bool GraphicsTableView::RightClickToRenameNode(){
+    return GetStyle()->RightClickToRenameNode(m_RightClickToRenameNode);
+}
+
+bool GraphicsTableView::EnableCloseButton(){
+    return m_EnableCloseButton;
+}
+
+bool GraphicsTableView::EnableCloneButton(){
+    return m_EnableCloneButton;
 }
 
 void GraphicsTableView::dragEnterEvent(QGraphicsSceneDragDropEvent *ev){
@@ -3227,24 +3263,193 @@ void InPlaceNotifier::hoverEnterEvent   (QGraphicsSceneHoverEvent *ev){ ev->setA
 void InPlaceNotifier::hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev){ ev->setAccepted(false);}
 void InPlaceNotifier::hoverMoveEvent    (QGraphicsSceneHoverEvent *ev){ ev->setAccepted(false);}
 
-UpDirectoryButton::UpDirectoryButton(QGraphicsItem *parent)
-    : QGraphicsRectItem(parent)
+GraphicsButton::GraphicsButton(QGraphicsItem *parent)
+    : QGraphicsItem(parent)
 {
     m_TableView = static_cast<GraphicsTableView*>(parent);
-    m_Icon = Application::style()->standardIcon(QStyle::SP_TitleBarShadeButton).pixmap(QSize(10, 10));
+    m_Item = 0;
+    m_ButtonState = NotHovered;
+    setZValue(BUTTON_LAYER);
     setAcceptHoverEvents(true);
-    setZValue(MAIN_CONTENTS_LAYER);
-    setPos(0,0);
-    setRect(QRectF(-5, -5, 23, 23));
-    SetHovered(false);
-    hide();
+}
+
+GraphicsButton::~GraphicsButton(){}
+
+GraphicsButton::ButtonState GraphicsButton::GetState(){
+    return m_ButtonState;
+}
+
+void GraphicsButton::SetState(ButtonState state){
+    m_TableView->SetInPlaceNotifierContent(0);
+    m_ButtonState = state;
+    m_TableView->GetStyle()->OnSetState(this, state);
+}
+
+void GraphicsButton::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    QGraphicsItem::mousePressEvent(ev);
+    SetState(Pressed);
+    ev->setAccepted(true);
+}
+
+void GraphicsButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    QGraphicsItem::mouseReleaseEvent(ev);
+
+    if(boundingRect().contains(ev->scenePos()))
+        SetState(Hovered);
+    else
+        SetState(NotHovered);
+
+    ev->setAccepted(true);
+}
+
+void GraphicsButton::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
+    QGraphicsItem::mouseMoveEvent(ev);
+
+    if(boundingRect().contains(ev->scenePos())){
+        if(m_ButtonState != Pressed) SetState(Hovered);
+    } else {
+        SetState(NotHovered);
+    }
+    ev->setAccepted(true);
+}
+
+void GraphicsButton::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
+    QGraphicsItem::hoverEnterEvent(ev);
+    SetState(Hovered);
+    ev->setAccepted(true);
+}
+
+void GraphicsButton::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
+    QGraphicsItem::hoverLeaveEvent(ev);
+    SetState(NotHovered);
+    ev->setAccepted(true);
+}
+
+void GraphicsButton::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
+    QGraphicsItem::hoverMoveEvent(ev);
+    SetState(Hovered);
+    ev->setAccepted(true);
+}
+
+CloseButton::CloseButton(QGraphicsItem *parent)
+    : GraphicsButton(parent)
+{
+    m_Node = 0;
+}
+
+CloseButton::~CloseButton(){}
+
+QRectF CloseButton::boundingRect() const {
+    if(!m_Item) return QRectF();
+    QRectF rect = m_Item->boundingRect();
+    rect.translate(m_Item->pos());
+    rect.setLeft(rect.right() - 20);
+    rect.setWidth(16);
+    rect.setBottom(rect.top() + 19);
+    rect.setTop(rect.top() + 3);
+    return rect;
+}
+
+void CloseButton::UnsetItem(){
+    setVisible(false);
+    setEnabled(false);
+    m_Item = 0;
+    m_Node = 0;
+    m_ButtonState = NotHovered;
+}
+
+void CloseButton::SetItem(Thumbnail *thumb){
+    m_Item = thumb;
+    m_Node = thumb->GetNode();
+    setVisible(true);
+    setEnabled(true);
+    SetState(NotHovered);
+}
+
+void CloseButton::SetItem(NodeTitle *title){
+    m_Item = title;
+    m_Node = title->GetNode();
+    setVisible(true);
+    setEnabled(true);
+    SetState(NotHovered);
+}
+
+void CloseButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
+    Q_UNUSED(item); Q_UNUSED(widget);
+    m_TableView->GetStyle()->Render(this, painter);
+}
+
+void CloseButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    bool pressed = m_ButtonState == Pressed;
+    GraphicsButton::mouseReleaseEvent(ev);
+    if(pressed) m_TableView->ThumbList_DeleteNode();
+    ev->setAccepted(true);
+}
+
+CloneButton::CloneButton(QGraphicsItem *parent)
+    : GraphicsButton(parent)
+{
+    m_Node = 0;
+}
+
+CloneButton::~CloneButton(){}
+
+QRectF CloneButton::boundingRect() const {
+    if(!m_Item) return QRectF();
+    QRectF rect = m_Item->boundingRect();
+    rect.translate(m_Item->pos());
+    rect.setLeft(rect.right() - (GraphicsTableView::EnableCloseButton() ? 40 : 20));
+    rect.setWidth(16);
+    rect.setBottom(rect.top() + 19);
+    rect.setTop(rect.top() + 3);
+    return rect;
+}
+
+void CloneButton::UnsetItem(){
+    setVisible(false);
+    setEnabled(false);
+    m_Item = 0;
+    m_Node = 0;
+    m_ButtonState = NotHovered;
+}
+
+void CloneButton::SetItem(Thumbnail *thumb){
+    m_Item = thumb;
+    m_Node = thumb->GetNode();
+    setVisible(true);
+    setEnabled(true);
+    SetState(NotHovered);
+}
+
+void CloneButton::SetItem(NodeTitle *title){
+    m_Item = title;
+    m_Node = title->GetNode();
+    setVisible(true);
+    setEnabled(true);
+    SetState(NotHovered);
+}
+
+void CloneButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
+    Q_UNUSED(item); Q_UNUSED(widget);
+    m_TableView->GetStyle()->Render(this, painter);
+}
+
+void CloneButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    bool pressed = m_ButtonState == Pressed;
+    GraphicsButton::mouseReleaseEvent(ev);
+    if(pressed) m_TableView->ThumbList_CloneNode();
+    ev->setAccepted(true);
+}
+
+UpDirectoryButton::UpDirectoryButton(QGraphicsItem *parent)
+    : GraphicsButton(parent)
+{
 }
 
 UpDirectoryButton::~UpDirectoryButton(){}
 
-void UpDirectoryButton::SetHovered(bool hovered){
-    m_Hovered = hovered;
-    m_TableView->GetStyle()->OnSetHovered(this, hovered);
+QRectF UpDirectoryButton::boundingRect() const {
+    return QRectF(-5, -5, 23, 23);
 }
 
 void UpDirectoryButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
@@ -3252,35 +3457,9 @@ void UpDirectoryButton::paint(QPainter *painter, const QStyleOptionGraphicsItem 
     m_TableView->GetStyle()->Render(this, painter);
 }
 
-void UpDirectoryButton::mousePressEvent(QGraphicsSceneMouseEvent *ev){
-    QGraphicsRectItem::mousePressEvent(ev);
-    ev->setAccepted(true);
-}
-
 void UpDirectoryButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
-    QGraphicsRectItem::mousePressEvent(ev);
-    m_TableView->ThumbList_UpDirectory();
-    ev->setAccepted(true);
-}
-
-void UpDirectoryButton::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
-    QGraphicsRectItem::mouseMoveEvent(ev);
-    ev->setAccepted(true);
-}
-
-void UpDirectoryButton::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
-    QGraphicsRectItem::hoverMoveEvent(ev);
-    SetHovered(true);
-    ev->setAccepted(true);
-}
-
-void UpDirectoryButton::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
-    QGraphicsRectItem::hoverLeaveEvent(ev);
-    SetHovered(false);
-    ev->setAccepted(true);
-}
-
-void UpDirectoryButton::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
-    QGraphicsRectItem::hoverMoveEvent(ev);
+    bool pressed = m_ButtonState == Pressed;
+    GraphicsButton::mousePressEvent(ev);
+    if(pressed) m_TableView->ThumbList_UpDirectory();
     ev->setAccepted(true);
 }

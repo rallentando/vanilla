@@ -501,14 +501,22 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
     //[[WEV]]
     // 'selectedText' only work for WebEngineView.
     if(linkUrl.isEmpty() && imageUrl.isEmpty() && selectedText().isEmpty()){
+        static QIcon backIcon = QIcon(":/resources/menu/back.png");
+        static QIcon forwardIcon = QIcon(":/resources/menu/forward.png");
+        static QIcon reloadIcon = QIcon(":/resources/menu/reload.png");
+        static QIcon stopIcon = QIcon(":/resources/menu/stop.png");
         QAction *backAction    = Action(QWebPageBase::Back);
         QAction *forwardAction = Action(QWebPageBase::Forward);
-        QAction *stopAction    = Action(QWebPageBase::Stop);
         QAction *reloadAction  = Action(QWebPageBase::Reload);
+        QAction *stopAction    = Action(QWebPageBase::Stop);
         backAction->setText(tr("Back"));
+        backAction->setIcon(backIcon);
         forwardAction->setText(tr("Forward"));
-        stopAction->setText(tr("Stop"));
+        forwardAction->setIcon(forwardIcon);
         reloadAction->setText(tr("Reload"));
+        reloadAction->setIcon(reloadIcon);
+        stopAction->setText(tr("Stop"));
+        stopAction->setIcon(stopIcon);
 
         if(backAction->isEnabled())
             menu->addAction(backAction);

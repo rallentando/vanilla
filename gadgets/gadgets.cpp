@@ -16,10 +16,11 @@
 #include <functional>
 
 #include "graphicstableview.hpp"
-
+#include "gadgetsstyle.hpp"
 #include "application.hpp"
 #include "mainwindow.hpp"
 #include "treebar.hpp"
+#include "toolbar.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
@@ -1599,7 +1600,8 @@ void Gadgets::RenderBackground(QPainter *painter){
 
         if(width_diff != 0 || height_diff != 0)
             painter->translate(width_diff / 2.0, height_diff / 2.0);
-        view->Render(painter);
+        if(GetStyle()->StyleName() == QStringLiteral("FlatStyle"))
+            view->Render(painter);
 
         painter->restore();
     }
@@ -1927,10 +1929,10 @@ QAction *Gadgets::Action(GadgetsAction a){
     case Ke_Down:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
     case Ke_Right:   action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
     case Ke_Left:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-  //case Ge_Back:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowBack));     break;
-  //case Ge_Forward: action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowForward));  break;
-  //case Ge_Reload:  action->setIcon(Application::style()->standardIcon(QStyle::SP_BrowserReload)); break;
-  //case Ge_Stop:    action->setIcon(Application::style()->standardIcon(QStyle::SP_BrowserStop));   break;
+  //case Ge_Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
+  //case Ge_Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
+  //case Ge_Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
+  //case Ge_Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
 
     switch(a){
@@ -1975,6 +1977,7 @@ QAction *Gadgets::Action(GadgetsAction a){
         DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));
         DEFINE_ACTION(ToggleMenuBar,    tr("ToggleMenuBar"));
         DEFINE_ACTION(ToggleTreeBar,    tr("ToggleTreeBar"));
+        DEFINE_ACTION(ToggleToolBar,    tr("ToggleToolBar"));
         DEFINE_ACTION(ToggleFullScreen, tr("ToggleFullScreen"));
         DEFINE_ACTION(ToggleMaximized,  tr("ToggleMaximized"));
         DEFINE_ACTION(ToggleMinimized,  tr("ToggleMinimized"));
@@ -2123,6 +2126,10 @@ QAction *Gadgets::Action(GadgetsAction a){
     case Ge_ToggleTreeBar:
         action->setCheckable(true);
         action->setText(tr("TreeBar"));
+        break;
+    case Ge_ToggleToolBar:
+        action->setCheckable(true);
+        action->setText(tr("ToolBar"));
         break;
 
     case Ge_OpenNodeWithIE:

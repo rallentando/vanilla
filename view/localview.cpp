@@ -22,6 +22,7 @@
 #include "nodetitle.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
+#include "gadgetsstyle.hpp"
 #ifdef QTWEBKIT
 #  include "webview.hpp"
 #  include "quickwebview.hpp"
@@ -133,8 +134,9 @@ void LocalView::Load(const QUrl &url){
         CollectNodes(m_DummyLocalNode);
     }
 
+    m_UpDirectoryButton->SetState(GraphicsButton::NotHovered);
+
     if(url.toLocalFile() != QStringLiteral("/")){
-        m_UpDirectoryButton->SetHovered(false);
         m_UpDirectoryButton->setEnabled(true);
         m_UpDirectoryButton->setVisible(true);
     } else {
@@ -247,7 +249,8 @@ void LocalView::RenderBackground(QPainter *painter){
 
         if(width_diff != 0 || height_diff != 0)
             painter->translate(width_diff / 2.0, height_diff / 2.0);
-        view->Render(painter);
+        if(GetStyle()->StyleName() == QStringLiteral("FlatStyle"))
+            view->Render(painter);
 
         painter->restore();
     }
@@ -781,6 +784,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         case Gadgets::Ge_ToggleReceiver:
         case Gadgets::Ge_ToggleMenuBar:
         case Gadgets::Ge_ToggleTreeBar:
+        case Gadgets::Ge_ToggleToolBar:
         case Gadgets::Ge_ToggleFullScreen:
         case Gadgets::Ge_ToggleMaximized:
         case Gadgets::Ge_ToggleMinimized:
@@ -826,10 +830,10 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
     case Gadgets::Ke_Down:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowDown));     break;
     case Gadgets::Ke_Right:   action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowRight));    break;
     case Gadgets::Ke_Left:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-  //case Gadgets::Ge_Back:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowBack));     break;
-  //case Gadgets::Ge_Forward: action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowForward));  break;
-  //case Gadgets::Ge_Reload:  action->setIcon(QApplication::style()->standardIcon(QStyle::SP_BrowserReload)); break;
-  //case Gadgets::Ge_Stop:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_BrowserStop));   break;
+  //case Gadgets::Ge_Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
+  //case Gadgets::Ge_Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
+  //case Gadgets::Ge_Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
+  //case Gadgets::Ge_Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
 
     switch(a){
@@ -874,6 +878,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));
         DEFINE_ACTION(ToggleMenuBar,    tr("ToggleMenuBar"));
         DEFINE_ACTION(ToggleTreeBar,    tr("ToggleTreeBar"));
+        DEFINE_ACTION(ToggleToolBar,    tr("ToggleToolBar"));
         DEFINE_ACTION(ToggleFullScreen, tr("ToggleFullScreen"));
         DEFINE_ACTION(ToggleMaximized,  tr("ToggleMaximized"));
         DEFINE_ACTION(ToggleMinimized,  tr("ToggleMinimized"));
@@ -1022,6 +1027,10 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
     case Gadgets::Ge_ToggleTreeBar:
         action->setCheckable(true);
         action->setText(tr("TreeBar"));
+        break;
+    case Gadgets::Ge_ToggleToolBar:
+        action->setCheckable(true);
+        action->setText(tr("ToolBar"));
         break;
 
     case Gadgets::Ge_OpenNodeWithIE:
@@ -1607,11 +1616,11 @@ void LocalView::CloneNode(Node *ln){
     if(ln->IsRoot()) return;
     bool ok;
     QString parent = ln->GetParent()->GetUrl().toLocalFile();
-    QString base = ln->GetUrl().toLocalFile();
+    QString base = ln->GetUrl().toLocalFile().split(QStringLiteral("/")).last();
     QString name = ModalDialog::GetText
         (tr("Input file name."),
          tr("Input clone file name."),
-         QString(), &ok);
+         base, &ok);
     if(!ok) return;
     if(name.isEmpty() || name == base){
         ModelessDialog::Information
@@ -1620,7 +1629,7 @@ void LocalView::CloneNode(Node *ln){
         return;
     }
 
-    QFile file(base);
+    QFile file(parent + QStringLiteral("/") + base);
     file.copy(parent + QStringLiteral("/") + name);
 }
 
@@ -1822,14 +1831,16 @@ void LocalView::OnSetJsObject(_View*){}
 
 void LocalView::OnSetJsObject(_Vanilla*){}
 
-void LocalView::OnLoadStarted(){}
+void LocalView::OnLoadStarted(){
+    View::OnLoadStarted();
+}
 
 void LocalView::OnLoadProgress(int progress){
     Q_UNUSED(progress);
 }
 
 void LocalView::OnLoadFinished(bool ok){
-    Q_UNUSED(ok);
+    View::OnLoadFinished(ok);
 }
 
 void LocalView::OnTitleChanged(const QString &title){

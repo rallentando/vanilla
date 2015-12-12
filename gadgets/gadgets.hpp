@@ -58,6 +58,7 @@ public:
         Ge_ToggleReceiver,
         Ge_ToggleMenuBar,
         Ge_ToggleTreeBar,
+        Ge_ToggleToolBar,
         Ge_ToggleFullScreen,
         Ge_ToggleMaximized,
         Ge_ToggleMinimized,
@@ -515,6 +516,7 @@ public:
         if(str == QStringLiteral("ToggleReceiver"))                  return Ge_ToggleReceiver;
         if(str == QStringLiteral("ToggleMenuBar"))                   return Ge_ToggleMenuBar;
         if(str == QStringLiteral("ToggleTreeBar"))                   return Ge_ToggleTreeBar;
+        if(str == QStringLiteral("ToggleToolBar"))                   return Ge_ToggleToolBar;
         if(str == QStringLiteral("ToggleFullScreen"))                return Ge_ToggleFullScreen;
         if(str == QStringLiteral("ToggleMaximized"))                 return Ge_ToggleMaximized;
         if(str == QStringLiteral("ToggleMinimized"))                 return Ge_ToggleMinimized;
@@ -647,6 +649,7 @@ public:
         if(action == Ge_ToggleReceiver)                  return QStringLiteral("ToggleReceiver");
         if(action == Ge_ToggleMenuBar)                   return QStringLiteral("ToggleMenuBar");
         if(action == Ge_ToggleTreeBar)                   return QStringLiteral("ToggleTreeBar");
+        if(action == Ge_ToggleToolBar)                   return QStringLiteral("ToggleToolBar");
         if(action == Ge_ToggleFullScreen)                return QStringLiteral("ToggleFullScreen");
         if(action == Ge_ToggleMaximized)                 return QStringLiteral("ToggleMaximized");
         if(action == Ge_ToggleMinimized)                 return QStringLiteral("ToggleMinimized");

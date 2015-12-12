@@ -128,6 +128,7 @@ signals:
     void ToggleReceiver();
     void ToggleMenuBar();
     void ToggleTreeBar();
+    void ToggleToolBar();
     void ToggleFullScreen();
     void ToggleMaximized();
     void ToggleMinimized();

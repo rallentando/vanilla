@@ -8,7 +8,6 @@
 
 #include "thumbnail.hpp"
 #include "nodetitle.hpp"
-#include "gadgetsstyle.hpp"
 
 #include <functional>
 
@@ -22,9 +21,12 @@ class QAction;
 class QMenu;
 class TreeBank;
 
+class GadgetsStyle;
 class SpotLight;
 class ScrollIndicator;
 class InPlaceNotifier;
+class CloseButton;
+class CloneButton;
 class UpDirectoryButton;
 
 class GraphicsTableView : public QGraphicsObject{
@@ -169,10 +171,14 @@ public:
     QRectF NodeTitleAreaRect();
     QRectF ScrollBarAreaRect();
 
-    static GadgetsStyle *GetStyle(){ return m_Style;}
+    static GadgetsStyle *GetStyle();
 
-    static bool ScrollToChangeDirectory(){ return GetStyle()->ScrollToChangeDirectory(m_ScrollToChangeDirectory);}
-    static bool RightClickToRenameNode() { return GetStyle()->RightClickToRenameNode(m_RightClickToRenameNode);}
+    static bool ScrollToChangeDirectory();
+    static bool RightClickToRenameNode();
+
+    static bool EnableCloseButton();
+    static bool EnableCloneButton();
+
 
     enum SortFlag {
         NoSort           = 0,
@@ -345,6 +351,8 @@ private:
     static bool m_EnableHoveredSpotLight;
     static bool m_EnableLoadedSpotLight;
     static bool m_EnableInPlaceNotifier;
+    static bool m_EnableCloseButton;
+    static bool m_EnableCloneButton;
 
     SpotLight *m_PrimarySpotLight;
     SpotLight *m_HoveredSpotLight;
@@ -391,6 +399,10 @@ protected:
 
     // in place notifier.
     InPlaceNotifier *m_InPlaceNotifier;
+
+    // close, clone button.
+    CloseButton *m_CloseButton;
+    CloneButton *m_CloneButton;
 
     // up directory button.
     UpDirectoryButton *m_UpDirectoryButton;
@@ -555,17 +567,20 @@ private:
     Node *m_Node;
 };
 
-class UpDirectoryButton : public QGraphicsRectItem {
+class GraphicsButton : public QGraphicsItem {
 
 public:
-    UpDirectoryButton(QGraphicsItem *parent = 0);
-    ~UpDirectoryButton();
+    GraphicsButton(QGraphicsItem *parent = 0);
+    ~GraphicsButton();
 
-    QPixmap GetIcon(){ return m_Icon;}
-    bool GetHovered(){ return m_Hovered;}
-    void SetHovered(bool hovered);
+    enum ButtonState{
+        NotHovered,
+        Hovered,
+        Pressed,
+    };
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    ButtonState GetState();
+    void SetState(ButtonState state);
 
 protected:
     void mousePressEvent   (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
@@ -575,10 +590,63 @@ protected:
     void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
     void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
 
-private:
+protected:
     GraphicsTableView *m_TableView;
-    bool m_Hovered;
-    QPixmap m_Icon;
+    QGraphicsItem *m_Item;
+    ButtonState m_ButtonState;
+};
+
+class CloseButton : public GraphicsButton {
+
+public:
+    CloseButton(QGraphicsItem *parent = 0);
+    ~CloseButton();
+
+    void UnsetItem();
+    void SetItem(Thumbnail *thumb);
+    void SetItem(NodeTitle *title);
+
+    QRectF boundingRect() const DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+
+protected:
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+
+private:
+    Node *m_Node;
+};
+
+class CloneButton : public GraphicsButton {
+
+public:
+    CloneButton(QGraphicsItem *parent = 0);
+    ~CloneButton();
+
+    void UnsetItem();
+    void SetItem(Thumbnail *thumb);
+    void SetItem(NodeTitle *title);
+
+    QRectF boundingRect() const DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+
+protected:
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+
+private:
+    Node *m_Node;
+};
+
+class UpDirectoryButton : public GraphicsButton {
+
+public:
+    UpDirectoryButton(QGraphicsItem *parent = 0);
+    ~UpDirectoryButton();
+
+    QRectF boundingRect() const DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+
+protected:
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(GraphicsTableView::SortFlags);

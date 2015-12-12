@@ -120,7 +120,7 @@ WebViewBase::~WebViewBase(){
     setPage(0);
 //[[WEV]]
     m_InspectorTable.remove(this);
-    m_Inspector->deleteLater();
+    if(m_Inspector) m_Inspector->deleteLater();
 //[[/WEV]]
 }
 
@@ -242,6 +242,9 @@ void WebViewBase::OnSetJsObject(_Vanilla*){}
 
 void WebViewBase::OnLoadStarted(){
     if(!GetHistNode()) return;
+
+    View::OnLoadStarted();
+
     if(history()->count()){
         QUrl historyUrl = history()->currentItem().url();
         if(!historyUrl.isEmpty() && historyUrl != url()){
@@ -264,6 +267,9 @@ void WebViewBase::OnLoadProgress(int progress){
 
 void WebViewBase::OnLoadFinished(bool ok){
     if(!GetHistNode()) return;
+
+    View::OnLoadFinished(ok);
+
     if(history()->count()){
         QUrl historyUrl = history()->currentItem().url();
         if(!historyUrl.isEmpty() && historyUrl != url()){

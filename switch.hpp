@@ -38,10 +38,6 @@
 
 //#define WEBENGINEVIEW_DEFAULT
 
-// cannot render QuickWeb(Engine)View without this flag.
-// crash when calling QWindow::grabWindow.
-#define USE_QQUICKWIDGET
-
 //#define USE_ANGLE
 
 //#define USE_WEBCHANNEL

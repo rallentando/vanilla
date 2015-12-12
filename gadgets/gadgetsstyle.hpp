@@ -5,13 +5,8 @@
 
 #include "view.hpp" // for SharedWebElement.
 
-class QGraphicsRectItem;
-class GraphicsTableView;
-class Thumbnail;
-class NodeTitle;
-class SpotLight;
-class InPlaceNotifier;
-class UpDirectoryButton;
+#include "graphicstableview.hpp"
+
 class AccessibleWebElement;
 
 class GadgetsStyle{
@@ -27,6 +22,8 @@ public:
     virtual void Render(NodeTitle *title, QPainter *painter) const = 0;
     virtual void Render(SpotLight *light, QPainter *painter) const = 0;
     virtual void Render(InPlaceNotifier *notifier, QPainter *painter) const = 0;
+    virtual void Render(CloseButton *button, QPainter *painter) const = 0;
+    virtual void Render(CloneButton *button, QPainter *painter) const = 0;
     virtual void Render(UpDirectoryButton *button, QPainter *painter) const = 0;
     virtual void Render(AccessibleWebElement *awe, QPainter *painter) const = 0;
     virtual void OnSetNest(Thumbnail *thumb, int nest) const = 0;
@@ -35,7 +32,7 @@ public:
     virtual void OnSetPrimary(NodeTitle *title, bool primary) const = 0;
     virtual void OnSetHovered(Thumbnail *thumb, bool hovered) const = 0;
     virtual void OnSetHovered(NodeTitle *thumb, bool hovered) const = 0;
-    virtual void OnSetHovered(UpDirectoryButton *button, bool hovered) const = 0;
+    virtual void OnSetState(GraphicsButton *button, GraphicsButton::ButtonState) const = 0;
     virtual void OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const = 0;
     virtual void OnReshow(QGraphicsRectItem *gri) const = 0;
     virtual QRectF ThumbnailAreaRect(GraphicsTableView *gtv) const = 0;
@@ -89,6 +86,8 @@ public:
     void Render(NodeTitle *title, QPainter *painter) const DECL_OVERRIDE;
     void Render(SpotLight *light, QPainter *painter) const DECL_OVERRIDE;
     void Render(InPlaceNotifier *notifier, QPainter *painter) const DECL_OVERRIDE;
+    void Render(CloseButton *button, QPainter *painter) const DECL_OVERRIDE;
+    void Render(CloneButton *button, QPainter *painter) const DECL_OVERRIDE;
     void Render(UpDirectoryButton *button, QPainter *painter) const DECL_OVERRIDE;
     void Render(AccessibleWebElement *awe, QPainter *painter) const DECL_OVERRIDE;
     void OnSetNest(Thumbnail *thumb, int nest) const DECL_OVERRIDE;
@@ -97,7 +96,7 @@ public:
     void OnSetPrimary(NodeTitle *title, bool primary) const DECL_OVERRIDE;
     void OnSetHovered(Thumbnail *thumb, bool hovered) const DECL_OVERRIDE;
     void OnSetHovered(NodeTitle *title, bool hovered) const DECL_OVERRIDE;
-    void OnSetHovered(UpDirectoryButton *button, bool hovered) const DECL_OVERRIDE;
+    void OnSetState(GraphicsButton *button, GraphicsButton::ButtonState) const DECL_OVERRIDE;
     void OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const DECL_OVERRIDE;
     void OnReshow(QGraphicsRectItem *gri) const DECL_OVERRIDE;
     QRectF ThumbnailAreaRect(GraphicsTableView *gtv) const DECL_OVERRIDE;
@@ -142,6 +141,8 @@ public:
     void Render(NodeTitle *title, QPainter *painter) const DECL_OVERRIDE;
     void Render(SpotLight *light, QPainter *painter) const DECL_OVERRIDE;
     void Render(InPlaceNotifier *notifier, QPainter *painter) const DECL_OVERRIDE;
+    void Render(CloseButton *button, QPainter *painter) const DECL_OVERRIDE;
+    void Render(CloneButton *button, QPainter *painter) const DECL_OVERRIDE;
     void Render(UpDirectoryButton *button, QPainter *painter) const DECL_OVERRIDE;
     void Render(AccessibleWebElement *awe, QPainter *painter) const DECL_OVERRIDE;
     void OnSetNest(Thumbnail *thumb, int nest) const DECL_OVERRIDE;
@@ -150,7 +151,7 @@ public:
     void OnSetPrimary(NodeTitle *title, bool primary) const DECL_OVERRIDE;
     void OnSetHovered(Thumbnail *thumb, bool hovered) const DECL_OVERRIDE;
     void OnSetHovered(NodeTitle *title, bool hovered) const DECL_OVERRIDE;
-    void OnSetHovered(UpDirectoryButton *button, bool hovered) const DECL_OVERRIDE;
+    void OnSetState(GraphicsButton *button, GraphicsButton::ButtonState) const DECL_OVERRIDE;
     void OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const DECL_OVERRIDE;
     void OnReshow(QGraphicsRectItem *gri) const DECL_OVERRIDE;
     QRectF ThumbnailAreaRect(GraphicsTableView *gtv) const DECL_OVERRIDE;

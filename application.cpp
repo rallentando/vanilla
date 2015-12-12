@@ -42,6 +42,7 @@
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
 #include "treebar.hpp"
+#include "toolbar.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
 #include "saver.hpp"
@@ -229,6 +230,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     m_AutoSaver = new AutoSaver();
     m_SaverThread = new QThread();
     TreeBar::Initialize();
+    ToolBar::Initialize();
     TreeBank::Initialize();
     TreeBank::LoadTree();
     if(m_MainWindows.isEmpty()){
@@ -1535,6 +1537,7 @@ void Application::Reconfigure(){
     m_GlobalSettings->sync();
     LoadGlobalSettings();
     TreeBar::LoadSettings();
+    ToolBar::LoadSettings();
     // 'TreeBank::LoadSettings' calls 'View::LoadSettings' and 'Gadgets::LoadSettings'.
     TreeBank::LoadSettings();
 }

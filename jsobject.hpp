@@ -125,6 +125,7 @@ public slots:
     void toggleReceiver        (){ m_View->TriggerAction(Page::We_ToggleReceiver); }
     void toggleMenuBar         (){ m_View->TriggerAction(Page::We_ToggleMenuBar); }
     void toggleTreeBar         (){ m_View->TriggerAction(Page::We_ToggleTreeBar); }
+    void toggleToolBar         (){ m_View->TriggerAction(Page::We_ToggleToolBar); }
     void toggleFullScreen      (){ m_View->TriggerAction(Page::We_ToggleFullScreen); }
     void toggleMaximized       (){ m_View->TriggerAction(Page::We_ToggleMaximized); }
     void toggleMinimized       (){ m_View->TriggerAction(Page::We_ToggleMinimized); }

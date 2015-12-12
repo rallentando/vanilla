@@ -26,20 +26,10 @@
 QuickWebViewBase::QuickWebViewBase(TreeBank *parent, QString id, QStringList set)
     : View(parent, id, set)
       //[[QWV]]
-#ifdef USE_QQUICKWIDGET
-    , QQuickBase(QUrl(QStringLiteral("qrc:/gen/quickwebview.qml")), parent)
-#else
-    , QQuickBase(QUrl(QStringLiteral("qrc:/gen/quickwebview.qml")),
-                 parent && parent->parentWidget() ? parent->parentWidget()->windowHandle() : 0)
-#endif
+    , QQuickWidget(QUrl(QStringLiteral("qrc:/gen/quickwebview.qml")), parent)
       //[[/QWV]]
       //[[QWEV]]
-#ifdef USE_QQUICKWIDGET
-    , QQuickBase(QUrl(QStringLiteral("qrc:/gen/quickwebengineview.qml")), parent)
-#else
-    , QQuickBase(QUrl(QStringLiteral("qrc:/gen/quickwebengineview.qml")),
-                 parent && parent->parentWidget() ? parent->parentWidget()->windowHandle() : 0)
-#endif
+    , QQuickWidget(QUrl(QStringLiteral("qrc:/gen/quickwebengineview.qml")), parent)
       //[[/QWEV]]
 {
     Initialize();
@@ -341,11 +331,11 @@ bool QuickWebViewBase::SeekText(const QString &str, View::FindFlags opt){
 
 void QuickWebViewBase::hideEvent(QHideEvent *ev){
     SaveViewState();
-    QQuickBase::hideEvent(ev);
+    QQuickWidget::hideEvent(ev);
 }
 
 void QuickWebViewBase::showEvent(QShowEvent *ev){
-    QQuickBase::showEvent(ev);
+    QQuickWidget::showEvent(ev);
     RestoreViewState();
 }
 
@@ -361,7 +351,7 @@ void QuickWebViewBase::keyPressEvent(QKeyEvent *ev){
         ev->setAccepted(TriggerKeyEvent(ev));
         return;
     }
-    QQuickBase::keyPressEvent(ev);
+    QQuickWidget::keyPressEvent(ev);
 
     if(!ev->isAccepted() &&
        !Application::IsOnlyModifier(ev)){
@@ -385,20 +375,18 @@ void QuickWebViewBase::keyPressEvent(QKeyEvent *ev){
 void QuickWebViewBase::keyReleaseEvent(QKeyEvent *ev){
     if(!visible()) return;
 
-    QQuickBase::keyReleaseEvent(ev);
+    QQuickWidget::keyReleaseEvent(ev);
     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");
 }
 
 void QuickWebViewBase::resizeEvent(QResizeEvent *ev){
-    QQuickBase::resizeEvent(ev);
+    QQuickWidget::resizeEvent(ev);
     QMetaObject::invokeMethod(m_QmlWebViewBase, "adjustContents");
 }
 
-#ifdef USE_QQUICKWIDGET
 void QuickWebViewBase::contextMenuEvent(QContextMenuEvent *ev){
     ev->setAccepted(true);
 }
-#endif
 
 void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
     if(!m_TreeBank) return;
@@ -406,7 +394,7 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
     Application::SetCurrentWindow(m_TreeBank->GetMainWindow());
 
     if(m_DragStarted){
-        QQuickBase::mouseMoveEvent(ev);
+        QQuickWidget::mouseMoveEvent(ev);
         ev->setAccepted(false);
         return;
     }
@@ -445,16 +433,13 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
 
         if(QLineF(ev->pos(), m_GestureStartedPos).length() < 2){
             // gesture not aborted.
-            QQuickBase::mouseMoveEvent(ev);
+            QQuickWidget::mouseMoveEvent(ev);
             ev->setAccepted(false);
             return;
         }
 
-#ifdef USE_QQUICKWIDGET
         QDrag *drag = new QDrag(this);
-#else
-        QDrag *drag = new QDrag(m_TreeBank);
-#endif
+
         // clear or make directory if need.
         Application::ClearTemporaryDirectory();
 
@@ -470,7 +455,7 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
 
             // call default behavior.
             GestureAborted();
-            QQuickBase::mouseMoveEvent(ev);
+            QQuickWidget::mouseMoveEvent(ev);
             ev->setAccepted(false);
             return;
         }
@@ -523,7 +508,7 @@ void QuickWebViewBase::mouseMoveEvent(QMouseEvent *ev){
     } else {
         // call default behavior.
         GestureAborted();
-        QQuickBase::mouseMoveEvent(ev);
+        QQuickWidget::mouseMoveEvent(ev);
         ev->setAccepted(false);
     }
 }
@@ -550,7 +535,7 @@ void QuickWebViewBase::mousePressEvent(QMouseEvent *ev){
     }
 
     GestureStarted(ev->pos());
-    QQuickBase::mousePressEvent(ev);
+    QQuickWidget::mousePressEvent(ev);
     ev->setAccepted(true);
 }
 
@@ -619,22 +604,21 @@ void QuickWebViewBase::mouseReleaseEvent(QMouseEvent *ev){
     }
 
     GestureAborted();
-    QQuickBase::mouseReleaseEvent(ev);
+    QQuickWidget::mouseReleaseEvent(ev);
     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");
     ev->setAccepted(true);
 }
 
 void QuickWebViewBase::mouseDoubleClickEvent(QMouseEvent *ev){
-    QQuickBase::mouseDoubleClickEvent(ev);
+    QQuickWidget::mouseDoubleClickEvent(ev);
     ev->setAccepted(false);
 }
 
-#ifdef USE_QQUICKWIDGET
 void QuickWebViewBase::dragEnterEvent(QDragEnterEvent *ev){
     m_DragStarted = true;
     ev->setDropAction(Qt::MoveAction);
     ev->acceptProposedAction();
-    QQuickBase::dragEnterEvent(ev);
+    QQuickWidget::dragEnterEvent(ev);
     ev->setAccepted(true);
 }
 
@@ -651,7 +635,7 @@ void QuickWebViewBase::dragMoveEvent(QDragMoveEvent *ev){
             : m_LeftGestureMap[gesture];
         emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
     }
-    QQuickBase::dragMoveEvent(ev);
+    QQuickWidget::dragMoveEvent(ev);
     ev->setAccepted(true);
 }
 
@@ -660,11 +644,7 @@ void QuickWebViewBase::dropEvent(QDropEvent *ev){
     QPoint pos = ev->pos();
     QList<QUrl> urls = ev->mimeData()->urls();
     QObject *source = ev->source();
-#ifdef USE_QQUICKWIDGET
     QWidget *widget = this;
-#else
-    QWidget *widget = m_TreeBank;
-#endif
     QString text;
     if(!ev->mimeData()->text().isEmpty()){
         text = ev->mimeData()->text().replace(QStringLiteral("\""), QStringLiteral("\\\""));
@@ -705,16 +685,15 @@ void QuickWebViewBase::dropEvent(QDropEvent *ev){
 
     });
 
-    QQuickBase::dropEvent(ev);
+    QQuickWidget::dropEvent(ev);
     ev->setAccepted(true);
 }
 
 void QuickWebViewBase::dragLeaveEvent(QDragLeaveEvent *ev){
     ev->setAccepted(false);
     m_DragStarted = false;
-    QQuickBase::dragLeaveEvent(ev);
+    QQuickWidget::dragLeaveEvent(ev);
 }
-#endif
 
 void QuickWebViewBase::wheelEvent(QWheelEvent *ev){
     if(!visible()) return;
@@ -735,29 +714,27 @@ void QuickWebViewBase::wheelEvent(QWheelEvent *ev){
         ev->setAccepted(true);
 
     } else {
-        QQuickBase::wheelEvent(ev);
+        QQuickWidget::wheelEvent(ev);
         ev->setAccepted(true);
     }
     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");
 }
 
 void QuickWebViewBase::focusInEvent(QFocusEvent *ev){
-    QQuickBase::focusInEvent(ev);
+    QQuickWidget::focusInEvent(ev);
     OnFocusIn();
 }
 
 void QuickWebViewBase::focusOutEvent(QFocusEvent *ev){
-    QQuickBase::focusOutEvent(ev);
+    QQuickWidget::focusOutEvent(ev);
     OnFocusOut();
 }
 
-#ifdef USE_QQUICKWIDGET
 bool QuickWebViewBase::focusNextPrevChild(bool next){
     if(!m_Switching && visible())
-        return QQuickBase::focusNextPrevChild(next);
+        return QQuickWidget::focusNextPrevChild(next);
     return false;
 }
-#endif
 
 void QuickWebViewBase::CallWithGotBaseUrl(UrlCallBack callBack){
     int requestId = m_RequestId++;

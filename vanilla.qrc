@@ -2,6 +2,8 @@
 <qresource>
     <file>gen/quickwebview.qml</file>
     <file>gen/quickwebengineview.qml</file>
+    <file>resources/tableview/close.png</file>
+    <file>resources/tableview/clone.png</file>
     <file>resources/treebar/close.png</file>
     <file>resources/treebar/clone.png</file>
     <file>resources/treebar/up.png</file>
@@ -10,5 +12,9 @@
     <file>resources/treebar/right.png</file>
     <file>resources/treebar/table.png</file>
     <file>resources/treebar/plus.png</file>
+    <file>resources/menu/back.png</file>
+    <file>resources/menu/forward.png</file>
+    <file>resources/menu/reload.png</file>
+    <file>resources/menu/stop.png</file>
 </qresource>
 </RCC>

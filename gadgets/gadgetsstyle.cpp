@@ -600,17 +600,70 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
     painter->restore();
 }
 
+void GlassStyle::Render(CloseButton *button, QPainter *painter) const {
+    painter->save();
+    QRectF rect = button->boundingRect();
+
+    if(button->GetState() == GraphicsButton::NotHovered)
+        painter->setOpacity(0.5);
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 255));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(b);
+    painter->drawRect(rect);
+
+    if(button->GetState() != GraphicsButton::Pressed){
+        static QPixmap pixmap = QPixmap(":/resources/tableview/close.png");
+        rect.setLeft(rect.left() + 3);
+        rect.setRight(rect.right() - 3);
+        rect.setTop(rect.top() + 3);
+        rect.setBottom(rect.bottom() - 3);
+        painter->drawPixmap(rect, pixmap, QRect(QPoint(), pixmap.size()));
+    }
+
+    painter->restore();
+}
+
+void GlassStyle::Render(CloneButton *button, QPainter *painter) const {
+    painter->save();
+    QRectF rect = button->boundingRect();
+
+    if(button->GetState() == GraphicsButton::NotHovered)
+        painter->setOpacity(0.5);
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 255));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(b);
+    painter->drawRect(rect);
+
+    if(button->GetState() != GraphicsButton::Pressed){
+        static QPixmap pixmap = QPixmap(":/resources/tableview/clone.png");
+        rect.setLeft(rect.left() + 3);
+        rect.setRight(rect.right() - 3);
+        rect.setTop(rect.top() + 3);
+        rect.setBottom(rect.bottom() - 3);
+        painter->drawPixmap(rect, pixmap, QRect(QPoint(), pixmap.size()));
+    }
+
+    painter->restore();
+}
+
 void GlassStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
 
-    QColor white(255, 255, 255, button->GetHovered() ? 200 : 100);
-    QBrush brush(white);
-    painter->setBrush(brush);
+    if(button->GetState() == GraphicsButton::NotHovered)
+        painter->setOpacity(0.5);
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 200));
     painter->setPen(Qt::NoPen);
+    painter->setBrush(b);
     painter->drawRoundedRect(button->boundingRect(), 3, 3);
 
-    painter->drawPixmap(QRect(QPoint(4,4), QSize(10, 10)), button->GetIcon(), QRect(QPoint(), button->GetIcon().size()));
+    if(button->GetState() != GraphicsButton::Pressed){
+        static QPixmap icon = Application::style()->standardIcon(QStyle::SP_TitleBarShadeButton).pixmap(QSize(10, 10));
+        painter->drawPixmap(QRect(QPoint(4,4), QSize(10, 10)), icon, QRect(QPoint(), icon.size()));
+    }
 
     painter->restore();
 }
@@ -728,12 +781,12 @@ void GlassStyle::OnSetHovered(NodeTitle *title, bool hovered) const {
     Q_UNUSED(title); Q_UNUSED(hovered);
 }
 
-void GlassStyle::OnSetHovered(UpDirectoryButton *button, bool hovered) const {
+void GlassStyle::OnSetState(GraphicsButton *button, GraphicsButton::ButtonState state) const {
     if(button->graphicsEffect()) button->setGraphicsEffect(0);
-    if(hovered){
-        button->setCursor(Qt::PointingHandCursor);
-    } else {
-        button->setCursor(Qt::ArrowCursor);
+    switch(state){
+    case GraphicsButton::NotHovered:  button->setCursor(Qt::ArrowCursor); break;
+    case GraphicsButton::Hovered:     button->setCursor(Qt::PointingHandCursor); break;
+    case GraphicsButton::Pressed:     button->setCursor(Qt::PointingHandCursor); break;
     }
     button->update();
 }
@@ -1016,6 +1069,44 @@ void FlatStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
     Q_UNUSED(notifier); Q_UNUSED(painter);
 }
 
+void FlatStyle::Render(CloseButton *button, QPainter *painter) const {
+    painter->save();
+    QRectF rect = button->boundingRect();
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 255));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(b);
+    painter->drawRect(rect);
+
+    static QPixmap pixmap = QPixmap(":/resources/tableview/close.png");
+    rect.setLeft(rect.left() + 3);
+    rect.setRight(rect.right() - 3);
+    rect.setTop(rect.top() + 3);
+    rect.setBottom(rect.bottom() - 3);
+    painter->drawPixmap(rect, pixmap, QRect(QPoint(), pixmap.size()));
+
+    painter->restore();
+}
+
+void FlatStyle::Render(CloneButton *button, QPainter *painter) const {
+    painter->save();
+    QRectF rect = button->boundingRect();
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 255));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(b);
+    painter->drawRect(rect);
+
+    static QPixmap pixmap = QPixmap(":/resources/tableview/clone.png");
+    rect.setLeft(rect.left() + 3);
+    rect.setRight(rect.right() - 3);
+    rect.setTop(rect.top() + 3);
+    rect.setBottom(rect.bottom() - 3);
+    painter->drawPixmap(rect, pixmap, QRect(QPoint(), pixmap.size()));
+
+    painter->restore();
+}
+
 void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
@@ -1025,7 +1116,8 @@ void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->setPen(Qt::NoPen);
     painter->drawRoundedRect(button->boundingRect(), 3, 3);
 
-    painter->drawPixmap(QRect(QPoint(4,4), QSize(10, 10)), button->GetIcon(), QRect(QPoint(), button->GetIcon().size()));
+    static QPixmap icon = Application::style()->standardIcon(QStyle::SP_TitleBarShadeButton).pixmap(QSize(10, 10));
+    painter->drawPixmap(QRect(QPoint(4,4), QSize(10, 10)), icon, QRect(QPoint(), icon.size()));
 
     painter->restore();
 }
@@ -1150,21 +1242,32 @@ void FlatStyle::OnSetHovered(NodeTitle *title, bool hovered) const {
     Q_UNUSED(title); Q_UNUSED(hovered);
 }
 
-void FlatStyle::OnSetHovered(UpDirectoryButton *button, bool hovered) const {
+void FlatStyle::OnSetState(GraphicsButton *button, GraphicsButton::ButtonState state) const {
     if(!button->graphicsEffect()){
         QGraphicsDropShadowEffect *effect = new QGraphicsDropShadowEffect();
         button->setGraphicsEffect(effect);
         effect->setBlurRadius(10);
         effect->setOffset(QPointF());
     }
-    if(hovered){
-        static const QColor c = QColor(0,0,0,255);
-        static_cast<QGraphicsDropShadowEffect*>(button->graphicsEffect())->setColor(c);
-        button->setCursor(Qt::PointingHandCursor);
-    } else {
+    switch(state){
+    case GraphicsButton::NotHovered:{
         static const QColor c = QColor(0,0,0,127);
         static_cast<QGraphicsDropShadowEffect*>(button->graphicsEffect())->setColor(c);
         button->setCursor(Qt::ArrowCursor);
+        break;
+    }
+    case GraphicsButton::Hovered:{
+        static const QColor c = QColor(0,0,0,255);
+        static_cast<QGraphicsDropShadowEffect*>(button->graphicsEffect())->setColor(c);
+        button->setCursor(Qt::PointingHandCursor);
+        break;
+    }
+    case GraphicsButton::Pressed:{
+        static const QColor c = QColor(255,255,255,255);
+        static_cast<QGraphicsDropShadowEffect*>(button->graphicsEffect())->setColor(c);
+        button->setCursor(Qt::PointingHandCursor);
+        break;
+    }
     }
     button->update();
 }

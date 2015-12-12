@@ -3,6 +3,9 @@
 
 #include "nodetitle.hpp"
 
+#include "abstractnodeitem.hpp"
+
+#include "gadgetsstyle.hpp"
 #include "graphicstableview.hpp"
 
 NodeTitle::NodeTitle(Node *nd, int nest, QGraphicsItem *parent)

@@ -88,7 +88,7 @@
 #define LAYER_ITEM_LAYER 0.0
 #define NORMAL_NODE_LAYER 10.0
 #define BORDEF_LINE_LAYER 15.0
-#define PRIMARY_NODE_LAYER 20.0
+#define FOCUSED_NODE_LAYER 20.0
 #define DRAGGING_NODE_LAYER 30.0
 #define FRINGE_BUTTON_LAYER 40.0
 
@@ -284,13 +284,17 @@ namespace {
             GraphicsButton::mouseReleaseEvent(ev);
 
             if(ev->button() == Qt::LeftButton){
-                Gadgets *g = m_TreeBank->GetGadgets();
-                if(g && g->IsActive()) g->Deactivate();
-                else m_TreeBank->DisplayViewTree();
+                if((ev->buttonDownScreenPos(Qt::LeftButton) - ev->screenPos()).manhattanLength() < 4){
+                    Gadgets *g = m_TreeBank->GetGadgets();
+                    if(g && g->IsActive()) g->Deactivate();
+                    else m_TreeBank->DisplayViewTree();
+                }
             } else if(ev->button() == Qt::RightButton){
-                QMenu *menu = m_TreeBar->TreeBarMenu();
-                menu->exec(ev->screenPos());
-                delete menu;
+                if((ev->buttonDownScreenPos(Qt::RightButton) - ev->screenPos()).manhattanLength() < 4){
+                    QMenu *menu = m_TreeBar->TreeBarMenu();
+                    menu->exec(ev->screenPos());
+                    delete menu;
+                }
             }
         }
     };
@@ -352,13 +356,17 @@ namespace {
             GraphicsButton::mouseReleaseEvent(ev);
 
             if(ev->button() == Qt::LeftButton){
-                QMenu *menu = static_cast<LayerItem*>(parentItem())->AddNodeMenu();
-                menu->exec(ev->screenPos());
-                delete menu;
+                if((ev->buttonDownScreenPos(Qt::LeftButton) - ev->screenPos()).manhattanLength() < 4){
+                    QMenu *menu = static_cast<LayerItem*>(parentItem())->AddNodeMenu();
+                    menu->exec(ev->screenPos());
+                    delete menu;
+                }
             } else if(ev->button() == Qt::RightButton){
-                QMenu *menu = static_cast<LayerItem*>(parentItem())->LayerMenu();
-                menu->exec(ev->screenPos());
-                delete menu;
+                if((ev->buttonDownScreenPos(Qt::RightButton) - ev->screenPos()).manhattanLength() < 4){
+                    QMenu *menu = static_cast<LayerItem*>(parentItem())->LayerMenu();
+                    menu->exec(ev->screenPos());
+                    delete menu;
+                }
             }
         }
     };
@@ -705,6 +713,7 @@ QMenu *TreeBar::TreeBarMenu(){
 
     menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleMenuBar));
     menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleTreeBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleToolBar));
 
     return menu;
 }
@@ -1447,6 +1456,7 @@ QMenu *LayerItem::LayerMenu(){
 
     menu->addAction(tb->Action(TreeBank::Te_ToggleMenuBar));
     menu->addAction(tb->Action(TreeBank::Te_ToggleTreeBar));
+    menu->addAction(tb->Action(TreeBank::Te_ToggleToolBar));
 
     menu->addSeparator();
 
@@ -1620,7 +1630,8 @@ void LayerItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 void LayerItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     //QGraphicsObject::mouseReleaseEvent(ev);
 
-    if(ev->button() == Qt::RightButton){
+    if(ev->button() == Qt::RightButton &&
+       (ev->buttonDownScreenPos(Qt::RightButton) - ev->screenPos()).manhattanLength() < 4){
         QMenu *menu = LayerMenu();
         menu->exec(ev->screenPos());
         delete menu;
@@ -1683,7 +1694,7 @@ NodeItem::NodeItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent)
     m_TreeBar = bar;
     m_Node = nd;
     m_Nest = 0;
-    m_IsPrimary = nd->IsPrimaryOfParent();
+    m_IsFocused = static_cast<LayerItem*>(parent)->GetNode() == nd;
     m_IsHovered = false;
     m_ButtonState = NotHovered;
     m_TargetPosition = QPoint();
@@ -1701,8 +1712,8 @@ NodeItem::NodeItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent)
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
     setAcceptHoverEvents(true);
-    if(m_IsPrimary)
-        setZValue(PRIMARY_NODE_LAYER);
+    if(m_IsFocused)
+        setZValue(FOCUSED_NODE_LAYER);
     else
         setZValue(NORMAL_NODE_LAYER);
 }
@@ -1719,7 +1730,9 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     title_rect.setLeft(title_rect.left() + 4);
     title_rect.setTop(title_rect.top() + 1);
     title_rect.setWidth(title_rect.width()
-                        - (!m_IsHovered ? 4 :
+                        - ((!m_IsHovered ||
+                            (!m_TreeBar->EnableCloseButton() &&
+                             !m_TreeBar->EnableCloneButton())) ? 4 :
                            (m_TreeBar->EnableCloseButton() !=
                             m_TreeBar->EnableCloneButton()) ? 21 : 39));
 
@@ -1781,7 +1794,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         painter->drawRect(rect);
     }
 
-    if(m_Node->IsPrimaryOfParent()/*m_IsPrimary*/){
+    if(m_IsFocused){
         static const QPen p = QPen(QColor(80,80,200,255));
         painter->setBrush(Qt::NoBrush);
         painter->setPen(p);
@@ -1815,7 +1828,8 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
             painter->setBrush(m_ButtonState == CloneHovered ? h : p);
             painter->setPen(Qt::NoPen);
             painter->setRenderHint(QPainter::Antialiasing, true);
-            painter->drawRoundedRect(QRectF(bound.topRight() + QPointF(-36, 4),
+            painter->drawRoundedRect(QRectF(bound.topRight()
+                                            + QPointF(TreeBar::EnableCloseButton() ? -36 : -18, 4),
                                             QSizeF(14, 14)), 2, 2);
         }
 
@@ -1824,7 +1838,8 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
             clone = QPixmap(":/resources/treebar/clone.png");
 
         if(m_IsHovered)
-            painter->drawPixmap(QRect(bound.topRight().toPoint() + QPoint(-34, 6),
+            painter->drawPixmap(QRect(bound.topRight().toPoint()
+                                      + QPoint(TreeBar::EnableCloseButton() ? -34 : -16, 6),
                                       clone.size()),
                                 clone, QRect(QPoint(), clone.size()));
     }
@@ -1888,6 +1903,14 @@ void NodeItem::SetNest(int nest){
     m_Nest = nest;
 }
 
+bool NodeItem::GetFocused(){
+    return m_IsFocused;
+}
+
+void NodeItem::SetFocused(bool focused){
+    m_IsFocused = focused;
+}
+
 Node *NodeItem::GetNode(){
     return m_Node;
 }
@@ -1924,6 +1947,8 @@ QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value){
     if(change == ItemSelectedChange && scene()){
         if(value.toBool()){
             setZValue(DRAGGING_NODE_LAYER);
+        } else if(m_IsFocused){
+            setZValue(FOCUSED_NODE_LAYER);
         } else {
             setZValue(NORMAL_NODE_LAYER);
         }
@@ -1942,8 +1967,10 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
                   QSizeF(14, 14)).contains(ev->pos())){
             m_ButtonState = ClosePressed;
             update();
-        } else if(TreeBar::EnableCloneButton() &&
-           QRectF(boundingRect().topRight() + QPointF(-36, 4),
+        }
+        if(TreeBar::EnableCloneButton() &&
+           QRectF(boundingRect().topRight()
+                  + QPointF(TreeBar::EnableCloseButton() ? -36 : -18, 4),
                   QSizeF(14, 14)).contains(ev->pos())){
             m_ButtonState = ClonePressed;
             update();
@@ -2000,12 +2027,13 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
                         }
                         i++;
                     }
+                    Layer()->SetNode(GetNode());
                     foreach(NodeItem *item, Layer()->GetNodeItems()){
                         if(item == this){
-                            item->m_IsPrimary = true;
-                            item->setZValue(PRIMARY_NODE_LAYER);
+                            item->SetFocused(true);
+                            item->setZValue(FOCUSED_NODE_LAYER);
                         } else {
-                            item->m_IsPrimary = false;
+                            item->SetFocused(false);
                             item->setZValue(NORMAL_NODE_LAYER);
                         }
                     }
@@ -2028,13 +2056,17 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
             return;
         }
     } else if(ev->button() == Qt::RightButton){
-        QMenu *menu = NodeMenu();
-        menu->exec(ev->screenPos());
-        delete menu;
-        return;
+        if((ev->buttonDownScreenPos(Qt::RightButton) - ev->screenPos()).manhattanLength() < 4){
+            QMenu *menu = NodeMenu();
+            menu->exec(ev->screenPos());
+            delete menu;
+            return;
+        }
     } else if(ev->button() == Qt::MidButton &&
               TreeBar::WheelClickToClose()){
-        m_TreeBank->DeleteNode(m_Node);
+        if((ev->buttonDownScreenPos(Qt::MidButton) - ev->screenPos()).manhattanLength() < 4){
+            m_TreeBank->DeleteNode(m_Node);
+        }
     }
     Layer()->ApplyChildrenOrder();
     // some time cause crash.
@@ -2106,8 +2138,10 @@ void NodeItem::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
               QSizeF(14, 14)).contains(ev->pos())){
         m_ButtonState = CloseHovered;
         update();
-    } else if(TreeBar::EnableCloneButton() &&
-       QRectF(boundingRect().topRight() + QPointF(-36, 4),
+    }
+    if(TreeBar::EnableCloneButton() &&
+       QRectF(boundingRect().topRight()
+              + QPointF(TreeBar::EnableCloseButton() ? -36 : -18, 4),
               QSizeF(14, 14)).contains(ev->pos())){
         m_ButtonState = CloneHovered;
         update();
@@ -2135,7 +2169,8 @@ void NodeItem::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
             update();
         }
     } else if(TreeBar::EnableCloneButton() &&
-       QRectF(boundingRect().topRight() + QPointF(-36, 4),
+       QRectF(boundingRect().topRight()
+              + QPointF(TreeBar::EnableCloseButton() ? -36 : -18, 4),
               QSizeF(14, 14)).contains(ev->pos())){
         if(m_ButtonState == NotHovered){
             m_ButtonState = CloneHovered;

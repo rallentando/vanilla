@@ -8,6 +8,7 @@
 #include "networkcontroller.hpp"
 #include "treebank.hpp"
 #include "treebar.hpp"
+#include "toolbar.hpp"
 
 AutoSaver::AutoSaver()
     : QObject(0)
@@ -64,6 +65,14 @@ void AutoSaver::SaveAll(){
     // save treebar settings.
     TRY{
         TreeBar::SaveSettings();
+    } CATCH{
+        emit Failed();
+        return;
+    }
+
+    // save toolbar settings.
+    TRY{
+        ToolBar::SaveSettings();
     } CATCH{
         emit Failed();
         return;

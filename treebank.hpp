@@ -34,7 +34,7 @@ class Receiver;
 class Gadgets;
 class MainWindow;
 
-class TreeBank : public QGraphicsView {
+class TreeBank : public QWidget {
     Q_OBJECT
 
 public:
@@ -58,6 +58,7 @@ public:
     inline _Vanilla *GetJsObject() const { return m_JsObject;}
     inline Gadgets  *GetGadgets()  const { return m_Gadgets;}
     inline QGraphicsScene *GetScene() const { return m_Scene;}
+    inline QGraphicsView *GetView() const { return m_View;}
 
     inline SharedView GetCurrentView()     const { return m_CurrentView;}
     inline ViewNode *GetCurrentViewNode()  const { return m_CurrentViewNode;}
@@ -192,6 +193,7 @@ public:
         Te_ToggleReceiver,
         Te_ToggleMenuBar,
         Te_ToggleTreeBar,
+        Te_ToggleToolBar,
         Te_ToggleFullScreen,
         Te_ToggleMaximized,
         Te_ToggleMinimized,
@@ -355,6 +357,7 @@ protected:
         if(str == QStringLiteral("ToggleReceiver"))       return Te_ToggleReceiver;
         if(str == QStringLiteral("ToggleMenuBar"))        return Te_ToggleMenuBar;
         if(str == QStringLiteral("ToggleTreeBar"))        return Te_ToggleTreeBar;
+        if(str == QStringLiteral("ToggleToolBar"))        return Te_ToggleToolBar;
         if(str == QStringLiteral("ToggleFullScreen"))     return Te_ToggleFullScreen;
         if(str == QStringLiteral("ToggleMaximized"))      return Te_ToggleMaximized;
         if(str == QStringLiteral("ToggleMinimized"))      return Te_ToggleMinimized;
@@ -453,6 +456,7 @@ protected:
         if(action == Te_ToggleReceiver)       return QStringLiteral("ToggleReceiver");
         if(action == Te_ToggleMenuBar)        return QStringLiteral("ToggleMenuBar");
         if(action == Te_ToggleTreeBar)        return QStringLiteral("ToggleTreeBar");
+        if(action == Te_ToggleToolBar)        return QStringLiteral("ToggleToolBar");
         if(action == Te_ToggleFullScreen)     return QStringLiteral("ToggleFullScreen");
         if(action == Te_ToggleMaximized)      return QStringLiteral("ToggleMaximized");
         if(action == Te_ToggleMinimized)      return QStringLiteral("ToggleMinimized");
@@ -562,6 +566,7 @@ public slots:
     void ToggleReceiver();
     void ToggleMenuBar();
     void ToggleTreeBar();
+    void ToggleToolBar();
     void ToggleFullScreen();
     void ToggleMaximized();
     void ToggleMinimized();
@@ -658,6 +663,7 @@ public:
 
 private:
     QGraphicsScene *m_Scene;
+    QGraphicsView *m_View;
     Notifier *m_Notifier;
     Receiver *m_Receiver;
     Gadgets  *m_Gadgets;

@@ -3,6 +3,9 @@
 
 #include "thumbnail.hpp"
 
+#include "abstractnodeitem.hpp"
+
+#include "gadgetsstyle.hpp"
 #include "graphicstableview.hpp"
 
 Thumbnail::Thumbnail(Node *nd, int nest, QGraphicsItem *parent)

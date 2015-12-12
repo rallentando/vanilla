@@ -11,8 +11,9 @@
 #include <QMap>
 #include <QtConcurrent/QtConcurrent>
 
-#include "gadgets.hpp"
 #include "view.hpp"
+#include "gadgets.hpp"
+#include "gadgetsstyle.hpp"
 
 /*
   element type

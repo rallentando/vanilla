@@ -437,12 +437,27 @@ public slots:
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
         if(HistNode *hn = GetHistNode()) hn->SetLastAccessDateToCurrent();
-        // set only notifier.
+
+        //[[WEV]]
+        // view become to stop updating, when only call show method.
+        // e.g. in coming back after making other view.
+        MainWindow *win = Application::GetCurrentWindow();
+        QSize s =
+            m_TreeBank ? m_TreeBank->size() :
+            win ? win->GetTreeBank()->size() :
+            !size().isEmpty() ? size() :
+            DEFAULT_WINDOW_SIZE;
+        resize(QSize(s.width(), s.height()+1));
+        resize(s);
+        //[[/WEV]]
+
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
         //[[!WEV]]
+        // set only notifier.
         m_TreeBank->GetNotifier()->SetScroll(GetScroll());
         //[[/!WEV]]
         //[[WEV]]
+        // set only notifier.
         CallWithScroll([this](QPointF pos){
                 if(m_TreeBank){
                     if(Notifier *notifier = m_TreeBank->GetNotifier()){
@@ -480,16 +495,22 @@ public slots:
     void Load(const QNetworkRequest &req) DECL_OVERRIDE { View::Load(req);}
 
     //[[!GWV]]
-    void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE { hide();}
+    void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE {
+        //hide();
+    }
     //[[/!GWV]]
     //[[WV]]
-    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE { show();}
+    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {
+        //show();
+        setFocus();
+    }
     //[[/WV]]
     //[[WEV]]
     void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {
-        show();
+        //show();
         // view is not updated, when only call show method.
         // e.g. on deactivate GraphicsTableView.
+        /* move to show method.
         MainWindow *win = Application::GetCurrentWindow();
         QSize s =
             m_TreeBank ? m_TreeBank->size() :
@@ -498,6 +519,8 @@ public slots:
             DEFAULT_WINDOW_SIZE;
         resize(QSize(s.width(), s.height()+1));
         resize(s);
+        */
+        setFocus();
     }
     //[[/WEV]]
 

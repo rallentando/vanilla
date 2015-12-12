@@ -14,21 +14,14 @@
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
 
-#ifdef USE_QQUICKWIDGET
-#  include <QQuickWidget>
-#  define QQuickBase QQuickWidget
-#else
-#  include <QQuickView>
-#  define QQuickBase QQuickView
-#endif
-
 #include <QWindow>
 #include <QMenuBar>
 #include <QQuickItem>
 #include <QNetworkRequest>
 #include <QQmlEngine>
+#include <QQuickWidget>
 
-class QuickWebViewBase : public QQuickBase, public View{
+class QuickWebViewBase : public QQuickWidget, public View{
     Q_OBJECT
 
 public:
@@ -37,8 +30,8 @@ public:
 
     void ApplySpecificSettings(QStringList set) DECL_OVERRIDE;
 
-    QQuickBase *base() DECL_OVERRIDE {
-        return static_cast<QQuickBase*>(this);
+    QQuickWidget *base() DECL_OVERRIDE {
+        return static_cast<QQuickWidget*>(this);
     }
     WebPageBase *page() DECL_OVERRIDE {
         return static_cast<WebPageBase*>(View::page());
@@ -61,11 +54,7 @@ public:
     TreeBank *parent() DECL_OVERRIDE { return m_TreeBank;}
     void   setParent(TreeBank* t) DECL_OVERRIDE {
         View::SetTreeBank(t);
-#ifdef USE_QQUICKWIDGET
         base()->setParent(t);
-#else
-        base()->setParent(t && t->parentWidget() ? t->parentWidget()->windowHandle() : 0);
-#endif
     }
 
     void Connect(TreeBank *tb) DECL_OVERRIDE;
@@ -93,33 +82,17 @@ public:
     }
 
     bool IsRenderable() DECL_OVERRIDE {
-        return status() == QQuickBase::Ready && (visible() || !m_GrabedDisplayData.isNull());
+        return status() == QQuickWidget::Ready && (visible() || !m_GrabedDisplayData.isNull());
     }
     void Render(QPainter *painter) DECL_OVERRIDE {
-#ifdef USE_QQUICKWIDGET
         if(visible()) m_GrabedDisplayData = grabFramebuffer();
         painter->drawImage(QPoint(), m_GrabedDisplayData);
-#else
-        // TODO: cannot grab window? when switching view.
-        Q_UNUSED(painter);
-        //if(visible()) m_GrabedDisplayData = grabWindow();
-        //painter->drawImage(QPoint(), m_GrabedDisplayData);
-#endif
     }
     void Render(QPainter *painter, const QRegion &clip) DECL_OVERRIDE {
-#ifdef USE_QQUICKWIDGET
         if(visible()) m_GrabedDisplayData = grabFramebuffer();
         foreach(QRect rect, clip.rects()){
             painter->drawImage(rect, m_GrabedDisplayData.copy(rect));
         }
-#else
-        // TODO: cannot grab window? when switching view.
-        Q_UNUSED(painter); Q_UNUSED(clip);
-        //if(visible()) m_GrabedDisplayData = grabWindow();
-        //foreach(QRect rect, clip.rects()){
-        //    painter->drawImage(rect, m_GrabedDisplayData.copy(rect));
-        //}
-#endif
     }
     // if this is hidden(or minimized), cannot render.
     // using display cache, instead of real time rendering.
@@ -158,14 +131,14 @@ public:
     void TriggerNativeGoBackAction() DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebViewBase, "goBack");}
     void TriggerNativeGoForwardAction() DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebViewBase, "goForward");}
 
-    void UpKeyEvent()       DECL_OVERRIDE { QQuickBase::keyPressEvent(m_UpKey);       QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void DownKeyEvent()     DECL_OVERRIDE { QQuickBase::keyPressEvent(m_DownKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void RightKeyEvent()    DECL_OVERRIDE { QQuickBase::keyPressEvent(m_RightKey);    QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void LeftKeyEvent()     DECL_OVERRIDE { QQuickBase::keyPressEvent(m_LeftKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void PageDownKeyEvent() DECL_OVERRIDE { QQuickBase::keyPressEvent(m_PageDownKey); QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void PageUpKeyEvent()   DECL_OVERRIDE { QQuickBase::keyPressEvent(m_PageUpKey);   QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void HomeKeyEvent()     DECL_OVERRIDE { QQuickBase::keyPressEvent(m_HomeKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void EndKeyEvent()      DECL_OVERRIDE { QQuickBase::keyPressEvent(m_EndKey);      QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void UpKeyEvent()       DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_UpKey);       QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void DownKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_DownKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void RightKeyEvent()    DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_RightKey);    QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void LeftKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_LeftKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void PageDownKeyEvent() DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_PageDownKey); QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void PageUpKeyEvent()   DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_PageUpKey);   QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void HomeKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_HomeKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void EndKeyEvent()      DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_EndKey);      QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
 
     void KeyPressEvent(QKeyEvent *ev) DECL_OVERRIDE { keyPressEvent(ev);}
     void KeyReleaseEvent(QKeyEvent *ev) DECL_OVERRIDE { keyReleaseEvent(ev);}
@@ -193,15 +166,7 @@ public slots:
     void resize(QSize size) DECL_OVERRIDE {
         rootObject()->setProperty("width", size.width());
         rootObject()->setProperty("height", size.height());
-#ifdef USE_QQUICKWIDGET
         base()->setGeometry(QRect(QPoint(), size));
-#else
-        MainWindow *win = m_TreeBank ? m_TreeBank->GetMainWindow() : 0;
-        if(win && win->IsMenuBarEmpty())
-            base()->setGeometry(QRect(QPoint(), size));
-        else
-            base()->setGeometry(QRect(QPoint(0, win->menuBar()->height()), size));
-#endif
     }
     void show() DECL_OVERRIDE {
         base()->show();
@@ -222,25 +187,16 @@ public slots:
     }
     void raise()   DECL_OVERRIDE { base()->raise();}
     void lower()   DECL_OVERRIDE { base()->lower();}
-#ifdef USE_QQUICKWIDGET
     void repaint() DECL_OVERRIDE {
         QSize s = size();
         if(s.isEmpty()) return;
         resize(QSize(s.width(), s.height()+1));
         resize(s);
     }
-#else
-    void repaint() DECL_OVERRIDE { base()->update();}
-#endif
 
     bool visible() DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) DECL_OVERRIDE {
-#ifdef USE_QQUICKWIDGET
         base()->setFocus(reason);
-#else
-        Q_UNUSED(reason);
-        requestActivate();
-#endif
         m_QmlWebViewBase->setProperty("focus", true);
     }
 
@@ -262,12 +218,13 @@ public slots:
             DEFAULT_WINDOW_SIZE;
         resize(QSize(s.width(), s.height()+1));
         resize(s);
+        setFocus();
     }
 
     // dummy slots.
-    void OnLoadStarted() DECL_OVERRIDE {}
+    void OnLoadStarted() DECL_OVERRIDE { View::OnLoadStarted();}
     void OnLoadProgress(int) DECL_OVERRIDE {}
-    void OnLoadFinished(bool) DECL_OVERRIDE {}
+    void OnLoadFinished(bool ok) DECL_OVERRIDE { View::OnLoadFinished(ok);}
     void OnTitleChanged(const QString&) DECL_OVERRIDE {}
     void OnUrlChanged(const QUrl&) DECL_OVERRIDE {}
 
@@ -425,26 +382,20 @@ protected:
     void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE;
     void keyReleaseEvent(QKeyEvent *ev) DECL_OVERRIDE;
     void resizeEvent(QResizeEvent *ev) DECL_OVERRIDE;
-#ifdef USE_QQUICKWIDGET
     void contextMenuEvent(QContextMenuEvent *ev) DECL_OVERRIDE;
-#endif
 
     void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE;
     void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE;
     void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
     void mouseDoubleClickEvent(QMouseEvent *ev) DECL_OVERRIDE;
-#ifdef USE_QQUICKWIDGET
     void dragEnterEvent(QDragEnterEvent *ev) DECL_OVERRIDE;
     void dragMoveEvent(QDragMoveEvent *ev) DECL_OVERRIDE;
     void dropEvent(QDropEvent *ev) DECL_OVERRIDE;
     void dragLeaveEvent(QDragLeaveEvent *ev) DECL_OVERRIDE;
-#endif
     void wheelEvent(QWheelEvent *ev) DECL_OVERRIDE;
     void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE;
     void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE;
-#ifdef USE_QQUICKWIDGET
     bool focusNextPrevChild(bool next) DECL_OVERRIDE;
-#endif
 
 private:
     QQuickItem *m_QmlWebViewBase;
