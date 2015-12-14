@@ -91,6 +91,7 @@
 #define FOCUSED_NODE_LAYER 20.0
 #define DRAGGING_NODE_LAYER 30.0
 #define FRINGE_BUTTON_LAYER 40.0
+#define SCROLL_INDICATOR_LAYER 50.0
 
 #define FRINGE_BUTTON_SIZE 19
 
@@ -560,7 +561,7 @@ namespace {
         }
         void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
-            static_cast<LayerItem*>(parentItem())->AutoScrollStopOrScrollUp(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT);
+            static_cast<LayerItem*>(parentItem())->AutoScrollStopOrScrollUp(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * 3.0);
         }
     };
 
@@ -604,7 +605,86 @@ namespace {
         }
         void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
-            static_cast<LayerItem*>(parentItem())->AutoScrollStopOrScrollDown(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT);
+            static_cast<LayerItem*>(parentItem())->AutoScrollStopOrScrollDown(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * 3.0);
+        }
+    };
+
+    class LayerScroller : public GraphicsButton {
+    public:
+        LayerScroller(TreeBank *tb, TreeBar *bar, QGraphicsItem *parent = 0)
+            : GraphicsButton(tb, bar, parent)
+        {
+            setZValue(FRINGE_BUTTON_LAYER);
+        }
+
+        QRectF boundingRect() const DECL_OVERRIDE {
+            LayerItem *layer = static_cast<LayerItem*>(parentItem());
+            if(layer->MaxScroll() < 0) return QRectF();
+
+            QRectF rect = layer->boundingRect();
+            qreal rate =
+                static_cast<qreal>(layer->GetScroll()) /
+                static_cast<qreal>(layer->MaxScroll());
+
+            switch(m_TreeBar->orientation()){
+            case Qt::Horizontal:
+                rect.setTop(rect.top() + 5);
+                rect.setBottom(rect.bottom() - 5);
+                rect.setLeft((rect.width()
+                              - FRINGE_BUTTON_SIZE * 2.0 - 20) * rate
+                             + FRINGE_BUTTON_SIZE);
+                rect.setWidth(20);
+                break;
+            case Qt::Vertical:
+                rect.setLeft(rect.width() - 19);
+                rect.setRight(rect.right() - 5);
+                rect.setTop((rect.height()
+                              - FRINGE_BUTTON_SIZE * 2.0 - 20) * rate
+                             + FRINGE_BUTTON_SIZE);
+                rect.setHeight(20);
+                break;
+            }
+            return rect;
+        }
+
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+            Q_UNUSED(option); Q_UNUSED(widget);
+            QRectF rect = boundingRect();
+            if(!rect.isValid()) return;
+            painter->setPen(Qt::NoPen);
+            static const QBrush nb = QBrush(QColor(210, 210, 210, 255));
+            static const QBrush hb = QBrush(QColor(180, 180, 180, 255));
+            static const QBrush pb = QBrush(QColor(150, 150, 150, 255));
+            static const QPen np = QPen(QColor(180, 180, 180, 255));
+            static const QPen hp = QPen(QColor(150, 150, 150, 255));
+            static const QPen pp = QPen(QColor(120, 120, 120, 255));
+            switch(m_ButtonState){
+            case NotHovered: painter->setBrush(nb); painter->setPen(np); break;
+            case Hovered:    painter->setBrush(hb); painter->setPen(hp); break;
+            case Pressed:    painter->setBrush(pb); painter->setPen(pp); break;
+            }
+            rect.setWidth(rect.width() - 1);
+            rect.setHeight(rect.height() - 1);
+            painter->drawRect(rect);
+        }
+    protected:
+        void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+            GraphicsButton::mouseMoveEvent(ev);
+            LayerItem *layer = static_cast<LayerItem*>(parentItem());
+            if(layer->MaxScroll() < 0) return;
+            qreal rate;
+            switch(m_TreeBar->orientation()){
+            case Qt::Horizontal:
+                rate = (ev->scenePos().x() - FRINGE_BUTTON_SIZE - 10) /
+                    (layer->boundingRect().width() - FRINGE_BUTTON_SIZE * 2.0 - 20);
+                break;
+            case Qt::Vertical:
+                rate = (ev->scenePos().y() - FRINGE_BUTTON_SIZE - 10) /
+                    (layer->boundingRect().height() - FRINGE_BUTTON_SIZE * 2.0 - 20);
+                break;
+            }
+            layer->SetScroll(layer->MaxScroll() * rate);
+            layer->ResetTargetScroll();
         }
     };
 }
@@ -931,13 +1011,14 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     m_Node = nd;
     m_FocusedNode = 0;
     m_Nest = 0;
-    m_Scroll = 0;
-    m_TargetScroll = 0;
-    m_ScrollDownTimer = 0;
     m_ScrollUpTimer = 0;
+    m_ScrollDownTimer = 0;
+    m_Scroll = 0.0;
+    m_TargetScroll = 0.0;
     m_NodeItems = QList<NodeItem*>();
 
     new PlusButton(tb, bar, this);
+    new LayerScroller(tb, bar, this);
 
     m_PrevScrollButton = 0;
     m_NextScrollButton = 0;
@@ -993,7 +1074,7 @@ void LayerItem::SetNest(int nest){
     m_Nest = nest;
 }
 
-int LayerItem::MaxScroll(){
+qreal LayerItem::MaxScroll(){
     switch(m_TreeBar->orientation()){
     case Qt::Horizontal:{
         return TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH * m_NodeItems.length()
@@ -1004,43 +1085,52 @@ int LayerItem::MaxScroll(){
             - scene()->sceneRect().height() + FRINGE_BUTTON_SIZE * 2;
     }
     }
-    return 0;
+    return 0.0;
 }
 
-int LayerItem::MinScroll(){
-    return 0;
+qreal LayerItem::MinScroll(){
+    return 0.0;
 }
 
-int LayerItem::GetScroll(){
+qreal LayerItem::GetScroll(){
     return m_Scroll;
 }
 
-void LayerItem::SetScroll(int scroll){
-    int max = MaxScroll();
-    if(max < 0) return;
+void LayerItem::SetScroll(qreal scroll){
+    qreal max = MaxScroll();
+    if(max < 0.0) return;
 
     m_Scroll = scroll;
     if(m_Scroll > max) m_Scroll = max;
-    if(m_Scroll < 0) m_Scroll = 0;
+    if(m_Scroll < 0.0) m_Scroll = 0.0;
     OnScrolled();
     scene()->update();
 }
 
-void LayerItem::ScrollDown(int step){
-    int max = MaxScroll();
-    if(max < 0) return;
+void LayerItem::ScrollDown(qreal step){
+    qreal max = MaxScroll();
+    if(max < 0.0) return;
 
     if(TreeBar::EnableAnimation()){
 
+        qreal orig = m_TargetScroll;
         m_TargetScroll += step;
         if(m_TargetScroll > max) m_TargetScroll = max;
 
-        m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
+        if(m_ScrollAnimation->state() == QAbstractAnimation::Running &&
+           m_ScrollAnimation->easingCurve() == QEasingCurve::OutCubic){
+
+            if(m_TargetScroll == orig) return;
+
+            m_ScrollAnimation->stop();
+        } else {
+            m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
+            m_ScrollAnimation->setDuration(500);
+        }
         m_ScrollAnimation->setStartValue(m_Scroll);
         m_ScrollAnimation->setEndValue(m_TargetScroll);
-        m_ScrollAnimation->setDuration(500);
         m_ScrollAnimation->start();
-
+        m_ScrollAnimation->setCurrentTime(16);
     } else {
         m_Scroll+=step;
         if(m_Scroll > max) m_Scroll = max;
@@ -1049,20 +1139,29 @@ void LayerItem::ScrollDown(int step){
     }
 }
 
-void LayerItem::ScrollUp(int step){
-    int min = MinScroll();
+void LayerItem::ScrollUp(qreal step){
+    qreal min = MinScroll();
 
     if(TreeBar::EnableAnimation()){
 
+        qreal orig = m_TargetScroll;
         m_TargetScroll -= step;
         if(m_TargetScroll < min) m_TargetScroll = min;
 
-        m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
+        if(m_ScrollAnimation->state() == QAbstractAnimation::Running &&
+           m_ScrollAnimation->easingCurve() == QEasingCurve::OutCubic){
+
+            if(m_TargetScroll == orig) return;
+
+            m_ScrollAnimation->stop();
+        } else {
+            m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
+            m_ScrollAnimation->setDuration(500);
+        }
         m_ScrollAnimation->setStartValue(m_Scroll);
         m_ScrollAnimation->setEndValue(m_TargetScroll);
-        m_ScrollAnimation->setDuration(500);
         m_ScrollAnimation->start();
-
+        m_ScrollAnimation->setCurrentTime(16);
     } else {
         m_Scroll-=step;
         if(m_Scroll < min) m_Scroll = min;
@@ -1071,8 +1170,12 @@ void LayerItem::ScrollUp(int step){
     }
 }
 
+void LayerItem::ResetTargetScroll(){
+    m_TargetScroll = m_Scroll;
+}
+
 void LayerItem::AutoScrollDown(){
-    if(MaxScroll() <= 0 ||
+    if(MaxScroll() <= 0.0 ||
        GetScroll() == MaxScroll() ||
        (m_ScrollAnimation->state() == QAbstractAnimation::Running &&
         m_ScrollAnimation->easingCurve() == QEasingCurve::Linear))
@@ -1086,7 +1189,7 @@ void LayerItem::AutoScrollDown(){
 }
 
 void LayerItem::AutoScrollUp(){
-    if(MaxScroll() <= 0 ||
+    if(MaxScroll() <= 0.0 ||
        GetScroll() == MinScroll() ||
        (m_ScrollAnimation->state() == QAbstractAnimation::Running &&
         m_ScrollAnimation->easingCurve() == QEasingCurve::Linear))
@@ -1106,7 +1209,7 @@ void LayerItem::AutoScrollStop(){
     StopScrollUpTimer();
 }
 
-void LayerItem::AutoScrollStopOrScrollDown(int step){
+void LayerItem::AutoScrollStopOrScrollDown(qreal step){
     StopScrollDownTimer();
 
     if(m_ScrollAnimation->state() == QAbstractAnimation::Running){
@@ -1116,7 +1219,7 @@ void LayerItem::AutoScrollStopOrScrollDown(int step){
     else ScrollDown(step);
 }
 
-void LayerItem::AutoScrollStopOrScrollUp(int step){
+void LayerItem::AutoScrollStopOrScrollUp(qreal step){
     StopScrollUpTimer();
 
     if(m_ScrollAnimation->state() == QAbstractAnimation::Running){
@@ -1164,8 +1267,7 @@ void LayerItem::Adjust(){
 
         SetScroll(TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH * (i + 0.5)
                   - scene()->sceneRect().width() / 2.0 + FRINGE_BUTTON_SIZE);
-
-        m_TargetScroll = GetScroll();
+        ResetTargetScroll();
 
         int width = boundingRect().width();
         SetLine(0.0,   (TREEBAR_NODE_HORIZONTAL_DEFAULT_HEIGHT + 3) * (Index() + 1) - 2,
@@ -1181,8 +1283,7 @@ void LayerItem::Adjust(){
 
         SetScroll(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * (i + 0.5)
                   - scene()->sceneRect().height() / 2.0 + FRINGE_BUTTON_SIZE);
-
-        m_TargetScroll = GetScroll();
+        ResetTargetScroll();
 
         int height = boundingRect().height();
         SetLine(m_TreeBar->GetVerticalNodeWidth() + 1, 0,
@@ -1680,8 +1781,8 @@ void LayerItem::wheelEvent(QGraphicsSceneWheelEvent *ev){
             else   ScrollDown (TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH);
             break;
         case Qt::Vertical:
-            if(up) ScrollUp(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT);
-            else   ScrollDown (TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT);
+            if(up) ScrollUp(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * 3.0);
+            else   ScrollDown (TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * 3.0);
             break;
         }
     }
@@ -1873,10 +1974,10 @@ QRectF NodeItem::boundingRect() const {
     QRectF rect = m_Rect;
     switch(m_TreeBar->orientation()){
     case Qt::Horizontal:
-        rect.moveLeft(rect.left() - Layer()->GetScroll());
+        rect.moveLeft(rect.left() - static_cast<int>(Layer()->GetScroll()));
         return rect;
     case Qt::Vertical:
-        rect.moveTop(rect.top() - Layer()->GetScroll());
+        rect.moveTop(rect.top() - static_cast<int>(Layer()->GetScroll()));
         return rect;
     }
     return m_Rect;
@@ -1979,10 +2080,10 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
         // m_Rect is used for boundingRect.
         switch(m_TreeBar->orientation()){
         case Qt::Horizontal:
-            m_Rect.moveLeft(m_Rect.left() - Layer()->GetScroll());
+            m_Rect.moveLeft(m_Rect.left() - static_cast<int>(Layer()->GetScroll()));
             break;
         case Qt::Vertical:
-            m_Rect.moveTop(m_Rect.top() - Layer()->GetScroll());
+            m_Rect.moveTop(m_Rect.top() - static_cast<int>(Layer()->GetScroll()));
             break;
         }
     }
@@ -1997,10 +2098,10 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 
         switch(m_TreeBar->orientation()){
         case Qt::Horizontal:
-            m_Rect.moveLeft(m_Rect.left() + Layer()->GetScroll());
+            m_Rect.moveLeft(m_Rect.left() + static_cast<int>(Layer()->GetScroll()));
             break;
         case Qt::Vertical:
-            m_Rect.moveTop(m_Rect.top() + Layer()->GetScroll());
+            m_Rect.moveTop(m_Rect.top() + static_cast<int>(Layer()->GetScroll()));
             break;
         }
 
@@ -2074,8 +2175,8 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
-    if(m_ButtonState == ClosePressed ||
-       m_ButtonState == ClonePressed) return;
+
+    if(m_ButtonState == ClosePressed || m_ButtonState == ClonePressed) return;
 
     QGraphicsObject::mouseMoveEvent(ev);
 
@@ -2268,6 +2369,7 @@ QMenu *NodeItem::NodeMenu(){
 
     TreeBank *tb = m_TreeBank;
     ViewNode *vn = GetNode() ? GetNode()->ToViewNode() : 0;
+    if(!vn) return menu;
 
     QAction *newViewNode = new QAction(menu);
     newViewNode->setText(QObject::tr("NewViewNode"));
@@ -2298,6 +2400,17 @@ QMenu *NodeItem::NodeMenu(){
                                 view->TriggerAction(Page::We_Reload);
                         });
         menu->addAction(reload);
+
+        if(!tb->IsCurrent(vn)){
+            QAction *openOnNewWindow = new QAction(menu);
+            openOnNewWindow->setText(QObject::tr("OpenOnNewWindow"));
+            openOnNewWindow->connect(openOnNewWindow, &QAction::triggered,
+                                     [tb, vn](){
+                                         MainWindow *win = tb->NewWindow();
+                                         win->GetTreeBank()->SetCurrent(vn);
+                                     });
+            menu->addAction(openOnNewWindow);
+        }
     }
 
     menu->addSeparator();

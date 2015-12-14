@@ -2320,6 +2320,7 @@ QMenu *TreeBank::ApplicationMenu(bool expanded){
         menu->addAction(Action(Te_OpenQueryEditor));
         menu->addAction(Action(Te_OpenUrlEditor));
         menu->addAction(Action(Te_OpenCommand));
+        menu->addAction(Action(Te_ReleaseHiddenView));
         menu->addSeparator();
         menu->addAction(Action(Te_Quit));
     }
@@ -2341,6 +2342,7 @@ QMenu *TreeBank::GlobalContextMenu(){
     menu->addAction(Action(Te_OpenQueryEditor));
     menu->addAction(Action(Te_OpenUrlEditor));
     menu->addAction(Action(Te_OpenCommand));
+    menu->addAction(Action(Te_ReleaseHiddenView));
     menu->addSeparator();
     menu->addAction(Action(Te_Quit));
 
@@ -3102,7 +3104,7 @@ ViewNode *TreeBank::CloneViewNode(ViewNode *vn){
         return 0;
     }
     SharedView view = LoadWithLink(clone);
-    if(Page::Activate()){
+    if(view && Page::Activate()){
         SetCurrent(clone);
     } else {
         view->hide();
@@ -3252,6 +3254,14 @@ void TreeBank::OpenCommand(SharedView view){
     if(!view) view = m_CurrentView;
     if(!m_Receiver) ToggleReceiver();
     m_Receiver->OpenCommand(view.get());
+}
+
+void TreeBank::ReleaseHiddenView(SharedView){
+    foreach(SharedView view, m_AllViews){
+        if(TreeBank *tb = view->GetTreeBank())
+            if(!tb->IsCurrent(view))
+                DislinkView(view->GetHistNode());
+    }
 }
 
 void TreeBank::Load(SharedView view){
@@ -3580,6 +3590,7 @@ QAction *TreeBank::Action(TreeBankAction a){
         DEFINE_ACTION(OpenQueryEditor,  tr("OpenQueryEditor"));
         DEFINE_ACTION(OpenUrlEditor,    tr("OpenUrlEditor"));
         DEFINE_ACTION(OpenCommand,      tr("OpenCommand"));
+        DEFINE_ACTION(ReleaseHiddenView,tr("ReleaseHiddenView"));
         DEFINE_ACTION(Load,             tr("Load"));
 
         // web events.

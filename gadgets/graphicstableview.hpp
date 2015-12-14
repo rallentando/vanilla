@@ -179,7 +179,6 @@ public:
     static bool EnableCloseButton();
     static bool EnableCloneButton();
 
-
     enum SortFlag {
         NoSort           = 0,
         Reverse          = 1 << 0,
@@ -256,6 +255,7 @@ public slots:
     virtual bool ThumbList_Refresh();
     virtual bool ThumbList_RefreshNoScroll();
     virtual bool ThumbList_OpenNode();
+    virtual bool ThumbList_OpenNodeOnNewWindow();
     virtual bool ThumbList_DeleteNode();
     virtual bool ThumbList_DeleteRightNode();
     virtual bool ThumbList_DeleteLeftNode();

@@ -1721,6 +1721,18 @@ bool GraphicsTableView::ThumbList_OpenNode(){
     return false;
 }
 
+bool GraphicsTableView::ThumbList_OpenNodeOnNewWindow(){
+    if(!IsDisplayingNode()) return false;
+
+    if(Node *nd = GetHoveredNode()){
+        if(!nd->IsDirectory() && !m_TreeBank->IsCurrent(nd)){
+            MainWindow *win = m_TreeBank->NewWindow();
+            return win->GetTreeBank()->SetCurrent(nd);
+        }
+    }
+    return false;
+}
+
 bool GraphicsTableView::ThumbList_DeleteNode(){
     if(!m_CurrentNode || !IsDisplayingNode()) return false;
 

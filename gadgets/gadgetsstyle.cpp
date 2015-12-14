@@ -95,7 +95,7 @@ void GlassStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) con
 }
 
 void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
-    if(!thumb->GetNode() ||
+    if(!thumb->GetNode() || !thumb->scene() ||
        !thumb->boundingRect().translated(thumb->pos()).intersects(thumb->scene()->sceneRect()))
         return;
 
@@ -276,7 +276,7 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     QRectF bound = title->boundingRect();
     QRectF port = title->GetTableView()->NodeTitleAreaRect();
 
-    if(!title->GetNode() || !port.isValid() ||
+    if(!title->GetNode() || !port.isValid() || !title->scene() ||
        !bound.translated(title->pos()).intersects(title->scene()->sceneRect()))
         return;
 
@@ -911,7 +911,7 @@ void FlatStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) cons
 }
 
 void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
-    if(!thumb->GetNode() ||
+    if(!thumb->GetNode() || !thumb->scene() ||
        !thumb->boundingRect().translated(thumb->pos()).intersects(thumb->scene()->sceneRect()))
         return;
 

@@ -62,9 +62,9 @@ public slots:
     void back                 (){ m_TreeBank->Back(); }
     void forward              (){ m_TreeBank->Forward(); }
     void upDirectory          (){ m_TreeBank->UpDirectory(); }
-    void close                (){ QTimer::singleShot(0, m_TreeBank, SLOT(Close()));}
+    void close                (){ QTimer::singleShot(0, m_TreeBank, SLOT(Close())); }
     void restore              (){ m_TreeBank->Restore(); }
-    void recreate             (){ QTimer::singleShot(0, m_TreeBank, SLOT(Recreate()));}
+    void recreate             (){ QTimer::singleShot(0, m_TreeBank, SLOT(Recreate())); }
     void nextView             (){ m_TreeBank->NextView(); }
     void previousView         (){ m_TreeBank->PrevView(); }
     void buryView             (){ m_TreeBank->BuryView(); }
@@ -76,6 +76,7 @@ public slots:
     void openQueryEditor      (){ m_TreeBank->OpenQueryEditor(); }
     void openUrlEditor        (){ m_TreeBank->OpenUrlEditor(); }
     void openCommand          (){ m_TreeBank->OpenCommand(); }
+    void releaseHiddenView    (){ m_TreeBank->ReleaseHiddenView(); }
     void load                 (){ m_TreeBank->Load(); }
 
     void copy                 (){ m_TreeBank->Copy(); }
@@ -160,6 +161,7 @@ public slots:
     void openQueryEditor       (){ m_View->TriggerAction(Page::We_OpenQueryEditor); }
     void openUrlEditor         (){ m_View->TriggerAction(Page::We_OpenUrlEditor); }
     void openCommand           (){ m_View->TriggerAction(Page::We_OpenCommand); }
+    void releaseHiddenView     (){ m_View->TriggerAction(Page::We_ReleaseHiddenView); }
     void load                  (){ m_View->TriggerAction(Page::We_Load); }
 
     void copy                  (){ m_View->TriggerAction(Page::We_Copy); }

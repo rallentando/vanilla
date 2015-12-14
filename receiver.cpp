@@ -28,7 +28,11 @@
 
 QLocalServer *Receiver::m_LocalServer = 0;
 
-LineEdit::LineEdit(QWidget *parent) : QLineEdit(parent){}
+LineEdit::LineEdit(QWidget *parent)
+    : QLineEdit(parent)
+{
+    setDragEnabled(true);
+}
 
 LineEdit::~LineEdit(){}
 
@@ -162,6 +166,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     connect(this, SIGNAL(DisplayViewTree()),  parent, SLOT(DisplayViewTree()));
     connect(this, SIGNAL(DisplayHistTree()),  parent, SLOT(DisplayHistTree()));
     connect(this, SIGNAL(DisplayTrashTree()), parent, SLOT(DisplayTrashTree()));
+    connect(this, SIGNAL(ReleaseHiddenView()),parent, SLOT(ReleaseHiddenView()));
 
     connect(this, SIGNAL(Copy()),             parent, SLOT(Copy()));
     connect(this, SIGNAL(Cut()),              parent, SLOT(Cut()));
@@ -600,6 +605,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("(?:[dD]isplay)?[vV]iew[tT]ree")).exactMatch(cmd)){    emit DisplayViewTree();      return; }
     if(QRegExp(QStringLiteral("(?:[dD]isplay)?[hH]ist[tT]ree")).exactMatch(cmd)){    emit DisplayHistTree();      return; }
     if(QRegExp(QStringLiteral("(?:[dD]isplay)?[tT]rash[tT]ree")).exactMatch(cmd)){   emit DisplayTrashTree();     return; }
+    if(QRegExp(QStringLiteral("[rR]elease[hH]idden[vV]iew")).exactMatch(cmd)){       emit ReleaseHiddenView();    return; }
 
     if(QRegExp(QStringLiteral("[cC]opy")).exactMatch(cmd)){                          emit Copy();                 return; }
     if(QRegExp(QStringLiteral("[cC]ut")).exactMatch(cmd)){                           emit Cut();                  return; }
@@ -714,6 +720,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("[rR]efresh")).exactMatch(cmd)){                                            emit Refresh();                         return; }
     if(QRegExp(QStringLiteral("[rR]efresh[nN]o[sS]croll")).exactMatch(cmd)){                              emit RefreshNoScroll();                 return; }
     if(QRegExp(QStringLiteral("[oO]pen[nN]ode")).exactMatch(cmd)){                                        emit OpenNode();                        return; }
+    if(QRegExp(QStringLiteral("[oO]pen[nN]ode[oO]n[nN]ew[wW]indow")).exactMatch(cmd)){                    emit OpenNodeOnNewWindow();             return; }
     if(QRegExp(QStringLiteral("[dD]elete[nN]ode")).exactMatch(cmd)){                                      emit DeleteNode();                      return; }
     if(QRegExp(QStringLiteral("[dD]elete[rR]ight[nN]ode")).exactMatch(cmd)){                              emit DeleteRightNode();                 return; }
     if(QRegExp(QStringLiteral("[dD]elete[lL]eft[nN]ode")).exactMatch(cmd)){                               emit DeleteLeftNode();                  return; }

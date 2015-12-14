@@ -91,12 +91,14 @@ public:
         Ge_OpenQueryEditor,
         Ge_OpenUrlEditor,
         Ge_OpenCommand,
+        Ge_ReleaseHiddenView,
 
         // gadgets events.
         Ge_Deactivate,
         Ge_Refresh,
         Ge_RefreshNoScroll,
         Ge_OpenNode,
+        Ge_OpenNodeOnNewWindow,
         Ge_DeleteNode,
         Ge_DeleteRightNode,
         Ge_DeleteLeftNode,
@@ -533,6 +535,7 @@ public:
         if(str == QStringLiteral("Close"))                           return Ge_Close;
         if(str == QStringLiteral("Restore"))                         return Ge_Restore;
         if(str == QStringLiteral("Recreate"))                        return Ge_Recreate;
+        if(str == QStringLiteral("ReleaseHiddenView"))               return Ge_ReleaseHiddenView;
         if(str == QStringLiteral("NextView"))                        return Ge_NextView;
         if(str == QStringLiteral("PrevView"))                        return Ge_PrevView;
         if(str == QStringLiteral("BuryView"))                        return Ge_BuryView;
@@ -555,6 +558,7 @@ public:
         if(str == QStringLiteral("Refresh"))                         return Ge_Refresh;
         if(str == QStringLiteral("RefreshNoScroll"))                 return Ge_RefreshNoScroll;
         if(str == QStringLiteral("OpenNode"))                        return Ge_OpenNode;
+        if(str == QStringLiteral("OpenNodeOnNewWindow"))             return Ge_OpenNodeOnNewWindow;
         if(str == QStringLiteral("DeleteNode"))                      return Ge_DeleteNode;
         if(str == QStringLiteral("DeleteRightNode"))                 return Ge_DeleteRightNode;
         if(str == QStringLiteral("DeleteLeftNode"))                  return Ge_DeleteLeftNode;
@@ -666,6 +670,7 @@ public:
         if(action == Ge_Close)                           return QStringLiteral("Close");
         if(action == Ge_Restore)                         return QStringLiteral("Restore");
         if(action == Ge_Recreate)                        return QStringLiteral("Recreate");
+        if(action == Ge_ReleaseHiddenView)               return QStringLiteral("ReleaseHiddenView");
         if(action == Ge_NextView)                        return QStringLiteral("NextView");
         if(action == Ge_PrevView)                        return QStringLiteral("PrevView");
         if(action == Ge_BuryView)                        return QStringLiteral("BuryView");
@@ -688,6 +693,7 @@ public:
         if(action == Ge_Refresh)                         return QStringLiteral("Refresh");
         if(action == Ge_RefreshNoScroll)                 return QStringLiteral("RefreshNoScroll");
         if(action == Ge_OpenNode)                        return QStringLiteral("OpenNode");
+        if(action == Ge_OpenNodeOnNewWindow)             return QStringLiteral("OpenNodeOnNewWindow");
         if(action == Ge_DeleteNode)                      return QStringLiteral("DeleteNode");
         if(action == Ge_DeleteRightNode)                 return QStringLiteral("DeleteRightNode");
         if(action == Ge_DeleteLeftNode)                  return QStringLiteral("DeleteLeftNode");

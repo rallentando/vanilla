@@ -161,6 +161,7 @@ signals:
     void DisplayViewTree();
     void DisplayHistTree();
     void DisplayTrashTree();
+    void ReleaseHiddenView();
 
     // web action;
     void Copy();
@@ -204,6 +205,7 @@ signals:
     void Refresh();
     void RefreshNoScroll();
     void OpenNode();
+    void OpenNodeOnNewWindow();
     void DeleteNode();
     void DeleteRightNode();
     void DeleteLeftNode();

@@ -192,6 +192,7 @@ public slots:
     void OpenQueryEditor();
     void OpenUrlEditor();
     void OpenCommand();
+    void ReleaseHiddenView();
     void Load();
 
     void Copy();
@@ -463,6 +464,7 @@ public:
         We_OpenQueryEditor,
         We_OpenUrlEditor,
         We_OpenCommand,
+        We_ReleaseHiddenView,
         We_Load,
 
         // web events.
@@ -664,6 +666,7 @@ public:
         if(str == QStringLiteral("OpenQueryEditor"))                   return We_OpenQueryEditor;
         if(str == QStringLiteral("OpenUrlEditor"))                     return We_OpenUrlEditor;
         if(str == QStringLiteral("OpenCommand"))                       return We_OpenCommand;
+        if(str == QStringLiteral("ReleaseHiddenView"))                 return We_ReleaseHiddenView;
         if(str == QStringLiteral("Load"))                              return We_Load;
 
         // web events.
@@ -866,6 +869,7 @@ public:
         if(action == We_OpenQueryEditor)                   return QStringLiteral("OpenQueryEditor");
         if(action == We_OpenUrlEditor)                     return QStringLiteral("OpenUrlEditor");
         if(action == We_OpenCommand)                       return QStringLiteral("OpenCommand");
+        if(action == We_ReleaseHiddenView)                 return QStringLiteral("ReleaseHiddenView");
         if(action == We_Load)                              return QStringLiteral("Load");
 
         // web events.

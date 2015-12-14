@@ -815,6 +815,10 @@ void Page::OpenCommand(){
     GetTB()->OpenCommand();
 }
 
+void Page::ReleaseHiddenView(){
+    GetTB()->ReleaseHiddenView();
+}
+
 void Page::Load(){
     m_View->Load();
 }
@@ -1664,6 +1668,8 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(OpenQueryEditor,       tr("OpenQueryEditor"));
         DEFINE_ACTION(OpenUrlEditor,         tr("OpenUrlEditor"));
         DEFINE_ACTION(OpenCommand,           tr("OpenCommand"));
+
+        DEFINE_ACTION(ReleaseHiddenView,     tr("ReleaseHiddenView"));
 
         DEFINE_ACTION(Load,                  tr("Load"));
 

@@ -399,6 +399,7 @@ void Gadgets::Connect(TreeBank *tb){
         connect(receiver, SIGNAL(Refresh()),                         this, SLOT(ThumbList_Refresh()));
         connect(receiver, SIGNAL(RefreshNoScroll()),                 this, SLOT(ThumbList_RefreshNoScroll()));
         connect(receiver, SIGNAL(OpenNode()),                        this, SLOT(ThumbList_OpenNode()));
+        connect(receiver, SIGNAL(OpenNodeOnNewWindow()),             this, SLOT(ThumbList_OpenNodeOnNewWindow()));
         connect(receiver, SIGNAL(DeleteNode()),                      this, SLOT(ThumbList_DeleteNode()));
         connect(receiver, SIGNAL(DeleteRightNode()),                 this, SLOT(ThumbList_DeleteRightNode()));
         connect(receiver, SIGNAL(DeleteLeftNode()),                  this, SLOT(ThumbList_DeleteLeftNode()));
@@ -504,6 +505,7 @@ void Gadgets::Disconnect(TreeBank *tb){
         disconnect(receiver, SIGNAL(Refresh()),                         this, SLOT(ThumbList_Refresh()));
         disconnect(receiver, SIGNAL(RefreshNoScroll()),                 this, SLOT(ThumbList_RefreshNoScroll()));
         disconnect(receiver, SIGNAL(OpenNode()),                        this, SLOT(ThumbList_OpenNode()));
+        disconnect(receiver, SIGNAL(OpenNodeOnNewWindow()),             this, SLOT(ThumbList_OpenNodeOnNewWindow()));
         disconnect(receiver, SIGNAL(DeleteNode()),                      this, SLOT(ThumbList_DeleteNode()));
         disconnect(receiver, SIGNAL(DeleteRightNode()),                 this, SLOT(ThumbList_DeleteRightNode()));
         disconnect(receiver, SIGNAL(DeleteLeftNode()),                  this, SLOT(ThumbList_DeleteLeftNode()));
@@ -1501,6 +1503,7 @@ QMenu *Gadgets::CreateNodeMenu(){
        m_HoveredItemIndex < m_DisplayThumbnails.length()){
 
         menu->addAction(Action(Ge_OpenNode));
+        menu->addAction(Action(Ge_OpenNodeOnNewWindow));
         menu->addAction(Action(Ge_RenameNode));
         menu->addAction(Action(Ge_CopyNodeUrl));
         menu->addAction(Action(Ge_CloneNode));
@@ -2013,6 +2016,7 @@ QAction *Gadgets::Action(GadgetsAction a){
         DEFINE_ACTION(OpenQueryEditor,    tr("OpenQueryEditor"));
         DEFINE_ACTION(OpenUrlEditor,      tr("OpenUrlEditor"));
         DEFINE_ACTION(OpenCommand,        tr("OpenCommand"));
+        DEFINE_ACTION(ReleaseHiddenView,  tr("ReleaseHiddenView"));
       //DEFINE_ACTION(Load,               tr("Load"));
 
 #undef  DEFINE_ACTION
@@ -2040,6 +2044,7 @@ QAction *Gadgets::Action(GadgetsAction a){
         DEFINE_ACTION(Refresh,                         tr("Refresh"));
         DEFINE_ACTION(RefreshNoScroll,                 tr("RefreshNoScroll"));
         DEFINE_ACTION(OpenNode,                        tr("OpenNode"));
+        DEFINE_ACTION(OpenNodeOnNewWindow,             tr("OpenNodeOnNewWindow"));
         DEFINE_ACTION(DeleteNode,                      tr("DeleteNode"));
         DEFINE_ACTION(DeleteRightNode,                 tr("DeleteRightNode"));
         DEFINE_ACTION(DeleteLeftNode,                  tr("DeleteLeftNode"));

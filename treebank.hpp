@@ -229,6 +229,7 @@ public:
         Te_OpenQueryEditor,
         Te_OpenUrlEditor,
         Te_OpenCommand,
+        Te_ReleaseHiddenView,
         Te_Load,
 
         // web events.
@@ -393,6 +394,7 @@ protected:
         if(str == QStringLiteral("OpenQueryEditor"))      return Te_OpenQueryEditor;
         if(str == QStringLiteral("OpenUrlEditor"))        return Te_OpenUrlEditor;
         if(str == QStringLiteral("OpenCommand"))          return Te_OpenCommand;
+        if(str == QStringLiteral("ReleaseHiddenView"))    return Te_ReleaseHiddenView;
         if(str == QStringLiteral("Load"))                 return Te_Load;
 
         // web events.
@@ -492,6 +494,7 @@ protected:
         if(action == Te_OpenQueryEditor)      return QStringLiteral("OpenQueryEditor");
         if(action == Te_OpenUrlEditor)        return QStringLiteral("OpenUrlEditor");
         if(action == Te_OpenCommand)          return QStringLiteral("OpenCommand");
+        if(action == Te_ReleaseHiddenView)    return QStringLiteral("ReleaseHiddenView");
         if(action == Te_Load)                 return QStringLiteral("Load");
 
         // default web events.
@@ -607,6 +610,7 @@ public slots:
     void OpenQueryEditor      (SharedView view = 0);
     void OpenUrlEditor        (SharedView view = 0);
     void OpenCommand          (SharedView view = 0);
+    void ReleaseHiddenView    (SharedView view = 0);
     void Load                 (SharedView view = 0);
 
     void Copy                 (SharedView view = 0);

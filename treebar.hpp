@@ -87,7 +87,7 @@ private:
 
 class LayerItem : public QGraphicsObject {
     Q_OBJECT
-    Q_PROPERTY(int scroll READ GetScroll WRITE SetScroll NOTIFY ScrollChanged)
+    Q_PROPERTY(qreal scroll READ GetScroll WRITE SetScroll NOTIFY ScrollChanged)
 
 public:
     LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd = 0, QGraphicsItem *parent = 0);
@@ -101,18 +101,19 @@ public:
     int GetNest();
     void SetNest(int);
 
-    int MaxScroll();
-    int MinScroll();
+    qreal MaxScroll();
+    qreal MinScroll();
 
-    int GetScroll();
-    void SetScroll(int scroll);
-    void ScrollDown(int step);
-    void ScrollUp(int step);
+    qreal GetScroll();
+    void SetScroll(qreal scroll);
+    void ScrollDown(qreal step);
+    void ScrollUp(qreal step);
+    void ResetTargetScroll();
     void AutoScrollDown();
     void AutoScrollUp();
     void AutoScrollStop();
-    void AutoScrollStopOrScrollDown(int step);
-    void AutoScrollStopOrScrollUp(int step);
+    void AutoScrollStopOrScrollDown(qreal step);
+    void AutoScrollStopOrScrollUp(qreal step);
 
     void StartScrollDownTimer();
     void StartScrollUpTimer();
@@ -164,10 +165,10 @@ private:
     Node *m_Node;
     NodeItem *m_FocusedNode;
     int m_Nest;
-    int m_Scroll;
-    int m_TargetScroll;
-    int m_ScrollDownTimer;
     int m_ScrollUpTimer;
+    int m_ScrollDownTimer;
+    qreal m_Scroll;
+    qreal m_TargetScroll;
     QGraphicsItem *m_PrevScrollButton;
     QGraphicsItem *m_NextScrollButton;
     QList<NodeItem*> m_NodeItems;

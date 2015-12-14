@@ -181,7 +181,7 @@ void LocalView::Resize(QSizeF size){
 QMenu *LocalView::CreateNodeMenu(){
     if(!IsDisplayingNode()) return 0;
 
-    QMenu *menu = new QMenu(View::m_TreeBank);
+    QMenu *menu = new QMenu(GetTreeBank());
     menu->setToolTipsVisible(true);
 
     menu->addAction(Action(Gadgets::Ge_Deactivate));
@@ -192,6 +192,7 @@ QMenu *LocalView::CreateNodeMenu(){
        m_HoveredItemIndex < m_DisplayThumbnails.length()){
 
         menu->addAction(Action(Gadgets::Ge_OpenNode));
+        menu->addAction(Action(Gadgets::Ge_OpenNodeOnNewWindow));
         menu->addAction(Action(Gadgets::Ge_RenameNode));
         if(GetHoveredNode()->IsDirectory())
             menu->addAction(Action(Gadgets::Ge_DownDirectory));
@@ -443,6 +444,7 @@ void LocalView::Connect(TreeBank *tb){
             connect(receiver, SIGNAL(Refresh()),                         this, SLOT(ThumbList_Refresh()));
             connect(receiver, SIGNAL(RefreshNoScroll()),                 this, SLOT(ThumbList_RefreshNoScroll()));
             connect(receiver, SIGNAL(OpenNode()),                        this, SLOT(ThumbList_OpenNode()));
+            connect(receiver, SIGNAL(OpenNodeOnNewWindow()),             this, SLOT(ThumbList_OpenNodeOnNewWindow()));
             connect(receiver, SIGNAL(DeleteNode()),                      this, SLOT(ThumbList_DeleteNode()));
             connect(receiver, SIGNAL(DeleteRightNode()),                 this, SLOT(ThumbList_DeleteRightNode()));
             connect(receiver, SIGNAL(DeleteLeftNode()),                  this, SLOT(ThumbList_DeleteLeftNode()));
@@ -557,6 +559,7 @@ void LocalView::Disconnect(TreeBank *tb){
             disconnect(receiver, SIGNAL(Refresh()),                         this, SLOT(ThumbList_Refresh()));
             disconnect(receiver, SIGNAL(RefreshNoScroll()),                 this, SLOT(ThumbList_RefreshNoScroll()));
             disconnect(receiver, SIGNAL(OpenNode()),                        this, SLOT(ThumbList_OpenNode()));
+            disconnect(receiver, SIGNAL(OpenNodeOnNewWindow()),             this, SLOT(ThumbList_OpenNodeOnNewWindow()));
             disconnect(receiver, SIGNAL(DeleteNode()),                      this, SLOT(ThumbList_DeleteNode()));
             disconnect(receiver, SIGNAL(DeleteRightNode()),                 this, SLOT(ThumbList_DeleteRightNode()));
             disconnect(receiver, SIGNAL(DeleteLeftNode()),                  this, SLOT(ThumbList_DeleteLeftNode()));
@@ -815,6 +818,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         case Gadgets::Ge_OpenQueryEditor:
         case Gadgets::Ge_OpenUrlEditor:
         case Gadgets::Ge_OpenCommand:
+        case Gadgets::Ge_ReleaseHiddenView:
             delete action;
             m_ActionTable[a] = action = new QAction(this);
             break;
@@ -914,6 +918,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(OpenQueryEditor,    tr("OpenQueryEditor"));
         DEFINE_ACTION(OpenUrlEditor,      tr("OpenUrlEditor"));
         DEFINE_ACTION(OpenCommand,        tr("OpenCommand"));
+        DEFINE_ACTION(ReleaseHiddenView,  tr("ReleaseHiddenView"));
       //DEFINE_ACTION(Load,               tr("Load"));
 
 #undef  DEFINE_ACTION
@@ -941,6 +946,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(Refresh,                         tr("Refresh"));
         DEFINE_ACTION(RefreshNoScroll,                 tr("RefreshNoScroll"));
         DEFINE_ACTION(OpenNode,                        tr("OpenNode"));
+        DEFINE_ACTION(OpenNodeOnNewWindow,             tr("OpenNodeOnNewWindow"));
         DEFINE_ACTION(DeleteNode,                      tr("DeleteNode"));
         DEFINE_ACTION(DeleteRightNode,                 tr("DeleteRightNode"));
         DEFINE_ACTION(DeleteLeftNode,                  tr("DeleteLeftNode"));
@@ -1113,6 +1119,17 @@ bool LocalView::ThumbList_OpenNode(){
             OpenNode(nd);
             return true;
         }
+    }
+    return false;
+}
+
+bool LocalView::ThumbList_OpenNodeOnNewWindow(){
+    if(!IsDisplayingNode()) return false;
+
+    if(Node *nd = GetHoveredNode()){
+        MainWindow *win = GetTreeBank()->NewWindow();
+        if(win->GetTreeBank()->OpenInNewViewNode(nd->GetUrl(), true, GetViewNode()))
+            return true;
     }
     return false;
 }
@@ -2004,7 +2021,7 @@ void LocalView::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
 }
 
 void LocalView::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
-    Application::SetCurrentWindow(View::m_TreeBank->GetMainWindow());
+    Application::SetCurrentWindow(GetTreeBank()->GetMainWindow());
 
     if(ev->buttons() & Qt::RightButton &&
        !m_GestureStartedPos.isNull()){
@@ -2162,23 +2179,23 @@ void LocalView::KeyReleaseEvent(QKeyEvent *ev){
 }
 
 void LocalView::MousePressEvent(QMouseEvent *ev){
-    View::m_TreeBank->MousePressEvent(ev);
+    GetTreeBank()->MousePressEvent(ev);
 }
 
 void LocalView::MouseReleaseEvent(QMouseEvent *ev){
-    View::m_TreeBank->MouseReleaseEvent(ev);
+    GetTreeBank()->MouseReleaseEvent(ev);
 }
 
 void LocalView::MouseMoveEvent(QMouseEvent *ev){
-    View::m_TreeBank->MouseMoveEvent(ev);
+    GetTreeBank()->MouseMoveEvent(ev);
 }
 
 void LocalView::MouseDoubleClickEvent(QMouseEvent *ev){
-    View::m_TreeBank->MouseDoubleClickEvent(ev);
+    GetTreeBank()->MouseDoubleClickEvent(ev);
 }
 
 void LocalView::WheelEvent(QWheelEvent *ev){
-    View::m_TreeBank->WheelEvent(ev);
+    GetTreeBank()->WheelEvent(ev);
 }
 
 PixmapItem::PixmapItem(LocalView *parent)

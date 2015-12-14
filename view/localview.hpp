@@ -187,6 +187,7 @@ public:
     bool ThumbList_Refresh() DECL_OVERRIDE;
     bool ThumbList_RefreshNoScroll() DECL_OVERRIDE;
     bool ThumbList_OpenNode() DECL_OVERRIDE;
+    bool ThumbList_OpenNodeOnNewWindow() DECL_OVERRIDE;
     bool ThumbList_DeleteNode() DECL_OVERRIDE;
     bool ThumbList_DeleteRightNode() DECL_OVERRIDE;
     bool ThumbList_DeleteLeftNode() DECL_OVERRIDE;
