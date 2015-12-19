@@ -172,6 +172,18 @@ public slots:
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
         if(HistNode *hn = GetHistNode()) hn->SetLastAccessDateToCurrent();
+
+        // view become to stop updating, when only call show method.
+        // e.g. in coming back after making other view.
+        MainWindow *win = Application::GetCurrentWindow();
+        QSize s =
+            m_TreeBank ? m_TreeBank->size() :
+            win ? win->GetTreeBank()->size() :
+            !size().isEmpty() ? size() :
+            DEFAULT_WINDOW_SIZE;
+        resize(QSize(s.width(), s.height()+1));
+        resize(s);
+
         // set only notifier.
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
         CallWithScroll([this](QPointF pos){
@@ -205,21 +217,8 @@ public slots:
     void Load(const QUrl &url)            DECL_OVERRIDE { View::Load(url);}
     void Load(const QNetworkRequest &req) DECL_OVERRIDE { View::Load(req);}
 
-    void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE { hide();}
-    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {
-        show();
-        // view is not updated, when only call show method.
-        // e.g. on deactivate GraphicsTableView.
-        MainWindow *win = Application::GetCurrentWindow();
-        QSize s =
-            m_TreeBank ? m_TreeBank->size() :
-            win ? win->GetTreeBank()->size() :
-            !size().isEmpty() ? size() :
-            DEFAULT_WINDOW_SIZE;
-        resize(QSize(s.width(), s.height()+1));
-        resize(s);
-        setFocus();
-    }
+    void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE {}
+    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {}
 
     // dummy slots.
     void OnLoadStarted() DECL_OVERRIDE { View::OnLoadStarted();}

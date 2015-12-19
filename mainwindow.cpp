@@ -104,17 +104,6 @@ MainWindow::~MainWindow(){
     }
 }
 
-void MainWindow::SetFocus(){
-    raise();
-    activateWindow();
-    if(GetTreeBank()->GetGadgets()->IsActive()){
-        GetTreeBank()->GetView()->setFocus();
-        GetTreeBank()->GetGadgets()->setFocus();
-    } else if(SharedView view = GetTreeBank()->GetCurrentView()){
-        view->setFocus();
-    }
-}
-
 int MainWindow::GetIndex(){
     return m_Index;
 }
@@ -557,6 +546,17 @@ void MainWindow::SetShaded(bool on){
     } else if(IsShaded()){
         Unshade();
         SetFocus();
+    }
+}
+
+void MainWindow::SetFocus(){
+    raise();
+    activateWindow();
+    if(GetTreeBank()->GetGadgets()->IsActive()){
+        GetTreeBank()->GetView()->setFocus();
+        GetTreeBank()->GetGadgets()->setFocus();
+    } else if(SharedView view = GetTreeBank()->GetCurrentView()){
+        view->setFocus();
     }
 }
 

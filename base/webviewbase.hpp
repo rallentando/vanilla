@@ -494,35 +494,8 @@ public slots:
     void Load(const QUrl &url)            DECL_OVERRIDE { View::Load(url);}
     void Load(const QNetworkRequest &req) DECL_OVERRIDE { View::Load(req);}
 
-    //[[!GWV]]
-    void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE {
-        //hide();
-    }
-    //[[/!GWV]]
-    //[[WV]]
-    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {
-        //show();
-        setFocus();
-    }
-    //[[/WV]]
-    //[[WEV]]
-    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {
-        //show();
-        // view is not updated, when only call show method.
-        // e.g. on deactivate GraphicsTableView.
-        /* move to show method.
-        MainWindow *win = Application::GetCurrentWindow();
-        QSize s =
-            m_TreeBank ? m_TreeBank->size() :
-            win ? win->GetTreeBank()->size() :
-            !size().isEmpty() ? size() :
-            DEFAULT_WINDOW_SIZE;
-        resize(QSize(s.width(), s.height()+1));
-        resize(s);
-        */
-        setFocus();
-    }
-    //[[/WEV]]
+    void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE {}
+    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {}
 
     void OnSetViewNode(ViewNode*) DECL_OVERRIDE;
     void OnSetHistNode(HistNode*) DECL_OVERRIDE;

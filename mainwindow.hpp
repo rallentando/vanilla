@@ -30,8 +30,6 @@ public:
     MainWindow(int id, QWidget *parent = 0);
     ~MainWindow();
 
-    void SetFocus();
-
     int GetIndex();
 
     void SaveSettings();
@@ -72,6 +70,7 @@ public slots:
     void SetMaximized(bool on);
     void SetMinimized(bool on);
     void SetShaded(bool on);
+    void SetFocus();
 
 protected:
     void closeEvent(QCloseEvent *ev) DECL_OVERRIDE;

@@ -338,6 +338,7 @@ void WebViewBase::OnTitleChanged(const QString &title){
 
 void WebViewBase::OnUrlChanged(const QUrl &url){
     if(!GetHistNode()) return;
+    //[[!WEV]]
     QString before = GetHistNode()->GetUrl().toString().toLower();
     QString after  = url.toString().toLower();
     if(m_TreeBank && m_TreeBank->GetCurrentView().get() == this){
@@ -349,6 +350,7 @@ void WebViewBase::OnUrlChanged(const QUrl &url){
            !(after.endsWith(QStringLiteral(".pdf")) || after.endsWith(QStringLiteral(".swf"))))
             m_TreeBank->JoinChildWidgetsIfNeed();
     }
+    //[[/!WEV]]
     SaveHistory();
     ChangeNodeUrl(url);
 }

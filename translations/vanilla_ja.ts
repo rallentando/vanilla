@@ -144,12 +144,12 @@
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2091"/>
         <source>DeleteNode</source>
-        <translation>削除(ノード)</translation>
+        <translation>削除</translation>
     </message>
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2095"/>
         <source>PasteNode</source>
-        <translation>貼り付け(ノード)</translation>
+        <translation>貼り付け</translation>
     </message>
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2096"/>
@@ -854,6 +854,29 @@
     </message>
 </context>
 <context>
+    <name>LayerItem</name>
+    <message>
+        <location filename="../treebar.cpp" line="1678"/>
+        <source>TreeBarSettings</source>
+        <translation>ツリーバーの設定</translation>
+    </message>
+    <message>
+        <location filename="../treebar.cpp" line="1681"/>
+        <source>EnableAnimation</source>
+        <translation>アニメーション</translation>
+    </message>
+    <message>
+        <location filename="../treebar.cpp" line="1689"/>
+        <source>EnableCloseButton</source>
+        <translation>閉じるボタン</translation>
+    </message>
+    <message>
+        <location filename="../treebar.cpp" line="1697"/>
+        <source>EnableCloneButton</source>
+        <translation>複製ボタン</translation>
+    </message>
+</context>
+<context>
     <name>LocalView</name>
     <message>
         <location filename="../view/localview.cpp" line="1619"/>
@@ -1426,12 +1449,12 @@
     <message>
         <location filename="../view/localview.cpp" line="966"/>
         <source>DeleteNode</source>
-        <translation>削除(ノード)</translation>
+        <translation>削除</translation>
     </message>
     <message>
         <location filename="../view/localview.cpp" line="970"/>
         <source>PasteNode</source>
-        <translation>貼り付け(ノード)</translation>
+        <translation>貼り付け</translation>
     </message>
     <message>
         <location filename="../view/localview.cpp" line="971"/>
@@ -2697,27 +2720,27 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="593"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="610"/>
         <source>Title : </source>
         <translation>タイトル : </translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="594"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="611"/>
         <source>Url : </source>
         <translation>URL : </translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="595"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="612"/>
         <source>CreatedDate : </source>
         <translation>作成日時 : </translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="597"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="614"/>
         <source>LastAccessedDate : </source>
         <translation>アクセス日時 : </translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="596"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="613"/>
         <source>LastUpdatedDate : </source>
         <translation>更新日時 : </translation>
     </message>
@@ -2767,89 +2790,89 @@
         <translation>URLもしくはJavascriptを入力してください</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1565"/>
-        <location filename="../treebar.cpp" line="1634"/>
-        <location filename="../treebar.cpp" line="2375"/>
+        <location filename="../treebar.cpp" line="1612"/>
+        <location filename="../treebar.cpp" line="1717"/>
+        <location filename="../treebar.cpp" line="2456"/>
         <source>NewViewNode</source>
         <translation>新規ビューノード</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1575"/>
-        <location filename="../treebar.cpp" line="1644"/>
-        <location filename="../treebar.cpp" line="2381"/>
+        <location filename="../treebar.cpp" line="1622"/>
+        <location filename="../treebar.cpp" line="1727"/>
+        <location filename="../treebar.cpp" line="2462"/>
         <source>CloneViewNode</source>
         <translation>ビューノード複製</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1698"/>
+        <location filename="../treebar.cpp" line="1783"/>
         <source>More</source>
         <translation>もっと見る</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1704"/>
+        <location filename="../treebar.cpp" line="1789"/>
         <source>DisplayTrashTree</source>
         <translation>ゴミ箱を開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2390"/>
+        <location filename="../treebar.cpp" line="2471"/>
         <source>RenameViewNode</source>
         <translation>リネーム</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2396"/>
+        <location filename="../treebar.cpp" line="2477"/>
         <source>ReloadViewNode</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2406"/>
-        <source>OpenOnNewWindow</source>
+        <location filename="../treebar.cpp" line="2487"/>
+        <source>OpenViewNodeOnNewWindow</source>
         <translation>新規ウィンドウで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2419"/>
+        <location filename="../treebar.cpp" line="2500"/>
         <source>DeleteViewNode</source>
-        <translation>削除(ノード)</translation>
+        <translation>削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2425"/>
+        <location filename="../treebar.cpp" line="2506"/>
         <source>DeleteRightViewNode</source>
         <translation>右側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2426"/>
+        <location filename="../treebar.cpp" line="2507"/>
         <source>DeleteLowerViewNode</source>
         <translation>下側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2440"/>
+        <location filename="../treebar.cpp" line="2521"/>
         <source>DeleteLeftViewNode</source>
         <translation>左側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2441"/>
+        <location filename="../treebar.cpp" line="2522"/>
         <source>DeleteUpperViewNode</source>
         <translation>上側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2454"/>
+        <location filename="../treebar.cpp" line="2535"/>
         <source>DeleteOtherViewNode</source>
         <translation>このノード以外を削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1583"/>
-        <location filename="../treebar.cpp" line="2466"/>
+        <location filename="../treebar.cpp" line="1630"/>
+        <location filename="../treebar.cpp" line="2547"/>
         <source>MakeDirectory</source>
         <translation>新規ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1592"/>
-        <location filename="../treebar.cpp" line="2471"/>
+        <location filename="../treebar.cpp" line="1639"/>
+        <location filename="../treebar.cpp" line="2552"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation>選択ノードでディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1602"/>
-        <location filename="../treebar.cpp" line="2480"/>
+        <location filename="../treebar.cpp" line="1649"/>
+        <location filename="../treebar.cpp" line="2561"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation>ドメインごとにディレクトリ作成</translation>
     </message>
@@ -3475,9 +3498,29 @@
 <context>
     <name>TreeBar</name>
     <message>
-        <location filename="../treebar.cpp" line="693"/>
+        <location filename="../treebar.cpp" line="692"/>
         <source>TreeBar</source>
         <translation>ツリーバー</translation>
+    </message>
+    <message>
+        <location filename="../treebar.cpp" line="823"/>
+        <source>TreeBarSettings</source>
+        <translation>ツリーバーの設定</translation>
+    </message>
+    <message>
+        <location filename="../treebar.cpp" line="826"/>
+        <source>EnableAnimation</source>
+        <translation>アニメーション</translation>
+    </message>
+    <message>
+        <location filename="../treebar.cpp" line="834"/>
+        <source>EnableCloseButton</source>
+        <translation>閉じるボタン</translation>
+    </message>
+    <message>
+        <location filename="../treebar.cpp" line="842"/>
+        <source>EnableCloneButton</source>
+        <translation>複製ボタン</translation>
     </message>
 </context>
 <context>

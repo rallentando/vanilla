@@ -192,7 +192,6 @@ TreeBank::TreeBank(QWidget *parent)
     : QWidget(parent)
     , m_Scene(new QGraphicsScene(this))
     , m_View(new QGraphicsView(m_Scene, this))
-  //, m_Gadgets(new Gadgets(this))
     , m_JsObject(new _Vanilla(this))
       // if m_PurgeView is true, Notifier and Receiver should be purged.
     , m_Notifier(new Notifier(this, m_PurgeNotifier || m_PurgeView))
@@ -218,7 +217,6 @@ TreeBank::TreeBank(QWidget *parent)
         m_View->setViewport(new QOpenGLWidget());
     }
 
-    //setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
     setAttribute(Qt::WA_TranslucentBackground);
 
     m_View->setAcceptDrops(true);
@@ -252,7 +250,6 @@ TreeBank::TreeBank(QWidget *parent)
 TreeBank::~TreeBank(){
     if(m_Notifier) m_Notifier->deleteLater();
     if(m_Receiver) m_Receiver->deleteLater();
-    //m_Gadgets->deleteLater();
 }
 
 void TreeBank::Initialize(){
@@ -3104,10 +3101,11 @@ ViewNode *TreeBank::CloneViewNode(ViewNode *vn){
         return 0;
     }
     SharedView view = LoadWithLink(clone);
-    if(view && Page::Activate()){
-        SetCurrent(clone);
+    if(Page::Activate()){
+        if(!SetCurrent(clone))
+            EmitTreeStructureChangedForAll();
     } else {
-        view->hide();
+        if(view) view->hide();
         EmitTreeStructureChangedForAll();
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();

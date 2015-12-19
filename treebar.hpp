@@ -38,6 +38,12 @@ public:
     static bool ScrollToSwitchNode();
     static bool DoubleClickToClose();
     static bool WheelClickToClose();
+    static void ToggleEnableAnimation();
+    static void ToggleEnableCloseButton();
+    static void ToggleEnableCloneButton();
+    static void ToggleScrollToSwitchNode();
+    static void ToggleDoubleClickToClose();
+    static void ToggleWheelClickToClose();
 
     int GetVerticalNodeWidth();
 

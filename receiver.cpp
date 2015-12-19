@@ -956,12 +956,12 @@ void Receiver::paintEvent(QPaintEvent *ev){
 }
 
 void Receiver::hideEvent(QHideEvent *ev){
-    if(m_TreeBank->GetGadgets()->IsActive()){
-        m_TreeBank->GetView()->setFocus();
-        m_TreeBank->GetGadgets()->setFocus();
-    } else if(SharedView view = m_TreeBank->GetCurrentView()){
-        view->setFocus();
-    }
+    MainWindow *win = m_TreeBank->GetMainWindow();
+
+    if(IsPurged())
+        QTimer::singleShot(0, win, &MainWindow::SetFocus);
+    else win->SetFocus();
+
     QWidget::hideEvent(ev);
 }
 

@@ -95,15 +95,24 @@ void GlassStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) con
 }
 
 void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
-    if(!thumb->GetNode() || !thumb->scene() ||
-       !thumb->boundingRect().translated(thumb->pos()).intersects(thumb->scene()->sceneRect()))
-        return;
+
+    if(!thumb->GetNode()) return;
+
+    QRectF bound = thumb->boundingRect();
+    QRectF realRect = bound.translated(thumb->pos());
+
+    if(thumb->scene()){
+        if(!realRect.intersects(thumb->scene()->sceneRect()))
+            return;
+    } else {
+        if(!realRect.intersects(QRectF(QPointF(), thumb->GetTableView()->Size())))
+            return;
+    }
 
     painter->save();
 
     painter->setRenderHint(QPainter::Antialiasing, false);
 
-    QRectF bound = thumb->boundingRect();
     QRectF rect = bound;
     rect.setBottomRight(bound.bottomRight() - QPointF(1,1));
 
@@ -273,12 +282,20 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
 }
 
 void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
-    QRectF bound = title->boundingRect();
     QRectF port = title->GetTableView()->NodeTitleAreaRect();
 
-    if(!title->GetNode() || !port.isValid() || !title->scene() ||
-       !bound.translated(title->pos()).intersects(title->scene()->sceneRect()))
-        return;
+    if(!title->GetNode() || !port.isValid()) return;
+
+    QRectF bound = title->boundingRect();
+    QRectF realRect = bound.translated(title->pos());
+
+    if(title->scene()){
+        if(!realRect.intersects(title->scene()->sceneRect()))
+            return;
+    } else {
+        if(!realRect.intersects(QRectF(QPointF(), title->GetTableView()->Size())))
+            return;
+    }
 
     painter->save();
 
@@ -911,15 +928,24 @@ void FlatStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) cons
 }
 
 void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
-    if(!thumb->GetNode() || !thumb->scene() ||
-       !thumb->boundingRect().translated(thumb->pos()).intersects(thumb->scene()->sceneRect()))
-        return;
+
+    if(!thumb->GetNode()) return;
+
+    QRectF bound = thumb->boundingRect();
+    QRectF realRect = bound.translated(thumb->pos());
+
+    if(thumb->scene()){
+        if(!realRect.intersects(thumb->scene()->sceneRect()))
+            return;
+    } else {
+        if(!realRect.intersects(QRectF(QPointF(), thumb->GetTableView()->Size())))
+            return;
+    }
 
     painter->save();
 
     painter->setRenderHint(QPainter::Antialiasing, false);
 
-    QRectF bound = thumb->boundingRect();
     QRectF rect = bound;
     rect.setBottomRight(bound.bottomRight() - QPointF(1.0, 1.0));
 
