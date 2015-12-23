@@ -18,6 +18,9 @@
 #include "view.hpp"
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
+#if defined(Q_OS_WIN)
+#  include "tridentview.hpp"
+#endif
 #ifdef QTWEBKIT
 #  include "webpage.hpp"
 #endif
@@ -833,50 +836,70 @@ void Page::Copy(){
 
 void Page::Cut(){
     // can implement without WebPage and WebEnginePage?
-#ifdef QTWEBKIT
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Cut);
-    } else
-#endif
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Cut);
     }
+#ifdef QTWEBKIT
+    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
+        page->triggerAction(QWebPage::Cut);
+    }
+#endif
+#if defined(Q_OS_WIN)
+    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
+        view->TriggerNativeCutAction();
+    }
+#endif
 }
 
 void Page::Paste(){
     // can implement without WebPage and WebEnginePage?
-#ifdef QTWEBKIT
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Paste);
-    } else
-#endif
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Paste);
     }
+#ifdef QTWEBKIT
+    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
+        page->triggerAction(QWebPage::Paste);
+    }
+#endif
+#if defined(Q_OS_WIN)
+    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
+        view->TriggerNativePasteAction();
+    }
+#endif
 }
 
 void Page::Undo(){
     // can implement without WebPage and WebEnginePage?
-#ifdef QTWEBKIT
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Undo);
-    } else
-#endif
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Undo);
     }
+#ifdef QTWEBKIT
+    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
+        page->triggerAction(QWebPage::Undo);
+    }
+#endif
+#if defined(Q_OS_WIN)
+    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
+        view->TriggerNativeUndoAction();
+    }
+#endif
 }
 
 void Page::Redo(){
     // can implement without WebPage and WebEnginePage?
-#ifdef QTWEBKIT
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Redo);
-    } else
-#endif
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Redo);
     }
+#ifdef QTWEBKIT
+    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
+        page->triggerAction(QWebPage::Redo);
+    }
+#endif
+#if defined(Q_OS_WIN)
+    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
+        view->TriggerNativeRedoAction();
+    }
+#endif
 }
 
 void Page::Unselect(){
@@ -889,26 +912,36 @@ void Page::Unselect(){
 
 void Page::SelectAll(){
     // can implement without WebPage and WebEnginePage?
-#ifdef QTWEBKIT
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::SelectAll);
-    } else
-#endif
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::SelectAll);
     }
+#ifdef QTWEBKIT
+    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
+        page->triggerAction(QWebPage::SelectAll);
+    }
+#endif
+#if defined(Q_OS_WIN)
+    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
+        view->TriggerNativeSelectAllAction();
+    }
+#endif
 }
 
 void Page::Reload(){
     // can implement without WebPage and WebEnginePage?
-#ifdef QTWEBKIT
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Reload);
-    } else
-#endif
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Reload);
     }
+#ifdef QTWEBKIT
+    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
+        page->triggerAction(QWebPage::Reload);
+    }
+#endif
+#if defined(Q_OS_WIN)
+    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
+        view->TriggerNativeReloadAction();
+    }
+#endif
 }
 
 void Page::ReloadAndBypassCache(){
@@ -917,14 +950,19 @@ void Page::ReloadAndBypassCache(){
 
 void Page::Stop(){
     // can implement without WebPage and WebEnginePage?
-#ifdef QTWEBKIT
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Stop);
-    } else
-#endif
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Stop);
     }
+#ifdef QTWEBKIT
+    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
+        page->triggerAction(QWebPage::Stop);
+    }
+#endif
+#if defined(Q_OS_WIN)
+    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
+        view->TriggerNativeStopAction();
+    }
+#endif
 }
 
 void Page::StopAndUnselect(){

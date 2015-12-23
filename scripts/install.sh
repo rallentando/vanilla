@@ -107,9 +107,9 @@ cp $QT5_DIR/plugins/imageformats/qdds.dll                  $TARGET_DIR/imageform
 cp $QT5_DIR/plugins/imageformats/qgif.dll                  $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qicns.dll                 $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qico.dll                  $TARGET_DIR/imageformats/
-cp $QT5_DIR/plugins/imageformats/qjp2.dll                  $TARGET_DIR/imageformats/
+#cp $QT5_DIR/plugins/imageformats/qjp2.dll                  $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qjpeg.dll                 $TARGET_DIR/imageformats/
-cp $QT5_DIR/plugins/imageformats/qmng.dll                  $TARGET_DIR/imageformats/
+#cp $QT5_DIR/plugins/imageformats/qmng.dll                  $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qsvg.dll                  $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qtga.dll                  $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qtiff.dll                 $TARGET_DIR/imageformats/

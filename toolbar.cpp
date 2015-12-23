@@ -138,7 +138,8 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
                     m_LineEdit->setSelection(5, 6);
                 else if(m_LineEdit->text().startsWith("http://") ||
                         m_LineEdit->text().startsWith("https://") ||
-                        m_LineEdit->text().startsWith("javascript:"))
+                        m_LineEdit->text().startsWith("javascript:") ||
+                        m_LineEdit->text().startsWith("about:"))
                     QTimer::singleShot(0, m_LineEdit, &QLineEdit::selectAll);
             });
     connect(m_LineEdit, &QLineEdit::returnPressed,
@@ -146,7 +147,8 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
                 if(m_View &&
                    (m_LineEdit->text().startsWith("http://") ||
                     m_LineEdit->text().startsWith("https://") ||
-                    m_LineEdit->text().startsWith("javascript:"))){
+                    m_LineEdit->text().startsWith("javascript:") ||
+                    m_LineEdit->text().startsWith("about:"))){
 
                     m_CommandCandidates.prepend(m_LineEdit->text());
                     m_Model->setStringList(m_CommandCandidates);
@@ -172,17 +174,19 @@ void ToolBar::Initialize(){
 }
 
 void ToolBar::LoadSettings(){
-    QSettings *settings = Application::GlobalSettings();
-    settings->beginGroup("toolbar");{
-    }
-    settings->endGroup();
+    QSettings *s = Application::GlobalSettings();
+    if(!s->group().isEmpty()) return;
+
+    Q_UNUSED(s);
+    // not yet implemented.
 }
 
 void ToolBar::SaveSettings(){
-    QSettings *settings = Application::GlobalSettings();
-    settings->beginGroup("toolbar");{
-    }
-    settings->endGroup();
+    QSettings *s = Application::GlobalSettings();
+    if(!s->group().isEmpty()) return;
+
+    Q_UNUSED(s);
+    // not yet implemented.
 }
 
 QSize ToolBar::sizeHint() const {

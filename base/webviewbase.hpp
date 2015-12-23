@@ -467,10 +467,12 @@ public slots:
             });
         //[[/WEV]]
     }
-    // there is no sense to resize because plugins paint to window directly, but...
     void hide() DECL_OVERRIDE {
         base()->hide();
+        //[[!WEV]]
+        // there is no sense to resize because plugins paint to window directly, but...
         if(ForbidToOverlap()) resize(QSize(0,0));
+        //[[/!WEV]]
     }
 
     //[[GWV]]

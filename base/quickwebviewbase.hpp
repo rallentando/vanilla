@@ -194,9 +194,7 @@ public slots:
                 }
             });
     }
-    void hide() DECL_OVERRIDE {
-        base()->hide();
-    }
+    void hide()    DECL_OVERRIDE { base()->hide();}
     void raise()   DECL_OVERRIDE { base()->raise();}
     void lower()   DECL_OVERRIDE { base()->lower();}
     void repaint() DECL_OVERRIDE {

@@ -114,57 +114,43 @@ GraphicsTableView::~GraphicsTableView(){
 }
 
 void GraphicsTableView::LoadSettings(){
-    QSettings *settings = Application::GlobalSettings();
-    settings->beginGroup(QStringLiteral("gadgets"));{
-        QString style = settings->value(QStringLiteral("@Style"), QStringLiteral("GlassStyle")).value<QString>();
+    QSettings *s = Application::GlobalSettings();
+    if(!s->group().isEmpty()) return;
 
-        GadgetsStyle *style_ = m_Style;
+    QString style = s->value(QStringLiteral("gadgets/@Style"), QStringLiteral("GlassStyle")).value<QString>();
+    GadgetsStyle *style_ = m_Style;
 
-        if(style == QStringLiteral("GlassStyle")){
-            m_Style = new GlassStyle;
-        }
-        if(style == QStringLiteral("FlatStyle")){
-            m_Style = new FlatStyle;
-        }
+    if(style == QStringLiteral("GlassStyle")) m_Style = new GlassStyle;
+    if(style == QStringLiteral("FlatStyle"))  m_Style = new FlatStyle;
+    if(style_) delete style_;
 
-        if(style_) delete style_;
+    m_ScrollToChangeDirectory = s->value(QStringLiteral("gadgets/thumblist/@ScrollToChangeDirectory"), false).value<bool>();
+    m_RightClickToRenameNode  = s->value(QStringLiteral("gadgets/thumblist/@RightClickToRenameNode"),  false).value<bool>();
+    m_EnablePrimarySpotLight  = s->value(QStringLiteral("gadgets/thumblist/@EnablePrimarySpotLight"),  false).value<bool>();
+    m_EnableHoveredSpotLight  = s->value(QStringLiteral("gadgets/thumblist/@EnableHoveredSpotLight"),   true).value<bool>();
+    m_EnableLoadedSpotLight   = s->value(QStringLiteral("gadgets/thumblist/@EnableLoadedSpotLight"),   false).value<bool>();
+    m_EnableInPlaceNotifier   = s->value(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),    true).value<bool>();
+    m_EnableCloseButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),        true).value<bool>();
+    m_EnableCloneButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),       false).value<bool>();
 
-        settings->beginGroup(QStringLiteral("thumblist"));{
-            m_ScrollToChangeDirectory = settings->value(QStringLiteral("@ScrollToChangeDirectory"), false).value<bool>();
-            m_RightClickToRenameNode  = settings->value(QStringLiteral("@RightClickToRenameNode"),  false).value<bool>();
-            m_EnablePrimarySpotLight  = settings->value(QStringLiteral("@EnablePrimarySpotLight"),  false).value<bool>();
-            m_EnableHoveredSpotLight  = settings->value(QStringLiteral("@EnableHoveredSpotLight"),   true).value<bool>();
-            m_EnableLoadedSpotLight   = settings->value(QStringLiteral("@EnableLoadedSpotLight"),   false).value<bool>();
-            m_EnableInPlaceNotifier   = settings->value(QStringLiteral("@EnableInPlaceNotifier"),    true).value<bool>();
-            m_EnableCloseButton       = settings->value(QStringLiteral("@EnableCloseButton"),        true).value<bool>();
-            m_EnableCloneButton       = settings->value(QStringLiteral("@EnableCloneButton"),       false).value<bool>();
-        }
-        settings->endGroup();
-    }
-    settings->endGroup();
     Thumbnail::Initialize();
     NodeTitle::Initialize();
 }
 
 void GraphicsTableView::SaveSettings(){
-    QSettings *settings = Application::GlobalSettings();
-    settings->beginGroup(QStringLiteral("gadgets"));{
+    QSettings *s = Application::GlobalSettings();
+    if(!s->group().isEmpty()) return;
 
-        settings->setValue(QStringLiteral("@Style"), GetStyle()->StyleName());
+    s->setValue(QStringLiteral("gadgets/@Style"), GetStyle()->StyleName());
 
-        settings->beginGroup(QStringLiteral("thumblist"));{
-            settings->setValue(QStringLiteral("@ScrollToChangeDirectory"), m_ScrollToChangeDirectory);
-            settings->setValue(QStringLiteral("@RightClickToRenameNode"),  m_RightClickToRenameNode);
-            settings->setValue(QStringLiteral("@EnablePrimarySpotLight"),  m_EnablePrimarySpotLight);
-            settings->setValue(QStringLiteral("@EnableHoveredSpotLight"),  m_EnableHoveredSpotLight);
-            settings->setValue(QStringLiteral("@EnableLoadedSpotLight"),   m_EnableLoadedSpotLight);
-            settings->setValue(QStringLiteral("@EnableInPlaceNotifier"),   m_EnableInPlaceNotifier);
-            settings->setValue(QStringLiteral("@EnableCloseButton"),       m_EnableCloseButton);
-            settings->setValue(QStringLiteral("@EnableCloneButton"),       m_EnableCloneButton);
-        }
-        settings->endGroup();
-    }
-    settings->endGroup();
+    s->setValue(QStringLiteral("gadgets/thumblist/@ScrollToChangeDirectory"), m_ScrollToChangeDirectory);
+    s->setValue(QStringLiteral("gadgets/thumblist/@RightClickToRenameNode"),  m_RightClickToRenameNode);
+    s->setValue(QStringLiteral("gadgets/thumblist/@EnablePrimarySpotLight"),  m_EnablePrimarySpotLight);
+    s->setValue(QStringLiteral("gadgets/thumblist/@EnableHoveredSpotLight"),  m_EnableHoveredSpotLight);
+    s->setValue(QStringLiteral("gadgets/thumblist/@EnableLoadedSpotLight"),   m_EnableLoadedSpotLight);
+    s->setValue(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),   m_EnableInPlaceNotifier);
+    s->setValue(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),       m_EnableCloseButton);
+    s->setValue(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),       m_EnableCloneButton);
 }
 
 void GraphicsTableView::Activate(DisplayType type){

@@ -77,6 +77,8 @@ HEADERS += \
     gadgets/thumbnail.hpp \
     gadgets/nodetitle.hpp \
     gadgets/accessiblewebelement.hpp
+win32: HEADERS += \
+    view/tridentview.hpp
 
 SOURCES += \
     main.cpp \
@@ -110,6 +112,8 @@ SOURCES += \
     gadgets/thumbnail.cpp \
     gadgets/nodetitle.cpp \
     gadgets/accessiblewebelement.cpp
+win32: SOURCES += \
+    view/tridentview.cpp
 
 TRANSLATIONS += \
     translations/vanilla_en.ts \
@@ -192,4 +196,7 @@ lupdate_only {
         gadgets/thumbnail.cpp \
         gadgets/nodetitle.cpp \
         gadgets/accessiblewebelement.cpp
+    win32: SOURCES += \
+        view/tridentview.hpp \
+        view/tridentview.cpp
 }

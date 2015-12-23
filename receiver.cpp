@@ -419,6 +419,8 @@ void Receiver::SetString(QString str){
     if(m_Mode == Command &&
        QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
         QSettings *settings = Application::GlobalSettings();
+        if(!settings->group().isEmpty()) return;
+
         switch (list.length()){
         case 1:
             // fall through.

@@ -30,6 +30,9 @@
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "dialog.hpp"
+#if defined(Q_OS_WIN)
+#  include "tridentview.hpp"
+#endif
 
 LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
     : View(parent)
@@ -216,6 +219,16 @@ QMenu *LocalView::CreateNodeMenu(){
 
 void LocalView::RenderBackground(QPainter *painter){
     if(!GetTreeBank()) return;
+
+    if(GetStyle()->StyleName() != QStringLiteral("FlatStyle")
+#if defined(Q_OS_WIN)
+       && !TreeBank::TridentViewExist()
+#endif
+       ){
+        GraphicsTableView::RenderBackground(painter);
+        return;
+    }
+
     View *view = 0;
 
     if(SharedView master = GetMaster().lock()){
@@ -236,6 +249,10 @@ void LocalView::RenderBackground(QPainter *painter){
             view = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
+#if defined(Q_OS_WIN)
+        else if(TridentView *w = qobject_cast<TridentView*>(GetTreeBank()->GetCurrentView()->base()))
+            view = w;
+#endif
     }
 
     if(view){
@@ -250,8 +267,7 @@ void LocalView::RenderBackground(QPainter *painter){
 
         if(width_diff != 0 || height_diff != 0)
             painter->translate(width_diff / 2.0, height_diff / 2.0);
-        if(GetStyle()->StyleName() == QStringLiteral("FlatStyle"))
-            view->Render(painter);
+        view->Render(painter);
 
         painter->restore();
     }

@@ -32,6 +32,9 @@
 #include "dialog.hpp"
 #include "treebar.hpp"
 #include "toolbar.hpp"
+#if defined(Q_OS_WIN)
+#  include "tridentview.hpp"
+#endif
 
 MainWindow::MainWindow(int id, QWidget *parent)
     : QMainWindow(parent)
@@ -56,7 +59,8 @@ MainWindow::MainWindow(int id, QWidget *parent)
     }
     m_DialogFrame->show();
 
-    menuBar();
+    // make MenuBar and hide.
+    menuBar()->hide();
 
     LoadSettings();
 
@@ -110,144 +114,137 @@ int MainWindow::GetIndex(){
 
 void MainWindow::SaveSettings(){
     QSettings *s = Application::GlobalSettings();
-    s->beginGroup(QStringLiteral("mainwindow"));{
+    if(!s->group().isEmpty()) return;
 
-        s->setValue(QStringLiteral("tableview%1").arg(m_Index), m_TreeBank->GetGadgets()->GetStat());
-        s->setValue(QStringLiteral("notifier%1").arg(m_Index), m_TreeBank->GetNotifier() ? true : false);
-        s->setValue(QStringLiteral("receiver%1").arg(m_Index), m_TreeBank->GetReceiver() ? true : false);
-        s->setValue(QStringLiteral("menubar%1").arg(m_Index), !IsMenuBarEmpty());
-        s->setValue(QStringLiteral("toolbar%1").arg(m_Index), saveState());
-        s->setValue(QStringLiteral("status%1").arg(m_Index), static_cast<int>(windowState()));
-        if(!isFullScreen() && !isMaximized() && !isMinimized())
-            s->setValue(QStringLiteral("geometry%1").arg(m_Index), geometry());
-    }
-    s->endGroup();
+    s->setValue(QStringLiteral("mainwindow/tableview%1").arg(m_Index), m_TreeBank->GetGadgets()->GetStat());
+    s->setValue(QStringLiteral("mainwindow/notifier%1").arg(m_Index), m_TreeBank->GetNotifier() ? true : false);
+    s->setValue(QStringLiteral("mainwindow/receiver%1").arg(m_Index), m_TreeBank->GetReceiver() ? true : false);
+    s->setValue(QStringLiteral("mainwindow/menubar%1").arg(m_Index), !IsMenuBarEmpty());
+    s->setValue(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), saveState());
+    s->setValue(QStringLiteral("mainwindow/status%1").arg(m_Index), static_cast<int>(windowState()));
+    if(!isFullScreen() && !isMaximized() && !isMinimized())
+        s->setValue(QStringLiteral("mainwindow/geometry%1").arg(m_Index), geometry());
 }
 
 void MainWindow::LoadSettings(){
     QSettings *s = Application::GlobalSettings();
-    s->beginGroup(QStringLiteral("mainwindow"));{
+    if(!s->group().isEmpty()) return;
 
-        MainWindow *current = Application::GetCurrentWindow();
-        QVariant tableview_data = s->value(QStringLiteral("tableview%1").arg(m_Index), QVariant());
-        QVariant geometry_data  = s->value(QStringLiteral("geometry%1").arg(m_Index), QVariant());
-        QVariant notifier_data  = s->value(QStringLiteral("notifier%1").arg(m_Index), QVariant());
-        QVariant receiver_data  = s->value(QStringLiteral("receiver%1").arg(m_Index), QVariant());
-        QVariant menubar_data   = s->value(QStringLiteral("menubar%1").arg(m_Index), QVariant());
-        QVariant toolbar_data   = s->value(QStringLiteral("toolbar%1").arg(m_Index), QVariant());
+    MainWindow *current = Application::GetCurrentWindow();
+    QVariant tableview_data = s->value(QStringLiteral("mainwindow/tableview%1").arg(m_Index), QVariant());
+    QVariant geometry_data  = s->value(QStringLiteral("mainwindow/geometry%1").arg(m_Index), QVariant());
+    QVariant notifier_data  = s->value(QStringLiteral("mainwindow/notifier%1").arg(m_Index), QVariant());
+    QVariant receiver_data  = s->value(QStringLiteral("mainwindow/receiver%1").arg(m_Index), QVariant());
+    QVariant menubar_data   = s->value(QStringLiteral("mainwindow/menubar%1").arg(m_Index), QVariant());
+    QVariant toolbar_data   = s->value(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), QVariant());
 
-        if(tableview_data.isNull()){
+    if(tableview_data.isNull()){
 
-            QStringList list = current
-                ? current->GetTreeBank()->GetGadgets()->GetStat()
-                : QStringList()
-                  << QStringLiteral("%1").arg(static_cast<int>(GraphicsTableView::Flat))
-                  << QStringLiteral("%1").arg(static_cast<int>(GraphicsTableView::Recursive))
-                  << QStringLiteral("%1").arg(1.0f);
+        QStringList list = current
+            ? current->GetTreeBank()->GetGadgets()->GetStat()
+            : QStringList()
+            << QStringLiteral("%1").arg(static_cast<int>(GraphicsTableView::Flat))
+            << QStringLiteral("%1").arg(static_cast<int>(GraphicsTableView::Recursive))
+            << QStringLiteral("%1").arg(1.0f);
 
-            m_TreeBank->GetGadgets()->SetStat(list);
+        m_TreeBank->GetGadgets()->SetStat(list);
 
-        } else if(tableview_data.canConvert<QStringList>()){
-            m_TreeBank->GetGadgets()->SetStat
-                (tableview_data.toStringList());
-        }
-
-        if(geometry_data.isNull()){
-
-            QRect rect = current
-                ? current->geometry().translated(20, 20)
-                : DEFAULT_WINDOW_RECT;
-
-            setGeometry(rect);
-
-        } else if(geometry_data.canConvert<QRect>()){
-            setGeometry(geometry_data.toRect());
-        }
-
-        if(notifier_data.isNull()){
-
-            bool notifierEnabled = current
-                ? current->GetTreeBank()->GetNotifier()
-                : true;
-
-            if(notifierEnabled != static_cast<bool>(GetTreeBank()->GetNotifier()))
-                GetTreeBank()->ToggleNotifier();
-
-        } else if(notifier_data.canConvert<bool>()){
-            if(notifier_data.toBool() != static_cast<bool>(GetTreeBank()->GetNotifier()))
-                GetTreeBank()->ToggleNotifier();
-        }
-
-        if(receiver_data.isNull()){
-
-            bool receiverEnabled = current
-                ? current->GetTreeBank()->GetReceiver()
-                : true;
-
-            if(receiverEnabled != static_cast<bool>(GetTreeBank()->GetReceiver()))
-                GetTreeBank()->ToggleReceiver();
-
-        } else if(receiver_data.canConvert<bool>()){
-            if(receiver_data.toBool() != static_cast<bool>(GetTreeBank()->GetReceiver()))
-                GetTreeBank()->ToggleReceiver();
-        }
-
-        if(!toolbar_data.isNull()){
-            restoreState(toolbar_data.toByteArray());
-        }
-
-        if(menubar_data.isNull()){
-
-            bool menubarEnabled = current
-                ? !current->IsMenuBarEmpty()
-                : true;
-
-            if(menubarEnabled && IsMenuBarEmpty())
-                CreateMenuBar();
-
-        } else if(menubar_data.canConvert<bool>()){
-            if(menubar_data.toBool() && IsMenuBarEmpty())
-                CreateMenuBar();
-        }
+    } else if(tableview_data.canConvert<QStringList>()){
+        m_TreeBank->GetGadgets()->SetStat
+            (tableview_data.toStringList());
     }
-    s->endGroup();
+
+    if(geometry_data.isNull()){
+
+        QRect rect = current
+            ? current->geometry().translated(20, 20)
+            : DEFAULT_WINDOW_RECT;
+
+        setGeometry(rect);
+
+    } else if(geometry_data.canConvert<QRect>()){
+        setGeometry(geometry_data.toRect());
+    }
+
+    if(notifier_data.isNull()){
+
+        bool notifierEnabled = current
+            ? current->GetTreeBank()->GetNotifier()
+            : true;
+
+        if(notifierEnabled != static_cast<bool>(GetTreeBank()->GetNotifier()))
+            GetTreeBank()->ToggleNotifier();
+
+    } else if(notifier_data.canConvert<bool>()){
+        if(notifier_data.toBool() != static_cast<bool>(GetTreeBank()->GetNotifier()))
+            GetTreeBank()->ToggleNotifier();
+    }
+
+    if(receiver_data.isNull()){
+
+        bool receiverEnabled = current
+            ? current->GetTreeBank()->GetReceiver()
+            : true;
+
+        if(receiverEnabled != static_cast<bool>(GetTreeBank()->GetReceiver()))
+            GetTreeBank()->ToggleReceiver();
+
+    } else if(receiver_data.canConvert<bool>()){
+        if(receiver_data.toBool() != static_cast<bool>(GetTreeBank()->GetReceiver()))
+            GetTreeBank()->ToggleReceiver();
+    }
+
+    if(!toolbar_data.isNull()){
+        restoreState(toolbar_data.toByteArray());
+    }
+
+    if(menubar_data.isNull()){
+
+        bool menubarEnabled = current
+            ? !current->IsMenuBarEmpty()
+            : true;
+
+        if(menubarEnabled && IsMenuBarEmpty())
+            CreateMenuBar();
+
+    } else if(menubar_data.canConvert<bool>()){
+        if(menubar_data.toBool() && IsMenuBarEmpty())
+            CreateMenuBar();
+    }
 
     QTimer::singleShot(0, [this, s](){
 
-    s->beginGroup(QStringLiteral("mainwindow"));{
-        // 'setGeometry' and 'restoreGeometry' are asynchronous API.
-        bool contains = false;
-        QDesktopWidget desktop;
-        for(int i = 0; i < desktop.screenCount(); i++){
-            if(desktop.screenGeometry(i).intersects(geometry())){
-                contains = true;
-                break;
-            }
-        }
-        if(!contains) setGeometry(DEFAULT_WINDOW_RECT);
-
-        QVariant status = s->value(QStringLiteral("status%1").arg(m_Index), QVariant());
-
-        if(status.isNull()){
-            /* do nothing. */
-        } else if(status.canConvert<int>()){
-            setWindowState(static_cast<Qt::WindowStates>(status.toInt()));
+    // 'setGeometry' and 'restoreGeometry' are asynchronous API.
+    bool contains = false;
+    QDesktopWidget desktop;
+    for(int i = 0; i < desktop.screenCount(); i++){
+        if(desktop.screenGeometry(i).intersects(geometry())){
+            contains = true;
+            break;
         }
     }
-    s->endGroup();
+    if(!contains) setGeometry(DEFAULT_WINDOW_RECT);
+
+    QVariant status = s->value(QStringLiteral("mainwindow/status%1").arg(m_Index), QVariant());
+
+    if(status.isNull()){
+        /* do nothing. */
+    } else if(status.canConvert<int>()){
+        setWindowState(static_cast<Qt::WindowStates>(status.toInt()));
+    }
     });
 }
 
 void MainWindow::RemoveSettings(){
     QSettings *s = Application::GlobalSettings();
-    s->beginGroup(QStringLiteral("mainwindow"));
-    s->remove(QStringLiteral("tableview%1").arg(m_Index));
-    s->remove(QStringLiteral( "geometry%1").arg(m_Index));
-    s->remove(QStringLiteral( "notifier%1").arg(m_Index));
-    s->remove(QStringLiteral( "receiver%1").arg(m_Index));
-    s->remove(QStringLiteral(  "menubar%1").arg(m_Index));
-    s->remove(QStringLiteral(   "status%1").arg(m_Index));
-    s->endGroup();
+    if(!s->group().isEmpty()) return;
+
+    s->remove(QStringLiteral("mainwindow/tableview%1").arg(m_Index));
+    s->remove(QStringLiteral("mainwindow/geometry%1").arg(m_Index));
+    s->remove(QStringLiteral("mainwindow/notifier%1").arg(m_Index));
+    s->remove(QStringLiteral("mainwindow/receiver%1").arg(m_Index));
+    s->remove(QStringLiteral("mainwindow/menubar%1").arg(m_Index));
+    s->remove(QStringLiteral("mainwindow/status%1").arg(m_Index));
     s->sync();
 }
 
@@ -273,6 +270,7 @@ bool MainWindow::IsMenuBarEmpty(){
 
 void MainWindow::ClearMenuBar(){
     menuBar()->clear();
+    menuBar()->hide();
 }
 
 void MainWindow::CreateMenuBar(){
@@ -281,6 +279,7 @@ void MainWindow::CreateMenuBar(){
     menuBar()->addMenu(m_TreeBank->DisplayMenu());
     menuBar()->addMenu(m_TreeBank->WindowMenu());
     menuBar()->addMenu(m_TreeBank->PageMenu());
+    menuBar()->show();
 }
 
 bool MainWindow::IsShaded(){
@@ -299,6 +298,10 @@ void MainWindow::Shade(){
 #endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->hide();
+#if defined(Q_OS_WIN)
+            else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
+                w->hide();
+#endif
         }
     }
     AdjustAllEdgeWidgets();
@@ -320,6 +323,10 @@ void MainWindow::Unshade(){
 #endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
+#if defined(Q_OS_WIN)
+            else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
+                w->show();
+#endif
         }
     }
     AdjustAllEdgeWidgets();
@@ -621,6 +628,10 @@ void MainWindow::moveEvent(QMoveEvent *ev){
 #endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->setGeometry(geometry());
+#if defined(Q_OS_WIN)
+            else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
+                w->setGeometry(geometry());
+#endif
         }
     }
     AdjustAllEdgeWidgets();
@@ -648,6 +659,10 @@ void MainWindow::showEvent(QShowEvent *ev){
 #endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
+#if defined(Q_OS_WIN)
+            else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
+                w->show();
+#endif
         }
     }
     ShowAllEdgeWidgets();
@@ -667,6 +682,10 @@ void MainWindow::hideEvent(QHideEvent *ev){
 #endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
+#if defined(Q_OS_WIN)
+            else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
+                w->show();
+#endif
         }
     }
     HideAllEdgeWidgets();
@@ -708,6 +727,10 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
 #endif
                     if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                         w->raise();
+#if defined(Q_OS_WIN)
+                    else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
+                        w->raise();
+#endif
                 }
             }
             RaiseAllEdgeWidgets();

@@ -720,29 +720,27 @@ void TreeBar::Initialize(){
 }
 
 void TreeBar::LoadSettings(){
-    QSettings *settings = Application::GlobalSettings();
-    settings->beginGroup("treebar");{
-        m_EnableAnimation    = settings->value(QStringLiteral("@EnableAnimation"),    true ).value<bool>();
-        m_EnableCloseButton  = settings->value(QStringLiteral("@EnableCloseButton"),  true ).value<bool>();
-        m_EnableCloneButton  = settings->value(QStringLiteral("@EnableCloneButton"),  false).value<bool>();
-        m_ScrollToSwitchNode = settings->value(QStringLiteral("@ScrollToSwitchNode"), false).value<bool>();
-        m_DoubleClickToClose = settings->value(QStringLiteral("@DoubleClickToClose"), false).value<bool>();
-        m_WheelClickToClose  = settings->value(QStringLiteral("@WheelClickToClose"),  true ).value<bool>();
-    }
-    settings->endGroup();
+    QSettings *s = Application::GlobalSettings();
+    if(!s->group().isEmpty()) return;
+
+    m_EnableAnimation    = s->value(QStringLiteral("treebar/@EnableAnimation"),    true ).value<bool>();
+    m_EnableCloseButton  = s->value(QStringLiteral("treebar/@EnableCloseButton"),  true ).value<bool>();
+    m_EnableCloneButton  = s->value(QStringLiteral("treebar/@EnableCloneButton"),  false).value<bool>();
+    m_ScrollToSwitchNode = s->value(QStringLiteral("treebar/@ScrollToSwitchNode"), false).value<bool>();
+    m_DoubleClickToClose = s->value(QStringLiteral("treebar/@DoubleClickToClose"), false).value<bool>();
+    m_WheelClickToClose  = s->value(QStringLiteral("treebar/@WheelClickToClose"),  true ).value<bool>();
 }
 
 void TreeBar::SaveSettings(){
-    QSettings *settings = Application::GlobalSettings();
-    settings->beginGroup("treebar");{
-        settings->setValue(QStringLiteral("@EnableAnimation"),    m_EnableAnimation);
-        settings->setValue(QStringLiteral("@EnableCloseButton"),  m_EnableCloseButton);
-        settings->setValue(QStringLiteral("@EnableCloneButton"),  m_EnableCloneButton);
-        settings->setValue(QStringLiteral("@ScrollToSwitchNode"), m_ScrollToSwitchNode);
-        settings->setValue(QStringLiteral("@DoubleClickToClose"), m_DoubleClickToClose);
-        settings->setValue(QStringLiteral("@WheelClickToClose"),  m_WheelClickToClose);
-    }
-    settings->endGroup();
+    QSettings *s = Application::GlobalSettings();
+    if(!s->group().isEmpty()) return;
+
+    s->setValue(QStringLiteral("treebar/@EnableAnimation"),    m_EnableAnimation);
+    s->setValue(QStringLiteral("treebar/@EnableCloseButton"),  m_EnableCloseButton);
+    s->setValue(QStringLiteral("treebar/@EnableCloneButton"),  m_EnableCloneButton);
+    s->setValue(QStringLiteral("treebar/@ScrollToSwitchNode"), m_ScrollToSwitchNode);
+    s->setValue(QStringLiteral("treebar/@DoubleClickToClose"), m_DoubleClickToClose);
+    s->setValue(QStringLiteral("treebar/@WheelClickToClose"),  m_WheelClickToClose);
 }
 
 bool TreeBar::EnableAnimation(){

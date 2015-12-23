@@ -117,647 +117,642 @@
 <context>
     <name>Gadgets</name>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2015"/>
+        <location filename="../gadgets/gadgets.cpp" line="2021"/>
         <source>Import</source>
         <translation>インポート</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2016"/>
+        <location filename="../gadgets/gadgets.cpp" line="2022"/>
         <source>Export</source>
         <translation>エクスポート</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2017"/>
+        <location filename="../gadgets/gadgets.cpp" line="2023"/>
         <source>AboutVanilla</source>
         <translation>Vanillaについて</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2075"/>
+        <location filename="../gadgets/gadgets.cpp" line="2081"/>
         <source>Deactivate</source>
         <translation>中止</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2089"/>
+        <location filename="../gadgets/gadgets.cpp" line="2095"/>
         <source>OpenNode</source>
         <translation>開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2091"/>
+        <location filename="../gadgets/gadgets.cpp" line="2097"/>
         <source>DeleteNode</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2095"/>
+        <location filename="../gadgets/gadgets.cpp" line="2101"/>
         <source>PasteNode</source>
         <translation>貼り付け</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2096"/>
+        <location filename="../gadgets/gadgets.cpp" line="2102"/>
         <source>RestoreNode</source>
         <translation>ここに復元</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2099"/>
+        <location filename="../gadgets/gadgets.cpp" line="2105"/>
         <source>UpDirectory</source>
         <translation>上の階層</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2100"/>
+        <location filename="../gadgets/gadgets.cpp" line="2106"/>
         <source>DownDirectory</source>
         <translation>下の階層</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2103"/>
+        <location filename="../gadgets/gadgets.cpp" line="2108"/>
         <source>MakeDirectory</source>
         <translation>新規ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2101"/>
+        <location filename="../gadgets/gadgets.cpp" line="2107"/>
         <source>MakeLocalNode</source>
         <translation>ここにローカルノードを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2102"/>
-        <source>MakeFtpNode</source>
-        <translation>ここにFTPノードを開く</translation>
-    </message>
-    <message>
-        <location filename="../gadgets/gadgets.cpp" line="2119"/>
+        <location filename="../gadgets/gadgets.cpp" line="2124"/>
         <source>ToggleTrash</source>
         <translation>ゴミ箱切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2120"/>
+        <location filename="../gadgets/gadgets.cpp" line="2125"/>
         <source>ScrollUp</source>
         <translation>上にスクロール</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2121"/>
+        <location filename="../gadgets/gadgets.cpp" line="2126"/>
         <source>ScrollDown</source>
         <translation>下にスクロール</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2122"/>
+        <location filename="../gadgets/gadgets.cpp" line="2127"/>
         <source>PageUp</source>
         <translation>一画面上に</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2123"/>
+        <location filename="../gadgets/gadgets.cpp" line="2128"/>
         <source>PageDown</source>
         <translation>一画面下に</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2124"/>
+        <location filename="../gadgets/gadgets.cpp" line="2129"/>
         <source>ZoomIn</source>
         <translation>ズームイン</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2125"/>
+        <location filename="../gadgets/gadgets.cpp" line="2130"/>
         <source>ZoomOut</source>
         <translation>ズームアウト</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2126"/>
+        <location filename="../gadgets/gadgets.cpp" line="2131"/>
         <source>MoveToUpperItem</source>
         <translation>上のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2127"/>
+        <location filename="../gadgets/gadgets.cpp" line="2132"/>
         <source>MoveToLowerItem</source>
         <translation>下のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2128"/>
+        <location filename="../gadgets/gadgets.cpp" line="2133"/>
         <source>MoveToRightItem</source>
         <translation>右のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2129"/>
+        <location filename="../gadgets/gadgets.cpp" line="2134"/>
         <source>MoveToLeftItem</source>
         <translation>左のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2132"/>
+        <location filename="../gadgets/gadgets.cpp" line="2137"/>
         <source>MoveToFirstItem</source>
         <translation>最初のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2133"/>
+        <location filename="../gadgets/gadgets.cpp" line="2138"/>
         <source>MoveToLastItem</source>
         <translation>最後のアイテム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2043"/>
+        <location filename="../gadgets/gadgets.cpp" line="2049"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1996"/>
+        <location filename="../gadgets/gadgets.cpp" line="2002"/>
         <source>UpKey</source>
         <translation>↑</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1997"/>
+        <location filename="../gadgets/gadgets.cpp" line="2003"/>
         <source>DownKey</source>
         <translation>↓</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1998"/>
+        <location filename="../gadgets/gadgets.cpp" line="2004"/>
         <source>RightKey</source>
         <translation>→</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1999"/>
+        <location filename="../gadgets/gadgets.cpp" line="2005"/>
         <source>LeftKey</source>
         <translation>←</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2000"/>
+        <location filename="../gadgets/gadgets.cpp" line="2006"/>
         <source>HomeKey</source>
         <translation>ホームキー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2001"/>
+        <location filename="../gadgets/gadgets.cpp" line="2007"/>
         <source>EndKey</source>
         <translation>エンドキー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2002"/>
+        <location filename="../gadgets/gadgets.cpp" line="2008"/>
         <source>PageUpKey</source>
         <translation>ページアップキー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2003"/>
+        <location filename="../gadgets/gadgets.cpp" line="2009"/>
         <source>PageDownKey</source>
         <translation>ページダウンキー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2029"/>
+        <location filename="../gadgets/gadgets.cpp" line="2035"/>
         <source>ToggleMinimized</source>
         <translation>最小化切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2028"/>
+        <location filename="../gadgets/gadgets.cpp" line="2034"/>
         <source>ToggleMaximized</source>
         <translation>最大化切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2027"/>
+        <location filename="../gadgets/gadgets.cpp" line="2033"/>
         <source>ToggleFullScreen</source>
         <translation>フルスクリーン切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2033"/>
+        <location filename="../gadgets/gadgets.cpp" line="2039"/>
         <source>NewWindow</source>
         <translation>新規ウィンドウ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2034"/>
+        <location filename="../gadgets/gadgets.cpp" line="2040"/>
         <source>CloseWindow</source>
         <translation>ウィンドウを閉じる</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2035"/>
+        <location filename="../gadgets/gadgets.cpp" line="2041"/>
         <source>SwitchWindow</source>
         <translation>ウィンドウ切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2044"/>
+        <location filename="../gadgets/gadgets.cpp" line="2050"/>
         <source>Restore</source>
         <translation>復元</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2045"/>
+        <location filename="../gadgets/gadgets.cpp" line="2051"/>
         <source>Recreate</source>
         <translation>再生成</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2047"/>
+        <location filename="../gadgets/gadgets.cpp" line="2053"/>
         <source>PrevView</source>
         <translation>前のビュー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2046"/>
+        <location filename="../gadgets/gadgets.cpp" line="2052"/>
         <source>NextView</source>
         <translation>次のビュー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2048"/>
+        <location filename="../gadgets/gadgets.cpp" line="2054"/>
         <source>BuryView</source>
         <translation>最前面のビューを最背面へ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2049"/>
+        <location filename="../gadgets/gadgets.cpp" line="2055"/>
         <source>DigView</source>
         <translation>最背面のビューを最前面へ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2050"/>
+        <location filename="../gadgets/gadgets.cpp" line="2056"/>
         <source>NewViewNode</source>
         <translation>新規ビューノード</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2051"/>
+        <location filename="../gadgets/gadgets.cpp" line="2057"/>
         <source>NewHistNode</source>
         <translation>新規履歴ノード</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2052"/>
+        <location filename="../gadgets/gadgets.cpp" line="2058"/>
         <source>CloneViewNode</source>
         <translation>ビューノード複製</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2053"/>
+        <location filename="../gadgets/gadgets.cpp" line="2059"/>
         <source>CloneHistNode</source>
         <translation>履歴ノード複製</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2058"/>
+        <location filename="../gadgets/gadgets.cpp" line="2064"/>
         <source>OpenTextSeeker</source>
         <translation>インクリメンタルサーチを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2059"/>
+        <location filename="../gadgets/gadgets.cpp" line="2065"/>
         <source>OpenQueryEditor</source>
         <translation>検索を開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2060"/>
+        <location filename="../gadgets/gadgets.cpp" line="2066"/>
         <source>OpenUrlEditor</source>
         <translation>URLエディタを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2061"/>
+        <location filename="../gadgets/gadgets.cpp" line="2067"/>
         <source>OpenCommand</source>
         <translation>コマンド</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2054"/>
+        <location filename="../gadgets/gadgets.cpp" line="2060"/>
         <source>DisplayAccessKey</source>
         <translation>アクセスーの表示</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2055"/>
+        <location filename="../gadgets/gadgets.cpp" line="2061"/>
         <source>DisplayViewTree</source>
         <translation>ビューツリーを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2056"/>
+        <location filename="../gadgets/gadgets.cpp" line="2062"/>
         <source>DisplayHistTree</source>
         <translation>履歴ツリーを開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2057"/>
+        <location filename="../gadgets/gadgets.cpp" line="2063"/>
         <source>DisplayTrashTree</source>
         <translation>ゴミ箱を開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2022"/>
+        <location filename="../gadgets/gadgets.cpp" line="2028"/>
         <source>ToggleNotifier</source>
         <translation>ステータスエリア切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="1548"/>
+        <location filename="../gadgets/gadgets.cpp" line="1546"/>
         <source>OpenNodeWithOtherBrowser</source>
         <translation>ノードを別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2023"/>
+        <location filename="../gadgets/gadgets.cpp" line="2029"/>
         <source>ToggleReceiver</source>
         <translation>コマンドエリア切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2024"/>
+        <location filename="../gadgets/gadgets.cpp" line="2030"/>
         <source>ToggleMenuBar</source>
         <translation>メニューバー切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2025"/>
+        <location filename="../gadgets/gadgets.cpp" line="2031"/>
         <source>ToggleTreeBar</source>
         <translation>ツリーバー切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2026"/>
+        <location filename="../gadgets/gadgets.cpp" line="2032"/>
         <source>ToggleToolBar</source>
         <translation>ツールバー切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2030"/>
+        <location filename="../gadgets/gadgets.cpp" line="2036"/>
         <source>ToggleShaded</source>
         <translation>ロールアップ切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2031"/>
+        <location filename="../gadgets/gadgets.cpp" line="2037"/>
         <source>ShadeWindow</source>
         <translation>ウィンドウロールアップ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2032"/>
+        <location filename="../gadgets/gadgets.cpp" line="2038"/>
         <source>UnshadeWindow</source>
         <translation>ロールアップ解除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2036"/>
+        <location filename="../gadgets/gadgets.cpp" line="2042"/>
         <source>NextWindow</source>
         <translation>次のウィンドウ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2037"/>
+        <location filename="../gadgets/gadgets.cpp" line="2043"/>
         <source>PrevWindow</source>
         <translation>前のウィンドウ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2062"/>
+        <location filename="../gadgets/gadgets.cpp" line="2068"/>
         <source>ReleaseHiddenView</source>
         <translation>表示ビュー以外を解放</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2087"/>
+        <location filename="../gadgets/gadgets.cpp" line="2093"/>
         <source>Refresh</source>
         <translation>再描画</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2088"/>
+        <location filename="../gadgets/gadgets.cpp" line="2094"/>
         <source>RefreshNoScroll</source>
         <translation>再描画(スクロールなし)</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2090"/>
+        <location filename="../gadgets/gadgets.cpp" line="2096"/>
         <source>OpenNodeOnNewWindow</source>
         <translation>新規ウィンドウで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2092"/>
+        <location filename="../gadgets/gadgets.cpp" line="2098"/>
         <source>DeleteRightNode</source>
         <translation>右側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2093"/>
+        <location filename="../gadgets/gadgets.cpp" line="2099"/>
         <source>DeleteLeftNode</source>
         <translation>左側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2094"/>
+        <location filename="../gadgets/gadgets.cpp" line="2100"/>
         <source>DeleteOtherNode</source>
         <translation>このノード以外を削除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2097"/>
+        <location filename="../gadgets/gadgets.cpp" line="2103"/>
         <source>NewNode</source>
         <translation>新規ノード</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2098"/>
+        <location filename="../gadgets/gadgets.cpp" line="2104"/>
         <source>CloneNode</source>
         <translation>ノード複製</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2104"/>
+        <location filename="../gadgets/gadgets.cpp" line="2109"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation>選択ノードでディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2105"/>
+        <location filename="../gadgets/gadgets.cpp" line="2110"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation>ドメインごとにディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2106"/>
+        <location filename="../gadgets/gadgets.cpp" line="2111"/>
         <source>RenameNode</source>
         <translation>リネーム</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2107"/>
+        <location filename="../gadgets/gadgets.cpp" line="2112"/>
         <source>CopyNodeUrl</source>
         <translation>ノードURLをコピー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2108"/>
+        <location filename="../gadgets/gadgets.cpp" line="2113"/>
         <source>CopyNodeTitle</source>
         <translation>ノードタイトルをコピー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2109"/>
+        <location filename="../gadgets/gadgets.cpp" line="2114"/>
         <source>CopyNodeAsLink</source>
         <translation>ノードをリンクとしてコピー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2110"/>
+        <location filename="../gadgets/gadgets.cpp" line="2115"/>
         <source>OpenNodeWithIE</source>
         <translation>ノードをIEで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2111"/>
+        <location filename="../gadgets/gadgets.cpp" line="2116"/>
         <source>OpenNodeWithFF</source>
         <translation>ノードをFirefoxで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2112"/>
+        <location filename="../gadgets/gadgets.cpp" line="2117"/>
         <source>OpenNodeWithOpera</source>
         <translation>ノードをOperaで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2113"/>
+        <location filename="../gadgets/gadgets.cpp" line="2118"/>
         <source>OpenNodeWithOPR</source>
         <translation>ノードをOPRで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2114"/>
+        <location filename="../gadgets/gadgets.cpp" line="2119"/>
         <source>OpenNodeWithSafari</source>
         <translation>ノードをSafariで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2115"/>
+        <location filename="../gadgets/gadgets.cpp" line="2120"/>
         <source>OpenNodeWithChrome</source>
         <translation>ノードをChromeで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2116"/>
+        <location filename="../gadgets/gadgets.cpp" line="2121"/>
         <source>OpenNodeWithSleipnir</source>
         <translation>ノードをSleipnirで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2117"/>
+        <location filename="../gadgets/gadgets.cpp" line="2122"/>
         <source>OpenNodeWithVivaldi</source>
         <translation>ノードをVivaldiで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2118"/>
+        <location filename="../gadgets/gadgets.cpp" line="2123"/>
         <source>OpenNodeWithCustom</source>
         <translation>ノードを他のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2130"/>
+        <location filename="../gadgets/gadgets.cpp" line="2135"/>
         <source>MoveToPrevPage</source>
         <translation>前のページ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2131"/>
+        <location filename="../gadgets/gadgets.cpp" line="2136"/>
         <source>MoveToNextPage</source>
         <translation>次のページ</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2134"/>
+        <location filename="../gadgets/gadgets.cpp" line="2139"/>
         <source>SelectToUpperItem</source>
         <translation>上のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2135"/>
+        <location filename="../gadgets/gadgets.cpp" line="2140"/>
         <source>SelectToLowerItem</source>
         <translation>下のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2136"/>
+        <location filename="../gadgets/gadgets.cpp" line="2141"/>
         <source>SelectToRightItem</source>
         <translation>右のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2137"/>
+        <location filename="../gadgets/gadgets.cpp" line="2142"/>
         <source>SelectToLeftItem</source>
         <translation>左のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2138"/>
+        <location filename="../gadgets/gadgets.cpp" line="2143"/>
         <source>SelectToPrevPage</source>
         <translation>前のページまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2139"/>
+        <location filename="../gadgets/gadgets.cpp" line="2144"/>
         <source>SelectToNextPage</source>
         <translation>次のページまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2140"/>
+        <location filename="../gadgets/gadgets.cpp" line="2145"/>
         <source>SelectToFirstItem</source>
         <translation>最初のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2141"/>
+        <location filename="../gadgets/gadgets.cpp" line="2146"/>
         <source>SelectToLastItem</source>
         <translation>最後のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2142"/>
+        <location filename="../gadgets/gadgets.cpp" line="2147"/>
         <source>SelectItem</source>
         <translation>このアイテムを選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2143"/>
+        <location filename="../gadgets/gadgets.cpp" line="2148"/>
         <source>SelectRange</source>
         <translation>このアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2144"/>
+        <location filename="../gadgets/gadgets.cpp" line="2149"/>
         <source>SelectAll</source>
         <translation>すべて選択</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2145"/>
+        <location filename="../gadgets/gadgets.cpp" line="2150"/>
         <source>ClearSelection</source>
         <translation>選択解除</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2146"/>
+        <location filename="../gadgets/gadgets.cpp" line="2151"/>
         <source>TransferToUpper</source>
         <translation>上に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2147"/>
+        <location filename="../gadgets/gadgets.cpp" line="2152"/>
         <source>TransferToLower</source>
         <translation>下に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2148"/>
+        <location filename="../gadgets/gadgets.cpp" line="2153"/>
         <source>TransferToRight</source>
         <translation>右に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2149"/>
+        <location filename="../gadgets/gadgets.cpp" line="2154"/>
         <source>TransferToLeft</source>
         <translation>左に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2150"/>
+        <location filename="../gadgets/gadgets.cpp" line="2155"/>
         <source>TransferToPrevPage</source>
         <translation>前のページに移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2151"/>
+        <location filename="../gadgets/gadgets.cpp" line="2156"/>
         <source>TransferToNextPage</source>
         <translation>次のページに移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2152"/>
+        <location filename="../gadgets/gadgets.cpp" line="2157"/>
         <source>TransferToFirst</source>
         <translation>先頭に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2153"/>
+        <location filename="../gadgets/gadgets.cpp" line="2158"/>
         <source>TransferToLast</source>
         <translation>末尾に移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2154"/>
+        <location filename="../gadgets/gadgets.cpp" line="2159"/>
         <source>TransferToUpDirectory</source>
         <translation>上のディレクトリに移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2155"/>
+        <location filename="../gadgets/gadgets.cpp" line="2160"/>
         <source>TransferToDownDirectory</source>
         <translation>下のディレクトリに移動</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2156"/>
+        <location filename="../gadgets/gadgets.cpp" line="2161"/>
         <source>SwitchNodeCollectionType</source>
         <translation>ノードコレクションタイプを切り替え</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2157"/>
+        <location filename="../gadgets/gadgets.cpp" line="2162"/>
         <source>SwitchNodeCollectionTypeReverse</source>
         <translation>ノードコレクションタイプを切り替え(逆順)</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2165"/>
+        <location filename="../gadgets/gadgets.cpp" line="2170"/>
         <source>Notifier</source>
         <translation>ステータスエリア</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2169"/>
+        <location filename="../gadgets/gadgets.cpp" line="2174"/>
         <source>Receiver</source>
         <translation>コマンドエリア</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2173"/>
+        <location filename="../gadgets/gadgets.cpp" line="2178"/>
         <source>MenuBar</source>
         <translation>メニューバー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2177"/>
+        <location filename="../gadgets/gadgets.cpp" line="2182"/>
         <source>TreeBar</source>
         <translation>ツリーバー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2181"/>
+        <location filename="../gadgets/gadgets.cpp" line="2186"/>
         <source>ToolBar</source>
         <translation>ツールバー</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2210"/>
+        <location filename="../gadgets/gadgets.cpp" line="2215"/>
         <source>OpenNodeWith%1</source>
         <translation>ノードを%1で開く</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2469"/>
+        <location filename="../gadgets/gadgets.cpp" line="2474"/>
         <source>Current selection: %1</source>
         <translation>現在の選択: %1</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2018"/>
+        <location filename="../gadgets/gadgets.cpp" line="2024"/>
         <source>AboutQt</source>
         <translation>Qtについて</translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgets.cpp" line="2019"/>
+        <location filename="../gadgets/gadgets.cpp" line="2025"/>
         <source>Quit</source>
         <translation>終了</translation>
     </message>
@@ -766,8 +761,8 @@
     <name>GraphicsTableView</name>
     <message>
         <location filename="../gadgets/graphicstableview.cpp" line="480"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2989"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="3026"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2973"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3010"/>
         <source>Displaying %1 nodes.</source>
         <translation>表示: %1 ノード.</translation>
     </message>
@@ -802,18 +797,18 @@
         <translation>更新日時でソート</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2103"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2087"/>
         <source>Invalid directory contents.</source>
         <translation>無効なディレクトリ.</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2104"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2088"/>
         <source>This directory has no contents or all nodes have same domain.</source>
         <translation>このディレクトリは空であるかすべてのノードが同じドメインを持っています.</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2581"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2606"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2565"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2590"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>ズーム %1 %</translation>
     </message>
@@ -856,22 +851,22 @@
 <context>
     <name>LayerItem</name>
     <message>
-        <location filename="../treebar.cpp" line="1678"/>
+        <location filename="../treebar.cpp" line="1688"/>
         <source>TreeBarSettings</source>
         <translation>ツリーバーの設定</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1681"/>
+        <location filename="../treebar.cpp" line="1691"/>
         <source>EnableAnimation</source>
         <translation>アニメーション</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1689"/>
+        <location filename="../treebar.cpp" line="1699"/>
         <source>EnableCloseButton</source>
         <translation>閉じるボタン</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1697"/>
+        <location filename="../treebar.cpp" line="1707"/>
         <source>EnableCloneButton</source>
         <translation>複製ボタン</translation>
     </message>
@@ -879,690 +874,685 @@
 <context>
     <name>LocalView</name>
     <message>
-        <location filename="../view/localview.cpp" line="1619"/>
+        <location filename="../view/localview.cpp" line="1620"/>
         <source>Delete File.</source>
         <translation>ファイルの削除.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1620"/>
+        <location filename="../view/localview.cpp" line="1621"/>
         <source>Are you sure you want to delete this file?</source>
         <translation>本当に削除しますか?</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1636"/>
+        <location filename="../view/localview.cpp" line="1637"/>
         <source>Delete Files.</source>
         <translation>ファイルの削除.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1637"/>
+        <location filename="../view/localview.cpp" line="1638"/>
         <source>Are you sure you want to delete these files?</source>
         <translation>本当に削除しますか?</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1647"/>
-        <location filename="../view/localview.cpp" line="1670"/>
+        <location filename="../view/localview.cpp" line="1648"/>
+        <location filename="../view/localview.cpp" line="1671"/>
         <source>Input file name.</source>
         <translation>ファイル名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1648"/>
+        <location filename="../view/localview.cpp" line="1649"/>
         <source>Input new file name.</source>
         <translation>作成するファイル名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1653"/>
-        <location filename="../view/localview.cpp" line="1676"/>
+        <location filename="../view/localview.cpp" line="1654"/>
+        <location filename="../view/localview.cpp" line="1677"/>
         <source>Invalid file name.</source>
         <translation>無効なファイル名.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1654"/>
-        <location filename="../view/localview.cpp" line="1677"/>
+        <location filename="../view/localview.cpp" line="1655"/>
+        <location filename="../view/localview.cpp" line="1678"/>
         <source>Cannot make file with such name.</source>
         <translation>ファイル名を変更することができません.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1671"/>
+        <location filename="../view/localview.cpp" line="1672"/>
         <source>Input clone file name.</source>
         <translation>コピーするファイル名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1691"/>
+        <location filename="../view/localview.cpp" line="1692"/>
         <source>Input directory name.</source>
         <translation>ディレクトリ名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1692"/>
+        <location filename="../view/localview.cpp" line="1693"/>
         <source>Input new directory name.</source>
         <translation>作成するディレクトリ名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1696"/>
+        <location filename="../view/localview.cpp" line="1697"/>
         <source>Invalid directory name.</source>
         <translation>無効なディレクトリ.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1697"/>
+        <location filename="../view/localview.cpp" line="1698"/>
         <source>Cannot make directory with such name.</source>
         <translation>ディレクトリ名を変更することができません.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2074"/>
+        <location filename="../view/localview.cpp" line="2075"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="871"/>
+        <location filename="../view/localview.cpp" line="878"/>
         <source>UpKey</source>
         <translation>↑</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="872"/>
+        <location filename="../view/localview.cpp" line="879"/>
         <source>DownKey</source>
         <translation>↓</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="873"/>
+        <location filename="../view/localview.cpp" line="880"/>
         <source>RightKey</source>
         <translation>→</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="874"/>
+        <location filename="../view/localview.cpp" line="881"/>
         <source>LeftKey</source>
         <translation>←</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="875"/>
+        <location filename="../view/localview.cpp" line="882"/>
         <source>HomeKey</source>
         <translation>ホームキー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="876"/>
+        <location filename="../view/localview.cpp" line="883"/>
         <source>EndKey</source>
         <translation>エンドキー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="877"/>
+        <location filename="../view/localview.cpp" line="884"/>
         <source>PageUpKey</source>
         <translation>ページアップキー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="878"/>
+        <location filename="../view/localview.cpp" line="885"/>
         <source>PageDownKey</source>
         <translation>ページダウンキー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="904"/>
+        <location filename="../view/localview.cpp" line="911"/>
         <source>ToggleMinimized</source>
         <translation>最小化切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="903"/>
+        <location filename="../view/localview.cpp" line="910"/>
         <source>ToggleMaximized</source>
         <translation>最大化切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="902"/>
+        <location filename="../view/localview.cpp" line="909"/>
         <source>ToggleFullScreen</source>
         <translation>フルスクリーン切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="908"/>
+        <location filename="../view/localview.cpp" line="915"/>
         <source>NewWindow</source>
         <translation>新規ウィンドウ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="909"/>
+        <location filename="../view/localview.cpp" line="916"/>
         <source>CloseWindow</source>
         <translation>ウィンドウを閉じる</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="910"/>
+        <location filename="../view/localview.cpp" line="917"/>
         <source>SwitchWindow</source>
         <translation>ウィンドウ切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="918"/>
+        <location filename="../view/localview.cpp" line="925"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="919"/>
+        <location filename="../view/localview.cpp" line="926"/>
         <source>Restore</source>
         <translation>復元</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="920"/>
+        <location filename="../view/localview.cpp" line="927"/>
         <source>Recreate</source>
         <translation>再生成</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="922"/>
+        <location filename="../view/localview.cpp" line="929"/>
         <source>PrevView</source>
         <translation>前のビュー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="921"/>
+        <location filename="../view/localview.cpp" line="928"/>
         <source>NextView</source>
         <translation>次のビュー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="923"/>
+        <location filename="../view/localview.cpp" line="930"/>
         <source>BuryView</source>
         <translation>最前面のビューを最背面へ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="924"/>
+        <location filename="../view/localview.cpp" line="931"/>
         <source>DigView</source>
         <translation>最背面のビューを最前面へ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="933"/>
+        <location filename="../view/localview.cpp" line="940"/>
         <source>OpenTextSeeker</source>
         <translation>インクリメンタルサーチを開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="934"/>
+        <location filename="../view/localview.cpp" line="941"/>
         <source>OpenQueryEditor</source>
         <translation>検索を開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="935"/>
+        <location filename="../view/localview.cpp" line="942"/>
         <source>OpenUrlEditor</source>
         <translation>URLエディタを開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="936"/>
+        <location filename="../view/localview.cpp" line="943"/>
         <source>OpenCommand</source>
         <translation>コマンド</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="929"/>
+        <location filename="../view/localview.cpp" line="936"/>
         <source>DisplayAccessKey</source>
         <translation>アクセスーの表示</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="930"/>
+        <location filename="../view/localview.cpp" line="937"/>
         <source>DisplayViewTree</source>
         <translation>ビューツリーを開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="931"/>
+        <location filename="../view/localview.cpp" line="938"/>
         <source>DisplayHistTree</source>
         <translation>履歴ツリーを開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="932"/>
+        <location filename="../view/localview.cpp" line="939"/>
         <source>DisplayTrashTree</source>
         <translation>ゴミ箱を開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="897"/>
+        <location filename="../view/localview.cpp" line="904"/>
         <source>ToggleNotifier</source>
         <translation>ステータスエリア切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="898"/>
+        <location filename="../view/localview.cpp" line="905"/>
         <source>ToggleReceiver</source>
         <translation>コマンドエリア切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="899"/>
+        <location filename="../view/localview.cpp" line="906"/>
         <source>ToggleMenuBar</source>
         <translation>メニューバー切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="905"/>
+        <location filename="../view/localview.cpp" line="912"/>
         <source>ToggleShaded</source>
         <translation>ロールアップ切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="906"/>
+        <location filename="../view/localview.cpp" line="913"/>
         <source>ShadeWindow</source>
         <translation>ウィンドウロールアップ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="907"/>
+        <location filename="../view/localview.cpp" line="914"/>
         <source>UnshadeWindow</source>
         <translation>ロールアップ解除</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="911"/>
+        <location filename="../view/localview.cpp" line="918"/>
         <source>NextWindow</source>
         <translation>次のウィンドウ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="912"/>
+        <location filename="../view/localview.cpp" line="919"/>
         <source>PrevWindow</source>
         <translation>前のウィンドウ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="890"/>
+        <location filename="../view/localview.cpp" line="897"/>
         <source>Import</source>
         <translation>インポート</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="891"/>
+        <location filename="../view/localview.cpp" line="898"/>
         <source>Export</source>
         <translation>エクスポート</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="892"/>
+        <location filename="../view/localview.cpp" line="899"/>
         <source>AboutVanilla</source>
         <translation>Vanillaについて</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="900"/>
+        <location filename="../view/localview.cpp" line="907"/>
         <source>ToggleTreeBar</source>
         <translation>ツリーバー切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="901"/>
+        <location filename="../view/localview.cpp" line="908"/>
         <source>ToggleToolBar</source>
         <translation>ツールバー切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="937"/>
+        <location filename="../view/localview.cpp" line="944"/>
         <source>ReleaseHiddenView</source>
         <translation>表示ビュー以外を解放</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="950"/>
+        <location filename="../view/localview.cpp" line="957"/>
         <source>Deactivate</source>
         <translation>中止</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="962"/>
+        <location filename="../view/localview.cpp" line="969"/>
         <source>Refresh</source>
         <translation>再描画</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="963"/>
+        <location filename="../view/localview.cpp" line="970"/>
         <source>RefreshNoScroll</source>
         <translation>再描画(スクロールなし)</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="965"/>
+        <location filename="../view/localview.cpp" line="972"/>
         <source>OpenNodeOnNewWindow</source>
         <translation>新規ウィンドウで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="967"/>
+        <location filename="../view/localview.cpp" line="974"/>
         <source>DeleteRightNode</source>
         <translation>右側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="968"/>
+        <location filename="../view/localview.cpp" line="975"/>
         <source>DeleteLeftNode</source>
         <translation>左側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="969"/>
+        <location filename="../view/localview.cpp" line="976"/>
         <source>DeleteOtherNode</source>
         <translation>このノード以外を削除</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="972"/>
+        <location filename="../view/localview.cpp" line="979"/>
         <source>NewNode</source>
         <translation>新規ノード</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="973"/>
+        <location filename="../view/localview.cpp" line="980"/>
         <source>CloneNode</source>
         <translation>ノード複製</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="979"/>
+        <location filename="../view/localview.cpp" line="985"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation>選択ノードでディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="980"/>
+        <location filename="../view/localview.cpp" line="986"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation>ドメインごとにディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="982"/>
+        <location filename="../view/localview.cpp" line="988"/>
         <source>CopyNodeUrl</source>
         <translation>ノードURLをコピー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="983"/>
+        <location filename="../view/localview.cpp" line="989"/>
         <source>CopyNodeTitle</source>
         <translation>ノードタイトルをコピー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="984"/>
+        <location filename="../view/localview.cpp" line="990"/>
         <source>CopyNodeAsLink</source>
         <translation>ノードをリンクとしてコピー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="985"/>
+        <location filename="../view/localview.cpp" line="991"/>
         <source>OpenNodeWithIE</source>
         <translation>ノードをIEで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="986"/>
+        <location filename="../view/localview.cpp" line="992"/>
         <source>OpenNodeWithFF</source>
         <translation>ノードをFirefoxで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="987"/>
+        <location filename="../view/localview.cpp" line="993"/>
         <source>OpenNodeWithOpera</source>
         <translation>ノードをOperaで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="988"/>
+        <location filename="../view/localview.cpp" line="994"/>
         <source>OpenNodeWithOPR</source>
         <translation>ノードをOPRで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="989"/>
+        <location filename="../view/localview.cpp" line="995"/>
         <source>OpenNodeWithSafari</source>
         <translation>ノードをSafariで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="990"/>
+        <location filename="../view/localview.cpp" line="996"/>
         <source>OpenNodeWithChrome</source>
         <translation>ノードをChromeで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="991"/>
+        <location filename="../view/localview.cpp" line="997"/>
         <source>OpenNodeWithSleipnir</source>
         <translation>ノードをSleipnirで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="992"/>
+        <location filename="../view/localview.cpp" line="998"/>
         <source>OpenNodeWithVivaldi</source>
         <translation>ノードをVivaldiで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="993"/>
+        <location filename="../view/localview.cpp" line="999"/>
         <source>OpenNodeWithCustom</source>
         <translation>ノードを他のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1005"/>
+        <location filename="../view/localview.cpp" line="1011"/>
         <source>MoveToPrevPage</source>
         <translation>前のページ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1006"/>
+        <location filename="../view/localview.cpp" line="1012"/>
         <source>MoveToNextPage</source>
         <translation>次のページ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1009"/>
+        <location filename="../view/localview.cpp" line="1015"/>
         <source>SelectToUpperItem</source>
         <translation>上のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1010"/>
+        <location filename="../view/localview.cpp" line="1016"/>
         <source>SelectToLowerItem</source>
         <translation>下のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1011"/>
+        <location filename="../view/localview.cpp" line="1017"/>
         <source>SelectToRightItem</source>
         <translation>右のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1012"/>
+        <location filename="../view/localview.cpp" line="1018"/>
         <source>SelectToLeftItem</source>
         <translation>左のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1013"/>
+        <location filename="../view/localview.cpp" line="1019"/>
         <source>SelectToPrevPage</source>
         <translation>前のページまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1014"/>
+        <location filename="../view/localview.cpp" line="1020"/>
         <source>SelectToNextPage</source>
         <translation>次のページまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1015"/>
+        <location filename="../view/localview.cpp" line="1021"/>
         <source>SelectToFirstItem</source>
         <translation>最初のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1016"/>
+        <location filename="../view/localview.cpp" line="1022"/>
         <source>SelectToLastItem</source>
         <translation>最後のアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1017"/>
+        <location filename="../view/localview.cpp" line="1023"/>
         <source>SelectItem</source>
         <translation>このアイテムを選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1018"/>
+        <location filename="../view/localview.cpp" line="1024"/>
         <source>SelectRange</source>
         <translation>このアイテムまで選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1019"/>
+        <location filename="../view/localview.cpp" line="1025"/>
         <source>SelectAll</source>
         <translation>すべて選択</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1020"/>
+        <location filename="../view/localview.cpp" line="1026"/>
         <source>ClearSelection</source>
         <translation>選択解除</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1021"/>
+        <location filename="../view/localview.cpp" line="1027"/>
         <source>TransferToUpper</source>
         <translation>上に移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1022"/>
+        <location filename="../view/localview.cpp" line="1028"/>
         <source>TransferToLower</source>
         <translation>下に移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1023"/>
+        <location filename="../view/localview.cpp" line="1029"/>
         <source>TransferToRight</source>
         <translation>右に移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1024"/>
+        <location filename="../view/localview.cpp" line="1030"/>
         <source>TransferToLeft</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1025"/>
+        <location filename="../view/localview.cpp" line="1031"/>
         <source>TransferToPrevPage</source>
         <translation>前のページに移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1026"/>
+        <location filename="../view/localview.cpp" line="1032"/>
         <source>TransferToNextPage</source>
         <translation>次のページに移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1027"/>
+        <location filename="../view/localview.cpp" line="1033"/>
         <source>TransferToFirst</source>
         <translation>先頭に移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1028"/>
+        <location filename="../view/localview.cpp" line="1034"/>
         <source>TransferToLast</source>
         <translation>末尾に移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1029"/>
+        <location filename="../view/localview.cpp" line="1035"/>
         <source>TransferToUpDirectory</source>
         <translation>上のディレクトリに移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1030"/>
+        <location filename="../view/localview.cpp" line="1036"/>
         <source>TransferToDownDirectory</source>
         <translation>下のディレクトリに移動</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1031"/>
+        <location filename="../view/localview.cpp" line="1037"/>
         <source>SwitchNodeCollectionType</source>
         <translation>ノードコレクションタイプを切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1032"/>
+        <location filename="../view/localview.cpp" line="1038"/>
         <source>SwitchNodeCollectionTypeReverse</source>
         <translation>ノードコレクションタイプを切り替え(逆順)</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1040"/>
+        <location filename="../view/localview.cpp" line="1046"/>
         <source>Notifier</source>
         <translation>ステータスエリア</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1044"/>
+        <location filename="../view/localview.cpp" line="1050"/>
         <source>Receiver</source>
         <translation>コマンドエリア</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1048"/>
+        <location filename="../view/localview.cpp" line="1054"/>
         <source>MenuBar</source>
         <translation>メニューバー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1052"/>
+        <location filename="../view/localview.cpp" line="1058"/>
         <source>TreeBar</source>
         <translation>ツリーバー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1056"/>
+        <location filename="../view/localview.cpp" line="1062"/>
         <source>ToolBar</source>
         <translation>ツールバー</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1085"/>
+        <location filename="../view/localview.cpp" line="1091"/>
         <source>OpenNodeWith%1</source>
         <translation>ノードを%1で開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="964"/>
+        <location filename="../view/localview.cpp" line="971"/>
         <source>OpenNode</source>
         <translation>開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="966"/>
+        <location filename="../view/localview.cpp" line="973"/>
         <source>DeleteNode</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="970"/>
+        <location filename="../view/localview.cpp" line="977"/>
         <source>PasteNode</source>
         <translation>貼り付け</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="971"/>
+        <location filename="../view/localview.cpp" line="978"/>
         <source>RestoreNode</source>
         <translation>ここに復元</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="974"/>
+        <location filename="../view/localview.cpp" line="981"/>
         <source>UpDirectory</source>
         <translation>上の階層</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="975"/>
+        <location filename="../view/localview.cpp" line="982"/>
         <source>DownDirectory</source>
         <translation>下の階層</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="978"/>
+        <location filename="../view/localview.cpp" line="984"/>
         <source>MakeDirectory</source>
         <translation>新規ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="976"/>
+        <location filename="../view/localview.cpp" line="983"/>
         <source>MakeLocalNode</source>
         <translation>ここにローカルノードを開く</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="977"/>
-        <source>MakeFtpNode</source>
-        <translation>ここにFTPノードを開く</translation>
-    </message>
-    <message>
-        <location filename="../view/localview.cpp" line="981"/>
+        <location filename="../view/localview.cpp" line="987"/>
         <source>RenameNode</source>
         <translation>リネーム</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="994"/>
+        <location filename="../view/localview.cpp" line="1000"/>
         <source>ToggleTrash</source>
         <translation>ゴミ箱切り替え</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="995"/>
+        <location filename="../view/localview.cpp" line="1001"/>
         <source>ScrollUp</source>
         <translation>上にスクロール</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="996"/>
+        <location filename="../view/localview.cpp" line="1002"/>
         <source>ScrollDown</source>
         <translation>下にスクロール</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="997"/>
+        <location filename="../view/localview.cpp" line="1003"/>
         <source>PageUp</source>
         <translation>一画面上に</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="998"/>
+        <location filename="../view/localview.cpp" line="1004"/>
         <source>PageDown</source>
         <translation>一画面下に</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="999"/>
+        <location filename="../view/localview.cpp" line="1005"/>
         <source>ZoomIn</source>
         <translation>ズームイン</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1000"/>
+        <location filename="../view/localview.cpp" line="1006"/>
         <source>ZoomOut</source>
         <translation>ズームアウト</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1001"/>
+        <location filename="../view/localview.cpp" line="1007"/>
         <source>MoveToUpperItem</source>
         <translation>上のアイテム</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1002"/>
+        <location filename="../view/localview.cpp" line="1008"/>
         <source>MoveToLowerItem</source>
         <translation>下のアイテム</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1003"/>
+        <location filename="../view/localview.cpp" line="1009"/>
         <source>MoveToRightItem</source>
         <translation>右のアイテム</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1004"/>
+        <location filename="../view/localview.cpp" line="1010"/>
         <source>MoveToLeftItem</source>
         <translation>左のアイテム</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1007"/>
+        <location filename="../view/localview.cpp" line="1013"/>
         <source>MoveToFirstItem</source>
         <translation>最初のアイテム</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1008"/>
+        <location filename="../view/localview.cpp" line="1014"/>
         <source>MoveToLastItem</source>
         <translation>最後のアイテム</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="893"/>
+        <location filename="../view/localview.cpp" line="900"/>
         <source>AboutQt</source>
         <translation>Qtについて</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="894"/>
+        <location filename="../view/localview.cpp" line="901"/>
         <source>Quit</source>
         <translation>終了</translation>
     </message>
@@ -2790,89 +2780,89 @@
         <translation>URLもしくはJavascriptを入力してください</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1612"/>
-        <location filename="../treebar.cpp" line="1717"/>
-        <location filename="../treebar.cpp" line="2456"/>
+        <location filename="../treebar.cpp" line="1622"/>
+        <location filename="../treebar.cpp" line="1727"/>
+        <location filename="../treebar.cpp" line="2473"/>
         <source>NewViewNode</source>
         <translation>新規ビューノード</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1622"/>
-        <location filename="../treebar.cpp" line="1727"/>
-        <location filename="../treebar.cpp" line="2462"/>
+        <location filename="../treebar.cpp" line="1632"/>
+        <location filename="../treebar.cpp" line="1737"/>
+        <location filename="../treebar.cpp" line="2479"/>
         <source>CloneViewNode</source>
         <translation>ビューノード複製</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1783"/>
+        <location filename="../treebar.cpp" line="1793"/>
         <source>More</source>
         <translation>もっと見る</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1789"/>
+        <location filename="../treebar.cpp" line="1799"/>
         <source>DisplayTrashTree</source>
         <translation>ゴミ箱を開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2471"/>
+        <location filename="../treebar.cpp" line="2488"/>
         <source>RenameViewNode</source>
         <translation>リネーム</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2477"/>
+        <location filename="../treebar.cpp" line="2494"/>
         <source>ReloadViewNode</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2487"/>
+        <location filename="../treebar.cpp" line="2504"/>
         <source>OpenViewNodeOnNewWindow</source>
         <translation>新規ウィンドウで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2500"/>
+        <location filename="../treebar.cpp" line="2517"/>
         <source>DeleteViewNode</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2506"/>
+        <location filename="../treebar.cpp" line="2523"/>
         <source>DeleteRightViewNode</source>
         <translation>右側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2507"/>
+        <location filename="../treebar.cpp" line="2524"/>
         <source>DeleteLowerViewNode</source>
         <translation>下側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2521"/>
+        <location filename="../treebar.cpp" line="2538"/>
         <source>DeleteLeftViewNode</source>
         <translation>左側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2522"/>
+        <location filename="../treebar.cpp" line="2539"/>
         <source>DeleteUpperViewNode</source>
         <translation>上側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2535"/>
+        <location filename="../treebar.cpp" line="2552"/>
         <source>DeleteOtherViewNode</source>
         <translation>このノード以外を削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1630"/>
-        <location filename="../treebar.cpp" line="2547"/>
+        <location filename="../treebar.cpp" line="1640"/>
+        <location filename="../treebar.cpp" line="2564"/>
         <source>MakeDirectory</source>
         <translation>新規ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1639"/>
-        <location filename="../treebar.cpp" line="2552"/>
+        <location filename="../treebar.cpp" line="1649"/>
+        <location filename="../treebar.cpp" line="2569"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation>選択ノードでディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1649"/>
-        <location filename="../treebar.cpp" line="2561"/>
+        <location filename="../treebar.cpp" line="1659"/>
+        <location filename="../treebar.cpp" line="2578"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation>ドメインごとにディレクトリ作成</translation>
     </message>
@@ -2944,22 +2934,22 @@
 <context>
     <name>Receiver</name>
     <message>
-        <location filename="../receiver.cpp" line="951"/>
+        <location filename="../receiver.cpp" line="948"/>
         <source>Command Mode.</source>
         <translation>コマンド.</translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="952"/>
+        <location filename="../receiver.cpp" line="949"/>
         <source>Input Query.</source>
         <translation>検索.</translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="953"/>
+        <location filename="../receiver.cpp" line="950"/>
         <source>Input Url.</source>
         <translation>URLを入力してください.</translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="954"/>
+        <location filename="../receiver.cpp" line="951"/>
         <source>Incremental Search</source>
         <translation>インクリメンタルサーチ</translation>
     </message>
@@ -2993,504 +2983,504 @@
 <context>
     <name>TreeBank</name>
     <message>
-        <location filename="../treebank.cpp" line="706"/>
+        <location filename="../treebank.cpp" line="701"/>
         <source>Restored from a back up file</source>
         <translation>過去のデータを復元しました</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3712"/>
+        <location filename="../treebank.cpp" line="3689"/>
         <source>Load</source>
         <translation>移動</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3722"/>
+        <location filename="../treebank.cpp" line="3699"/>
         <source>Reload</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3724"/>
+        <location filename="../treebank.cpp" line="3701"/>
         <source>Stop</source>
         <translation>中止</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3687"/>
+        <location filename="../treebank.cpp" line="3664"/>
         <source>Back</source>
         <translation>戻る</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="343"/>
+        <location filename="../treebank.cpp" line="339"/>
         <source>Cannot change to empty title, and cannot use following charactor.
 \	/	:	*	?	&quot;	&lt;	&gt;	|</source>
         <translation>空のノード名は指定できません,また以下の文字は使用できません.
 \	/	:	*	?	&quot;	&lt;	&gt;	|</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="707"/>
+        <location filename="../treebank.cpp" line="702"/>
         <source>Because of a failure to read the latest file, it was restored from a backup file.</source>
         <translation>最新のデータの読み込みに失敗したため,過去のデータから復元しました.</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3688"/>
+        <location filename="../treebank.cpp" line="3665"/>
         <source>Forward</source>
         <translation>進む</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3690"/>
+        <location filename="../treebank.cpp" line="3667"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3691"/>
+        <location filename="../treebank.cpp" line="3668"/>
         <source>Restore</source>
         <translation>復元</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3693"/>
+        <location filename="../treebank.cpp" line="3670"/>
         <source>NextView</source>
         <translation>次のビュー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3694"/>
+        <location filename="../treebank.cpp" line="3671"/>
         <source>PrevView</source>
         <translation>前のビュー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3735"/>
+        <location filename="../treebank.cpp" line="3712"/>
         <source>CopyTitle</source>
         <translation>タイトルをコピー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3736"/>
+        <location filename="../treebank.cpp" line="3713"/>
         <source>CopyPageAsLink</source>
         <translation>ページをリンクとしてコピー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3681"/>
+        <location filename="../treebank.cpp" line="3658"/>
         <source>CloseWindow</source>
         <translation>ウィンドウを閉じる</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3704"/>
+        <location filename="../treebank.cpp" line="3681"/>
         <source>DisplayHistTree</source>
         <translation>履歴ツリーを開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3703"/>
+        <location filename="../treebank.cpp" line="3680"/>
         <source>DisplayViewTree</source>
         <translation>ビューツリーを開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3705"/>
+        <location filename="../treebank.cpp" line="3682"/>
         <source>DisplayTrashTree</source>
         <translation>ゴミ箱を開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3665"/>
+        <location filename="../treebank.cpp" line="3642"/>
         <source>AboutQt</source>
         <translation>Qtについて</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3666"/>
+        <location filename="../treebank.cpp" line="3643"/>
         <source>Quit</source>
         <translation>終了</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3643"/>
+        <location filename="../treebank.cpp" line="3620"/>
         <source>UpKey</source>
         <translation>↑</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="329"/>
+        <location filename="../treebank.cpp" line="325"/>
         <source>Input new node name.</source>
         <translation>新しいノード名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="330"/>
+        <location filename="../treebank.cpp" line="326"/>
         <source>Node name:</source>
         <translation>ノード名:</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="342"/>
+        <location filename="../treebank.cpp" line="338"/>
         <source>Invalid node name.</source>
         <translation>無効なノード名.</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2342"/>
+        <location filename="../treebank.cpp" line="2349"/>
         <source>Display</source>
         <translation>表示</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3644"/>
+        <location filename="../treebank.cpp" line="3621"/>
         <source>DownKey</source>
         <translation>↓</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3645"/>
+        <location filename="../treebank.cpp" line="3622"/>
         <source>RightKey</source>
         <translation>→</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3646"/>
+        <location filename="../treebank.cpp" line="3623"/>
         <source>LeftKey</source>
         <translation>←</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3647"/>
+        <location filename="../treebank.cpp" line="3624"/>
         <source>HomeKey</source>
         <translation>ホームキー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3648"/>
+        <location filename="../treebank.cpp" line="3625"/>
         <source>EndKey</source>
         <translation>エンドキー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3649"/>
+        <location filename="../treebank.cpp" line="3626"/>
         <source>PageUpKey</source>
         <translation>ページアップキー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3650"/>
+        <location filename="../treebank.cpp" line="3627"/>
         <source>PageDownKey</source>
         <translation>ページダウンキー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3672"/>
+        <location filename="../treebank.cpp" line="3649"/>
         <source>ToggleTreeBar</source>
         <translation>ツリーバー切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3673"/>
+        <location filename="../treebank.cpp" line="3650"/>
         <source>ToggleToolBar</source>
         <translation>ツールバー切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3711"/>
+        <location filename="../treebank.cpp" line="3688"/>
         <source>ReleaseHiddenView</source>
         <translation>表示ビュー以外を解放</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3715"/>
+        <location filename="../treebank.cpp" line="3692"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3716"/>
+        <location filename="../treebank.cpp" line="3693"/>
         <source>Cut</source>
         <translation>切り取り</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3717"/>
+        <location filename="../treebank.cpp" line="3694"/>
         <source>Paste</source>
         <translation>張り付け</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3718"/>
+        <location filename="../treebank.cpp" line="3695"/>
         <source>Undo</source>
         <translation>元に戻す</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3719"/>
+        <location filename="../treebank.cpp" line="3696"/>
         <source>Redo</source>
         <translation>やり直す</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3720"/>
+        <location filename="../treebank.cpp" line="3697"/>
         <source>SelectAll</source>
         <translation>すべて選択</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3721"/>
+        <location filename="../treebank.cpp" line="3698"/>
         <source>Unselect</source>
         <translation>選択解除</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3723"/>
+        <location filename="../treebank.cpp" line="3700"/>
         <source>ReloadAndBypassCache</source>
         <translation>更新(キャッシュを無視)</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3725"/>
+        <location filename="../treebank.cpp" line="3702"/>
         <source>StopAndUnselect</source>
         <translation>中止して選択解除</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3734"/>
+        <location filename="../treebank.cpp" line="3711"/>
         <source>CopyUrl</source>
         <translation>URLをコピー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3737"/>
+        <location filename="../treebank.cpp" line="3714"/>
         <source>CopySelectedHtml</source>
         <translation>選択HTMLをコピー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3738"/>
+        <location filename="../treebank.cpp" line="3715"/>
         <source>OpenWithIE</source>
         <translation>IEで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3739"/>
+        <location filename="../treebank.cpp" line="3716"/>
         <source>OpenWithFF</source>
         <translation>Firefoxで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3740"/>
+        <location filename="../treebank.cpp" line="3717"/>
         <source>OpenWithOpera</source>
         <translation>Operaで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3741"/>
+        <location filename="../treebank.cpp" line="3718"/>
         <source>OpenWithOPR</source>
         <translation>OPRで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3742"/>
+        <location filename="../treebank.cpp" line="3719"/>
         <source>OpenWithSafari</source>
         <translation>Safariで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3743"/>
+        <location filename="../treebank.cpp" line="3720"/>
         <source>OpenWithChrome</source>
         <translation>Chromeで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3744"/>
+        <location filename="../treebank.cpp" line="3721"/>
         <source>OpenWithSleipnir</source>
         <translation>Sleipnirで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3745"/>
+        <location filename="../treebank.cpp" line="3722"/>
         <source>OpenWithVivaldi</source>
         <translation>Vivaldiで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3746"/>
+        <location filename="../treebank.cpp" line="3723"/>
         <source>OpenWithCustom</source>
         <translation>他のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3755"/>
+        <location filename="../treebank.cpp" line="3732"/>
         <source>Notifier</source>
         <translation>ステータスエリア</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3760"/>
+        <location filename="../treebank.cpp" line="3737"/>
         <source>Receiver</source>
         <translation>コマンドエリア</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3765"/>
+        <location filename="../treebank.cpp" line="3742"/>
         <source>MenuBar</source>
         <translation>メニューバー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3770"/>
+        <location filename="../treebank.cpp" line="3747"/>
         <source>TreeBar</source>
         <translation>ツリーバー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3775"/>
+        <location filename="../treebank.cpp" line="3752"/>
         <source>ToolBar</source>
         <translation>ツールバー</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3804"/>
+        <location filename="../treebank.cpp" line="3781"/>
         <source>OpenWith%1</source>
         <translation>%1で開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3727"/>
+        <location filename="../treebank.cpp" line="3704"/>
         <source>Print</source>
         <translation>印刷</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3728"/>
+        <location filename="../treebank.cpp" line="3705"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3729"/>
+        <location filename="../treebank.cpp" line="3706"/>
         <source>ZoomIn</source>
         <translation>ズームイン</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3730"/>
+        <location filename="../treebank.cpp" line="3707"/>
         <source>ZoomOut</source>
         <translation>ズームアウト</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3731"/>
+        <location filename="../treebank.cpp" line="3708"/>
         <source>ViewSource</source>
         <translation>ソースを見る</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3732"/>
+        <location filename="../treebank.cpp" line="3709"/>
         <source>ApplySource</source>
         <translation>ソースの変更を反映</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3669"/>
+        <location filename="../treebank.cpp" line="3646"/>
         <source>ToggleNotifier</source>
         <translation>ステータスエリア切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3670"/>
+        <location filename="../treebank.cpp" line="3647"/>
         <source>ToggleReceiver</source>
         <translation>コマンドエリア切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3671"/>
+        <location filename="../treebank.cpp" line="3648"/>
         <source>ToggleMenuBar</source>
         <translation>メニューバー切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3674"/>
+        <location filename="../treebank.cpp" line="3651"/>
         <source>ToggleFullScreen</source>
         <translation>フルスクリーン切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3675"/>
+        <location filename="../treebank.cpp" line="3652"/>
         <source>ToggleMaximized</source>
         <translation>最大化切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3677"/>
+        <location filename="../treebank.cpp" line="3654"/>
         <source>ToggleShaded</source>
         <translation>ロールアップ切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3678"/>
+        <location filename="../treebank.cpp" line="3655"/>
         <source>ShadeWindow</source>
         <translation>ウィンドウロールアップ</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3679"/>
+        <location filename="../treebank.cpp" line="3656"/>
         <source>UnshadeWindow</source>
         <translation>ロールアップ解除</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3683"/>
+        <location filename="../treebank.cpp" line="3660"/>
         <source>NextWindow</source>
         <translation>次のウィンドウ</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3684"/>
+        <location filename="../treebank.cpp" line="3661"/>
         <source>PrevWindow</source>
         <translation>前のウィンドウ</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3662"/>
+        <location filename="../treebank.cpp" line="3639"/>
         <source>Import</source>
         <translation>インポート</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3663"/>
+        <location filename="../treebank.cpp" line="3640"/>
         <source>Export</source>
         <translation>エクスポート</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3664"/>
+        <location filename="../treebank.cpp" line="3641"/>
         <source>AboutVanilla</source>
         <translation>Vanillaについて</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3676"/>
+        <location filename="../treebank.cpp" line="3653"/>
         <source>ToggleMinimized</source>
         <translation>最小化切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3680"/>
+        <location filename="../treebank.cpp" line="3657"/>
         <source>NewWindow</source>
         <translation>新規ウィンドウ</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3682"/>
+        <location filename="../treebank.cpp" line="3659"/>
         <source>SwitchWindow</source>
         <translation>ウィンドウ切り替え</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3692"/>
+        <location filename="../treebank.cpp" line="3669"/>
         <source>Recreate</source>
         <translation>再生成</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2320"/>
+        <location filename="../treebank.cpp" line="2327"/>
         <source>Node</source>
         <translation>ノード</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2356"/>
+        <location filename="../treebank.cpp" line="2363"/>
         <source>Window</source>
         <translation>ウィンドウ</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2374"/>
+        <location filename="../treebank.cpp" line="2381"/>
         <source>Page</source>
         <translation>ページ</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="2396"/>
+        <location filename="../treebank.cpp" line="2403"/>
         <source>Application</source>
         <translation>アプリケーション</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3689"/>
+        <location filename="../treebank.cpp" line="3666"/>
         <source>UpDirectory</source>
         <translation>上の階層</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3695"/>
+        <location filename="../treebank.cpp" line="3672"/>
         <source>BuryView</source>
         <translation>最前面のビューを最背面へ</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3696"/>
+        <location filename="../treebank.cpp" line="3673"/>
         <source>DigView</source>
         <translation>最背面のビューを最前面へ</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3697"/>
+        <location filename="../treebank.cpp" line="3674"/>
         <source>NewViewNode</source>
         <translation>新規ビューノード</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3698"/>
+        <location filename="../treebank.cpp" line="3675"/>
         <source>NewHistNode</source>
         <translation>新規履歴ノード</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3699"/>
+        <location filename="../treebank.cpp" line="3676"/>
         <source>CloneViewNode</source>
         <translation>ビューノード複製</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3700"/>
+        <location filename="../treebank.cpp" line="3677"/>
         <source>CloneHistNode</source>
         <translation>履歴ノード複製</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3707"/>
+        <location filename="../treebank.cpp" line="3684"/>
         <source>OpenTextSeeker</source>
         <translation>インクリメンタルサーチを開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3708"/>
+        <location filename="../treebank.cpp" line="3685"/>
         <source>OpenQueryEditor</source>
         <translation>検索を開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3709"/>
+        <location filename="../treebank.cpp" line="3686"/>
         <source>OpenUrlEditor</source>
         <translation>URLエディタを開く</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3710"/>
+        <location filename="../treebank.cpp" line="3687"/>
         <source>OpenCommand</source>
         <translation>コマンド</translation>
     </message>
     <message>
-        <location filename="../treebank.cpp" line="3702"/>
+        <location filename="../treebank.cpp" line="3679"/>
         <source>DisplayAccessKey</source>
         <translation>アクセスーの表示</translation>
     </message>
@@ -3498,27 +3488,27 @@
 <context>
     <name>TreeBar</name>
     <message>
-        <location filename="../treebar.cpp" line="692"/>
+        <location filename="../treebar.cpp" line="697"/>
         <source>TreeBar</source>
         <translation>ツリーバー</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="823"/>
+        <location filename="../treebar.cpp" line="828"/>
         <source>TreeBarSettings</source>
         <translation>ツリーバーの設定</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="826"/>
+        <location filename="../treebar.cpp" line="831"/>
         <source>EnableAnimation</source>
         <translation>アニメーション</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="834"/>
+        <location filename="../treebar.cpp" line="839"/>
         <source>EnableCloseButton</source>
         <translation>閉じるボタン</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="842"/>
+        <location filename="../treebar.cpp" line="847"/>
         <source>EnableCloneButton</source>
         <translation>複製ボタン</translation>
     </message>
@@ -3554,67 +3544,67 @@
 <context>
     <name>VideoItem</name>
     <message>
-        <location filename="../view/localview.cpp" line="2325"/>
+        <location filename="../view/localview.cpp" line="2326"/>
         <source>play</source>
         <translation>再生</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2330"/>
+        <location filename="../view/localview.cpp" line="2331"/>
         <source>pause</source>
         <translation>一時停止</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2335"/>
+        <location filename="../view/localview.cpp" line="2336"/>
         <source>stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2340"/>
+        <location filename="../view/localview.cpp" line="2341"/>
         <source>volume up</source>
         <translation>音量を上げる</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2346"/>
+        <location filename="../view/localview.cpp" line="2347"/>
         <source>volume down</source>
         <translation>音量を下げる</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2374"/>
+        <location filename="../view/localview.cpp" line="2375"/>
         <source>10 minutes back</source>
         <translation>1分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2382"/>
+        <location filename="../view/localview.cpp" line="2383"/>
         <source>10 minutes forward</source>
         <translation>1分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2389"/>
+        <location filename="../view/localview.cpp" line="2390"/>
         <source>5 minutes back</source>
         <translation>5分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2396"/>
+        <location filename="../view/localview.cpp" line="2397"/>
         <source>5 minutes forward</source>
         <translation>5分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2403"/>
+        <location filename="../view/localview.cpp" line="2404"/>
         <source>1 minute back</source>
         <translation>1分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2410"/>
+        <location filename="../view/localview.cpp" line="2411"/>
         <source>1 minute forward</source>
         <translation>1分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2416"/>
+        <location filename="../view/localview.cpp" line="2417"/>
         <source>10 seconds back</source>
         <translation>10秒戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2422"/>
+        <location filename="../view/localview.cpp" line="2423"/>
         <source>10 seconds forward</source>
         <translation>10分進む</translation>
     </message>
@@ -3910,8 +3900,8 @@
         <translation>失敗.</translation>
     </message>
     <message>
-        <location filename="../gen/webengineview.cpp" line="559"/>
-        <location filename="../gen/webengineview.cpp" line="770"/>
+        <location filename="../gen/webengineview.cpp" line="548"/>
+        <location filename="../gen/webengineview.cpp" line="759"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>

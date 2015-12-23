@@ -36,6 +36,7 @@
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
+#  include "tridentview.hpp"
 #endif
 
 #include "gadgets.hpp"
@@ -223,6 +224,9 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
             installTranslator(translator);
         }
     }
+#if defined(Q_OS_WIN)
+    TridentView::SetFeatureControl();
+#endif
     LoadGlobalSettings();
     CreateBackUpFiles();
 
@@ -238,22 +242,24 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         win->GetTreeBank()->OpenOnSuitableNode(QUrl(QStringLiteral("https://google.com")), true);
     } else {
         QSettings *s = Application::GlobalSettings();
-        s->beginGroup(QStringLiteral("mainwindow"));{
-            QStringList keys = s->allKeys();
-            QList<int> ids = m_MainWindows.keys();
-            foreach(int id, ids){
-                keys.removeOne(QStringLiteral("tableview%1").arg(id));
-                keys.removeOne(QStringLiteral( "geometry%1").arg(id));
-                keys.removeOne(QStringLiteral( "notifier%1").arg(id));
-                keys.removeOne(QStringLiteral( "receiver%1").arg(id));
-                keys.removeOne(QStringLiteral(  "menubar%1").arg(id));
-                keys.removeOne(QStringLiteral(   "status%1").arg(id));
-            }
-            foreach(QString key, keys){
-                s->remove(key);
-            }
-        }
+        QStringList keys;
+
+        s->beginGroup(QStringLiteral("mainwindow"));
+        keys = s->allKeys();
         s->endGroup();
+
+        QList<int> ids = m_MainWindows.keys();
+        foreach(int id, ids){
+            keys.removeOne(QStringLiteral("mainwindow/tableview%1").arg(id));
+            keys.removeOne(QStringLiteral("mainwindow/geometry%1").arg(id));
+            keys.removeOne(QStringLiteral("mainwindow/notifier%1").arg(id));
+            keys.removeOne(QStringLiteral("mainwindow/receiver%1").arg(id));
+            keys.removeOne(QStringLiteral("mainwindow/menubar%1").arg(id));
+            keys.removeOne(QStringLiteral("mainwindow/status%1").arg(id));
+        }
+        foreach(QString key, keys){
+            s->remove(key);
+        }
     }
 
     connect(m_Instance,  &Application::SaveAllDataRequest,
@@ -1398,139 +1404,137 @@ QSettings *Application::GlobalSettings(){
 
 void Application::SaveGlobalSettings(){
     QSettings *s = GlobalSettings();
-    s->beginGroup(QStringLiteral("application"));{
-        s->setValue(QStringLiteral("@EnableGoogleSuggest"),      m_EnableGoogleSuggest);
-        s->setValue(QStringLiteral("@EnableFramelessWindow"),    m_EnableFramelessWindow);
-        s->setValue(QStringLiteral("@EnableAutoSave"),           m_EnableAutoSave);
-        s->setValue(QStringLiteral("@EnableAutoLoad"),           m_EnableAutoLoad);
-        s->setValue(QStringLiteral("@AutoSaveInterval"),         m_AutoSaveInterval);
-        s->setValue(QStringLiteral("@AutoLoadInterval"),         m_AutoLoadInterval);
-        s->setValue(QStringLiteral("@WheelScrollRate"),          m_WheelScrollRate);
-        s->setValue(QStringLiteral("@MaxBackUpGenerationCount"), m_MaxBackUpGenerationCount);
-        s->setValue(QStringLiteral("@FileSaveDirectory"),        m_DownloadDirectory);
-        s->setValue(QStringLiteral("@FileOpenDirectory"),        m_UploadDirectory);
-        s->setValue(QStringLiteral("@SaveSessionCookie"),        m_SaveSessionCookie);
+    if(!s->group().isEmpty()) return;
+
+    s->setValue(QStringLiteral("application/@EnableGoogleSuggest"),      m_EnableGoogleSuggest);
+    s->setValue(QStringLiteral("application/@EnableFramelessWindow"),    m_EnableFramelessWindow);
+    s->setValue(QStringLiteral("application/@EnableAutoSave"),           m_EnableAutoSave);
+    s->setValue(QStringLiteral("application/@EnableAutoLoad"),           m_EnableAutoLoad);
+    s->setValue(QStringLiteral("application/@AutoSaveInterval"),         m_AutoSaveInterval);
+    s->setValue(QStringLiteral("application/@AutoLoadInterval"),         m_AutoLoadInterval);
+    s->setValue(QStringLiteral("application/@WheelScrollRate"),          m_WheelScrollRate);
+    s->setValue(QStringLiteral("application/@MaxBackUpGenerationCount"), m_MaxBackUpGenerationCount);
+    s->setValue(QStringLiteral("application/@FileSaveDirectory"),        m_DownloadDirectory);
+    s->setValue(QStringLiteral("application/@FileOpenDirectory"),        m_UploadDirectory);
+    s->setValue(QStringLiteral("application/@SaveSessionCookie"),        m_SaveSessionCookie);
 #if QT_VERSION >= 0x050600
-        s->setValue(QStringLiteral("@AcceptLanguage"),           m_AcceptLanguage);
+    s->setValue(QStringLiteral("application/@AcceptLanguage"),           m_AcceptLanguage);
 #endif
-        s->setValue(QStringLiteral("@AllowedHosts"),             m_AllowedHosts);
-        s->setValue(QStringLiteral("@BlockedHosts"),             m_BlockedHosts);
+    s->setValue(QStringLiteral("application/@AllowedHosts"),             m_AllowedHosts);
+    s->setValue(QStringLiteral("application/@BlockedHosts"),             m_BlockedHosts);
 
-        SslErrorPolicy sslPolicy = m_SslErrorPolicy;
-        if(sslPolicy == Undefined)             s->setValue(QStringLiteral("@SslErrorPolicy"), QStringLiteral("Undefined"));
-        if(sslPolicy == BlockAccess)           s->setValue(QStringLiteral("@SslErrorPolicy"), QStringLiteral("BlockAccess"));
-        if(sslPolicy == IgnoreSslErrors)       s->setValue(QStringLiteral("@SslErrorPolicy"), QStringLiteral("IgnoreSslErrors"));
-        if(sslPolicy == AskForEachAccess)      s->setValue(QStringLiteral("@SslErrorPolicy"), QStringLiteral("AskForEachAccess"));
-        if(sslPolicy == AskForEachHost)        s->setValue(QStringLiteral("@SslErrorPolicy"), QStringLiteral("AskForEachHost"));
-        if(sslPolicy == AskForEachCertificate) s->setValue(QStringLiteral("@SslErrorPolicy"), QStringLiteral("AskForEachCertificate"));
+    SslErrorPolicy sslPolicy = m_SslErrorPolicy;
+    if(sslPolicy == Undefined)             s->setValue(QStringLiteral("application/@SslErrorPolicy"), QStringLiteral("Undefined"));
+    if(sslPolicy == BlockAccess)           s->setValue(QStringLiteral("application/@SslErrorPolicy"), QStringLiteral("BlockAccess"));
+    if(sslPolicy == IgnoreSslErrors)       s->setValue(QStringLiteral("application/@SslErrorPolicy"), QStringLiteral("IgnoreSslErrors"));
+    if(sslPolicy == AskForEachAccess)      s->setValue(QStringLiteral("application/@SslErrorPolicy"), QStringLiteral("AskForEachAccess"));
+    if(sslPolicy == AskForEachHost)        s->setValue(QStringLiteral("application/@SslErrorPolicy"), QStringLiteral("AskForEachHost"));
+    if(sslPolicy == AskForEachCertificate) s->setValue(QStringLiteral("application/@SslErrorPolicy"), QStringLiteral("AskForEachCertificate"));
 
-        DownloadPolicy downPolicy = m_DownloadPolicy;
-        if(downPolicy == Undefined_)         s->setValue(QStringLiteral("@DownloadPolicy"), QStringLiteral("Undefined"));
-        if(downPolicy == FixedLocale)        s->setValue(QStringLiteral("@DownloadPolicy"), QStringLiteral("FixedLocale"));
-        if(downPolicy == DownloadFolder)     s->setValue(QStringLiteral("@DownloadPolicy"), QStringLiteral("DownloadFolder"));
-        if(downPolicy == AskForEachDownload) s->setValue(QStringLiteral("@DownloadPolicy"), QStringLiteral("AskForEachDownload"));
+    DownloadPolicy downPolicy = m_DownloadPolicy;
+    if(downPolicy == Undefined_)         s->setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("Undefined"));
+    if(downPolicy == FixedLocale)        s->setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("FixedLocale"));
+    if(downPolicy == DownloadFolder)     s->setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("DownloadFolder"));
+    if(downPolicy == AskForEachDownload) s->setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("AskForEachDownload"));
 
-        s->setValue(QStringLiteral("UserAgent_IE"),        DEFAULT_USER_AGENT_IE        == m_UserAgent_IE        ? QString() : m_UserAgent_IE        );
-        s->setValue(QStringLiteral("UserAgent_Firefox"),   DEFAULT_USER_AGENT_FIREFOX   == m_UserAgent_FF        ? QString() : m_UserAgent_FF        );
-        s->setValue(QStringLiteral("UserAgent_Opera"),     DEFAULT_USER_AGENT_OPERA     == m_UserAgent_Opera     ? QString() : m_UserAgent_Opera     );
-        s->setValue(QStringLiteral("UserAgent_OPR"),       DEFAULT_USER_AGENT_OPR       == m_UserAgent_OPR       ? QString() : m_UserAgent_OPR       );
-        s->setValue(QStringLiteral("UserAgent_Safari"),    DEFAULT_USER_AGENT_SAFARI    == m_UserAgent_Safari    ? QString() : m_UserAgent_Safari    );
-        s->setValue(QStringLiteral("UserAgent_Chrome"),    DEFAULT_USER_AGENT_CHROME    == m_UserAgent_Chrome    ? QString() : m_UserAgent_Chrome    );
-        s->setValue(QStringLiteral("UserAgent_Sleipnir"),  DEFAULT_USER_AGENT_SLEIPNIR  == m_UserAgent_Sleipnir  ? QString() : m_UserAgent_Sleipnir  );
-        s->setValue(QStringLiteral("UserAgent_Vivaldi"),   DEFAULT_USER_AGENT_VIVALDI   == m_UserAgent_Vivaldi   ? QString() : m_UserAgent_Vivaldi   );
-        s->setValue(QStringLiteral("UserAgent_NetScape"),  DEFAULT_USER_AGENT_NETSCAPE  == m_UserAgent_NetScape  ? QString() : m_UserAgent_NetScape  );
-        s->setValue(QStringLiteral("UserAgent_SeaMonkey"), DEFAULT_USER_AGENT_SEAMONKEY == m_UserAgent_SeaMonkey ? QString() : m_UserAgent_SeaMonkey );
-        s->setValue(QStringLiteral("UserAgent_Gecko"),     DEFAULT_USER_AGENT_GECKO     == m_UserAgent_Gecko     ? QString() : m_UserAgent_Gecko     );
-        s->setValue(QStringLiteral("UserAgent_iCab"),      DEFAULT_USER_AGENT_ICAB      == m_UserAgent_iCab      ? QString() : m_UserAgent_iCab      );
-        s->setValue(QStringLiteral("UserAgent_Camino"),    DEFAULT_USER_AGENT_CAMINO    == m_UserAgent_Camino    ? QString() : m_UserAgent_Camino    );
-        s->setValue(QStringLiteral("UserAgent_Custom"), m_UserAgent_Custom);
+    s->setValue(QStringLiteral("application/UserAgent_IE"),        DEFAULT_USER_AGENT_IE        == m_UserAgent_IE        ? QString() : m_UserAgent_IE        );
+    s->setValue(QStringLiteral("application/UserAgent_Firefox"),   DEFAULT_USER_AGENT_FIREFOX   == m_UserAgent_FF        ? QString() : m_UserAgent_FF        );
+    s->setValue(QStringLiteral("application/UserAgent_Opera"),     DEFAULT_USER_AGENT_OPERA     == m_UserAgent_Opera     ? QString() : m_UserAgent_Opera     );
+    s->setValue(QStringLiteral("application/UserAgent_OPR"),       DEFAULT_USER_AGENT_OPR       == m_UserAgent_OPR       ? QString() : m_UserAgent_OPR       );
+    s->setValue(QStringLiteral("application/UserAgent_Safari"),    DEFAULT_USER_AGENT_SAFARI    == m_UserAgent_Safari    ? QString() : m_UserAgent_Safari    );
+    s->setValue(QStringLiteral("application/UserAgent_Chrome"),    DEFAULT_USER_AGENT_CHROME    == m_UserAgent_Chrome    ? QString() : m_UserAgent_Chrome    );
+    s->setValue(QStringLiteral("application/UserAgent_Sleipnir"),  DEFAULT_USER_AGENT_SLEIPNIR  == m_UserAgent_Sleipnir  ? QString() : m_UserAgent_Sleipnir  );
+    s->setValue(QStringLiteral("application/UserAgent_Vivaldi"),   DEFAULT_USER_AGENT_VIVALDI   == m_UserAgent_Vivaldi   ? QString() : m_UserAgent_Vivaldi   );
+    s->setValue(QStringLiteral("application/UserAgent_NetScape"),  DEFAULT_USER_AGENT_NETSCAPE  == m_UserAgent_NetScape  ? QString() : m_UserAgent_NetScape  );
+    s->setValue(QStringLiteral("application/UserAgent_SeaMonkey"), DEFAULT_USER_AGENT_SEAMONKEY == m_UserAgent_SeaMonkey ? QString() : m_UserAgent_SeaMonkey );
+    s->setValue(QStringLiteral("application/UserAgent_Gecko"),     DEFAULT_USER_AGENT_GECKO     == m_UserAgent_Gecko     ? QString() : m_UserAgent_Gecko     );
+    s->setValue(QStringLiteral("application/UserAgent_iCab"),      DEFAULT_USER_AGENT_ICAB      == m_UserAgent_iCab      ? QString() : m_UserAgent_iCab      );
+    s->setValue(QStringLiteral("application/UserAgent_Camino"),    DEFAULT_USER_AGENT_CAMINO    == m_UserAgent_Camino    ? QString() : m_UserAgent_Camino    );
+    s->setValue(QStringLiteral("application/UserAgent_Custom"), m_UserAgent_Custom);
 
-        s->setValue(QStringLiteral("BrowserPath_IE"),       m_BrowserPath_IE       );
-        s->setValue(QStringLiteral("BrowserPath_Firefox"),  m_BrowserPath_FF       );
-        s->setValue(QStringLiteral("BrowserPath_Opera"),    m_BrowserPath_Opera    );
-        s->setValue(QStringLiteral("BrowserPath_OPR"),      m_BrowserPath_OPR      );
-        s->setValue(QStringLiteral("BrowserPath_Safari"),   m_BrowserPath_Safari   );
-        s->setValue(QStringLiteral("BrowserPath_Chrome"),   m_BrowserPath_Chrome   );
-        s->setValue(QStringLiteral("BrowserPath_Sleipnir"), m_BrowserPath_Sleipnir );
-        s->setValue(QStringLiteral("BrowserPath_Vivaldi"),  m_BrowserPath_Vivaldi  );
-        s->setValue(QStringLiteral("BrowserPath_Custom"),   m_BrowserPath_Custom   );
-    }
-    s->endGroup();
+    s->setValue(QStringLiteral("application/BrowserPath_IE"),       m_BrowserPath_IE       );
+    s->setValue(QStringLiteral("application/BrowserPath_Firefox"),  m_BrowserPath_FF       );
+    s->setValue(QStringLiteral("application/BrowserPath_Opera"),    m_BrowserPath_Opera    );
+    s->setValue(QStringLiteral("application/BrowserPath_OPR"),      m_BrowserPath_OPR      );
+    s->setValue(QStringLiteral("application/BrowserPath_Safari"),   m_BrowserPath_Safari   );
+    s->setValue(QStringLiteral("application/BrowserPath_Chrome"),   m_BrowserPath_Chrome   );
+    s->setValue(QStringLiteral("application/BrowserPath_Sleipnir"), m_BrowserPath_Sleipnir );
+    s->setValue(QStringLiteral("application/BrowserPath_Vivaldi"),  m_BrowserPath_Vivaldi  );
+    s->setValue(QStringLiteral("application/BrowserPath_Custom"),   m_BrowserPath_Custom   );
 }
 
 void Application::LoadGlobalSettings(){
     QSettings *s = GlobalSettings();
-    s->beginGroup(QStringLiteral("application"));{
-        m_EnableGoogleSuggest      = s->value(QStringLiteral("@EnableGoogleSuggest"), false).value<bool>();
-        m_EnableFramelessWindow    = s->value(QStringLiteral("@EnableFramelessWindow"), false).value<bool>();
-        m_EnableAutoSave           = s->value(QStringLiteral("@EnableAutoSave"), true).value<bool>();
-        m_EnableAutoLoad           = s->value(QStringLiteral("@EnableAutoLoad"), true).value<bool>();
-        m_AutoSaveInterval         = s->value(QStringLiteral("@AutoSaveInterval"), 300000).value<int>();
-        m_AutoLoadInterval         = s->value(QStringLiteral("@AutoLoadInterval"), 1000).value<int>();
-        m_MaxBackUpGenerationCount = s->value(QStringLiteral("@MaxBackUpGenerationCount"), 5).value<int>();
-        m_WheelScrollRate          = s->value(QStringLiteral("@WheelScrollRate"), 1.0).value<double>();
-        m_DownloadDirectory        = s->value(QStringLiteral("@FileSaveDirectory"), QString()).value<QString>();
-        m_UploadDirectory          = s->value(QStringLiteral("@FileOpenDirectory"), QString()).value<QString>();
-        m_SaveSessionCookie        = s->value(QStringLiteral("@SaveSessionCookie"), false).value<bool>();
+    if(!s->group().isEmpty()) return;
+
+    m_EnableGoogleSuggest      = s->value(QStringLiteral("application/@EnableGoogleSuggest"), false).value<bool>();
+    m_EnableFramelessWindow    = s->value(QStringLiteral("application/@EnableFramelessWindow"), false).value<bool>();
+    m_EnableAutoSave           = s->value(QStringLiteral("application/@EnableAutoSave"), true).value<bool>();
+    m_EnableAutoLoad           = s->value(QStringLiteral("application/@EnableAutoLoad"), true).value<bool>();
+    m_AutoSaveInterval         = s->value(QStringLiteral("application/@AutoSaveInterval"), 300000).value<int>();
+    m_AutoLoadInterval         = s->value(QStringLiteral("application/@AutoLoadInterval"), 1000).value<int>();
+    m_MaxBackUpGenerationCount = s->value(QStringLiteral("application/@MaxBackUpGenerationCount"), 5).value<int>();
+    m_WheelScrollRate          = s->value(QStringLiteral("application/@WheelScrollRate"), 1.0).value<double>();
+    m_DownloadDirectory        = s->value(QStringLiteral("application/@FileSaveDirectory"), QString()).value<QString>();
+    m_UploadDirectory          = s->value(QStringLiteral("application/@FileOpenDirectory"), QString()).value<QString>();
+    m_SaveSessionCookie        = s->value(QStringLiteral("application/@SaveSessionCookie"), false).value<bool>();
 #if QT_VERSION >= 0x050600
-        m_AcceptLanguage           = s->value(QStringLiteral("@AcceptLanguage"), tr("en-US")).value<QString>();
+    m_AcceptLanguage           = s->value(QStringLiteral("application/@AcceptLanguage"), tr("en-US")).value<QString>();
 #endif
-        m_AllowedHosts             = s->value(QStringLiteral("@AllowedHosts"), QStringList()).value<QStringList>();
-        m_BlockedHosts             = s->value(QStringLiteral("@BlockedHosts"), QStringList()).value<QStringList>();
+    m_AllowedHosts             = s->value(QStringLiteral("application/@AllowedHosts"), QStringList()).value<QStringList>();
+    m_BlockedHosts             = s->value(QStringLiteral("application/@BlockedHosts"), QStringList()).value<QStringList>();
 
-        QString sslPolicy = s->value(QStringLiteral("@SslErrorPolicy"), QStringLiteral("Undefined")).value<QString>();
-        if(sslPolicy == QStringLiteral("Undefined"))             m_SslErrorPolicy = Undefined;
-        if(sslPolicy == QStringLiteral("BlockAccess"))           m_SslErrorPolicy = BlockAccess;
-        if(sslPolicy == QStringLiteral("IgnoreSslErrors"))       m_SslErrorPolicy = IgnoreSslErrors;
-        if(sslPolicy == QStringLiteral("AskForEachAccess"))      m_SslErrorPolicy = AskForEachAccess;
-        if(sslPolicy == QStringLiteral("AskForEachHost"))        m_SslErrorPolicy = AskForEachHost;
-        if(sslPolicy == QStringLiteral("AskForEachCertificate")) m_SslErrorPolicy = AskForEachCertificate;
+    QString sslPolicy = s->value(QStringLiteral("application/@SslErrorPolicy"), QStringLiteral("Undefined")).value<QString>();
+    if(sslPolicy == QStringLiteral("Undefined"))             m_SslErrorPolicy = Undefined;
+    if(sslPolicy == QStringLiteral("BlockAccess"))           m_SslErrorPolicy = BlockAccess;
+    if(sslPolicy == QStringLiteral("IgnoreSslErrors"))       m_SslErrorPolicy = IgnoreSslErrors;
+    if(sslPolicy == QStringLiteral("AskForEachAccess"))      m_SslErrorPolicy = AskForEachAccess;
+    if(sslPolicy == QStringLiteral("AskForEachHost"))        m_SslErrorPolicy = AskForEachHost;
+    if(sslPolicy == QStringLiteral("AskForEachCertificate")) m_SslErrorPolicy = AskForEachCertificate;
 
-        QString downPolicy = s->value(QStringLiteral("@DownloadPolicy"), QStringLiteral("Undefined")).value<QString>();
-        if(downPolicy == QStringLiteral("Undefined"))          m_DownloadPolicy = Undefined_;
-        if(downPolicy == QStringLiteral("FixedLocale"))        m_DownloadPolicy = FixedLocale;
-        if(downPolicy == QStringLiteral("DownloadFolder"))     m_DownloadPolicy = DownloadFolder;
-        if(downPolicy == QStringLiteral("AskForEachDownload")) m_DownloadPolicy = AskForEachDownload;
+    QString downPolicy = s->value(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("Undefined")).value<QString>();
+    if(downPolicy == QStringLiteral("Undefined"))          m_DownloadPolicy = Undefined_;
+    if(downPolicy == QStringLiteral("FixedLocale"))        m_DownloadPolicy = FixedLocale;
+    if(downPolicy == QStringLiteral("DownloadFolder"))     m_DownloadPolicy = DownloadFolder;
+    if(downPolicy == QStringLiteral("AskForEachDownload")) m_DownloadPolicy = AskForEachDownload;
 
-        m_UserAgent_IE        = s->value(QStringLiteral("UserAgent_IE"),        DEFAULT_USER_AGENT_IE        ).value<QString>();
-        m_UserAgent_FF        = s->value(QStringLiteral("UserAgent_Firefox"),   DEFAULT_USER_AGENT_FIREFOX   ).value<QString>();
-        m_UserAgent_Opera     = s->value(QStringLiteral("UserAgent_Opera"),     DEFAULT_USER_AGENT_OPERA     ).value<QString>();
-        m_UserAgent_OPR       = s->value(QStringLiteral("UserAgent_OPR"),       DEFAULT_USER_AGENT_OPR       ).value<QString>();
-        m_UserAgent_Safari    = s->value(QStringLiteral("UserAgent_Safari"),    DEFAULT_USER_AGENT_SAFARI    ).value<QString>();
-        m_UserAgent_Chrome    = s->value(QStringLiteral("UserAgent_Chrome"),    DEFAULT_USER_AGENT_CHROME    ).value<QString>();
-        m_UserAgent_Sleipnir  = s->value(QStringLiteral("UserAgent_Sleipnir"),  DEFAULT_USER_AGENT_SLEIPNIR  ).value<QString>();
-        m_UserAgent_Vivaldi   = s->value(QStringLiteral("UserAgent_Vivaldi"),   DEFAULT_USER_AGENT_VIVALDI   ).value<QString>();
-        m_UserAgent_NetScape  = s->value(QStringLiteral("UserAgent_NetScape"),  DEFAULT_USER_AGENT_NETSCAPE  ).value<QString>();
-        m_UserAgent_SeaMonkey = s->value(QStringLiteral("UserAgent_SeaMonkey"), DEFAULT_USER_AGENT_SEAMONKEY ).value<QString>();
-        m_UserAgent_Gecko     = s->value(QStringLiteral("UserAgent_Gecko"),     DEFAULT_USER_AGENT_GECKO     ).value<QString>();
-        m_UserAgent_iCab      = s->value(QStringLiteral("UserAgent_iCab"),      DEFAULT_USER_AGENT_ICAB      ).value<QString>();
-        m_UserAgent_Camino    = s->value(QStringLiteral("UserAgent_Camino"),    DEFAULT_USER_AGENT_CAMINO    ).value<QString>();
-        m_UserAgent_Custom    = s->value(QStringLiteral("UserAgent_Custom"),    QString()).value<QString>();
-        if(m_UserAgent_IE        .isEmpty()) m_UserAgent_IE        = DEFAULT_USER_AGENT_IE        ;
-        if(m_UserAgent_FF        .isEmpty()) m_UserAgent_FF        = DEFAULT_USER_AGENT_FIREFOX   ;
-        if(m_UserAgent_Opera     .isEmpty()) m_UserAgent_Opera     = DEFAULT_USER_AGENT_OPERA     ;
-        if(m_UserAgent_OPR       .isEmpty()) m_UserAgent_OPR       = DEFAULT_USER_AGENT_OPR       ;
-        if(m_UserAgent_Safari    .isEmpty()) m_UserAgent_Safari    = DEFAULT_USER_AGENT_SAFARI    ;
-        if(m_UserAgent_Chrome    .isEmpty()) m_UserAgent_Chrome    = DEFAULT_USER_AGENT_CHROME    ;
-        if(m_UserAgent_Sleipnir  .isEmpty()) m_UserAgent_Sleipnir  = DEFAULT_USER_AGENT_SLEIPNIR  ;
-        if(m_UserAgent_Vivaldi   .isEmpty()) m_UserAgent_Vivaldi   = DEFAULT_USER_AGENT_VIVALDI   ;
-        if(m_UserAgent_NetScape  .isEmpty()) m_UserAgent_NetScape  = DEFAULT_USER_AGENT_NETSCAPE  ;
-        if(m_UserAgent_SeaMonkey .isEmpty()) m_UserAgent_SeaMonkey = DEFAULT_USER_AGENT_SEAMONKEY ;
-        if(m_UserAgent_Gecko     .isEmpty()) m_UserAgent_Gecko     = DEFAULT_USER_AGENT_GECKO     ;
-        if(m_UserAgent_iCab      .isEmpty()) m_UserAgent_iCab      = DEFAULT_USER_AGENT_ICAB      ;
-        if(m_UserAgent_Camino    .isEmpty()) m_UserAgent_Camino    = DEFAULT_USER_AGENT_CAMINO    ;
+    m_UserAgent_IE        = s->value(QStringLiteral("application/UserAgent_IE"),        DEFAULT_USER_AGENT_IE        ).value<QString>();
+    m_UserAgent_FF        = s->value(QStringLiteral("application/UserAgent_Firefox"),   DEFAULT_USER_AGENT_FIREFOX   ).value<QString>();
+    m_UserAgent_Opera     = s->value(QStringLiteral("application/UserAgent_Opera"),     DEFAULT_USER_AGENT_OPERA     ).value<QString>();
+    m_UserAgent_OPR       = s->value(QStringLiteral("application/UserAgent_OPR"),       DEFAULT_USER_AGENT_OPR       ).value<QString>();
+    m_UserAgent_Safari    = s->value(QStringLiteral("application/UserAgent_Safari"),    DEFAULT_USER_AGENT_SAFARI    ).value<QString>();
+    m_UserAgent_Chrome    = s->value(QStringLiteral("application/UserAgent_Chrome"),    DEFAULT_USER_AGENT_CHROME    ).value<QString>();
+    m_UserAgent_Sleipnir  = s->value(QStringLiteral("application/UserAgent_Sleipnir"),  DEFAULT_USER_AGENT_SLEIPNIR  ).value<QString>();
+    m_UserAgent_Vivaldi   = s->value(QStringLiteral("application/UserAgent_Vivaldi"),   DEFAULT_USER_AGENT_VIVALDI   ).value<QString>();
+    m_UserAgent_NetScape  = s->value(QStringLiteral("application/UserAgent_NetScape"),  DEFAULT_USER_AGENT_NETSCAPE  ).value<QString>();
+    m_UserAgent_SeaMonkey = s->value(QStringLiteral("application/UserAgent_SeaMonkey"), DEFAULT_USER_AGENT_SEAMONKEY ).value<QString>();
+    m_UserAgent_Gecko     = s->value(QStringLiteral("application/UserAgent_Gecko"),     DEFAULT_USER_AGENT_GECKO     ).value<QString>();
+    m_UserAgent_iCab      = s->value(QStringLiteral("application/UserAgent_iCab"),      DEFAULT_USER_AGENT_ICAB      ).value<QString>();
+    m_UserAgent_Camino    = s->value(QStringLiteral("application/UserAgent_Camino"),    DEFAULT_USER_AGENT_CAMINO    ).value<QString>();
+    m_UserAgent_Custom    = s->value(QStringLiteral("application/UserAgent_Custom"),    QString()).value<QString>();
+    if(m_UserAgent_IE        .isEmpty()) m_UserAgent_IE        = DEFAULT_USER_AGENT_IE        ;
+    if(m_UserAgent_FF        .isEmpty()) m_UserAgent_FF        = DEFAULT_USER_AGENT_FIREFOX   ;
+    if(m_UserAgent_Opera     .isEmpty()) m_UserAgent_Opera     = DEFAULT_USER_AGENT_OPERA     ;
+    if(m_UserAgent_OPR       .isEmpty()) m_UserAgent_OPR       = DEFAULT_USER_AGENT_OPR       ;
+    if(m_UserAgent_Safari    .isEmpty()) m_UserAgent_Safari    = DEFAULT_USER_AGENT_SAFARI    ;
+    if(m_UserAgent_Chrome    .isEmpty()) m_UserAgent_Chrome    = DEFAULT_USER_AGENT_CHROME    ;
+    if(m_UserAgent_Sleipnir  .isEmpty()) m_UserAgent_Sleipnir  = DEFAULT_USER_AGENT_SLEIPNIR  ;
+    if(m_UserAgent_Vivaldi   .isEmpty()) m_UserAgent_Vivaldi   = DEFAULT_USER_AGENT_VIVALDI   ;
+    if(m_UserAgent_NetScape  .isEmpty()) m_UserAgent_NetScape  = DEFAULT_USER_AGENT_NETSCAPE  ;
+    if(m_UserAgent_SeaMonkey .isEmpty()) m_UserAgent_SeaMonkey = DEFAULT_USER_AGENT_SEAMONKEY ;
+    if(m_UserAgent_Gecko     .isEmpty()) m_UserAgent_Gecko     = DEFAULT_USER_AGENT_GECKO     ;
+    if(m_UserAgent_iCab      .isEmpty()) m_UserAgent_iCab      = DEFAULT_USER_AGENT_ICAB      ;
+    if(m_UserAgent_Camino    .isEmpty()) m_UserAgent_Camino    = DEFAULT_USER_AGENT_CAMINO    ;
 
-        m_BrowserPath_IE       = s->value(QStringLiteral("BrowserPath_IE"),       QString()).value<QString>();
-        m_BrowserPath_FF       = s->value(QStringLiteral("BrowserPath_Firefox"),  QString()).value<QString>();
-        m_BrowserPath_Opera    = s->value(QStringLiteral("BrowserPath_Opera"),    QString()).value<QString>();
-        m_BrowserPath_OPR      = s->value(QStringLiteral("BrowserPath_OPR"),      QString()).value<QString>();
-        m_BrowserPath_Safari   = s->value(QStringLiteral("BrowserPath_Safari"),   QString()).value<QString>();
-        m_BrowserPath_Chrome   = s->value(QStringLiteral("BrowserPath_Chrome"),   QString()).value<QString>();
-        m_BrowserPath_Sleipnir = s->value(QStringLiteral("BrowserPath_Sleipnir"), QString()).value<QString>();
-        m_BrowserPath_Vivaldi  = s->value(QStringLiteral("BrowserPath_Vivaldi"),  QString()).value<QString>();
-        m_BrowserPath_Custom   = s->value(QStringLiteral("BrowserPath_Custom"),   QString()).value<QString>();
-    }
-    s->endGroup();
+    m_BrowserPath_IE       = s->value(QStringLiteral("application/BrowserPath_IE"),       QString()).value<QString>();
+    m_BrowserPath_FF       = s->value(QStringLiteral("application/BrowserPath_Firefox"),  QString()).value<QString>();
+    m_BrowserPath_Opera    = s->value(QStringLiteral("application/BrowserPath_Opera"),    QString()).value<QString>();
+    m_BrowserPath_OPR      = s->value(QStringLiteral("application/BrowserPath_OPR"),      QString()).value<QString>();
+    m_BrowserPath_Safari   = s->value(QStringLiteral("application/BrowserPath_Safari"),   QString()).value<QString>();
+    m_BrowserPath_Chrome   = s->value(QStringLiteral("application/BrowserPath_Chrome"),   QString()).value<QString>();
+    m_BrowserPath_Sleipnir = s->value(QStringLiteral("application/BrowserPath_Sleipnir"), QString()).value<QString>();
+    m_BrowserPath_Vivaldi  = s->value(QStringLiteral("application/BrowserPath_Vivaldi"),  QString()).value<QString>();
+    m_BrowserPath_Custom   = s->value(QStringLiteral("application/BrowserPath_Custom"),   QString()).value<QString>();
 }
 
 void Application::Reconfigure(){

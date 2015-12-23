@@ -267,7 +267,12 @@ public:
         Te_OpenWithCustom,
     };
 
+    // for gadgets.
 public:
+#if defined(Q_OS_WIN)
+    // TridentView(s) (have) existed.
+    static bool TridentViewExist();
+#endif
     void BeforeStartingDisplayGadgets();
     void AfterFinishingDisplayGadgets();
 

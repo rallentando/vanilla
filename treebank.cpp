@@ -47,6 +47,10 @@
 #include "jsobject.hpp"
 #include "dialog.hpp"
 
+#if defined(Q_OS_WIN)
+#  include "tridentview.hpp"
+#endif
+
 /*
 
   Directory specific settings.
@@ -965,112 +969,99 @@ static void CollectHistNodeFlat(HistNode *nd, QTextStream &out){
 }
 
 void TreeBank::LoadSettings(){
-    QSettings *settings = Application::GlobalSettings();
-    settings->beginGroup(QStringLiteral("application"));{
-        m_RootName             = settings->value(QStringLiteral("@RootName"), QStringLiteral("root;id")).value<QString>();
-        m_MaxViewCount         = settings->value(QStringLiteral("@MaxViewCount")         , -1)   .value<int>();
-        m_MaxTrashEntryCount   = settings->value(QStringLiteral("@MaxTrashEntryCount")   , -1)   .value<int>();
-        m_TraverseAllView      = settings->value(QStringLiteral("@TraverseAllView")      , false).value<bool>();
-        m_PurgeNotifier        = settings->value(QStringLiteral("@PurgeNotifier")        , false).value<bool>();
-        m_PurgeReceiver        = settings->value(QStringLiteral("@PurgeReceiver")        , false).value<bool>();
-        m_PurgeView            = settings->value(QStringLiteral("@PurgeView")            , false).value<bool>();
+    QSettings *s = Application::GlobalSettings();
+    if(!s->group().isEmpty()) return;
 
-        QString viewport = settings->value(QStringLiteral("@Viewport"), QStringLiteral("Widget")).value<QString>();
-        if(viewport == QStringLiteral("Widget"))       m_Viewport = Widget;
-        if(viewport == QStringLiteral("GLWidget"))     m_Viewport = GLWidget;
-        if(viewport == QStringLiteral("OpenGLWidget")) m_Viewport = OpenGLWidget;
+    m_RootName             = s->value(QStringLiteral("application/@RootName"), QStringLiteral("root;id")).value<QString>();
+    m_MaxViewCount         = s->value(QStringLiteral("application/@MaxViewCount")         , -1)   .value<int>();
+    m_MaxTrashEntryCount   = s->value(QStringLiteral("application/@MaxTrashEntryCount")   , -1)   .value<int>();
+    m_TraverseAllView      = s->value(QStringLiteral("application/@TraverseAllView")      , false).value<bool>();
+    m_PurgeNotifier        = s->value(QStringLiteral("application/@PurgeNotifier")        , false).value<bool>();
+    m_PurgeReceiver        = s->value(QStringLiteral("application/@PurgeReceiver")        , false).value<bool>();
+    m_PurgeView            = s->value(QStringLiteral("application/@PurgeView")            , false).value<bool>();
 
-        if(m_MaxViewCount == -1)       m_MaxViewCount       = settings->value(QStringLiteral("@MaxView")  , -1).value<int>();
-        if(m_MaxViewCount == -1)       m_MaxViewCount       = 10;
-        if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = settings->value(QStringLiteral("@MaxTrash") , -1).value<int>();
-        if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = 100;
+    QString viewport = s->value(QStringLiteral("application/@Viewport"), QStringLiteral("Widget")).value<QString>();
+    if(viewport == QStringLiteral("Widget"))       m_Viewport = Widget;
+    if(viewport == QStringLiteral("GLWidget"))     m_Viewport = GLWidget;
+    if(viewport == QStringLiteral("OpenGLWidget")) m_Viewport = OpenGLWidget;
 
-        settings->beginGroup(QStringLiteral("keymap"));{
-            QStringList keys = settings->allKeys();
-            if(keys.isEmpty()){
-                /* default key map. */
-                TREEBANK_KEYMAP
-            } else {
-                if(!m_KeyMap.isEmpty()) m_KeyMap.clear();
-                foreach(QString key, keys){
-                    if(key.isEmpty()) continue;
-                    m_KeyMap[Application::MakeKeySequence(key)] =
-                        settings->value(key, QStringLiteral("NoAction")).value<QString>()
-                        // cannot use slashes on QSettings.
-                          .replace(QStringLiteral("Backslash"), QStringLiteral("\\"))
-                          .replace(QStringLiteral("Slash"), QStringLiteral("/"));
-                }
+    if(m_MaxViewCount == -1)       m_MaxViewCount       = s->value(QStringLiteral("application/@MaxView")  , -1).value<int>();
+    if(m_MaxViewCount == -1)       m_MaxViewCount       = 10;
+    if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = s->value(QStringLiteral("application/@MaxTrash") , -1).value<int>();
+    if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = 100;
+
+    {   QStringList keys;
+        s->beginGroup(QStringLiteral("application/keymap"));
+        keys = s->allKeys();
+        s->endGroup();
+
+        if(keys.isEmpty()){
+            /* default key map. */
+            TREEBANK_KEYMAP
+        } else {
+            if(!m_KeyMap.isEmpty()) m_KeyMap.clear();
+            foreach(QString key, keys){
+                if(key.isEmpty()) continue;
+                m_KeyMap[Application::MakeKeySequence(key)] =
+                    s->value(QStringLiteral("application/keymap/") + key, QStringLiteral("NoAction")).value<QString>()
+                    // cannot use slashes on QSettings.
+                      .replace(QStringLiteral("Backslash"), QStringLiteral("\\"))
+                      .replace(QStringLiteral("Slash"), QStringLiteral("/"));
             }
         }
-        settings->endGroup();
-        settings->beginGroup(QStringLiteral("mouse"));{
-            QStringList keys = settings->allKeys();
-            if(keys.isEmpty()){
-                /* default mouse map. */
-                TREEBANK_MOUSEMAP
-            } else {
-                if(!m_MouseMap.isEmpty()) m_MouseMap.clear();
-                foreach(QString key, keys){
-                    if(key.isEmpty()) continue;
-                    m_MouseMap[key] =
-                        settings->value(key, QStringLiteral("NoAction")).value<QString>();
-                }
-            }
-        }
-        settings->endGroup();
     }
-    settings->endGroup();
+    {   QStringList keys;
+        s->beginGroup(QStringLiteral("application/mouse"));
+        keys = s->allKeys();
+        s->endGroup();
+
+        if(keys.isEmpty()){
+            /* default mouse map. */
+            TREEBANK_MOUSEMAP
+        } else {
+            if(!m_MouseMap.isEmpty()) m_MouseMap.clear();
+            foreach(QString key, keys){
+                if(key.isEmpty()) continue;
+                m_MouseMap[key] =
+                    s->value(QStringLiteral("application/mouse/") + key, QStringLiteral("NoAction")).value<QString>();
+            }
+        }
+    }
     Node::LoadSettings();
     View::LoadSettings();
     Gadgets::LoadSettings();
 }
 
 void TreeBank::SaveSettings(){
-    QSettings *settings = Application::GlobalSettings();
-    settings->beginGroup(QStringLiteral("application"));{
-        settings->setValue(QStringLiteral("@RootName"),             m_RootName);
-        settings->setValue(QStringLiteral("@MaxViewCount"),         m_MaxViewCount);
-        settings->setValue(QStringLiteral("@MaxTrashEntryCount"),   m_MaxTrashEntryCount);
-        settings->setValue(QStringLiteral("@TraverseAllView"),      m_TraverseAllView);
-        settings->setValue(QStringLiteral("@PurgeNotifier"),        m_PurgeNotifier);
-        settings->setValue(QStringLiteral("@PurgeReceiver"),        m_PurgeReceiver);
-        settings->setValue(QStringLiteral("@PurgeView"),            m_PurgeView);
+    QSettings *s = Application::GlobalSettings();
+    if(!s->group().isEmpty()) return;
 
-        if(m_Viewport == Widget)       settings->setValue(QStringLiteral("@Viewport"), QStringLiteral("Widget"));
-        if(m_Viewport == GLWidget)     settings->setValue(QStringLiteral("@Viewport"), QStringLiteral("GLWidget"));
-        if(m_Viewport == OpenGLWidget) settings->setValue(QStringLiteral("@Viewport"), QStringLiteral("OpenGLWidget"));
+    s->setValue(QStringLiteral("application/@RootName"),             m_RootName);
+    s->setValue(QStringLiteral("application/@MaxViewCount"),         m_MaxViewCount);
+    s->setValue(QStringLiteral("application/@MaxTrashEntryCount"),   m_MaxTrashEntryCount);
+    s->setValue(QStringLiteral("application/@TraverseAllView"),      m_TraverseAllView);
+    s->setValue(QStringLiteral("application/@PurgeNotifier"),        m_PurgeNotifier);
+    s->setValue(QStringLiteral("application/@PurgeReceiver"),        m_PurgeReceiver);
+    s->setValue(QStringLiteral("application/@PurgeView"),            m_PurgeView);
 
-        settings->beginGroup(QStringLiteral("keymap"));{
-            QList<QKeySequence> seqs = m_KeyMap.keys();
-            if(seqs.isEmpty()){
-                /* default key map. */
-            } else {
-                foreach(QKeySequence seq, seqs){
-                    if(!seq.isEmpty() && !seq.toString().isEmpty()){
-                        settings->setValue(seq.toString()
-                                           // cannot use slashes on QSettings.
-                                             .replace(QStringLiteral("\\"), QStringLiteral("Backslash"))
-                                             .replace(QStringLiteral("/"), QStringLiteral("Slash")),
-                                           m_KeyMap[seq]);
-                    }
-                }
-            }
+    if(m_Viewport == Widget)       s->setValue(QStringLiteral("application/@Viewport"), QStringLiteral("Widget"));
+    if(m_Viewport == GLWidget)     s->setValue(QStringLiteral("application/@Viewport"), QStringLiteral("GLWidget"));
+    if(m_Viewport == OpenGLWidget) s->setValue(QStringLiteral("application/@Viewport"), QStringLiteral("OpenGLWidget"));
+
+    foreach(QKeySequence seq, m_KeyMap.keys()){
+        if(!seq.isEmpty() && !seq.toString().isEmpty()){
+            s->setValue(QStringLiteral("application/keymap/") + seq.toString()
+                        // cannot use slashes on QSettings.
+                          .replace(QStringLiteral("\\"), QStringLiteral("Backslash"))
+                          .replace(QStringLiteral("/"), QStringLiteral("Slash")),
+                        m_KeyMap[seq]);
         }
-        settings->endGroup();
-        settings->beginGroup(QStringLiteral("mouse"));{
-            QStringList buttons = m_MouseMap.keys();
-            if(buttons.isEmpty()){
-                /* 'm_KeyMap' will be construct, when next startup. */
-            } else {
-                foreach(QString button, buttons){
-                    if(!button.isEmpty())
-                        settings->setValue(button, m_MouseMap[button]);
-                }
-            }
-        }
-        settings->endGroup();
     }
-    settings->endGroup();
+
+    foreach(QString button, m_MouseMap.keys()){
+        if(!button.isEmpty())
+            s->setValue(QStringLiteral("application/keymap/") + button, m_MouseMap[button]);
+    }
     Node::SaveSettings();
     View::SaveSettings();
     Gadgets::SaveSettings();
@@ -1298,6 +1289,10 @@ void TreeBank::ReleaseAllView(){
     m_ViewUpdateBox.clear();
 
     foreach(SharedView view, m_AllViews){
+#if defined(Q_OS_WIN)
+        if(TridentView *w = qobject_cast<TridentView*>(view->base()))
+            w->Clear();
+#endif
         view->DeleteLater();
     }
     m_AllViews.clear();
@@ -1693,6 +1688,20 @@ bool TreeBank::SetCurrent(Node *nd){
 bool TreeBank::SetCurrent(SharedView view){
     return SetCurrent(view->GetHistNode());
 }
+
+#if defined(Q_OS_WIN)
+bool TreeBank::TridentViewExist(){
+    static bool exists = false;
+    if(exists) return true;
+    foreach(SharedView view, m_AllViews){
+        if(qobject_cast<TridentView*>(view->base())){
+            exists = true;
+            return true;
+        }
+    }
+    return false;
+}
+#endif
 
 void TreeBank::BeforeStartingDisplayGadgets(){
     DoUpdate();
@@ -3706,6 +3715,10 @@ bool TreeBank::TriggerKeyEvent(QString str){
 }
 
 void TreeBank::DeleteView(View *view){
+#if defined(Q_OS_WIN)
+    if(TridentView *w = qobject_cast<TridentView*>(view->base()))
+        w->Clear();
+#endif
     view->DeleteLater();
 }
 
@@ -3751,6 +3764,10 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
               new QuickWebEngineView(tb, id, set) :
             set.indexOf(QRegExp(QStringLiteral(""                 VV"[lL](?:ocal)?"                  VV"(?:[vV](?:iew)?)?"))) != -1 ?
               new LocalView(tb, id, set) :
+#if defined(Q_OS_WIN)
+            set.indexOf(QRegExp(QStringLiteral(""                 VV"[tT](?:rident)?"                VV"(?:[vV](?:iew)?)?"))) != -1 ?
+              new TridentView(tb, id, set) :
+#endif
 #if defined(WEBENGINEVIEW_DEFAULT) || !defined(QTWEBKIT)
             static_cast<View*>(new WebEngineView(tb, id, set))
 #else
