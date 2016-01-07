@@ -149,8 +149,8 @@ int  TreeBank::m_MaxViewCount = 0;
 int  TreeBank::m_MaxTrashEntryCount = 0;
 int  TreeBank::m_TraverseCondition = 0;
 
-enum TreeBank::TraverseMode TreeBank::m_TraverseMode = Neutral;
-enum TreeBank::Viewport     TreeBank::m_Viewport = Widget;
+TreeBank::TraverseMode TreeBank::m_TraverseMode = Neutral;
+TreeBank::Viewport     TreeBank::m_Viewport = Widget;
 SharedViewList TreeBank::m_AllViews = SharedViewList();
 SharedViewList TreeBank::m_ViewUpdateBox = SharedViewList();
 QList<Node*> TreeBank::m_NodeDeleteBox = QList<Node*>();
@@ -1252,26 +1252,26 @@ bool TreeBank::MoveToTrash(ViewNode *vn){
 }
 
 void TreeBank::StripSubTree(Node *nd){
-    if(nd->IsViewNode()){
-        QuarantineViewNode(nd->ToViewNode());
+    if(ViewNode *vn = nd->ToViewNode()){
+        QuarantineViewNode(vn);
 
-        if(nd->GetPartner())
-            StripSubTree(GetRoot(nd->GetPartner()));
+        if(vn->GetPartner())
+            StripSubTree(GetRoot(vn->GetPartner()));
 
-    } else if(nd->IsHistNode()){
+    } else if(HistNode *hn = nd->ToHistNode()){
         // it's not 'QuarantineHistNode'.
         // want to clear, not to reset to other node.
 
-        TreeBank *tb = nd->GetView() ? nd->GetView()->GetTreeBank() : 0;
+        TreeBank *tb = hn->GetView() ? hn->GetView()->GetTreeBank() : 0;
 
         if(tb){
-            if(nd == tb->GetCurrentHistNode())  tb->SetCurrentHistNode(0);
-            if(nd == tb->GetHistIterForward())  tb->SetHistIterForward(0);
-            if(nd == tb->GetHistIterBackward()) tb->SetHistIterBackward(0);
+            if(hn == tb->GetCurrentHistNode())  tb->SetCurrentHistNode(0);
+            if(hn == tb->GetHistIterForward())  tb->SetHistIterForward(0);
+            if(hn == tb->GetHistIterBackward()) tb->SetHistIterBackward(0);
         }
 
-        DislinkView(nd->ToHistNode()); // using partner.
-        nd->SetImage(QImage());
+        DislinkView(hn);
+        hn->SetImage(QImage());
     }
     foreach(Node *child, nd->GetChildren()){
         StripSubTree(child);

@@ -160,13 +160,12 @@ Page::~Page(){}
 
 NetworkAccessManager *Page::GetNetworkAccessManager(){
     NetworkAccessManager *nam;
-#ifdef QTWEBKIT
-    if(WebPage *page = qobject_cast<WebPage*>(m_View->page()))
-        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
-    else
-#endif
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page()))
         nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
+#ifdef QTWEBKIT
+    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page()))
+        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
+#endif
     else nam = m_NetworkAccessManager;
     return nam;
 }

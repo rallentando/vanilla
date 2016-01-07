@@ -121,6 +121,7 @@ void MainWindow::SaveSettings(){
     s->setValue(QStringLiteral("mainwindow/receiver%1").arg(m_Index), m_TreeBank->GetReceiver() ? true : false);
     s->setValue(QStringLiteral("mainwindow/menubar%1").arg(m_Index), !IsMenuBarEmpty());
     s->setValue(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), saveState());
+    s->setValue(QStringLiteral("mainwindow/treebar%1").arg(m_Index), m_TreeBar->GetStat());
     s->setValue(QStringLiteral("mainwindow/status%1").arg(m_Index), static_cast<int>(windowState()));
     if(!isFullScreen() && !isMaximized() && !isMinimized())
         s->setValue(QStringLiteral("mainwindow/geometry%1").arg(m_Index), geometry());
@@ -137,6 +138,7 @@ void MainWindow::LoadSettings(){
     QVariant receiver_data  = s->value(QStringLiteral("mainwindow/receiver%1").arg(m_Index), QVariant());
     QVariant menubar_data   = s->value(QStringLiteral("mainwindow/menubar%1").arg(m_Index), QVariant());
     QVariant toolbar_data   = s->value(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), QVariant());
+    QVariant treebar_data   = s->value(QStringLiteral("mainwindow/treebar%1").arg(m_Index), QVariant());
 
     if(tableview_data.isNull()){
 
@@ -198,6 +200,11 @@ void MainWindow::LoadSettings(){
         restoreState(toolbar_data.toByteArray());
     }
 
+    if(!treebar_data.isNull() &&
+       treebar_data.canConvert<QStringList>()){
+        m_TreeBar->SetStat(treebar_data.toStringList());
+    }
+
     if(menubar_data.isNull()){
 
         bool menubarEnabled = current
@@ -244,6 +251,8 @@ void MainWindow::RemoveSettings(){
     s->remove(QStringLiteral("mainwindow/notifier%1").arg(m_Index));
     s->remove(QStringLiteral("mainwindow/receiver%1").arg(m_Index));
     s->remove(QStringLiteral("mainwindow/menubar%1").arg(m_Index));
+    s->remove(QStringLiteral("mainwindow/toolbar%1").arg(m_Index));
+    s->remove(QStringLiteral("mainwindow/treebar%1").arg(m_Index));
     s->remove(QStringLiteral("mainwindow/status%1").arg(m_Index));
     s->sync();
 }

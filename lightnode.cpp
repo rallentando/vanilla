@@ -353,6 +353,18 @@ void HistNode::SetUrl(const QUrl &u){
     m_Url = u;
 }
 
+void HistNode::SetCreateDate(QDateTime dt){
+    m_CreateDate = dt;
+}
+
+void HistNode::SetLastUpdateDate(QDateTime dt){
+    m_LastUpdateDate = dt;
+}
+
+void HistNode::SetLastAccessDate(QDateTime dt){
+    m_LastAccessDate = dt;
+}
+
 void HistNode::SetImage(const QImage &image){
     if(image.isNull()){
         m_NeedToSaveImage = false;
@@ -376,18 +388,6 @@ void HistNode::SetScrollY(int y){
 
 void HistNode::SetZoom(float z){
     m_Zoom = z;
-}
-
-void HistNode::SetCreateDate(QDateTime dt){
-    m_CreateDate = dt;
-}
-
-void HistNode::SetLastUpdateDate(QDateTime dt){
-    m_LastUpdateDate = dt;
-}
-
-void HistNode::SetLastAccessDate(QDateTime dt){
-    m_LastAccessDate = dt;
 }
 
 QString HistNode::GetImageFileName(){
@@ -775,26 +775,6 @@ void ViewNode::SetTitle(const QString &title){
 void ViewNode::SetUrl(const QUrl &u){
     if(m_Partner)
         m_Partner->SetUrl(u);
-}
-
-void ViewNode::SetImage(const QImage &i){
-    if(m_Partner)
-        m_Partner->SetImage(i);
-}
-
-void ViewNode::SetScrollX(int x){
-    if(m_Partner)
-        m_Partner->SetScrollX(x);
-}
-
-void ViewNode::SetScrollY(int y){
-    if(m_Partner)
-        m_Partner->SetScrollY(y);
-}
-
-void ViewNode::SetZoom(float z){
-    if(m_Partner)
-        m_Partner->SetZoom(z);
 }
 
 void ViewNode::SetCreateDate(QDateTime dt){

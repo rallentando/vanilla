@@ -45,7 +45,11 @@ public:
     static void ToggleDoubleClickToClose();
     static void ToggleWheelClickToClose();
 
-    int GetVerticalNodeWidth();
+    int GetHorizontalNodeHeight() const;
+    int GetVerticalNodeWidth() const;
+
+    void SetStat(QStringList);
+    QStringList GetStat();
 
     void Adjust();
 
@@ -82,6 +86,8 @@ private:
     QSize m_OverrideSize;
     QList<LayerItem*> m_LayerList;
     int m_AutoUpdateTimer;
+    int m_HorizontalNodeHeight;
+    int m_VerticalNodeWidth;
 
     static bool m_EnableAnimation;
     static bool m_EnableCloseButton;

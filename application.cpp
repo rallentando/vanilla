@@ -255,10 +255,12 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
             keys.removeOne(QStringLiteral("mainwindow/notifier%1").arg(id));
             keys.removeOne(QStringLiteral("mainwindow/receiver%1").arg(id));
             keys.removeOne(QStringLiteral("mainwindow/menubar%1").arg(id));
+            keys.removeOne(QStringLiteral("mainwindow/toolbar%1").arg(id));
+            keys.removeOne(QStringLiteral("mainwindow/treebar%1").arg(id));
             keys.removeOne(QStringLiteral("mainwindow/status%1").arg(id));
         }
         foreach(QString key, keys){
-            s->remove(key);
+            s->remove(QStringLiteral("mainwindow/") + key);
         }
     }
 
@@ -392,7 +394,7 @@ void Application::Import(TreeBank *tb){
             ViewNode *vn = makenode(parent, path);
             if(QFileInfo(path).isDir()){
                 QDir dir = path;
-                QStringList files = dir.entryList(QDir::NoDotAndDotDot|QDir::AllEntries);
+                QStringList files = dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries);
                 foreach(QString file, files){
                     traverse(vn, path + QStringLiteral("/") + file);
                 }
@@ -454,8 +456,8 @@ void Application::Import(TreeBank *tb){
         QString profile = firefoxProfile;
         QDir profiledir = profile;
         QStringList list =
-            profiledir.entryList(QStringList() << QStringLiteral("*.default"),
-                                 QDir::NoFilter, QDir::Name);
+        profiledir.entryList(QStringList() << QStringLiteral("*.default"),
+                             QDir::NoFilter, QDir::Name);
         if(!list.isEmpty()){
             foreach(QString defaultdir, list){
                 QString bookmarklist =

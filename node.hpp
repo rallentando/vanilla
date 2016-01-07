@@ -326,10 +326,6 @@ public:
     virtual QDateTime GetLastAccessDate(){ return QDateTime();}
 
     virtual void SetUrl(const QUrl&){}
-    virtual void SetImage(const QImage&){}
-    virtual void SetScrollX(int){}
-    virtual void SetScrollY(int){}
-    virtual void SetZoom(float){}
     virtual void SetCreateDate(QDateTime){}
     virtual void SetLastUpdateDate(QDateTime){}
     virtual void SetLastAccessDate(QDateTime){}
@@ -406,13 +402,14 @@ public:
     QDateTime GetLastAccessDate() DECL_OVERRIDE;
 
     void SetUrl(const QUrl &u) DECL_OVERRIDE;
-    void SetImage(const QImage &i) DECL_OVERRIDE;
-    void SetScrollX(int x) DECL_OVERRIDE;
-    void SetScrollY(int y) DECL_OVERRIDE;
-    void SetZoom(float z) DECL_OVERRIDE;
     void SetCreateDate(QDateTime) DECL_OVERRIDE;
     void SetLastUpdateDate(QDateTime) DECL_OVERRIDE;
     void SetLastAccessDate(QDateTime) DECL_OVERRIDE;
+
+    void SetImage(const QImage &i);
+    void SetScrollX(int x);
+    void SetScrollY(int y);
+    void SetZoom(float z);
 
     QString GetImageFileName();
     void SetImageFileName(const QString &path);
@@ -488,10 +485,6 @@ public:
 
     void SetTitle(const QString &title) DECL_OVERRIDE;
     void SetUrl(const QUrl &u) DECL_OVERRIDE;
-    void SetImage(const QImage &i) DECL_OVERRIDE;
-    void SetScrollX(int x) DECL_OVERRIDE;
-    void SetScrollY(int y) DECL_OVERRIDE;
-    void SetZoom(float z) DECL_OVERRIDE;
     void SetCreateDate(QDateTime) DECL_OVERRIDE;
     void SetLastUpdateDate(QDateTime) DECL_OVERRIDE;
     void SetLastAccessDate(QDateTime) DECL_OVERRIDE;

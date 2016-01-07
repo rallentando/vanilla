@@ -497,7 +497,13 @@ public slots:
     void Load(const QNetworkRequest &req) DECL_OVERRIDE { View::Load(req);}
 
     void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE {}
-    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {}
+    void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {
+        //[[WEV]]
+#if defined(Q_OS_WIN)
+        if(TreeBank::TridentViewExist()) show(); // for force update.
+#endif
+        //[[/WEV]]
+    }
 
     void OnSetViewNode(ViewNode*) DECL_OVERRIDE;
     void OnSetHistNode(HistNode*) DECL_OVERRIDE;
