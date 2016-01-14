@@ -33,6 +33,7 @@
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #if defined(Q_OS_WIN)
+#  include <QtWin>
 #  include "tridentview.hpp"
 #endif
 
@@ -61,6 +62,12 @@ MainWindow::MainWindow(int id, QWidget *parent)
 
     // make MenuBar and hide.
     menuBar()->hide();
+    if(Application::EnableTransparentBar()){
+        menuBar()->setStyleSheet
+            ("QMenuBar{ background-color: transparent;}"
+             "QMenuBar::item{ background-color:rgba(255, 255, 255, 185);}"
+             "QMenuBar::item:selected{ background-color:rgba(255, 255, 255, 225);}");
+    }
 
     LoadSettings();
 
@@ -91,6 +98,13 @@ MainWindow::MainWindow(int id, QWidget *parent)
     }
 
     show();
+#if defined(Q_OS_WIN)
+    setAttribute(Qt::WA_TranslucentBackground);
+    setAttribute(Qt::WA_NoSystemBackground);
+    QtWin::setCompositionEnabled(true);
+    QtWin::enableBlurBehindWindow(windowHandle());
+    QtWin::extendFrameIntoClientArea(this, QMargins(-1, -1, -1, -1));
+#endif
 }
 
 MainWindow::~MainWindow(){
@@ -574,6 +588,17 @@ void MainWindow::SetFocus(){
     } else if(SharedView view = GetTreeBank()->GetCurrentView()){
         view->setFocus();
     }
+}
+
+void MainWindow::paintEvent(QPaintEvent *ev){
+#if defined(Q_OS_WIN)
+    QPainter painter(this);
+    painter.setCompositionMode(QPainter::CompositionMode_Clear);
+    foreach(QRect rect, ev->region().rects()){
+        painter.fillRect(rect, Qt::BrushStyle::SolidPattern);
+    }
+#endif
+    QMainWindow::paintEvent(ev);
 }
 
 void MainWindow::closeEvent(QCloseEvent *ev){

@@ -73,6 +73,7 @@ public slots:
     void SetFocus();
 
 protected:
+    void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
     void closeEvent(QCloseEvent *ev) DECL_OVERRIDE;
     void resizeEvent(QResizeEvent *ev) DECL_OVERRIDE;
     void moveEvent(QMoveEvent *ev) DECL_OVERRIDE;

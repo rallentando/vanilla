@@ -58,7 +58,7 @@
 
   clone button.
 
-  resizable(when vertical).
+  resize and save size.
 
   TODO: save scroll or refreshment without delete.
     signal candidate.
@@ -161,13 +161,9 @@ namespace {
         }
         void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE {
             QWidget::mouseMoveEvent(ev);
+
             TreeBar *bar = static_cast<TreeBar*>(parentWidget());
             MainWindow *win = static_cast<MainWindow*>(bar->parentWidget());
-
-            switch(bar->orientation()){
-            case Qt::Horizontal: setCursor(Qt::SizeVerCursor); break;
-            case Qt::Vertical:   setCursor(Qt::SizeHorCursor); break;
-            }
 
             int minimumWidth = TREEBAR_NODE_VERTICAL_MINIMUM_WIDTH + 7;
             int maximumWidth = win->size().width() / 2;
@@ -175,6 +171,11 @@ namespace {
                 * bar->GetLayerList().length() + 4;
             int maximumHeight = (TREEBAR_NODE_HORIZONTAL_MAXIMUM_HEIGHT + 3)
                 * bar->GetLayerList().length() + 4;
+
+            switch(bar->orientation()){
+            case Qt::Horizontal: setCursor(Qt::SizeVerCursor); break;
+            case Qt::Vertical:   setCursor(Qt::SizeHorCursor); break;
+            }
 
             switch(win->toolBarArea(bar)){
 
@@ -213,6 +214,36 @@ namespace {
         }
         void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE {
             QWidget::mouseReleaseEvent(ev);
+        }
+        void mouseDoubleClickEvent(QMouseEvent *ev) DECL_OVERRIDE {
+            QWidget::mouseDoubleClickEvent(ev);
+
+            TreeBar *bar = static_cast<TreeBar*>(parentWidget());
+            MainWindow *win = static_cast<MainWindow*>(bar->parentWidget());
+
+            int minimumWidth = TREEBAR_NODE_VERTICAL_MINIMUM_WIDTH + 7;
+            int maximumWidth = win->size().width() / 2;
+            int minimumHeight = (TREEBAR_NODE_HORIZONTAL_MINIMUM_HEIGHT + 3)
+                * bar->GetLayerList().length() + 4;
+            int maximumHeight = (TREEBAR_NODE_HORIZONTAL_MAXIMUM_HEIGHT + 3)
+                * bar->GetLayerList().length() + 4;
+
+            switch(bar->orientation()){
+
+            case Qt::Horizontal:
+                if(bar->height() == minimumHeight)
+                    bar->resize(bar->width(), maximumHeight);
+                else
+                    bar->resize(bar->width(), minimumHeight);
+                break;
+            case Qt::Vertical:
+                if(bar->width() == minimumWidth)
+                    bar->resize(maximumWidth, bar->height());
+                else
+                    bar->resize(minimumWidth, bar->height());
+                break;
+            }
+            bar->Adjust();
         }
     };
 
@@ -288,9 +319,20 @@ namespace {
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
-            const QBrush brush(QColor(240,240,240,255));
+
+            if(Application::EnableTransparentBar()){
+                QPainter::CompositionMode mode = painter->compositionMode();
+                painter->setCompositionMode(QPainter::CompositionMode_Clear);
+                painter->fillRect(boundingRect(), Qt::BrushStyle::SolidPattern);
+                painter->setCompositionMode(mode);
+
+                const QBrush brush(QColor(0, 0, 0, 1));
+                painter->setBrush(brush);
+            } else {
+                const QBrush brush(QColor(240, 240, 240, 255));
+                painter->setBrush(brush);
+            }
             painter->setPen(Qt::NoPen);
-            painter->setBrush(brush);
             painter->drawRect(boundingRect());
 
             if(m_ButtonState == Hovered || m_ButtonState == Pressed){
@@ -361,9 +403,20 @@ namespace {
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
-            const QBrush brush(QColor(240,240,240,255));
+
+            if(Application::EnableTransparentBar()){
+                QPainter::CompositionMode mode = painter->compositionMode();
+                painter->setCompositionMode(QPainter::CompositionMode_Clear);
+                painter->fillRect(boundingRect(), Qt::BrushStyle::SolidPattern);
+                painter->setCompositionMode(mode);
+
+                const QBrush brush(QColor(0, 0, 0, 1));
+                painter->setBrush(brush);
+            } else {
+                const QBrush brush(QColor(240, 240, 240, 255));
+                painter->setBrush(brush);
+            }
             painter->setPen(Qt::NoPen);
-            painter->setBrush(brush);
             painter->drawRect(boundingRect());
 
             if(m_ButtonState == Hovered || m_ButtonState == Pressed){
@@ -422,22 +475,22 @@ namespace {
             : GraphicsButton(tb, bar, parent)
         {
             {
-                static const QColor beg = QColor(240,240,240,255);
-                static const QColor end = QColor(240,240,240,0);
+                static const QColor beg = QColor(240, 240, 240, 255);
+                static const QColor end = QColor(240, 240, 240, 0);
                 m_Gradient.setColorAt(static_cast<qreal>(0), beg);
                 m_Gradient.setColorAt(static_cast<qreal>(0.5), beg);
                 m_Gradient.setColorAt(static_cast<qreal>(1), end);
             }
             {
-                static const QColor beg = QColor(210,210,210,255);
-                static const QColor end = QColor(210,210,210,0);
+                static const QColor beg = QColor(210, 210, 210, 255);
+                static const QColor end = QColor(210, 210, 210, 0);
                 m_HoveredGradient.setColorAt(static_cast<qreal>(0), beg);
                 m_HoveredGradient.setColorAt(static_cast<qreal>(0.5), beg);
                 m_HoveredGradient.setColorAt(static_cast<qreal>(1), end);
             }
             {
-                static const QColor beg = QColor(128,128,128,255);
-                static const QColor end = QColor(128,128,128,0);
+                static const QColor beg = QColor(128, 128, 128, 255);
+                static const QColor end = QColor(128, 128, 128, 0);
                 m_PressedGradient.setColorAt(static_cast<qreal>(0), beg);
                 m_PressedGradient.setColorAt(static_cast<qreal>(0.5), beg);
                 m_PressedGradient.setColorAt(static_cast<qreal>(1), end);
@@ -494,8 +547,10 @@ namespace {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             painter->setPen(Qt::NoPen);
-            SetBGBrush(painter, QPointF(rect.left(), 0), QPointF(rect.right(), 0));
-            painter->drawRect(rect);
+            if(!Application::EnableTransparentBar()){
+                SetBGBrush(painter, QPointF(rect.left(), 0), QPointF(rect.right(), 0));
+                painter->drawRect(rect);
+            }
             SetFGBrush(painter, QPointF(rect.left(), 0), QPointF(rect.right(), 0));
             rect.setTop(rect.top() + m_TreeBar->GetHorizontalNodeHeight() / 2 - 6);
             rect.setBottom(rect.bottom() - m_TreeBar->GetHorizontalNodeHeight() / 2 + 4);
@@ -538,8 +593,10 @@ namespace {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             painter->setPen(Qt::NoPen);
-            SetBGBrush(painter, QPointF(rect.right(), 0), QPoint(rect.left(), 0));
-            painter->drawRect(rect);
+            if(!Application::EnableTransparentBar()){
+                SetBGBrush(painter, QPointF(rect.right(), 0), QPoint(rect.left(), 0));
+                painter->drawRect(rect);
+            }
             SetFGBrush(painter, QPointF(rect.right(), 0), QPoint(rect.left(), 0));
             rect.setTop(rect.top() + m_TreeBar->GetHorizontalNodeHeight() / 2 - 6);
             rect.setBottom(rect.bottom() - m_TreeBar->GetHorizontalNodeHeight() / 2 + 4);
@@ -582,8 +639,10 @@ namespace {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             painter->setPen(Qt::NoPen);
-            SetBGBrush(painter, QPointF(0, rect.top()), QPointF(0, rect.bottom()));
-            painter->drawRect(rect);
+            if(!Application::EnableTransparentBar()){
+                SetBGBrush(painter, QPointF(0, rect.top()), QPointF(0, rect.bottom()));
+                painter->drawRect(rect);
+            }
             SetFGBrush(painter, QPointF(0, rect.top()), QPointF(0, rect.bottom()));
             rect.setLeft(rect.left() + m_TreeBar->GetVerticalNodeWidth() / 2 - 6);
             rect.setRight(rect.right() - m_TreeBar->GetVerticalNodeWidth() / 2 + 4);
@@ -626,8 +685,10 @@ namespace {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             painter->setPen(Qt::NoPen);
-            SetBGBrush(painter, QPointF(0, rect.bottom()), QPointF(0, rect.top()));
-            painter->drawRect(rect);
+            if(!Application::EnableTransparentBar()){
+                SetBGBrush(painter, QPointF(0, rect.bottom()), QPointF(0, rect.top()));
+                painter->drawRect(rect);
+            }
             SetFGBrush(painter, QPointF(0, rect.bottom()), QPointF(0, rect.top()));
             rect.setLeft(rect.left() + m_TreeBar->GetVerticalNodeWidth() / 2 - 6);
             rect.setRight(rect.right() - m_TreeBar->GetVerticalNodeWidth() / 2 + 4);
@@ -745,7 +806,6 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     m_Scene->setSceneRect(QRect(0, 0, width(), height()));
     m_View = new GraphicsView(m_Scene, this);
     m_View->setFrameShape(QGraphicsView::NoFrame);
-    m_View->setBackgroundBrush(QColor(240, 240, 240, 255));
     m_ResizeGrip = new ResizeGrip(this);
     m_OverrideSize = QSize();
     m_LayerList = QList<LayerItem*>();
@@ -758,6 +818,14 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     setContextMenuPolicy(Qt::PreventContextMenu);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     setMouseTracking(true);
+
+    if(Application::EnableTransparentBar()){
+        m_View->setBackgroundBrush(Qt::transparent);
+        m_View->setStyleSheet("QGraphicsView{ background: transparent}");
+        setAttribute(Qt::WA_TranslucentBackground);
+    } else {
+        m_View->setBackgroundBrush(QColor(240, 240, 240, 255));
+    }
 }
 
 TreeBar::~TreeBar(){}
@@ -1093,9 +1161,11 @@ void TreeBar::OnCurrentChanged(SharedView from, SharedView to){
 
 void TreeBar::paintEvent(QPaintEvent *ev){
     QPainter painter(this);
-    static const QBrush b = QBrush(QColor(240, 240, 240, 255));
+
+    static const QBrush tb = QBrush(QColor(0, 0, 0, 1));
+    static const QBrush nb = QBrush(QColor(240, 240, 240, 255));
     painter.setPen(Qt::NoPen);
-    painter.setBrush(b);
+    painter.setBrush(Application::EnableTransparentBar() ? tb : nb);
     foreach(QRect rect, ev->region().rects()){
         painter.drawRect(rect);
     }
@@ -1202,8 +1272,12 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     m_NextScrollButton = 0;
 
     m_Line = new QGraphicsLineItem(this);
-    static const QPen p = QPen(QColor(150, 150, 150, 255));
-    m_Line->setPen(p);
+    if(Application::EnableTransparentBar()){
+        m_Line->setPen(Qt::NoPen);
+    } else {
+        static const QPen p = QPen(QColor(150, 150, 150, 255));
+        m_Line->setPen(p);
+    }
     m_Line->setZValue(BORDEF_LINE_LAYER);
 
     m_ScrollAnimation = new QPropertyAnimation(this, "scroll");
@@ -1223,7 +1297,7 @@ LayerItem::~LayerItem(){
 
 void LayerItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget){
     Q_UNUSED(painter); Q_UNUSED(option); Q_UNUSED(widget);
-    //painter->setPen(QPen(QColor(0,0,0,255)));
+    //painter->setPen(QPen(QColor(0, 0, 0, 255)));
     //painter->setBrush(Qt::NoBrush);
     //QRectF rect = boundingRect();
     //painter->drawRect(rect.left(), rect.top(), rect.width()-1, rect.height()-1);
@@ -1284,7 +1358,7 @@ void LayerItem::SetScroll(qreal scroll){
 
     if(scroll > max) scroll = max;
     if(scroll < min) scroll = min;
-    if(m_Scroll == scroll) return;
+    if(m_Scroll == scroll){ OnScrolled(); return;}
     m_Scroll = scroll;
     OnScrolled();
     update();
@@ -1450,7 +1524,9 @@ void LayerItem::Adjust(){
     }
     switch(m_TreeBar->orientation()){
     case Qt::Horizontal:{
+        int width = boundingRect().width();
         int height = m_TreeBar->GetHorizontalNodeHeight();
+
         foreach(NodeItem *item, m_NodeItems){
             QRectF rect = item->GetRect();
             rect.moveTop(Index() * (height + 3) + 1);
@@ -1462,15 +1538,17 @@ void LayerItem::Adjust(){
                   - scene()->sceneRect().width() / 2.0 + FRINGE_BUTTON_SIZE);
         ResetTargetScroll();
 
-        int width = boundingRect().width();
         SetLine(0.0,   (height + 3) * (Index() + 1) - 2,
                 width, (height + 3) * (Index() + 1) - 2);
         break;
     }
     case Qt::Vertical:{
+        int width = m_TreeBar->GetVerticalNodeWidth();
+        int height = boundingRect().height();
+
         foreach(NodeItem *item, m_NodeItems){
             QRectF rect = item->GetRect();
-            rect.setRight(m_TreeBar->GetVerticalNodeWidth() + 1);
+            rect.setRight(width + 1);
             item->SetRect(rect);
         }
 
@@ -1478,9 +1556,8 @@ void LayerItem::Adjust(){
                   - scene()->sceneRect().height() / 2.0 + FRINGE_BUTTON_SIZE);
         ResetTargetScroll();
 
-        int height = boundingRect().height();
-        SetLine(m_TreeBar->GetVerticalNodeWidth() + 1, 0,
-                m_TreeBar->GetVerticalNodeWidth() + 1, height);
+        SetLine(width + 1, 0,
+                width + 1, height);
         break;
     }
     }
@@ -1847,6 +1924,7 @@ QMenu *LayerItem::LayerMenu(){
 
 QMenu *LayerItem::AddNodeMenu(){
     QMenu *menu = new QMenu(m_TreeBar);
+    menu->setToolTipsVisible(true);
 
     TreeBank *tb = m_TreeBank;
     Node *nd = GetNode();
@@ -1900,9 +1978,12 @@ QMenu *LayerItem::AddNodeMenu(){
                 title = title.split(QStringLiteral(";")).first();
             }
 
+            restore->setToolTip(title);
+
             if(title.length() > 25)
                 title = title.left(25) + QStringLiteral("...");
             restore->setText(title);
+
             restore->connect
                 (restore, &QAction::triggered,
                  [t, nd, pnd, tb](){
@@ -2093,13 +2174,31 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
                             m_TreeBar->EnableCloneButton()) ? 21 : 39));
 
     {
-        static const QBrush b = QBrush(QColor(240,240,240,255));
-        painter->setBrush(b);
-        painter->setPen(Qt::NoPen);
+        if(Application::EnableTransparentBar()){
+            static const QBrush  tb = QBrush(QColor(255, 255, 255, 185));
+            static const QBrush  nb = QBrush(QColor(255, 255, 255, 225));
+            static const QBrush htb = QBrush(QColor(255, 255, 255, 215));
+            static const QBrush hnb = QBrush(QColor(255, 255, 255, 245));
+            painter->setBrush(m_IsHovered
+                              ? (m_IsFocused ? hnb : htb)
+                              : (m_IsFocused ? nb : tb));
+            painter->setPen(Qt::NoPen);
+        } else {
+            static const QBrush b = QBrush(QColor(240, 240, 240, 255));
+            painter->setBrush(b);
+            painter->setPen(Qt::NoPen);
+        }
         QRectF rect = bound;
-        switch(m_TreeBar->orientation()){
-        case Qt::Horizontal: rect.setHeight(rect.height() + 1); break;
-        case Qt::Vertical:   rect.setWidth(rect.width() + 1);   break;
+        if(Application::EnableTransparentBar()){
+            switch(m_TreeBar->orientation()){
+            case Qt::Horizontal: rect.setHeight(rect.height() - 1); break;
+            case Qt::Vertical:   rect.setWidth(rect.width() - 1);   break;
+            }
+        } else {
+            switch(m_TreeBar->orientation()){
+            case Qt::Horizontal: rect.setHeight(rect.height() + 1); break;
+            case Qt::Vertical:   rect.setWidth(rect.width() + 1);   break;
+            }
         }
         painter->drawRect(rect);
     }
@@ -2115,7 +2214,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     }
 
     {
-        static const QPen p = QPen(QColor(0,0,0,255));
+        static const QPen p = QPen(QColor(0, 0, 0, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont("Meiryo", 9));
@@ -2168,21 +2267,38 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
             }
         }
 
-        if(!image.isNull()){
-            QRectF rect = bound;
-            rect.setTop(rect.top() + 3);
-            rect.setLeft(rect.left() + 3);
-            rect.setWidth(rect.width() - 3);
-            rect.setHeight(rect.height() - 24);
+        QRectF rect = bound;
+        rect.setTop(rect.top() + 3);
+        rect.setLeft(rect.left() + 3);
+        rect.setWidth(rect.width() - 3);
+        rect.setHeight(rect.height() - 24);
 
+        if(!image.isNull()){
             QRectF source = QRectF(0, 0, image.size().width(),
                                    rect.height() * image.size().width() / rect.width());
-
             painter->drawImage(rect, image, source);
+        } else {
+            bool isDir = m_Node->IsDirectory();
+            static const QBrush db = QBrush(QColor(200, 255, 200, 255));
+            static const QBrush nb = QBrush(QColor(200, 255, 255, 255));
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(isDir ? db : nb);
+            painter->drawRect(rect);
+
+            static const QPen p = QPen(QColor(100, 100, 100, 255));
+            painter->setPen(p);
+            painter->setBrush(Qt::NoBrush);
+            painter->setFont(QFont(DEFAULT_FONT, rect.size().width() / 10));
+            painter->setRenderHint(QPainter::Antialiasing, true);
+            painter->drawText(rect, Qt::AlignCenter,
+                              isDir
+                              ? QStringLiteral("Directory")
+                              : QStringLiteral("NoImage"));
+            painter->setRenderHint(QPainter::Antialiasing, false);
         }
     }
 
-    if(m_IsHovered){
+    if(m_IsHovered && !Application::EnableTransparentBar()){
         static const QBrush b = QBrush(QColor(0, 0, 0, 20));
         painter->setBrush(b);
         painter->setPen(Qt::NoPen);
@@ -2194,7 +2310,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         painter->drawRect(rect);
     }
 
-    if(m_IsFocused){
+    if(m_IsFocused && !Application::EnableTransparentBar()){
         static const QPen p = QPen(QColor(150, 150, 150, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);

@@ -124,6 +124,11 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
     setObjectName(QStringLiteral("ToolBar"));
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     setIconSize(QSize(16, 16));
+
+    if(Application::EnableTransparentBar()){
+        setAttribute(Qt::WA_TranslucentBackground);
+    }
+
     connect(m_LineEdit, &LineEdit::FocusIn,
             [this](){
                 if(m_LineEdit->text() == QStringLiteral("Open [text or url]"))
@@ -244,9 +249,11 @@ void ToolBar::SetFinished(bool ok){
 
 void ToolBar::paintEvent(QPaintEvent *ev){
     QPainter painter(this);
-    static const QBrush b = QBrush(QColor(240, 240, 240, 255));
+
+    static const QBrush tb = QBrush(QColor(0, 0, 0, 1));
+    static const QBrush nb = QBrush(QColor(240, 240, 240, 255));
     painter.setPen(Qt::NoPen);
-    painter.setBrush(b);
+    painter.setBrush(Application::EnableTransparentBar() ? tb : nb);
     foreach(QRect rect, ev->region().rects()){
         painter.drawRect(rect);
     }

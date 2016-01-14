@@ -221,22 +221,12 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
                                image_rect.height() - size.height());
         painter->drawImage(QRectF(image_rect.topLeft() + diff / 2.0, size),
                            image, QRectF(QPointF(), image.size()));
-    } else if(thumb->GetNode()->IsDirectory()){
-        static const QBrush b = QBrush(QColor(50, 100, 100, 150));
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(b);
-        painter->drawRect(image_rect);
-
-        static const QPen p = QPen(QColor(255, 255, 255, 255));
-        painter->setPen(p);
-        painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("Directory"));
     } else {
-        static const QBrush b = QBrush(QColor(50, 100, 120, 150));
+        bool isDir = thumb->GetNode()->IsDirectory();
+        static const QBrush db = QBrush(QColor(50, 100, 100, 150));
+        static const QBrush nb = QBrush(QColor(50, 100, 120, 150));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(b);
+        painter->setBrush(isDir ? db : nb);
         painter->drawRect(image_rect);
 
         static const QPen p = QPen(QColor(255, 255, 255, 255));
@@ -244,7 +234,10 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("NoImage"));
+        painter->drawText(image_rect, Qt::AlignCenter,
+                          isDir
+                          ? QStringLiteral("Directory")
+                          : QStringLiteral("NoImage"));
     }
 
     title_rect = QRectF(title_rect.topLeft() + QPointF(2.0, 0.0),
@@ -570,22 +563,12 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
                                image_rect.height() - size.height());
         painter->drawImage(QRectF(image_rect.topLeft() + diff / 2.0, size),
                            image, QRectF(QPointF(), image.size()));
-    } else if(notifier->GetNode()->IsDirectory()){
-        static const QBrush b = QBrush(QColor(50, 100, 100, 150));
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(b);
-        painter->drawRect(image_rect);
-
-        static const QPen p = QPen(QColor(255, 255, 255, 255));
-        painter->setPen(p);
-        painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("Directory"));
     } else {
-        static const QBrush b = QBrush(QColor(50, 100, 120, 150));
+        bool isDir = notifier->GetNode()->IsDirectory();
+        static const QBrush db = QBrush(QColor(50, 100, 100, 150));
+        static const QBrush nb = QBrush(QColor(50, 100, 120, 150));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(b);
+        painter->setBrush(isDir ? db : nb);
         painter->drawRect(image_rect);
 
         static const QPen p = QPen(QColor(255, 255, 255, 255));
@@ -593,7 +576,10 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->drawText(image_rect, Qt::AlignCenter, QStringLiteral("NoImage"));
+        painter->drawText(image_rect, Qt::AlignCenter,
+                          isDir
+                          ? QStringLiteral("Directory")
+                          : QStringLiteral("NoImage"));
     }
 
     const int basex = m_ThumbnailPaddingX * 3 + image_rect.size().width();
@@ -1000,24 +986,12 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
                                image_rect.height() - size.height());
         painter->drawImage(QRectF(image_rect.topLeft() + diff / 2.0, size),
                            image, QRectF(QPointF(), image.size()));
-    } else if(thumb->GetNode()->IsDirectory()){
-        static const QBrush b = QBrush(QColor(200, 255, 200, 255));
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(b);
-        painter->drawRect(image_rect);
-
-        static const QPen p = QPen(QColor(100, 100, 100, 255));
-        painter->setPen(p);
-        painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        QRectF image_rect_ = image_rect;
-        image_rect_.setBottom(title_rect.center().y());
-        painter->drawText(image_rect_, Qt::AlignCenter, QStringLiteral("Directory"));
     } else {
-        static const QBrush b = QBrush(QColor(200, 255, 255, 255));
+        bool isDir = thumb->GetNode()->IsDirectory();
+        static const QBrush db = QBrush(QColor(200, 255, 200, 255));
+        static const QBrush nb = QBrush(QColor(200, 255, 255, 255));
         painter->setPen(Qt::NoPen);
-        painter->setBrush(b);
+        painter->setBrush(isDir ? db : nb);
         painter->drawRect(image_rect);
 
         static const QPen p = QPen(QColor(100, 100, 100, 255));
@@ -1027,7 +1001,10 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->setRenderHint(QPainter::Antialiasing, true);
         QRectF image_rect_ = image_rect;
         image_rect_.setBottom(title_rect.center().y());
-        painter->drawText(image_rect_, Qt::AlignCenter, QStringLiteral("NoImage"));
+        painter->drawText(image_rect_, Qt::AlignCenter,
+                          isDir
+                          ? QStringLiteral("Directory")
+                          : QStringLiteral("NoImage"));
     }
 
     {

@@ -2338,11 +2338,11 @@ QMenu *TreeBank::GlobalContextMenu(){
     QMenu *menu = new QMenu(this);
     menu->setToolTipsVisible(true);
 
+    menu->addMenu(ApplicationMenu(false));
     menu->addMenu(NodeMenu());
     menu->addMenu(DisplayMenu());
     menu->addMenu(WindowMenu());
     menu->addMenu(PageMenu());
-    menu->addMenu(ApplicationMenu(false));
     menu->addSeparator();
     menu->addAction(Action(Te_OpenTextSeeker));
     menu->addAction(Action(Te_OpenQueryEditor));

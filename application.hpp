@@ -72,6 +72,7 @@ public:
     static void Reconfigure();
     static bool EnableGoogleSuggest();
     static bool EnableFramelessWindow();
+    static bool EnableTransparentBar();
     static bool EnableAutoSave();
     static bool EnableAutoLoad();
     static double WheelScrollRate();
@@ -80,6 +81,7 @@ private:
     static QSettings *m_GlobalSettings;
     static bool m_EnableGoogleSuggest;
     static bool m_EnableFramelessWindow;
+    static bool m_EnableTransparentBar;
     static bool m_EnableAutoSave;
     static bool m_EnableAutoLoad;
     static int m_AutoSaveInterval;

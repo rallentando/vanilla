@@ -68,6 +68,7 @@ QSettings*  Application::m_GlobalSettings    = 0;
 
 bool        Application::m_EnableGoogleSuggest = false;
 bool        Application::m_EnableFramelessWindow = false;
+bool        Application::m_EnableTransparentBar = false;
 bool        Application::m_EnableAutoSave    = false;
 bool        Application::m_EnableAutoLoad    = false;
 int         Application::m_AutoSaveInterval  = 0;
@@ -456,8 +457,8 @@ void Application::Import(TreeBank *tb){
         QString profile = firefoxProfile;
         QDir profiledir = profile;
         QStringList list =
-        profiledir.entryList(QStringList() << QStringLiteral("*.default"),
-                             QDir::NoFilter, QDir::Name);
+            profiledir.entryList(QStringList() << QStringLiteral("*.default"),
+                                 QDir::NoFilter, QDir::Name);
         if(!list.isEmpty()){
             foreach(QString defaultdir, list){
                 QString bookmarklist =
@@ -1410,6 +1411,7 @@ void Application::SaveGlobalSettings(){
 
     s->setValue(QStringLiteral("application/@EnableGoogleSuggest"),      m_EnableGoogleSuggest);
     s->setValue(QStringLiteral("application/@EnableFramelessWindow"),    m_EnableFramelessWindow);
+    s->setValue(QStringLiteral("application/@EnableTransparentBar"),     m_EnableTransparentBar);
     s->setValue(QStringLiteral("application/@EnableAutoSave"),           m_EnableAutoSave);
     s->setValue(QStringLiteral("application/@EnableAutoLoad"),           m_EnableAutoLoad);
     s->setValue(QStringLiteral("application/@AutoSaveInterval"),         m_AutoSaveInterval);
@@ -1471,6 +1473,7 @@ void Application::LoadGlobalSettings(){
 
     m_EnableGoogleSuggest      = s->value(QStringLiteral("application/@EnableGoogleSuggest"), false).value<bool>();
     m_EnableFramelessWindow    = s->value(QStringLiteral("application/@EnableFramelessWindow"), false).value<bool>();
+    m_EnableTransparentBar     = s->value(QStringLiteral("application/@EnableTransparentBar"), false).value<bool>();
     m_EnableAutoSave           = s->value(QStringLiteral("application/@EnableAutoSave"), true).value<bool>();
     m_EnableAutoLoad           = s->value(QStringLiteral("application/@EnableAutoLoad"), true).value<bool>();
     m_AutoSaveInterval         = s->value(QStringLiteral("application/@AutoSaveInterval"), 300000).value<int>();
@@ -1568,6 +1571,10 @@ bool Application::EnableFramelessWindow(){
     return m_EnableFramelessWindow;
 }
 
+bool Application::EnableTransparentBar(){
+    return m_EnableTransparentBar;
+}
+
 static bool ReadXMLFile(QIODevice &device, QSettings::SettingsMap &map){
     QDomDocument doc;
     bool check = doc.setContent(&device);
@@ -1633,6 +1640,7 @@ static bool ReadXMLFile(QIODevice &device, QSettings::SettingsMap &map){
             }
             else if(args[0] == QStringLiteral("@variant")){
                 QByteArray ba(settingtag.text().toLatin1().mid(9));
+                ba = QByteArray::fromBase64(ba);
                 QDataStream stream(&ba, QIODevice::ReadOnly);
                 stream >> var;
             }
@@ -1739,6 +1747,7 @@ static bool WriteXMLFile(QIODevice &device, const QSettings::SettingsMap &map){
             QByteArray ba;
             QDataStream stream(&ba, QIODevice::WriteOnly);
             stream << var;
+            ba = ba.toBase64();
             text = QString(QStringLiteral("@variant/%1")).
                 arg(QString::fromLatin1(ba.data(), ba.size()));
             break;
