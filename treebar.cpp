@@ -1280,7 +1280,9 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     }
     m_Line->setZValue(BORDEF_LINE_LAYER);
 
-    m_ScrollAnimation = new QPropertyAnimation(this, "scroll");
+    m_Animation = new QPropertyAnimation(this, "scroll");
+    connect(m_Animation, &QPropertyAnimation::finished,
+            this, &LayerItem::ResetTargetScroll);
 
     class DummyNode : public ViewNode{
         bool IsDummy() DECL_OVERRIDE { return true;}
@@ -1364,7 +1366,7 @@ void LayerItem::SetScroll(qreal scroll){
     update();
 }
 
-void LayerItem::ScrollDown(qreal step){
+void LayerItem::Scroll(qreal delta){
     qreal max = MaxScroll();
     qreal min = MinScroll();
     if(max < min) return;
@@ -1372,62 +1374,42 @@ void LayerItem::ScrollDown(qreal step){
     if(TreeBar::EnableAnimation()){
 
         qreal orig = m_TargetScroll;
-        m_TargetScroll += step;
+        m_TargetScroll += delta;
         if(m_TargetScroll > max) m_TargetScroll = max;
+        if(m_TargetScroll < min) m_TargetScroll = min;
 
-        if(m_ScrollAnimation->state() == QAbstractAnimation::Running &&
-           m_ScrollAnimation->easingCurve() == QEasingCurve::OutCubic){
+        if(m_TargetScroll == m_Scroll)
+            return;
+
+        if(m_Animation->state() == QAbstractAnimation::Running &&
+           m_Animation->easingCurve() == QEasingCurve::OutCubic){
 
             if(m_TargetScroll == orig) return;
 
-            m_ScrollAnimation->stop();
+            m_Animation->stop();
         } else {
-            m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
-            m_ScrollAnimation->setDuration(500);
+            m_Animation->setEasingCurve(QEasingCurve::OutCubic);
+            m_Animation->setDuration(400);
         }
-        m_ScrollAnimation->setStartValue(m_Scroll);
-        m_ScrollAnimation->setEndValue(m_TargetScroll);
-        m_ScrollAnimation->start();
-        m_ScrollAnimation->setCurrentTime(16);
+        m_Animation->setStartValue(m_Scroll);
+        m_Animation->setEndValue(m_TargetScroll);
+        m_Animation->start();
+        m_Animation->setCurrentTime(16);
     } else {
-        m_Scroll+=step;
+        m_Scroll += delta;
         if(m_Scroll > max) m_Scroll = max;
+        if(m_Scroll < min) m_Scroll = min;
         OnScrolled();
         update();
     }
 }
 
+void LayerItem::ScrollDown(qreal step){
+    Scroll(step);
+}
+
 void LayerItem::ScrollUp(qreal step){
-    qreal max = MaxScroll();
-    qreal min = MinScroll();
-    if(max < min) return;
-
-    if(TreeBar::EnableAnimation()){
-
-        qreal orig = m_TargetScroll;
-        m_TargetScroll -= step;
-        if(m_TargetScroll < min) m_TargetScroll = min;
-
-        if(m_ScrollAnimation->state() == QAbstractAnimation::Running &&
-           m_ScrollAnimation->easingCurve() == QEasingCurve::OutCubic){
-
-            if(m_TargetScroll == orig) return;
-
-            m_ScrollAnimation->stop();
-        } else {
-            m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
-            m_ScrollAnimation->setDuration(500);
-        }
-        m_ScrollAnimation->setStartValue(m_Scroll);
-        m_ScrollAnimation->setEndValue(m_TargetScroll);
-        m_ScrollAnimation->start();
-        m_ScrollAnimation->setCurrentTime(16);
-    } else {
-        m_Scroll-=step;
-        if(m_Scroll < min) m_Scroll = min;
-        OnScrolled();
-        update();
-    }
+    Scroll(-step);
 }
 
 void LayerItem::ResetTargetScroll(){
@@ -1437,33 +1419,33 @@ void LayerItem::ResetTargetScroll(){
 void LayerItem::AutoScrollDown(){
     if(MaxScroll() <= 0.0 ||
        GetScroll() == MaxScroll() ||
-       (m_ScrollAnimation->state() == QAbstractAnimation::Running &&
-        m_ScrollAnimation->easingCurve() == QEasingCurve::Linear))
+       (m_Animation->state() == QAbstractAnimation::Running &&
+        m_Animation->easingCurve() == QEasingCurve::Linear))
         return;
 
-    m_ScrollAnimation->setEasingCurve(QEasingCurve::Linear);
-    m_ScrollAnimation->setStartValue(GetScroll());
-    m_ScrollAnimation->setEndValue(MaxScroll());
-    m_ScrollAnimation->setDuration((MaxScroll() - GetScroll()) * 2);
-    m_ScrollAnimation->start();
+    m_Animation->setEasingCurve(QEasingCurve::Linear);
+    m_Animation->setStartValue(GetScroll());
+    m_Animation->setEndValue(MaxScroll());
+    m_Animation->setDuration((MaxScroll() - GetScroll()) * 2);
+    m_Animation->start();
 }
 
 void LayerItem::AutoScrollUp(){
     if(MaxScroll() <= 0.0 ||
        GetScroll() == MinScroll() ||
-       (m_ScrollAnimation->state() == QAbstractAnimation::Running &&
-        m_ScrollAnimation->easingCurve() == QEasingCurve::Linear))
+       (m_Animation->state() == QAbstractAnimation::Running &&
+        m_Animation->easingCurve() == QEasingCurve::Linear))
         return;
 
-    m_ScrollAnimation->setEasingCurve(QEasingCurve::Linear);
-    m_ScrollAnimation->setStartValue(GetScroll());
-    m_ScrollAnimation->setEndValue(MinScroll());
-    m_ScrollAnimation->setDuration((GetScroll() - MinScroll()) * 2);
-    m_ScrollAnimation->start();
+    m_Animation->setEasingCurve(QEasingCurve::Linear);
+    m_Animation->setStartValue(GetScroll());
+    m_Animation->setEndValue(MinScroll());
+    m_Animation->setDuration((GetScroll() - MinScroll()) * 2);
+    m_Animation->start();
 }
 
 void LayerItem::AutoScrollStop(){
-    m_ScrollAnimation->stop();
+    m_Animation->stop();
     m_TargetScroll = m_Scroll;
     StopScrollDownTimer();
     StopScrollUpTimer();
@@ -1472,8 +1454,8 @@ void LayerItem::AutoScrollStop(){
 void LayerItem::AutoScrollStopOrScrollDown(qreal step){
     StopScrollDownTimer();
 
-    if(m_ScrollAnimation->state() == QAbstractAnimation::Running){
-        m_ScrollAnimation->stop();
+    if(m_Animation->state() == QAbstractAnimation::Running){
+        m_Animation->stop();
         m_TargetScroll = m_Scroll;
     }
     else ScrollDown(step);
@@ -1482,8 +1464,8 @@ void LayerItem::AutoScrollStopOrScrollDown(qreal step){
 void LayerItem::AutoScrollStopOrScrollUp(qreal step){
     StopScrollUpTimer();
 
-    if(m_ScrollAnimation->state() == QAbstractAnimation::Running){
-        m_ScrollAnimation->stop();
+    if(m_Animation->state() == QAbstractAnimation::Running){
+        m_Animation->stop();
         m_TargetScroll = m_Scroll;
     }
     else ScrollUp(step);
@@ -2065,9 +2047,10 @@ void LayerItem::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
 }
 
 void LayerItem::wheelEvent(QGraphicsSceneWheelEvent *ev){
-    bool up = ev->delta() > 0;
-    if(TreeBar::ScrollToSwitchNode()){
 
+    bool up = ev->delta() > 0;
+
+    if(TreeBar::ScrollToSwitchNode()){
         NodeList siblings = m_Node->GetSiblings();
         int index = siblings.indexOf(m_Node);
         if(up){
@@ -2077,8 +2060,7 @@ void LayerItem::wheelEvent(QGraphicsSceneWheelEvent *ev){
             if(index < siblings.length()-1)
                 m_TreeBank->SetCurrent(siblings[index+1]);
         }
-
-    } else {
+    } else if(!TreeBar::EnableAnimation()){
 
         switch(m_TreeBar->orientation()){
         case Qt::Horizontal:
@@ -2090,6 +2072,9 @@ void LayerItem::wheelEvent(QGraphicsSceneWheelEvent *ev){
             else   ScrollDown(TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT * 3.0);
             break;
         }
+    } else {
+
+        Scroll(-ev->delta());
     }
 }
 

@@ -99,7 +99,7 @@ private:
 
 class LayerItem : public QGraphicsObject {
     Q_OBJECT
-    Q_PROPERTY(qreal scroll READ GetScroll WRITE SetScroll NOTIFY ScrollChanged)
+    Q_PROPERTY(qreal scroll READ GetScroll WRITE SetScroll)
 
 public:
     LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd = 0, QGraphicsItem *parent = 0);
@@ -118,6 +118,7 @@ public:
 
     qreal GetScroll();
     void SetScroll(qreal scroll);
+    void Scroll(qreal delta);
     void ScrollDown(qreal step);
     void ScrollUp(qreal step);
     void ResetTargetScroll();
@@ -157,9 +158,6 @@ public:
     QMenu *LayerMenu();
     QMenu *AddNodeMenu();
 
-signals:
-    void ScrollChanged();
-
 protected:
     void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
     void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
@@ -185,7 +183,7 @@ private:
     QGraphicsItem *m_NextScrollButton;
     QList<NodeItem*> m_NodeItems;
     QGraphicsLineItem *m_Line;
-    QPropertyAnimation *m_ScrollAnimation;
+    QPropertyAnimation *m_Animation;
 
     // for empty directory.
     Node *m_DummyNode;
@@ -193,7 +191,7 @@ private:
 
 class NodeItem : public QGraphicsObject {
     Q_OBJECT
-    Q_PROPERTY(QRectF rect READ GetRect WRITE SetRect NOTIFY RectChanged)
+    Q_PROPERTY(QRectF rect READ GetRect WRITE SetRect)
 
 public:
     NodeItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent = 0);
@@ -234,9 +232,6 @@ public:
 
 public slots:
     void ResetTargetPosition();
-
-signals:
-    void RectChanged();
 
 private:
     enum ButtonState{

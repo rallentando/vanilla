@@ -1955,8 +1955,8 @@ void LocalView::SeekText(const QString &text, View::FindFlags flags){
     if(!m_CurrentNode) return;
     CollectNodes(m_CurrentNode, text);
     ThumbList_MoveToFirstItem();
-    // 'ThumbList_MoveToFirstItem' calls 'SetScrollSoft',
-    // and 'SetScrollSoft' calls 'SetScroll',
+    // 'ThumbList_MoveToFirstItem' calls 'SetScrollToItem',
+    // and 'SetScrollToItem' calls 'SetScroll',
     // but 'SetScroll' doesn't call 'update' when scroll value is not changed.
     RestartImageCollector();
 }

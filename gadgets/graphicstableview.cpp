@@ -5,6 +5,7 @@
 
 #include <QtCore>
 #include <QGraphicsObject>
+#include <QPropertyAnimation>
 #include <QtWidgets>
 
 #include "application.hpp"
@@ -43,6 +44,7 @@ bool GraphicsTableView::m_EnableLoadedSpotLight   = false;
 bool GraphicsTableView::m_EnableInPlaceNotifier   = false;
 bool GraphicsTableView::m_EnableCloseButton       = false;
 bool GraphicsTableView::m_EnableCloneButton       = false;
+bool GraphicsTableView::m_EnableAnimation         = false;
 
 GraphicsTableView::GraphicsTableView(TreeBank *parent)
     : QGraphicsObject(0)
@@ -83,7 +85,11 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
     m_UpDirectoryButton = new UpDirectoryButton(this);
 
     m_CurrentThumbnailZoomFactor = 1.0f;
+    m_ScrollAnimation = new QPropertyAnimation(this, "scroll");
+    connect(m_ScrollAnimation, &QPropertyAnimation::finished,
+            this, &GraphicsTableView::ResetTargetScroll);
     m_CurrentOffsetValue = 0;
+    m_TargetOffsetValue = 0;
     m_SelectRect = 0;
     m_CurrentNode = 0;
     m_StatusBarMessageIsSuspended = false;
@@ -132,6 +138,7 @@ void GraphicsTableView::LoadSettings(){
     m_EnableInPlaceNotifier   = s->value(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),    true).value<bool>();
     m_EnableCloseButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),        true).value<bool>();
     m_EnableCloneButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),       false).value<bool>();
+    m_EnableAnimation         = s->value(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         false).value<bool>();
 
     Thumbnail::Initialize();
     NodeTitle::Initialize();
@@ -151,6 +158,7 @@ void GraphicsTableView::SaveSettings(){
     s->setValue(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),   m_EnableInPlaceNotifier);
     s->setValue(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),       m_EnableCloseButton);
     s->setValue(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),       m_EnableCloneButton);
+    s->setValue(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         m_EnableAnimation);
 }
 
 void GraphicsTableView::Activate(DisplayType type){
@@ -442,11 +450,11 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     if(m_HoveredItemIndex == -1){
         // when activating gadgets.
         SetHoveredItem(m_PrimaryItemIndex);
-        SetScrollSoft(m_PrimaryItemIndex);
+        SetScrollToItem(m_PrimaryItemIndex);
         // caller : 'Activate'.
     } else if(m_CurrentNode != nd){
         // when changing directory.
-        SetScrollSoft(m_CurrentOffsetValue);
+        SetScrollToItem(m_CurrentOffsetValue);
         // caller : 'UpDirectory', 'DownDirectory', 'ToggleTrash'.
     } else {
         // when manipulating node.
@@ -455,6 +463,7 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
         // 'MakeDirectory', 'RenameNode', 'ApplyChildrenOrder'.
     }
     m_CurrentNode = nd;
+    ResetTargetScroll();
 
     if(!hasSuspended) ResumeStatusBarMessage();
 
@@ -468,7 +477,7 @@ bool GraphicsTableView::DeleteNodes(NodeList list){
 
     Node::NodeType type;
     Node *parent = m_CurrentNode->GetParent();
-    int scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentOffsetValue;
     bool success = false;
 
     type = m_DisplayThumbnails.first()->GetNode()->GetType();
@@ -1174,16 +1183,16 @@ void GraphicsTableView::SetSelectionRange(NodeTitle *title){
 bool GraphicsTableView::MoveTo(bool basedOnScroll, std::function<int(int, int)> compute){
     if(!m_CurrentNode || !IsDisplayingNode()) return false;
 
-    int cur = basedOnScroll ? m_CurrentOffsetValue : m_HoveredItemIndex;
+    qreal cur = basedOnScroll ? m_TargetOffsetValue : m_HoveredItemIndex;
     int len = m_DisplayThumbnails.length();
 
     SetHoveredItem(compute(cur, len));
     ClearScrollIndicatorSelection();
 
     if(basedOnScroll)
-        SetScroll(m_HoveredItemIndex);
+        Scroll(m_HoveredItemIndex - m_TargetOffsetValue);
     else
-        SetScrollSoft(m_HoveredItemIndex);
+        ScrollToItem(m_HoveredItemIndex);
 
     return true;
 }
@@ -1316,9 +1325,9 @@ bool GraphicsTableView::TransferTo(bool toRight, bool basedOnScroll,
         ClearScrollIndicatorSelection();
 
         if(basedOnScroll)
-            SetScroll(m_HoveredItemIndex);
+            Scroll(m_HoveredItemIndex - m_TargetOffsetValue);
         else
-            SetScrollSoft(m_HoveredItemIndex);
+            ScrollToItem(m_HoveredItemIndex);
     }
 
     SetSelectionRange(from, to);
@@ -1410,6 +1419,10 @@ bool GraphicsTableView::EnableCloseButton(){
 
 bool GraphicsTableView::EnableCloneButton(){
     return m_EnableCloneButton;
+}
+
+bool GraphicsTableView::EnableAnimation(){
+    return m_EnableAnimation;
 }
 
 void GraphicsTableView::dragEnterEvent(QGraphicsSceneDragDropEvent *ev){
@@ -1627,8 +1640,7 @@ void GraphicsTableView::wheelEvent(QGraphicsSceneWheelEvent *ev){
     } else {
 
         ignoreStatusBarMessage = false;
-        if(up) ThumbList_ScrollUp();
-        else   ThumbList_ScrollDown();
+        Scroll(-ev->delta() * m_CurrentThumbnailColumnCount / 120.0);
     }
 
     UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);
@@ -1648,7 +1660,7 @@ bool GraphicsTableView::ThumbList_Refresh(){
     if(!IsDisplayingNode()) return false;
 
     // recollect nodes and reset scroll.
-    int scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentOffsetValue;
     SetCurrent(m_CurrentNode);
     if(scroll == m_CurrentOffsetValue){
         Update();
@@ -1662,7 +1674,7 @@ bool GraphicsTableView::ThumbList_RefreshNoScroll(){
     if(!IsDisplayingNode()) return false;
 
     // recollect nodes and reset scroll.
-    int scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentOffsetValue;
     bool hovered = m_HoveredItemIndex != -1;
 
     if(!hovered) m_HoveredItemIndex = scroll;
@@ -1936,7 +1948,7 @@ bool GraphicsTableView::ThumbList_UpDirectory(){
     m_HoveredItemIndex = -1;
     m_PrimaryItemIndex = -1;
 
-    int scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentOffsetValue;
     SetCurrent(m_CurrentNode->GetParent());
     if(scroll == m_CurrentOffsetValue) Update();
     return true;
@@ -1975,7 +1987,7 @@ bool GraphicsTableView::ThumbList_DownDirectory(){
     m_HoveredItemIndex = -1;
     m_PrimaryItemIndex = -1;
 
-    int scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentOffsetValue;
     SetCurrent(target);
     if(scroll == m_CurrentOffsetValue) Update();
     return true;
@@ -2439,47 +2451,59 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
     return success;
 }
 
-void GraphicsTableView::SetScroll(QPointF pos){
+void GraphicsTableView::Scroll(qreal delta){
+
+    if(!m_CurrentNode || !IsDisplayingNode()) return;
+    const qreal len = m_DisplayThumbnails.length();
+    qreal max = len - 1;
+    qreal min = 0;
+    if(max < min) return;
+
     ClearScrollIndicatorSelection();
-    SetScroll(static_cast<int>(m_DisplayThumbnails.length() * pos.y()));
-}
 
-void GraphicsTableView::SetScroll(int offset){
-    if(!isVisible()) return;
+    if(m_EnableAnimation){
 
-    const int len = m_DisplayThumbnails.length();
-    const int before = m_CurrentOffsetValue;
-    const int after =
-        len    ==   0 ?       0 :
-        offset <    0 ?       0 :
-        offset >= len ? len - 1 :
-        offset;
+        qreal orig = m_TargetOffsetValue;
+        m_TargetOffsetValue += delta;
+        if(m_TargetOffsetValue > max) m_TargetOffsetValue = max;
+        if(m_TargetOffsetValue < min) m_TargetOffsetValue = min;
 
-    if(after != before){
-        m_CurrentOffsetValue = after;
-        RelocateContents();
-        RelocateScrollBar();
-        Update();
-        emit ScrollChanged(QPointF(0.5,
-                                   static_cast<double>(after) /
-                                   static_cast<double>(len)));
+        if(m_TargetOffsetValue == m_CurrentOffsetValue)
+            return;
+
+        if(m_ScrollAnimation->state() == QAbstractAnimation::Running &&
+           m_ScrollAnimation->easingCurve() == QEasingCurve::OutCubic){
+
+            if(m_TargetOffsetValue == orig) return;
+
+            m_ScrollAnimation->stop();
+        } else {
+            m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
+            m_ScrollAnimation->setDuration(400);
+        }
+        m_ScrollAnimation->setStartValue(m_CurrentOffsetValue);
+        m_ScrollAnimation->setEndValue(m_TargetOffsetValue);
+        m_ScrollAnimation->start();
+        m_ScrollAnimation->setCurrentTime(16);
+    } else {
+        SetScroll(m_CurrentOffsetValue + delta);
     }
 }
 
-void GraphicsTableView::SetScrollSoft(QPointF pos){
-    ClearScrollIndicatorSelection();
-    SetScrollSoft(static_cast<int>(m_DisplayThumbnails.length() * pos.y()));
-}
+void GraphicsTableView::ScrollToItem(qreal target){
 
-void GraphicsTableView::SetScrollSoft(int offset){
-    if(offset > m_CurrentOffsetValue){
+    target = static_cast<int>(target)
+        / m_CurrentThumbnailColumnCount
+        * m_CurrentThumbnailColumnCount;
 
-        int thumbnailscroll = offset -
+    if(target > m_CurrentOffsetValue){
+
+        int thumbnailscroll = target -
             m_CurrentThumbnailColumnCount *
             (m_CurrentThumbnailLineCount - 1);
         if(thumbnailscroll < 0) thumbnailscroll = 0;
 
-        int nodetitlescroll = offset + m_CurrentThumbnailColumnCount -
+        int nodetitlescroll = target + m_CurrentThumbnailColumnCount -
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
             GetStyle()->NodeTitleHeight();
         if(nodetitlescroll < 0) nodetitlescroll = 0;
@@ -2492,11 +2516,84 @@ void GraphicsTableView::SetScrollSoft(int offset){
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
             GetStyle()->NodeTitleHeight();
 
-        SetScroll(qMax(m_CurrentOffsetValue,
+        Scroll(qMax(static_cast<int>(m_CurrentOffsetValue),
+                    thumbnailcount  < nodetitlecount ?
+                    thumbnailscroll : nodetitlescroll)
+               - m_TargetOffsetValue);
+    } else {
+        Scroll(target - m_TargetOffsetValue);
+    }
+}
+
+void GraphicsTableView::ResetTargetScroll(){
+    m_TargetOffsetValue = m_CurrentOffsetValue;
+}
+
+qreal GraphicsTableView::GetScroll(){
+    return m_CurrentOffsetValue;
+}
+
+void GraphicsTableView::SetScroll(QPointF pos){
+    ClearScrollIndicatorSelection();
+    SetScroll(m_DisplayThumbnails.length() * pos.y());
+}
+
+void GraphicsTableView::SetScroll(qreal target){
+    if(!isVisible()) return;
+
+    const qreal len = m_DisplayThumbnails.length();
+    const qreal before = m_CurrentOffsetValue;
+    const qreal after =
+        len    ==   0 ?       0 :
+        target <    0 ?       0 :
+        target >= len ? len - 1 :
+        target;
+
+    if(after != before){
+        m_CurrentOffsetValue = after;
+        RelocateContents();
+        RelocateScrollBar();
+        Update();
+        emit ScrollChanged(QPointF(0.5, after / len));
+    }
+}
+
+void GraphicsTableView::SetScrollToItem(QPointF pos){
+    ClearScrollIndicatorSelection();
+    SetScrollToItem(m_DisplayThumbnails.length() * pos.y());
+}
+
+void GraphicsTableView::SetScrollToItem(qreal target){
+
+    target = static_cast<int>(target)
+        / m_CurrentThumbnailColumnCount
+        * m_CurrentThumbnailColumnCount;
+
+    if(target > m_CurrentOffsetValue){
+
+        int thumbnailscroll = target -
+            m_CurrentThumbnailColumnCount *
+            (m_CurrentThumbnailLineCount - 1);
+        if(thumbnailscroll < 0) thumbnailscroll = 0;
+
+        int nodetitlescroll = target + m_CurrentThumbnailColumnCount -
+            (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
+            GetStyle()->NodeTitleHeight();
+        if(nodetitlescroll < 0) nodetitlescroll = 0;
+
+        int thumbnailcount =
+            m_CurrentThumbnailColumnCount *
+            m_CurrentThumbnailLineCount;
+
+        int nodetitlecount =
+            (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
+            GetStyle()->NodeTitleHeight();
+
+        SetScroll(qMax(static_cast<int>(m_CurrentOffsetValue),
                        thumbnailcount  < nodetitlecount ?
                        thumbnailscroll : nodetitlescroll));
     } else {
-        SetScroll(offset);
+        SetScroll(target);
     }
 }
 
@@ -2504,7 +2601,7 @@ bool GraphicsTableView::ThumbList_ScrollUp(){
     if(!m_CurrentNode || !IsDisplayingNode()) return false;
     ClearScrollIndicatorSelection();
     // not change hovered item.
-    SetScroll(m_CurrentOffsetValue - m_CurrentThumbnailColumnCount);
+    Scroll(-m_CurrentThumbnailColumnCount);
     return true;
 }
 
@@ -2512,7 +2609,7 @@ bool GraphicsTableView::ThumbList_ScrollDown(){
     if(!m_CurrentNode || !IsDisplayingNode()) return false;
     ClearScrollIndicatorSelection();
     // not change hovered item.
-    SetScroll(m_CurrentOffsetValue + m_CurrentThumbnailColumnCount);
+    Scroll(m_CurrentThumbnailColumnCount);
     return true;
 }
 
@@ -3002,17 +3099,17 @@ bool GraphicsTableView::ThumbList_SwitchNodeCollectionTypeReverse(){
 
 QPointF GraphicsTableView::CurrentThumbnailOffset(){
     return QPointF(0,
-                   - m_CurrentOffsetValue
-                   / m_CurrentThumbnailColumnCount
-                   * m_CurrentThumbnailHeight);
+                   round(- m_CurrentOffsetValue
+                         / m_CurrentThumbnailColumnCount
+                         * m_CurrentThumbnailHeight));
 }
 
 QPointF GraphicsTableView::CurrentNodeTitleOffset(){
     return QPointF(0,
-                   - m_CurrentOffsetValue
-                   / m_CurrentThumbnailColumnCount
-                   * m_CurrentThumbnailColumnCount
-                   * GetStyle()->NodeTitleHeight());
+                   round(- m_CurrentOffsetValue
+                         // / m_CurrentThumbnailColumnCount
+                         // * m_CurrentThumbnailColumnCount
+                         * GetStyle()->NodeTitleHeight()));
 }
 
 SpotLight::SpotLight(GraphicsTableView::SpotLightType type, QGraphicsItem *parent)
@@ -3156,10 +3253,13 @@ QVariant ScrollIndicator::itemChange(GraphicsItemChange change, const QVariant &
             newPos.setY(m_TableView->ScrollBarAreaRect().size().height()
                         - boundingRect().size().height() - 4);
 
-        const int offset =
+        const qreal offset =
             m_TableView->m_DisplayThumbnails.length() * newPos.y() /
             (m_TableView->ScrollBarAreaRect().size().height() - boundingRect().size().height());
-        if(isSelected()) m_TableView->SetScroll(offset);
+        if(isSelected()){
+            m_TableView->SetScroll(offset);
+            m_TableView->ResetTargetScroll();
+        }
         return newPos;
     }
     return QGraphicsRectItem::itemChange(change, value);
@@ -3189,6 +3289,7 @@ void ScrollIndicator::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 void ScrollIndicator::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    m_TableView->ClearScrollIndicatorSelection();
     QGraphicsRectItem::mouseReleaseEvent(ev);
     setCursor(Qt::OpenHandCursor);
 }

@@ -634,8 +634,8 @@ void Gadgets::SeekText(const QString &text, View::FindFlags flags){
     Q_UNUSED(flags);
     CollectNodes(m_CurrentNode, text);
     ThumbList_MoveToFirstItem();
-    // 'ThumbList_MoveToFirstItem' calls 'SetScrollSoft',
-    // and 'SetScrollSoft' calls 'SetScroll',
+    // 'ThumbList_MoveToFirstItem' calls 'SetScrollToItem',
+    // and 'SetScrollToItem' calls 'SetScroll',
     // but 'SetScroll' doesn't call 'update' when scroll value is not changed.
     Update();
 }
@@ -1844,8 +1844,9 @@ void Gadgets::wheelEvent(QGraphicsSceneWheelEvent *ev){
     } else {
 
         ignoreStatusBarMessage = false;
-        if(up) ThumbList_ScrollUp();
-        else   ThumbList_ScrollDown();
+        //if(up) ThumbList_ScrollUp();
+        //else   ThumbList_ScrollDown();
+        Scroll(-ev->delta() * m_CurrentThumbnailColumnCount / 120.0);
     }
 
     UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);

@@ -26,6 +26,7 @@
 #endif
 
 #include "treebank.hpp"
+#include "treebar.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "networkcontroller.hpp"
@@ -328,6 +329,11 @@ void WebViewBase::OnLoadFinished(bool ok){
     //[[/!WEV]]
     //[[WEV]]
     AssignInspector();
+
+    if(visible() && m_TreeBank &&
+       m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
+        QTimer::singleShot(100, [this](){ UpdateThumbnail();});
+    }
     //[[/WEV]]
 }
 

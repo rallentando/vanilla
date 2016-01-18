@@ -180,8 +180,8 @@ void AbstractNodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         // because
         // 'ApplyChildrenOrder' calls 'SetCurrent'.
         // 'SetCurrent' calls 'CollectNodes'.
-        // 'CollectNodes' calls 'SetScrollSoft'.
-        // 'SetScrollSoft' calls 'SetScroll'.
+        // 'CollectNodes' calls 'SetScrollToItem'.
+        // 'SetScrollToItem' calls 'SetScroll'.
         // 'SetScroll' calls 'update()'.
 
         ApplyChildrenOrder(ev->scenePos());

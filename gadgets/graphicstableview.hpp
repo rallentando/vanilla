@@ -19,6 +19,7 @@
 
 class QAction;
 class QMenu;
+class QPropertyAnimation;
 class TreeBank;
 
 class GadgetsStyle;
@@ -31,6 +32,7 @@ class UpDirectoryButton;
 
 class GraphicsTableView : public QGraphicsObject{
     Q_OBJECT
+    Q_PROPERTY(qreal scroll READ GetScroll WRITE SetScroll NOTIFY ScrollChanged)
 
 public:
     GraphicsTableView(TreeBank *parent = 0);
@@ -178,6 +180,7 @@ public:
 
     static bool EnableCloseButton();
     static bool EnableCloneButton();
+    static bool EnableAnimation();
 
     enum SortFlag {
         NoSort           = 0,
@@ -216,11 +219,17 @@ private slots:
 protected:
     void CollectNodes(Node *root, QString filter = QString());
 
+public:
+    void ResetTargetScroll();
+    void Scroll(qreal delta);
+    void ScrollToItem(qreal target);
+    qreal GetScroll();
+
 public slots:
-    void SetScroll(QPointF);
-    void SetScroll(int);
-    void SetScrollSoft(QPointF);
-    void SetScrollSoft(int);
+    void SetScroll(QPointF pos);
+    void SetScroll(qreal target);
+    void SetScrollToItem(QPointF pos);
+    void SetScrollToItem(qreal target);
 
 signals:
     void ViewChanged();
@@ -353,6 +362,7 @@ private:
     static bool m_EnableInPlaceNotifier;
     static bool m_EnableCloseButton;
     static bool m_EnableCloneButton;
+    static bool m_EnableAnimation;
 
     SpotLight *m_PrimarySpotLight;
     SpotLight *m_HoveredSpotLight;
@@ -373,7 +383,9 @@ protected:
     }
 
     // for thumblist layout.
-    int m_CurrentOffsetValue;
+    QPropertyAnimation *m_ScrollAnimation;
+    qreal m_CurrentOffsetValue;
+    qreal m_TargetOffsetValue;
     int m_CurrentThumbnailLineCount;
     int m_CurrentThumbnailColumnCount;
     int m_CurrentThumbnailWidth;
