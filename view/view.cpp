@@ -430,6 +430,9 @@ void View::GoBackToInferedUrl(){
         int length = text.length();
         QUrl url = elem->LinkUrl();
 
+        if(url.toString().startsWith(QStringLiteral("javascript:")))
+            continue;
+
         if(reg.exactMatch(text.toLower())){
             GoBackTo(url);
             return;
@@ -446,9 +449,6 @@ void View::GoBackToInferedUrl(){
         result << Compare(basequery, query);
 
         int max = qMax(currentHighValidityDistance.length(), result.length());
-
-        if(url.toString().startsWith(QStringLiteral("javascript:")))
-            goto escape;
 
         // ignore if all 0.
         for(int i = 0; i < result.length(); i++){
@@ -574,6 +574,9 @@ void View::GoForwardToInferedUrl(){
         int length = text.length();
         QUrl url = elem->LinkUrl();
 
+        if(url.toString().startsWith(QStringLiteral("javascript:")))
+            continue;
+
         if(reg.exactMatch(text.toLower())){
             GoForwardTo(url);
             return;
@@ -590,9 +593,6 @@ void View::GoForwardToInferedUrl(){
         result << Compare(basequery, query);
 
         int max = qMax(currentHighValidityDistance.length(), result.length());
-
-        if(url.toString().startsWith(QStringLiteral("javascript:")))
-            goto escape;
 
         // ignore if all 0.
         for(int i = 0; i < result.length(); i++){

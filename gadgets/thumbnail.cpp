@@ -57,3 +57,15 @@ void Thumbnail::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     Q_UNUSED(option); Q_UNUSED(widget);
     m_TableView->GetStyle()->Render(this, painter);
 }
+
+QRectF Thumbnail::boundingRect() const {
+    if(!m_LockedRect.isNull()) return m_LockedRect;
+    return m_TableView->ComputeRect(this, m_Index);
+}
+
+QVariant Thumbnail::itemChange(GraphicsItemChange change, const QVariant &value){
+    if(change == ItemPositionChange && scene()){
+        LockRect();
+    }
+    return AbstractNodeItem::itemChange(change, value);
+}

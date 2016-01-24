@@ -384,8 +384,23 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     int loadcount = 0;
 
     for(int i = 0; i < m_DisplayThumbnails.length(); i++){
+        Thumbnail *thumb = m_DisplayThumbnails[i];
+        thumb->setParentItem(this);
+        thumb->setVisible(true);
+        thumb->setEnabled(true);
+        thumb->setPos(0,0);
+        thumb->SetIndex(i);
+        thumb->UnlockRect();
+        NodeTitle *title = m_DisplayNodeTitles[i];
+        title->setParentItem(this);
+        title->setEnabled(true);
+        title->setVisible(true);
+        title->setPos(0,0);
+        title->SetIndex(i);
+        title->UnlockRect();
+
         if(m_EnableLoadedSpotLight &&
-           m_DisplayThumbnails[i]->GetNode()->GetView()){
+           thumb->GetNode()->GetView()){
 
             if(loadcount >= m_LoadedSpotLights.length()){
                 m_LoadedSpotLights << new SpotLight(LoadedSpotLight, this);
@@ -400,19 +415,19 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
 
         switch (type){
         case Flat:
-            if(m_DisplayThumbnails[i]->GetNode()->IsPrimaryOfParent())
+            if(thumb->GetNode()->IsPrimaryOfParent())
                 m_PrimaryItemIndex = i;
             break;
         case Straight:
-            if(m_DisplayThumbnails[i]->GetNode() == nd)
+            if(thumb->GetNode() == nd)
                 m_PrimaryItemIndex = i;
             break;
         case Recursive:
-            if(m_DisplayThumbnails[i]->GetNode() == nd)
+            if(thumb->GetNode() == nd)
                 m_PrimaryItemIndex = i;
             break;
         case Foldable:
-            if(m_DisplayThumbnails[i]->GetNode() == nd)
+            if(thumb->GetNode() == nd)
                 m_PrimaryItemIndex = i;
             break;
         }
@@ -1004,55 +1019,44 @@ QSizeF GraphicsTableView::Size(){
     return m_Size;
 }
 
-void GraphicsTableView::RelocateContents(){
+QRectF GraphicsTableView::ComputeRect(const Thumbnail *thumb, const int index) const {
+    Q_UNUSED(thumb);
+    return QRectF(DISPLAY_PADDING_X + (index % m_CurrentThumbnailColumnCount) * m_CurrentThumbnailWidth,
+                  DISPLAY_PADDING_Y + (index / m_CurrentThumbnailColumnCount) * m_CurrentThumbnailHeight
+                  - round(m_CurrentOffsetValue
+                          / m_CurrentThumbnailColumnCount
+                          * m_CurrentThumbnailHeight),
+                  m_CurrentThumbnailWidth,
+                  m_CurrentThumbnailHeight);
+}
 
+QRectF GraphicsTableView::ComputeRect(const NodeTitle *title, const int index) const {
+    Q_UNUSED(title);
+    return QRectF(DISPLAY_PADDING_X
+                  + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
+                  + GADGETS_SCROLL_BAR_MARGIN * 2
+                  + GADGETS_SCROLL_BAR_WIDTH,
+                  DISPLAY_PADDING_Y + GetStyle()->NodeTitleHeight() * index
+                  - round(m_CurrentOffsetValue
+                          * GetStyle()->NodeTitleHeight()),
+
+                  m_Size.width()
+                  - (GetStyle()->NodeTitleDrawBorder() ?
+                     DISPLAY_PADDING_X * 2 :
+                     DISPLAY_PADDING_X)
+                  - m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
+                  - GADGETS_SCROLL_BAR_MARGIN * 2
+                  - GADGETS_SCROLL_BAR_WIDTH,
+                  GetStyle()->NodeTitleHeight());
+}
+
+void GraphicsTableView::RelocateContents(){
     GetStyle()->ComputeContentsLayout
         (this,
          m_CurrentThumbnailColumnCount,
          m_CurrentThumbnailLineCount,
          m_CurrentThumbnailWidth,
          m_CurrentThumbnailHeight);
-
-    int length = m_DisplayThumbnails.length();
-    for(int i = 0; i < length; i++){
-        Thumbnail *thumb = m_DisplayThumbnails[i];
-        NodeTitle *title = m_DisplayNodeTitles[i];
-
-        thumb->setParentItem(this);
-        thumb->setVisible(true);
-        thumb->setEnabled(true);
-        if(!thumb->isSelected() || thumb->pos() == QPointF(0,0)){
-            thumb->setPos(0,0);
-            thumb->setRect
-                (QRectF(QPointF(DISPLAY_PADDING_X + (i % m_CurrentThumbnailColumnCount) * m_CurrentThumbnailWidth,
-                                DISPLAY_PADDING_Y + (i / m_CurrentThumbnailColumnCount) * m_CurrentThumbnailHeight)
-                        + CurrentThumbnailOffset(),
-                        QSizeF(m_CurrentThumbnailWidth, m_CurrentThumbnailHeight)));
-        }
-
-        title->setParentItem(this);
-        title->setEnabled(true);
-        title->setVisible(true);
-        if(!title->isSelected() || title->pos() == QPointF(0,0)){
-            title->setPos(0,0);
-            title->setRect
-                (QRectF(QPointF(DISPLAY_PADDING_X
-                                + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
-                                + GADGETS_SCROLL_BAR_MARGIN * 2
-                                + GADGETS_SCROLL_BAR_WIDTH,
-                                DISPLAY_PADDING_Y + GetStyle()->NodeTitleHeight() * i)
-                        + CurrentNodeTitleOffset(),
-
-                        QSizeF(m_Size.width()
-                               - (GetStyle()->NodeTitleDrawBorder() ?
-                                  DISPLAY_PADDING_X * 2 :
-                                  DISPLAY_PADDING_X)
-                               - m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
-                               - GADGETS_SCROLL_BAR_MARGIN * 2
-                               - GADGETS_SCROLL_BAR_WIDTH,
-                               GetStyle()->NodeTitleHeight())));
-        }
-    }
 }
 
 void GraphicsTableView::RelocateScrollBar(){
@@ -1471,7 +1475,7 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         if(m_SelectRect){
             rect = m_SelectRect->rect().normalized();
             m_SelectRect->setRect(rect);
-            collidings = scene()->collidingItems(m_SelectRect);
+            collidings = scene()->items(rect);
         }
 
         if(collidings.isEmpty() &&
@@ -1662,9 +1666,7 @@ bool GraphicsTableView::ThumbList_Refresh(){
     // recollect nodes and reset scroll.
     qreal scroll = m_CurrentOffsetValue;
     SetCurrent(m_CurrentNode);
-    if(scroll == m_CurrentOffsetValue){
-        Update();
-    }
+    if(scroll == m_CurrentOffsetValue) Update();
 
     m_NodesRegister.clear();
     return true;
@@ -2071,7 +2073,7 @@ bool GraphicsTableView::ThumbList_MakeDirectoryWithSameDomainNode(){
     QMap<QString, QList<Node*>> groups;
 
     foreach(Node *nd, m_CurrentNode->GetSiblings()){
-        // QUrl("about:blank") and invalid url has empty host,
+        // QUrl(QStringLiteral("about:blank")) and invalid url has empty host,
         // so empty title directory will be made.
         if(!nd->IsDirectory()) groups[nd->GetUrl().host()] << nd;
     }
@@ -2454,9 +2456,11 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
 void GraphicsTableView::Scroll(qreal delta){
 
     if(!m_CurrentNode || !IsDisplayingNode()) return;
-    const qreal len = m_DisplayThumbnails.length();
-    qreal max = len - 1;
-    qreal min = 0;
+    const int len = m_DisplayThumbnails.length();
+    const qreal min = 0;
+    const qreal max = (len - 1)
+        / m_CurrentThumbnailColumnCount
+        * m_CurrentThumbnailColumnCount;
     if(max < min) return;
 
     ClearScrollIndicatorSelection();
@@ -2487,6 +2491,7 @@ void GraphicsTableView::Scroll(qreal delta){
         m_ScrollAnimation->setCurrentTime(16);
     } else {
         SetScroll(m_CurrentOffsetValue + delta);
+        ResetTargetScroll();
     }
 }
 
@@ -2541,20 +2546,22 @@ void GraphicsTableView::SetScroll(QPointF pos){
 void GraphicsTableView::SetScroll(qreal target){
     if(!isVisible()) return;
 
-    const qreal len = m_DisplayThumbnails.length();
-    const qreal before = m_CurrentOffsetValue;
-    const qreal after =
-        len    ==   0 ?       0 :
-        target <    0 ?       0 :
-        target >= len ? len - 1 :
-        target;
+    const int len = m_DisplayThumbnails.length();
+    const qreal min = 0;
+    const qreal max = (len - 1)
+        / m_CurrentThumbnailColumnCount
+        * m_CurrentThumbnailColumnCount;
+    if(max < min) return;
 
-    if(after != before){
-        m_CurrentOffsetValue = after;
+    if(target > max) target = max;
+    if(target < min) target = min;
+
+    if(target != m_CurrentOffsetValue){
+        m_CurrentOffsetValue = target;
         RelocateContents();
         RelocateScrollBar();
         Update();
-        emit ScrollChanged(QPointF(0.5, after / len));
+        emit ScrollChanged(QPointF(0.5, target / len));
     }
 }
 
@@ -3146,14 +3153,14 @@ QRectF SpotLight::boundingRect() const{
     const Thumbnail *thumb = parent->m_DisplayThumbnails[index];
     const NodeTitle *title = parent->m_DisplayNodeTitles[index];
 
-    const int x1  = thumb->pos().x() + thumb->rect().right() - 1; // need if optimization 'QGraphicsView::DontAdjustForAntialiasing' is on.
-    const int x2  = title->pos().x() + title->rect().left();
+    const int x1  = thumb->RealRight() - 1;
+    const int x2  = title->RealLeft();
 
-    const int y1b = thumb->pos().y() + thumb->rect().top();
-    const int y1e = thumb->pos().y() + thumb->rect().bottom();
+    const int y1b = thumb->RealTop();
+    const int y1e = thumb->RealBottom();
 
-    const int y2b = title->pos().y() + title->rect().top();
-    const int y2e = title->pos().y() + title->rect().bottom();
+    const int y2b = title->RealTop();
+    const int y2e = title->RealBottom();
 
     return parent->boundingRect().
         intersected(QRectF(qMin(x1,  x2 ),  qMin(y1b, y2b),
@@ -3181,14 +3188,14 @@ QPainterPath SpotLight::shape() const{
     const Thumbnail *thumb = parent->m_DisplayThumbnails[index];
     const NodeTitle *title = parent->m_DisplayNodeTitles[index];
 
-    const int x1  = thumb->pos().x() + thumb->rect().right() - 1; // need if optimization 'QGraphicsView::DontAdjustForAntialiasing' is on.
-    const int x2  = title->pos().x() + title->rect().left();
+    const int x1  = thumb->RealRight() - 1;
+    const int x2  = title->RealLeft();
 
-    const int y1b = thumb->pos().y() + thumb->rect().top();
-    const int y1e = thumb->pos().y() + thumb->rect().bottom();
+    const int y1b = thumb->RealTop();
+    const int y1e = thumb->RealBottom();
 
-    const int y2b = title->pos().y() + title->rect().top();
-    const int y2e = title->pos().y() + title->rect().bottom();
+    const int y2b = title->RealTop();
+    const int y2e = title->RealBottom();
 
     QPainterPath path;
     QPolygonF polygon;

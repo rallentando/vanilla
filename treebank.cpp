@@ -1400,17 +1400,11 @@ bool TreeBank::DeleteNode(NodeList list){
     }
 
     if(!m_CurrentView){
-        if(m_AllViews.isEmpty()){
-            SetCurrent(m_ViewRoot);
-        } else if(sample->IsHistNode()){
+        if(sample->IsHistNode()){
             foreach(SharedView view, m_AllViews){
                 if(prevpartner == view->GetViewNode())
                     if(SetCurrent(view->GetHistNode()))
                         return true;
-            }
-            foreach(SharedView view, m_AllViews){
-                if(SetCurrent(view->GetHistNode()))
-                    return true;
             }
         } else if(sample->IsViewNode()){
             foreach(SharedView view, m_AllViews){
@@ -1418,19 +1412,24 @@ bool TreeBank::DeleteNode(NodeList list){
                     if(SetCurrent(view->GetViewNode()))
                         return true;
             }
-            foreach(SharedView view, m_AllViews){
-                if(SetCurrent(view->GetViewNode()))
-                    return true;
-            }
 
             NodeList list = prevparent->GetChildren();
             qSort(list.begin(), list.end(), [](Node *n1, Node *n2){
                     return n1->GetLastAccessDate() > n2->GetLastAccessDate();
                 });
             foreach(Node *nd, list){
-                if(SetCurrent(nd))
-                    return true;
+                if(!nd->IsDirectory())
+                    if(SetCurrent(nd))
+                        return true;
             }
+        }
+
+        foreach(SharedView view, m_AllViews){
+            if(SetCurrent(view))
+                return true;
+        }
+        if(SetCurrent(m_ViewRoot)){
+            return true;
         }
     }
     // return value is whether or not to have removed the node actually.

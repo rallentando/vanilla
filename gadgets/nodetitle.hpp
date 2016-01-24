@@ -16,6 +16,8 @@ public:
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
 
+    QRectF boundingRect() const DECL_OVERRIDE;
+
     void SetNest(int) DECL_OVERRIDE;
 
     bool IsPrimary() DECL_OVERRIDE;

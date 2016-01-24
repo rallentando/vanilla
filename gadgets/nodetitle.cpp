@@ -54,8 +54,14 @@ void NodeTitle::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     m_TableView->GetStyle()->Render(this, painter);
 }
 
+QRectF NodeTitle::boundingRect() const {
+    if(!m_LockedRect.isNull()) return m_LockedRect;
+    return m_TableView->ComputeRect(this, m_Index);
+}
+
 QVariant NodeTitle::itemChange(GraphicsItemChange change, const QVariant &value){
     if(change == ItemPositionChange && scene()){
+        LockRect();
         QPointF newPos = value.toPointF();
         newPos.setX(0);
         return newPos;

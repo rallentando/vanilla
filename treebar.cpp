@@ -166,7 +166,7 @@ namespace {
             MainWindow *win = static_cast<MainWindow*>(bar->parentWidget());
 
             int minimumWidth = TREEBAR_NODE_VERTICAL_MINIMUM_WIDTH + 7;
-            int maximumWidth = win->size().width() / 2;
+            int maximumWidth = win->size().width();
             int minimumHeight = (TREEBAR_NODE_HORIZONTAL_MINIMUM_HEIGHT + 3)
                 * bar->GetLayerList().length() + 4;
             int maximumHeight = (TREEBAR_NODE_HORIZONTAL_MAXIMUM_HEIGHT + 3)
@@ -222,7 +222,7 @@ namespace {
             MainWindow *win = static_cast<MainWindow*>(bar->parentWidget());
 
             int minimumWidth = TREEBAR_NODE_VERTICAL_MINIMUM_WIDTH + 7;
-            int maximumWidth = win->size().width() / 2;
+            int maximumWidth = win->size().width();
             int minimumHeight = (TREEBAR_NODE_HORIZONTAL_MINIMUM_HEIGHT + 3)
                 * bar->GetLayerList().length() + 4;
             int maximumHeight = (TREEBAR_NODE_HORIZONTAL_MAXIMUM_HEIGHT + 3)
@@ -965,7 +965,7 @@ QSize TreeBar::sizeHint() const {
     if(m_OverrideSize.isValid()){
         MainWindow *win = static_cast<MainWindow*>(parentWidget());
         int minimumWidth = TREEBAR_NODE_VERTICAL_MINIMUM_WIDTH + 7;
-        int maximumWidth = win->size().width() / 2;
+        int maximumWidth = win->size().width();
         int minimumHeight = (TREEBAR_NODE_HORIZONTAL_MINIMUM_HEIGHT + 3)
             * m_LayerList.length() + 4;
         int maximumHeight =
@@ -1354,8 +1354,8 @@ qreal LayerItem::GetScroll(){
 }
 
 void LayerItem::SetScroll(qreal scroll){
-    qreal max = MaxScroll();
-    qreal min = MinScroll();
+    const qreal min = MinScroll();
+    const qreal max = MaxScroll();
     if(max < min) return;
 
     if(scroll > max) scroll = max;
@@ -1367,8 +1367,8 @@ void LayerItem::SetScroll(qreal scroll){
 }
 
 void LayerItem::Scroll(qreal delta){
-    qreal max = MaxScroll();
-    qreal min = MinScroll();
+    const qreal min = MinScroll();
+    const qreal max = MaxScroll();
     if(max < min) return;
 
     if(TreeBar::EnableAnimation()){
@@ -1396,11 +1396,8 @@ void LayerItem::Scroll(qreal delta){
         m_Animation->start();
         m_Animation->setCurrentTime(16);
     } else {
-        m_Scroll += delta;
-        if(m_Scroll > max) m_Scroll = max;
-        if(m_Scroll < min) m_Scroll = min;
-        OnScrolled();
-        update();
+        SetScroll(m_Scroll + delta);
+        ResetTargetScroll();
     }
 }
 
@@ -1811,8 +1808,8 @@ QMenu *LayerItem::LayerMenu(){
     newViewNode->connect(newViewNode, &QAction::triggered,
                          [tb, nd, pnd](){
                              if(nd) tb->NewViewNode(nd->ToViewNode());
-                             else if(pnd) tb->OpenOnSuitableNode(QUrl("about:blank"), true, pnd->ToViewNode());
-                             else tb->OpenOnSuitableNode(QUrl("about:blank"), true);
+                             else if(pnd) tb->OpenOnSuitableNode(QUrl(QStringLiteral("about:blank")), true, pnd->ToViewNode());
+                             else tb->OpenOnSuitableNode(QUrl(QStringLiteral("about:blank")), true);
                          });
     menu->addAction(newViewNode);
 
@@ -1917,8 +1914,8 @@ QMenu *LayerItem::AddNodeMenu(){
     newViewNode->connect(newViewNode, &QAction::triggered,
                          [tb, nd, pnd](){
                              if(nd) tb->NewViewNode(nd->ToViewNode());
-                             else if(pnd) tb->OpenOnSuitableNode(QUrl("about:blank"), true, pnd->ToViewNode());
-                             else tb->OpenOnSuitableNode(QUrl("about:blank"), true);
+                             else if(pnd) tb->OpenOnSuitableNode(QUrl(QStringLiteral("about:blank")), true, pnd->ToViewNode());
+                             else tb->OpenOnSuitableNode(QUrl(QStringLiteral("about:blank")), true);
                          });
     menu->addAction(newViewNode);
 
@@ -2814,6 +2811,13 @@ QMenu *NodeItem::NodeMenu(){
         menu->addAction(reload);
 
         if(!tb->IsCurrent(vn)){
+            QAction *open = new QAction(menu);
+            open->setText(QObject::tr("OpenViewNode"));
+            open->connect(open, &QAction::triggered,
+                          [tb, vn](){
+                              tb->SetCurrent(vn);
+                          });
+            menu->addAction(open);
             QAction *openOnNewWindow = new QAction(menu);
             openOnNewWindow->setText(QObject::tr("OpenViewNodeOnNewWindow"));
             openOnNewWindow->connect(openOnNewWindow, &QAction::triggered,
@@ -2823,6 +2827,84 @@ QMenu *NodeItem::NodeMenu(){
                                      });
             menu->addAction(openOnNewWindow);
         }
+
+        menu->addSeparator();
+
+        QMenu *m = new QMenu(tr("OpenViewNodeWithOtherBrowser"));
+        if(!Application::BrowserPath_IE().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWithIE"));
+            a->setIcon(Application::BrowserIcon_IE());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_IE(vn->GetUrl());});
+            m->addAction(a);
+        }
+        if(!Application::BrowserPath_FF().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWithFF"));
+            a->setIcon(Application::BrowserIcon_FF());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_FF(vn->GetUrl());});
+            m->addAction(a);
+        }
+        if(!Application::BrowserPath_Opera().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWithOpera"));
+            a->setIcon(Application::BrowserIcon_Opera());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_Opera(vn->GetUrl());});
+            m->addAction(a);
+        }
+        if(!Application::BrowserPath_OPR().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWithOPR"));
+            a->setIcon(Application::BrowserIcon_OPR());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_OPR(vn->GetUrl());});
+            m->addAction(a);
+        }
+        if(!Application::BrowserPath_Safari().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWithSafari"));
+            a->setIcon(Application::BrowserIcon_Safari());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_Safari(vn->GetUrl());});
+            m->addAction(a);
+        }
+        if(!Application::BrowserPath_Chrome().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWithChrome"));
+            a->setIcon(Application::BrowserIcon_Chrome());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_Chrome(vn->GetUrl());});
+            m->addAction(a);
+        }
+        if(!Application::BrowserPath_Sleipnir().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWithSleipnir"));
+            a->setIcon(Application::BrowserIcon_Sleipnir());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_Sleipnir(vn->GetUrl());});
+            m->addAction(a);
+        }
+        if(!Application::BrowserPath_Vivaldi().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWithVivaldi"));
+            a->setIcon(Application::BrowserIcon_Custom());
+            a->setIcon(Application::BrowserIcon_Vivaldi());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_Vivaldi(vn->GetUrl());});
+            m->addAction(a);
+        }
+        if(!Application::BrowserPath_Custom().isEmpty()){
+            QAction *a = new QAction(m);
+            a->setText(tr("OpenViewNodeWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
+            a->setIcon(Application::BrowserIcon_Custom());
+            a->connect(a, &QAction::triggered,
+                       [vn](){ Application::OpenUrlWith_Custom(vn->GetUrl());});
+            m->addAction(a);
+        }
+        menu->addMenu(m);
     }
 
     menu->addSeparator();

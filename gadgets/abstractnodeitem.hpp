@@ -3,13 +3,13 @@
 
 #include "switch.hpp"
 
-#include <QGraphicsRectItem>
+#include <QGraphicsItem>
 
 class Node;
 class GraphicsTableView;
 class QString;
 
-class AbstractNodeItem : public QGraphicsRectItem {
+class AbstractNodeItem : public QGraphicsItem {
 
 public:
     explicit AbstractNodeItem(Node *nd, int nest, QGraphicsItem *parent = 0);
@@ -17,6 +17,7 @@ public:
 
     Node *GetNode();
     GraphicsTableView *GetTableView();
+    void SetIndex(int index);
 
     static void Initialize();
 
@@ -33,14 +34,23 @@ public:
     virtual void ClearOtherSectionSelection();
     virtual void ApplyChildrenOrder(QPointF);
 
-    QPointF RealTopLeft()    { return pos() + rect().topLeft();}
-    QPointF RealTopRight()   { return pos() + rect().topRight();}
-    QPointF RealBottomLeft() { return pos() + rect().bottomLeft();}
-    QPointF RealBottomRight(){ return pos() + rect().bottomRight();}
+    qreal RealTop()    const { return pos().y() + boundingRect().top();}
+    qreal RealBottom() const { return pos().y() + boundingRect().bottom();}
+    qreal RealLeft()   const { return pos().x() + boundingRect().left();}
+    qreal RealRight()  const { return pos().x() + boundingRect().right();}
+    QPointF RealTopLeft()     const { return pos() + boundingRect().topLeft();}
+    QPointF RealTopRight()    const { return pos() + boundingRect().topRight();}
+    QPointF RealBottomLeft()  const { return pos() + boundingRect().bottomLeft();}
+    QPointF RealBottomRight() const { return pos() + boundingRect().bottomRight();}
+
+    void LockRect();
+    void UnlockRect();
 
 protected:
     GraphicsTableView *m_TableView;
     Node *m_Node;
+    QRectF m_LockedRect;
+    int m_Index;
     int m_NestLevel;
 
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;

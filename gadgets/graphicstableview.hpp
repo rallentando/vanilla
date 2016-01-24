@@ -133,9 +133,9 @@ public:
     inline Thumbnail *GetPrimaryThumbnail() const { return m_DisplayThumbnails.value(m_PrimaryItemIndex);}
     inline NodeTitle *GetPrimaryNodeTitle() const { return m_DisplayNodeTitles.value(m_PrimaryItemIndex);}
 
-    inline int        GetScrolledItemIndex() const { return m_CurrentOffsetValue;}
-    inline Thumbnail *GetScrolledThumbnail() const { return m_DisplayThumbnails.value(m_CurrentOffsetValue);}
-    inline NodeTitle *GetScrolledNodeTitle() const { return m_DisplayNodeTitles.value(m_CurrentOffsetValue);}
+    inline int        GetScrolledItemIndex() const { return m_TargetOffsetValue;}
+    inline Thumbnail *GetScrolledThumbnail() const { return m_DisplayThumbnails.value(m_TargetOffsetValue);}
+    inline NodeTitle *GetScrolledNodeTitle() const { return m_DisplayNodeTitles.value(m_TargetOffsetValue);}
 
     // for thumbnail and nodetitle.
     inline bool IsHovered(Thumbnail *thumb) const { return thumb && thumb == GetHoveredThumbnail();}
@@ -152,6 +152,8 @@ public:
     void ResizeNotify(QSize size);
     virtual void Resize(QSizeF size);
     QSizeF Size();
+    QRectF ComputeRect(const Thumbnail*, const int) const;
+    QRectF ComputeRect(const NodeTitle*, const int) const;
     void RelocateContents();
     void RelocateScrollBar();
     void AppendToSelection(Node*);
@@ -455,7 +457,7 @@ protected:
     }
 
     inline Node *GetScrolledNode() const {
-        if(Thumbnail *thumb = m_DisplayThumbnails.value(m_CurrentOffsetValue))
+        if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetOffsetValue))
             return thumb->GetNode();
         return 0;
     }
@@ -476,7 +478,7 @@ protected:
 
     inline ViewNode *GetScrolledViewNode() const {
         if(IsDisplayingViewNode())
-            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_CurrentOffsetValue))
+            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetOffsetValue))
                 return thumb->GetNode()->ToViewNode();
         return 0;
     }
@@ -497,7 +499,7 @@ protected:
 
     inline HistNode *GetScrolledHistNode() const {
         if(IsDisplayingHistNode())
-            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_CurrentOffsetValue))
+            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetOffsetValue))
                 return thumb->GetNode()->ToHistNode();
         return 0;
     }

@@ -194,10 +194,10 @@ void NetworkAccessManager::HandleDownload(QWebEngineDownloadItem *orig_item){
 
         QMimeDatabase db;
         QMimeType mimeType = db.mimeTypeForName(orig_item->mimeType());
-        if(mimeType.isDefault()) mimeType = db.mimeTypeForFile(filename);
-        if(mimeType.isDefault()) mimeType = db.mimeTypeForUrl(orig_item->url());
+        if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForFile(filename);
+        if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForUrl(orig_item->url());
 
-        if(!mimeType.isDefault()) filter = mimeType.filterString();
+        if(mimeType.isValid() && !mimeType.isDefault()) filter = mimeType.filterString();
 
         filename = ModalDialog::GetSaveFileName_(QString::null, filename, filter);
     }
@@ -671,11 +671,11 @@ void DownloadItem::ReadyRead(){
             QMimeDatabase db;
             QMimeType mimeType;
             if(!ba.isEmpty()) mimeType = db.mimeTypeForName(QString::fromUtf8(ba));
-            if(mimeType.isDefault()) mimeType = db.mimeTypeForFile(filename);
-            if(mimeType.isDefault()) mimeType = db.mimeTypeForUrl(m_DownloadReply->url());
-            if(mimeType.isDefault()) mimeType = db.mimeTypeForUrl(m_DownloadReply->request().url());
+            if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForFile(filename);
+            if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForUrl(m_DownloadReply->url());
+            if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForUrl(m_DownloadReply->request().url());
 
-            if(!mimeType.isDefault()) filter = mimeType.filterString();
+            if(mimeType.isValid() && !mimeType.isDefault()) filter = mimeType.filterString();
 
             filename = ModalDialog::GetSaveFileName_(QString::null, filename, filter);
         }
@@ -855,7 +855,7 @@ NetworkController::NetworkController()
     Application::ClearTemporaryDirectory();
     QMap<QString, NetworkAccessManager*> nams = m_NetworkAccessManagerTable;
     if(!nams.isEmpty()){
-        Download(nams.first(), QUrl("about:blank"), QUrl(), NetworkController::TemporaryDirectory);
+        Download(nams.first(), QUrl(QStringLiteral("about:blank")), QUrl(), NetworkController::TemporaryDirectory);
     }
 }
 

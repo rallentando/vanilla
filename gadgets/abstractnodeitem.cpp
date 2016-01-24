@@ -4,7 +4,7 @@
 #include "abstractnodeitem.hpp"
 
 #include <QtCore>
-#include <QGraphicsRectItem>
+#include <QGraphicsItem>
 #include <QString>
 #include <QLinearGradient>
 #include <QPainter>
@@ -26,17 +26,17 @@
 #endif
 
 AbstractNodeItem::AbstractNodeItem(Node *nd, int nest, QGraphicsItem *parent)
-    : QGraphicsRectItem(parent)
+    : QGraphicsItem(parent)
 {
     m_TableView = static_cast<GraphicsTableView*>(parent);
     m_Node = nd;
+    m_LockedRect = QRectF();
+    m_Index = -1;
     SetNest(nest);
     setAcceptHoverEvents(true);
     setFlag(QGraphicsItem::ItemIsSelectable);
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
-    setPen(QPen(QColor(0,0,0,0)));
-    setBrush(QBrush(QColor(0,0,0,0)));
     setZValue(MAIN_CONTENTS_LAYER);
 }
 
@@ -49,6 +49,10 @@ Node *AbstractNodeItem::GetNode(){
 
 GraphicsTableView *AbstractNodeItem::GetTableView(){
     return m_TableView;
+}
+
+void AbstractNodeItem::SetIndex(int index){
+    m_Index = index;
 }
 
 void AbstractNodeItem::Initialize(){
@@ -87,6 +91,14 @@ void AbstractNodeItem::ApplyChildrenOrder(QPointF pos){
     Q_UNUSED(pos);
 }
 
+void AbstractNodeItem::LockRect(){
+    m_LockedRect = boundingRect();
+}
+
+void AbstractNodeItem::UnlockRect(){
+    m_LockedRect = QRectF();
+}
+
 QVariant AbstractNodeItem::itemChange(GraphicsItemChange change, const QVariant &value){
     if(change == ItemSelectedChange && scene()){
 
@@ -100,23 +112,23 @@ QVariant AbstractNodeItem::itemChange(GraphicsItemChange change, const QVariant 
             setZValue(MAIN_CONTENTS_LAYER);
         }
     }
-    return QGraphicsRectItem::itemChange(change, value);
+    return QGraphicsItem::itemChange(change, value);
 }
 
 void AbstractNodeItem::dragEnterEvent(QGraphicsSceneDragDropEvent *ev){
-    QGraphicsRectItem::dragEnterEvent(ev);
+    QGraphicsItem::dragEnterEvent(ev);
 }
 
 void AbstractNodeItem::dropEvent(QGraphicsSceneDragDropEvent *ev){
-    QGraphicsRectItem::dropEvent(ev);
+    QGraphicsItem::dropEvent(ev);
 }
 
 void AbstractNodeItem::dragMoveEvent(QGraphicsSceneDragDropEvent *ev){
-    QGraphicsRectItem::dragMoveEvent(ev);
+    QGraphicsItem::dragMoveEvent(ev);
 }
 
 void AbstractNodeItem::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
-    QGraphicsRectItem::dragLeaveEvent(ev);
+    QGraphicsItem::dragLeaveEvent(ev);
 }
 
 void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
@@ -130,7 +142,7 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 
     if(ev->button() != Qt::LeftButton){
         // call GraphicsTableView's mouse event.
-        QGraphicsRectItem::mousePressEvent(ev);
+        QGraphicsItem::mousePressEvent(ev);
         return;
     }
 
@@ -146,7 +158,7 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
     } else {
         ClearOtherSectionSelection();
         m_TableView->ClearScrollIndicatorSelection();
-        QGraphicsRectItem::mousePressEvent(ev);
+        QGraphicsItem::mousePressEvent(ev);
     }
     ev->setAccepted(true);
 }
@@ -232,7 +244,7 @@ void AbstractNodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
         list << item->boundingRect().translated(item->pos());
     }
 
-    QGraphicsRectItem::mouseMoveEvent(ev);
+    QGraphicsItem::mouseMoveEvent(ev);
 
     if(m_TableView->GetHoveredSpotLight()){
         list << m_TableView->GetHoveredSpotLight()->boundingRect();
@@ -265,22 +277,22 @@ void AbstractNodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 void AbstractNodeItem::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev){
-    QGraphicsRectItem::mouseDoubleClickEvent(ev);
+    QGraphicsItem::mouseDoubleClickEvent(ev);
 }
 
 void AbstractNodeItem::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
-    QGraphicsRectItem::hoverEnterEvent(ev);
+    QGraphicsItem::hoverEnterEvent(ev);
     SetHovered();
     m_TableView->SetInPlaceNotifierContent(m_Node);
     m_TableView->SetInPlaceNotifierPosition(ev->scenePos());
 }
 
 void AbstractNodeItem::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
-    QGraphicsRectItem::hoverLeaveEvent(ev);
+    QGraphicsItem::hoverLeaveEvent(ev);
 }
 
 void AbstractNodeItem::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
-    QGraphicsRectItem::hoverMoveEvent(ev);
+    QGraphicsItem::hoverMoveEvent(ev);
     SetHovered();
     m_TableView->SetInPlaceNotifierContent(m_Node);
     m_TableView->SetInPlaceNotifierPosition(ev->scenePos());
@@ -288,5 +300,5 @@ void AbstractNodeItem::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
 
 void AbstractNodeItem::wheelEvent(QGraphicsSceneWheelEvent *ev){
     // call GraphicsTableView's wheel event.
-    QGraphicsRectItem::wheelEvent(ev);
+    QGraphicsItem::wheelEvent(ev);
 }

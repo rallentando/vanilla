@@ -114,7 +114,6 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     painter->setRenderHint(QPainter::Antialiasing, false);
 
     QRectF rect = bound;
-    rect.setBottomRight(bound.bottomRight() - QPointF(1,1));
 
     QImage image = thumb->GetNode()->GetImage();
     QString title = thumb->GetNode()->GetTitle();
@@ -294,7 +293,6 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
 
     painter->setRenderHint(QPainter::Antialiasing, false);
 
-    port.moveBottomRight(port.bottomRight() - QPointF(1, 1));
     if(m_NodeTitleDrawBorder) port = port.intersected(bound);
 
     QString title_ = title->GetNode()->GetTitle();
@@ -427,14 +425,14 @@ void GlassStyle::Render(SpotLight *light, QPainter *painter) const {
     const Thumbnail *thumb = parent->m_DisplayThumbnails[index];
     const NodeTitle *title = parent->m_DisplayNodeTitles[index];
 
-    const int x1  = thumb->pos().x() + thumb->rect().right();
-    const int x2  = title->pos().x() + title->rect().left();
+    const int x1  = thumb->pos().x() + thumb->boundingRect().right();
+    const int x2  = title->pos().x() + title->boundingRect().left();
 
-    const int y1b = thumb->pos().y() + thumb->rect().top();
-    const int y1e = thumb->pos().y() + thumb->rect().bottom();
+    const int y1b = thumb->pos().y() + thumb->boundingRect().top();
+    const int y1e = thumb->pos().y() + thumb->boundingRect().bottom();
 
-    const int y2b = title->pos().y() + title->rect().top();
-    const int y2e = title->pos().y() + title->rect().bottom();
+    const int y2b = title->pos().y() + title->boundingRect().top();
+    const int y2e = title->pos().y() + title->boundingRect().bottom();
 
     const int ybrange = y2b - y1b;
     const int yerange = y2e - y1e;
@@ -512,7 +510,6 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
     painter->setRenderHint(QPainter::Antialiasing, false);
 
     QRectF rect = notifier->boundingRect();
-    rect.setBottomRight(rect.bottomRight() - QPointF(1, 1));
 
     QImage image = notifier->GetNode()->GetImage();
     const QString title = notifier->GetNode()->GetTitle().replace(QStringLiteral("\n"), QStringLiteral(" ")).trimmed();

@@ -16,6 +16,8 @@ public:
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
 
+    QRectF boundingRect() const DECL_OVERRIDE;
+
     void SetNest(int nest) DECL_OVERRIDE;
 
     void OnSetPrimary(bool primary);
@@ -29,6 +31,9 @@ public:
 
     void ClearOtherSectionSelection() DECL_OVERRIDE;
     void ApplyChildrenOrder(QPointF pos) DECL_OVERRIDE;
+
+protected:
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
 };
 
 #endif

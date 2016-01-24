@@ -256,7 +256,7 @@ void WebViewBase::OnLoadStarted(){
     //[[WEV]]
     m_PreventScrollRestoration = false;
     AssignInspector();
-    if(m_Icon.isNull())
+    if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
     //[[/WEV]]
 }
@@ -747,7 +747,12 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
 
     if(m_DragStarted){
         QWebViewBase::mouseMoveEvent(ev);
+        //[[WEV]]
+        ev->setAccepted(true);
+        //[[/WEV]]
+        //[[!WEV]]
         ev->setAccepted(false);
+        //[[/!WEV]]
         return;
     }
     if(ev->buttons() & Qt::RightButton &&

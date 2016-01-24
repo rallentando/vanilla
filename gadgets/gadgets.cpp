@@ -1844,8 +1844,6 @@ void Gadgets::wheelEvent(QGraphicsSceneWheelEvent *ev){
     } else {
 
         ignoreStatusBarMessage = false;
-        //if(up) ThumbList_ScrollUp();
-        //else   ThumbList_ScrollDown();
         Scroll(-ev->delta() * m_CurrentThumbnailColumnCount / 120.0);
     }
 
