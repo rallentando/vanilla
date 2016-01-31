@@ -1112,7 +1112,7 @@ bool LocalView::ThumbList_RefreshNoScroll(){
     if(!IsDisplayingNode()) return false;
 
     // recollect nodes and reset scroll.
-    int scroll = m_CurrentOffsetValue;
+    int scroll = m_CurrentScroll;
     bool hovered = (m_HoveredItemIndex != -1);
 
     if(!hovered) m_HoveredItemIndex = scroll;
@@ -1356,11 +1356,11 @@ bool LocalView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF basepos){
 void LocalView::StartImageCollector(bool reverse){
     m_CollectingFuture = reverse
         ? QtConcurrent::run(this, &LocalView::LoadImageRequestReverse,
-                            m_CurrentOffsetValue)
+                            m_CurrentScroll)
         : QtConcurrent::run(this, &LocalView::LoadImageRequest,
-                            m_CurrentOffsetValue);
+                            m_CurrentScroll);
     for(int i = 100; i < 5000; i <<= 2)
-        QTimer::singleShot(i, this, SLOT(UpdateLater()));
+        QTimer::singleShot(i, this, SLOT(update()));
 }
 
 void LocalView::StopImageCollector(){
@@ -1384,9 +1384,14 @@ bool LocalView::SelectMediaItem(int index, std::function<void()> defaultAction){
 
     if(!m_PixmapItem->pixmap().isNull() ||
        !m_MediaPlayer->media().isNull()){
+        int min = 0;
+        int max = m_DisplayThumbnails.length() - 1;
+        if(index < min) index = min;
+        if(index > max) index = max;
         m_ScrollIndicator->setSelected(false);
         GraphicsTableView::SetScroll(index);
-        SwapMediaItem(m_CurrentOffsetValue);
+        SwapMediaItem(index);
+        m_TargetScroll = index;
         result = true;
     } else {
         defaultAction();
@@ -1395,12 +1400,12 @@ bool LocalView::SelectMediaItem(int index, std::function<void()> defaultAction){
 }
 
 bool LocalView::ThumbList_ScrollUp(){
-    return SelectMediaItem(m_CurrentOffsetValue - 1,
+    return SelectMediaItem(m_TargetScroll - 1,
                            [this](){ GraphicsTableView::ThumbList_ScrollUp();});
 }
 
 bool LocalView::ThumbList_ScrollDown(){
-    return SelectMediaItem(m_CurrentOffsetValue + 1,
+    return SelectMediaItem(m_TargetScroll + 1,
                            [this](){ GraphicsTableView::ThumbList_ScrollDown();});
 }
 
@@ -1413,32 +1418,32 @@ bool LocalView::ThumbList_PageDown(){
 }
 
 bool LocalView::ThumbList_MoveToUpperItem(){
-    return SelectMediaItem(m_CurrentOffsetValue + m_CurrentThumbnailColumnCount,
+    return SelectMediaItem(m_TargetScroll + m_CurrentThumbnailColumnCount,
                            [this](){ GraphicsTableView::ThumbList_MoveToUpperItem();});
 }
 
 bool LocalView::ThumbList_MoveToLowerItem(){
-    return SelectMediaItem(m_CurrentOffsetValue - m_CurrentThumbnailColumnCount,
+    return SelectMediaItem(m_TargetScroll - m_CurrentThumbnailColumnCount,
                            [this](){ GraphicsTableView::ThumbList_MoveToLowerItem();});
 }
 
 bool LocalView::ThumbList_MoveToRightItem(){
-    return SelectMediaItem(m_CurrentOffsetValue - 1,
+    return SelectMediaItem(m_TargetScroll - 1,
                            [this](){ GraphicsTableView::ThumbList_MoveToRightItem();});
 }
 
 bool LocalView::ThumbList_MoveToLeftItem(){
-    return SelectMediaItem(m_CurrentOffsetValue + 1,
+    return SelectMediaItem(m_TargetScroll + 1,
                            [this](){ GraphicsTableView::ThumbList_MoveToLeftItem();});
 }
 
 bool LocalView::ThumbList_MoveToPrevPage(){
-    return SelectMediaItem(m_CurrentOffsetValue - 1,
+    return SelectMediaItem(m_TargetScroll - 1,
                            [this](){ GraphicsTableView::ThumbList_PageUp();});
 }
 
 bool LocalView::ThumbList_MoveToNextPage(){
-    return SelectMediaItem(m_CurrentOffsetValue + 1,
+    return SelectMediaItem(m_TargetScroll + 1,
                            [this](){ GraphicsTableView::ThumbList_PageDown();});
 }
 
@@ -1571,7 +1576,7 @@ void LocalView::OpenNode(Node *nd){
     if(IsSupported(nd->GetUrl())){
         m_ScrollIndicator->setSelected(false);
         GraphicsTableView::SetScroll(m_HoveredItemIndex);
-        SwapMediaItem(m_CurrentOffsetValue);
+        SwapMediaItem(m_HoveredItemIndex);
     } else if(nd->IsDirectory()){
         GetTreeBank()->OpenInNewViewNode(nd->GetUrl(), true, m_ViewNode);
     } else {
@@ -1848,8 +1853,6 @@ void LocalView::SwapMediaItem(int index){
     }
 }
 
-void LocalView::UpdateLater(){ Update();}
-
 void LocalView::OnSetViewNode(ViewNode*){}
 
 void LocalView::OnSetHistNode(HistNode*){}
@@ -1898,13 +1901,13 @@ void LocalView::EmitScrollChanged(){
 }
 
 void LocalView::EmitScrollChangedIfNeed(){
-    if(GetHistNode()->GetScrollY() != m_CurrentOffsetValue)
+    if(GetHistNode()->GetScrollY() != m_CurrentScroll)
         emit ScrollChanged(GetScroll());
 }
 
 QPointF LocalView::GetScroll(){
     return QPointF(0.5,
-                   static_cast<double>(m_CurrentOffsetValue) /
+                   static_cast<double>(m_CurrentScroll) /
                    static_cast<double>(m_DisplayThumbnails.length()));
 }
 
@@ -1915,7 +1918,7 @@ void LocalView::SetScroll(QPointF pos){
 bool LocalView::SaveScroll(){
     if(!GetHistNode()) return false;
     GetHistNode()->SetScrollX(0);
-    GetHistNode()->SetScrollY(m_CurrentOffsetValue);
+    GetHistNode()->SetScrollY(m_CurrentScroll);
     return true;
 }
 
@@ -1946,7 +1949,7 @@ bool LocalView::RestoreZoom(){
 
 bool LocalView::SaveHistory(){ return false;}
 
-bool LocalView::RestoreHistory(){return false;}
+bool LocalView::RestoreHistory(){ return false;}
 
 void LocalView::Download(QString, QString){}
 

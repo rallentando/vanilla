@@ -312,8 +312,12 @@ QUrl HistNode::GetUrl(){
 }
 
 QImage HistNode::GetImage(){
-    if(m_Image.isNull() && !m_ImageFileName.isEmpty())
-        m_Image = QImage(Application::ThumbnailDirectory() + m_ImageFileName);
+    if(m_Image.isNull() && !m_ImageFileName.isEmpty()){
+        QTimer::singleShot(0, [this](){
+                m_Image = QImage(Application::ThumbnailDirectory() + m_ImageFileName);
+            });
+        return QImage();
+    }
     if(m_Image.isNull()) m_ImageFileName = QString();
     return m_Image;
 }

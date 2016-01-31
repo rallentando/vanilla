@@ -279,17 +279,7 @@ private slots:
     void PageUpKey   ();
     void PageDownKey ();
 
-private:
-    void Update_(QRectF rect){ update(rect);}
-
 public:
-    inline void Update(QRectF rect = QRectF()){
-#ifdef OUT_OF_THREAD_UPDATE
-        QtConcurrent::run(this, &Gadgets::Update_, rect);
-#else
-        update(rect);
-#endif
-    }
     bool IsActive();
 
     static QMap<QKeySequence, QString> GetThumbListKeyMap();

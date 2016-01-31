@@ -833,7 +833,9 @@ void Receiver::ReceiveCommand(QString cmd){
     } else if(QRegExp(QStringLiteral("[sS]et(?:tings?)?")).exactMatch(cmd)){
 
         if(list.length() >= 2){ // ignore excess arguments.
-            Application::GlobalSettings()->setValue(list[0], list[1]);
+            QString key = list.takeFirst();
+            QString val = list.join(" ");
+            Application::GlobalSettings()->setValue(key, val);
             emit Reconfigure();
         }
 

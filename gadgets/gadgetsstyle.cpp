@@ -231,7 +231,7 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         static const QPen p = QPen(QColor(255, 255, 255, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
+        painter->setFont(QFont(DEFAULT_FONT, image_rect.height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter,
                           isDir
@@ -571,7 +571,7 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
         static const QPen p = QPen(QColor(255, 255, 255, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
+        painter->setFont(QFont(DEFAULT_FONT, image_rect.height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter,
                           isDir
@@ -579,7 +579,7 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
                           : QStringLiteral("NoImage"));
     }
 
-    const int basex = m_ThumbnailPaddingX * 3 + image_rect.size().width();
+    const int basex = m_ThumbnailPaddingX * 3 + image_rect.width();
     const int basey = 17;
     const int width = 495;
     const int height = 25;
@@ -782,6 +782,9 @@ void GlassStyle::OnSetHovered(NodeTitle *title, bool hovered) const {
 }
 
 void GlassStyle::OnSetState(GraphicsButton *button, GraphicsButton::ButtonState state) const {
+    // for LocalView's back.
+    if(!button->isVisible()) return;
+
     if(button->graphicsEffect()) button->setGraphicsEffect(0);
     switch(state){
     case GraphicsButton::NotHovered:  button->setCursor(Qt::ArrowCursor); break;
@@ -994,7 +997,7 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         static const QPen p = QPen(QColor(100, 100, 100, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.size().height() / 7.5));
+        painter->setFont(QFont(DEFAULT_FONT, image_rect.height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         QRectF image_rect_ = image_rect;
         image_rect_.setBottom(title_rect.center().y());
@@ -1243,6 +1246,9 @@ void FlatStyle::OnSetHovered(NodeTitle *title, bool hovered) const {
 }
 
 void FlatStyle::OnSetState(GraphicsButton *button, GraphicsButton::ButtonState state) const {
+    // for LocalView's back.
+    if(!button->isVisible()) return;
+
     if(!button->graphicsEffect()){
         QGraphicsDropShadowEffect *effect = new QGraphicsDropShadowEffect();
         button->setGraphicsEffect(effect);

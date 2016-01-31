@@ -164,7 +164,7 @@ public:
     bool UseGraphicsItemUpdate() const DECL_OVERRIDE { return true;}
 
     bool NodeTitleDrawBorder() const DECL_OVERRIDE { return false;}
-    int NodeTitleHeight() const DECL_OVERRIDE { return 20;} // dummy value.
+    int NodeTitleHeight() const DECL_OVERRIDE { return 1;} // dummy value.
     int InPlaceNotifierWidth() const DECL_OVERRIDE { return 706;} // dummy value.
     int InPlaceNotifierHeight() const DECL_OVERRIDE { return 154;} // dummy value.
 };

@@ -251,7 +251,7 @@ void AccessibleWebElement::UpdateMinimal(){
     QString str = url.isEmpty() ? QStringLiteral("Blank Entry") : url.toString();
 
     if(!IsSelected()){
-        m_Gadgets->Update(CharChipRect());
+        m_Gadgets->update(CharChipRect());
         return;
     } else {
         int width = m_InfoMetrics.boundingRect(str).width();
@@ -262,14 +262,14 @@ void AccessibleWebElement::UpdateMinimal(){
             width = ACCESSKEY_INFO_MAX_WIDTH;
 
         QPoint base(m_Pos - QPoint(width/2, ACCESSKEY_INFO_HEIGHT/2));
-        m_Gadgets->Update(QRect(base, QSize(width, ACCESSKEY_INFO_HEIGHT)));
+        m_Gadgets->update(QRect(base, QSize(width, ACCESSKEY_INFO_HEIGHT)));
 
         QMap<QString, QRect> keyrectmap = KeyRects();
         QMap<QString, QRect> exprectmap = ExpRects();
 
         foreach(QString action, m_Gadgets->GetAccessKeyKeyMap().values().toSet()){
-            m_Gadgets->Update(keyrectmap[action]);
-            m_Gadgets->Update(exprectmap[action]);
+            m_Gadgets->update(keyrectmap[action]);
+            m_Gadgets->update(exprectmap[action]);
         }
     }
 }

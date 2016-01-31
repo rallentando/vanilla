@@ -637,7 +637,7 @@ void Gadgets::SeekText(const QString &text, View::FindFlags flags){
     // 'ThumbList_MoveToFirstItem' calls 'SetScrollToItem',
     // and 'SetScrollToItem' calls 'SetScroll',
     // but 'SetScroll' doesn't call 'update' when scroll value is not changed.
-    Update();
+    update();
 }
 
 void Gadgets::KeyEvent(QString str){
@@ -2252,7 +2252,7 @@ void Gadgets::AccessKey_OpenElement(int index){
         list << awe->boundingRect();
 
         foreach(QRectF rect, list){
-            Update(rect);
+            update(rect);
         }
         foreach(AccessibleWebElement *e, m_AccessibleWebElementCache){
             e->UpdateMinimal();
@@ -2297,7 +2297,7 @@ void Gadgets::AccessKey_ClearSelection(){
     }
 
     foreach(QRectF rect, list){
-        Update(rect);
+        update(rect);
     }
 
     foreach(AccessibleWebElement *elem, m_AccessibleWebElementCache){

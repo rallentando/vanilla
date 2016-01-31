@@ -270,7 +270,7 @@ void AbstractNodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     }
 
     foreach(QRectF rect, list){
-        m_TableView->Update(rect);
+        m_TableView->update(rect);
     }
 
     ev->setAccepted(true);

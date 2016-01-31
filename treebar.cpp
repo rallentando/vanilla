@@ -99,13 +99,13 @@
 #define TREEBAR_VERTICAL_DEFAULT_HEIGHT 500
 
 #define TREEBAR_NODE_HORIZONTAL_DEFAULT_WIDTH 150
-#define TREEBAR_NODE_HORIZONTAL_DEFAULT_HEIGHT 23
+#define TREEBAR_NODE_HORIZONTAL_DEFAULT_HEIGHT 24
 
-#define TREEBAR_NODE_HORIZONTAL_MINIMUM_HEIGHT 23
-#define TREEBAR_NODE_HORIZONTAL_MAXIMUM_HEIGHT 134
+#define TREEBAR_NODE_HORIZONTAL_MINIMUM_HEIGHT 24
+#define TREEBAR_NODE_HORIZONTAL_MAXIMUM_HEIGHT 135
 
 #define TREEBAR_NODE_VERTICAL_DEFAULT_WIDTH 250
-#define TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT 23
+#define TREEBAR_NODE_VERTICAL_DEFAULT_HEIGHT 24
 
 #define TREEBAR_NODE_VERTICAL_MINIMUM_WIDTH 70
 
@@ -809,7 +809,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     m_ResizeGrip = new ResizeGrip(this);
     m_OverrideSize = QSize();
     m_LayerList = QList<LayerItem*>();
-    m_AutoUpdateTimer = 0;
+    m_AutoUpdateTimerID = 0;
     m_HorizontalNodeHeight = 0;
     m_VerticalNodeWidth = 0;
 
@@ -1159,6 +1159,24 @@ void TreeBar::OnCurrentChanged(SharedView from, SharedView to){
     // not yet implemented.
 }
 
+void TreeBar::StartAutoUpdateTimer(){
+    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
+    m_AutoUpdateTimerID = startTimer(150);
+    connect(m_Scene, &QGraphicsScene::changed, this, &TreeBar::RestartAutoUpdateTimer);
+}
+
+void TreeBar::StopAutoUpdateTimer(){
+    disconnect(m_Scene, &QGraphicsScene::changed, this, &TreeBar::RestartAutoUpdateTimer);
+    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
+    m_AutoUpdateTimerID = 0;
+}
+
+void TreeBar::RestartAutoUpdateTimer(){
+    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
+    if(m_View->scene()) m_AutoUpdateTimerID = startTimer(m_Scene->hasFocus() ? 150 : 1000);
+    else m_AutoUpdateTimerID = 0;
+}
+
 void TreeBar::paintEvent(QPaintEvent *ev){
     QPainter painter(this);
 
@@ -1205,7 +1223,7 @@ void TreeBar::resizeEvent(QResizeEvent *ev){
 void TreeBar::timerEvent(QTimerEvent *ev){
     QToolBar::timerEvent(ev);
     if(isVisible() && parentWidget()->isActiveWindow() &&
-       m_AutoUpdateTimer && ev->timerId() == m_AutoUpdateTimer)
+       m_AutoUpdateTimerID && ev->timerId() == m_AutoUpdateTimerID)
         m_Scene->update();
 }
 
@@ -1216,7 +1234,7 @@ void TreeBar::showEvent(QShowEvent *ev){
     connect(this, &QToolBar::orientationChanged,
             this, &TreeBar::CollectNodes);
     if(m_LayerList.isEmpty()) CollectNodes();
-    m_AutoUpdateTimer = startTimer(1000);
+    StartAutoUpdateTimer();
 }
 
 void TreeBar::hideEvent(QHideEvent *ev){
@@ -1227,8 +1245,7 @@ void TreeBar::hideEvent(QHideEvent *ev){
                this, &TreeBar::CollectNodes);
     m_LayerList.clear();
     m_Scene->clear();
-    killTimer(m_AutoUpdateTimer);
-    m_AutoUpdateTimer = 0;
+    StopAutoUpdateTimer();
 }
 
 void TreeBar::enterEvent(QEvent *ev){
@@ -1259,9 +1276,9 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     m_Node = nd;
     m_FocusedNode = 0;
     m_Nest = 0;
-    m_ScrollUpTimer = 0;
-    m_ScrollDownTimer = 0;
-    m_Scroll = 0.0;
+    m_ScrollUpTimerID = 0;
+    m_ScrollDownTimerID = 0;
+    m_CurrentScroll = 0.0;
     m_TargetScroll = 0.0;
     m_NodeItems = QList<NodeItem*>();
 
@@ -1350,7 +1367,7 @@ qreal LayerItem::MinScroll(){
 }
 
 qreal LayerItem::GetScroll(){
-    return m_Scroll;
+    return m_CurrentScroll;
 }
 
 void LayerItem::SetScroll(qreal scroll){
@@ -1360,8 +1377,8 @@ void LayerItem::SetScroll(qreal scroll){
 
     if(scroll > max) scroll = max;
     if(scroll < min) scroll = min;
-    if(m_Scroll == scroll){ OnScrolled(); return;}
-    m_Scroll = scroll;
+    if(m_CurrentScroll == scroll){ OnScrolled(); return;}
+    m_CurrentScroll = scroll;
     OnScrolled();
     update();
 }
@@ -1378,7 +1395,7 @@ void LayerItem::Scroll(qreal delta){
         if(m_TargetScroll > max) m_TargetScroll = max;
         if(m_TargetScroll < min) m_TargetScroll = min;
 
-        if(m_TargetScroll == m_Scroll)
+        if(m_TargetScroll == m_CurrentScroll)
             return;
 
         if(m_Animation->state() == QAbstractAnimation::Running &&
@@ -1391,12 +1408,12 @@ void LayerItem::Scroll(qreal delta){
             m_Animation->setEasingCurve(QEasingCurve::OutCubic);
             m_Animation->setDuration(400);
         }
-        m_Animation->setStartValue(m_Scroll);
+        m_Animation->setStartValue(m_CurrentScroll);
         m_Animation->setEndValue(m_TargetScroll);
         m_Animation->start();
         m_Animation->setCurrentTime(16);
     } else {
-        SetScroll(m_Scroll + delta);
+        SetScroll(m_CurrentScroll + delta);
         ResetTargetScroll();
     }
 }
@@ -1410,7 +1427,7 @@ void LayerItem::ScrollUp(qreal step){
 }
 
 void LayerItem::ResetTargetScroll(){
-    m_TargetScroll = m_Scroll;
+    m_TargetScroll = m_CurrentScroll;
 }
 
 void LayerItem::AutoScrollDown(){
@@ -1443,7 +1460,7 @@ void LayerItem::AutoScrollUp(){
 
 void LayerItem::AutoScrollStop(){
     m_Animation->stop();
-    m_TargetScroll = m_Scroll;
+    ResetTargetScroll();
     StopScrollDownTimer();
     StopScrollUpTimer();
 }
@@ -1453,7 +1470,7 @@ void LayerItem::AutoScrollStopOrScrollDown(qreal step){
 
     if(m_Animation->state() == QAbstractAnimation::Running){
         m_Animation->stop();
-        m_TargetScroll = m_Scroll;
+        ResetTargetScroll();
     }
     else ScrollDown(step);
 }
@@ -1463,34 +1480,34 @@ void LayerItem::AutoScrollStopOrScrollUp(qreal step){
 
     if(m_Animation->state() == QAbstractAnimation::Running){
         m_Animation->stop();
-        m_TargetScroll = m_Scroll;
+        ResetTargetScroll();
     }
     else ScrollUp(step);
 }
 
 void LayerItem::StartScrollDownTimer(){
-    if(!m_ScrollDownTimer){
-        m_ScrollDownTimer = startTimer(200);
+    if(!m_ScrollDownTimerID){
+        m_ScrollDownTimerID = startTimer(200);
     }
 }
 
 void LayerItem::StartScrollUpTimer(){
-    if(!m_ScrollUpTimer){
-        m_ScrollUpTimer = startTimer(200);
+    if(!m_ScrollUpTimerID){
+        m_ScrollUpTimerID = startTimer(200);
     }
 }
 
 void LayerItem::StopScrollDownTimer(){
-    if(m_ScrollDownTimer){
-        killTimer(m_ScrollDownTimer);
-        m_ScrollDownTimer = 0;
+    if(m_ScrollDownTimerID){
+        killTimer(m_ScrollDownTimerID);
+        m_ScrollDownTimerID = 0;
     }
 }
 
 void LayerItem::StopScrollUpTimer(){
-    if(m_ScrollUpTimer){
-        killTimer(m_ScrollUpTimer);
-        m_ScrollUpTimer = 0;
+    if(m_ScrollUpTimerID){
+        killTimer(m_ScrollUpTimerID);
+        m_ScrollUpTimerID = 0;
     }
 }
 
@@ -1545,14 +1562,14 @@ void LayerItem::Adjust(){
 void LayerItem::OnScrolled(){
     switch(m_TreeBar->orientation()){
     case Qt::Horizontal:{
-        if(MaxScroll() >= 0 && m_Scroll > MinScroll()){
+        if(MaxScroll() >= 0 && m_CurrentScroll > MinScroll()){
             if(!m_PrevScrollButton)
                 m_PrevScrollButton = new LeftScrollButton(m_TreeBank, m_TreeBar, this);
         } else if(m_PrevScrollButton){
             scene()->removeItem(m_PrevScrollButton);
             m_PrevScrollButton = 0;
         }
-        if(MaxScroll() >= 0 && m_Scroll < MaxScroll()){
+        if(MaxScroll() >= 0 && m_CurrentScroll < MaxScroll()){
             if(!m_NextScrollButton)
                 m_NextScrollButton = new RightScrollButton(m_TreeBank, m_TreeBar, this);
         } else if(m_NextScrollButton){
@@ -1562,14 +1579,14 @@ void LayerItem::OnScrolled(){
         break;
     }
     case Qt::Vertical:{
-        if(MaxScroll() >= 0 && m_Scroll > MinScroll()){
+        if(MaxScroll() >= 0 && m_CurrentScroll > MinScroll()){
             if(!m_PrevScrollButton)
                 m_PrevScrollButton = new UpScrollButton(m_TreeBank, m_TreeBar, this);
         } else if(m_PrevScrollButton){
             scene()->removeItem(m_PrevScrollButton);
             m_PrevScrollButton = 0;
         }
-        if(MaxScroll() >= 0 && m_Scroll < MaxScroll()){
+        if(MaxScroll() >= 0 && m_CurrentScroll < MaxScroll()){
             if(!m_NextScrollButton)
                 m_NextScrollButton = new DownScrollButton(m_TreeBank, m_TreeBar, this);
         } else if(m_NextScrollButton){
@@ -1995,14 +2012,14 @@ QMenu *LayerItem::AddNodeMenu(){
 
 void LayerItem::timerEvent(QTimerEvent *ev){
     QGraphicsObject::timerEvent(ev);
-    if(ev->timerId() == m_ScrollDownTimer){
-        killTimer(m_ScrollDownTimer);
-        m_ScrollDownTimer = 0;
+    if(ev->timerId() == m_ScrollDownTimerID){
+        killTimer(m_ScrollDownTimerID);
+        m_ScrollDownTimerID = 0;
         AutoScrollDown();
     }
-    if(ev->timerId() == m_ScrollUpTimer){
-        killTimer(m_ScrollUpTimer);
-        m_ScrollUpTimer = 0;
+    if(ev->timerId() == m_ScrollUpTimerID){
+        killTimer(m_ScrollUpTimerID);
+        m_ScrollUpTimerID = 0;
         AutoScrollUp();
     }
 }
@@ -2147,7 +2164,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 
     QRect title_rect = bound.toRect();
     title_rect.setLeft(title_rect.left() + 4);
-    title_rect.setTop(title_rect.bottom() - 22);
+    title_rect.setTop(title_rect.bottom() - 23);
     title_rect.setWidth(title_rect.width()
                         - ((!m_IsHovered ||
                             (!m_TreeBar->EnableCloseButton() &&
@@ -2171,12 +2188,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
             painter->setPen(Qt::NoPen);
         }
         QRectF rect = bound;
-        if(Application::EnableTransparentBar()){
-            switch(m_TreeBar->orientation()){
-            case Qt::Horizontal: rect.setHeight(rect.height() - 1); break;
-            case Qt::Vertical:   rect.setWidth(rect.width() - 1);   break;
-            }
-        } else {
+        if(!Application::EnableTransparentBar()){
             switch(m_TreeBar->orientation()){
             case Qt::Horizontal: rect.setHeight(rect.height() + 1); break;
             case Qt::Vertical:   rect.setWidth(rect.width() + 1);   break;
@@ -2253,7 +2265,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         rect.setTop(rect.top() + 3);
         rect.setLeft(rect.left() + 3);
         rect.setWidth(rect.width() - 3);
-        rect.setHeight(rect.height() - 24);
+        rect.setHeight(rect.height() - 25);
 
         if(!image.isNull()){
             QRectF source = QRectF(0, 0, image.size().width(),
@@ -2270,7 +2282,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
             static const QPen p = QPen(QColor(100, 100, 100, 255));
             painter->setPen(p);
             painter->setBrush(Qt::NoBrush);
-            painter->setFont(QFont(DEFAULT_FONT, rect.size().width() / 10));
+            painter->setFont(QFont(DEFAULT_FONT, rect.width() / 10));
             painter->setRenderHint(QPainter::Antialiasing, true);
             painter->drawText(rect, Qt::AlignCenter,
                               isDir
@@ -2890,7 +2902,6 @@ QMenu *NodeItem::NodeMenu(){
         if(!Application::BrowserPath_Vivaldi().isEmpty()){
             QAction *a = new QAction(m);
             a->setText(tr("OpenViewNodeWithVivaldi"));
-            a->setIcon(Application::BrowserIcon_Custom());
             a->setIcon(Application::BrowserIcon_Vivaldi());
             a->connect(a, &QAction::triggered,
                        [vn](){ Application::OpenUrlWith_Vivaldi(vn->GetUrl());});

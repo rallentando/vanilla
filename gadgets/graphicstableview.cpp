@@ -66,6 +66,8 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
         bool IsDummy() DECL_OVERRIDE { return true;}
     };
 
+    m_AutoUpdateTimerID = 0;
+
     m_DummyViewNode = new DummyViewNode();
     m_DummyHistNode = new DummyHistNode();
     m_LoadedSpotLights = QList<SpotLight*>();
@@ -88,8 +90,8 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
     m_ScrollAnimation = new QPropertyAnimation(this, "scroll");
     connect(m_ScrollAnimation, &QPropertyAnimation::finished,
             this, &GraphicsTableView::ResetTargetScroll);
-    m_CurrentOffsetValue = 0;
-    m_TargetOffsetValue = 0;
+    m_CurrentScroll = 0;
+    m_TargetScroll = 0;
     m_SelectRect = 0;
     m_CurrentNode = 0;
     m_StatusBarMessageIsSuspended = false;
@@ -173,9 +175,13 @@ void GraphicsTableView::Activate(DisplayType type){
     // reset scroll.
     m_HoveredItemIndex = -1;
     m_PrimaryItemIndex = -1;
+
+    StartAutoUpdateTimer();
 }
 
 void GraphicsTableView::Deactivate(){
+    StopAutoUpdateTimer();
+
     // for multi mode(thumblist and accesskey).
     foreach(QGraphicsItem *item, childItems()){
         item->setSelected(false);
@@ -188,6 +194,24 @@ void GraphicsTableView::Deactivate(){
         m_TreeBank->AfterFinishingDisplayGadgets();
     }
     hide();
+}
+
+void GraphicsTableView::StartAutoUpdateTimer(){
+    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
+    m_AutoUpdateTimerID = startTimer(150);
+    connect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer);
+}
+
+void GraphicsTableView::StopAutoUpdateTimer(){
+    disconnect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer);
+    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
+    m_AutoUpdateTimerID = 0;
+}
+
+void GraphicsTableView::RestartAutoUpdateTimer(){
+    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
+    if(scene()) m_AutoUpdateTimerID = startTimer(scene()->hasFocus() ? 150 : 1000);
+    else m_AutoUpdateTimerID = 0;
 }
 
 void GraphicsTableView::SetCurrent(Node *nd){
@@ -469,7 +493,7 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
         // caller : 'Activate'.
     } else if(m_CurrentNode != nd){
         // when changing directory.
-        SetScrollToItem(m_CurrentOffsetValue);
+        SetScrollToItem(m_CurrentScroll);
         // caller : 'UpDirectory', 'DownDirectory', 'ToggleTrash'.
     } else {
         // when manipulating node.
@@ -492,7 +516,7 @@ bool GraphicsTableView::DeleteNodes(NodeList list){
 
     Node::NodeType type;
     Node *parent = m_CurrentNode->GetParent();
-    qreal scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentScroll;
     bool success = false;
 
     type = m_DisplayThumbnails.first()->GetNode()->GetType();
@@ -541,9 +565,8 @@ bool GraphicsTableView::DeleteNodes(NodeList list){
     }
 
     SetScroll(scroll);
-    if(scroll == m_CurrentOffsetValue){
-        Update();
-    }
+    ResetTargetScroll();
+    if(scroll == m_CurrentScroll) Update();
     m_NodesRegister.clear();
     return true;
 }
@@ -738,6 +761,18 @@ QList<SpotLight*> GraphicsTableView::GetLoadedSpotLights(){
     return m_LoadedSpotLights;
 }
 
+void GraphicsTableView::Update(QRectF rect){
+    if(!scene()) return;
+    if(rect.isNull()) rect = scene()->sceneRect();
+    if(GetStyle()->UseGraphicsItemUpdate()){
+        foreach(QGraphicsItem *item, scene()->items(rect)){
+            item->update();
+        }
+    } else {
+        update(rect);
+    }
+}
+
 QString GraphicsTableView::GetDirectoryPrefix(Node *nd){
     if(!nd->IsDirectory()) return QString();
 
@@ -796,7 +831,7 @@ void GraphicsTableView::SetHoveredItem(int index){
     }
 
     foreach(QRectF rect, list){
-        Update(rect);
+        update(rect);
     }
     foreach(QGraphicsItem *item, glist){
         item->update();
@@ -859,7 +894,7 @@ void GraphicsTableView::SetPrimaryItem(int index){
     }
 
     foreach(QRectF rect, list){
-        Update(rect);
+        update(rect);
     }
 }
 
@@ -891,9 +926,9 @@ void GraphicsTableView::SetInPlaceNotifierPosition(QPointF after){
 
     if(after.x() > ScrollBarAreaRect().center().x()){
 
-        after = after - QPointF(nrect.size().width(), 0);
+        after = after - QPointF(nrect.width(), 0);
 
-        if(rect.size().width() > nrect.size().width()){
+        if(rect.width() > nrect.width()){
             if(after.x() < rect.left())
                 after.setX(rect.left());
         } else {
@@ -901,16 +936,16 @@ void GraphicsTableView::SetInPlaceNotifierPosition(QPointF after){
         }
     } else {
 
-        if(rect.size().width() > nrect.size().width()){
-            if(after.x() > rect.right() - nrect.size().width())
-                after.setX(rect.right() - nrect.size().width());
+        if(rect.width() > nrect.width()){
+            if(after.x() > rect.right() - nrect.width())
+                after.setX(rect.right() - nrect.width());
         } else {
             after.setX(rect.left());
         }
     }
-    if(rect.size().height() > nrect.size().height()){
-        if(after.y() > rect.bottom() - nrect.size().height())
-            after.setY(rect.bottom() - nrect.size().height());
+    if(rect.height() > nrect.height()){
+        if(after.y() > rect.bottom() - nrect.height())
+            after.setY(rect.bottom() - nrect.height());
     } else {
         after.setY(rect.top());
     }
@@ -920,7 +955,7 @@ void GraphicsTableView::SetInPlaceNotifierPosition(QPointF after){
     //if(before == after) return;
     m_InPlaceNotifier->setPos(after);
 
-    Update(QRectF(before, m_InPlaceNotifier->rect().size()));
+    update(QRectF(before, m_InPlaceNotifier->rect().size()));
 }
 
 void GraphicsTableView::UpdateInPlaceNotifier(QPointF pos, QPointF scenePos, bool ignoreStatusBarMessage){
@@ -1012,6 +1047,7 @@ void GraphicsTableView::Resize(QSizeF size){
     if(IsDisplayingNode()){
         RelocateContents();
         RelocateScrollBar();
+        Update();
     }
 }
 
@@ -1021,9 +1057,10 @@ QSizeF GraphicsTableView::Size(){
 
 QRectF GraphicsTableView::ComputeRect(const Thumbnail *thumb, const int index) const {
     Q_UNUSED(thumb);
+    if(index == -1) return QRectF();
     return QRectF(DISPLAY_PADDING_X + (index % m_CurrentThumbnailColumnCount) * m_CurrentThumbnailWidth,
                   DISPLAY_PADDING_Y + (index / m_CurrentThumbnailColumnCount) * m_CurrentThumbnailHeight
-                  - round(m_CurrentOffsetValue
+                  - round(m_CurrentScroll
                           / m_CurrentThumbnailColumnCount
                           * m_CurrentThumbnailHeight),
                   m_CurrentThumbnailWidth,
@@ -1032,12 +1069,13 @@ QRectF GraphicsTableView::ComputeRect(const Thumbnail *thumb, const int index) c
 
 QRectF GraphicsTableView::ComputeRect(const NodeTitle *title, const int index) const {
     Q_UNUSED(title);
+    if(index == -1) return QRectF();
     return QRectF(DISPLAY_PADDING_X
                   + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
                   + GADGETS_SCROLL_BAR_MARGIN * 2
                   + GADGETS_SCROLL_BAR_WIDTH,
                   DISPLAY_PADDING_Y + GetStyle()->NodeTitleHeight() * index
-                  - round(m_CurrentOffsetValue
+                  - round(m_CurrentScroll
                           * GetStyle()->NodeTitleHeight()),
 
                   m_Size.width()
@@ -1061,10 +1099,10 @@ void GraphicsTableView::RelocateContents(){
 
 void GraphicsTableView::RelocateScrollBar(){
     QRectF back = ScrollBarAreaRect();
-    int width = back.size().width() - 5;
+    int width = back.width() - 5;
     int height = GADGETS_SCROLL_CONTROLER_HEIGHT;
-    if(height > back.size().height() - 5)
-        height = back.size().height() - 5;
+    if(height > back.height() - 5)
+        height = back.height() - 5;
 
     QRectF rect = QRectF(back.topLeft() + QPointF(3,3), QSizeF(width, height));
 
@@ -1072,13 +1110,13 @@ void GraphicsTableView::RelocateScrollBar(){
 
     if(!m_ScrollIndicator->isSelected()){
 
-        if(int len = m_DisplayThumbnails.length()){
+        if(const int len = m_DisplayThumbnails.length()){
 
-            float areaHeight = ScrollBarAreaRect().height();
-            float controllerHeight = m_ScrollIndicator->rect().size().height();
+            const int maxY = ScrollBarAreaRect().height()
+                - m_ScrollIndicator->boundingRect().height() - 4;
 
             m_ScrollIndicator->setPos
-                (0, (areaHeight - controllerHeight) * m_CurrentOffsetValue / len);
+                (0, maxY * m_CurrentScroll / MaxScroll());
 
         } else {
 
@@ -1187,14 +1225,14 @@ void GraphicsTableView::SetSelectionRange(NodeTitle *title){
 bool GraphicsTableView::MoveTo(bool basedOnScroll, std::function<int(int, int)> compute){
     if(!m_CurrentNode || !IsDisplayingNode()) return false;
 
-    qreal cur = basedOnScroll ? m_TargetOffsetValue : m_HoveredItemIndex;
+    qreal cur = basedOnScroll ? m_TargetScroll : m_HoveredItemIndex;
     int len = m_DisplayThumbnails.length();
 
     SetHoveredItem(compute(cur, len));
     ClearScrollIndicatorSelection();
 
     if(basedOnScroll)
-        Scroll(m_HoveredItemIndex - m_TargetOffsetValue);
+        Scroll(m_HoveredItemIndex - m_TargetScroll);
     else
         ScrollToItem(m_HoveredItemIndex);
 
@@ -1329,7 +1367,7 @@ bool GraphicsTableView::TransferTo(bool toRight, bool basedOnScroll,
         ClearScrollIndicatorSelection();
 
         if(basedOnScroll)
-            Scroll(m_HoveredItemIndex - m_TargetOffsetValue);
+            Scroll(m_HoveredItemIndex - m_TargetScroll);
         else
             ScrollToItem(m_HoveredItemIndex);
     }
@@ -1534,7 +1572,7 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
             }
         }
         if(m_SelectRect) m_SelectRect->hide();
-        Update(rect);
+        update(rect);
         ev->setAccepted(true);
 
     } else if(ev->button() == Qt::RightButton){
@@ -1576,16 +1614,6 @@ void GraphicsTableView::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
             update(rect1);
             update(rect2);
         }
-
-        //sometimes rubbish remains...
-        //if(rect1.contains(rect2)){
-        //    Update(rect1);
-        //} else if(rect2.contains(rect1)){
-        //    Update(rect2);
-        //} else {
-        //    Update(rect1);
-        //    Update(rect2);
-        //}
 
         ev->setAccepted(true);
     }
@@ -1659,14 +1687,21 @@ void GraphicsTableView::focusOutEvent(QFocusEvent *ev){
     QGraphicsObject::focusOutEvent(ev);
 }
 
+void GraphicsTableView::timerEvent(QTimerEvent *ev){
+    if(!scene() || !isVisible()) return;
+    if(m_AutoUpdateTimerID && ev->timerId() == m_AutoUpdateTimerID){
+        Update();
+    }
+}
+
 bool GraphicsTableView::ThumbList_Refresh(){
     // some times this method sets scroll and hovered item to primary item.
     if(!IsDisplayingNode()) return false;
 
     // recollect nodes and reset scroll.
-    qreal scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentScroll;
     SetCurrent(m_CurrentNode);
-    if(scroll == m_CurrentOffsetValue) Update();
+    if(scroll == m_CurrentScroll) Update();
 
     m_NodesRegister.clear();
     return true;
@@ -1676,7 +1711,7 @@ bool GraphicsTableView::ThumbList_RefreshNoScroll(){
     if(!IsDisplayingNode()) return false;
 
     // recollect nodes and reset scroll.
-    qreal scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentScroll;
     bool hovered = m_HoveredItemIndex != -1;
 
     if(!hovered) m_HoveredItemIndex = scroll;
@@ -1684,10 +1719,7 @@ bool GraphicsTableView::ThumbList_RefreshNoScroll(){
     SetCurrent(m_CurrentNode);
 
     if(!hovered) SetHoveredItem(-1);
-
-    if(scroll == m_CurrentOffsetValue){
-        Update();
-    }
+    if(scroll == m_CurrentScroll) Update();
 
     m_NodesRegister.clear();
     return true;
@@ -1950,9 +1982,9 @@ bool GraphicsTableView::ThumbList_UpDirectory(){
     m_HoveredItemIndex = -1;
     m_PrimaryItemIndex = -1;
 
-    qreal scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentScroll;
     SetCurrent(m_CurrentNode->GetParent());
-    if(scroll == m_CurrentOffsetValue) Update();
+    if(scroll == m_CurrentScroll) Update();
     return true;
 }
 
@@ -1989,9 +2021,9 @@ bool GraphicsTableView::ThumbList_DownDirectory(){
     m_HoveredItemIndex = -1;
     m_PrimaryItemIndex = -1;
 
-    qreal scroll = m_CurrentOffsetValue;
+    qreal scroll = m_CurrentScroll;
     SetCurrent(target);
-    if(scroll == m_CurrentOffsetValue) Update();
+    if(scroll == m_CurrentScroll) Update();
     return true;
 }
 
@@ -2453,44 +2485,58 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
     return success;
 }
 
+qreal GraphicsTableView::MaxScroll(){
+    if(int len = m_DisplayThumbnails.length())
+        return (len - 1)
+            / m_CurrentThumbnailColumnCount
+            * m_CurrentThumbnailColumnCount;
+    return 0.0;
+}
+
+qreal GraphicsTableView::MinScroll(){
+    return 0.0;
+}
+
+qreal GraphicsTableView::GetScroll(){
+    return m_CurrentScroll;
+}
+
 void GraphicsTableView::Scroll(qreal delta){
 
     if(!m_CurrentNode || !IsDisplayingNode()) return;
-    const int len = m_DisplayThumbnails.length();
-    const qreal min = 0;
-    const qreal max = (len - 1)
-        / m_CurrentThumbnailColumnCount
-        * m_CurrentThumbnailColumnCount;
+
+    const qreal min = MinScroll();
+    const qreal max = MaxScroll();
     if(max < min) return;
 
     ClearScrollIndicatorSelection();
 
     if(m_EnableAnimation){
 
-        qreal orig = m_TargetOffsetValue;
-        m_TargetOffsetValue += delta;
-        if(m_TargetOffsetValue > max) m_TargetOffsetValue = max;
-        if(m_TargetOffsetValue < min) m_TargetOffsetValue = min;
+        qreal orig = m_TargetScroll;
+        m_TargetScroll += delta;
+        if(m_TargetScroll > max) m_TargetScroll = max;
+        if(m_TargetScroll < min) m_TargetScroll = min;
 
-        if(m_TargetOffsetValue == m_CurrentOffsetValue)
+        if(m_TargetScroll == m_CurrentScroll)
             return;
 
         if(m_ScrollAnimation->state() == QAbstractAnimation::Running &&
            m_ScrollAnimation->easingCurve() == QEasingCurve::OutCubic){
 
-            if(m_TargetOffsetValue == orig) return;
+            if(m_TargetScroll == orig) return;
 
             m_ScrollAnimation->stop();
         } else {
             m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
             m_ScrollAnimation->setDuration(400);
         }
-        m_ScrollAnimation->setStartValue(m_CurrentOffsetValue);
-        m_ScrollAnimation->setEndValue(m_TargetOffsetValue);
+        m_ScrollAnimation->setStartValue(m_CurrentScroll);
+        m_ScrollAnimation->setEndValue(m_TargetScroll);
         m_ScrollAnimation->start();
         m_ScrollAnimation->setCurrentTime(16);
     } else {
-        SetScroll(m_CurrentOffsetValue + delta);
+        SetScroll(m_CurrentScroll + delta);
         ResetTargetScroll();
     }
 }
@@ -2501,7 +2547,7 @@ void GraphicsTableView::ScrollToItem(qreal target){
         / m_CurrentThumbnailColumnCount
         * m_CurrentThumbnailColumnCount;
 
-    if(target > m_CurrentOffsetValue){
+    if(target > m_CurrentScroll){
 
         int thumbnailscroll = target -
             m_CurrentThumbnailColumnCount *
@@ -2521,53 +2567,47 @@ void GraphicsTableView::ScrollToItem(qreal target){
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
             GetStyle()->NodeTitleHeight();
 
-        Scroll(qMax(static_cast<int>(m_CurrentOffsetValue),
+        Scroll(qMax(static_cast<int>(m_CurrentScroll),
                     thumbnailcount  < nodetitlecount ?
                     thumbnailscroll : nodetitlescroll)
-               - m_TargetOffsetValue);
+               - m_TargetScroll);
     } else {
-        Scroll(target - m_TargetOffsetValue);
+        Scroll(target - m_TargetScroll);
     }
 }
 
 void GraphicsTableView::ResetTargetScroll(){
-    m_TargetOffsetValue = m_CurrentOffsetValue;
-}
-
-qreal GraphicsTableView::GetScroll(){
-    return m_CurrentOffsetValue;
+    m_TargetScroll = m_CurrentScroll;
 }
 
 void GraphicsTableView::SetScroll(QPointF pos){
     ClearScrollIndicatorSelection();
-    SetScroll(m_DisplayThumbnails.length() * pos.y());
+    SetScroll(MaxScroll() * pos.y());
+    ResetTargetScroll();
 }
 
 void GraphicsTableView::SetScroll(qreal target){
     if(!isVisible()) return;
 
-    const int len = m_DisplayThumbnails.length();
-    const qreal min = 0;
-    const qreal max = (len - 1)
-        / m_CurrentThumbnailColumnCount
-        * m_CurrentThumbnailColumnCount;
+    const qreal min = MinScroll();
+    const qreal max = MaxScroll();
     if(max < min) return;
 
     if(target > max) target = max;
     if(target < min) target = min;
 
-    if(target != m_CurrentOffsetValue){
-        m_CurrentOffsetValue = target;
+    if(target != m_CurrentScroll){
+        m_CurrentScroll = target;
         RelocateContents();
         RelocateScrollBar();
         Update();
-        emit ScrollChanged(QPointF(0.5, target / len));
+        emit ScrollChanged(QPointF(0.5, target / max));
     }
 }
 
 void GraphicsTableView::SetScrollToItem(QPointF pos){
     ClearScrollIndicatorSelection();
-    SetScrollToItem(m_DisplayThumbnails.length() * pos.y());
+    SetScrollToItem(MaxScroll() * pos.y());
 }
 
 void GraphicsTableView::SetScrollToItem(qreal target){
@@ -2576,7 +2616,7 @@ void GraphicsTableView::SetScrollToItem(qreal target){
         / m_CurrentThumbnailColumnCount
         * m_CurrentThumbnailColumnCount;
 
-    if(target > m_CurrentOffsetValue){
+    if(target > m_CurrentScroll){
 
         int thumbnailscroll = target -
             m_CurrentThumbnailColumnCount *
@@ -2596,7 +2636,7 @@ void GraphicsTableView::SetScrollToItem(qreal target){
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
             GetStyle()->NodeTitleHeight();
 
-        SetScroll(qMax(static_cast<int>(m_CurrentOffsetValue),
+        SetScroll(qMax(static_cast<int>(m_CurrentScroll),
                        thumbnailcount  < nodetitlecount ?
                        thumbnailscroll : nodetitlescroll));
     } else {
@@ -3106,14 +3146,14 @@ bool GraphicsTableView::ThumbList_SwitchNodeCollectionTypeReverse(){
 
 QPointF GraphicsTableView::CurrentThumbnailOffset(){
     return QPointF(0,
-                   round(- m_CurrentOffsetValue
+                   round(- m_CurrentScroll
                          / m_CurrentThumbnailColumnCount
                          * m_CurrentThumbnailHeight));
 }
 
 QPointF GraphicsTableView::CurrentNodeTitleOffset(){
     return QPointF(0,
-                   round(- m_CurrentOffsetValue
+                   round(- m_CurrentScroll
                          // / m_CurrentThumbnailColumnCount
                          // * m_CurrentThumbnailColumnCount
                          * GetStyle()->NodeTitleHeight()));
@@ -3253,18 +3293,17 @@ void ScrollIndicator::paint(QPainter *painter,
 QVariant ScrollIndicator::itemChange(GraphicsItemChange change, const QVariant &value){
     if(change == ItemPositionChange && scene()){
         QPointF newPos = value.toPointF();
+        const int minY = 0;
+        const int maxY = m_TableView->ScrollBarAreaRect().height()
+            - boundingRect().height() - 4;
+        if(newPos.y() < minY) newPos.setY(minY);
+        if(newPos.y() > maxY) newPos.setY(maxY);
         newPos.setX(0);
-        if(newPos.y() < 0)
-            newPos.setY(0);
-        if(newPos.y() + boundingRect().size().height() + 4 > m_TableView->ScrollBarAreaRect().size().height())
-            newPos.setY(m_TableView->ScrollBarAreaRect().size().height()
-                        - boundingRect().size().height() - 4);
 
-        const qreal offset =
-            m_TableView->m_DisplayThumbnails.length() * newPos.y() /
-            (m_TableView->ScrollBarAreaRect().size().height() - boundingRect().size().height());
+        const qreal target = m_TableView->MaxScroll() * newPos.y() / maxY;
+
         if(isSelected()){
-            m_TableView->SetScroll(offset);
+            m_TableView->SetScroll(target);
             m_TableView->ResetTargetScroll();
         }
         return newPos;
@@ -3312,8 +3351,8 @@ void ScrollIndicator::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
 
     QRectF rect2 = rect().translated(pos());
 
-    m_TableView->Update(rect1);
-    m_TableView->Update(rect2);
+    m_TableView->update(rect1);
+    m_TableView->update(rect2);
 }
 
 void ScrollIndicator::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){

@@ -429,12 +429,12 @@
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2003"/>
         <source>ToggleTreeBar</source>
-        <translation>ツリーバー切り替え</translation>
+        <translation>タブバー切り替え</translation>
     </message>
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2004"/>
         <source>ToggleToolBar</source>
-        <translation>ツールバー切り替え</translation>
+        <translation>アドレスバー切り替え</translation>
     </message>
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2008"/>
@@ -729,12 +729,12 @@
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2154"/>
         <source>TreeBar</source>
-        <translation>ツリーバー</translation>
+        <translation>タブバー</translation>
     </message>
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2158"/>
         <source>ToolBar</source>
-        <translation>ツールバー</translation>
+        <translation>アドレスバー</translation>
     </message>
     <message>
         <location filename="../gadgets/gadgets.cpp" line="2187"/>
@@ -760,55 +760,55 @@
 <context>
     <name>GraphicsTableView</name>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="512"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="3100"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="3137"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="543"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3140"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3177"/>
         <source>Displaying %1 nodes.</source>
         <translation>表示: %1 ノード.</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="582"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="612"/>
         <source>Reverse</source>
         <translation>逆順</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="589"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="619"/>
         <source>SortByUrl</source>
         <translation>URLでソート</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="596"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="626"/>
         <source>SortByTitle</source>
         <translation>タイトルでソート</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="603"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="633"/>
         <source>SortByCreateDate</source>
         <translation>作成日時でソート</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="617"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="647"/>
         <source>SortByLastAccessDate</source>
         <translation>アクセス日時でソート</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="610"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="640"/>
         <source>SortByLastUpdateDate</source>
         <translation>更新日時でソート</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2124"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2156"/>
         <source>Invalid directory contents.</source>
         <translation>無効なディレクトリ.</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2125"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2157"/>
         <source>This directory has no contents or all nodes have same domain.</source>
         <translation>このディレクトリは空であるかすべてのノードが同じドメインを持っています.</translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2692"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2717"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2732"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2757"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>ズーム %1 %</translation>
     </message>
@@ -851,22 +851,22 @@
 <context>
     <name>LayerItem</name>
     <message>
-        <location filename="../treebar.cpp" line="1873"/>
+        <location filename="../treebar.cpp" line="1890"/>
         <source>TreeBarSettings</source>
-        <translation>ツリーバーの設定</translation>
+        <translation>タブバーの設定</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1876"/>
+        <location filename="../treebar.cpp" line="1893"/>
         <source>EnableAnimation</source>
         <translation>アニメーション</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1884"/>
+        <location filename="../treebar.cpp" line="1901"/>
         <source>EnableCloseButton</source>
         <translation>閉じるボタン</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1892"/>
+        <location filename="../treebar.cpp" line="1909"/>
         <source>EnableCloneButton</source>
         <translation>複製ボタン</translation>
     </message>
@@ -874,75 +874,75 @@
 <context>
     <name>LocalView</name>
     <message>
-        <location filename="../view/localview.cpp" line="1620"/>
+        <location filename="../view/localview.cpp" line="1625"/>
         <source>Delete File.</source>
         <translation>ファイルの削除.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1621"/>
+        <location filename="../view/localview.cpp" line="1626"/>
         <source>Are you sure you want to delete this file?</source>
         <translation>本当に削除しますか?</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1637"/>
+        <location filename="../view/localview.cpp" line="1642"/>
         <source>Delete Files.</source>
         <translation>ファイルの削除.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1638"/>
+        <location filename="../view/localview.cpp" line="1643"/>
         <source>Are you sure you want to delete these files?</source>
         <translation>本当に削除しますか?</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1648"/>
-        <location filename="../view/localview.cpp" line="1671"/>
+        <location filename="../view/localview.cpp" line="1653"/>
+        <location filename="../view/localview.cpp" line="1676"/>
         <source>Input file name.</source>
         <translation>ファイル名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1649"/>
+        <location filename="../view/localview.cpp" line="1654"/>
         <source>Input new file name.</source>
         <translation>作成するファイル名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1654"/>
-        <location filename="../view/localview.cpp" line="1677"/>
+        <location filename="../view/localview.cpp" line="1659"/>
+        <location filename="../view/localview.cpp" line="1682"/>
         <source>Invalid file name.</source>
         <translation>無効なファイル名.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1655"/>
-        <location filename="../view/localview.cpp" line="1678"/>
+        <location filename="../view/localview.cpp" line="1660"/>
+        <location filename="../view/localview.cpp" line="1683"/>
         <source>Cannot make file with such name.</source>
         <translation>ファイル名を変更することができません.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1672"/>
+        <location filename="../view/localview.cpp" line="1677"/>
         <source>Input clone file name.</source>
         <translation>コピーするファイル名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1692"/>
+        <location filename="../view/localview.cpp" line="1697"/>
         <source>Input directory name.</source>
         <translation>ディレクトリ名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1693"/>
+        <location filename="../view/localview.cpp" line="1698"/>
         <source>Input new directory name.</source>
         <translation>作成するディレクトリ名を入力してください.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1697"/>
+        <location filename="../view/localview.cpp" line="1702"/>
         <source>Invalid directory name.</source>
         <translation>無効なディレクトリ.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1698"/>
+        <location filename="../view/localview.cpp" line="1703"/>
         <source>Cannot make directory with such name.</source>
         <translation>ディレクトリ名を変更することができません.</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2075"/>
+        <location filename="../view/localview.cpp" line="2078"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
@@ -1149,12 +1149,12 @@
     <message>
         <location filename="../view/localview.cpp" line="907"/>
         <source>ToggleTreeBar</source>
-        <translation>ツリーバー切り替え</translation>
+        <translation>タブバー切り替え</translation>
     </message>
     <message>
         <location filename="../view/localview.cpp" line="908"/>
         <source>ToggleToolBar</source>
-        <translation>ツールバー切り替え</translation>
+        <translation>アドレスバー切り替え</translation>
     </message>
     <message>
         <location filename="../view/localview.cpp" line="944"/>
@@ -1424,12 +1424,12 @@
     <message>
         <location filename="../view/localview.cpp" line="1058"/>
         <source>TreeBar</source>
-        <translation>ツリーバー</translation>
+        <translation>タブバー</translation>
     </message>
     <message>
         <location filename="../view/localview.cpp" line="1062"/>
         <source>ToolBar</source>
-        <translation>ツールバー</translation>
+        <translation>アドレスバー</translation>
     </message>
     <message>
         <location filename="../view/localview.cpp" line="1091"/>
@@ -1743,52 +1743,52 @@
 <context>
     <name>NodeItem</name>
     <message>
-        <location filename="../treebar.cpp" line="2833"/>
+        <location filename="../treebar.cpp" line="2845"/>
         <source>OpenViewNodeWithOtherBrowser</source>
         <translation>ビューノードを別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2836"/>
+        <location filename="../treebar.cpp" line="2848"/>
         <source>OpenViewNodeWithIE</source>
         <translation>ビューノードをIEで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2844"/>
+        <location filename="../treebar.cpp" line="2856"/>
         <source>OpenViewNodeWithFF</source>
         <translation>ビューノードをFirefoxで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2852"/>
+        <location filename="../treebar.cpp" line="2864"/>
         <source>OpenViewNodeWithOpera</source>
         <translation>ビューノードをOperaで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2860"/>
+        <location filename="../treebar.cpp" line="2872"/>
         <source>OpenViewNodeWithOPR</source>
         <translation>ビューノードをOPRで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2868"/>
+        <location filename="../treebar.cpp" line="2880"/>
         <source>OpenViewNodeWithSafari</source>
         <translation>ビューノードをSafariで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2876"/>
+        <location filename="../treebar.cpp" line="2888"/>
         <source>OpenViewNodeWithChrome</source>
         <translation>ビューノードをChromeで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2884"/>
+        <location filename="../treebar.cpp" line="2896"/>
         <source>OpenViewNodeWithSleipnir</source>
         <translation>ビューノードをSleipnirで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2892"/>
+        <location filename="../treebar.cpp" line="2904"/>
         <source>OpenViewNodeWithVivaldi</source>
         <translation>ビューノードをVivaldiで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2901"/>
+        <location filename="../treebar.cpp" line="2912"/>
         <source>OpenViewNodeWith%1</source>
         <translation>ビューノードを%1で開く</translation>
     </message>
@@ -2375,12 +2375,12 @@
     <message>
         <location filename="../view/page.cpp" line="1669"/>
         <source>ToggleTreeBar</source>
-        <translation>ツリーバー切り替え</translation>
+        <translation>タブバー切り替え</translation>
     </message>
     <message>
         <location filename="../view/page.cpp" line="1670"/>
         <source>ToggleToolBar</source>
-        <translation>ツールバー切り替え</translation>
+        <translation>アドレスバー切り替え</translation>
     </message>
     <message>
         <location filename="../view/page.cpp" line="1674"/>
@@ -2585,12 +2585,12 @@
     <message>
         <location filename="../view/page.cpp" line="1874"/>
         <source>TreeBar</source>
-        <translation>ツリーバー</translation>
+        <translation>タブバー</translation>
     </message>
     <message>
         <location filename="../view/page.cpp" line="1878"/>
         <source>ToolBar</source>
-        <translation>ツールバー</translation>
+        <translation>アドレスバー</translation>
     </message>
     <message>
         <location filename="../view/page.cpp" line="1923"/>
@@ -2763,27 +2763,27 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="593"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="598"/>
         <source>Title : </source>
         <translation>タイトル : </translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="594"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="599"/>
         <source>Url : </source>
         <translation>URL : </translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="595"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="600"/>
         <source>CreatedDate : </source>
         <translation>作成日時 : </translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="597"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="602"/>
         <source>LastAccessedDate : </source>
         <translation>アクセス日時 : </translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="596"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="601"/>
         <source>LastUpdatedDate : </source>
         <translation>更新日時 : </translation>
     </message>
@@ -2833,94 +2833,94 @@
         <translation>URLもしくはJavascriptを入力してください</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1807"/>
-        <location filename="../treebar.cpp" line="1913"/>
-        <location filename="../treebar.cpp" line="2784"/>
+        <location filename="../treebar.cpp" line="1824"/>
+        <location filename="../treebar.cpp" line="1930"/>
+        <location filename="../treebar.cpp" line="2796"/>
         <source>NewViewNode</source>
         <translation>新規ビューノード</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1817"/>
-        <location filename="../treebar.cpp" line="1923"/>
-        <location filename="../treebar.cpp" line="2790"/>
+        <location filename="../treebar.cpp" line="1834"/>
+        <location filename="../treebar.cpp" line="1940"/>
+        <location filename="../treebar.cpp" line="2802"/>
         <source>CloneViewNode</source>
         <translation>ビューノード複製</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1982"/>
+        <location filename="../treebar.cpp" line="1999"/>
         <source>More</source>
         <translation>もっと見る</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1988"/>
+        <location filename="../treebar.cpp" line="2005"/>
         <source>DisplayTrashTree</source>
         <translation>ゴミ箱を開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2799"/>
+        <location filename="../treebar.cpp" line="2811"/>
         <source>RenameViewNode</source>
         <translation>リネーム</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2805"/>
+        <location filename="../treebar.cpp" line="2817"/>
         <source>ReloadViewNode</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2815"/>
+        <location filename="../treebar.cpp" line="2827"/>
         <source>OpenViewNode</source>
         <translation>開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2822"/>
+        <location filename="../treebar.cpp" line="2834"/>
         <source>OpenViewNodeOnNewWindow</source>
         <translation>新規ウィンドウで開く</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2913"/>
+        <location filename="../treebar.cpp" line="2924"/>
         <source>DeleteViewNode</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2919"/>
+        <location filename="../treebar.cpp" line="2930"/>
         <source>DeleteRightViewNode</source>
         <translation>右側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2920"/>
+        <location filename="../treebar.cpp" line="2931"/>
         <source>DeleteLowerViewNode</source>
         <translation>下側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2934"/>
+        <location filename="../treebar.cpp" line="2945"/>
         <source>DeleteLeftViewNode</source>
         <translation>左側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2935"/>
+        <location filename="../treebar.cpp" line="2946"/>
         <source>DeleteUpperViewNode</source>
         <translation>上側のノードを削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2948"/>
+        <location filename="../treebar.cpp" line="2959"/>
         <source>DeleteOtherViewNode</source>
         <translation>このノード以外を削除</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1825"/>
-        <location filename="../treebar.cpp" line="2960"/>
+        <location filename="../treebar.cpp" line="1842"/>
+        <location filename="../treebar.cpp" line="2971"/>
         <source>MakeDirectory</source>
         <translation>新規ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1834"/>
-        <location filename="../treebar.cpp" line="2965"/>
+        <location filename="../treebar.cpp" line="1851"/>
+        <location filename="../treebar.cpp" line="2976"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation>選択ノードでディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1844"/>
-        <location filename="../treebar.cpp" line="2974"/>
+        <location filename="../treebar.cpp" line="1861"/>
+        <location filename="../treebar.cpp" line="2985"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation>ドメインごとにディレクトリ作成</translation>
     </message>
@@ -2992,22 +2992,22 @@
 <context>
     <name>Receiver</name>
     <message>
-        <location filename="../receiver.cpp" line="950"/>
+        <location filename="../receiver.cpp" line="952"/>
         <source>Command Mode.</source>
         <translation>コマンド.</translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="951"/>
+        <location filename="../receiver.cpp" line="953"/>
         <source>Input Query.</source>
         <translation>検索.</translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="952"/>
+        <location filename="../receiver.cpp" line="954"/>
         <source>Input Url.</source>
         <translation>URLを入力してください.</translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="953"/>
+        <location filename="../receiver.cpp" line="955"/>
         <source>Incremental Search</source>
         <translation>インクリメンタルサーチ</translation>
     </message>
@@ -3035,7 +3035,7 @@
     <message>
         <location filename="../toolbar.cpp" line="108"/>
         <source>ToolBar</source>
-        <translation>ツールバー</translation>
+        <translation>アドレスバー</translation>
     </message>
 </context>
 <context>
@@ -3205,12 +3205,12 @@
     <message>
         <location filename="../treebank.cpp" line="3635"/>
         <source>ToggleTreeBar</source>
-        <translation>ツリーバー切り替え</translation>
+        <translation>タブバー切り替え</translation>
     </message>
     <message>
         <location filename="../treebank.cpp" line="3636"/>
         <source>ToggleToolBar</source>
-        <translation>ツールバー切り替え</translation>
+        <translation>アドレスバー切り替え</translation>
     </message>
     <message>
         <location filename="../treebank.cpp" line="3674"/>
@@ -3335,12 +3335,12 @@
     <message>
         <location filename="../treebank.cpp" line="3733"/>
         <source>TreeBar</source>
-        <translation>ツリーバー</translation>
+        <translation>タブバー</translation>
     </message>
     <message>
         <location filename="../treebank.cpp" line="3738"/>
         <source>ToolBar</source>
-        <translation>ツールバー</translation>
+        <translation>アドレスバー</translation>
     </message>
     <message>
         <location filename="../treebank.cpp" line="3767"/>
@@ -3548,12 +3548,12 @@
     <message>
         <location filename="../treebar.cpp" line="802"/>
         <source>TreeBar</source>
-        <translation>ツリーバー</translation>
+        <translation>タブバー</translation>
     </message>
     <message>
         <location filename="../treebar.cpp" line="1003"/>
         <source>TreeBarSettings</source>
-        <translation>ツリーバーの設定</translation>
+        <translation>タブバーの設定</translation>
     </message>
     <message>
         <location filename="../treebar.cpp" line="1006"/>
@@ -3602,67 +3602,67 @@
 <context>
     <name>VideoItem</name>
     <message>
-        <location filename="../view/localview.cpp" line="2326"/>
+        <location filename="../view/localview.cpp" line="2329"/>
         <source>play</source>
         <translation>再生</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2331"/>
+        <location filename="../view/localview.cpp" line="2334"/>
         <source>pause</source>
         <translation>一時停止</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2336"/>
+        <location filename="../view/localview.cpp" line="2339"/>
         <source>stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2341"/>
+        <location filename="../view/localview.cpp" line="2344"/>
         <source>volume up</source>
         <translation>音量を上げる</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2347"/>
+        <location filename="../view/localview.cpp" line="2350"/>
         <source>volume down</source>
         <translation>音量を下げる</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2375"/>
+        <location filename="../view/localview.cpp" line="2378"/>
         <source>10 minutes back</source>
         <translation>1分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2383"/>
+        <location filename="../view/localview.cpp" line="2386"/>
         <source>10 minutes forward</source>
         <translation>1分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2390"/>
+        <location filename="../view/localview.cpp" line="2393"/>
         <source>5 minutes back</source>
         <translation>5分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2397"/>
+        <location filename="../view/localview.cpp" line="2400"/>
         <source>5 minutes forward</source>
         <translation>5分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2404"/>
+        <location filename="../view/localview.cpp" line="2407"/>
         <source>1 minute back</source>
         <translation>1分戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2411"/>
+        <location filename="../view/localview.cpp" line="2414"/>
         <source>1 minute forward</source>
         <translation>1分進む</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2417"/>
+        <location filename="../view/localview.cpp" line="2420"/>
         <source>10 seconds back</source>
         <translation>10秒戻る</translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2423"/>
+        <location filename="../view/localview.cpp" line="2426"/>
         <source>10 seconds forward</source>
         <translation>10分進む</translation>
     </message>

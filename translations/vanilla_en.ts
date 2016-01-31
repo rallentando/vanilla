@@ -760,55 +760,55 @@
 <context>
     <name>GraphicsTableView</name>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="512"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="3100"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="3137"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="543"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3140"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="3177"/>
         <source>Displaying %1 nodes.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="582"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="612"/>
         <source>Reverse</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="589"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="619"/>
         <source>SortByUrl</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="596"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="626"/>
         <source>SortByTitle</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="603"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="633"/>
         <source>SortByCreateDate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="617"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="647"/>
         <source>SortByLastAccessDate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="610"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="640"/>
         <source>SortByLastUpdateDate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2124"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2156"/>
         <source>Invalid directory contents.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2125"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2157"/>
         <source>This directory has no contents or all nodes have same domain.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/graphicstableview.cpp" line="2692"/>
-        <location filename="../gadgets/graphicstableview.cpp" line="2717"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2732"/>
+        <location filename="../gadgets/graphicstableview.cpp" line="2757"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation></translation>
     </message>
@@ -851,22 +851,22 @@
 <context>
     <name>LayerItem</name>
     <message>
-        <location filename="../treebar.cpp" line="1873"/>
+        <location filename="../treebar.cpp" line="1890"/>
         <source>TreeBarSettings</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1876"/>
+        <location filename="../treebar.cpp" line="1893"/>
         <source>EnableAnimation</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1884"/>
+        <location filename="../treebar.cpp" line="1901"/>
         <source>EnableCloseButton</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1892"/>
+        <location filename="../treebar.cpp" line="1909"/>
         <source>EnableCloneButton</source>
         <translation></translation>
     </message>
@@ -874,75 +874,75 @@
 <context>
     <name>LocalView</name>
     <message>
-        <location filename="../view/localview.cpp" line="1620"/>
+        <location filename="../view/localview.cpp" line="1625"/>
         <source>Delete File.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1621"/>
+        <location filename="../view/localview.cpp" line="1626"/>
         <source>Are you sure you want to delete this file?</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1637"/>
+        <location filename="../view/localview.cpp" line="1642"/>
         <source>Delete Files.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1638"/>
+        <location filename="../view/localview.cpp" line="1643"/>
         <source>Are you sure you want to delete these files?</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1648"/>
-        <location filename="../view/localview.cpp" line="1671"/>
+        <location filename="../view/localview.cpp" line="1653"/>
+        <location filename="../view/localview.cpp" line="1676"/>
         <source>Input file name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1649"/>
+        <location filename="../view/localview.cpp" line="1654"/>
         <source>Input new file name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1654"/>
-        <location filename="../view/localview.cpp" line="1677"/>
+        <location filename="../view/localview.cpp" line="1659"/>
+        <location filename="../view/localview.cpp" line="1682"/>
         <source>Invalid file name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1655"/>
-        <location filename="../view/localview.cpp" line="1678"/>
+        <location filename="../view/localview.cpp" line="1660"/>
+        <location filename="../view/localview.cpp" line="1683"/>
         <source>Cannot make file with such name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1672"/>
+        <location filename="../view/localview.cpp" line="1677"/>
         <source>Input clone file name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1692"/>
+        <location filename="../view/localview.cpp" line="1697"/>
         <source>Input directory name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1693"/>
+        <location filename="../view/localview.cpp" line="1698"/>
         <source>Input new directory name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1697"/>
+        <location filename="../view/localview.cpp" line="1702"/>
         <source>Invalid directory name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="1698"/>
+        <location filename="../view/localview.cpp" line="1703"/>
         <source>Cannot make directory with such name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2075"/>
+        <location filename="../view/localview.cpp" line="2078"/>
         <source>NoAction</source>
         <translation></translation>
     </message>
@@ -1743,52 +1743,52 @@
 <context>
     <name>NodeItem</name>
     <message>
-        <location filename="../treebar.cpp" line="2833"/>
+        <location filename="../treebar.cpp" line="2845"/>
         <source>OpenViewNodeWithOtherBrowser</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2836"/>
+        <location filename="../treebar.cpp" line="2848"/>
         <source>OpenViewNodeWithIE</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2844"/>
+        <location filename="../treebar.cpp" line="2856"/>
         <source>OpenViewNodeWithFF</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2852"/>
+        <location filename="../treebar.cpp" line="2864"/>
         <source>OpenViewNodeWithOpera</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2860"/>
+        <location filename="../treebar.cpp" line="2872"/>
         <source>OpenViewNodeWithOPR</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2868"/>
+        <location filename="../treebar.cpp" line="2880"/>
         <source>OpenViewNodeWithSafari</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2876"/>
+        <location filename="../treebar.cpp" line="2888"/>
         <source>OpenViewNodeWithChrome</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2884"/>
+        <location filename="../treebar.cpp" line="2896"/>
         <source>OpenViewNodeWithSleipnir</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2892"/>
+        <location filename="../treebar.cpp" line="2904"/>
         <source>OpenViewNodeWithVivaldi</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2901"/>
+        <location filename="../treebar.cpp" line="2912"/>
         <source>OpenViewNodeWith%1</source>
         <translation></translation>
     </message>
@@ -2756,27 +2756,27 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="593"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="598"/>
         <source>Title : </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="594"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="599"/>
         <source>Url : </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="595"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="600"/>
         <source>CreatedDate : </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="597"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="602"/>
         <source>LastAccessedDate : </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../gadgets/gadgetsstyle.cpp" line="596"/>
+        <location filename="../gadgets/gadgetsstyle.cpp" line="601"/>
         <source>LastUpdatedDate : </source>
         <translation></translation>
     </message>
@@ -2826,94 +2826,94 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1807"/>
-        <location filename="../treebar.cpp" line="1913"/>
-        <location filename="../treebar.cpp" line="2784"/>
+        <location filename="../treebar.cpp" line="1824"/>
+        <location filename="../treebar.cpp" line="1930"/>
+        <location filename="../treebar.cpp" line="2796"/>
         <source>NewViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1817"/>
-        <location filename="../treebar.cpp" line="1923"/>
-        <location filename="../treebar.cpp" line="2790"/>
+        <location filename="../treebar.cpp" line="1834"/>
+        <location filename="../treebar.cpp" line="1940"/>
+        <location filename="../treebar.cpp" line="2802"/>
         <source>CloneViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1982"/>
+        <location filename="../treebar.cpp" line="1999"/>
         <source>More</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1988"/>
+        <location filename="../treebar.cpp" line="2005"/>
         <source>DisplayTrashTree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2799"/>
+        <location filename="../treebar.cpp" line="2811"/>
         <source>RenameViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2805"/>
+        <location filename="../treebar.cpp" line="2817"/>
         <source>ReloadViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2815"/>
+        <location filename="../treebar.cpp" line="2827"/>
         <source>OpenViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2822"/>
+        <location filename="../treebar.cpp" line="2834"/>
         <source>OpenViewNodeOnNewWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2913"/>
+        <location filename="../treebar.cpp" line="2924"/>
         <source>DeleteViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2919"/>
+        <location filename="../treebar.cpp" line="2930"/>
         <source>DeleteRightViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2920"/>
+        <location filename="../treebar.cpp" line="2931"/>
         <source>DeleteLowerViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2934"/>
+        <location filename="../treebar.cpp" line="2945"/>
         <source>DeleteLeftViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2935"/>
+        <location filename="../treebar.cpp" line="2946"/>
         <source>DeleteUpperViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="2948"/>
+        <location filename="../treebar.cpp" line="2959"/>
         <source>DeleteOtherViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1825"/>
-        <location filename="../treebar.cpp" line="2960"/>
+        <location filename="../treebar.cpp" line="1842"/>
+        <location filename="../treebar.cpp" line="2971"/>
         <source>MakeDirectory</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1834"/>
-        <location filename="../treebar.cpp" line="2965"/>
+        <location filename="../treebar.cpp" line="1851"/>
+        <location filename="../treebar.cpp" line="2976"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../treebar.cpp" line="1844"/>
-        <location filename="../treebar.cpp" line="2974"/>
+        <location filename="../treebar.cpp" line="1861"/>
+        <location filename="../treebar.cpp" line="2985"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation></translation>
     </message>
@@ -2985,22 +2985,22 @@
 <context>
     <name>Receiver</name>
     <message>
-        <location filename="../receiver.cpp" line="950"/>
+        <location filename="../receiver.cpp" line="952"/>
         <source>Command Mode.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="951"/>
+        <location filename="../receiver.cpp" line="953"/>
         <source>Input Query.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="952"/>
+        <location filename="../receiver.cpp" line="954"/>
         <source>Input Url.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../receiver.cpp" line="953"/>
+        <location filename="../receiver.cpp" line="955"/>
         <source>Incremental Search</source>
         <translation></translation>
     </message>
@@ -3594,67 +3594,67 @@
 <context>
     <name>VideoItem</name>
     <message>
-        <location filename="../view/localview.cpp" line="2326"/>
+        <location filename="../view/localview.cpp" line="2329"/>
         <source>play</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2331"/>
+        <location filename="../view/localview.cpp" line="2334"/>
         <source>pause</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2336"/>
+        <location filename="../view/localview.cpp" line="2339"/>
         <source>stop</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2341"/>
+        <location filename="../view/localview.cpp" line="2344"/>
         <source>volume up</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2347"/>
+        <location filename="../view/localview.cpp" line="2350"/>
         <source>volume down</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2375"/>
+        <location filename="../view/localview.cpp" line="2378"/>
         <source>10 minutes back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2383"/>
+        <location filename="../view/localview.cpp" line="2386"/>
         <source>10 minutes forward</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2390"/>
+        <location filename="../view/localview.cpp" line="2393"/>
         <source>5 minutes back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2397"/>
+        <location filename="../view/localview.cpp" line="2400"/>
         <source>5 minutes forward</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2404"/>
+        <location filename="../view/localview.cpp" line="2407"/>
         <source>1 minute back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2411"/>
+        <location filename="../view/localview.cpp" line="2414"/>
         <source>1 minute forward</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2417"/>
+        <location filename="../view/localview.cpp" line="2420"/>
         <source>10 seconds back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../view/localview.cpp" line="2423"/>
+        <location filename="../view/localview.cpp" line="2426"/>
         <source>10 seconds forward</source>
         <translation></translation>
     </message>

@@ -91,18 +91,7 @@ public:
         setZValue(HIDDEN_CONTENTS_LAYER);
     }
 
-private:
-    void Update_(QRectF rect){ update(rect);}
-
 public:
-    inline void Update(QRectF rect = QRectF()){
-#ifdef OUT_OF_THREAD_UPDATE
-        QtConcurrent::run(this, &LocalView::Update_, rect);
-#else
-        update(rect);
-#endif
-    }
-
     static void ClearCache();
     void SwapMediaItem(int index);
 
@@ -283,8 +272,6 @@ public:
     void WheelEvent(QWheelEvent *ev) DECL_OVERRIDE;
 
 public slots:
-    void UpdateLater();
-
     void OnSetViewNode(ViewNode*) DECL_OVERRIDE;
     void OnSetHistNode(HistNode*) DECL_OVERRIDE;
     void OnSetThis(WeakView) DECL_OVERRIDE;

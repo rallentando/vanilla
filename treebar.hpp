@@ -65,6 +65,10 @@ public slots:
     void OnUpdateRequested();
     void OnCurrentChanged(SharedView from, SharedView to);
 
+    void StartAutoUpdateTimer();
+    void StopAutoUpdateTimer();
+    void RestartAutoUpdateTimer();
+
 protected:
     void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
     void resizeEvent(QResizeEvent *ev) DECL_OVERRIDE;
@@ -85,7 +89,7 @@ private:
     QWidget *m_ResizeGrip;
     QSize m_OverrideSize;
     QList<LayerItem*> m_LayerList;
-    int m_AutoUpdateTimer;
+    int m_AutoUpdateTimerID;
     int m_HorizontalNodeHeight;
     int m_VerticalNodeWidth;
 
@@ -175,9 +179,9 @@ private:
     Node *m_Node;
     NodeItem *m_FocusedNode;
     int m_Nest;
-    int m_ScrollUpTimer;
-    int m_ScrollDownTimer;
-    qreal m_Scroll;
+    int m_ScrollUpTimerID;
+    int m_ScrollDownTimerID;
+    qreal m_CurrentScroll;
     qreal m_TargetScroll;
     QGraphicsItem *m_PrevScrollButton;
     QGraphicsItem *m_NextScrollButton;

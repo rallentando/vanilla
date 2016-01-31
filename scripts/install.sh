@@ -45,6 +45,7 @@ mkdir -p $TARGET_DIR/position/
 mkdir -p $TARGET_DIR/printsupport/
 mkdir -p $TARGET_DIR/qmltooling/
 #mkdir -p $TARGET_DIR/qtwebengine/
+mkdir -p $TARGET_DIR/resources/
 mkdir -p $TARGET_DIR/sensorgestures/
 mkdir -p $TARGET_DIR/sensors/
 mkdir -p $TARGET_DIR/sqldrivers/
@@ -178,12 +179,14 @@ cp $QT5_DIR/qml/QtWebEngine/UIDelegates/qmldir                             $TARG
 cp $QT5_DIR/translations/qt_*.qm     $TARGET_DIR/translations/
 cp $QT5_DIR/translations/qtbase_*.qm $TARGET_DIR/translations/
 
-cp $QT5_DIR/icudtl.dat $TARGET_DIR/
-cp $QT5_DIR/qtwebengine_resources.pak $TARGET_DIR/
-cp $QT5_DIR/qtwebengine_resources_100p.pak $TARGET_DIR/
-cp $QT5_DIR/qtwebengine_resources_200p.pak $TARGET_DIR/
+cp $QT5_DIR/resources/icudtl.dat $TARGET_DIR/resources/
+cp $QT5_DIR/resources/qtwebengine_resources.pak $TARGET_DIR/resources/
+cp $QT5_DIR/resources/qtwebengine_resources_100p.pak $TARGET_DIR/resources/
+cp $QT5_DIR/resources/qtwebengine_resources_200p.pak $TARGET_DIR/resources/
 cp $QT5_DIR/translations/qtwebengine_locales/*.pak $TARGET_DIR/translations/qtwebengine_locales/
 
 cp translations/*.qm $TARGET_DIR/translations/
 
 cp LICENSE $TARGET_DIR/
+
+cp qt.conf $TARGET_DIR/

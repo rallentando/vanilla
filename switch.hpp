@@ -34,8 +34,6 @@
 // by clearing thumbnail and nodetitle before deleting node.
 #define USE_LIGHTNODE
 
-//#define OUT_OF_THREAD_UPDATE
-
 //#define WEBENGINEVIEW_DEFAULT
 
 //#define USE_ANGLE

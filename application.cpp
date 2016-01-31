@@ -268,7 +268,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     connect(m_Instance,  &Application::SaveAllDataRequest,
             m_AutoSaver, &AutoSaver::SaveAll);
     m_AutoSaver->moveToThread(m_SaverThread);
-    m_SaverThread->start();
+    m_SaverThread->start(QThread::IdlePriority);
 
     StartAutoSaveTimer();
     StartAutoLoadTimer();

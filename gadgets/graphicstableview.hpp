@@ -95,17 +95,13 @@ public slots:
     virtual void Activate(DisplayType type);
     virtual void Deactivate();
 
-private:
-    void Update_(QRectF rect){ update(rect);}
+    void StartAutoUpdateTimer();
+    void StopAutoUpdateTimer();
+    void RestartAutoUpdateTimer();
 
 public:
-    inline void Update(QRectF rect = QRectF()){
-#ifdef OUT_OF_THREAD_UPDATE
-        QtConcurrent::run(this, &GraphicsTableView::Update_, rect);
-#else
-        update(rect);
-#endif
-    }
+    void Update(QRectF rect = QRectF());
+
     QString GetDirectoryPrefix(Node *nd);
 
     SpotLight *GetPrimarySpotLight();
@@ -133,9 +129,9 @@ public:
     inline Thumbnail *GetPrimaryThumbnail() const { return m_DisplayThumbnails.value(m_PrimaryItemIndex);}
     inline NodeTitle *GetPrimaryNodeTitle() const { return m_DisplayNodeTitles.value(m_PrimaryItemIndex);}
 
-    inline int        GetScrolledItemIndex() const { return m_TargetOffsetValue;}
-    inline Thumbnail *GetScrolledThumbnail() const { return m_DisplayThumbnails.value(m_TargetOffsetValue);}
-    inline NodeTitle *GetScrolledNodeTitle() const { return m_DisplayNodeTitles.value(m_TargetOffsetValue);}
+    inline int        GetScrolledItemIndex() const { return m_TargetScroll;}
+    inline Thumbnail *GetScrolledThumbnail() const { return m_DisplayThumbnails.value(m_TargetScroll);}
+    inline NodeTitle *GetScrolledNodeTitle() const { return m_DisplayNodeTitles.value(m_TargetScroll);}
 
     // for thumbnail and nodetitle.
     inline bool IsHovered(Thumbnail *thumb) const { return thumb && thumb == GetHoveredThumbnail();}
@@ -222,10 +218,13 @@ protected:
     void CollectNodes(Node *root, QString filter = QString());
 
 public:
-    void ResetTargetScroll();
+    qreal MaxScroll();
+    qreal MinScroll();
+
+    qreal GetScroll();
     void Scroll(qreal delta);
     void ScrollToItem(qreal target);
-    qreal GetScroll();
+    void ResetTargetScroll();
 
 public slots:
     void SetScroll(QPointF pos);
@@ -261,6 +260,7 @@ protected:
     virtual void wheelEvent            (QGraphicsSceneWheelEvent *ev) DECL_OVERRIDE;
     virtual void focusInEvent          (QFocusEvent *ev) DECL_OVERRIDE;
     virtual void focusOutEvent         (QFocusEvent *ev) DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
 
 public slots:
     virtual bool ThumbList_Refresh();
@@ -350,6 +350,9 @@ private:
     QMap<Node*, Thumbnail*> m_ThumbnailCache;
     QMap<Node*, NodeTitle*> m_NodeTitleCache;
 
+    // for auto update.
+    int m_AutoUpdateTimerID;
+
     // for empty directory.
     ViewNode *m_DummyViewNode;
     HistNode *m_DummyHistNode;
@@ -386,8 +389,8 @@ protected:
 
     // for thumblist layout.
     QPropertyAnimation *m_ScrollAnimation;
-    qreal m_CurrentOffsetValue;
-    qreal m_TargetOffsetValue;
+    qreal m_CurrentScroll;
+    qreal m_TargetScroll;
     int m_CurrentThumbnailLineCount;
     int m_CurrentThumbnailColumnCount;
     int m_CurrentThumbnailWidth;
@@ -457,7 +460,7 @@ protected:
     }
 
     inline Node *GetScrolledNode() const {
-        if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetOffsetValue))
+        if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetScroll))
             return thumb->GetNode();
         return 0;
     }
@@ -478,7 +481,7 @@ protected:
 
     inline ViewNode *GetScrolledViewNode() const {
         if(IsDisplayingViewNode())
-            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetOffsetValue))
+            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetScroll))
                 return thumb->GetNode()->ToViewNode();
         return 0;
     }
@@ -499,7 +502,7 @@ protected:
 
     inline HistNode *GetScrolledHistNode() const {
         if(IsDisplayingHistNode())
-            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetOffsetValue))
+            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetScroll))
                 return thumb->GetNode()->ToHistNode();
         return 0;
     }
