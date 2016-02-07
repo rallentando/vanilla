@@ -1093,6 +1093,10 @@ void Page::OpenWithIE(){
     Application::OpenUrlWith_IE(m_View->GetHistNode()->GetUrl());
 }
 
+void Page::OpenWithEdge(){
+    Application::OpenUrlWith_Edge(m_View->GetHistNode()->GetUrl());
+}
+
 void Page::OpenWithFF(){
     Application::OpenUrlWith_FF(m_View->GetHistNode()->GetUrl());
 }
@@ -1256,6 +1260,10 @@ void Page::OpenLinkWithIE(){
     ELEMENT_ACTION(Application::OpenUrlWith_IE(e->LinkUrl()));
 }
 
+void Page::OpenLinkWithEdge(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Edge(e->LinkUrl()));
+}
+
 void Page::OpenLinkWithFF(){
     ELEMENT_ACTION(Application::OpenUrlWith_FF(e->LinkUrl()));
 }
@@ -1315,6 +1323,10 @@ void Page::CopyImageHtml(){
 
 void Page::OpenImageWithIE(){
     ELEMENT_ACTION(Application::OpenUrlWith_IE(e->ImageUrl()));
+}
+
+void Page::OpenImageWithEdge(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Edge(e->ImageUrl()));
 }
 
 void Page::OpenImageWithFF(){
@@ -1741,6 +1753,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(CopyPageAsLink,        tr("CopyPageAsLink"));
         DEFINE_ACTION(CopySelectedHtml,      tr("CopySelectedHtml"));
         DEFINE_ACTION(OpenWithIE,            tr("OpenWithIE"));
+        DEFINE_ACTION(OpenWithEdge,          tr("OpenWithEdge"));
         DEFINE_ACTION(OpenWithFF,            tr("OpenWithFF"));
         DEFINE_ACTION(OpenWithOpera,         tr("OpenWithOpera"));
         DEFINE_ACTION(OpenWithOPR,           tr("OpenWithOPR"));
@@ -1761,6 +1774,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(CopyLinkUrl,           tr("CopyLinkUrl"));
         DEFINE_ACTION(CopyLinkHtml,          tr("CopyLinkHtml"));
         DEFINE_ACTION(OpenLinkWithIE,        tr("OpenLinkWithIE"));
+        DEFINE_ACTION(OpenLinkWithEdge,      tr("OpenLinkWithEdge"));
         DEFINE_ACTION(OpenLinkWithFF,        tr("OpenLinkWithFF"));
         DEFINE_ACTION(OpenLinkWithOpera,     tr("OpenLinkWithOpera"));
         DEFINE_ACTION(OpenLinkWithOPR,       tr("OpenLinkWithOPR"));
@@ -1784,6 +1798,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(CopyImageUrl,          tr("CopyImageUrl"));
         DEFINE_ACTION(CopyImageHtml,         tr("CopyImageHtml"));
         DEFINE_ACTION(OpenImageWithIE,       tr("OpenImageWithIE"));
+        DEFINE_ACTION(OpenImageWithEdge,     tr("OpenImageWithEdge"));
         DEFINE_ACTION(OpenImageWithFF,       tr("OpenImageWithFF"));
         DEFINE_ACTION(OpenImageWithOpera,    tr("OpenImageWithOpera"));
         DEFINE_ACTION(OpenImageWithOPR,      tr("OpenImageWithOPR"));
@@ -1882,6 +1897,11 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case We_OpenLinkWithIE:
     case We_OpenImageWithIE:
         webaction->setIcon(Application::BrowserIcon_IE());
+        break;
+    case We_OpenWithEdge:
+    case We_OpenLinkWithEdge:
+    case We_OpenImageWithEdge:
+        webaction->setIcon(Application::BrowserIcon_Edge());
         break;
     case We_OpenWithFF:
     case We_OpenLinkWithFF:

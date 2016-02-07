@@ -220,6 +220,18 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
                                image_rect.height() - size.height());
         painter->drawImage(QRectF(image_rect.topLeft() + diff / 2.0, size),
                            image, QRectF(QPointF(), image.size()));
+
+        if(View *view = thumb->GetNode()->GetView()){
+            QIcon icon = view->GetIcon();
+            if(!icon.isNull()){
+                QPixmap pixmap = icon.pixmap(QSize(16, 16));
+                if(pixmap.width() > 2){
+                    painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 2), QSize(16, 16)),
+                                        pixmap, QRect(QPoint(), pixmap.size()));
+                    title_rect.setLeft(title_rect.left() + 17);
+                }
+            }
+        }
     } else {
         bool isDir = thumb->GetNode()->IsDirectory();
         static const QBrush db = QBrush(QColor(50, 100, 100, 150));
@@ -364,6 +376,18 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     title_rect.setTop(bound.top() + 1);
     title_rect.setLeft(bound.left() + title->GetNest() * 20 + 5);
     title_rect.intersected(port);
+
+    if(View *view = title->GetNode()->GetView()){
+        QIcon icon = view->GetIcon();
+        if(!icon.isNull()){
+            QPixmap pixmap = icon.pixmap(QSize(16, 16));
+            if(pixmap.width() > 2){
+                painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 1), QSize(16, 16)),
+                                    pixmap, QRect(QPoint(), pixmap.size()));
+                title_rect.setLeft(title_rect.left() + 18);
+            }
+        }
+    }
 
     {
         static const QPen p = QPen(QColor(255,255,255,255));
@@ -1017,6 +1041,18 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
 
     title_rect = QRectF(title_rect.topLeft() + QPointF(2.0, 0.0),
                         title_rect.size() + QSizeF(-5.0, -1.0));
+
+    if(View *view = thumb->GetNode()->GetView()){
+        QIcon icon = view->GetIcon();
+        if(!icon.isNull()){
+            QPixmap pixmap = icon.pixmap(QSize(16, 16));
+            if(pixmap.width() > 2){
+                painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 2), QSize(16, 16)),
+                                    pixmap, QRect(QPoint(), pixmap.size()));
+                title_rect.setLeft(title_rect.left() + 17);
+            }
+        }
+    }
 
     {
         static const QPen p = QPen(QColor(100,100,100,255));

@@ -434,6 +434,8 @@ void LocalView::Connect(TreeBank *tb){
     if(tb){
         connect(this, SIGNAL(titleChanged(const QString&)),
                 tb->parent(), SLOT(SetWindowTitle(const QString&)));
+        //connect(this, SIGNAL(titleChanged(const QString&)),
+        //        tb, SLOT(OnAttributeChanged()));
 
         if(Notifier *notifier = tb->GetNotifier()){
             connect(this, SIGNAL(statusBarMessage(const QString&)),
@@ -480,6 +482,7 @@ void LocalView::Connect(TreeBank *tb){
             connect(receiver, SIGNAL(CopyNodeTitle()),                   this, SLOT(ThumbList_CopyNodeTitle()));
             connect(receiver, SIGNAL(CopyNodeAsLink()),                  this, SLOT(ThumbList_CopyNodeAsLink()));
             connect(receiver, SIGNAL(OpenNodeWithIE()),                  this, SLOT(ThumbList_OpenNodeWithIE()));
+            connect(receiver, SIGNAL(OpenNodeWithEdge()),                this, SLOT(ThumbList_OpenNodeWithEdge()));
             connect(receiver, SIGNAL(OpenNodeWithFF()),                  this, SLOT(ThumbList_OpenNodeWithFF()));
             connect(receiver, SIGNAL(OpenNodeWithOpera()),               this, SLOT(ThumbList_OpenNodeWithOpera()));
             connect(receiver, SIGNAL(OpenNodeWithOPR()),                 this, SLOT(ThumbList_OpenNodeWithOPR()));
@@ -549,6 +552,8 @@ void LocalView::Disconnect(TreeBank *tb){
     if(tb){
         disconnect(this, SIGNAL(titleChanged(const QString&)),
                    tb->parent(), SLOT(SetWindowTitle(const QString&)));
+        //disconnect(this, SIGNAL(titleChanged(const QString&)),
+        //           tb, SLOT(OnAttributeChanged()));
 
         if(Notifier *notifier = tb->GetNotifier()){
             disconnect(this, SIGNAL(statusBarMessage(const QString&)),
@@ -595,6 +600,7 @@ void LocalView::Disconnect(TreeBank *tb){
             disconnect(receiver, SIGNAL(CopyNodeTitle()),                   this, SLOT(ThumbList_CopyNodeTitle()));
             disconnect(receiver, SIGNAL(CopyNodeAsLink()),                  this, SLOT(ThumbList_CopyNodeAsLink()));
             disconnect(receiver, SIGNAL(OpenNodeWithIE()),                  this, SLOT(ThumbList_OpenNodeWithIE()));
+            disconnect(receiver, SIGNAL(OpenNodeWithEdge()),                this, SLOT(ThumbList_OpenNodeWithEdge()));
             disconnect(receiver, SIGNAL(OpenNodeWithFF()),                  this, SLOT(ThumbList_OpenNodeWithFF()));
             disconnect(receiver, SIGNAL(OpenNodeWithOpera()),               this, SLOT(ThumbList_OpenNodeWithOpera()));
             disconnect(receiver, SIGNAL(OpenNodeWithOPR()),                 this, SLOT(ThumbList_OpenNodeWithOPR()));
@@ -982,6 +988,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(CopyNodeTitle,                   tr("CopyNodeTitle"));
         DEFINE_ACTION(CopyNodeAsLink,                  tr("CopyNodeAsLink"));
         DEFINE_ACTION(OpenNodeWithIE,                  tr("OpenNodeWithIE"));
+        DEFINE_ACTION(OpenNodeWithEdge,                tr("OpenNodeWithEdge"));
         DEFINE_ACTION(OpenNodeWithFF,                  tr("OpenNodeWithFF"));
         DEFINE_ACTION(OpenNodeWithOpera,               tr("OpenNodeWithOpera"));
         DEFINE_ACTION(OpenNodeWithOPR,                 tr("OpenNodeWithOPR"));
@@ -1057,6 +1064,9 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
 
     case Gadgets::Ge_OpenNodeWithIE:
         action->setIcon(Application::BrowserIcon_IE());
+        break;
+    case Gadgets::Ge_OpenNodeWithEdge:
+        action->setIcon(Application::BrowserIcon_Edge());
         break;
     case Gadgets::Ge_OpenNodeWithFF:
         action->setIcon(Application::BrowserIcon_FF());
@@ -1264,6 +1274,10 @@ bool LocalView::ThumbList_CopyNodeAsLink(){
 
 bool LocalView::ThumbList_OpenNodeWithIE(){
     return GraphicsTableView::ThumbList_OpenNodeWithIE();
+}
+
+bool LocalView::ThumbList_OpenNodeWithEdge(){
+    return GraphicsTableView::ThumbList_OpenNodeWithEdge();
 }
 
 bool LocalView::ThumbList_OpenNodeWithFF(){

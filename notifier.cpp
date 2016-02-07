@@ -488,8 +488,8 @@ void Notifier::mouseMoveEvent(QMouseEvent *ev){
             bool north = true;
             bool west = true;
             QPoint center1 = rect.center();
-            QPoint center2 = QPoint(m_TreeBank->size().width()/2,
-                                    m_TreeBank->size().height()/2);
+            QPoint center2 = QPoint(m_TreeBank->width()/2,
+                                    m_TreeBank->height()/2);
             if(IsPurged()) center2 = m_TreeBank->mapToGlobal(center2);
             if(center1.x() > center2.x()) west = false;
             if(center1.y() > center2.y()) north = false;

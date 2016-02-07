@@ -198,7 +198,7 @@ void GraphicsTableView::Deactivate(){
 
 void GraphicsTableView::StartAutoUpdateTimer(){
     if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
-    m_AutoUpdateTimerID = startTimer(150);
+    m_AutoUpdateTimerID = startTimer(200);
     connect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer);
 }
 
@@ -210,7 +210,7 @@ void GraphicsTableView::StopAutoUpdateTimer(){
 
 void GraphicsTableView::RestartAutoUpdateTimer(){
     if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
-    if(scene()) m_AutoUpdateTimerID = startTimer(scene()->hasFocus() ? 150 : 1000);
+    if(scene()) m_AutoUpdateTimerID = startTimer(scene()->hasFocus() ? 200 : 1000);
     else m_AutoUpdateTimerID = 0;
 }
 
@@ -2212,6 +2212,15 @@ bool GraphicsTableView::ThumbList_OpenNodeWithIE(){
 
     if(Node *nd = GetHoveredNode()){
         return Application::OpenUrlWith_IE(nd->GetUrl());
+    }
+    return false;
+}
+
+bool GraphicsTableView::ThumbList_OpenNodeWithEdge(){
+    if(!m_CurrentNode || !IsDisplayingNode()) return false;
+
+    if(Node *nd = GetHoveredNode()){
+        return Application::OpenUrlWith_Edge(nd->GetUrl());
     }
     return false;
 }

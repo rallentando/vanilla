@@ -225,6 +225,7 @@ public slots:
     void CopyPageAsLink();
     void CopySelectedHtml();
     void OpenWithIE();
+    void OpenWithEdge();
     void OpenWithFF();
     void OpenWithOpera();
     void OpenWithOPR();
@@ -244,6 +245,7 @@ public slots:
     void CopyLinkUrl();
     void CopyLinkHtml();
     void OpenLinkWithIE();
+    void OpenLinkWithEdge();
     void OpenLinkWithFF();
     void OpenLinkWithOpera();
     void OpenLinkWithOPR();
@@ -261,6 +263,7 @@ public slots:
     void CopyImageUrl();
     void CopyImageHtml();
     void OpenImageWithIE();
+    void OpenImageWithEdge();
     void OpenImageWithFF();
     void OpenImageWithOpera();
     void OpenImageWithOPR();
@@ -498,6 +501,7 @@ public:
         We_CopyPageAsLink,
         We_CopySelectedHtml,
         We_OpenWithIE,
+        We_OpenWithEdge,
         We_OpenWithFF,
         We_OpenWithOpera,
         We_OpenWithOPR,
@@ -518,6 +522,7 @@ public:
         We_CopyLinkUrl,
         We_CopyLinkHtml,
         We_OpenLinkWithIE,
+        We_OpenLinkWithEdge,
         We_OpenLinkWithFF,
         We_OpenLinkWithOpera,
         We_OpenLinkWithOPR,
@@ -534,6 +539,7 @@ public:
         We_CopyImageUrl,
         We_CopyImageHtml,
         We_OpenImageWithIE,
+        We_OpenImageWithEdge,
         We_OpenImageWithFF,
         We_OpenImageWithOpera,
         We_OpenImageWithOPR,
@@ -700,6 +706,7 @@ public:
         if(str == QStringLiteral("CopyPageAsLink"))                    return We_CopyPageAsLink;
         if(str == QStringLiteral("CopySelectedHtml"))                  return We_CopySelectedHtml;
         if(str == QStringLiteral("OpenWithIE"))                        return We_OpenWithIE;
+        if(str == QStringLiteral("OpenWithEdge"))                      return We_OpenWithEdge;
         if(str == QStringLiteral("OpenWithFF"))                        return We_OpenWithFF;
         if(str == QStringLiteral("OpenWithOpera"))                     return We_OpenWithOpera;
         if(str == QStringLiteral("OpenWithOPR"))                       return We_OpenWithOPR;
@@ -720,6 +727,7 @@ public:
         if(str == QStringLiteral("CopyLinkUrl"))                       return We_CopyLinkUrl;
         if(str == QStringLiteral("CopyLinkHtml"))                      return We_CopyLinkHtml;
         if(str == QStringLiteral("OpenLinkWithIE"))                    return We_OpenLinkWithIE;
+        if(str == QStringLiteral("OpenLinkWithEdge"))                  return We_OpenLinkWithEdge;
         if(str == QStringLiteral("OpenLinkWithFF"))                    return We_OpenLinkWithFF;
         if(str == QStringLiteral("OpenLinkWithOpera"))                 return We_OpenLinkWithOpera;
         if(str == QStringLiteral("OpenLinkWithOPR"))                   return We_OpenLinkWithOPR;
@@ -736,6 +744,7 @@ public:
         if(str == QStringLiteral("CopyImageUrl"))                      return We_CopyImageUrl;
         if(str == QStringLiteral("CopyImageHtml"))                     return We_CopyImageHtml;
         if(str == QStringLiteral("OpenImageWithIE"))                   return We_OpenImageWithIE;
+        if(str == QStringLiteral("OpenImageWithEdge"))                 return We_OpenImageWithEdge;
         if(str == QStringLiteral("OpenImageWithFF"))                   return We_OpenImageWithFF;
         if(str == QStringLiteral("OpenImageWithOpera"))                return We_OpenImageWithOpera;
         if(str == QStringLiteral("OpenImageWithOPR"))                  return We_OpenImageWithOPR;
@@ -903,6 +912,7 @@ public:
         if(action == We_CopyPageAsLink)                    return QStringLiteral("CopyPageAsLink");
         if(action == We_CopySelectedHtml)                  return QStringLiteral("CopySelectedHtml");
         if(action == We_OpenWithIE)                        return QStringLiteral("OpenWithIE");
+        if(action == We_OpenWithEdge)                      return QStringLiteral("OpenWithEdge");
         if(action == We_OpenWithFF)                        return QStringLiteral("OpenWithFF");
         if(action == We_OpenWithOpera)                     return QStringLiteral("OpenWithOpera");
         if(action == We_OpenWithOPR)                       return QStringLiteral("OpenWithOPR");
@@ -923,6 +933,7 @@ public:
         if(action == We_CopyLinkUrl)                       return QStringLiteral("CopyLinkUrl");
         if(action == We_CopyLinkHtml)                      return QStringLiteral("CopyLinkHtml");
         if(action == We_OpenLinkWithIE)                    return QStringLiteral("OpenLinkWithIE");
+        if(action == We_OpenLinkWithEdge)                  return QStringLiteral("OpenLinkWithEdge");
         if(action == We_OpenLinkWithFF)                    return QStringLiteral("OpenLinkWithFF");
         if(action == We_OpenLinkWithOpera)                 return QStringLiteral("OpenLinkWithOpera");
         if(action == We_OpenLinkWithOPR)                   return QStringLiteral("OpenLinkWithOPR");
@@ -939,6 +950,7 @@ public:
         if(action == We_CopyImageUrl)                      return QStringLiteral("CopyImageUrl");
         if(action == We_CopyImageHtml)                     return QStringLiteral("CopyImageHtml");
         if(action == We_OpenImageWithIE)                   return QStringLiteral("OpenImageWithIE");
+        if(action == We_OpenImageWithEdge)                 return QStringLiteral("OpenImageWithEdge");
         if(action == We_OpenImageWithFF)                   return QStringLiteral("OpenImageWithFF");
         if(action == We_OpenImageWithOpera)                return QStringLiteral("OpenImageWithOpera");
         if(action == We_OpenImageWithOPR)                  return QStringLiteral("OpenImageWithOPR");

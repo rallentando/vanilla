@@ -107,6 +107,7 @@ QString Application::m_UserAgent_Gecko     = QString();
 QString Application::m_UserAgent_Custom    = QString();
 
 QString Application::m_BrowserPath_IE       = QString();
+QString Application::m_BrowserPath_Edge     = QString();
 QString Application::m_BrowserPath_FF       = QString();
 QString Application::m_BrowserPath_Opera    = QString();
 QString Application::m_BrowserPath_OPR      = QString();
@@ -2234,6 +2235,24 @@ QString Application::BrowserPath_IE(){
     return QString();
 }
 
+QString Application::BrowserPath_Edge(){
+    // only for gettin icon.
+    static QString path;
+    if(!path.isEmpty()) return path == DISABLE_FILENAME ? QString() : path;
+    if(!m_BrowserPath_Edge.isEmpty()){
+        path = m_BrowserPath_Edge;
+        if(QFile::exists(path)) return path;
+    }
+#if defined(Q_OS_WIN)
+    if(QSysInfo::WindowsVersion == QSysInfo::WV_WINDOWS10){
+        path = QStringLiteral("C:/Windows/SystemApps/Microsoft.MicrosoftEdge_8wekyb3d8bbwe/MicrosoftEdge.exe");
+        if(QFile::exists(path)) return path;
+    }
+#endif
+    path = DISABLE_FILENAME;
+    return QString();
+}
+
 QString Application::BrowserPath_FF(){
     static QString path;
     if(!path.isEmpty()) return path == DISABLE_FILENAME ? QString() : path;
@@ -2419,6 +2438,16 @@ QIcon Application::BrowserIcon_IE(){
     return icon;
 }
 
+QIcon Application::BrowserIcon_Edge(){
+    if(BrowserPath_Edge().isEmpty()) return QIcon();
+    static QIcon icon;
+    if(icon.isNull()){
+        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_Edge()));
+        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
+    }
+    return icon;
+}
+
 QIcon Application::BrowserIcon_FF(){
     if(BrowserPath_FF().isEmpty()) return QIcon();
     static QIcon icon;
@@ -2502,6 +2531,11 @@ QIcon Application::BrowserIcon_Custom(){
 bool Application::OpenUrlWith_IE(QUrl url){
     if(url.isEmpty() || BrowserPath_IE().isEmpty()) return false;
     return QProcess::startDetached(BrowserPath_IE(), QStringList() << QString::fromUtf8(url.toEncoded()));
+}
+
+bool Application::OpenUrlWith_Edge(QUrl url){
+    if(url.isEmpty() || BrowserPath_Edge().isEmpty()) return false;
+    return QProcess::startDetached(BaseDirectory() + QStringLiteral("edge.bat"), QStringList() << QString::fromUtf8(url.toEncoded()));
 }
 
 bool Application::OpenUrlWith_FF(QUrl url){

@@ -118,6 +118,7 @@ public:
         Ge_CopyNodeTitle,
         Ge_CopyNodeAsLink,
         Ge_OpenNodeWithIE,
+        Ge_OpenNodeWithEdge,
         Ge_OpenNodeWithFF,
         Ge_OpenNodeWithOpera,
         Ge_OpenNodeWithOPR,
@@ -568,6 +569,7 @@ public:
         if(str == QStringLiteral("CopyNodeTitle"))                   return Ge_CopyNodeTitle;
         if(str == QStringLiteral("CopyNodeAsLink"))                  return Ge_CopyNodeAsLink;
         if(str == QStringLiteral("OpenNodeWithIE"))                  return Ge_OpenNodeWithIE;
+        if(str == QStringLiteral("OpenNodeWithEdge"))                return Ge_OpenNodeWithEdge;
         if(str == QStringLiteral("OpenNodeWithFF"))                  return Ge_OpenNodeWithFF;
         if(str == QStringLiteral("OpenNodeWithOpera"))               return Ge_OpenNodeWithOpera;
         if(str == QStringLiteral("OpenNodeWithOPR"))                 return Ge_OpenNodeWithOPR;
@@ -703,6 +705,7 @@ public:
         if(action == Ge_CopyNodeTitle)                   return QStringLiteral("CopyNodeTitle");
         if(action == Ge_CopyNodeAsLink)                  return QStringLiteral("CopyNodeAsLink");
         if(action == Ge_OpenNodeWithIE)                  return QStringLiteral("OpenNodeWithIE");
+        if(action == Ge_OpenNodeWithEdge)                return QStringLiteral("OpenNodeWithEdge");
         if(action == Ge_OpenNodeWithFF)                  return QStringLiteral("OpenNodeWithFF");
         if(action == Ge_OpenNodeWithOpera)               return QStringLiteral("OpenNodeWithOpera");
         if(action == Ge_OpenNodeWithOPR)                 return QStringLiteral("OpenNodeWithOPR");

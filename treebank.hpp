@@ -78,7 +78,10 @@ public:
 
 signals:
     void TreeStructureChanged();
-    void CurrentChanged(ViewNode *vn);
+    void NodeCreated(QList<Node*> &nds);
+    void NodeDeleted(QList<Node*> &nds);
+    void CurrentChanged(Node *from, Node *to);
+    void AttributeChanged(Node *nd);
 
 private:
     void ConnectToNotifier();
@@ -150,8 +153,11 @@ public:
 private:
     void ClearCache(Node *nd);
     static void RaiseDisplayedViewPriority();
-    static void EmitTreeStructureChangedForAll();
-    static void ConnectForUpdateForAll();
+    static void EmitTreeStructureChanged();
+    static void EmitNodeCreated(QList<Node*> &nds);
+    static void EmitNodeDeleted(QList<Node*> &nds);
+    static void EmitCurrentChanged(Node *from, Node *to);
+    static void EmitAttributeChanged(Node *nd);
 
 public:
     // deleting function.
@@ -257,6 +263,7 @@ public:
         Te_CopyPageAsLink,
         Te_CopySelectedHtml,
         Te_OpenWithIE,
+        Te_OpenWithEdge,
         Te_OpenWithFF,
         Te_OpenWithOpera,
         Te_OpenWithOPR,
@@ -427,6 +434,7 @@ protected:
         if(str == QStringLiteral("CopyPageAsLink"))       return Te_CopyPageAsLink;
         if(str == QStringLiteral("CopySelectedHtml"))     return Te_CopySelectedHtml;
         if(str == QStringLiteral("OpenWithIE"))           return Te_OpenWithIE;
+        if(str == QStringLiteral("OpenWithEdge"))         return Te_OpenWithEdge;
         if(str == QStringLiteral("OpenWithFF"))           return Te_OpenWithFF;
         if(str == QStringLiteral("OpenWithOpera"))        return Te_OpenWithOpera;
         if(str == QStringLiteral("OpenWithOPR"))          return Te_OpenWithOPR;
@@ -527,6 +535,7 @@ protected:
         if(action == Te_CopyPageAsLink)       return QStringLiteral("CopyPageAsLink");
         if(action == Te_CopySelectedHtml)     return QStringLiteral("CopySelectedHtml");
         if(action == Te_OpenWithIE)           return QStringLiteral("OpenWithIE");
+        if(action == Te_OpenWithEdge)         return QStringLiteral("OpenWithEdge");
         if(action == Te_OpenWithFF)           return QStringLiteral("OpenWithFF");
         if(action == Te_OpenWithOpera)        return QStringLiteral("OpenWithOpera");
         if(action == Te_OpenWithOPR)          return QStringLiteral("OpenWithOPR");
@@ -547,6 +556,8 @@ protected:
     }
 
 public slots:
+    void OnAttributeChanged();
+
     void OpenInNewIfNeed(QUrl);
     void OpenInNewIfNeed(QList<QUrl>);
     void OpenInNewIfNeed(QString);
@@ -642,6 +653,7 @@ public slots:
     void CopyPageAsLink       (SharedView view = 0);
     void CopySelectedHtml     (SharedView view = 0);
     void OpenWithIE           (SharedView view = 0);
+    void OpenWithEdge         (SharedView view = 0);
     void OpenWithFF           (SharedView view = 0);
     void OpenWithOpera        (SharedView view = 0);
     void OpenWithOPR          (SharedView view = 0);

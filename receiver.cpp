@@ -31,6 +31,9 @@ QLocalServer *Receiver::m_LocalServer = 0;
 LineEdit::LineEdit(QWidget *parent)
     : QLineEdit(parent)
 {
+    setStyleSheet("QLineEdit:!focus{ background: transparent}"
+                  "QLineEdit:focus{ background: white}"
+                  "QLineEdit:hover{ background: white}");
     setDragEnabled(true);
 }
 
@@ -192,6 +195,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     connect(this, SIGNAL(CopyPageAsLink()),   parent, SLOT(CopyPageAsLink()));
     connect(this, SIGNAL(CopySelectedHtml()), parent, SLOT(CopySelectedHtml()));
     connect(this, SIGNAL(OpenWithIE()),       parent, SLOT(OpenWithIE()));
+    connect(this, SIGNAL(OpenWithEdge()),     parent, SLOT(OpenWithEdge()));
     connect(this, SIGNAL(OpenWithFF()),       parent, SLOT(OpenWithFF()));
     connect(this, SIGNAL(OpenWithOpera()),    parent, SLOT(OpenWithOpera()));
     connect(this, SIGNAL(OpenWithOPR()),      parent, SLOT(OpenWithOPR()));
@@ -633,6 +637,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("[cC]opy[pP]age[aA]s[lL]ink")).exactMatch(cmd)){       emit CopyPageAsLink();       return; }
     if(QRegExp(QStringLiteral("[cC]opy[sS]elected[hH]tml")).exactMatch(cmd)){        emit CopySelectedHtml();     return; }
     if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(cmd)){ emit OpenWithIE(); return; }
+    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[eE]dge")).exactMatch(cmd)){  emit OpenWithEdge();         return; }
     if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?")).exactMatch(cmd)){ emit OpenWithFF(); return; }
     if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[oO]pera")).exactMatch(cmd)){ emit OpenWithOpera();        return; }
     if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[oO][pP][rR]")).exactMatch(cmd)){ emit OpenWithOPR();      return; }
@@ -652,6 +657,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("[cC]opy[lL]ink[uU]rl")).exactMatch(cmd)){                                             emit TriggerElementAction(Page::We_CopyLinkUrl);                       return; }
     if(QRegExp(QStringLiteral("[cC]opy[lL]ink[hH]tml")).exactMatch(cmd)){                                            emit TriggerElementAction(Page::We_CopyLinkHtml);                      return; }
     if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(cmd)){  emit TriggerElementAction(Page::We_OpenLinkWithIE);                    return; }
+    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[eE]dge")).exactMatch(cmd)){                           emit TriggerElementAction(Page::We_OpenLinkWithEdge);                  return; }
     if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?")).exactMatch(cmd)){           emit TriggerElementAction(Page::We_OpenLinkWithFF);                    return; }
     if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[oO]pera")).exactMatch(cmd)){                          emit TriggerElementAction(Page::We_OpenLinkWithOpera);                 return; }
     if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[oO][pP][rR]")).exactMatch(cmd)){                      emit TriggerElementAction(Page::We_OpenLinkWithOPR);                   return; }
@@ -668,6 +674,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("[cC]opy[iI]mage[uU]rl")).exactMatch(cmd)){                                            emit TriggerElementAction(Page::We_CopyImageUrl);                      return; }
     if(QRegExp(QStringLiteral("[cC]opy[iI]mage[hH]tml")).exactMatch(cmd)){                                           emit TriggerElementAction(Page::We_CopyImageHtml);                     return; }
     if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(cmd)){ emit TriggerElementAction(Page::We_OpenImageWithIE);                   return; }
+    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[eE]dge")).exactMatch(cmd)){                          emit TriggerElementAction(Page::We_OpenImageWithEdge);                 return; }
     if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?")).exactMatch(cmd)){          emit TriggerElementAction(Page::We_OpenImageWithFF);                   return; }
     if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[oO]pera")).exactMatch(cmd)){                         emit TriggerElementAction(Page::We_OpenImageWithOpera);                return; }
     if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[oO][pP][rR]")).exactMatch(cmd)){                     emit TriggerElementAction(Page::We_OpenImageWithOPR);                  return; }
@@ -742,6 +749,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("[cC]opy[nN]ode[tT]itle")).exactMatch(cmd)){                                emit CopyNodeTitle();                   return; }
     if(QRegExp(QStringLiteral("[cC]opy[nN]ode[aA]s[lL]ink")).exactMatch(cmd)){                            emit CopyNodeAsLink();                  return; }
     if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(cmd)){ emit OpenNodeWithIE();        return; }
+    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[eE]dge")).exactMatch(cmd)){                emit OpenNodeWithEdge();                return; }
     if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?")).exactMatch(cmd)){ emit OpenNodeWithFF();                 return; }
     if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[oO]pera")).exactMatch(cmd)){               emit OpenNodeWithOpera();               return; }
     if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[oO][pP][rR]")).exactMatch(cmd)){           emit OpenNodeWithOPR();                 return; }

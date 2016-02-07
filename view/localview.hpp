@@ -196,6 +196,7 @@ public:
     bool ThumbList_CopyNodeTitle() DECL_OVERRIDE;
     bool ThumbList_CopyNodeAsLink() DECL_OVERRIDE;
     bool ThumbList_OpenNodeWithIE() DECL_OVERRIDE;
+    bool ThumbList_OpenNodeWithEdge() DECL_OVERRIDE;
     bool ThumbList_OpenNodeWithFF() DECL_OVERRIDE;
     bool ThumbList_OpenNodeWithOpera() DECL_OVERRIDE;
     bool ThumbList_OpenNodeWithOPR() DECL_OVERRIDE;

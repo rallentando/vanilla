@@ -264,6 +264,7 @@ private:
 
 public:
     static QString BrowserPath_IE();
+    static QString BrowserPath_Edge();
     static QString BrowserPath_FF();
     static QString BrowserPath_Opera();
     static QString BrowserPath_OPR();
@@ -274,6 +275,7 @@ public:
     static QString BrowserPath_Custom();
 
     static QIcon BrowserIcon_IE();
+    static QIcon BrowserIcon_Edge();
     static QIcon BrowserIcon_FF();
     static QIcon BrowserIcon_Opera();
     static QIcon BrowserIcon_OPR();
@@ -284,6 +286,7 @@ public:
     static QIcon BrowserIcon_Custom();
 
     static bool OpenUrlWith_IE(QUrl url);
+    static bool OpenUrlWith_Edge(QUrl url);
     static bool OpenUrlWith_FF(QUrl url);
     static bool OpenUrlWith_Opera(QUrl url);
     static bool OpenUrlWith_OPR(QUrl url);
@@ -295,6 +298,7 @@ public:
 
 private:
     static QString m_BrowserPath_IE;
+    static QString m_BrowserPath_Edge;
     static QString m_BrowserPath_FF;
     static QString m_BrowserPath_Opera;
     static QString m_BrowserPath_OPR;

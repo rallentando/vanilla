@@ -396,6 +396,7 @@ void Gadgets::Connect(TreeBank *tb){
         connect(receiver, SIGNAL(CopyNodeTitle()),                   this, SLOT(ThumbList_CopyNodeTitle()));
         connect(receiver, SIGNAL(CopyNodeAsLink()),                  this, SLOT(ThumbList_CopyNodeAsLink()));
         connect(receiver, SIGNAL(OpenNodeWithIE()),                  this, SLOT(ThumbList_OpenNodeWithIE()));
+        connect(receiver, SIGNAL(OpenNodeWithEdge()),                this, SLOT(ThumbList_OpenNodeWithEdge()));
         connect(receiver, SIGNAL(OpenNodeWithFF()),                  this, SLOT(ThumbList_OpenNodeWithFF()));
         connect(receiver, SIGNAL(OpenNodeWithOpera()),               this, SLOT(ThumbList_OpenNodeWithOpera()));
         connect(receiver, SIGNAL(OpenNodeWithOPR()),                 this, SLOT(ThumbList_OpenNodeWithOPR()));
@@ -502,6 +503,7 @@ void Gadgets::Disconnect(TreeBank *tb){
         disconnect(receiver, SIGNAL(CopyNodeTitle()),                   this, SLOT(ThumbList_CopyNodeTitle()));
         disconnect(receiver, SIGNAL(CopyNodeAsLink()),                  this, SLOT(ThumbList_CopyNodeAsLink()));
         disconnect(receiver, SIGNAL(OpenNodeWithIE()),                  this, SLOT(ThumbList_OpenNodeWithIE()));
+        disconnect(receiver, SIGNAL(OpenNodeWithEdge()),                this, SLOT(ThumbList_OpenNodeWithEdge()));
         disconnect(receiver, SIGNAL(OpenNodeWithFF()),                  this, SLOT(ThumbList_OpenNodeWithFF()));
         disconnect(receiver, SIGNAL(OpenNodeWithOpera()),               this, SLOT(ThumbList_OpenNodeWithOpera()));
         disconnect(receiver, SIGNAL(OpenNodeWithOPR()),                 this, SLOT(ThumbList_OpenNodeWithOPR()));
@@ -1487,6 +1489,7 @@ QMenu *Gadgets::CreateNodeMenu(){
 
         QMenu *m = new QMenu(tr("OpenNodeWithOtherBrowser"));
         if(!Application::BrowserPath_IE().isEmpty())       m->addAction(Action(Ge_OpenNodeWithIE));
+        if(!Application::BrowserPath_Edge().isEmpty())     m->addAction(Action(Ge_OpenNodeWithEdge));
         if(!Application::BrowserPath_FF().isEmpty())       m->addAction(Action(Ge_OpenNodeWithFF));
         if(!Application::BrowserPath_Opera().isEmpty())    m->addAction(Action(Ge_OpenNodeWithOpera));
         if(!Application::BrowserPath_OPR().isEmpty())      m->addAction(Action(Ge_OpenNodeWithOPR));
@@ -2052,6 +2055,7 @@ QAction *Gadgets::Action(GadgetsAction a){
         DEFINE_ACTION(CopyNodeTitle,                   tr("CopyNodeTitle"));
         DEFINE_ACTION(CopyNodeAsLink,                  tr("CopyNodeAsLink"));
         DEFINE_ACTION(OpenNodeWithIE,                  tr("OpenNodeWithIE"));
+        DEFINE_ACTION(OpenNodeWithEdge,                tr("OpenNodeWithEdge"));
         DEFINE_ACTION(OpenNodeWithFF,                  tr("OpenNodeWithFF"));
         DEFINE_ACTION(OpenNodeWithOpera,               tr("OpenNodeWithOpera"));
         DEFINE_ACTION(OpenNodeWithOPR,                 tr("OpenNodeWithOPR"));
@@ -2127,6 +2131,9 @@ QAction *Gadgets::Action(GadgetsAction a){
 
     case Ge_OpenNodeWithIE:
         action->setIcon(Application::BrowserIcon_IE());
+        break;
+    case Ge_OpenNodeWithEdge:
+        action->setIcon(Application::BrowserIcon_Edge());
         break;
     case Ge_OpenNodeWithFF:
         action->setIcon(Application::BrowserIcon_FF());

@@ -244,8 +244,11 @@ TreeBank::TreeBank(QWidget *parent)
     connect(m_Gadgets, &Gadgets::titleChanged,
             GetMainWindow(), &MainWindow::SetWindowTitle);
 
-    connect(this, &TreeBank::TreeStructureChanged,
-            m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
+    connect(this, &TreeBank::TreeStructureChanged, m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
+    connect(this, &TreeBank::NodeCreated,          m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
+    connect(this, &TreeBank::NodeDeleted,          m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
+    connect(this, &TreeBank::CurrentChanged,       m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
+    //connect(this, &TreeBank::AttributeChanged,     m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
 
     ConnectToNotifier();
     ConnectToReceiver();
@@ -689,7 +692,7 @@ void TreeBank::LoadTree(){
         }
 
         if(root == m_ViewRoot)
-            EmitTreeStructureChangedForAll();
+            EmitTreeStructureChanged();
     }
     Node::SetBooting(false);
 }
@@ -1327,14 +1330,35 @@ void TreeBank::RaiseDisplayedViewPriority(){
     }
 }
 
-void TreeBank::EmitTreeStructureChangedForAll(){
+void TreeBank::EmitTreeStructureChanged(){
     foreach(MainWindow *win, Application::GetMainWindows()){
         emit win->GetTreeBank()->TreeStructureChanged();
     }
 }
 
-void TreeBank::ConnectForUpdateForAll(){
-    // not yet implemented.
+void TreeBank::EmitNodeCreated(QList<Node*> &nds){
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        emit win->GetTreeBank()->NodeCreated(nds);
+    }
+}
+
+void TreeBank::EmitNodeDeleted(QList<Node*> &nds){
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        emit win->GetTreeBank()->NodeDeleted(nds);
+    }
+}
+
+void TreeBank::EmitAttributeChanged(Node *nd){
+    Q_UNUSED(nd);
+    //foreach(MainWindow *win, Application::GetMainWindows()){
+    //    emit win->GetTreeBank()->AttributeChanged(nd);
+    //}
+}
+
+void TreeBank::EmitCurrentChanged(Node *from, Node *to){
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        emit win->GetTreeBank()->CurrentChanged(from, to);
+    }
 }
 
 // deleting function.
@@ -1366,7 +1390,7 @@ bool TreeBank::DeleteNode(NodeList list){
             deleted = MoveToTrash(nd->ToViewNode()) || deleted;
         }
         if(!deleted) return false;
-        EmitTreeStructureChangedForAll();
+        EmitNodeDeleted(list);
 
     } else if(sample->IsHistNode()){
         // delete completely.
@@ -1458,7 +1482,7 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
         if(nd->IsViewNode())
             ApplySpecificSettings(nd->ToViewNode(), dir->ToViewNode());
     }
-    EmitTreeStructureChangedForAll();
+    EmitTreeStructureChanged();
     return true;
 }
 
@@ -1484,7 +1508,7 @@ bool TreeBank::SetChildrenOrder(Node *parent, NodeList children){
                 ApplySpecificSettings(child->ToViewNode(), parent->ToViewNode());
         }
     }
-    EmitTreeStructureChangedForAll();
+    EmitTreeStructureChanged();
     return true;
 }
 
@@ -1815,7 +1839,7 @@ SharedView TreeBank::OpenInNewViewNode(QNetworkRequest req, bool activate, ViewN
         SetCurrent(hist);
     } else {
         view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitNodeCreated(NodeList() << young);
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -1877,7 +1901,7 @@ SharedView TreeBank::OpenOnSuitableNode(QNetworkRequest req, bool activate, View
         SetCurrent(hist);
     } else {
         view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitNodeCreated(NodeList() << page);
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -1938,7 +1962,7 @@ SharedView TreeBank::OpenInNewDirectory(QNetworkRequest req, bool activate, View
         SetCurrent(hist);
     } else {
         view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitNodeCreated(NodeList() << young);
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -2011,7 +2035,7 @@ SharedView TreeBank::OpenInNewHistNode(QNetworkRequest req, bool activate, HistN
         SetCurrent(hist);
     } else {
         view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitAttributeChanged(partner);
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -2072,7 +2096,7 @@ SharedView TreeBank::OpenInNewHistNodeBackward(QNetworkRequest req, bool activat
         SetCurrent(hist);
     } else {
         view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitAttributeChanged(hist->GetPartner());
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -2524,6 +2548,30 @@ void TreeBank::keyPressEvent(QKeyEvent *ev){
 
         ev->setAccepted(TriggerKeyEvent(ev));
     }
+}
+
+void TreeBank::OnAttributeChanged(){
+    View *view = 0;
+    if(false) ;
+#ifdef QTWEBKIT
+    else if(WebView *v = qobject_cast<WebView*>(sender()))
+        view = v;
+    else if(GraphicsWebView *v = qobject_cast<GraphicsWebView*>(sender()))
+        view = v;
+    else if(QuickWebView *v = qobject_cast<QuickWebView*>(sender()))
+        view = v;
+#endif
+    else if(WebEngineView *v = qobject_cast<WebEngineView*>(sender()))
+        view = v;
+    else if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(sender()))
+        view = v;
+    else if(LocalView *v = qobject_cast<LocalView*>(sender()))
+        view = v;
+#if defined(Q_OS_WIN)
+    else if(TridentView *v = qobject_cast<TridentView*>(sender()))
+        view = v;
+#endif
+    if(view) EmitAttributeChanged(view->GetViewNode());
 }
 
 void TreeBank::OpenInNewIfNeed(QUrl url){
@@ -3050,7 +3098,7 @@ ViewNode *TreeBank::NewViewNode(ViewNode *vn){
     ViewNode *newNode = vn->New();
     if(newNode){
         if(m_Gadgets && m_Gadgets->IsActive()){
-            EmitTreeStructureChangedForAll();
+            EmitNodeCreated(NodeList() << newNode);
             return newNode;
         }
     } else {
@@ -3061,7 +3109,7 @@ ViewNode *TreeBank::NewViewNode(ViewNode *vn){
         SetCurrent(newNode);
     } else {
         view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitNodeCreated(NodeList() << newNode);
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -3076,7 +3124,7 @@ HistNode *TreeBank::NewHistNode(HistNode *hn){
     HistNode *newNode = hn->New();
     if(newNode){
         if(m_Gadgets && m_Gadgets->IsActive()){
-            EmitTreeStructureChangedForAll();
+            EmitAttributeChanged(newNode->GetPartner());
             return newNode;
         }
     } else {
@@ -3087,7 +3135,7 @@ HistNode *TreeBank::NewHistNode(HistNode *hn){
         SetCurrent(newNode);
     } else {
         view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitAttributeChanged(newNode->GetPartner());
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -3102,7 +3150,7 @@ ViewNode *TreeBank::CloneViewNode(ViewNode *vn){
     ViewNode *clone = vn->Clone();
     if(clone){
         if(m_Gadgets && m_Gadgets->IsActive()){
-            EmitTreeStructureChangedForAll();
+            EmitNodeCreated(NodeList() << clone);
             return clone;
         }
     } else {
@@ -3111,10 +3159,10 @@ ViewNode *TreeBank::CloneViewNode(ViewNode *vn){
     SharedView view = LoadWithLink(clone);
     if(Page::Activate()){
         if(!SetCurrent(clone))
-            EmitTreeStructureChangedForAll();
+            EmitTreeStructureChanged();
     } else {
         if(view) view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitNodeCreated(NodeList() << clone);
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -3129,7 +3177,7 @@ HistNode *TreeBank::CloneHistNode(HistNode *hn){
     HistNode *clone = hn->Clone();
     if(clone){
         if(m_Gadgets && m_Gadgets->IsActive()){
-            EmitTreeStructureChangedForAll();
+            EmitAttributeChanged(clone->GetPartner());
             return clone;
         }
     } else {
@@ -3140,7 +3188,7 @@ HistNode *TreeBank::CloneHistNode(HistNode *hn){
         SetCurrent(clone);
     } else {
         view->hide();
-        EmitTreeStructureChangedForAll();
+        EmitAttributeChanged(clone->GetPartner());
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
     }
@@ -3189,7 +3237,7 @@ ViewNode *TreeBank::MakeChildDirectory(ViewNode *vn){
     if(!vn) vn = m_ViewRoot;
     if(vn){
         ViewNode *child = vn->MakeChild();
-        EmitTreeStructureChangedForAll();
+        EmitNodeCreated(NodeList() << child);
         return child;
     }
     return 0;
@@ -3201,7 +3249,7 @@ ViewNode *TreeBank::MakeSiblingDirectory(ViewNode *vn){
     if(!vn) vn = m_ViewRoot;
     if(vn){
         ViewNode *sibling = vn->MakeSibling();
-        EmitTreeStructureChangedForAll();
+        EmitNodeCreated(NodeList() << sibling);
         return sibling;
     }
     return 0;
@@ -3392,6 +3440,11 @@ void TreeBank::CopySelectedHtml(SharedView view){
 void TreeBank::OpenWithIE(SharedView view){
     if(!view) view = m_CurrentView;
     if(view) view->TriggerAction(Page::We_OpenWithIE);
+}
+
+void TreeBank::OpenWithEdge(SharedView view){
+    if(!view) view = m_CurrentView;
+    if(view) view->TriggerAction(Page::We_OpenWithEdge);
 }
 
 void TreeBank::OpenWithFF(SharedView view){
@@ -3624,6 +3677,7 @@ QAction *TreeBank::Action(TreeBankAction a){
         DEFINE_ACTION(CopyPageAsLink,       tr("CopyPageAsLink"));
         DEFINE_ACTION(CopySelectedHtml,     tr("CopySelectedHtml"));
         DEFINE_ACTION(OpenWithIE,           tr("OpenWithIE"));
+        DEFINE_ACTION(OpenWithEdge,         tr("OpenWithEdge"));
         DEFINE_ACTION(OpenWithFF,           tr("OpenWithFF"));
         DEFINE_ACTION(OpenWithOpera,        tr("OpenWithOpera"));
         DEFINE_ACTION(OpenWithOPR,          tr("OpenWithOPR"));
@@ -3665,6 +3719,9 @@ QAction *TreeBank::Action(TreeBankAction a){
 
     case Te_OpenWithIE:
         action->setIcon(Application::BrowserIcon_IE());
+        break;
+    case Te_OpenWithEdge:
+        action->setIcon(Application::BrowserIcon_Edge());
         break;
     case Te_OpenWithFF:
         action->setIcon(Application::BrowserIcon_FF());

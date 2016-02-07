@@ -133,6 +133,8 @@ void QuickWebViewBase::Connect(TreeBank *tb){
 
     connect(m_QmlWebViewBase, SIGNAL(titleChanged_(const QString&)),
             tb->parent(), SLOT(setWindowTitle(const QString&)));
+    //connect(m_QmlWebViewBase, SIGNAL(titleChange_(const QString&)),
+    //        tb, SLOT(OnAttributeChanged()));
 
     if(Notifier *notifier = tb->GetNotifier()){
         connect(this, SIGNAL(statusBarMessage(const QString&)),
@@ -171,6 +173,8 @@ void QuickWebViewBase::Disconnect(TreeBank *tb){
 
     disconnect(m_QmlWebViewBase, SIGNAL(titleChanged_(const QString&)),
                tb->parent(), SLOT(setWindowTitle(const QString&)));
+    //disconnect(m_QmlWebViewBase, SIGNAL(titleChange_(const QString&)),
+    //           tb, SLOT(OnAttributeChanged()));
 
     if(Notifier *notifier = tb->GetNotifier()){
         disconnect(this, SIGNAL(statusBarMessage(const QString&)),

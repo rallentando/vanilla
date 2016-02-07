@@ -62,8 +62,11 @@ public:
 
 public slots:
     void CollectNodes();
-    void OnUpdateRequested();
-    void OnCurrentChanged(SharedView from, SharedView to);
+    void OnTreeStructureChanged();
+    void OnNodeCreated(QList<Node*> &nds);
+    void OnNodeDeleted(QList<Node*> &nds);
+    void OnCurrentChanged(Node *from, Node *to);
+    void OnAttributeChanged(Node *nd);
 
     void StartAutoUpdateTimer();
     void StopAutoUpdateTimer();

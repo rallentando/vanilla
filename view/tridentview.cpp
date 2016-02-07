@@ -546,6 +546,10 @@ void TridentView::Connect(TreeBank *tb){
 
     connect(this, SIGNAL(titleChanged(const QString&)),
             tb->parent(), SLOT(SetWindowTitle(const QString&)));
+    //connect(this, SIGNAL(titleChanged(const QString&)),
+    //        tb, SLOT(OnAttributeChanged()));
+    //connect(this, SIGNAL(iconChanged()),
+    //        tb, SLOT(OnAttributeChanged()));
 
     if(Notifier *notifier = tb->GetNotifier()){
         connect(this, SIGNAL(statusBarMessage(const QString&)),
@@ -582,6 +586,10 @@ void TridentView::Disconnect(TreeBank *tb){
 
     disconnect(this, SIGNAL(titleChanged(const QString&)),
                tb->parent(), SLOT(SetWindowTitle(const QString&)));
+    //disconnect(this, SIGNAL(titleChanged(const QString&)),
+    //           tb, SLOT(OnAttributeChanged()));
+    //disconnect(this, SIGNAL(iconChanged()),
+    //           tb, SLOT(OnAttributeChanged()));
 
     if(Notifier *notifier = tb->GetNotifier()){
         disconnect(this, SIGNAL(statusBarMessage(const QString&)),

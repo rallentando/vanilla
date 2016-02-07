@@ -188,6 +188,7 @@ signals:
     void CopyPageAsLink();
     void CopySelectedHtml();
     void OpenWithIE();
+    void OpenWithEdge();
     void OpenWithFF();
     void OpenWithOpera();
     void OpenWithOPR();
@@ -225,6 +226,7 @@ signals:
     void CopyNodeTitle();
     void CopyNodeAsLink();
     void OpenNodeWithIE();
+    void OpenNodeWithEdge();
     void OpenNodeWithFF();
     void OpenNodeWithOpera();
     void OpenNodeWithOPR();

@@ -194,6 +194,7 @@ public slots:
     void copyPageAsLink        (){ m_View->TriggerAction(Page::We_CopyPageAsLink); }
     void copySelectedHtml      (){ m_View->TriggerAction(Page::We_CopySelectedHtml); }
     void openWithIE            (){ m_View->TriggerAction(Page::We_OpenWithIE); }
+    void openWithEdge          (){ m_View->TriggerAction(Page::We_OpenWithEdge); }
     void openWithFF            (){ m_View->TriggerAction(Page::We_OpenWithFF); }
     void openWithOpera         (){ m_View->TriggerAction(Page::We_OpenWithOpera); }
     void openWithOPR           (){ m_View->TriggerAction(Page::We_OpenWithOPR); }
@@ -213,6 +214,7 @@ public slots:
     void copyLinkUrl           (){ m_View->TriggerAction(Page::We_CopyLinkUrl); }
     void copyLinkHtml          (){ m_View->TriggerAction(Page::We_CopyLinkHtml); }
     void openLinkWithIE        (){ m_View->TriggerAction(Page::We_OpenLinkWithIE); }
+    void openLinkWithEdge      (){ m_View->TriggerAction(Page::We_OpenLinkWithEdge); }
     void openLinkWithFF        (){ m_View->TriggerAction(Page::We_OpenLinkWithFF); }
     void openLinkWithOpera     (){ m_View->TriggerAction(Page::We_OpenLinkWithOpera); }
     void openLinkWithOPR       (){ m_View->TriggerAction(Page::We_OpenLinkWithOPR); }
@@ -229,6 +231,7 @@ public slots:
     void copyImageUrl          (){ m_View->TriggerAction(Page::We_CopyImageUrl); }
     void copyImageHtml         (){ m_View->TriggerAction(Page::We_CopyImageHtml); }
     void openImageWithIE       (){ m_View->TriggerAction(Page::We_OpenImageWithIE); }
+    void openImageWithEdge     (){ m_View->TriggerAction(Page::We_OpenImageWithEdge); }
     void openImageWithFF       (){ m_View->TriggerAction(Page::We_OpenImageWithFF); }
     void openImageWithOpera    (){ m_View->TriggerAction(Page::We_OpenImageWithOpera); }
     void openImageWithOPR      (){ m_View->TriggerAction(Page::We_OpenImageWithOPR); }

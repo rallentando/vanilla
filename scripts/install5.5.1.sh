@@ -192,6 +192,8 @@ cp $QT5_DIR/translations/qtwebengine_locales/*.pak $TARGET_DIR/translations/qtwe
 
 cp translations/*.qm $TARGET_DIR/translations/
 
+cp scripts/edge.bat $TARGET_DIR/
+
 cp LICENSE $TARGET_DIR/
 
 cp qt.conf $TARGET_DIR/

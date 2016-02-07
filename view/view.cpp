@@ -795,6 +795,7 @@ QMenu *View::SearchMenu(){
 QMenu *View::OpenWithOtherBrowserMenu(){
     QMenu *menu = new QMenu(QObject::tr("OpenWithOtherBrowser"));
     if(!Application::BrowserPath_IE().isEmpty())       menu->addAction(Action(Page::We_OpenWithIE));
+    if(!Application::BrowserPath_Edge().isEmpty())     menu->addAction(Action(Page::We_OpenWithEdge));
     if(!Application::BrowserPath_FF().isEmpty())       menu->addAction(Action(Page::We_OpenWithFF));
     if(!Application::BrowserPath_Opera().isEmpty())    menu->addAction(Action(Page::We_OpenWithOpera));
     if(!Application::BrowserPath_OPR().isEmpty())      menu->addAction(Action(Page::We_OpenWithOPR));
@@ -809,6 +810,7 @@ QMenu *View::OpenWithOtherBrowserMenu(){
 QMenu *View::OpenLinkWithOtherBrowserMenu(QVariant data){
     QMenu *menu = new QMenu(QObject::tr("OpenLinkWithOtherBrowser"));
     if(!Application::BrowserPath_IE().isEmpty())       menu->addAction(Action(Page::We_OpenLinkWithIE, data));
+    if(!Application::BrowserPath_Edge().isEmpty())     menu->addAction(Action(Page::We_OpenLinkWithEdge, data));
     if(!Application::BrowserPath_FF().isEmpty())       menu->addAction(Action(Page::We_OpenLinkWithFF, data));
     if(!Application::BrowserPath_Opera().isEmpty())    menu->addAction(Action(Page::We_OpenLinkWithOpera, data));
     if(!Application::BrowserPath_OPR().isEmpty())      menu->addAction(Action(Page::We_OpenLinkWithOPR, data));
@@ -823,6 +825,7 @@ QMenu *View::OpenLinkWithOtherBrowserMenu(QVariant data){
 QMenu *View::OpenImageWithOtherBrowserMenu(QVariant data){
     QMenu *menu = new QMenu(QObject::tr("OpenImageWithOtherBrowser"));
     if(!Application::BrowserPath_IE().isEmpty())       menu->addAction(Action(Page::We_OpenImageWithIE, data));
+    if(!Application::BrowserPath_Edge().isEmpty())     menu->addAction(Action(Page::We_OpenImageWithEdge, data));
     if(!Application::BrowserPath_FF().isEmpty())       menu->addAction(Action(Page::We_OpenImageWithFF, data));
     if(!Application::BrowserPath_Opera().isEmpty())    menu->addAction(Action(Page::We_OpenImageWithOpera, data));
     if(!Application::BrowserPath_OPR().isEmpty())      menu->addAction(Action(Page::We_OpenImageWithOPR, data));

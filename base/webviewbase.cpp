@@ -132,6 +132,10 @@ void WebViewBase::Connect(TreeBank *tb){
 
     connect(this, SIGNAL(titleChanged(const QString&)),
             tb->parent(), SLOT(SetWindowTitle(const QString&)));
+    //connect(this, SIGNAL(titleChanged(const QString&)),
+    //        tb, SLOT(OnAttributeChanged()));
+    //connect(this, SIGNAL(iconChanged()),
+    //        tb, SLOT(OnAttributeChanged()));
     //[[!WEV]]
     connect(page()->mainFrame(), SIGNAL(contentsSizeChanged(const QSize&)),
             this, SLOT(RestoreScroll()));
@@ -177,6 +181,10 @@ void WebViewBase::Disconnect(TreeBank *tb){
 
     disconnect(this, SIGNAL(titleChanged(const QString&)),
                tb->parent(), SLOT(SetWindowTitle(const QString&)));
+    //disconnect(this, SIGNAL(titleChanged(const QString&)),
+    //           tb, SLOT(OnAttributeChanged()));
+    //disconnect(this, SIGNAL(iconChanged()),
+    //           tb, SLOT(OnAttributeChanged()));
     //[[!WEV]]
     disconnect(page()->mainFrame(), SIGNAL(contentsSizeChanged(const QSize&)),
                this, SLOT(RestoreScroll()));
@@ -871,12 +879,12 @@ void WebViewBase::mouseMoveEvent(QMouseEventBase *ev){
         }
         //[[/!WEV]]
 
-        if(pixmap.size().width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
-           pixmap.size().height() > MAX_DRAGGING_PIXMAP_HEIGHT){
+        if(pixmap.width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
+           pixmap.height() > MAX_DRAGGING_PIXMAP_HEIGHT){
 
-            pos /= qMax(static_cast<float>(pixmap.size().width()) /
+            pos /= qMax(static_cast<float>(pixmap.width()) /
                         static_cast<float>(MAX_DRAGGING_PIXMAP_WIDTH),
-                        static_cast<float>(pixmap.size().height()) /
+                        static_cast<float>(pixmap.height()) /
                         static_cast<float>(MAX_DRAGGING_PIXMAP_HEIGHT));
             pixmap = pixmap.scaled(MAX_DRAGGING_PIXMAP_WIDTH,
                                    MAX_DRAGGING_PIXMAP_HEIGHT,

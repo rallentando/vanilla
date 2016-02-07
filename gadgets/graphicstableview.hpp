@@ -286,6 +286,7 @@ public slots:
     virtual bool ThumbList_CopyNodeTitle();
     virtual bool ThumbList_CopyNodeAsLink();
     virtual bool ThumbList_OpenNodeWithIE();
+    virtual bool ThumbList_OpenNodeWithEdge();
     virtual bool ThumbList_OpenNodeWithFF();
     virtual bool ThumbList_OpenNodeWithOpera();
     virtual bool ThumbList_OpenNodeWithOPR();
