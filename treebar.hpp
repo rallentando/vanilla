@@ -48,6 +48,11 @@ public:
     int GetHorizontalNodeHeight() const;
     int GetVerticalNodeWidth() const;
 
+    int MaxWidth() const;
+    int MinWidth() const;
+    int MaxHeight() const;
+    int MinHeight() const;
+
     void SetStat(QStringList);
     QStringList GetStat();
 
@@ -65,8 +70,7 @@ public slots:
     void OnTreeStructureChanged();
     void OnNodeCreated(QList<Node*> &nds);
     void OnNodeDeleted(QList<Node*> &nds);
-    void OnCurrentChanged(Node *from, Node *to);
-    void OnAttributeChanged(Node *nd);
+    void OnCurrentChanged(Node *nd);
 
     void StartAutoUpdateTimer();
     void StopAutoUpdateTimer();
@@ -120,10 +124,11 @@ public:
     int GetNest();
     void SetNest(int);
 
-    qreal MaxScroll();
-    qreal MinScroll();
+    QPropertyAnimation *GetAnimation();
 
-    qreal GetScroll();
+    qreal MaxScroll() const;
+    qreal MinScroll() const;
+    qreal GetScroll() const;
     void SetScroll(qreal scroll);
     void Scroll(qreal delta);
     void ScrollDown(qreal step);
@@ -155,6 +160,7 @@ public:
 
     void TransferNodeItem(NodeItem *item, LayerItem *other);
 
+    NodeItem *CreateNodeItem(Node *nd, int i, int j, int nest, int size);
     QList<NodeItem*> &GetNodeItems();
     void AppendToNodeItems(NodeItem *item);
     void PrependToNodeItems(NodeItem *item);
@@ -164,6 +170,17 @@ public:
 
     QMenu *LayerMenu();
     QMenu *AddNodeMenu();
+
+public slots:
+    void NewViewNode();
+    void CloneViewNode();
+    void MakeDirectory();
+    void MakeDirectoryWithSelectedNode();
+    void MakeDirectoryWithSameDomainNode();
+    void ToggleEnableAnimation();
+    void ToggleEnableCloseButton();
+    void ToggleEnableCloneButton();
+    void DisplayTrashTree();
 
 protected:
     void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
@@ -206,6 +223,10 @@ public:
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE;
     QRectF boundingRect() const DECL_OVERRIDE;
+    QRectF CloseButtonRect() const;
+    QRectF CloneButtonRect() const;
+    QRect CloseIconRect() const;
+    QRect CloneIconRect() const;
 
     int GetNest();
     void SetNest(int);
@@ -215,6 +236,9 @@ public:
 
     QRectF GetRect() const;
     void SetRect(QRectF rect);
+
+    QPointF GetTargetPosition();
+    void SetTargetPosition(QPointF pos);
 
     LayerItem *Layer() const;
     Node *GetNode();
@@ -238,6 +262,31 @@ public:
     QMenu *NodeMenu();
 
 public slots:
+    void NewViewNode();
+    void CloneViewNode();
+    void RenameViewNode();
+    void ReloadViewNode();
+    void OpenViewNode();
+    void OpenViewNodeOnNewWindow();
+    void DeleteViewNode();
+    void DeleteRightViewNode();
+    void DeleteLeftViewNode();
+    void DeleteOtherViewNode();
+    void MakeDirectory();
+    void MakeDirectoryWithSelectedNode();
+    void MakeDirectoryWithSameDomainNode();
+
+    void OpenViewNodeWithIE();
+    void OpenViewNodeWithEdge();
+    void OpenViewNodeWithFF();
+    void OpenViewNodeWithOpera();
+    void OpenViewNodeWithOPR();
+    void OpenViewNodeWithSafari();
+    void OpenViewNodeWithChrome();
+    void OpenViewNodeWithSleipnir();
+    void OpenViewNodeWithVivaldi();
+    void OpenViewNodeWithCustom();
+
     void ResetTargetPosition();
 
 private:

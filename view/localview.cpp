@@ -434,9 +434,6 @@ void LocalView::Connect(TreeBank *tb){
     if(tb){
         connect(this, SIGNAL(titleChanged(const QString&)),
                 tb->parent(), SLOT(SetWindowTitle(const QString&)));
-        //connect(this, SIGNAL(titleChanged(const QString&)),
-        //        tb, SLOT(OnAttributeChanged()));
-
         if(Notifier *notifier = tb->GetNotifier()){
             connect(this, SIGNAL(statusBarMessage(const QString&)),
                     notifier, SLOT(SetStatus(const QString&)));
@@ -552,9 +549,6 @@ void LocalView::Disconnect(TreeBank *tb){
     if(tb){
         disconnect(this, SIGNAL(titleChanged(const QString&)),
                    tb->parent(), SLOT(SetWindowTitle(const QString&)));
-        //disconnect(this, SIGNAL(titleChanged(const QString&)),
-        //           tb, SLOT(OnAttributeChanged()));
-
         if(Notifier *notifier = tb->GetNotifier()){
             disconnect(this, SIGNAL(statusBarMessage(const QString&)),
                        notifier, SLOT(SetStatus(const QString&)));

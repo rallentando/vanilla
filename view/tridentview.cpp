@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "treebank.hpp"
+#include "treebar.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "networkcontroller.hpp"
@@ -546,11 +547,6 @@ void TridentView::Connect(TreeBank *tb){
 
     connect(this, SIGNAL(titleChanged(const QString&)),
             tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    //connect(this, SIGNAL(titleChanged(const QString&)),
-    //        tb, SLOT(OnAttributeChanged()));
-    //connect(this, SIGNAL(iconChanged()),
-    //        tb, SLOT(OnAttributeChanged()));
-
     if(Notifier *notifier = tb->GetNotifier()){
         connect(this, SIGNAL(statusBarMessage(const QString&)),
                 notifier, SLOT(SetStatus(const QString&)));
@@ -586,11 +582,6 @@ void TridentView::Disconnect(TreeBank *tb){
 
     disconnect(this, SIGNAL(titleChanged(const QString&)),
                tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    //disconnect(this, SIGNAL(titleChanged(const QString&)),
-    //           tb, SLOT(OnAttributeChanged()));
-    //disconnect(this, SIGNAL(iconChanged()),
-    //           tb, SLOT(OnAttributeChanged()));
-
     if(Notifier *notifier = tb->GetNotifier()){
         disconnect(this, SIGNAL(statusBarMessage(const QString&)),
                    notifier, SLOT(SetStatus(const QString&)));
@@ -1502,7 +1493,8 @@ void TridentView::OnSetJsObject(_Vanilla*){}
 void TridentView::OnLoadStarted(){
     // needless to emit statusBarMessage because Trident send message by default.
     View::OnLoadStarted();
-    UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
+    if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
+        UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
 }
 
 void TridentView::OnLoadProgress(int){
@@ -1515,7 +1507,13 @@ void TridentView::OnLoadFinished(bool ok){
 
     RestoreViewState();
     emit ViewChanged();
-    if(visible()) setFocus();
+    if(visible()){
+        setFocus();
+        if(m_TreeBank &&
+           m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
+            UpdateThumbnail();
+        }
+    }
 }
 
 void TridentView::OnTitleChanged(const QString &title){
@@ -1922,8 +1920,8 @@ void TridentView::keyPressEvent(QKeyEvent *ev){
 
 void TridentView::keyReleaseEvent(QKeyEvent *ev){
     QAxWidget::keyReleaseEvent(ev);
-    for(int i = 0; i < 12; i++){
-        QTimer::singleShot(i*100, this, SLOT(EmitScrollChangedIfNeed()));
+    for(int i = 1; i < 6; i++){
+        QTimer::singleShot(i*200, this, SLOT(EmitScrollChangedIfNeed()));
     }
 }
 

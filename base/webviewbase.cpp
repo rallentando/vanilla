@@ -132,10 +132,6 @@ void WebViewBase::Connect(TreeBank *tb){
 
     connect(this, SIGNAL(titleChanged(const QString&)),
             tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    //connect(this, SIGNAL(titleChanged(const QString&)),
-    //        tb, SLOT(OnAttributeChanged()));
-    //connect(this, SIGNAL(iconChanged()),
-    //        tb, SLOT(OnAttributeChanged()));
     //[[!WEV]]
     connect(page()->mainFrame(), SIGNAL(contentsSizeChanged(const QSize&)),
             this, SLOT(RestoreScroll()));
@@ -181,10 +177,6 @@ void WebViewBase::Disconnect(TreeBank *tb){
 
     disconnect(this, SIGNAL(titleChanged(const QString&)),
                tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    //disconnect(this, SIGNAL(titleChanged(const QString&)),
-    //           tb, SLOT(OnAttributeChanged()));
-    //disconnect(this, SIGNAL(iconChanged()),
-    //           tb, SLOT(OnAttributeChanged()));
     //[[!WEV]]
     disconnect(page()->mainFrame(), SIGNAL(contentsSizeChanged(const QSize&)),
                this, SLOT(RestoreScroll()));
@@ -337,12 +329,11 @@ void WebViewBase::OnLoadFinished(bool ok){
     //[[/!WEV]]
     //[[WEV]]
     AssignInspector();
-
+    //[[/WEV]]
     if(visible() && m_TreeBank &&
        m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
-        QTimer::singleShot(100, [this](){ UpdateThumbnail();});
+        UpdateThumbnail();
     }
-    //[[/WEV]]
 }
 
 void WebViewBase::OnTitleChanged(const QString &title){
@@ -724,8 +715,8 @@ void WebViewBase::keyReleaseEvent(QKeyEvent *ev){
         k == Qt::Key_Home ||
         k == Qt::Key_End)){
 
-        for(int i = 0; i < 12; i++){
-            QTimer::singleShot(i*100, this, SLOT(EmitScrollChangedIfNeed()));
+        for(int i = 1; i < 6; i++){
+            QTimer::singleShot(i*200, this, SLOT(EmitScrollChangedIfNeed()));
         }
     } else {
         EmitScrollChangedIfNeed();

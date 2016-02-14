@@ -80,8 +80,7 @@ signals:
     void TreeStructureChanged();
     void NodeCreated(QList<Node*> &nds);
     void NodeDeleted(QList<Node*> &nds);
-    void CurrentChanged(Node *from, Node *to);
-    void AttributeChanged(Node *nd);
+    void CurrentChanged(Node *nd);
 
 private:
     void ConnectToNotifier();
@@ -156,8 +155,6 @@ private:
     static void EmitTreeStructureChanged();
     static void EmitNodeCreated(QList<Node*> &nds);
     static void EmitNodeDeleted(QList<Node*> &nds);
-    static void EmitCurrentChanged(Node *from, Node *to);
-    static void EmitAttributeChanged(Node *nd);
 
 public:
     // deleting function.
@@ -556,8 +553,6 @@ protected:
     }
 
 public slots:
-    void OnAttributeChanged();
-
     void OpenInNewIfNeed(QUrl);
     void OpenInNewIfNeed(QList<QUrl>);
     void OpenInNewIfNeed(QString);
