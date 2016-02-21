@@ -190,6 +190,8 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     connect(this, SIGNAL(ViewSource()),       parent, SLOT(ViewSource()));
     connect(this, SIGNAL(ApplySource()),      parent, SLOT(ApplySource()));
 
+    connect(this, SIGNAL(InspectElement()),   parent, SLOT(InspectElement()));
+
     connect(this, SIGNAL(CopyUrl()),          parent, SLOT(CopyUrl()));
     connect(this, SIGNAL(CopyTitle()),        parent, SLOT(CopyTitle()));
     connect(this, SIGNAL(CopyPageAsLink()),   parent, SLOT(CopyPageAsLink()));
@@ -576,8 +578,8 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[nN]otifier")).exactMatch(cmd)){        emit ToggleNotifier();       return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[rR]eceiver")).exactMatch(cmd)){        emit ToggleReceiver();       return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[mM]enu[bB]ar")).exactMatch(cmd)){      emit ToggleMenuBar();        return; }
-    if(QRegExp(QStringLiteral("(?:[tT]oggle)?[tT]ree[bB]ar")).exactMatch(cmd)){      emit ToggleTreeBar();        return; }
-    if(QRegExp(QStringLiteral("(?:[tT]oggle)?[tT]ool[bB]ar")).exactMatch(cmd)){      emit ToggleToolBar();        return; }
+    if(QRegExp(QStringLiteral("(?:[tT]oggle)?(?:[tT]ree|[tT]ab)[bB]ar")).exactMatch(cmd)){ emit ToggleTreeBar();  return; }
+    if(QRegExp(QStringLiteral("(?:[tT]oggle)?(?:[tT]ool|[aA]ddress)[bB]ar")).exactMatch(cmd)){ emit ToggleToolBar(); return; }
     if(QRegExp(QStringLiteral("(?:[tT]oggle)?[fF]ull[sS]creen")).exactMatch(cmd)){   emit ToggleFullScreen();     return; }
     if(QRegExp(QStringLiteral("[tT]oggle[mM]aximized")).exactMatch(cmd)){            emit ToggleMaximized();      return; }
     if(QRegExp(QStringLiteral("[mM]aximize(?:[wW]indow)?")).exactMatch(cmd)){        emit ToggleMaximized();      return; }
@@ -632,6 +634,8 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("[vV]iew[sS]ource")).exactMatch(cmd)){                 emit ViewSource();           return; }
     if(QRegExp(QStringLiteral("[aA]pply[sS]ource")).exactMatch(cmd)){                emit ApplySource();          return; }
 
+    if(QRegExp(QStringLiteral("[iI]nspect(?:[eE]lement)?")).exactMatch(cmd)){        emit InspectElement();       return; }
+
     if(QRegExp(QStringLiteral("[cC]opy[uU]rl")).exactMatch(cmd)){                    emit CopyUrl();              return; }
     if(QRegExp(QStringLiteral("[cC]opy[tT]itle")).exactMatch(cmd)){                  emit CopyTitle();            return; }
     if(QRegExp(QStringLiteral("[cC]opy[pP]age[aA]s[lL]ink")).exactMatch(cmd)){       emit CopyPageAsLink();       return; }
@@ -647,9 +651,9 @@ void Receiver::ReceiveCommand(QString cmd){
     if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[vV]ivaldi")).exactMatch(cmd)){ emit OpenWithVivaldi();    return; }
     if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[cC]ustom")).exactMatch(cmd)){ emit OpenWithCustom();      return; }
 
-    if(QRegExp(QStringLiteral("[cC]lick(?:[eE]lement)?")).exactMatch(cmd)){                                           emit TriggerElementAction(Page::We_ClickElement);                      return; }
-    if(QRegExp(QStringLiteral("[fF]ocus(?:[eE]lement)?")).exactMatch(cmd)){                                           emit TriggerElementAction(Page::We_FocusElement);                      return; }
-    if(QRegExp(QStringLiteral("[hH]over(?:[eE]lement)?")).exactMatch(cmd)){                                           emit TriggerElementAction(Page::We_HoverElement);                      return; }
+    if(QRegExp(QStringLiteral("[cC]lick(?:[eE]lement)?")).exactMatch(cmd)){                                          emit TriggerElementAction(Page::We_ClickElement);                      return; }
+    if(QRegExp(QStringLiteral("[fF]ocus(?:[eE]lement)?")).exactMatch(cmd)){                                          emit TriggerElementAction(Page::We_FocusElement);                      return; }
+    if(QRegExp(QStringLiteral("[hH]over(?:[eE]lement)?")).exactMatch(cmd)){                                          emit TriggerElementAction(Page::We_HoverElement);                      return; }
 
     if(QRegExp(QStringLiteral("[lL]oad[lL]ink")).exactMatch(cmd)){                                                   emit TriggerElementAction(Page::We_LoadLink);                          return; }
     if(QRegExp(QStringLiteral("[oO]pen[lL]ink")).exactMatch(cmd)){                                                   emit TriggerElementAction(Page::We_OpenLink);                          return; }

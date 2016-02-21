@@ -193,9 +193,14 @@ void NetworkAccessManager::HandleDownload(QWebEngineDownloadItem *orig_item){
         QString filter;
 
         QMimeDatabase db;
+#if QT_VERSION >= 0x050600
         QMimeType mimeType = db.mimeTypeForName(orig_item->mimeType());
         if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForFile(filename);
         if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForUrl(orig_item->url());
+#else
+        QMimeType mimeType = db.mimeTypeForFile(filename);
+        if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForUrl(orig_item->url());
+#endif
 
         if(mimeType.isValid() && !mimeType.isDefault()) filter = mimeType.filterString();
 

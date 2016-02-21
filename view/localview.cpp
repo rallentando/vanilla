@@ -22,6 +22,8 @@
 #include "nodetitle.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
+#include "treebar.hpp"
+#include "toolbar.hpp"
 #include "gadgetsstyle.hpp"
 #ifdef QTWEBKIT
 #  include "webview.hpp"
@@ -799,11 +801,11 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         case Gadgets::Ge_AboutVanilla:
         case Gadgets::Ge_AboutQt:
         case Gadgets::Ge_Quit:
-        case Gadgets::Ge_ToggleNotifier:
-        case Gadgets::Ge_ToggleReceiver:
-        case Gadgets::Ge_ToggleMenuBar:
-        case Gadgets::Ge_ToggleTreeBar:
-        case Gadgets::Ge_ToggleToolBar:
+        //case Gadgets::Ge_ToggleNotifier:
+        //case Gadgets::Ge_ToggleReceiver:
+        //case Gadgets::Ge_ToggleMenuBar:
+        //case Gadgets::Ge_ToggleTreeBar:
+        //case Gadgets::Ge_ToggleToolBar:
         case Gadgets::Ge_ToggleFullScreen:
         case Gadgets::Ge_ToggleMaximized:
         case Gadgets::Ge_ToggleMinimized:
@@ -838,6 +840,21 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
             delete action;
             m_ActionTable[a] = action = new QAction(this);
             break;
+        case Gadgets::Ge_ToggleNotifier:
+            action->setChecked(GetTreeBank()->GetNotifier());
+            return action;
+        case Gadgets::Ge_ToggleReceiver:
+            action->setChecked(GetTreeBank()->GetReceiver());
+            return action;
+        case Gadgets::Ge_ToggleMenuBar:
+            action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
+            return action;
+        case Gadgets::Ge_ToggleTreeBar:
+            action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
+            return action;
+        case Gadgets::Ge_ToggleToolBar:
+            action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
+            return action;
         default:
             return action;
         }
@@ -1037,23 +1054,33 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
 
     case Gadgets::Ge_ToggleNotifier:
         action->setCheckable(true);
+        action->setChecked(GetTreeBank()->GetNotifier());
         action->setText(tr("Notifier"));
+        action->setToolTip(tr("Notifier"));
         break;
     case Gadgets::Ge_ToggleReceiver:
         action->setCheckable(true);
+        action->setChecked(GetTreeBank()->GetReceiver());
         action->setText(tr("Receiver"));
+        action->setToolTip(tr("Receiver"));
         break;
     case Gadgets::Ge_ToggleMenuBar:
         action->setCheckable(true);
+        action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
         action->setText(tr("MenuBar"));
+        action->setToolTip(tr("MenuBar"));
         break;
     case Gadgets::Ge_ToggleTreeBar:
         action->setCheckable(true);
+        action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
         action->setText(tr("TreeBar"));
+        action->setToolTip(tr("TreeBar"));
         break;
     case Gadgets::Ge_ToggleToolBar:
         action->setCheckable(true);
+        action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
         action->setText(tr("ToolBar"));
+        action->setToolTip(tr("ToolBar"));
         break;
 
     case Gadgets::Ge_OpenNodeWithIE:

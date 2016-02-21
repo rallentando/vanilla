@@ -1189,7 +1189,7 @@ bool TreeBank::DeleteHistory(HistNode *hn){
         Q_ASSERT(partner);
 
         // strip(not recursive).
-        hn->SetImage(QImage());
+        //hn->SetImage(QImage());
         DislinkView(hn); // using partner.
 
         // quarantine(to use primary).
@@ -1273,7 +1273,7 @@ void TreeBank::StripSubTree(Node *nd){
         }
 
         DislinkView(hn);
-        hn->SetImage(QImage());
+        //hn->SetImage(QImage());
     }
     foreach(Node *child, nd->GetChildren()){
         StripSubTree(child);
@@ -1408,10 +1408,7 @@ bool TreeBank::DeleteNode(NodeList list){
         return false;
     }
 
-    if(m_CurrentView){
-        // for adjusting scroll on TreeBar.
-        emit CurrentChanged(m_CurrentView->GetViewNode());
-    } else {
+    if(!m_CurrentView){
         if(sample->IsHistNode()){
             foreach(SharedView view, m_AllViews){
                 if(prevpartner == view->GetViewNode())
@@ -1459,6 +1456,7 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
                          dir->ChildrenLength() - 1 :
                        (n > dir->ChildrenIndexOf(nd)) ?
                          n - 1 : n);
+        EmitTreeStructureChanged();
     } else {
         // move to other directory.
         bool wasTrash = IsTrash(nd);
@@ -1475,7 +1473,6 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
         if(wasTrash && !isTrash) EmitNodeCreated(NodeList() << nd);
         if(!wasTrash && isTrash) EmitNodeDeleted(NodeList() << nd);
     }
-    //EmitTreeStructureChanged();
     return true;
 }
 
@@ -1733,8 +1730,11 @@ void TreeBank::BeforeStartingDisplayGadgets(){
     m_Gadgets->Connect(this);
     m_Gadgets->setParent(this);
 
-    if(m_CurrentView)
+    if(m_CurrentView){
+        m_Gadgets->SetMaster(m_CurrentView->GetThis());
+        m_CurrentView->SetSlave(m_Gadgets->GetThis());
         m_CurrentView->OnBeforeStartingDisplayGadgets();
+    }
 
     m_View->raise();
     m_View->setFocus();
@@ -1951,7 +1951,7 @@ SharedView TreeBank::OpenInNewDirectory(QNetworkRequest req, bool activate, View
     ViewNode *young  = older->NewDir();
     HistNode *hist   = m_HistRoot->MakeChild();
     SharedView view = LoadWithLink(req, hist, young);
-    EmitNodeCreated(NodeList() << young);
+    EmitNodeCreated(NodeList() << young->GetParent() << young);
     if(activate){
         SetCurrent(hist);
     } else {
@@ -3185,6 +3185,7 @@ ViewNode *TreeBank::MakeLocalNode(ViewNode *older){
         young->SetPartner(hist);
 
         LoadWithLink(hist);
+        EmitNodeCreated(NodeList() << young->GetParent() << young);
         SetCurrent(hist);
         // need to tune order, because 'LoadWithLink' and 'LoadWithNoLink' add new view to head of 'm_AllViews'.
         RaiseDisplayedViewPriority();
@@ -3377,6 +3378,11 @@ void TreeBank::ViewSource(SharedView view){
 void TreeBank::ApplySource(SharedView view){
     if(!view) view = m_CurrentView;
     if(view) view->TriggerAction(Page::We_ApplySource);
+}
+
+void TreeBank::InspectElement(SharedView view){
+    if(!view) view = m_CurrentView;
+    if(view) view->TriggerAction(Page::We_InspectElement);
 }
 
 void TreeBank::CopyUrl(SharedView view){
@@ -3634,6 +3640,8 @@ QAction *TreeBank::Action(TreeBankAction a){
         DEFINE_ACTION(ViewSource,           tr("ViewSource"));
         DEFINE_ACTION(ApplySource,          tr("ApplySource"));
 
+        DEFINE_ACTION(InspectElement,       tr("InspectElement"));
+
         DEFINE_ACTION(CopyUrl,              tr("CopyUrl"));
         DEFINE_ACTION(CopyTitle,            tr("CopyTitle"));
         DEFINE_ACTION(CopyPageAsLink,       tr("CopyPageAsLink"));
@@ -3657,26 +3665,31 @@ QAction *TreeBank::Action(TreeBankAction a){
         action->setCheckable(true);
         action->setChecked(m_Notifier);
         action->setText(tr("Notifier"));
+        action->setToolTip(tr("Notifier"));
         break;
     case Te_ToggleReceiver:
         action->setCheckable(true);
         action->setChecked(m_Receiver);
         action->setText(tr("Receiver"));
+        action->setToolTip(tr("Receiver"));
         break;
     case Te_ToggleMenuBar:
         action->setCheckable(true);
         action->setChecked(!GetMainWindow()->IsMenuBarEmpty());
         action->setText(tr("MenuBar"));
+        action->setToolTip(tr("MenuBar"));
         break;
     case Te_ToggleTreeBar:
         action->setCheckable(true);
         action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
         action->setText(tr("TreeBar"));
+        action->setToolTip(tr("TreeBar"));
         break;
     case Te_ToggleToolBar:
         action->setCheckable(true);
         action->setChecked(GetMainWindow()->GetToolBar()->isVisible());
         action->setText(tr("ToolBar"));
+        action->setToolTip(tr("ToolBar"));
         break;
 
     case Te_OpenWithIE:

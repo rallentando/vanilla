@@ -151,13 +151,13 @@ public:
     void Initialize();
     void DeleteLater();
 
-    TreeBank  *GetTreeBank();
-    ViewNode  *GetViewNode();
-    HistNode  *GetHistNode();
-    WeakView   GetThis();
-    WeakView   GetMaster();
-    WeakView   GetSlave();
-    _View     *GetJsObject();
+    TreeBank  *GetTreeBank() const;
+    ViewNode  *GetViewNode() const;
+    HistNode  *GetHistNode() const;
+    WeakView   GetThis() const;
+    WeakView   GetMaster() const;
+    WeakView   GetSlave() const;
+    _View     *GetJsObject() const;
 
     void SetTreeBank(TreeBank*);
     void SetViewNode(ViewNode*);
@@ -193,8 +193,8 @@ public:
     static bool NavigationBySpaceKey(){ return m_NavigationBySpaceKey;}
     static bool EnableLoadHack(){ return m_EnableLoadHack;}
     static bool EnableDragHack(){ return m_EnableDragHack;}
-    bool EnableLoadHackLocal(){ return m_EnableLoadHackLocal;}
-    bool EnableDragHackLocal(){ return m_EnableDragHackLocal;}
+    bool EnableLoadHackLocal() const { return m_EnableLoadHackLocal;}
+    bool EnableDragHackLocal() const { return m_EnableDragHackLocal;}
 
     static QString GetLinkMenu(){ return m_LinkMenu;}
     static QString GetImageMenu(){ return m_ImageMenu;}
@@ -605,7 +605,9 @@ protected:
 
     // return value is js array. and it'll be callbacked.
     static inline QString GetScrollValuePointJsCode(){
-        return QStringLiteral("[document.body.scrollLeft, document.body.scrollTop]");
+        return QStringLiteral(
+            "document.body && \n"
+          VV"[document.body.scrollLeft, document.body.scrollTop]");
     }
 
     static inline QString SetScrollValuePointJsCode(const QPoint &pos){
@@ -615,7 +617,8 @@ protected:
     // return value is js array. and it'll be callbacked.
     static inline QString GetScrollBarStateJsCode(){
         return QStringLiteral(
-            "[document.documentElement.scrollWidth - \n"
+            "document.documentElement &&\n"
+          VV"[document.documentElement.scrollWidth - \n"
           VV" document.documentElement.clientWidth,\n"
           VV" document.documentElement.scrollHeight - \n"
           VV" document.documentElement.clientHeight];\n");
@@ -625,6 +628,7 @@ protected:
     static inline QString GetScrollRatioPointJsCode(){
         return QStringLiteral(
             "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
           VV"    var hval = document.body.scrollLeft;\n"
           VV"    var vval = document.body.scrollTop;\n"
           VV"    var hmax = document.documentElement.scrollWidth - \n"
@@ -819,6 +823,7 @@ protected:
           VV"    var x = %1;\n"
           VV"    var y = %2;\n"
           VV"    var elem = document.elementFromPoint(x, y);\n"
+          VV"    if(!elem) return;\n"
           VV"    var data = {};\n"
           VV"    data.tagName = elem.tagName;\n"
           VV"    data.innerText = elem.innerText;\n"
@@ -1080,6 +1085,9 @@ protected:
 
     static SharedWebElement m_ClickedElement;
     static QRegion m_SelectionRegion;
+    static QUrl m_CurrentBaseUrl;
+    static QString m_SelectedText;
+    static QString m_SelectedHtml;
     static bool m_DragStarted;
     static bool m_HadSelection;
     static bool m_Switching;

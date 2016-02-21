@@ -210,12 +210,29 @@ void MainWindow::LoadSettings(){
             GetTreeBank()->ToggleReceiver();
     }
 
-    if(!toolbar_data.isNull()){
+    if(toolbar_data.isNull()){
+
+        QByteArray state = current
+            ? current->saveState()
+            : QByteArray();
+
+        if(!state.isEmpty())
+            restoreState(state);
+
+    } else if(toolbar_data.canConvert<QByteArray>()){
         restoreState(toolbar_data.toByteArray());
     }
 
-    if(!treebar_data.isNull() &&
-       treebar_data.canConvert<QStringList>()){
+    if(treebar_data.isNull()){
+
+        QStringList stat = current
+            ? current->GetTreeBar()->GetStat()
+            : QStringList();
+
+        if(!stat.isEmpty())
+            m_TreeBar->SetStat(stat);
+
+    } else if(treebar_data.canConvert<QStringList>()){
         m_TreeBar->SetStat(treebar_data.toStringList());
     }
 

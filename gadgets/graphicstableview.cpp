@@ -757,10 +757,6 @@ void GraphicsTableView::ToggleSortByLastAccessDate(){
     ApplySort();
 }
 
-QList<SpotLight*> GraphicsTableView::GetLoadedSpotLights(){
-    return m_LoadedSpotLights;
-}
-
 void GraphicsTableView::Update(QRectF rect){
     if(!scene()) return;
     if(rect.isNull()) rect = scene()->sceneRect();
@@ -773,7 +769,7 @@ void GraphicsTableView::Update(QRectF rect){
     }
 }
 
-QString GraphicsTableView::GetDirectoryPrefix(Node *nd){
+QString GraphicsTableView::GetDirectoryPrefix(Node *nd) const {
     if(!nd->IsDirectory()) return QString();
 
     if(IsDisplayingNode()){
@@ -784,12 +780,16 @@ QString GraphicsTableView::GetDirectoryPrefix(Node *nd){
     return QString();
 }
 
-SpotLight *GraphicsTableView::GetPrimarySpotLight(){
+SpotLight *GraphicsTableView::GetPrimarySpotLight() const {
     return m_PrimarySpotLight;
 }
 
-SpotLight *GraphicsTableView::GetHoveredSpotLight(){
+SpotLight *GraphicsTableView::GetHoveredSpotLight() const {
     return m_HoveredSpotLight;
+}
+
+QList<SpotLight*> GraphicsTableView::GetLoadedSpotLights() const {
+    return m_LoadedSpotLights;
 }
 
 void GraphicsTableView::SetHoveredItem(int index){
@@ -2494,7 +2494,7 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
     return success;
 }
 
-qreal GraphicsTableView::MaxScroll(){
+qreal GraphicsTableView::MaxScroll() const {
     if(int len = m_DisplayThumbnails.length())
         return (len - 1)
             / m_CurrentThumbnailColumnCount
@@ -2502,11 +2502,11 @@ qreal GraphicsTableView::MaxScroll(){
     return 0.0;
 }
 
-qreal GraphicsTableView::MinScroll(){
+qreal GraphicsTableView::MinScroll() const {
     return 0.0;
 }
 
-qreal GraphicsTableView::GetScroll(){
+qreal GraphicsTableView::GetScroll() const {
     return m_CurrentScroll;
 }
 
@@ -3153,14 +3153,14 @@ bool GraphicsTableView::ThumbList_SwitchNodeCollectionTypeReverse(){
     return true;
 }
 
-QPointF GraphicsTableView::CurrentThumbnailOffset(){
+QPointF GraphicsTableView::CurrentThumbnailOffset() const {
     return QPointF(0,
                    round(- m_CurrentScroll
                          / m_CurrentThumbnailColumnCount
                          * m_CurrentThumbnailHeight));
 }
 
-QPointF GraphicsTableView::CurrentNodeTitleOffset(){
+QPointF GraphicsTableView::CurrentNodeTitleOffset() const {
     return QPointF(0,
                    round(- m_CurrentScroll
                          // / m_CurrentThumbnailColumnCount
@@ -3429,7 +3429,7 @@ GraphicsButton::GraphicsButton(QGraphicsItem *parent)
 
 GraphicsButton::~GraphicsButton(){}
 
-GraphicsButton::ButtonState GraphicsButton::GetState(){
+GraphicsButton::ButtonState GraphicsButton::GetState() const {
     return m_ButtonState;
 }
 

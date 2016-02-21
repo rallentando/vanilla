@@ -74,7 +74,7 @@ public:
         Q_UNUSED(type);
         // cannot set NodeCollectionType.
     }
-    virtual NodeCollectionType GetNodeCollectionType() DECL_OVERRIDE {
+    virtual NodeCollectionType GetNodeCollectionType() const DECL_OVERRIDE {
         return Flat;
     }
 

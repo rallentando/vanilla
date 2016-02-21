@@ -1624,7 +1624,26 @@ QAction *Page::Action(CustomAction a, QVariant data){
     }
 
     webaction->setData(data);
-    if(!create) return webaction;
+    if(!create){
+        switch(a){
+        case We_ToggleNotifier:
+            webaction->setChecked(GetTB()->GetNotifier());
+            break;
+        case We_ToggleReceiver:
+            webaction->setChecked(GetTB()->GetReceiver());
+            break;
+        case We_ToggleMenuBar:
+            webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty());
+            break;
+        case We_ToggleTreeBar:
+            webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible());
+            break;
+        case We_ToggleToolBar:
+            webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible());
+            break;
+        }
+        return webaction;
+    }
 
     switch(a){
     case Ke_Up:      webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
@@ -1874,23 +1893,33 @@ QAction *Page::Action(CustomAction a, QVariant data){
 
     case We_ToggleNotifier:
         webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetNotifier());
         webaction->setText(tr("Notifier"));
+        webaction->setToolTip(tr("Notifier"));
         break;
     case We_ToggleReceiver:
         webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetReceiver());
         webaction->setText(tr("Receiver"));
+        webaction->setToolTip(tr("Receiver"));
         break;
     case We_ToggleMenuBar:
         webaction->setCheckable(true);
+        webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty());
         webaction->setText(tr("MenuBar"));
+        webaction->setToolTip(tr("MenuBar"));
         break;
     case We_ToggleTreeBar:
         webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible());
         webaction->setText(tr("TreeBar"));
+        webaction->setToolTip(tr("TreeBar"));
         break;
     case We_ToggleToolBar:
         webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible());
         webaction->setText(tr("ToolBar"));
+        webaction->setToolTip(tr("ToolBar"));
         break;
 
     case We_OpenWithIE:

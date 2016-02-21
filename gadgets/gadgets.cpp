@@ -1914,7 +1914,26 @@ QAction *Gadgets::Action(GadgetsAction a){
     }
 
     QAction *action = m_ActionTable[a];
-    if(action) return action;
+    if(action){
+        switch(a){
+        case Ge_ToggleNotifier:
+            action->setChecked(GetTreeBank()->GetNotifier());
+            break;
+        case Ge_ToggleReceiver:
+            action->setChecked(GetTreeBank()->GetReceiver());
+            break;
+        case Ge_ToggleMenuBar:
+            action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
+            break;
+        case Ge_ToggleTreeBar:
+            action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
+            break;
+        case Ge_ToggleToolBar:
+            action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
+            break;
+        }
+        return action;
+    }
 
     m_ActionTable[a] = action = new QAction(this);
 
@@ -2110,23 +2129,33 @@ QAction *Gadgets::Action(GadgetsAction a){
 
     case Ge_ToggleNotifier:
         action->setCheckable(true);
+        action->setChecked(GetTreeBank()->GetNotifier());
         action->setText(tr("Notifier"));
+        action->setToolTip(tr("Notifier"));
         break;
     case Ge_ToggleReceiver:
         action->setCheckable(true);
+        action->setChecked(GetTreeBank()->GetReceiver());
         action->setText(tr("Receiver"));
+        action->setToolTip(tr("Receiver"));
         break;
     case Ge_ToggleMenuBar:
         action->setCheckable(true);
+        action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
         action->setText(tr("MenuBar"));
+        action->setToolTip(tr("MenuBar"));
         break;
     case Ge_ToggleTreeBar:
         action->setCheckable(true);
+        action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
         action->setText(tr("TreeBar"));
+        action->setToolTip(tr("TreeBar"));
         break;
     case Ge_ToggleToolBar:
         action->setCheckable(true);
+        action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
         action->setText(tr("ToolBar"));
+        action->setToolTip(tr("ToolBar"));
         break;
 
     case Ge_OpenNodeWithIE:

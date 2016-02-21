@@ -89,7 +89,7 @@ public:
     }
 
     virtual void SetNodeCollectionType(NodeCollectionType){}
-    virtual NodeCollectionType GetNodeCollectionType(){ return Flat;}
+    virtual NodeCollectionType GetNodeCollectionType() const { return Flat;}
 
 public slots:
     virtual void Activate(DisplayType type);
@@ -102,11 +102,11 @@ public slots:
 public:
     void Update(QRectF rect = QRectF());
 
-    QString GetDirectoryPrefix(Node *nd);
+    QString GetDirectoryPrefix(Node *nd) const;
 
-    SpotLight *GetPrimarySpotLight();
-    SpotLight *GetHoveredSpotLight();
-    QList<SpotLight*> GetLoadedSpotLights();
+    SpotLight *GetPrimarySpotLight() const;
+    SpotLight *GetHoveredSpotLight() const;
+    QList<SpotLight*> GetLoadedSpotLights() const;
     void SetCurrent(Node*);
 
     void SetHoveredItem(int);
@@ -218,10 +218,10 @@ protected:
     void CollectNodes(Node *root, QString filter = QString());
 
 public:
-    qreal MaxScroll();
-    qreal MinScroll();
+    qreal MaxScroll() const;
+    qreal MinScroll() const;
 
-    qreal GetScroll();
+    qreal GetScroll() const;
     void Scroll(qreal delta);
     void ScrollToItem(qreal target);
     void ResetTargetScroll();
@@ -337,8 +337,8 @@ public slots:
     virtual bool ThumbList_SwitchNodeCollectionTypeReverse();
 
     // for scroll.
-    QPointF CurrentThumbnailOffset();
-    QPointF CurrentNodeTitleOffset();
+    QPointF CurrentThumbnailOffset() const;
+    QPointF CurrentNodeTitleOffset() const;
 
 private:
     TreeBank *m_TreeBank;
@@ -378,7 +378,7 @@ protected:
     Node *m_CurrentNode;
 
     bool m_StatusBarMessageIsSuspended;
-    bool StatusBarMessageIsSuspended(){
+    bool StatusBarMessageIsSuspended() const {
         return m_StatusBarMessageIsSuspended;
     }
     void SuspendStatusBarMessage(){
@@ -529,8 +529,8 @@ private:
     GraphicsTableView::SpotLightType m_Type;
     int m_Index; // for only LoadedSpotLight.
 public:
-    GraphicsTableView::SpotLightType GetType(){ return m_Type;}
-    int GetIndex(){ return m_Index;}
+    GraphicsTableView::SpotLightType GetType() const { return m_Type;}
+    int GetIndex() const { return m_Index;}
     void SetIndex(int index){ m_Index = index;}
 };
 
@@ -567,7 +567,7 @@ public:
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
 
-    Node *GetNode(){ return m_Node;}
+    Node *GetNode() const { return m_Node;}
     void SetNode(Node *nd);
 
 protected:
@@ -597,7 +597,7 @@ public:
         Pressed,
     };
 
-    ButtonState GetState();
+    ButtonState GetState() const;
     void SetState(ButtonState state);
 
 protected:

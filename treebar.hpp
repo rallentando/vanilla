@@ -54,9 +54,11 @@ public:
     int MinHeight() const;
 
     void SetStat(QStringList);
-    QStringList GetStat();
+    QStringList GetStat() const;
 
     void Adjust();
+
+    void ClearLowerLayer(int index);
 
     QSize sizeHint() const DECL_OVERRIDE;
     QSize minimumSizeHint() const DECL_OVERRIDE;
@@ -121,10 +123,10 @@ public:
 
     int Index() const;
 
-    int GetNest();
+    int GetNest() const;
     void SetNest(int);
 
-    QPropertyAnimation *GetAnimation();
+    QPropertyAnimation *GetAnimation() const;
 
     qreal MaxScroll() const;
     qreal MinScroll() const;
@@ -148,11 +150,12 @@ public:
     void Adjust();
     void OnScrolled();
 
+    NodeItem *GetFocusedNode() const;
     void SetFocusedNode(NodeItem *item);
     void CorrectOrder();
 
     void SetNode(Node *nd);
-    Node *GetNode();
+    Node *GetNode() const;
 
     void SetLine(qreal x1, qreal y1, qreal x2, qreal y2);
 
@@ -228,25 +231,30 @@ public:
     QRect CloseIconRect() const;
     QRect CloneIconRect() const;
 
-    int GetNest();
+    int GetNest() const;
     void SetNest(int);
 
-    bool GetFocused();
+    bool GetFocused() const;
     void SetFocused(bool);
 
     QRectF GetRect() const;
     void SetRect(QRectF rect);
 
-    QPointF GetTargetPosition();
+    QPointF GetTargetPosition() const;
     void SetTargetPosition(QPointF pos);
 
     LayerItem *Layer() const;
-    Node *GetNode();
+    Node *GetNode() const;
 
-    QPropertyAnimation *GetAnimation();
+    QPropertyAnimation *GetAnimation() const;
+
+    void SetHoveredWithItem(bool hovered);
+
+    void UnfoldDirectory();
 
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
 
+    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
     void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
@@ -305,6 +313,7 @@ private:
     QRectF m_Rect;
     bool m_IsFocused;
     bool m_IsHovered;
+    int m_HoveredTimerID;
     QPropertyAnimation *m_Animation;
     QPointF m_TargetPosition;
 };

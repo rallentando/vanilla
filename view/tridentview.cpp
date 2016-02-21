@@ -1844,9 +1844,7 @@ bool TridentView::translateKeyEvent(int message, int keycode) const {
 
 void TridentView::UpdateIcon(const QUrl &url){
     m_Icon = QIcon();
-
     if(!page()) return;
-
     QNetworkRequest req(url);
     DownloadItem *item = NetworkController::Download
         (page()->GetNetworkAccessManager(),

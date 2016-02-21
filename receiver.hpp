@@ -183,6 +183,8 @@ signals:
     void ViewSource();
     void ApplySource();
 
+    void InspectElement();
+
     void CopyUrl();
     void CopyTitle();
     void CopyPageAsLink();

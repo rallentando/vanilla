@@ -139,8 +139,8 @@ void WebViewBase::Connect(TreeBank *tb){
             this, SIGNAL(ViewChanged()));
     //[[/!WEV]]
     //[[WEV]]
-    connect(this, SIGNAL(loadProgress(int)),
-            this, SLOT(RestoreScroll()));
+    //connect(this, SIGNAL(loadProgress(int)),
+    //        this, SLOT(RestoreScroll()));
     //[[/WEV]]
     if(Notifier *notifier = tb->GetNotifier()){
         connect(this, SIGNAL(statusBarMessage(const QString&)),
@@ -184,8 +184,8 @@ void WebViewBase::Disconnect(TreeBank *tb){
                this, SIGNAL(ViewChanged()));
     //[[/!WEV]]
     //[[WEV]]
-    disconnect(this, SIGNAL(loadProgress(int)),
-               this, SLOT(RestoreScroll()));
+    //disconnect(this, SIGNAL(loadProgress(int)),
+    //           this, SLOT(RestoreScroll()));
     //[[/WEV]]
     if(Notifier *notifier = tb->GetNotifier()){
         disconnect(this, SIGNAL(statusBarMessage(const QString&)),

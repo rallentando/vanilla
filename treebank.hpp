@@ -255,6 +255,8 @@ public:
         Te_ViewSource,
         Te_ApplySource,
 
+        Te_InspectElement,
+
         Te_CopyUrl,
         Te_CopyTitle,
         Te_CopyPageAsLink,
@@ -426,6 +428,8 @@ protected:
         if(str == QStringLiteral("ViewSource"))           return Te_ViewSource;
         if(str == QStringLiteral("ApplySource"))          return Te_ApplySource;
 
+        if(str == QStringLiteral("InspectElement"))       return Te_InspectElement;
+
         if(str == QStringLiteral("CopyUrl"))              return Te_CopyUrl;
         if(str == QStringLiteral("CopyTitle"))            return Te_CopyTitle;
         if(str == QStringLiteral("CopyPageAsLink"))       return Te_CopyPageAsLink;
@@ -526,6 +530,8 @@ protected:
         if(action == Te_ZoomOut)              return QStringLiteral("ZoomOut");
         if(action == Te_ViewSource)           return QStringLiteral("ViewSource");
         if(action == Te_ApplySource)          return QStringLiteral("ApplySource");
+
+        if(action == Te_InspectElement)       return QStringLiteral("InspectElement");
 
         if(action == Te_CopyUrl)              return QStringLiteral("CopyUrl");
         if(action == Te_CopyTitle)            return QStringLiteral("CopyTitle");
@@ -642,6 +648,8 @@ public slots:
     void ZoomOut              (SharedView view = 0);
     void ViewSource           (SharedView view = 0);
     void ApplySource          (SharedView view = 0);
+
+    void InspectElement       (SharedView view = 0);
 
     void CopyUrl              (SharedView view = 0);
     void CopyTitle            (SharedView view = 0);

@@ -48,6 +48,9 @@ QKeyEvent *View::m_EndKey      = new QKeyEvent(QEvent::KeyPress, Qt::Key_End, 0)
 
 SharedWebElement View::m_ClickedElement = 0;
 QRegion View::m_SelectionRegion = QRegion();
+QUrl View::m_CurrentBaseUrl = QUrl();
+QString View::m_SelectedText = QString();
+QString View::m_SelectedHtml = QString();
 
 bool View::m_ActivateNewViewDefault = false;
 bool View::m_NavigationBySpaceKey = false;
@@ -228,31 +231,31 @@ void View::DeleteLater(){
     if(base()) base()->deleteLater();
 }
 
-TreeBank *View::GetTreeBank(){
+TreeBank *View::GetTreeBank() const {
     return m_TreeBank;
 }
 
-ViewNode *View::GetViewNode(){
+ViewNode *View::GetViewNode() const {
     return m_ViewNode;
 }
 
-HistNode* View::GetHistNode(){
+HistNode* View::GetHistNode() const {
     return m_HistNode;
 }
 
-WeakView View::GetThis(){
+WeakView View::GetThis() const {
     return m_This;
 }
 
-WeakView View::GetMaster(){
+WeakView View::GetMaster() const {
     return m_Master;
 }
 
-WeakView View::GetSlave(){
+WeakView View::GetSlave() const {
     return m_Slave;
 }
 
-_View *View::GetJsObject(){
+_View *View::GetJsObject() const {
     return m_JsObject;
 }
 
@@ -679,19 +682,14 @@ QMimeData *View::CreateMimeDataFromSelection(NetworkAccessManager *nam){
 
     QMimeData *mime = new QMimeData;
 
-    CallWithGotCurrentBaseUrl([this, nam, mime](QUrl base){
-    CallWithSelectedText([this, nam, mime, base](QString text){
-    CallWithSelectedHtml([this, nam, mime, base, text](QString html){
+    QList<QUrl>        urls = Page::ExtractUrlFromHtml(m_SelectedHtml, m_CurrentBaseUrl, Page::HaveReference);
+    if(urls.isEmpty()) urls = Page::ExtractUrlFromText(m_SelectedText, m_CurrentBaseUrl);
+    if(urls.isEmpty()) urls = Page::ExtractUrlFromHtml(m_SelectedHtml, m_CurrentBaseUrl, Page::HaveSource);
 
-    QList<QUrl>        urls = Page::ExtractUrlFromHtml(html, base, Page::HaveReference);
-    if(urls.isEmpty()) urls = Page::ExtractUrlFromText(text, base);
-    if(urls.isEmpty()) urls = Page::ExtractUrlFromHtml(html, base, Page::HaveSource);
-
-    mime->setText(text);
-    mime->setHtml(html);
+    mime->setText(m_SelectedText);
+    mime->setHtml(m_SelectedHtml);
     mime->setUrls(urls);
 
-    });});});
     return mime;
 }
 
@@ -1910,6 +1908,9 @@ void View::Load(const QNetworkRequest &req){
 void View::OnFocusIn(){
     m_ClickedElement = 0;
     m_SelectionRegion = QRegion();
+    m_CurrentBaseUrl = QUrl();
+    m_SelectedText = QString();
+    m_SelectedHtml = QString();
 
     MainWindow *win;
     if(m_TreeBank){
@@ -1928,6 +1929,9 @@ void View::OnFocusIn(){
 void View::OnFocusOut(){
     m_ClickedElement = 0;
     m_SelectionRegion = QRegion();
+    m_CurrentBaseUrl = QUrl();
+    m_SelectedText = QString();
+    m_SelectedHtml = QString();
 }
 
 void View::GestureStarted(QPoint pos){
@@ -1938,13 +1942,16 @@ void View::GestureStarted(QPoint pos){
     m_HadSelection = !SelectedText().isEmpty();
     SetScrollBarState();
     CallWithHitElement(pos, [this](SharedWebElement elem){ m_ClickedElement = elem;});
-    if(m_HadSelection)
+    if(m_HadSelection){
         CallWithSelectionRegion([this, pos](QRegion region){
                 if(region.contains(pos))
                     m_SelectionRegion = region;
-                else
-                    m_HadSelection = false;
+                else m_HadSelection = false;
             });
+        CallWithSelectedText([this](QString text){ m_SelectedText = text;});
+        CallWithSelectedHtml([this](QString html){ m_SelectedHtml = html;});
+        CallWithGotCurrentBaseUrl([this](QUrl base){ m_CurrentBaseUrl = base;});
+    }
 }
 
 void View::GestureMoved(QPoint pos){
@@ -1993,6 +2000,9 @@ void View::GestureAborted(){
     m_SameGestureVectorCount = 0;
     m_ClickedElement = 0;
     m_SelectionRegion = QRegion();
+    m_CurrentBaseUrl = QUrl();
+    m_SelectedText = QString();
+    m_SelectedHtml = QString();
     m_HadSelection = false;
     m_DragStarted = false;
 }
@@ -2022,6 +2032,9 @@ void View::GestureFinished(QPoint pos, Qt::MouseButton button){
     m_SameGestureVectorCount = 0;
     m_ClickedElement = 0;
     m_SelectionRegion = QRegion();
+    m_CurrentBaseUrl = QUrl();
+    m_SelectedText = QString();
+    m_SelectedHtml = QString();
     m_HadSelection = false;
     m_DragStarted = false;
 }

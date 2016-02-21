@@ -221,7 +221,7 @@ public:
             m_HistNodeCollectionType = type;
         }
     }
-    NodeCollectionType GetNodeCollectionType() DECL_OVERRIDE {
+    NodeCollectionType GetNodeCollectionType() const DECL_OVERRIDE {
         if(IsDisplayingViewNode()){
             return m_ViewNodeCollectionType;
         } else if(IsDisplayingHistNode()){
