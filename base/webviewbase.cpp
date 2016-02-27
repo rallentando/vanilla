@@ -263,6 +263,7 @@ void WebViewBase::OnLoadStarted(){
 
 void WebViewBase::OnLoadProgress(int progress){
     if(!GetHistNode()) return;
+    View::OnLoadProgress(progress);
     emit statusBarMessage(tr("Loading ... (%1 percent)").arg(progress));
 }
 
@@ -511,16 +512,19 @@ bool WebViewBase::RestoreScroll(){
 }
 
 bool WebViewBase::SaveZoom(){
+    if(!GetHistNode()) return false;
     GetHistNode()->SetZoom(zoomFactor());
     return true;
 }
 
 bool WebViewBase::RestoreZoom(){
+    if(!GetHistNode()) return false;
     setZoomFactor(static_cast<qreal>(GetHistNode()->GetZoom()));
     return true;
 }
 
 bool WebViewBase::SaveHistory(){
+    if(!GetHistNode()) return false;
     QByteArray ba;
     QDataStream stream(&ba, QIODevice::WriteOnly);
     stream << (*history());
@@ -532,6 +536,7 @@ bool WebViewBase::SaveHistory(){
 }
 
 bool WebViewBase::RestoreHistory(){
+    if(!GetHistNode()) return false;
     QByteArray ba = GetHistNode()->GetHistoryData();
     if(!ba.isEmpty()){
         QDataStream stream(&ba, QIODevice::ReadOnly);
@@ -600,7 +605,9 @@ void WebViewBase::AssignInspector(){
 
     if(!item) return;
 
-    connect(item, &DownloadItem::DownloadResult, [=](const QByteArray &result){
+    item->setParent(base());
+
+    connect(item, &DownloadItem::DownloadResult, [this](const QByteArray &result){
 
             foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
 
@@ -629,7 +636,9 @@ void WebViewBase::UpdateIcon(const QUrl &url){
 
     if(!item) return;
 
-    connect(item, &DownloadItem::DownloadResult, [=](const QByteArray &result){
+    item->setParent(base());
+
+    connect(item, &DownloadItem::DownloadResult, [this](const QByteArray &result){
             QPixmap pixmap;
             if(pixmap.loadFromData(result)){
                 m_Icon = QIcon(pixmap);

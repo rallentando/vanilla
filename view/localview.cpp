@@ -46,7 +46,7 @@ LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
     m_ParentNode = new LocalNode();
 
     class DummyLocalNode : public LocalNode{
-        bool IsDummy() DECL_OVERRIDE { return true;}
+        bool IsDummy() const DECL_OVERRIDE { return true;}
     };
 
     m_DummyLocalNode = new DummyLocalNode();
@@ -1907,7 +1907,7 @@ void LocalView::OnLoadStarted(){
 }
 
 void LocalView::OnLoadProgress(int progress){
-    Q_UNUSED(progress);
+    View::OnLoadProgress(progress);
 }
 
 void LocalView::OnLoadFinished(bool ok){

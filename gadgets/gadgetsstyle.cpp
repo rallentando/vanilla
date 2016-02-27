@@ -116,7 +116,6 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     QRectF rect = bound;
 
     QImage image = thumb->GetNode()->GetImage();
-    QString title = thumb->GetNode()->GetTitle();
 
     if(image.isNull()){
         Node *tempnode = thumb->GetNode();
@@ -260,27 +259,9 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
 
-        if(title.isEmpty()){
-            const QUrl url = thumb->GetNode()->GetUrl();
-            if(url.isEmpty()){
-                if(thumb->GetNode()->IsDirectory()){
-                    title = QStringLiteral("Directory");
-                } else {
-                    title = QStringLiteral("No Title");
-                }
-            } else {
-                title = url.toString();
-            }
-        } else if(thumb->GetNode()->IsDirectory()){
-            title = QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first();
-        } else {
-            // some charactor is truncated.
-            title = QStringLiteral(" ") + title;
-            title_rect = QRectF(title_rect.topLeft() + QPointF(-2.0, 0.0),
-                                title_rect.size() + QSizeF(2.0, 0.0));
-        }
         painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, title);
+        painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter,
+                          thumb->GetNode()->ReadableTitle());
     }
     painter->restore();
 }
@@ -306,8 +287,6 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     painter->setRenderHint(QPainter::Antialiasing, false);
 
     if(m_NodeTitleDrawBorder) port = port.intersected(bound);
-
-    QString title_ = title->GetNode()->GetTitle();
 
     const qreal start = bound.top();
     const qreal stop  = bound.bottom();
@@ -402,26 +381,8 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
             title_rect.setLeft(title_rect.left() + 15);
         }
 
-        if(title_.isEmpty()){
-            const QUrl url = title->GetNode()->GetUrl();
-            if(url.isEmpty()){
-                if(title->GetNode()->IsDirectory()){
-                    title_ = QStringLiteral("Directory");
-                } else {
-                    title_ = QStringLiteral("No Title");
-                }
-            } else {
-                title_ = url.toString();
-            }
-        } else if(title->GetNode()->IsDirectory()){
-            title_ = QStringLiteral("Dir - ") + title_.split(QStringLiteral(";")).first();
-        } else {
-            // some charactor is truncated.
-            title_ = QStringLiteral(" ") + title_;
-            title_rect = QRectF(title_rect.topLeft() + QPointF(-3.0, 0.0),
-                                title_rect.size() + QSizeF(3.0, 0.0));
-        }
-        painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, title_);
+        painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter,
+                          title->GetNode()->ReadableTitle());
     }
     painter->restore();
 }
@@ -960,7 +921,6 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     rect.setBottomRight(bound.bottomRight() - QPointF(1.0, 1.0));
 
     QImage image = thumb->GetNode()->GetImage();
-    QString title = thumb->GetNode()->GetTitle();
 
     if(image.isNull()){
         Node *tempnode = thumb->GetNode();
@@ -1060,27 +1020,9 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
 
-        if(title.isEmpty()){
-            const QUrl url = thumb->GetNode()->GetUrl();
-            if(url.isEmpty()){
-                if(thumb->GetNode()->IsDirectory()){
-                    title = QStringLiteral("Directory");
-                } else {
-                    title = QStringLiteral("No Title");
-                }
-            } else {
-                title = url.toString();
-            }
-        } else if(thumb->GetNode()->IsDirectory()){
-            title = QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first();
-        } else {
-            // some charactor is truncated.
-            title = QStringLiteral(" ") + title;
-            title_rect = QRectF(title_rect.topLeft() + QPointF(-2.0, 0.0),
-                                title_rect.size() + QSizeF(2.0, 0.0));
-        }
         painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, title);
+        painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter,
+                          thumb->GetNode()->ReadableTitle());
     }
 
     painter->setRenderHint(QPainter::Antialiasing, false);

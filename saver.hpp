@@ -14,7 +14,7 @@ public:
     AutoSaver();
     ~AutoSaver();
 
-    bool IsSaving(){ return m_IsSaving;}
+    bool IsSaving() const { return m_IsSaving;}
 
 private:
     QTime m_Time;

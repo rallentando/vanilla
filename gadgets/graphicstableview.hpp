@@ -84,7 +84,7 @@ public:
     void SetZoomFactor(float factor){
         m_CurrentThumbnailZoomFactor = factor;
     }
-    float GetZoomFactor(){
+    float GetZoomFactor() const {
         return m_CurrentThumbnailZoomFactor;
     }
 

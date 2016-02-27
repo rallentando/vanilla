@@ -21,12 +21,12 @@ void NodeTitle::SetNest(int nest){
     m_TableView->GetStyle()->OnSetNest(this, nest);
 }
 
-bool NodeTitle::IsPrimary(){
-    return m_TableView->IsPrimary(this);
+bool NodeTitle::IsPrimary() const {
+    return m_TableView->IsPrimary(const_cast<NodeTitle* const>(this));
 }
 
-bool NodeTitle::IsHovered(){
-    return m_TableView->IsHovered(this);
+bool NodeTitle::IsHovered() const {
+    return m_TableView->IsHovered(const_cast<NodeTitle* const>(this));
 }
 
 void NodeTitle::SetPrimary(){

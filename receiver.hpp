@@ -48,7 +48,7 @@ class Receiver : public QWidget{
 public:
     Receiver(TreeBank *parent = 0, bool purge = false);
     ~Receiver();
-    bool IsPurged();
+    bool IsPurged() const;
     void Purge();
     void Join();
     void ResizeNotify(QSize size);

@@ -15,17 +15,17 @@ public:
     explicit AbstractNodeItem(Node *nd, int nest, QGraphicsItem *parent = 0);
     virtual ~AbstractNodeItem();
 
-    Node *GetNode();
-    GraphicsTableView *GetTableView();
+    Node *GetNode() const;
+    GraphicsTableView *GetTableView() const;
     void SetIndex(int index);
 
     static void Initialize();
 
-    virtual int GetNest();
+    virtual int GetNest() const;
     virtual void SetNest(int nest);
 
-    virtual bool IsPrimary();
-    virtual bool IsHovered();
+    virtual bool IsPrimary() const;
+    virtual bool IsHovered() const;
 
     virtual void SetPrimary();
     virtual void SetHovered();

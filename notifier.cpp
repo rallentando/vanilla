@@ -48,7 +48,7 @@ Notifier::Notifier(TreeBank *parent, bool purge)
 
 Notifier::~Notifier(){}
 
-bool Notifier::IsPurged(){
+bool Notifier::IsPurged() const {
     return !parent();
 }
 

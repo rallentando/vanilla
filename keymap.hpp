@@ -252,11 +252,11 @@
                                                                         \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_Z)] = QStringLiteral("UpDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_X)] = QStringLiteral("DownDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_C)] = QStringLiteral("DeleteNode"); \
+    m_ThumbListKeyMap[QKeySequence(Qt::Key_C)] = QStringLiteral("CloneNode"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_V)] = QStringLiteral("MakeDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_B)] = QStringLiteral("Refresh"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_N)] = QStringLiteral("MakeDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_M)] = QStringLiteral("DeleteNode"); \
+    m_ThumbListKeyMap[QKeySequence(Qt::Key_M)] = QStringLiteral("CloneNode"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_Comma)] = QStringLiteral("UpDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_Period)] = QStringLiteral("DownDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_Slash)] = QStringLiteral("NoAction"); \

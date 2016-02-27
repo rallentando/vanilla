@@ -1497,8 +1497,9 @@ void TridentView::OnLoadStarted(){
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
 }
 
-void TridentView::OnLoadProgress(int){
+void TridentView::OnLoadProgress(int progress){
     // needless to emit statusBarMessage because Trident send message by default.
+    View::OnLoadProgress(progress);
 }
 
 void TridentView::OnLoadFinished(bool ok){
@@ -1670,12 +1671,14 @@ bool TridentView::RestoreScroll(){
 }
 
 bool TridentView::SaveZoom(){
+    if(!GetHistNode()) return false;
     int zoom = GetZoomFactor();
     if(zoom) GetHistNode()->SetZoom(zoom/100.0);
     return true;
 }
 
 bool TridentView::RestoreZoom(){
+    if(!GetHistNode()) return false;
     int zoom = GetHistNode()->GetZoom()*100.0;
     if(zoom) SetZoomFactor(zoom);
     return true;
@@ -1851,6 +1854,8 @@ void TridentView::UpdateIcon(const QUrl &url){
          req, NetworkController::ToVariable);
 
     if(!item) return;
+
+    item->setParent(base());
 
     connect(item, &DownloadItem::DownloadResult, [=](const QByteArray &result){
             QPixmap pixmap;

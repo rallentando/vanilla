@@ -32,6 +32,9 @@ public:
     static void LoadSettings();
     static void SaveSettings();
 
+    static int HorizontalNodeWidth();
+    static int VerticalNodeHeight();
+
     static bool EnableAnimation();
     static bool EnableCloseButton();
     static bool EnableCloneButton();
@@ -101,6 +104,9 @@ private:
     int m_AutoUpdateTimerID;
     int m_HorizontalNodeHeight;
     int m_VerticalNodeWidth;
+
+    static int m_HorizontalNodeWidth;
+    static int m_VerticalNodeHeight;
 
     static bool m_EnableAnimation;
     static bool m_EnableCloseButton;

@@ -39,13 +39,13 @@ public:
     ~NetworkAccessManager();
     QNetworkReply* createRequest(Operation op, const QNetworkRequest &req, QIODevice *out = 0) DECL_OVERRIDE;
     void SetNetworkCookieJar(NetworkCookieJar *);
-    NetworkCookieJar *GetNetworkCookieJar();
+    NetworkCookieJar *GetNetworkCookieJar() const;
     void SetUserAgent(QString ua);
-    QString GetUserAgent();
+    QString GetUserAgent() const;
     void SetProxy(QString proxySet);
     void SetSslProtocol(QString sslSet);
     void SetOffTheRecord(QString offTheRecordSet);
-    QWebEngineProfile *GetProfile();
+    QWebEngineProfile *GetProfile() const;
 
 private slots:
     void HandleError(QNetworkReply::NetworkError code);
@@ -75,11 +75,11 @@ public:
     DownloadItem(QWebEngineDownloadItem *item);
     ~DownloadItem();
     void SetRemoteUrl(QUrl url);
-    QUrl GetRemoteUrl();
-    QUrl GetLocalUrl();
-    QList<QUrl> GetUrls();
+    QUrl GetRemoteUrl() const;
+    QUrl GetLocalUrl() const;
+    QList<QUrl> GetUrls() const;
 
-    QString GetPath();
+    QString GetPath() const;
     void SetPath(QString name);
     void SetPathAndReady(QString name);
 
@@ -118,7 +118,7 @@ public:
     UploadItem(QNetworkReply *reply, qint64 size);
     UploadItem(QNetworkReply *reply, QString name);
     ~UploadItem();
-    QString GetPath();
+    QString GetPath() const;
     void SetPath(QString name);
 
 private:

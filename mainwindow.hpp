@@ -36,15 +36,15 @@ public:
     void LoadSettings();
     void RemoveSettings();
 
-    TreeBank *GetTreeBank();
-    TreeBar *GetTreeBar();
-    ToolBar *GetToolBar();
-    ModelessDialogFrame *DialogFrame();
+    TreeBank *GetTreeBank() const;
+    TreeBar *GetTreeBar() const;
+    ToolBar *GetToolBar() const;
+    ModelessDialogFrame *DialogFrame() const;
 
-    bool IsMenuBarEmpty();
+    bool IsMenuBarEmpty() const;
     void ClearMenuBar();
     void CreateMenuBar();
-    bool IsShaded();
+    bool IsShaded() const;
     void Shade();
     void Unshade();
     void ShowAllEdgeWidgets();
@@ -125,18 +125,18 @@ private:
         CloseButton
     } m_HoveredButton;
 
-    QRect MenuAreaRect();
-    QRect ViewTreeAreaRect();
-    QRect ShadeAreaRect();
-    QRect MinimizeAreaRect();
-    QRect MaximizeAreaRect();
-    QRect CloseAreaRect();
-    QRect MenuAreaRect1()     { QRect r = MenuAreaRect();     return QRect(r.x()-4,r.y()-4,r.width()+9,r.height()+9);}
-    QRect ViewTreeAreaRect1() { QRect r = ViewTreeAreaRect(); return QRect(r.x()-8,r.y()-4,r.width()+17,r.height()+9);}
-    QRect ShadeAreaRect1()    { QRect r = ShadeAreaRect();    return QRect(r.x()-9,r.y()-5,r.width()+17,r.height()+9);}
-    QRect MinimizeAreaRect1() { QRect r = MinimizeAreaRect(); return QRect(r.x()-9,r.y()-5,r.width()+17,r.height()+9);}
-    QRect MaximizeAreaRect1() { QRect r = MaximizeAreaRect(); return QRect(r.x()-9,r.y()-5,r.width()+17,r.height()+9);}
-    QRect CloseAreaRect1()    { QRect r = CloseAreaRect();    return QRect(r.x()-10,r.y()-5,r.width()+26,r.height()+9);}
+    QRect MenuAreaRect() const;
+    QRect ViewTreeAreaRect() const;
+    QRect ShadeAreaRect() const;
+    QRect MinimizeAreaRect() const;
+    QRect MaximizeAreaRect() const;
+    QRect CloseAreaRect() const;
+    QRect MenuAreaRect1()     const { QRect r = MenuAreaRect();     return QRect(r.x()-4,r.y()-4,r.width()+9,r.height()+9);}
+    QRect ViewTreeAreaRect1() const { QRect r = ViewTreeAreaRect(); return QRect(r.x()-8,r.y()-4,r.width()+17,r.height()+9);}
+    QRect ShadeAreaRect1()    const { QRect r = ShadeAreaRect();    return QRect(r.x()-9,r.y()-5,r.width()+17,r.height()+9);}
+    QRect MinimizeAreaRect1() const { QRect r = MinimizeAreaRect(); return QRect(r.x()-9,r.y()-5,r.width()+17,r.height()+9);}
+    QRect MaximizeAreaRect1() const { QRect r = MaximizeAreaRect(); return QRect(r.x()-9,r.y()-5,r.width()+17,r.height()+9);}
+    QRect CloseAreaRect1()    const { QRect r = CloseAreaRect();    return QRect(r.x()-10,r.y()-5,r.width()+26,r.height()+9);}
 
     static const int e = EDGE_WIDGET_SIZE;
     static const int t = TITLE_BAR_HEIGHT;

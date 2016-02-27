@@ -59,11 +59,11 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
     setZValue(MAIN_CONTENTS_LAYER);
 
     class DummyViewNode : public ViewNode{
-        bool IsDummy() DECL_OVERRIDE { return true;}
+        bool IsDummy() const DECL_OVERRIDE { return true;}
     };
 
     class DummyHistNode : public HistNode{
-        bool IsDummy() DECL_OVERRIDE { return true;}
+        bool IsDummy() const DECL_OVERRIDE { return true;}
     };
 
     m_AutoUpdateTimerID = 0;
@@ -139,7 +139,7 @@ void GraphicsTableView::LoadSettings(){
     m_EnableLoadedSpotLight   = s->value(QStringLiteral("gadgets/thumblist/@EnableLoadedSpotLight"),   false).value<bool>();
     m_EnableInPlaceNotifier   = s->value(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),    true).value<bool>();
     m_EnableCloseButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),        true).value<bool>();
-    m_EnableCloneButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),       false).value<bool>();
+    m_EnableCloneButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),        true).value<bool>();
     m_EnableAnimation         = s->value(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         false).value<bool>();
 
     Thumbnail::Initialize();
@@ -1776,6 +1776,7 @@ bool GraphicsTableView::ThumbList_DeleteNode(){
 
         // delete duplicates.
         m_NodesRegister = m_NodesRegister.toSet().toList();
+        qSort(m_NodesRegister.begin(), m_NodesRegister.end(), m_SortPredicate);
         return DeleteNodes(m_NodesRegister);
 
     } else if(Node *nd = GetHoveredNode()){
@@ -1835,6 +1836,7 @@ bool GraphicsTableView::ThumbList_DeleteOtherNode(){
 
     if(!m_NodesRegister.isEmpty()){
         m_NodesRegister = m_NodesRegister.toSet().toList();
+        qSort(m_NodesRegister.begin(), m_NodesRegister.end(), m_SortPredicate);
         for(int i = 0; i < m_DisplayThumbnails.length(); i++){
             Node *nd = m_DisplayThumbnails[i]->GetNode();
             if(!m_NodesRegister.contains(nd)) list << nd;
@@ -1944,6 +1946,7 @@ bool GraphicsTableView::ThumbList_CloneNode(){
     if(IsDisplayingViewNode()){
         if(!m_NodesRegister.isEmpty()){
             m_NodesRegister = m_NodesRegister.toSet().toList();
+            qSort(m_NodesRegister.begin(), m_NodesRegister.end(), m_SortPredicate);
             foreach(Node *nd, m_NodesRegister){
                 ViewNode *vn = nd->ToViewNode();
                 if(vn) m_TreeBank->CloneViewNode(vn);
@@ -1956,6 +1959,7 @@ bool GraphicsTableView::ThumbList_CloneNode(){
     } else if(IsDisplayingHistNode()){
         if(!m_NodesRegister.isEmpty()){
             m_NodesRegister = m_NodesRegister.toSet().toList();
+            qSort(m_NodesRegister.begin(), m_NodesRegister.end(), m_SortPredicate);
             foreach(Node *nd, m_NodesRegister){
                 HistNode *hn = nd->ToHistNode();
                 if(hn) m_TreeBank->CloneHistNode(hn);

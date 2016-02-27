@@ -130,6 +130,25 @@ bool Node::IsRead(){
     return GetCreateDate() != GetLastAccessDate();
 }
 
+QString Node::ReadableTitle(){
+    QString title = m_Title;
+    if(title.isEmpty()){
+        const QUrl url = GetUrl();
+        if(url.isEmpty()){
+            if(IsDirectory()){
+                title = QStringLiteral("Directory");
+            } else {
+                title = QStringLiteral("No Title");
+            }
+        } else {
+            title = url.toString();
+        }
+    } else if(IsDirectory()){
+        title = QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first();
+    }
+    return title;
+}
+
 void Node::SetCreateDateToCurrent(){
     SetCreateDate(QDateTime::currentDateTime());
 }
@@ -190,11 +209,11 @@ bool HistNode::IsDirectory(){
     return false;
 }
 
-bool HistNode::IsHistNode(){
+bool HistNode::IsHistNode() const {
     return true;
 }
 
-bool HistNode::IsViewNode(){
+bool HistNode::IsViewNode() const {
     return false;
 }
 
@@ -492,11 +511,11 @@ bool ViewNode::IsDirectory(){
     return !m_Partner;
 }
 
-bool ViewNode::IsHistNode(){
+bool ViewNode::IsHistNode() const {
     return false;
 }
 
-bool ViewNode::IsViewNode(){
+bool ViewNode::IsViewNode() const {
     return true;
 }
 
@@ -823,11 +842,11 @@ bool LocalNode::IsDirectory(){
     return m_DirFlag;
 }
 
-bool LocalNode::IsHistNode(){
+bool LocalNode::IsHistNode() const {
     return false;
 }
 
-bool LocalNode::IsViewNode(){
+bool LocalNode::IsViewNode() const {
     return false;
 }
 

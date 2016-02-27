@@ -288,23 +288,23 @@ void MainWindow::RemoveSettings(){
     s->sync();
 }
 
-TreeBank *MainWindow::GetTreeBank(){
+TreeBank *MainWindow::GetTreeBank() const {
     return m_TreeBank;
 }
 
-TreeBar *MainWindow::GetTreeBar(){
+TreeBar *MainWindow::GetTreeBar() const {
     return m_TreeBar;
 }
 
-ToolBar *MainWindow::GetToolBar(){
+ToolBar *MainWindow::GetToolBar() const {
     return m_ToolBar;
 }
 
-ModelessDialogFrame *MainWindow::DialogFrame(){
+ModelessDialogFrame *MainWindow::DialogFrame() const {
     return m_DialogFrame;
 }
 
-bool MainWindow::IsMenuBarEmpty(){
+bool MainWindow::IsMenuBarEmpty() const {
     return menuBar()->actions().isEmpty();
 }
 
@@ -322,7 +322,7 @@ void MainWindow::CreateMenuBar(){
     menuBar()->show();
 }
 
-bool MainWindow::IsShaded(){
+bool MainWindow::IsShaded() const {
     return windowOpacity() == 0.0;
 }
 
@@ -990,27 +990,27 @@ void TitleBar::leaveEvent(QEvent *ev){
     repaint();
 }
 
-QRect TitleBar::MenuAreaRect(){
+QRect TitleBar::MenuAreaRect() const {
     return QRect(5,5,10,10);
 }
 
-QRect TitleBar::ViewTreeAreaRect(){
+QRect TitleBar::ViewTreeAreaRect() const {
     return QRect(width()-29-28*4,5,10,10);
 }
 
-QRect TitleBar::ShadeAreaRect(){
+QRect TitleBar::ShadeAreaRect() const {
     return QRect(width()-28-28*3,6,10,10);
 }
 
-QRect TitleBar::MinimizeAreaRect(){
+QRect TitleBar::MinimizeAreaRect() const {
     return QRect(width()-28-28*2,6,10,10);
 }
 
-QRect TitleBar::MaximizeAreaRect(){
+QRect TitleBar::MaximizeAreaRect() const {
     return QRect(width()-28-28*1,6,10,10);
 }
 
-QRect TitleBar::CloseAreaRect(){
+QRect TitleBar::CloseAreaRect() const {
     return QRect(width()-27-28*0,6,10,10);
 }
 

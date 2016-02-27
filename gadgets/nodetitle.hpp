@@ -20,8 +20,8 @@ public:
 
     void SetNest(int) DECL_OVERRIDE;
 
-    bool IsPrimary() DECL_OVERRIDE;
-    bool IsHovered() DECL_OVERRIDE;
+    bool IsPrimary() const DECL_OVERRIDE;
+    bool IsHovered() const DECL_OVERRIDE;
 
     void SetPrimary() DECL_OVERRIDE;
     void SetHovered() DECL_OVERRIDE;

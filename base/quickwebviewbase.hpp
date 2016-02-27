@@ -224,7 +224,7 @@ public slots:
 
     // dummy slots.
     void OnLoadStarted() DECL_OVERRIDE { View::OnLoadStarted();}
-    void OnLoadProgress(int) DECL_OVERRIDE {}
+    void OnLoadProgress(int progress) DECL_OVERRIDE { View::OnLoadProgress(progress);}
     void OnLoadFinished(bool ok) DECL_OVERRIDE { View::OnLoadFinished(ok);}
     void OnTitleChanged(const QString&) DECL_OVERRIDE {}
     void OnUrlChanged(const QUrl&) DECL_OVERRIDE {}

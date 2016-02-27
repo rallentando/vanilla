@@ -1232,7 +1232,7 @@ int Gadgets::AccessKeyBlockSize(){
     return 26;
 }
 
-QString Gadgets::IndexToString(int i){
+QString Gadgets::IndexToString(int i) const {
     if(m_EnableMultiStroke){
         if(i < m_AccessKeyLabels.length())
             return m_AccessKeyLabels[i];
@@ -1298,7 +1298,7 @@ QString Gadgets::IndexToString(int i){
     return QString();
 }
 
-int Gadgets::KeyToIndex(int k){
+int Gadgets::KeyToIndex(int k) const {
     if(m_EnableMultiStroke) return -1;
     int n = m_CurrentAccessKeyBlockIndex * AccessKeyBlockSize();
     switch(m_AccessKeyMode){
@@ -1361,7 +1361,7 @@ int Gadgets::KeyToIndex(int k){
     return -1;
 }
 
-int Gadgets::KeyToIndex(QString s){
+int Gadgets::KeyToIndex(QString s) const {
     if(m_EnableMultiStroke) return -1;
     int n = m_CurrentAccessKeyBlockIndex * AccessKeyBlockSize();
     switch(m_AccessKeyMode){
@@ -1458,7 +1458,7 @@ int Gadgets::KeyToIndex(QString s){
     return -1;
 }
 
-bool Gadgets::IsCurrentBlock(const AccessibleWebElement *elem) const{
+bool Gadgets::IsCurrentBlock(const AccessibleWebElement *elem) const {
     if(m_EnableMultiStroke) return true;
     foreach(QGraphicsItem *item, scene()->selectedItems()){
         if(AccessibleWebElement *selected = dynamic_cast<AccessibleWebElement*>(item)){

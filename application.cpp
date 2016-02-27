@@ -989,6 +989,7 @@ void Application::Import(TreeBank *tb){
     if(tb){
         QTimer::singleShot(0, [tb](){
                 // dialog gives focus to view(previous focused object?) later.
+                TreeBank::EmitTreeStructureChanged();
                 tb->DisplayViewTree(TreeBank::GetViewRoot());
                 tb->GetGadgets()->setFocus(Qt::OtherFocusReason);
             });

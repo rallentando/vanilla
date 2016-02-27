@@ -32,7 +32,7 @@ public:
 
     Notifier(TreeBank *parent = 0, bool purge = false);
     ~Notifier();
-    bool IsPurged();
+    bool IsPurged() const;
     void Purge();
     void Join();
     void ResizeNotify(QSize size);

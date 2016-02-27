@@ -261,7 +261,7 @@ void NetworkAccessManager::SetNetworkCookieJar(NetworkCookieJar *ncj){
     setCookieJar(ncj);
 }
 
-NetworkCookieJar *NetworkAccessManager::GetNetworkCookieJar(){
+NetworkCookieJar *NetworkAccessManager::GetNetworkCookieJar() const {
     return static_cast<NetworkCookieJar*>(cookieJar());
 }
 
@@ -359,7 +359,7 @@ void NetworkAccessManager::SetUserAgent(QString ua){
     m_Profile->setHttpUserAgent(ua);
 }
 
-QString NetworkAccessManager::GetUserAgent(){
+QString NetworkAccessManager::GetUserAgent() const {
     return m_UserAgent;
 }
 
@@ -477,7 +477,7 @@ void NetworkAccessManager::SetOffTheRecord(QString offTheRecordSet){
     }
 }
 
-QWebEngineProfile *NetworkAccessManager::GetProfile(){
+QWebEngineProfile *NetworkAccessManager::GetProfile() const {
     return m_Profile;
 }
 
@@ -540,22 +540,22 @@ void DownloadItem::SetRemoteUrl(QUrl url){
     m_RemoteUrl = url;
 }
 
-QUrl DownloadItem::GetRemoteUrl(){
+QUrl DownloadItem::GetRemoteUrl() const {
     return m_RemoteUrl;
 }
 
-QUrl DownloadItem::GetLocalUrl(){
+QUrl DownloadItem::GetLocalUrl() const {
     return QUrl::fromLocalFile(m_Path);
 }
 
-QList<QUrl> DownloadItem::GetUrls(){
+QList<QUrl> DownloadItem::GetUrls() const {
     QList<QUrl> list;
     if(!GetRemoteUrl().isEmpty()) list << GetRemoteUrl();
     if(!GetLocalUrl() .isEmpty()) list << GetLocalUrl();
     return list;
 }
 
-QString DownloadItem::GetPath(){
+QString DownloadItem::GetPath() const {
     return m_Path;
 }
 
@@ -789,7 +789,7 @@ UploadItem::~UploadItem(){
     NetworkController::RemoveItem(this);
 }
 
-QString UploadItem::GetPath(){
+QString UploadItem::GetPath() const {
     return m_Path;
 }
 

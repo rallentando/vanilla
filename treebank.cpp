@@ -270,6 +270,24 @@ void TreeBank::Initialize(){
     m_TraverseMode = Neutral;
 }
 
+void TreeBank::EmitTreeStructureChanged(){
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        emit win->GetTreeBank()->TreeStructureChanged();
+    }
+}
+
+void TreeBank::EmitNodeCreated(QList<Node*> &nds){
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        emit win->GetTreeBank()->NodeCreated(nds);
+    }
+}
+
+void TreeBank::EmitNodeDeleted(QList<Node*> &nds){
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        emit win->GetTreeBank()->NodeDeleted(nds);
+    }
+}
+
 void TreeBank::ConnectToNotifier(){
     if(m_Notifier){
         connect(m_Gadgets,  SIGNAL(statusBarMessage(const QString&)),
@@ -1326,24 +1344,6 @@ void TreeBank::RaiseDisplayedViewPriority(){
                 m_AllViews.move(m_AllViews.indexOf(view), 0);
             }
         }
-    }
-}
-
-void TreeBank::EmitTreeStructureChanged(){
-    foreach(MainWindow *win, Application::GetMainWindows()){
-        emit win->GetTreeBank()->TreeStructureChanged();
-    }
-}
-
-void TreeBank::EmitNodeCreated(QList<Node*> &nds){
-    foreach(MainWindow *win, Application::GetMainWindows()){
-        emit win->GetTreeBank()->NodeCreated(nds);
-    }
-}
-
-void TreeBank::EmitNodeDeleted(QList<Node*> &nds){
-    foreach(MainWindow *win, Application::GetMainWindows()){
-        emit win->GetTreeBank()->NodeDeleted(nds);
     }
 }
 

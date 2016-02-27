@@ -114,12 +114,13 @@ public:
     static void SaveSettings();
 
     bool IsRead();
+    QString ReadableTitle();
 
-    virtual bool IsRoot()     { return false;}
+    virtual bool IsRoot(){ return false;}
     virtual bool IsDirectory(){ return false;}
-    virtual bool IsHistNode() { return false;}
-    virtual bool IsViewNode() { return false;}
-    virtual bool IsDummy()    { return false;}
+    virtual bool IsHistNode() const { return false;}
+    virtual bool IsViewNode() const { return false;}
+    virtual bool IsDummy()    const { return false;}
     virtual bool TitleEditable(){ return false;}
     virtual Node *MakeChild() { return 0;}
     virtual Node *MakeParent(){ return 0;}
@@ -129,17 +130,17 @@ public:
     virtual ViewNode  *ToViewNode(){ return 0;}
     virtual LocalNode *ToLocalNode(){ return 0;}
 
-    NodeType GetType(){ return m_Type;}
-    View *GetView()   { return m_View;}
-    QString GetTitle(){ return m_Title;}
+    NodeType GetType() const { return m_Type;}
+    View *GetView()    const { return m_View;}
+    QString GetTitle() const { return m_Title;}
 
-    bool GetFolded()  { return m_Folded;}
-    Node *GetParent() { return m_Parent;}
-    Node *GetPrimary(){ return m_Primary;}
-    Node *GetPartner(){ return m_Partner;}
+    bool GetFolded()   const { return m_Folded;}
+    Node *GetParent()  const { return m_Parent;}
+    Node *GetPrimary() const { return m_Primary;}
+    Node *GetPartner() const { return m_Partner;}
     // return copy.
-    NodeList GetChildren(){ return m_Children;}
-    NodeList GetSiblings(){
+    NodeList GetChildren() const { return m_Children;}
+    NodeList GetSiblings() const {
         static NodeList empty = NodeList();
         if(!m_Parent) return empty;
         return m_Parent->GetChildren();
@@ -169,38 +170,38 @@ public:
             nd = nd->GetParent();
         return nd;
     }
-    bool HasNoChildren(){
+    bool HasNoChildren() const {
         return m_Children.isEmpty();
     }
-    bool HasNoSiblings(){
+    bool HasNoSiblings() const {
         if(!m_Parent) return true;
         return m_Parent->HasNoChildren();
     }
-    bool IsParentOf(Node *nd){
+    bool IsParentOf(Node *nd) const {
         return nd ? nd->GetParent() == this : false;
     }
-    bool IsPrimaryOf(Node *nd){
+    bool IsPrimaryOf(Node *nd) const {
         return nd ? nd->GetPrimary() == this : false;
     }
-    bool IsPartnerOf(Node *nd){
+    bool IsPartnerOf(Node *nd) const {
         return nd ? nd->GetPartner() == this : false;
     }
-    bool IsChidOf(Node *nd){
-        return nd ? nd->ChildrenContains(this) : false;
+    bool IsChildOf(Node *nd) const {
+        return nd ? nd->ChildrenContains(const_cast<Node* const>(this)) : false;
     }
-    bool IsSiblingOf(Node *nd){
-        return nd ? nd->SiblingsContains(this) : false;
+    bool IsSiblingOf(Node *nd) const {
+        return nd ? nd->SiblingsContains(const_cast<Node* const>(this)) : false;
     }
-    bool IsAncestorOf(Node *nd){
-        return nd ? nd->GetAncestors().contains(this) : false;
+    bool IsAncestorOf(Node *nd) const {
+        return nd ? nd->GetAncestors().contains(const_cast<Node* const>(this)) : false;
     }
-    bool IsDescendantOf(Node *nd){
-        return nd ? this->GetAncestors().contains(nd) : false;
+    bool IsDescendantOf(Node *nd) const {
+        return nd ? const_cast<Node* const>(this)->GetAncestors().contains(nd) : false;
     }
-    bool IsPrimaryOfParent(){
+    bool IsPrimaryOfParent() const {
         return IsPrimaryOf(m_Parent);
     }
-    bool IsPartnerOfPartner(){
+    bool IsPartnerOfPartner() const {
         return IsPartnerOf(m_Partner);
     }
 
@@ -225,13 +226,13 @@ public:
     void ClearChildren(){
         m_Children.clear();
     }
-    int ChildrenLength(){
+    int ChildrenLength() const {
         return m_Children.length();
     }
-    int ChildrenIndexOf(Node *nd){
+    int ChildrenIndexOf(Node *nd) const {
         return m_Children.indexOf(nd);
     }
-    bool ChildrenContains(Node *nd){
+    bool ChildrenContains(Node *nd) const {
         return m_Children.contains(nd);
     }
     void AppendChild(Node *nd){
@@ -249,14 +250,14 @@ public:
     void MoveChild(int from, int to){
         m_Children.move(from, to);
     }
-    Node *GetChildAt(int i){
+    Node *GetChildAt(int i) const {
         return m_Children.at(i);
     }
-    Node *GetFirstChild(){
+    Node *GetFirstChild() const {
         if(m_Children.isEmpty()) return 0;
         return m_Children.first();
     }
-    Node *GetLastChild(){
+    Node *GetLastChild() const {
         if(m_Children.isEmpty()) return 0;
         return m_Children.last();
     }
@@ -268,15 +269,15 @@ public:
         if(m_Children.isEmpty()) return 0;
         return m_Children.takeLast();
     }
-    int SiblingsLength(){
+    int SiblingsLength() const {
         if(!m_Parent) return 0;
         return m_Parent->ChildrenLength();
     }
-    int SiblingsIndexOf(Node *nd){
+    int SiblingsIndexOf(Node *nd) const {
         if(!m_Parent) return 0;
         return m_Parent->ChildrenIndexOf(nd);
     }
-    bool SiblingsContains(Node *nd){
+    bool SiblingsContains(Node *nd) const {
         if(!m_Parent) return false;
         return m_Parent->ChildrenContains(nd);
     }
@@ -295,15 +296,15 @@ public:
     void MoveSibling(int from, int to){
         if(m_Parent) m_Parent->MoveChild(from, to);
     }
-    Node *GetSiblingAt(int i){
+    Node *GetSiblingAt(int i) const {
         if(!m_Parent) return 0;
         return m_Parent->GetChildAt(i);
     }
-    Node *GetFirstSibling(){
+    Node *GetFirstSibling() const {
         if(!m_Parent) return 0;
         return m_Parent->GetFirstChild();
     }
-    Node *GetLastSibling(){
+    Node *GetLastSibling() const {
         if(!m_Parent) return 0;
         return m_Parent->GetLastChild();
     }
@@ -320,7 +321,7 @@ public:
     virtual QImage GetImage(){ return QImage();}
     virtual int GetScrollX() { return 0;}
     virtual int GetScrollY() { return 0;}
-    virtual float GetZoom()    { return 1.0;}
+    virtual float GetZoom()  { return 1.0;}
     virtual QDateTime GetCreateDate(){ return QDateTime();}
     virtual QDateTime GetLastUpdateDate(){ return QDateTime();}
     virtual QDateTime GetLastAccessDate(){ return QDateTime();}
@@ -380,8 +381,8 @@ public:
 
     bool IsRoot() DECL_OVERRIDE;
     bool IsDirectory() DECL_OVERRIDE;
-    bool IsHistNode() DECL_OVERRIDE;
-    bool IsViewNode() DECL_OVERRIDE;
+    bool IsHistNode() const DECL_OVERRIDE;
+    bool IsViewNode() const DECL_OVERRIDE;
     bool TitleEditable() DECL_OVERRIDE;
 
     HistNode *MakeChild() DECL_OVERRIDE;
@@ -459,8 +460,8 @@ public:
 
     bool IsRoot() DECL_OVERRIDE;
     bool IsDirectory() DECL_OVERRIDE;
-    bool IsHistNode() DECL_OVERRIDE;
-    bool IsViewNode() DECL_OVERRIDE;
+    bool IsHistNode() const DECL_OVERRIDE;
+    bool IsViewNode() const DECL_OVERRIDE;
     bool TitleEditable() DECL_OVERRIDE;
 
     ViewNode *MakeChild(bool);
@@ -512,8 +513,8 @@ public:
 
     bool IsRoot() DECL_OVERRIDE;
     bool IsDirectory() DECL_OVERRIDE;
-    bool IsHistNode() DECL_OVERRIDE;
-    bool IsViewNode() DECL_OVERRIDE;
+    bool IsHistNode() const DECL_OVERRIDE;
+    bool IsViewNode() const DECL_OVERRIDE;
     bool TitleEditable() DECL_OVERRIDE;
     void SetTitle(const QString&) DECL_OVERRIDE;
 

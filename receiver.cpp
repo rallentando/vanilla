@@ -220,7 +220,7 @@ Receiver::~Receiver(){
         m_LocalServer->deleteLater();
 }
 
-bool Receiver::IsPurged(){
+bool Receiver::IsPurged() const {
     return !parent();
 }
 

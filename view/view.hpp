@@ -226,6 +226,7 @@ public:
     virtual bool ForbidToOverlap(){ return false;}
 
     // page's function.
+    virtual int LoadProgress(){ return m_LoadProgress;}
     virtual bool IsLoading(){ return m_IsLoading;}
     virtual bool CanGoBack(){ return false;}
     virtual bool CanGoForward(){ return false;}
@@ -448,9 +449,9 @@ public:
     virtual void OnSetSlave(WeakView){}
     virtual void OnSetJsObject(_View*){}
     virtual void OnSetJsObject(_Vanilla*){}
-    virtual void OnLoadStarted(){ m_IsLoading = true;}
-    virtual void OnLoadProgress(int){}
-    virtual void OnLoadFinished(bool){ m_IsLoading = false;}
+    virtual void OnLoadStarted(){ m_LoadProgress = 0; m_IsLoading = true;}
+    virtual void OnLoadProgress(int progress){ m_LoadProgress = progress;}
+    virtual void OnLoadFinished(bool){ m_LoadProgress = 100; m_IsLoading = false;}
     virtual void OnTitleChanged(const QString&){}
     virtual void OnUrlChanged(const QUrl&){}
     virtual void OnViewChanged(){}
@@ -1133,6 +1134,7 @@ protected:
     WeakView  m_Slave;
     QObject  *m_Page;
     _View    *m_JsObject;
+    int m_LoadProgress;
     bool m_IsLoading;
 };
 

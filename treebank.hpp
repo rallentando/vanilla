@@ -82,6 +82,11 @@ signals:
     void NodeDeleted(QList<Node*> &nds);
     void CurrentChanged(Node *nd);
 
+public:
+    static void EmitTreeStructureChanged();
+    static void EmitNodeCreated(QList<Node*> &nds);
+    static void EmitNodeDeleted(QList<Node*> &nds);
+
 private:
     void ConnectToNotifier();
     void ConnectToReceiver();
@@ -152,9 +157,6 @@ public:
 private:
     void ClearCache(Node *nd);
     static void RaiseDisplayedViewPriority();
-    static void EmitTreeStructureChanged();
-    static void EmitNodeCreated(QList<Node*> &nds);
-    static void EmitNodeDeleted(QList<Node*> &nds);
 
 public:
     // deleting function.

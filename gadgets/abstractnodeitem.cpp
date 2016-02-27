@@ -43,11 +43,11 @@ AbstractNodeItem::AbstractNodeItem(Node *nd, int nest, QGraphicsItem *parent)
 AbstractNodeItem::~AbstractNodeItem(){
 }
 
-Node *AbstractNodeItem::GetNode(){
+Node *AbstractNodeItem::GetNode() const {
     return m_Node;
 }
 
-GraphicsTableView *AbstractNodeItem::GetTableView(){
+GraphicsTableView *AbstractNodeItem::GetTableView() const {
     return m_TableView;
 }
 
@@ -63,15 +63,15 @@ void AbstractNodeItem::SetNest(int nest){
     m_NestLevel = nest;
 }
 
-int AbstractNodeItem::GetNest(){
+int AbstractNodeItem::GetNest() const {
     return m_NestLevel;
 }
 
-bool AbstractNodeItem::IsPrimary(){
+bool AbstractNodeItem::IsPrimary() const {
     return false;
 }
 
-bool AbstractNodeItem::IsHovered(){
+bool AbstractNodeItem::IsHovered() const {
     return false;
 }
 

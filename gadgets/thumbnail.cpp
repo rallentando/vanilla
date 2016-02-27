@@ -25,12 +25,12 @@ void Thumbnail::OnSetPrimary(bool primary){
     m_TableView->GetStyle()->OnSetPrimary(this, primary);
 }
 
-bool Thumbnail::IsPrimary(){
-    return m_TableView->IsPrimary(this);
+bool Thumbnail::IsPrimary() const {
+    return m_TableView->IsPrimary(const_cast<Thumbnail* const>(this));
 }
 
-bool Thumbnail::IsHovered(){
-    return m_TableView->IsHovered(this);
+bool Thumbnail::IsHovered() const {
+    return m_TableView->IsHovered(const_cast<Thumbnail* const>(this));
 }
 
 void Thumbnail::SetPrimary(){

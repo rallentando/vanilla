@@ -236,7 +236,7 @@ public:
             static_cast<NodeCollectionType>(list[1].toInt());
         SetZoomFactor(list[2].toFloat());
     }
-    QStringList GetStat(){
+    QStringList GetStat() const {
         return QStringList()
             << QStringLiteral("%1").arg(static_cast<int>(m_ViewNodeCollectionType))
             << QStringLiteral("%1").arg(static_cast<int>(m_HistNodeCollectionType))
@@ -289,9 +289,9 @@ public:
     static bool IsValidAccessKey(int);
     static bool IsValidAccessKey(QString);
     static int AccessKeyBlockSize();
-    QString IndexToString(int);
-    int KeyToIndex(int);
-    int KeyToIndex(QString);
+    QString IndexToString(int) const;
+    int KeyToIndex(int) const;
+    int KeyToIndex(QString) const;
     void SetCurrentView(View*);
 
     bool IsCurrentBlock(const AccessibleWebElement*) const;
