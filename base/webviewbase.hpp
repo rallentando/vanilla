@@ -672,7 +672,7 @@ protected:
                k == Qt::Key_Home ||
                k == Qt::Key_End){
 
-                QTimer::singleShot(delay, m_View, SLOT(EmitScrollChangedIfNeed()));
+                QTimer::singleShot(delay, m_View, &WebViewBase::EmitScrollChangedIfNeed);
             }
             return false;
         }

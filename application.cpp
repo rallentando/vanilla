@@ -1389,8 +1389,7 @@ QSettings *Application::GlobalSettings(){
                 QFile backupfile(DataDirectory() + backup);
                 m_GlobalSettings->deleteLater();
 
-                if(QFile::exists(path))
-                    QFile::remove(path);
+                if(QFile::exists(path)) QFile::remove(path);
                 QFile::copy(DataDirectory() + backup, path);
 
                 m_GlobalSettings = new QSettings(path, XMLFormat);
@@ -2601,8 +2600,7 @@ void Application::CreateBackUpFiles(){
         QString original = DataDirectory() + file;
         QString backup   = DataDirectory() + date + file;
 
-        if(QFile::exists(backup))
-            QFile::remove(backup);
+        if(QFile::exists(backup)) QFile::remove(backup);
         QFile::copy(original, backup);
     }
 

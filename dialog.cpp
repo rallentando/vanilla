@@ -544,7 +544,7 @@ void ModelessDialog::Information(const QString &title, const QString &text, QObj
     dialog->m_Title = title;
     dialog->m_Caption = text;
     dialog->m_Buttons << tr("OK");
-    QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    QTimer::singleShot(0, dialog, &ModelessDialog::Execute);
 }
 
 void ModelessDialog::Question(const QString &title, const QString &text, BoolCallBack callBack, QObject *caller){
@@ -554,7 +554,7 @@ void ModelessDialog::Question(const QString &title, const QString &text, BoolCal
     dialog->m_Caption = text;
     dialog->m_Buttons << tr("Yes") << tr("No");
     dialog->m_CallBack = callBack;
-    QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    QTimer::singleShot(0, dialog, &ModelessDialog::Execute);
 }
 
 void ModelessDialog::enterEvent(QEvent *ev){

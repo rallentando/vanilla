@@ -1924,7 +1924,7 @@ void TridentView::keyPressEvent(QKeyEvent *ev){
 void TridentView::keyReleaseEvent(QKeyEvent *ev){
     QAxWidget::keyReleaseEvent(ev);
     for(int i = 1; i < 6; i++){
-        QTimer::singleShot(i*200, this, SLOT(EmitScrollChangedIfNeed()));
+        QTimer::singleShot(i*200, this, &TridentView::EmitScrollChangedIfNeed);
     }
 }
 
@@ -2118,7 +2118,7 @@ void TridentView::wheelEvent(QWheelEvent *ev){
     }
 
     for(int i = 1; i < 6; i++){
-        QTimer::singleShot(i*200, this, SLOT(EmitScrollChangedIfNeed()));
+        QTimer::singleShot(i*200, this, &TridentView::EmitScrollChangedIfNeed);
     }
 }
 

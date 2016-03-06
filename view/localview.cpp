@@ -152,6 +152,8 @@ void LocalView::Load(const QUrl &url){
     emit urlChanged(url);
     emit titleChanged(url.toLocalFile());
 
+    OnLoadFinished(true);
+
     StartImageCollector(false);
 }
 
@@ -393,6 +395,9 @@ void LocalView::show(){
     // reset scroll.
     m_HoveredItemIndex = -1;
     m_PrimaryItemIndex = -1;
+
+    StartAutoUpdateTimer();
+
     if(!m_PixmapItem->pixmap().isNull()){
         m_PixmapItem->setEnabled(true);
         m_PixmapItem->show();
@@ -1394,8 +1399,6 @@ void LocalView::StartImageCollector(bool reverse){
                             m_CurrentScroll)
         : QtConcurrent::run(this, &LocalView::LoadImageRequest,
                             m_CurrentScroll);
-    for(int i = 100; i < 5000; i <<= 2)
-        QTimer::singleShot(i, this, SLOT(update()));
 }
 
 void LocalView::StopImageCollector(){

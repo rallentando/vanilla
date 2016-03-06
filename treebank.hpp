@@ -78,14 +78,16 @@ public:
 
 signals:
     void TreeStructureChanged();
-    void NodeCreated(QList<Node*> &nds);
-    void NodeDeleted(QList<Node*> &nds);
+    void NodeCreated(NodeList &nds);
+    void NodeDeleted(NodeList &nds);
+    void FoldedChanged(NodeList &nds);
     void CurrentChanged(Node *nd);
 
 public:
     static void EmitTreeStructureChanged();
-    static void EmitNodeCreated(QList<Node*> &nds);
-    static void EmitNodeDeleted(QList<Node*> &nds);
+    static void EmitNodeCreated(NodeList &nds);
+    static void EmitNodeDeleted(NodeList &nds);
+    static void EmitFoldedChanged(NodeList &nds);
 
 private:
     void ConnectToNotifier();
@@ -709,7 +711,7 @@ private:
 
     static SharedViewList m_AllViews;
     static SharedViewList m_ViewUpdateBox;
-    static QList<Node*> m_NodeDeleteBox;
+    static NodeList m_NodeDeleteBox;
 
     // update thumbnail and auto load view.
     static int m_TraverseCondition;

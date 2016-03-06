@@ -153,7 +153,7 @@ TreeBank::TraverseMode TreeBank::m_TraverseMode = Neutral;
 TreeBank::Viewport     TreeBank::m_Viewport = Widget;
 SharedViewList TreeBank::m_AllViews = SharedViewList();
 SharedViewList TreeBank::m_ViewUpdateBox = SharedViewList();
-QList<Node*> TreeBank::m_NodeDeleteBox = QList<Node*>();
+NodeList TreeBank::m_NodeDeleteBox = NodeList();
 
 QMap<QKeySequence, QString> TreeBank::m_KeyMap = QMap<QKeySequence, QString>();
 QMap<QString, QString> TreeBank::m_MouseMap = QMap<QString, QString>();
@@ -247,6 +247,7 @@ TreeBank::TreeBank(QWidget *parent)
     connect(this, &TreeBank::TreeStructureChanged, m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
     connect(this, &TreeBank::NodeCreated,          m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
     connect(this, &TreeBank::NodeDeleted,          m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
+    connect(this, &TreeBank::FoldedChanged,        m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
     connect(this, &TreeBank::CurrentChanged,       m_Gadgets, &Gadgets::ThumbList_RefreshNoScroll);
 
     ConnectToNotifier();
@@ -276,15 +277,21 @@ void TreeBank::EmitTreeStructureChanged(){
     }
 }
 
-void TreeBank::EmitNodeCreated(QList<Node*> &nds){
+void TreeBank::EmitNodeCreated(NodeList &nds){
     foreach(MainWindow *win, Application::GetMainWindows()){
         emit win->GetTreeBank()->NodeCreated(nds);
     }
 }
 
-void TreeBank::EmitNodeDeleted(QList<Node*> &nds){
+void TreeBank::EmitNodeDeleted(NodeList &nds){
     foreach(MainWindow *win, Application::GetMainWindows()){
         emit win->GetTreeBank()->NodeDeleted(nds);
+    }
+}
+
+void TreeBank::EmitFoldedChanged(NodeList &nds){
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        emit win->GetTreeBank()->FoldedChanged(nds);
     }
 }
 

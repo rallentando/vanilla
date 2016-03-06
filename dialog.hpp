@@ -47,8 +47,6 @@ public:
     ModalDialog();
     ~ModalDialog();
 
-    bool Execute(QWidget *focusWidget = 0);
-
     enum Type {
         None,
         Int,
@@ -57,6 +55,10 @@ public:
         Item
     };
 
+public slots:
+    bool Execute(QWidget *focusWidget = 0);
+
+public:
     static int     GetInt   (QString title, QString caption, int    val = 0, int    min = INT_MIN, int    max = INT_MAX, int     step = 1, bool *ok = 0);
     static double  GetDouble(QString title, QString caption, double val = 0, double min = DBL_MIN, double max = DBL_MAX, int decimals = 1, bool *ok = 0);
     static QString GetItem  (QString title, QString caption, QStringList items, bool editable = true, bool *ok = 0);
@@ -123,8 +125,6 @@ public:
     ModelessDialog();
     ~ModelessDialog();
 
-    void Execute();
-
     enum Type {
         None,
         Int,
@@ -133,6 +133,10 @@ public:
         Item
     };
 
+public slots:
+    void Execute();
+
+public:
     static void Information(const QString &title, const QString &text, QObject *caller = 0);
     static void Question(const QString &title, const QString &text, BoolCallBack callBack, QObject *caller = 0);
 

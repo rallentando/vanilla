@@ -39,7 +39,7 @@ void Transmitter::SendCommand(QString command){
 
 void Transmitter::SendCommandAndQuit(QString command){
     SendCommand(command);
-    QTimer::singleShot(100, this, SLOT(Quit()));
+    QTimer::singleShot(100, this, &Transmitter::Quit);
 }
 
 void Transmitter::Quit(){

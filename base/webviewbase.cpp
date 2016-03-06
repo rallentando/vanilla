@@ -725,7 +725,7 @@ void WebViewBase::keyReleaseEvent(QKeyEvent *ev){
         k == Qt::Key_End)){
 
         for(int i = 1; i < 6; i++){
-            QTimer::singleShot(i*200, this, SLOT(EmitScrollChangedIfNeed()));
+            QTimer::singleShot(i*200, this, &WebViewBase::EmitScrollChangedIfNeed);
         }
     } else {
         EmitScrollChangedIfNeed();
@@ -1180,7 +1180,7 @@ void WebViewBase::wheelEvent(QWheelEventBase *ev){
 
     if(page()->settings()->testAttribute(QWebSettingsBase::ScrollAnimatorEnabled)){
         for(int i = 1; i < 6; i++){
-            QTimer::singleShot(i*200, this, SLOT(EmitScrollChangedIfNeed()));
+            QTimer::singleShot(i*200, this, &WebViewBase::EmitScrollChangedIfNeed);
         }
     } else {
         EmitScrollChangedIfNeed();

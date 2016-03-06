@@ -1141,7 +1141,7 @@ void WebPageBase::ReloadAndBypassCache(){
 }
 
 void WebPageBase::CloseLater(){
-    QTimer::singleShot(0, m_Page, SLOT(Close()));
+    QTimer::singleShot(0, m_Page, &Page::Close);
 }
 
 void WebPageBase::DownloadSuggest(const QUrl& url){

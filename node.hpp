@@ -14,8 +14,6 @@
 #include <QMutex>
 #include <QFileInfo>
 
-#include <memory>
-
 class QString;
 class QUrl;
 class QImage;

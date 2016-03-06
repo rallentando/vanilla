@@ -4,6 +4,12 @@
 #include "switch.hpp"
 #include "const.hpp"
 
+#ifdef USE_LIGHTNODE
+#  include "lightnode.hpp"
+#else
+#  include "node.hpp"
+#endif
+
 #include "view.hpp"
 
 #include <QToolBar>
@@ -73,8 +79,9 @@ public:
 public slots:
     void CollectNodes();
     void OnTreeStructureChanged();
-    void OnNodeCreated(QList<Node*> &nds);
-    void OnNodeDeleted(QList<Node*> &nds);
+    void OnNodeCreated(NodeList &nds);
+    void OnNodeDeleted(NodeList &nds);
+    void OnFoldedChanged(NodeList &nds);
     void OnCurrentChanged(Node *nd);
 
     void StartAutoUpdateTimer();
@@ -139,14 +146,12 @@ public:
     qreal GetScroll() const;
     void SetScroll(qreal scroll);
     void Scroll(qreal delta);
-    void ScrollDown(qreal step);
-    void ScrollUp(qreal step);
+    void ScrollForDelete(int count);
     void ResetTargetScroll();
     void AutoScrollDown();
     void AutoScrollUp();
     void AutoScrollStop();
-    void AutoScrollStopOrScrollDown(qreal step);
-    void AutoScrollStopOrScrollUp(qreal step);
+    void AutoScrollStopOrScroll(qreal delta);
 
     void StartScrollDownTimer();
     void StartScrollUpTimer();
@@ -174,8 +179,8 @@ public:
     void AppendToNodeItems(NodeItem *item);
     void PrependToNodeItems(NodeItem *item);
     void RemoveFromNodeItems(NodeItem *item);
-    void SwapWithNext(NodeItem *item);
-    void SwapWithPrev(NodeItem *item);
+    void SwapWithNext(int index);
+    void SwapWithPrev(int index);
 
     QMenu *LayerMenu();
     QMenu *AddNodeMenu();
@@ -258,6 +263,11 @@ public:
 
     void UnfoldDirectory();
 
+    void OnCreated(QRectF target, QRectF start = QRectF());
+    void OnDeleted(QRectF target, QRectF start = QRectF());
+    void OnNestChanged();
+    void Slide(int step);
+
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
 
     void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
@@ -270,8 +280,6 @@ public:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
     void wheelEvent(QGraphicsSceneWheelEvent *ev) DECL_OVERRIDE;
     QPointF ScheduledPosition();
-    void MoveToNext();
-    void MoveToPrev();
 
     QMenu *NodeMenu();
 

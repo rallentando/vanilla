@@ -287,7 +287,7 @@ void Gadgets::Activate(DisplayType type){
 void Gadgets::Deactivate(){
     GraphicsTableView::Deactivate();
 
-    QTimer::singleShot(0, this, SLOT(DisableAccessKey()));
+    QTimer::singleShot(0, this, &Gadgets::DisableAccessKey);
 
     if(GetTreeBank()){
         if(SharedView master = GetMaster().lock()){

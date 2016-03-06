@@ -1732,6 +1732,7 @@ bool GraphicsTableView::ThumbList_OpenNode(){
         if(GetNodeCollectionType() == Foldable && nd->IsDirectory()){
 
             nd->SetFolded(!nd->GetFolded());
+            TreeBank::EmitFoldedChanged(NodeList() << nd);
             ThumbList_RefreshNoScroll();
             return true;
         }
@@ -2106,7 +2107,7 @@ bool GraphicsTableView::ThumbList_MakeDirectoryWithSameDomainNode(){
     if(!m_CurrentNode || !IsDisplayingViewNode()) return false;
 
     ViewNode *parent = m_CurrentNode->GetParent()->ToViewNode();
-    QMap<QString, QList<Node*>> groups;
+    QMap<QString, NodeList> groups;
 
     foreach(Node *nd, m_CurrentNode->GetSiblings()){
         // QUrl(QStringLiteral("about:blank")) and invalid url has empty host,
@@ -2539,7 +2540,6 @@ void GraphicsTableView::Scroll(qreal delta){
 
             if(m_TargetScroll == orig) return;
 
-            m_ScrollAnimation->stop();
         } else {
             m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
             m_ScrollAnimation->setDuration(400);
