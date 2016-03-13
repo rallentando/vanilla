@@ -335,6 +335,7 @@ void NetworkAccessManager::SetUserAgent(QString ua){
 
     if(ua.isEmpty()) return;
     else if(QRegExp(QStringLiteral("[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(ua)){ ua = Application::UserAgent_IE();}
+    else if(QRegExp(QStringLiteral("[eE]dge")).exactMatch(ua))         { ua = Application::UserAgent_Edge();}
     else if(QRegExp(QStringLiteral("[fF](?:ire)?[fF](?:ox)?")).exactMatch(ua)){ ua = Application::UserAgent_FF();}
     else if(QRegExp(QStringLiteral("[oO]pera")).exactMatch(ua))        { ua = Application::UserAgent_Opera();}
     else if(QRegExp(QStringLiteral("[oO][pP][rR]")).exactMatch(ua))    { ua = Application::UserAgent_OPR();}

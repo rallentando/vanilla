@@ -131,40 +131,26 @@ namespace {
             TreeBar *bar = static_cast<TreeBar*>(parentWidget());
             MainWindow *win = static_cast<MainWindow*>(bar->parentWidget());
 
-            switch(bar->orientation()){
-            case Qt::Horizontal: setCursor(Qt::SizeVerCursor); break;
-            case Qt::Vertical:   setCursor(Qt::SizeHorCursor); break;
-            }
+            int width  = bar->width();
+            int height = bar->height();
 
             switch(win->toolBarArea(bar)){
-
-            // Horizontal:
-            case Qt::TopToolBarArea:{
-                int height = mapToParent(ev->pos()).y();
+            case Qt::TopToolBarArea:    height =          mapToParent(ev->pos()).y(); break;
+            case Qt::BottomToolBarArea: height = height - mapToParent(ev->pos()).y(); break;
+            case Qt::LeftToolBarArea:   width  =          mapToParent(ev->pos()).x(); break;
+            case Qt::RightToolBarArea:  width  = width  - mapToParent(ev->pos()).x(); break;
+            }
+            switch(bar->orientation()){
+            case Qt::Horizontal:
                 Cramp(height, bar->MinHeight(), bar->MaxHeight());
-                bar->resize(bar->width(), height);
+                setCursor(Qt::SizeVerCursor);
                 break;
-            }
-            case Qt::BottomToolBarArea:{
-                int height = bar->height() - mapToParent(ev->pos()).y();
-                Cramp(height, bar->MinHeight(), bar->MaxHeight());
-                bar->resize(bar->width(), height);
-                break;
-            }
-
-            // Vertical:
-            case Qt::LeftToolBarArea:{
-                int width = mapToParent(ev->pos()).x();
+            case Qt::Vertical:
                 Cramp(width, bar->MinWidth(), bar->MaxWidth());
-                bar->resize(width, bar->height());
+                setCursor(Qt::SizeHorCursor);
                 break;
             }
-            case Qt::RightToolBarArea:
-                int width = bar->width() - mapToParent(ev->pos()).x();
-                Cramp(width, bar->MinWidth(), bar->MaxWidth());
-                bar->resize(width, bar->height());
-                break;
-            }
+            bar->resize(width, height);
             bar->Adjust();
         }
         void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE {
@@ -209,45 +195,48 @@ namespace {
             setAcceptHoverEvents(true);
         }
 
-    protected:
-        virtual void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
-            Q_UNUSED(ev);
-            m_ButtonState = Pressed;
-            update();
-        }
-        virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
-            if(boundingRect().contains(ev->pos()))
-                m_ButtonState = Hovered;
-            else m_ButtonState = NotHovered;
-            update();
-        }
-        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
-            m_ButtonState = Hovered;
-            QGraphicsItem::mouseMoveEvent(ev);
-        }
-        virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
-            QGraphicsItem::mouseDoubleClickEvent(ev);
-        }
-        virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
-            m_ButtonState = Hovered;
-            QGraphicsItem::hoverEnterEvent(ev);
-            update();
-        }
-        virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
-            m_ButtonState = NotHovered;
-            QGraphicsItem::hoverLeaveEvent(ev);
-            update();
-        }
-        virtual void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
-            m_ButtonState = Hovered;
-            QGraphicsItem::hoverMoveEvent(ev);
-        }
-
         enum ButtonState{
             NotHovered,
             Hovered,
             Pressed,
         } m_ButtonState;
+
+        void SetButtonState(ButtonState state){
+            if(m_ButtonState != state){
+                m_ButtonState = state;
+                update();
+            }
+        }
+
+    protected:
+        virtual void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+            Q_UNUSED(ev);
+            SetButtonState(Pressed);
+        }
+        virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+            if(boundingRect().contains(ev->pos()))
+                SetButtonState(Hovered);
+            else SetButtonState(NotHovered);
+        }
+        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+            QGraphicsItem::mouseMoveEvent(ev);
+            SetButtonState(Hovered);
+        }
+        virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+            QGraphicsItem::mouseDoubleClickEvent(ev);
+        }
+        virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
+            QGraphicsItem::hoverEnterEvent(ev);
+            SetButtonState(Hovered);
+        }
+        virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
+            QGraphicsItem::hoverLeaveEvent(ev);
+            SetButtonState(NotHovered);
+        }
+        virtual void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
+            QGraphicsItem::hoverMoveEvent(ev);
+            SetButtonState(Hovered);
+        }
 
         TreeBank *m_TreeBank;
         TreeBar *m_TreeBar;
@@ -766,6 +755,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     m_AutoUpdateTimerID = 0;
     m_HorizontalNodeHeight = 0;
     m_VerticalNodeWidth = 0;
+    m_LastAction = None;
 
     addWidget(m_View);
     setObjectName(QStringLiteral("TreeBar"));
@@ -976,9 +966,9 @@ QSize TreeBar::minimumSizeHint() const {
 QMenu *TreeBar::TreeBarMenu(){
     QMenu *menu = new QMenu(this);
 
-    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleMenuBar));
-    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleTreeBar));
-    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleToolBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleMenuBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleTreeBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleToolBar));
 
     menu->addSeparator();
 
@@ -1114,6 +1104,7 @@ void TreeBar::CollectNodes(){
 
 void TreeBar::OnTreeStructureChanged(){
     CollectNodes();
+    m_LastAction = TreeStructureChanged;
 }
 
 void TreeBar::OnNodeCreated(NodeList &nds){
@@ -1151,11 +1142,14 @@ void TreeBar::OnNodeCreated(NodeList &nds){
                     } else {
                         // abort.
                         CollectNodes();
+                        m_LastAction = NodeCreated;
                         return;
                     }
                 }
             }
+            layer->SetFocusedNode(0);
         }
+        m_LastAction = NodeCreated;
         return;
     }
     case Qt::Vertical:{
@@ -1198,6 +1192,7 @@ void TreeBar::OnNodeCreated(NodeList &nds){
             if(siblings.length() == 1){
                 // abort.
                 CollectNodes();
+                m_LastAction = NodeCreated;
                 return;
             }
             i = nd->SiblingsIndexOf(nd);
@@ -1237,13 +1232,16 @@ void TreeBar::OnNodeCreated(NodeList &nds){
             } else {
                 // abort.
                 CollectNodes();
+                m_LastAction = NodeCreated;
                 return;
             }
         }
+        m_LastAction = NodeCreated;
         return;
     }
     }
     CollectNodes();
+    m_LastAction = NodeCreated;
 }
 
 void TreeBar::OnNodeDeleted(NodeList &nds){
@@ -1280,6 +1278,7 @@ void TreeBar::OnNodeDeleted(NodeList &nds){
         }
         layer->SetFocusedNode(0);
     }
+    m_LastAction = NodeDeleted;
 }
 
 void TreeBar::OnFoldedChanged(NodeList &nds){
@@ -1366,6 +1365,7 @@ void TreeBar::OnFoldedChanged(NodeList &nds){
             }
         }
     }
+    m_LastAction = FoldedChanged;
 }
 
 void TreeBar::OnCurrentChanged(Node *nd){
@@ -1398,9 +1398,13 @@ void TreeBar::OnCurrentChanged(Node *nd){
             layer->ResetTargetScroll();
             qreal target = m_HorizontalNodeWidth * (index + 0.5)
                 - m_Scene->sceneRect().width() / 2.0 + FRINGE_BUTTON_SIZE;
+
             if(layer->GetAnimation()->state() == QAbstractAnimation::Running &&
                layer->GetAnimation()->endValue().isValid()){
-                if(layer->GetAnimation()->endValue().toReal() < layer->GetScroll())
+
+                if(m_LastAction == NodeCreated)
+                    target = qMax(target, layer->GetAnimation()->endValue().toReal());
+                if(m_LastAction == NodeDeleted)
                     target = qMin(target, layer->GetAnimation()->endValue().toReal());
             }
             layer->Scroll(target - layer->GetScroll());
@@ -1421,6 +1425,7 @@ void TreeBar::OnCurrentChanged(Node *nd){
         }
         resize(width(), (previousHeight + 3) * m_LayerList.length() + 4);
         Adjust();
+        m_LastAction = CurrentChanged;
         return;
     }
     case Qt::Vertical:{
@@ -1438,19 +1443,26 @@ void TreeBar::OnCurrentChanged(Node *nd){
             item->SetFocused(item->GetNode() == nd);
             item->setSelected(false);
         }
+        layer->SetNode(nd);
         layer->ResetTargetScroll();
         qreal target = m_VerticalNodeHeight * (index + 0.5)
             - m_Scene->sceneRect().height() / 2.0 + FRINGE_BUTTON_SIZE;
+
         if(layer->GetAnimation()->state() == QAbstractAnimation::Running &&
            layer->GetAnimation()->endValue().isValid()){
-            if(layer->GetAnimation()->endValue().toReal() < layer->GetScroll())
+
+            if(m_LastAction == NodeCreated)
+                target = qMax(target, layer->GetAnimation()->endValue().toReal());
+            if(m_LastAction == NodeDeleted)
                 target = qMin(target, layer->GetAnimation()->endValue().toReal());
         }
         layer->Scroll(target - layer->GetScroll());
+        m_LastAction = CurrentChanged;
         return;
     }
     }
     CollectNodes();
+    m_LastAction = CurrentChanged;
 }
 
 void TreeBar::StartAutoUpdateTimer(){
@@ -1516,9 +1528,11 @@ void TreeBar::resizeEvent(QResizeEvent *ev){
 
 void TreeBar::timerEvent(QTimerEvent *ev){
     QToolBar::timerEvent(ev);
-    if(isVisible() && parentWidget()->isActiveWindow() &&
-       m_AutoUpdateTimerID && ev->timerId() == m_AutoUpdateTimerID)
+    if(!isVisible()) return;
+    if(parentWidget()->isActiveWindow() &&
+       m_AutoUpdateTimerID && ev->timerId() == m_AutoUpdateTimerID){
         m_Scene->update();
+    }
 }
 
 void TreeBar::showEvent(QShowEvent *ev){
@@ -1654,25 +1668,21 @@ qreal LayerItem::MaxScroll() const {
     if(!scene()) return 0.0;
     if(Application::EnableTransparentBar()){
         switch(m_TreeBar->orientation()){
-        case Qt::Horizontal:{
+        case Qt::Horizontal:
             return TreeBar::HorizontalNodeWidth() * (m_NodeItems.length() - 0.5)
                 - scene()->sceneRect().width() / 2.0 + FRINGE_BUTTON_SIZE;
-        }
-        case Qt::Vertical:{
+        case Qt::Vertical:
             return TreeBar::VerticalNodeHeight() * (m_NodeItems.length() - 0.5)
                 - scene()->sceneRect().height() / 2.0 + FRINGE_BUTTON_SIZE;
         }
-        }
     }
     switch(m_TreeBar->orientation()){
-    case Qt::Horizontal:{
+    case Qt::Horizontal:
         return TreeBar::HorizontalNodeWidth() * m_NodeItems.length()
             - scene()->sceneRect().width() + FRINGE_BUTTON_SIZE * 2;
-    }
-    case Qt::Vertical:{
+    case Qt::Vertical:
         return TreeBar::VerticalNodeHeight() * m_NodeItems.length()
             - scene()->sceneRect().height() + FRINGE_BUTTON_SIZE * 2;
-    }
     }
     return 0.0;
 }
@@ -1681,14 +1691,12 @@ qreal LayerItem::MinScroll() const {
     if(!scene()) return 0.0;
     if(Application::EnableTransparentBar()){
         switch(m_TreeBar->orientation()){
-        case Qt::Horizontal:{
+        case Qt::Horizontal:
             return TreeBar::HorizontalNodeWidth() * 0.5
                 - scene()->sceneRect().width() / 2.0 + FRINGE_BUTTON_SIZE;
-        }
-        case Qt::Vertical:{
+        case Qt::Vertical:
             return TreeBar::VerticalNodeHeight() * 0.5
                 - scene()->sceneRect().height() / 2.0 + FRINGE_BUTTON_SIZE;
-        }
         }
     }
     return 0.0;
@@ -1784,7 +1792,10 @@ void LayerItem::AutoScrollStop(){
 }
 
 void LayerItem::AutoScrollStopOrScroll(qreal delta){
-    StopScrollDownTimer();
+    if(delta > 0)
+        StopScrollDownTimer();
+    else
+        StopScrollUpTimer();
 
     if(m_Animation->state() == QAbstractAnimation::Running){
         m_Animation->stop();
@@ -1854,16 +1865,19 @@ void LayerItem::Adjust(){
         int width = m_TreeBar->GetVerticalNodeWidth();
         int height = boundingRect().height();
 
-        foreach(NodeItem *item, m_NodeItems){
-            QRectF rect = item->GetRect();
-            rect.setRight(width + 1);
-            item->SetRect(rect);
-            item->setSelected(false);
-        }
+        if(m_Animation->state() != QAbstractAnimation::Running){
 
-        SetScroll(TreeBar::VerticalNodeHeight() * (i + 0.5)
-                  - scene()->sceneRect().height() / 2.0 + FRINGE_BUTTON_SIZE);
-        ResetTargetScroll();
+            foreach(NodeItem *item, m_NodeItems){
+                QRectF rect = item->GetRect();
+                rect.setRight(width + 1);
+                item->SetRect(rect);
+                item->setSelected(false);
+            }
+
+            SetScroll(TreeBar::VerticalNodeHeight() * (i + 0.5)
+                      - scene()->sceneRect().height() / 2.0 + FRINGE_BUTTON_SIZE);
+            ResetTargetScroll();
+        }
 
         SetLine(width + 1, 0,
                 width + 1, height);
@@ -2005,16 +2019,14 @@ void LayerItem::SetLine(qreal x1, qreal y1, qreal x2, qreal y2){
 }
 
 void LayerItem::ApplyChildrenOrder(){
+    Node *parent = 0;
+    NodeList list;
     switch(m_TreeBar->orientation()){
     case Qt::Horizontal:{
-        NodeList list;
         foreach(NodeItem *item, m_NodeItems){
             list << item->GetNode();
         }
-        if(!m_TreeBank->SetChildrenOrder(m_Node->GetParent(), list)){
-            // reset.
-            m_TreeBar->CollectNodes();
-        }
+        parent = m_Node->GetParent();
         break;
     }
     case Qt::Vertical:{
@@ -2026,7 +2038,7 @@ void LayerItem::ApplyChildrenOrder(){
                 break;
             }
         }
-        if(!nd) break;
+        if(!nd) return;
         Node *above = 0;
         Node *below = 0;
         if(i > 0){
@@ -2036,34 +2048,34 @@ void LayerItem::ApplyChildrenOrder(){
             below = m_NodeItems[i+1]->GetNode();
         }
         if(above && m_NodeItems[i]->GetNest() == m_NodeItems[i-1]->GetNest()){
-            NodeList list = above->GetSiblings();
+            list = above->GetSiblings();
             if(list.contains(nd)) list.removeOne(nd);
             list.insert(list.indexOf(above) + 1, nd);
-            if(!m_TreeBank->SetChildrenOrder(above->GetParent(), list))
-                m_TreeBar->CollectNodes(); // reset.
+            parent = above->GetParent();
             break;
         }
         if(below && m_NodeItems[i]->GetNest() == m_NodeItems[i+1]->GetNest()){
-            NodeList list = below->GetSiblings();
+            list = below->GetSiblings();
             if(list.contains(nd)) list.removeOne(nd);
             list.insert(list.indexOf(below), nd);
-            if(!m_TreeBank->SetChildrenOrder(below->GetParent(), list))
-                m_TreeBar->CollectNodes(); // reset.
+            parent = below->GetParent();
             break;
         }
         if(above && m_NodeItems[i-1]->GetNode()->IsDirectory() &&
            m_NodeItems[i]->GetNest() == m_NodeItems[i-1]->GetNest()+1){
-            NodeList list = above->GetChildren();
+            list = above->GetChildren();
             if(list.contains(nd)) list.removeOne(nd);
             list.prepend(nd);
-            if(!m_TreeBank->SetChildrenOrder(above, list))
-                m_TreeBar->CollectNodes(); // reset.
+            parent = above;
             break;
         }
         m_NodeItems[i]->setSelected(false);
         m_NodeItems[i]->setPos(QPointF());
-        break;
+        return;
     }
+    }
+    if(!m_TreeBank->SetChildrenOrder(parent, list)){
+        m_TreeBar->CollectNodes(); // reset.
     }
 }
 
@@ -2165,9 +2177,9 @@ QMenu *LayerItem::LayerMenu(){
 
     menu->addSeparator();
 
-    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleMenuBar));
-    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleTreeBar));
-    menu->addAction(m_TreeBank->Action(TreeBank::Te_ToggleToolBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleMenuBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleTreeBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleToolBar));
 
     menu->addSeparator();
 
@@ -2762,6 +2774,13 @@ QPropertyAnimation *NodeItem::GetAnimation() const {
     return m_Animation;
 }
 
+void NodeItem::SetButtonState(ButtonState state){
+    if(m_ButtonState != state){
+        m_ButtonState = state;
+        update();
+    }
+}
+
 void NodeItem::SetHoveredWithItem(bool hovered){
     if(m_Node->IsDirectory() && m_IsHovered != hovered){
         m_IsHovered = hovered;
@@ -2835,6 +2854,8 @@ void NodeItem::OnCreated(QRectF target, QRectF start){
 }
 
 void NodeItem::OnDeleted(QRectF target, QRectF start){
+    NodeItem *item = this;
+    LayerItem *layer = Layer();
     if(TreeBar::EnableAnimation()){
         m_Animation->setStartValue(start.isNull() ? m_Rect : start);
         if(m_Animation->state() == QAbstractAnimation::Running &&
@@ -2846,14 +2867,14 @@ void NodeItem::OnDeleted(QRectF target, QRectF start){
         m_Animation->setCurrentTime(16);
         connect(m_Animation, &QPropertyAnimation::finished,
                 this, &QObject::deleteLater);
+        connect(m_Animation, &QPropertyAnimation::finished,
+                [item, layer](){ layer->RemoveFromNodeItems(item);});
     } else {
         SetRect(target);
         deleteLater();
+        connect(this, &QObject::destroyed,
+                [item, layer](){ layer->RemoveFromNodeItems(item);});
     }
-    NodeItem *item = this;
-    LayerItem *layer = Layer();
-    connect(this, &QObject::destroyed,
-            [item, layer](){ layer->RemoveFromNodeItems(item);});
 }
 
 void NodeItem::OnNestChanged(){
@@ -2913,22 +2934,20 @@ QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value){
     if(change == ItemPositionChange && scene()){
         QPointF newPos = value.toPointF();
         switch(m_TreeBar->orientation()){
-        case Qt::Horizontal:{
+        case Qt::Horizontal:
             Cramp(newPos.rx(),
                   -boundingRect().left() + FRINGE_BUTTON_SIZE,
                   -boundingRect().left() - FRINGE_BUTTON_SIZE
                   + scene()->sceneRect().width() - TreeBar::HorizontalNodeWidth());
             newPos.setY(0);
             break;
-        }
-        case Qt::Vertical:{
+        case Qt::Vertical:
             Cramp(newPos.ry(),
                   -boundingRect().top() + FRINGE_BUTTON_SIZE,
                   -boundingRect().top() - FRINGE_BUTTON_SIZE
                   + scene()->sceneRect().height() - TreeBar::VerticalNodeHeight());
             newPos.setX(0);
             break;
-        }
         }
         return newPos;
     }
@@ -2956,7 +2975,8 @@ void NodeItem::timerEvent(QTimerEvent *ev){
 
 void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 
-    if(Layer()->GetAnimation()->state() == QAbstractAnimation::Running){
+    if(Layer()->GetAnimation()->state() == QAbstractAnimation::Running ||
+       m_Animation->state() == QAbstractAnimation::Running){
         ev->setAccepted(false);
         return;
     }
@@ -2966,11 +2986,9 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
         Layer()->SetFocusedNode(this);
 
         if(CloseButtonRect().contains(ev->pos())){
-            m_ButtonState = ClosePressed;
-            update();
+            SetButtonState(ClosePressed);
         } else if(CloneButtonRect().contains(ev->pos())){
-            m_ButtonState = ClonePressed;
-            update();
+            SetButtonState(ClonePressed);
         }
 
         // m_Rect is used for boundingRect.
@@ -3114,41 +3132,29 @@ void NodeItem::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev){
 void NodeItem::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
     m_IsHovered = true;
     if(CloseButtonRect().contains(ev->pos())){
-        m_ButtonState = CloseHovered;
-        update();
+        SetButtonState(CloseHovered);
     } else if(CloneButtonRect().contains(ev->pos())){
-        m_ButtonState = CloneHovered;
-        update();
+        SetButtonState(CloneHovered);
+    } else {
+        SetButtonState(NotHovered);
     }
     QGraphicsObject::hoverEnterEvent(ev);
 }
 
 void NodeItem::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
     m_IsHovered = false;
-    if(m_ButtonState != NotHovered){
-        m_ButtonState = NotHovered;
-        update();
-    }
+    SetButtonState(NotHovered);
     QGraphicsObject::hoverLeaveEvent(ev);
 }
 
 void NodeItem::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
     m_IsHovered = true;
     if(CloseButtonRect().contains(ev->pos())){
-        if(m_ButtonState == NotHovered){
-            m_ButtonState = CloseHovered;
-            update();
-        }
+        SetButtonState(CloseHovered);
     } else if(CloneButtonRect().contains(ev->pos())){
-        if(m_ButtonState == NotHovered){
-            m_ButtonState = CloneHovered;
-            update();
-        }
+        SetButtonState(CloneHovered);
     } else {
-        if(m_ButtonState != NotHovered){
-            m_ButtonState = NotHovered;
-            update();
-        }
+        SetButtonState(NotHovered);
     }
     QGraphicsObject::hoverMoveEvent(ev);
 }
@@ -3351,7 +3357,7 @@ void NodeItem::RenameViewNode(){
 void NodeItem::ReloadViewNode(){
     if(ViewNode *vn = GetNode() ? GetNode()->ToViewNode() : 0)
         if(View *view = vn->GetView())
-            view->TriggerAction(Page::We_Reload);
+            view->TriggerAction(Page::_Reload);
 }
 
 void NodeItem::OpenViewNode(){

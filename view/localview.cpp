@@ -191,32 +191,32 @@ QMenu *LocalView::CreateNodeMenu(){
     QMenu *menu = new QMenu(GetTreeBank());
     menu->setToolTipsVisible(true);
 
-    menu->addAction(Action(Gadgets::Ge_Deactivate));
-    menu->addAction(Action(Gadgets::Ge_Refresh));
+    menu->addAction(Action(Gadgets::_Deactivate));
+    menu->addAction(Action(Gadgets::_Refresh));
     menu->addSeparator();
 
     if(m_HoveredItemIndex != -1 &&
        m_HoveredItemIndex < m_DisplayThumbnails.length()){
 
-        menu->addAction(Action(Gadgets::Ge_OpenNode));
-        menu->addAction(Action(Gadgets::Ge_OpenNodeOnNewWindow));
-        menu->addAction(Action(Gadgets::Ge_RenameNode));
+        menu->addAction(Action(Gadgets::_OpenNode));
+        menu->addAction(Action(Gadgets::_OpenNodeOnNewWindow));
+        menu->addAction(Action(Gadgets::_RenameNode));
         if(GetHoveredNode()->IsDirectory())
-            menu->addAction(Action(Gadgets::Ge_DownDirectory));
+            menu->addAction(Action(Gadgets::_DownDirectory));
     }
     if(m_ParentNode &&
        m_ParentNode->GetUrl().toString() != QStringLiteral("file:///")){
 
-        menu->addAction(Action(Gadgets::Ge_UpDirectory));
+        menu->addAction(Action(Gadgets::_UpDirectory));
     }
     if((m_HoveredItemIndex != -1 &&
         m_HoveredItemIndex < m_DisplayThumbnails.length()) ||
        !m_NodesRegister.isEmpty()){
 
-        menu->addAction(Action(Gadgets::Ge_DeleteNode));
-        menu->addAction(Action(Gadgets::Ge_DeleteRightNode));
-        menu->addAction(Action(Gadgets::Ge_DeleteLeftNode));
-        menu->addAction(Action(Gadgets::Ge_DeleteOtherNode));
+        menu->addAction(Action(Gadgets::_DeleteNode));
+        menu->addAction(Action(Gadgets::_DeleteRightNode));
+        menu->addAction(Action(Gadgets::_DeleteLeftNode));
+        menu->addAction(Action(Gadgets::_DeleteOtherNode));
     }
     return menu;
 }
@@ -498,8 +498,8 @@ void LocalView::Connect(TreeBank *tb){
             connect(receiver, SIGNAL(ToggleTrash()),                     this, SLOT(ThumbList_ToggleTrash()));
             connect(receiver, SIGNAL(ScrollUp()),                        this, SLOT(ThumbList_ScrollUp()));
             connect(receiver, SIGNAL(ScrollDown()),                      this, SLOT(ThumbList_ScrollDown()));
-          //connect(receiver, SIGNAL(PageUp()),                          this, SLOT(ThumbList_PageUp()));
-          //connect(receiver, SIGNAL(PageDown()),                        this, SLOT(ThumbList_PageDown()));
+            connect(receiver, SIGNAL(NextPage()),                        this, SLOT(ThumbList_NextPage()));
+            connect(receiver, SIGNAL(PrevPage()),                        this, SLOT(ThumbList_PrevPage()));
           //connect(receiver, SIGNAL(ZoomIn()),                          this, SLOT(ThumbList_ZoomIn()));
           //connect(receiver, SIGNAL(ZoomOut()),                         this, SLOT(ThumbList_ZoomOut()));
             connect(receiver, SIGNAL(MoveToUpperItem()),                 this, SLOT(ThumbList_MoveToUpperItem()));
@@ -613,8 +613,8 @@ void LocalView::Disconnect(TreeBank *tb){
             disconnect(receiver, SIGNAL(ToggleTrash()),                     this, SLOT(ThumbList_ToggleTrash()));
             disconnect(receiver, SIGNAL(ScrollUp()),                        this, SLOT(ThumbList_ScrollUp()));
             disconnect(receiver, SIGNAL(ScrollDown()),                      this, SLOT(ThumbList_ScrollDown()));
-          //disconnect(receiver, SIGNAL(PageUp()),                          this, SLOT(ThumbList_PageUp()));
-          //disconnect(receiver, SIGNAL(PageDown()),                        this, SLOT(ThumbList_PageDown()));
+            disconnect(receiver, SIGNAL(NextPage()),                        this, SLOT(ThumbList_NextPage()));
+            disconnect(receiver, SIGNAL(PrevPage()),                        this, SLOT(ThumbList_PrevPage()));
           //disconnect(receiver, SIGNAL(ZoomIn()),                          this, SLOT(ThumbList_ZoomIn()));
           //disconnect(receiver, SIGNAL(ZoomOut()),                         this, SLOT(ThumbList_ZoomOut()));
             disconnect(receiver, SIGNAL(MoveToUpperItem()),                 this, SLOT(ThumbList_MoveToUpperItem()));
@@ -759,36 +759,36 @@ QAction *LocalView::Action(QString str, QVariant data){
 QAction *LocalView::Action(Gadgets::GadgetsAction a){
     // forbid many times call of same action.
     static const QList<Gadgets::GadgetsAction> exclude = QList<Gadgets::GadgetsAction>()
-        << Gadgets::Ge_NoAction << Gadgets::Ke_End
-        << Gadgets::Ke_Up       << Gadgets::Ke_PageUp
-        << Gadgets::Ke_Down     << Gadgets::Ke_PageDown << Gadgets::Ge_SelectAll
-        << Gadgets::Ke_Right                            << Gadgets::Ge_SwitchWindow
-        << Gadgets::Ke_Left                             << Gadgets::Ge_NextWindow
-        << Gadgets::Ke_Home                             << Gadgets::Ge_PrevWindow
-        << Gadgets::Ge_MoveToUpperItem   << Gadgets::Ge_SelectToLastItem
-        << Gadgets::Ge_MoveToLowerItem   << Gadgets::Ge_SelectItem
-        << Gadgets::Ge_MoveToRightItem   << Gadgets::Ge_SelectRange
-        << Gadgets::Ge_MoveToLeftItem    << Gadgets::Ge_SelectAll
-        << Gadgets::Ge_MoveToPrevPage    << Gadgets::Ge_ClearSelection
-        << Gadgets::Ge_MoveToNextPage    << Gadgets::Ge_TransferToUpper
-        << Gadgets::Ge_MoveToFirstItem   << Gadgets::Ge_TransferToLower
-        << Gadgets::Ge_MoveToLastItem    << Gadgets::Ge_TransferToRight
-        << Gadgets::Ge_SelectToUpperItem << Gadgets::Ge_TransferToLeft
-        << Gadgets::Ge_SelectToLowerItem << Gadgets::Ge_TransferToPrevPage
-        << Gadgets::Ge_SelectToRightItem << Gadgets::Ge_TransferToNextPage
-        << Gadgets::Ge_SelectToLeftItem  << Gadgets::Ge_TransferToFirst
-        << Gadgets::Ge_SelectToPrevPage  << Gadgets::Ge_TransferToLast
-        << Gadgets::Ge_SelectToNextPage  << Gadgets::Ge_SwitchNodeCollectionType
-        << Gadgets::Ge_SelectToFirstItem << Gadgets::Ge_SwitchNodeCollectionTypeReverse;
+        << Gadgets::_NoAction << Gadgets::_End
+        << Gadgets::_Up       << Gadgets::_PageUp
+        << Gadgets::_Down     << Gadgets::_PageDown << Gadgets::_SelectAll
+        << Gadgets::_Right                          << Gadgets::_SwitchWindow
+        << Gadgets::_Left                           << Gadgets::_NextWindow
+        << Gadgets::_Home                           << Gadgets::_PrevWindow
+        << Gadgets::_MoveToUpperItem   << Gadgets::_SelectToLastItem
+        << Gadgets::_MoveToLowerItem   << Gadgets::_SelectItem
+        << Gadgets::_MoveToRightItem   << Gadgets::_SelectRange
+        << Gadgets::_MoveToLeftItem    << Gadgets::_SelectAll
+        << Gadgets::_MoveToPrevPage    << Gadgets::_ClearSelection
+        << Gadgets::_MoveToNextPage    << Gadgets::_TransferToUpper
+        << Gadgets::_MoveToFirstItem   << Gadgets::_TransferToLower
+        << Gadgets::_MoveToLastItem    << Gadgets::_TransferToRight
+        << Gadgets::_SelectToUpperItem << Gadgets::_TransferToLeft
+        << Gadgets::_SelectToLowerItem << Gadgets::_TransferToPrevPage
+        << Gadgets::_SelectToRightItem << Gadgets::_TransferToNextPage
+        << Gadgets::_SelectToLeftItem  << Gadgets::_TransferToFirst
+        << Gadgets::_SelectToPrevPage  << Gadgets::_TransferToLast
+        << Gadgets::_SelectToNextPage  << Gadgets::_SwitchNodeCollectionType
+        << Gadgets::_SelectToFirstItem << Gadgets::_SwitchNodeCollectionTypeReverse;
 
-    static Gadgets::GadgetsAction previousAction = Gadgets::Ge_NoAction;
+    static Gadgets::GadgetsAction previousAction = Gadgets::_NoAction;
     static int sameActionCount = 0;
     if(exclude.contains(a)){
         sameActionCount = 0;
-        previousAction = Gadgets::Ge_NoAction;
+        previousAction = Gadgets::_NoAction;
     } else if(a == previousAction){
         if(++sameActionCount > MAX_SAME_ACTION_COUNT)
-            a = Gadgets::Ge_NoAction;
+            a = Gadgets::_NoAction;
     } else {
         sameActionCount = 0;
         previousAction = a;
@@ -801,63 +801,63 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         // relation of treebank and view is not one-to-one correspondence.
         // so recreate action.
         switch(a){
-        case Gadgets::Ge_Import:
-        case Gadgets::Ge_Export:
-        case Gadgets::Ge_AboutVanilla:
-        case Gadgets::Ge_AboutQt:
-        case Gadgets::Ge_Quit:
-        //case Gadgets::Ge_ToggleNotifier:
-        //case Gadgets::Ge_ToggleReceiver:
-        //case Gadgets::Ge_ToggleMenuBar:
-        //case Gadgets::Ge_ToggleTreeBar:
-        //case Gadgets::Ge_ToggleToolBar:
-        case Gadgets::Ge_ToggleFullScreen:
-        case Gadgets::Ge_ToggleMaximized:
-        case Gadgets::Ge_ToggleMinimized:
-        case Gadgets::Ge_ToggleShaded:
-        case Gadgets::Ge_ShadeWindow:
-        case Gadgets::Ge_UnshadeWindow:
-        case Gadgets::Ge_NewWindow:
-        case Gadgets::Ge_CloseWindow:
-        case Gadgets::Ge_SwitchWindow:
-        case Gadgets::Ge_NextWindow:
-        case Gadgets::Ge_PrevWindow:
-        case Gadgets::Ge_Close:
-        case Gadgets::Ge_Restore:
-        case Gadgets::Ge_Recreate:
-        case Gadgets::Ge_NextView:
-        case Gadgets::Ge_PrevView:
-        case Gadgets::Ge_BuryView:
-        case Gadgets::Ge_DigView:
-        case Gadgets::Ge_NewViewNode:
-        case Gadgets::Ge_NewHistNode:
-        case Gadgets::Ge_CloneViewNode:
-        case Gadgets::Ge_CloneHistNode:
-        case Gadgets::Ge_DisplayViewTree:
-        case Gadgets::Ge_DisplayHistTree:
-        case Gadgets::Ge_DisplayAccessKey:
-        case Gadgets::Ge_DisplayTrashTree:
-        case Gadgets::Ge_OpenTextSeeker:
-        case Gadgets::Ge_OpenQueryEditor:
-        case Gadgets::Ge_OpenUrlEditor:
-        case Gadgets::Ge_OpenCommand:
-        case Gadgets::Ge_ReleaseHiddenView:
+        case Gadgets::_Import:
+        case Gadgets::_Export:
+        case Gadgets::_AboutVanilla:
+        case Gadgets::_AboutQt:
+        case Gadgets::_Quit:
+        //case Gadgets::_ToggleNotifier:
+        //case Gadgets::_ToggleReceiver:
+        //case Gadgets::_ToggleMenuBar:
+        //case Gadgets::_ToggleTreeBar:
+        //case Gadgets::_ToggleToolBar:
+        case Gadgets::_ToggleFullScreen:
+        case Gadgets::_ToggleMaximized:
+        case Gadgets::_ToggleMinimized:
+        case Gadgets::_ToggleShaded:
+        case Gadgets::_ShadeWindow:
+        case Gadgets::_UnshadeWindow:
+        case Gadgets::_NewWindow:
+        case Gadgets::_CloseWindow:
+        case Gadgets::_SwitchWindow:
+        case Gadgets::_NextWindow:
+        case Gadgets::_PrevWindow:
+        case Gadgets::_Close:
+        case Gadgets::_Restore:
+        case Gadgets::_Recreate:
+        case Gadgets::_NextView:
+        case Gadgets::_PrevView:
+        case Gadgets::_BuryView:
+        case Gadgets::_DigView:
+        case Gadgets::_NewViewNode:
+        case Gadgets::_NewHistNode:
+        case Gadgets::_CloneViewNode:
+        case Gadgets::_CloneHistNode:
+        case Gadgets::_DisplayViewTree:
+        case Gadgets::_DisplayHistTree:
+        case Gadgets::_DisplayAccessKey:
+        case Gadgets::_DisplayTrashTree:
+        case Gadgets::_OpenTextSeeker:
+        case Gadgets::_OpenQueryEditor:
+        case Gadgets::_OpenUrlEditor:
+        case Gadgets::_OpenCommand:
+        case Gadgets::_ReleaseHiddenView:
             delete action;
             m_ActionTable[a] = action = new QAction(this);
             break;
-        case Gadgets::Ge_ToggleNotifier:
+        case Gadgets::_ToggleNotifier:
             action->setChecked(GetTreeBank()->GetNotifier());
             return action;
-        case Gadgets::Ge_ToggleReceiver:
+        case Gadgets::_ToggleReceiver:
             action->setChecked(GetTreeBank()->GetReceiver());
             return action;
-        case Gadgets::Ge_ToggleMenuBar:
+        case Gadgets::_ToggleMenuBar:
             action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
             return action;
-        case Gadgets::Ge_ToggleTreeBar:
+        case Gadgets::_ToggleTreeBar:
             action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
             return action;
-        case Gadgets::Ge_ToggleToolBar:
+        case Gadgets::_ToggleToolBar:
             action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
             return action;
         default:
@@ -868,21 +868,21 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
     }
 
     switch(a){
-    case Gadgets::Ke_Up:      action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case Gadgets::Ke_Down:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case Gadgets::Ke_Right:   action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case Gadgets::Ke_Left:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-  //case Gadgets::Ge_Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
-  //case Gadgets::Ge_Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
-  //case Gadgets::Ge_Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
-  //case Gadgets::Ge_Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
+    case Gadgets::_Up:      action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowUp));       break;
+    case Gadgets::_Down:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowDown));     break;
+    case Gadgets::_Right:   action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowRight));    break;
+    case Gadgets::_Left:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
+  //case Gadgets::_Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
+  //case Gadgets::_Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
+  //case Gadgets::_Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
+  //case Gadgets::_Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
 
     switch(a){
-    case Gadgets::Ge_NoAction: break;
+    case Gadgets::_NoAction: break;
 
 #define DEFINE_ACTION(name, text)                                       \
-        case Gadgets::Ke_##name:                                        \
+        case Gadgets::_##name:                                          \
             action->setText(text);                                      \
             action->setToolTip(text);                                   \
             connect(action, SIGNAL(triggered()),                        \
@@ -901,7 +901,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
 
 #undef  DEFINE_ACTION
 #define DEFINE_ACTION(name, text)                                       \
-        case Gadgets::Ge_##name:                                        \
+        case Gadgets::_##name:                                          \
             action->setText(text);                                      \
             action->setToolTip(text);                                   \
             connect(action,        SIGNAL(triggered()),                 \
@@ -961,7 +961,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
 
 #undef  DEFINE_ACTION
 #define DEFINE_ACTION(name, text)                                       \
-        case Gadgets::Ge_##name:                                        \
+        case Gadgets::_##name:                                          \
             action->setText(text);                                      \
             action->setToolTip(text);                                   \
             connect(action, SIGNAL(triggered()),                        \
@@ -973,7 +973,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
 
 #undef  DEFINE_ACTION
 #define DEFINE_ACTION(name, text)                                       \
-        case Gadgets::Ge_##name:                                        \
+        case Gadgets::_##name:                                          \
             action->setText(text);                                      \
             action->setToolTip(text);                                   \
             connect(action, SIGNAL(triggered()),                        \
@@ -1016,8 +1016,8 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(ToggleTrash,                     tr("ToggleTrash"));
         DEFINE_ACTION(ScrollUp,                        tr("ScrollUp"));
         DEFINE_ACTION(ScrollDown,                      tr("ScrollDown"));
-        DEFINE_ACTION(PageUp,                          tr("PageUp"));
-        DEFINE_ACTION(PageDown,                        tr("PageDown"));
+        DEFINE_ACTION(NextPage,                        tr("NextPage"));
+        DEFINE_ACTION(PrevPage,                        tr("PrevPage"));
         DEFINE_ACTION(ZoomIn,                          tr("ZoomIn"));
         DEFINE_ACTION(ZoomOut,                         tr("ZoomOut"));
         DEFINE_ACTION(MoveToUpperItem,                 tr("MoveToUpperItem"));
@@ -1057,65 +1057,65 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
     }
     switch(a){
 
-    case Gadgets::Ge_ToggleNotifier:
+    case Gadgets::_ToggleNotifier:
         action->setCheckable(true);
         action->setChecked(GetTreeBank()->GetNotifier());
         action->setText(tr("Notifier"));
         action->setToolTip(tr("Notifier"));
         break;
-    case Gadgets::Ge_ToggleReceiver:
+    case Gadgets::_ToggleReceiver:
         action->setCheckable(true);
         action->setChecked(GetTreeBank()->GetReceiver());
         action->setText(tr("Receiver"));
         action->setToolTip(tr("Receiver"));
         break;
-    case Gadgets::Ge_ToggleMenuBar:
+    case Gadgets::_ToggleMenuBar:
         action->setCheckable(true);
         action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
         action->setText(tr("MenuBar"));
         action->setToolTip(tr("MenuBar"));
         break;
-    case Gadgets::Ge_ToggleTreeBar:
+    case Gadgets::_ToggleTreeBar:
         action->setCheckable(true);
         action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
         action->setText(tr("TreeBar"));
         action->setToolTip(tr("TreeBar"));
         break;
-    case Gadgets::Ge_ToggleToolBar:
+    case Gadgets::_ToggleToolBar:
         action->setCheckable(true);
         action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
         action->setText(tr("ToolBar"));
         action->setToolTip(tr("ToolBar"));
         break;
 
-    case Gadgets::Ge_OpenNodeWithIE:
+    case Gadgets::_OpenNodeWithIE:
         action->setIcon(Application::BrowserIcon_IE());
         break;
-    case Gadgets::Ge_OpenNodeWithEdge:
+    case Gadgets::_OpenNodeWithEdge:
         action->setIcon(Application::BrowserIcon_Edge());
         break;
-    case Gadgets::Ge_OpenNodeWithFF:
+    case Gadgets::_OpenNodeWithFF:
         action->setIcon(Application::BrowserIcon_FF());
         break;
-    case Gadgets::Ge_OpenNodeWithOpera:
+    case Gadgets::_OpenNodeWithOpera:
         action->setIcon(Application::BrowserIcon_Opera());
         break;
-    case Gadgets::Ge_OpenNodeWithOPR:
+    case Gadgets::_OpenNodeWithOPR:
         action->setIcon(Application::BrowserIcon_OPR());
         break;
-    case Gadgets::Ge_OpenNodeWithSafari:
+    case Gadgets::_OpenNodeWithSafari:
         action->setIcon(Application::BrowserIcon_Safari());
         break;
-    case Gadgets::Ge_OpenNodeWithChrome:
+    case Gadgets::_OpenNodeWithChrome:
         action->setIcon(Application::BrowserIcon_Chrome());
         break;
-    case Gadgets::Ge_OpenNodeWithSleipnir:
+    case Gadgets::_OpenNodeWithSleipnir:
         action->setIcon(Application::BrowserIcon_Sleipnir());
         break;
-    case Gadgets::Ge_OpenNodeWithVivaldi:
+    case Gadgets::_OpenNodeWithVivaldi:
         action->setIcon(Application::BrowserIcon_Vivaldi());
         break;
-    case Gadgets::Ge_OpenNodeWithCustom:
+    case Gadgets::_OpenNodeWithCustom:
         action->setIcon(Application::BrowserIcon_Custom());
         action->setText(tr("OpenNodeWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;
@@ -1447,12 +1447,12 @@ bool LocalView::ThumbList_ScrollDown(){
                            [this](){ GraphicsTableView::ThumbList_ScrollDown();});
 }
 
-bool LocalView::ThumbList_PageUp(){
-    return ThumbList_MoveToPrevPage();
+bool LocalView::ThumbList_NextPage(){
+    return ThumbList_MoveToNextPage();
 }
 
-bool LocalView::ThumbList_PageDown(){
-    return ThumbList_MoveToNextPage();
+bool LocalView::ThumbList_PrevPage(){
+    return ThumbList_MoveToPrevPage();
 }
 
 bool LocalView::ThumbList_MoveToUpperItem(){
@@ -1477,12 +1477,12 @@ bool LocalView::ThumbList_MoveToLeftItem(){
 
 bool LocalView::ThumbList_MoveToPrevPage(){
     return SelectMediaItem(m_TargetScroll - 1,
-                           [this](){ GraphicsTableView::ThumbList_PageUp();});
+                           [this](){ GraphicsTableView::ThumbList_PrevPage();});
 }
 
 bool LocalView::ThumbList_MoveToNextPage(){
     return SelectMediaItem(m_TargetScroll + 1,
-                           [this](){ GraphicsTableView::ThumbList_PageDown();});
+                           [this](){ GraphicsTableView::ThumbList_NextPage();});
 }
 
 bool LocalView::ThumbList_MoveToFirstItem(){

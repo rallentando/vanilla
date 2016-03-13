@@ -1688,8 +1688,10 @@ void GraphicsTableView::focusOutEvent(QFocusEvent *ev){
 }
 
 void GraphicsTableView::timerEvent(QTimerEvent *ev){
+    QGraphicsObject::timerEvent(ev);
     if(!scene() || !isVisible()) return;
-    if(m_AutoUpdateTimerID && ev->timerId() == m_AutoUpdateTimerID){
+    if(m_TreeBank && m_TreeBank->parentWidget()->isActiveWindow() &&
+       m_AutoUpdateTimerID && ev->timerId() == m_AutoUpdateTimerID){
         Update();
     }
 }
@@ -2673,12 +2675,12 @@ bool GraphicsTableView::ThumbList_ScrollDown(){
     return true;
 }
 
-bool GraphicsTableView::ThumbList_PageUp(){
-    return ThumbList_MoveToPrevPage();
+bool GraphicsTableView::ThumbList_NextPage(){
+    return ThumbList_MoveToNextPage();
 }
 
-bool GraphicsTableView::ThumbList_PageDown(){
-    return ThumbList_MoveToNextPage();
+bool GraphicsTableView::ThumbList_PrevPage(){
+    return ThumbList_MoveToPrevPage();
 }
 
 bool GraphicsTableView::ThumbList_ZoomIn(){

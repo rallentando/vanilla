@@ -229,6 +229,7 @@ signals:
 
 public:
     static QString UserAgent_IE();
+    static QString UserAgent_Edge();
     static QString UserAgent_FF();
     static QString UserAgent_Opera();
     static QString UserAgent_OPR();
@@ -245,6 +246,7 @@ public:
 
 private:
     static QString m_UserAgent_IE;
+    static QString m_UserAgent_Edge;
     static QString m_UserAgent_FF;
     static QString m_UserAgent_Opera;
     static QString m_UserAgent_OPR;

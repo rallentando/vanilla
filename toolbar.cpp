@@ -110,10 +110,10 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
 {
     m_View = SharedView();
     m_TreeBank = tb;
-    addAction(m_BackAction = tb->Action(TreeBank::Te_Back));
-    addAction(m_ForwardAction = tb->Action(TreeBank::Te_Forward));
-    addAction(m_ReloadAction = tb->Action(TreeBank::Te_Reload));
-    addAction(m_StopAction = tb->Action(TreeBank::Te_Stop));
+    addAction(m_BackAction = tb->Action(TreeBank::_Back));
+    addAction(m_ForwardAction = tb->Action(TreeBank::_Forward));
+    addAction(m_ReloadAction = tb->Action(TreeBank::_Reload));
+    addAction(m_StopAction = tb->Action(TreeBank::_Stop));
     m_LineEdit = new LineEdit(this);
     m_Model = new QStringListModel(m_CommandCandidates);
     m_Completer = new QCompleter(m_Model);

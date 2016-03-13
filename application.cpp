@@ -92,6 +92,7 @@ MainWindow *Application::m_CurrentWindow = 0;
 ModelessDialogFrame *Application::m_TemporaryDialogFrame = 0;
 
 QString Application::m_UserAgent_IE        = QString();
+QString Application::m_UserAgent_Edge      = QString();
 QString Application::m_UserAgent_FF        = QString();
 QString Application::m_UserAgent_Opera     = QString();
 QString Application::m_UserAgent_OPR       = QString();
@@ -1443,6 +1444,7 @@ void Application::SaveGlobalSettings(){
     if(downPolicy == AskForEachDownload) s->setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("AskForEachDownload"));
 
     s->setValue(QStringLiteral("application/UserAgent_IE"),        DEFAULT_USER_AGENT_IE        == m_UserAgent_IE        ? QString() : m_UserAgent_IE        );
+    s->setValue(QStringLiteral("application/UserAgent_Edge"),      DEFAULT_USER_AGENT_EDGE      == m_UserAgent_Edge      ? QString() : m_UserAgent_Edge      );
     s->setValue(QStringLiteral("application/UserAgent_Firefox"),   DEFAULT_USER_AGENT_FIREFOX   == m_UserAgent_FF        ? QString() : m_UserAgent_FF        );
     s->setValue(QStringLiteral("application/UserAgent_Opera"),     DEFAULT_USER_AGENT_OPERA     == m_UserAgent_Opera     ? QString() : m_UserAgent_Opera     );
     s->setValue(QStringLiteral("application/UserAgent_OPR"),       DEFAULT_USER_AGENT_OPR       == m_UserAgent_OPR       ? QString() : m_UserAgent_OPR       );
@@ -1505,6 +1507,7 @@ void Application::LoadGlobalSettings(){
     if(downPolicy == QStringLiteral("AskForEachDownload")) m_DownloadPolicy = AskForEachDownload;
 
     m_UserAgent_IE        = s->value(QStringLiteral("application/UserAgent_IE"),        DEFAULT_USER_AGENT_IE        ).value<QString>();
+    m_UserAgent_Edge      = s->value(QStringLiteral("application/UserAgent_Edge"),      DEFAULT_USER_AGENT_EDGE      ).value<QString>();
     m_UserAgent_FF        = s->value(QStringLiteral("application/UserAgent_Firefox"),   DEFAULT_USER_AGENT_FIREFOX   ).value<QString>();
     m_UserAgent_Opera     = s->value(QStringLiteral("application/UserAgent_Opera"),     DEFAULT_USER_AGENT_OPERA     ).value<QString>();
     m_UserAgent_OPR       = s->value(QStringLiteral("application/UserAgent_OPR"),       DEFAULT_USER_AGENT_OPR       ).value<QString>();
@@ -1519,6 +1522,7 @@ void Application::LoadGlobalSettings(){
     m_UserAgent_Camino    = s->value(QStringLiteral("application/UserAgent_Camino"),    DEFAULT_USER_AGENT_CAMINO    ).value<QString>();
     m_UserAgent_Custom    = s->value(QStringLiteral("application/UserAgent_Custom"),    QString()).value<QString>();
     if(m_UserAgent_IE        .isEmpty()) m_UserAgent_IE        = DEFAULT_USER_AGENT_IE        ;
+    if(m_UserAgent_Edge      .isEmpty()) m_UserAgent_Edge      = DEFAULT_USER_AGENT_EDGE      ;
     if(m_UserAgent_FF        .isEmpty()) m_UserAgent_FF        = DEFAULT_USER_AGENT_FIREFOX   ;
     if(m_UserAgent_Opera     .isEmpty()) m_UserAgent_Opera     = DEFAULT_USER_AGENT_OPERA     ;
     if(m_UserAgent_OPR       .isEmpty()) m_UserAgent_OPR       = DEFAULT_USER_AGENT_OPR       ;
@@ -2164,6 +2168,10 @@ void Application::SetTemporaryDialogFrame(ModelessDialogFrame *frame){
 
 QString Application::UserAgent_IE(){
     return m_UserAgent_IE;
+}
+
+QString Application::UserAgent_Edge(){
+    return m_UserAgent_Edge;
 }
 
 QString Application::UserAgent_FF(){

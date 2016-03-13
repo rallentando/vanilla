@@ -216,10 +216,10 @@ void QuickWebViewBase::ZoomOut(){
 
 QAction *QuickWebViewBase::Action(QWebPageBase::WebAction a){
     switch(a){
-    case QWebPageBase::Reload:  return Action(Page::We_Reload);
-    case QWebPageBase::Stop:    return Action(Page::We_Stop);
-    case QWebPageBase::Back:    return Action(Page::We_Back);
-    case QWebPageBase::Forward: return Action(Page::We_Forward);
+    case QWebPageBase::Reload:  return Action(Page::_Reload);
+    case QWebPageBase::Stop:    return Action(Page::_Stop);
+    case QWebPageBase::Back:    return Action(Page::_Back);
+    case QWebPageBase::Forward: return Action(Page::_Forward);
     }
     return page()->Action(a);
 }
@@ -229,27 +229,27 @@ QAction *QuickWebViewBase::Action(Page::CustomAction a, QVariant data){
 
     if(action) return action;
 
-    if(a == Page::We_Reload ||
-       a == Page::We_Stop ||
-       a == Page::We_Back ||
-       a == Page::We_Forward){
+    if(a == Page::_Reload ||
+       a == Page::_Stop ||
+       a == Page::_Back ||
+       a == Page::_Forward){
 
         m_ActionTable[a] = action = new QAction(this);
 
         switch(a){
-        case Page::We_Reload:
+        case Page::_Reload:
             action->setText(tr("Reload"));
             connect(action, SIGNAL(triggered()), m_QmlWebViewBase, SLOT(reload()));
             break;
-        case Page::We_Stop:
+        case Page::_Stop:
             action->setText(tr("Stop"));
             connect(action, SIGNAL(triggered()), m_QmlWebViewBase, SLOT(stop()));
             break;
-        case Page::We_Back:
+        case Page::_Back:
             action->setText(tr("Back"));
             connect(action, SIGNAL(triggered()), m_QmlWebViewBase, SLOT(goBack()));
             break;
-        case Page::We_Forward:
+        case Page::_Forward:
             action->setText(tr("Forward"));
             connect(action, SIGNAL(triggered()), m_QmlWebViewBase, SLOT(goForward()));
             break;

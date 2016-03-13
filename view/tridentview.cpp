@@ -1703,10 +1703,10 @@ void TridentView::DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPo
     QUrl imageUrl = elem ? elem->ImageUrl() : QUrl();
 
     if(linkUrl.isEmpty() && imageUrl.isEmpty() && SelectedText().isEmpty()){
-        QAction *backAction    = Action(Page::We_Back);
-        QAction *forwardAction = Action(Page::We_Forward);
-        QAction *stopAction    = Action(Page::We_Stop);
-        QAction *reloadAction  = Action(Page::We_Reload);
+        QAction *backAction    = Action(Page::_Back);
+        QAction *forwardAction = Action(Page::_Forward);
+        QAction *stopAction    = Action(Page::_Stop);
+        QAction *reloadAction  = Action(Page::_Reload);
 
         if(CanGoBack())
             menu->addAction(backAction);

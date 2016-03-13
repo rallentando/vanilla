@@ -107,196 +107,196 @@ public:
     }
 
 public slots:
-    void up                    (){ m_View->TriggerAction(Page::Ke_Up); }
-    void down                  (){ m_View->TriggerAction(Page::Ke_Down); }
-    void right                 (){ m_View->TriggerAction(Page::Ke_Right); }
-    void left                  (){ m_View->TriggerAction(Page::Ke_Left); }
-    void home                  (){ m_View->TriggerAction(Page::Ke_Home); }
-    void end                   (){ m_View->TriggerAction(Page::Ke_End); }
-    void pageUp                (){ m_View->TriggerAction(Page::Ke_PageUp); }
-    void pageDown              (){ m_View->TriggerAction(Page::Ke_PageDown); }
+    void up                    (){ m_View->TriggerAction(Page::_Up); }
+    void down                  (){ m_View->TriggerAction(Page::_Down); }
+    void right                 (){ m_View->TriggerAction(Page::_Right); }
+    void left                  (){ m_View->TriggerAction(Page::_Left); }
+    void home                  (){ m_View->TriggerAction(Page::_Home); }
+    void end                   (){ m_View->TriggerAction(Page::_End); }
+    void pageUp                (){ m_View->TriggerAction(Page::_PageUp); }
+    void pageDown              (){ m_View->TriggerAction(Page::_PageDown); }
 
-  //void import                (){ m_View->TriggerAction(Page::We_Import);}
-  //void export                (){ m_View->TriggerAction(Page::We_Export);}
-    void aboutVanilla          (){ m_View->TriggerAction(Page::We_AboutVanilla); }
-    void aboutQt               (){ m_View->TriggerAction(Page::We_AboutQt); }
+  //void import                (){ m_View->TriggerAction(Page::_Import);}
+  //void export                (){ m_View->TriggerAction(Page::_Export);}
+    void aboutVanilla          (){ m_View->TriggerAction(Page::_AboutVanilla); }
+    void aboutQt               (){ m_View->TriggerAction(Page::_AboutQt); }
     void quit                  (){ QTimer::singleShot(0, m_View->GetTreeBank(), SLOT(Quit()));}
 
-    void toggleNotifier        (){ m_View->TriggerAction(Page::We_ToggleNotifier); }
-    void toggleReceiver        (){ m_View->TriggerAction(Page::We_ToggleReceiver); }
-    void toggleMenuBar         (){ m_View->TriggerAction(Page::We_ToggleMenuBar); }
-    void toggleTreeBar         (){ m_View->TriggerAction(Page::We_ToggleTreeBar); }
-    void toggleToolBar         (){ m_View->TriggerAction(Page::We_ToggleToolBar); }
-    void toggleFullScreen      (){ m_View->TriggerAction(Page::We_ToggleFullScreen); }
-    void toggleMaximized       (){ m_View->TriggerAction(Page::We_ToggleMaximized); }
-    void toggleMinimized       (){ m_View->TriggerAction(Page::We_ToggleMinimized); }
-    void toggleShaded          (){ m_View->TriggerAction(Page::We_ToggleShaded); }
-    void shadeWindow           (){ m_View->TriggerAction(Page::We_ShadeWindow); }
-    void unshadeWindow         (){ m_View->TriggerAction(Page::We_UnshadeWindow);}
-    void newWindow             (){ m_View->TriggerAction(Page::We_NewWindow); }
-    void closeWindow           (){ m_View->TriggerAction(Page::We_CloseWindow); }
-    void switchWindow          (){ m_View->TriggerAction(Page::We_SwitchWindow); }
-    void nextWindow            (){ m_View->TriggerAction(Page::We_NextWindow); }
-    void prevWindow            (){ m_View->TriggerAction(Page::We_PrevWindow); }
+    void toggleNotifier        (){ m_View->TriggerAction(Page::_ToggleNotifier); }
+    void toggleReceiver        (){ m_View->TriggerAction(Page::_ToggleReceiver); }
+    void toggleMenuBar         (){ m_View->TriggerAction(Page::_ToggleMenuBar); }
+    void toggleTreeBar         (){ m_View->TriggerAction(Page::_ToggleTreeBar); }
+    void toggleToolBar         (){ m_View->TriggerAction(Page::_ToggleToolBar); }
+    void toggleFullScreen      (){ m_View->TriggerAction(Page::_ToggleFullScreen); }
+    void toggleMaximized       (){ m_View->TriggerAction(Page::_ToggleMaximized); }
+    void toggleMinimized       (){ m_View->TriggerAction(Page::_ToggleMinimized); }
+    void toggleShaded          (){ m_View->TriggerAction(Page::_ToggleShaded); }
+    void shadeWindow           (){ m_View->TriggerAction(Page::_ShadeWindow); }
+    void unshadeWindow         (){ m_View->TriggerAction(Page::_UnshadeWindow);}
+    void newWindow             (){ m_View->TriggerAction(Page::_NewWindow); }
+    void closeWindow           (){ m_View->TriggerAction(Page::_CloseWindow); }
+    void switchWindow          (){ m_View->TriggerAction(Page::_SwitchWindow); }
+    void nextWindow            (){ m_View->TriggerAction(Page::_NextWindow); }
+    void prevWindow            (){ m_View->TriggerAction(Page::_PrevWindow); }
 
-    void back                  (){ m_View->TriggerAction(Page::We_Back); }
-    void forward               (){ m_View->TriggerAction(Page::We_Forward); }
-    void upDirectory           (){ m_View->TriggerAction(Page::We_UpDirectory); }
+    void back                  (){ m_View->TriggerAction(Page::_Back); }
+    void forward               (){ m_View->TriggerAction(Page::_Forward); }
+    void upDirectory           (){ m_View->TriggerAction(Page::_UpDirectory); }
     void close                 (){ QTimer::singleShot(0, m_View->GetTreeBank(), SLOT(Close())); }
-    void restore               (){ m_View->TriggerAction(Page::We_Restore); }
+    void restore               (){ m_View->TriggerAction(Page::_Restore); }
     void recreate              (){ QTimer::singleShot(0, m_View->GetTreeBank(), SLOT(Recreate())); }
-    void prevView              (){ m_View->TriggerAction(Page::We_PrevView); }
-    void nextView              (){ m_View->TriggerAction(Page::We_NextView); }
-    void buryView              (){ m_View->TriggerAction(Page::We_BuryView); }
-    void digView               (){ m_View->TriggerAction(Page::We_DigView); }
-    void newViewNode           (){ m_View->TriggerAction(Page::We_NewViewNode); }
-    void newHistNode           (){ m_View->TriggerAction(Page::We_NewHistNode); }
-    void cloneViewNode         (){ m_View->TriggerAction(Page::We_CloneViewNode); }
-    void cloneHistNode         (){ m_View->TriggerAction(Page::We_CloneHistNode); }
-    void displayAccessKey      (){ m_View->TriggerAction(Page::We_DisplayAccessKey); }
-    void displayViewTree       (){ m_View->TriggerAction(Page::We_DisplayViewTree); }
-    void displayHistTree       (){ m_View->TriggerAction(Page::We_DisplayHistTree); }
-    void displayTrashTree      (){ m_View->TriggerAction(Page::We_DisplayTrashTree); }
-    void openTextSeeker        (){ m_View->TriggerAction(Page::We_OpenTextSeeker); }
-    void openQueryEditor       (){ m_View->TriggerAction(Page::We_OpenQueryEditor); }
-    void openUrlEditor         (){ m_View->TriggerAction(Page::We_OpenUrlEditor); }
-    void openCommand           (){ m_View->TriggerAction(Page::We_OpenCommand); }
-    void releaseHiddenView     (){ m_View->TriggerAction(Page::We_ReleaseHiddenView); }
-    void load                  (){ m_View->TriggerAction(Page::We_Load); }
+    void prevView              (){ m_View->TriggerAction(Page::_PrevView); }
+    void nextView              (){ m_View->TriggerAction(Page::_NextView); }
+    void buryView              (){ m_View->TriggerAction(Page::_BuryView); }
+    void digView               (){ m_View->TriggerAction(Page::_DigView); }
+    void newViewNode           (){ m_View->TriggerAction(Page::_NewViewNode); }
+    void newHistNode           (){ m_View->TriggerAction(Page::_NewHistNode); }
+    void cloneViewNode         (){ m_View->TriggerAction(Page::_CloneViewNode); }
+    void cloneHistNode         (){ m_View->TriggerAction(Page::_CloneHistNode); }
+    void displayAccessKey      (){ m_View->TriggerAction(Page::_DisplayAccessKey); }
+    void displayViewTree       (){ m_View->TriggerAction(Page::_DisplayViewTree); }
+    void displayHistTree       (){ m_View->TriggerAction(Page::_DisplayHistTree); }
+    void displayTrashTree      (){ m_View->TriggerAction(Page::_DisplayTrashTree); }
+    void openTextSeeker        (){ m_View->TriggerAction(Page::_OpenTextSeeker); }
+    void openQueryEditor       (){ m_View->TriggerAction(Page::_OpenQueryEditor); }
+    void openUrlEditor         (){ m_View->TriggerAction(Page::_OpenUrlEditor); }
+    void openCommand           (){ m_View->TriggerAction(Page::_OpenCommand); }
+    void releaseHiddenView     (){ m_View->TriggerAction(Page::_ReleaseHiddenView); }
+    void load                  (){ m_View->TriggerAction(Page::_Load); }
 
-    void copy                  (){ m_View->TriggerAction(Page::We_Copy); }
-    void cut                   (){ m_View->TriggerAction(Page::We_Cut); }
-    void paste                 (){ m_View->TriggerAction(Page::We_Paste); }
-    void undo                  (){ m_View->TriggerAction(Page::We_Undo); }
-    void redo                  (){ m_View->TriggerAction(Page::We_Redo); }
-    void selectAll             (){ m_View->TriggerAction(Page::We_SelectAll); }
-    void unselect              (){ m_View->TriggerAction(Page::We_Unselect); }
-    void reload                (){ m_View->TriggerAction(Page::We_Reload); }
-    void reloadAndBypassCache  (){ m_View->TriggerAction(Page::We_ReloadAndBypassCache); }
-    void stop                  (){ m_View->TriggerAction(Page::We_Stop); }
-    void stopAndUnselect       (){ m_View->TriggerAction(Page::We_StopAndUnselect); }
+    void copy                  (){ m_View->TriggerAction(Page::_Copy); }
+    void cut                   (){ m_View->TriggerAction(Page::_Cut); }
+    void paste                 (){ m_View->TriggerAction(Page::_Paste); }
+    void undo                  (){ m_View->TriggerAction(Page::_Undo); }
+    void redo                  (){ m_View->TriggerAction(Page::_Redo); }
+    void selectAll             (){ m_View->TriggerAction(Page::_SelectAll); }
+    void unselect              (){ m_View->TriggerAction(Page::_Unselect); }
+    void reload                (){ m_View->TriggerAction(Page::_Reload); }
+    void reloadAndBypassCache  (){ m_View->TriggerAction(Page::_ReloadAndBypassCache); }
+    void stop                  (){ m_View->TriggerAction(Page::_Stop); }
+    void stopAndUnselect       (){ m_View->TriggerAction(Page::_StopAndUnselect); }
 
-    void print                 (){ m_View->TriggerAction(Page::We_Print); }
-    void save                  (){ m_View->TriggerAction(Page::We_Save); }
-    void zoomIn                (){ m_View->TriggerAction(Page::We_ZoomIn); }
-    void zoomOut               (){ m_View->TriggerAction(Page::We_ZoomOut); }
-    void viewSource            (){ m_View->TriggerAction(Page::We_ViewSource); }
-    void applySource           (){ m_View->TriggerAction(Page::We_ApplySource); }
+    void print                 (){ m_View->TriggerAction(Page::_Print); }
+    void save                  (){ m_View->TriggerAction(Page::_Save); }
+    void zoomIn                (){ m_View->TriggerAction(Page::_ZoomIn); }
+    void zoomOut               (){ m_View->TriggerAction(Page::_ZoomOut); }
+    void viewSource            (){ m_View->TriggerAction(Page::_ViewSource); }
+    void applySource           (){ m_View->TriggerAction(Page::_ApplySource); }
 
-    void openBookmarklet       (){ m_View->TriggerAction(Page::We_OpenBookmarklet); }
-    void searchWith            (){ m_View->TriggerAction(Page::We_SearchWith); }
-    void addSearchEngine       (){ m_View->TriggerAction(Page::We_AddSearchEngine); }
-    void addBookmarklet        (){ m_View->TriggerAction(Page::We_AddBookmarklet); }
-    void inspectElement        (){ m_View->TriggerAction(Page::We_InspectElement); }
+    void openBookmarklet       (){ m_View->TriggerAction(Page::_OpenBookmarklet); }
+    void searchWith            (){ m_View->TriggerAction(Page::_SearchWith); }
+    void addSearchEngine       (){ m_View->TriggerAction(Page::_AddSearchEngine); }
+    void addBookmarklet        (){ m_View->TriggerAction(Page::_AddBookmarklet); }
+    void inspectElement        (){ m_View->TriggerAction(Page::_InspectElement); }
 
-    void copyUrl               (){ m_View->TriggerAction(Page::We_CopyUrl); }
-    void copyTitle             (){ m_View->TriggerAction(Page::We_CopyTitle); }
-    void copyPageAsLink        (){ m_View->TriggerAction(Page::We_CopyPageAsLink); }
-    void copySelectedHtml      (){ m_View->TriggerAction(Page::We_CopySelectedHtml); }
-    void openWithIE            (){ m_View->TriggerAction(Page::We_OpenWithIE); }
-    void openWithEdge          (){ m_View->TriggerAction(Page::We_OpenWithEdge); }
-    void openWithFF            (){ m_View->TriggerAction(Page::We_OpenWithFF); }
-    void openWithOpera         (){ m_View->TriggerAction(Page::We_OpenWithOpera); }
-    void openWithOPR           (){ m_View->TriggerAction(Page::We_OpenWithOPR); }
-    void openWithSafari        (){ m_View->TriggerAction(Page::We_OpenWithSafari); }
-    void openWithChrome        (){ m_View->TriggerAction(Page::We_OpenWithChrome); }
-    void openWithSleipnir      (){ m_View->TriggerAction(Page::We_OpenWithSleipnir); }
-    void openWithVivaldi       (){ m_View->TriggerAction(Page::We_OpenWithVivaldi); }
-    void openWithCustom        (){ m_View->TriggerAction(Page::We_OpenWithCustom); }
+    void copyUrl               (){ m_View->TriggerAction(Page::_CopyUrl); }
+    void copyTitle             (){ m_View->TriggerAction(Page::_CopyTitle); }
+    void copyPageAsLink        (){ m_View->TriggerAction(Page::_CopyPageAsLink); }
+    void copySelectedHtml      (){ m_View->TriggerAction(Page::_CopySelectedHtml); }
+    void openWithIE            (){ m_View->TriggerAction(Page::_OpenWithIE); }
+    void openWithEdge          (){ m_View->TriggerAction(Page::_OpenWithEdge); }
+    void openWithFF            (){ m_View->TriggerAction(Page::_OpenWithFF); }
+    void openWithOpera         (){ m_View->TriggerAction(Page::_OpenWithOpera); }
+    void openWithOPR           (){ m_View->TriggerAction(Page::_OpenWithOPR); }
+    void openWithSafari        (){ m_View->TriggerAction(Page::_OpenWithSafari); }
+    void openWithChrome        (){ m_View->TriggerAction(Page::_OpenWithChrome); }
+    void openWithSleipnir      (){ m_View->TriggerAction(Page::_OpenWithSleipnir); }
+    void openWithVivaldi       (){ m_View->TriggerAction(Page::_OpenWithVivaldi); }
+    void openWithCustom        (){ m_View->TriggerAction(Page::_OpenWithCustom); }
 
-    void clickElement          (){ m_View->TriggerAction(Page::We_ClickElement); }
-    void focusElement          (){ m_View->TriggerAction(Page::We_FocusElement); }
-    void hoverElement          (){ m_View->TriggerAction(Page::We_HoverElement); }
+    void clickElement          (){ m_View->TriggerAction(Page::_ClickElement); }
+    void focusElement          (){ m_View->TriggerAction(Page::_FocusElement); }
+    void hoverElement          (){ m_View->TriggerAction(Page::_HoverElement); }
 
-    void loadLink              (){ m_View->TriggerAction(Page::We_LoadLink); }
-    void openLink              (){ m_View->TriggerAction(Page::We_OpenLink); }
-    void downloadLink          (){ m_View->TriggerAction(Page::We_DownloadLink); }
-    void copyLinkUrl           (){ m_View->TriggerAction(Page::We_CopyLinkUrl); }
-    void copyLinkHtml          (){ m_View->TriggerAction(Page::We_CopyLinkHtml); }
-    void openLinkWithIE        (){ m_View->TriggerAction(Page::We_OpenLinkWithIE); }
-    void openLinkWithEdge      (){ m_View->TriggerAction(Page::We_OpenLinkWithEdge); }
-    void openLinkWithFF        (){ m_View->TriggerAction(Page::We_OpenLinkWithFF); }
-    void openLinkWithOpera     (){ m_View->TriggerAction(Page::We_OpenLinkWithOpera); }
-    void openLinkWithOPR       (){ m_View->TriggerAction(Page::We_OpenLinkWithOPR); }
-    void openLinkWithSafari    (){ m_View->TriggerAction(Page::We_OpenLinkWithSafari); }
-    void openLinkWithChrome    (){ m_View->TriggerAction(Page::We_OpenLinkWithChrome); }
-    void openLinkWithSleipnir  (){ m_View->TriggerAction(Page::We_OpenLinkWithSleipnir); }
-    void openLinkWithVivaldi   (){ m_View->TriggerAction(Page::We_OpenLinkWithVivaldi); }
-    void openLinkWithCustom    (){ m_View->TriggerAction(Page::We_OpenLinkWithCustom); }
+    void loadLink              (){ m_View->TriggerAction(Page::_LoadLink); }
+    void openLink              (){ m_View->TriggerAction(Page::_OpenLink); }
+    void downloadLink          (){ m_View->TriggerAction(Page::_DownloadLink); }
+    void copyLinkUrl           (){ m_View->TriggerAction(Page::_CopyLinkUrl); }
+    void copyLinkHtml          (){ m_View->TriggerAction(Page::_CopyLinkHtml); }
+    void openLinkWithIE        (){ m_View->TriggerAction(Page::_OpenLinkWithIE); }
+    void openLinkWithEdge      (){ m_View->TriggerAction(Page::_OpenLinkWithEdge); }
+    void openLinkWithFF        (){ m_View->TriggerAction(Page::_OpenLinkWithFF); }
+    void openLinkWithOpera     (){ m_View->TriggerAction(Page::_OpenLinkWithOpera); }
+    void openLinkWithOPR       (){ m_View->TriggerAction(Page::_OpenLinkWithOPR); }
+    void openLinkWithSafari    (){ m_View->TriggerAction(Page::_OpenLinkWithSafari); }
+    void openLinkWithChrome    (){ m_View->TriggerAction(Page::_OpenLinkWithChrome); }
+    void openLinkWithSleipnir  (){ m_View->TriggerAction(Page::_OpenLinkWithSleipnir); }
+    void openLinkWithVivaldi   (){ m_View->TriggerAction(Page::_OpenLinkWithVivaldi); }
+    void openLinkWithCustom    (){ m_View->TriggerAction(Page::_OpenLinkWithCustom); }
 
-    void loadImage             (){ m_View->TriggerAction(Page::We_LoadImage);}
-    void openImage             (){ m_View->TriggerAction(Page::We_OpenImage); }
-    void downloadImage         (){ m_View->TriggerAction(Page::We_DownloadImage); }
-    void copyImage             (){ m_View->TriggerAction(Page::We_CopyImage); }
-    void copyImageUrl          (){ m_View->TriggerAction(Page::We_CopyImageUrl); }
-    void copyImageHtml         (){ m_View->TriggerAction(Page::We_CopyImageHtml); }
-    void openImageWithIE       (){ m_View->TriggerAction(Page::We_OpenImageWithIE); }
-    void openImageWithEdge     (){ m_View->TriggerAction(Page::We_OpenImageWithEdge); }
-    void openImageWithFF       (){ m_View->TriggerAction(Page::We_OpenImageWithFF); }
-    void openImageWithOpera    (){ m_View->TriggerAction(Page::We_OpenImageWithOpera); }
-    void openImageWithOPR      (){ m_View->TriggerAction(Page::We_OpenImageWithOPR); }
-    void openImageWithSafari   (){ m_View->TriggerAction(Page::We_OpenImageWithSafari); }
-    void openImageWithChrome   (){ m_View->TriggerAction(Page::We_OpenImageWithChrome); }
-    void openImageWithSleipnir (){ m_View->TriggerAction(Page::We_OpenImageWithSleipnir); }
-    void openImageWithVivaldi  (){ m_View->TriggerAction(Page::We_OpenImageWithVivaldi); }
-    void openImageWithCustom   (){ m_View->TriggerAction(Page::We_OpenImageWithCustom); }
+    void loadImage             (){ m_View->TriggerAction(Page::_LoadImage);}
+    void openImage             (){ m_View->TriggerAction(Page::_OpenImage); }
+    void downloadImage         (){ m_View->TriggerAction(Page::_DownloadImage); }
+    void copyImage             (){ m_View->TriggerAction(Page::_CopyImage); }
+    void copyImageUrl          (){ m_View->TriggerAction(Page::_CopyImageUrl); }
+    void copyImageHtml         (){ m_View->TriggerAction(Page::_CopyImageHtml); }
+    void openImageWithIE       (){ m_View->TriggerAction(Page::_OpenImageWithIE); }
+    void openImageWithEdge     (){ m_View->TriggerAction(Page::_OpenImageWithEdge); }
+    void openImageWithFF       (){ m_View->TriggerAction(Page::_OpenImageWithFF); }
+    void openImageWithOpera    (){ m_View->TriggerAction(Page::_OpenImageWithOpera); }
+    void openImageWithOPR      (){ m_View->TriggerAction(Page::_OpenImageWithOPR); }
+    void openImageWithSafari   (){ m_View->TriggerAction(Page::_OpenImageWithSafari); }
+    void openImageWithChrome   (){ m_View->TriggerAction(Page::_OpenImageWithChrome); }
+    void openImageWithSleipnir (){ m_View->TriggerAction(Page::_OpenImageWithSleipnir); }
+    void openImageWithVivaldi  (){ m_View->TriggerAction(Page::_OpenImageWithVivaldi); }
+    void openImageWithCustom   (){ m_View->TriggerAction(Page::_OpenImageWithCustom); }
 
-    void openInNewViewNode                 (){ m_View->TriggerAction(Page::We_OpenInNewViewNode); }
-    void openInNewHistNode                 (){ m_View->TriggerAction(Page::We_OpenInNewHistNode); }
-    void openInNewDirectory                (){ m_View->TriggerAction(Page::We_OpenInNewDirectory); }
-    void openOnRoot                        (){ m_View->TriggerAction(Page::We_OpenOnRoot); }
+    void openInNewViewNode                 (){ m_View->TriggerAction(Page::_OpenInNewViewNode); }
+    void openInNewHistNode                 (){ m_View->TriggerAction(Page::_OpenInNewHistNode); }
+    void openInNewDirectory                (){ m_View->TriggerAction(Page::_OpenInNewDirectory); }
+    void openOnRoot                        (){ m_View->TriggerAction(Page::_OpenOnRoot); }
 
-    void openInNewViewNodeForeground       (){ m_View->TriggerAction(Page::We_OpenInNewViewNodeForeground); }
-    void openInNewHistNodeForeground       (){ m_View->TriggerAction(Page::We_OpenInNewHistNodeForeground); }
-    void openInNewDirectoryForeground      (){ m_View->TriggerAction(Page::We_OpenInNewDirectoryForeground); }
-    void openOnRootForeground              (){ m_View->TriggerAction(Page::We_OpenOnRootForeground); }
+    void openInNewViewNodeForeground       (){ m_View->TriggerAction(Page::_OpenInNewViewNodeForeground); }
+    void openInNewHistNodeForeground       (){ m_View->TriggerAction(Page::_OpenInNewHistNodeForeground); }
+    void openInNewDirectoryForeground      (){ m_View->TriggerAction(Page::_OpenInNewDirectoryForeground); }
+    void openOnRootForeground              (){ m_View->TriggerAction(Page::_OpenOnRootForeground); }
 
-    void openInNewViewNodeBackground       (){ m_View->TriggerAction(Page::We_OpenInNewViewNodeBackground); }
-    void openInNewHistNodeBackground       (){ m_View->TriggerAction(Page::We_OpenInNewHistNodeBackground); }
-    void openInNewDirectoryBackground      (){ m_View->TriggerAction(Page::We_OpenInNewDirectoryBackground); }
-    void openOnRootBackground              (){ m_View->TriggerAction(Page::We_OpenOnRootBackground); }
+    void openInNewViewNodeBackground       (){ m_View->TriggerAction(Page::_OpenInNewViewNodeBackground); }
+    void openInNewHistNodeBackground       (){ m_View->TriggerAction(Page::_OpenInNewHistNodeBackground); }
+    void openInNewDirectoryBackground      (){ m_View->TriggerAction(Page::_OpenInNewDirectoryBackground); }
+    void openOnRootBackground              (){ m_View->TriggerAction(Page::_OpenOnRootBackground); }
 
-    void openInNewViewNodeThisWindow       (){ m_View->TriggerAction(Page::We_OpenInNewViewNodeThisWindow); }
-    void openInNewHistNodeThisWindow       (){ m_View->TriggerAction(Page::We_OpenInNewHistNodeThisWindow); }
-    void openInNewDirectoryThisWindow      (){ m_View->TriggerAction(Page::We_OpenInNewDirectoryThisWindow); }
-    void openOnRootThisWindow              (){ m_View->TriggerAction(Page::We_OpenOnRootThisWindow); }
+    void openInNewViewNodeThisWindow       (){ m_View->TriggerAction(Page::_OpenInNewViewNodeThisWindow); }
+    void openInNewHistNodeThisWindow       (){ m_View->TriggerAction(Page::_OpenInNewHistNodeThisWindow); }
+    void openInNewDirectoryThisWindow      (){ m_View->TriggerAction(Page::_OpenInNewDirectoryThisWindow); }
+    void openOnRootThisWindow              (){ m_View->TriggerAction(Page::_OpenOnRootThisWindow); }
 
-    void openInNewViewNodeNewWindow        (){ m_View->TriggerAction(Page::We_OpenInNewViewNodeNewWindow); }
-    void openInNewHistNodeNewWindow        (){ m_View->TriggerAction(Page::We_OpenInNewHistNodeNewWindow); }
-    void openInNewDirectoryNewWindow       (){ m_View->TriggerAction(Page::We_OpenInNewDirectoryNewWindow); }
-    void openOnRootNewWindow               (){ m_View->TriggerAction(Page::We_OpenOnRootNewWindow); }
+    void openInNewViewNodeNewWindow        (){ m_View->TriggerAction(Page::_OpenInNewViewNodeNewWindow); }
+    void openInNewHistNodeNewWindow        (){ m_View->TriggerAction(Page::_OpenInNewHistNodeNewWindow); }
+    void openInNewDirectoryNewWindow       (){ m_View->TriggerAction(Page::_OpenInNewDirectoryNewWindow); }
+    void openOnRootNewWindow               (){ m_View->TriggerAction(Page::_OpenOnRootNewWindow); }
 
-    void openImageInNewViewNode            (){ m_View->TriggerAction(Page::We_OpenImageInNewViewNode); }
-    void openImageInNewHistNode            (){ m_View->TriggerAction(Page::We_OpenImageInNewHistNode); }
-    void openImageInNewDirectory           (){ m_View->TriggerAction(Page::We_OpenImageInNewDirectory); }
-    void openImageOnRoot                   (){ m_View->TriggerAction(Page::We_OpenImageOnRoot); }
+    void openImageInNewViewNode            (){ m_View->TriggerAction(Page::_OpenImageInNewViewNode); }
+    void openImageInNewHistNode            (){ m_View->TriggerAction(Page::_OpenImageInNewHistNode); }
+    void openImageInNewDirectory           (){ m_View->TriggerAction(Page::_OpenImageInNewDirectory); }
+    void openImageOnRoot                   (){ m_View->TriggerAction(Page::_OpenImageOnRoot); }
 
-    void openImageInNewViewNodeForeground  (){ m_View->TriggerAction(Page::We_OpenImageInNewViewNodeForeground); }
-    void openImageInNewHistNodeForeground  (){ m_View->TriggerAction(Page::We_OpenImageInNewHistNodeForeground); }
-    void openImageInNewDirectoryForeground (){ m_View->TriggerAction(Page::We_OpenImageInNewDirectoryForeground); }
-    void openImageOnRootForeground         (){ m_View->TriggerAction(Page::We_OpenImageOnRootForeground); }
+    void openImageInNewViewNodeForeground  (){ m_View->TriggerAction(Page::_OpenImageInNewViewNodeForeground); }
+    void openImageInNewHistNodeForeground  (){ m_View->TriggerAction(Page::_OpenImageInNewHistNodeForeground); }
+    void openImageInNewDirectoryForeground (){ m_View->TriggerAction(Page::_OpenImageInNewDirectoryForeground); }
+    void openImageOnRootForeground         (){ m_View->TriggerAction(Page::_OpenImageOnRootForeground); }
 
-    void openImageInNewViewNodeBackground  (){ m_View->TriggerAction(Page::We_OpenImageInNewViewNodeBackground); }
-    void openImageInNewHistNodeBackground  (){ m_View->TriggerAction(Page::We_OpenImageInNewHistNodeBackground); }
-    void openImageInNewDirectoryBackground (){ m_View->TriggerAction(Page::We_OpenImageInNewDirectoryBackground); }
-    void openImageOnRootBackground         (){ m_View->TriggerAction(Page::We_OpenImageOnRootBackground); }
+    void openImageInNewViewNodeBackground  (){ m_View->TriggerAction(Page::_OpenImageInNewViewNodeBackground); }
+    void openImageInNewHistNodeBackground  (){ m_View->TriggerAction(Page::_OpenImageInNewHistNodeBackground); }
+    void openImageInNewDirectoryBackground (){ m_View->TriggerAction(Page::_OpenImageInNewDirectoryBackground); }
+    void openImageOnRootBackground         (){ m_View->TriggerAction(Page::_OpenImageOnRootBackground); }
 
-    void openImageInNewViewNodeThisWindow  (){ m_View->TriggerAction(Page::We_OpenImageInNewViewNodeThisWindow); }
-    void openImageInNewHistNodeThisWindow  (){ m_View->TriggerAction(Page::We_OpenImageInNewHistNodeThisWindow); }
-    void openImageInNewDirectoryThisWindow (){ m_View->TriggerAction(Page::We_OpenImageInNewDirectoryThisWindow); }
-    void openImageOnRootThisWindow         (){ m_View->TriggerAction(Page::We_OpenImageOnRootThisWindow); }
+    void openImageInNewViewNodeThisWindow  (){ m_View->TriggerAction(Page::_OpenImageInNewViewNodeThisWindow); }
+    void openImageInNewHistNodeThisWindow  (){ m_View->TriggerAction(Page::_OpenImageInNewHistNodeThisWindow); }
+    void openImageInNewDirectoryThisWindow (){ m_View->TriggerAction(Page::_OpenImageInNewDirectoryThisWindow); }
+    void openImageOnRootThisWindow         (){ m_View->TriggerAction(Page::_OpenImageOnRootThisWindow); }
 
-    void openImageInNewViewNodeNewWindow   (){ m_View->TriggerAction(Page::We_OpenImageInNewViewNodeNewWindow); }
-    void openImageInNewHistNodeNewWindow   (){ m_View->TriggerAction(Page::We_OpenImageInNewHistNodeNewWindow); }
-    void openImageInNewDirectoryNewWindow  (){ m_View->TriggerAction(Page::We_OpenImageInNewDirectoryNewWindow); }
-    void openImageOnRootNewWindow          (){ m_View->TriggerAction(Page::We_OpenImageOnRootNewWindow); }
+    void openImageInNewViewNodeNewWindow   (){ m_View->TriggerAction(Page::_OpenImageInNewViewNodeNewWindow); }
+    void openImageInNewHistNodeNewWindow   (){ m_View->TriggerAction(Page::_OpenImageInNewHistNodeNewWindow); }
+    void openImageInNewDirectoryNewWindow  (){ m_View->TriggerAction(Page::_OpenImageInNewDirectoryNewWindow); }
+    void openImageOnRootNewWindow          (){ m_View->TriggerAction(Page::_OpenImageOnRootNewWindow); }
 
-    void openAllUrl    (){ m_View->TriggerAction(Page::We_OpenAllUrl); }
-    void openAllImage  (){ m_View->TriggerAction(Page::We_OpenAllImage); }
-    void openTextAsUrl (){ m_View->TriggerAction(Page::We_OpenTextAsUrl); }
-    void saveAllUrl    (){ m_View->TriggerAction(Page::We_SaveAllUrl); }
-    void saveAllImage  (){ m_View->TriggerAction(Page::We_SaveAllImage); }
-    void saveTextAsUrl (){ m_View->TriggerAction(Page::We_SaveTextAsUrl); }
+    void openAllUrl    (){ m_View->TriggerAction(Page::_OpenAllUrl); }
+    void openAllImage  (){ m_View->TriggerAction(Page::_OpenAllImage); }
+    void openTextAsUrl (){ m_View->TriggerAction(Page::_OpenTextAsUrl); }
+    void saveAllUrl    (){ m_View->TriggerAction(Page::_SaveAllUrl); }
+    void saveAllImage  (){ m_View->TriggerAction(Page::_SaveAllImage); }
+    void saveTextAsUrl (){ m_View->TriggerAction(Page::_SaveTextAsUrl); }
 };
 
 #endif

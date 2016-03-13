@@ -536,19 +536,19 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
     //[[!WEV]]
     if(settings()->testAttribute(QWebSettings::DeveloperExtrasEnabled)){
         menu->addSeparator();
-        menu->addAction(Action(Page::We_InspectElement));
+        menu->addAction(Action(Page::_InspectElement));
     }
     //[[/!WEV]]
     //[[WEV]]
 #if QT_VERSION >= 0x050600
     menu->addSeparator();
-    menu->addAction(Action(Page::We_InspectElement));
+    menu->addAction(Action(Page::_InspectElement));
 #endif
     //[[/WEV]]
 
     if(elem && !elem->IsNull() && elem->IsQueryInputElement()){
         if(!menu->isEmpty()) menu->addSeparator();
-        menu->addAction(Action(Page::We_AddSearchEngine, localPos));
+        menu->addAction(Action(Page::_AddSearchEngine, localPos));
     }
 
     m_View->AddRegularMenu(menu, elem);
@@ -573,26 +573,26 @@ QAction *WebPageBase::Action(Page::CustomAction a, QVariant data){
     QAction *result = 0;
     switch(a){
     // set text manually.
-    case Page::We_Copy:          result = action(Copy);                    result->setText(tr("Copy"));          return result;
-    case Page::We_Cut:           result = action(Cut);                     result->setText(tr("Cut"));           return result;
-    case Page::We_Paste:         result = action(Paste);                   result->setText(tr("Paste"));         return result;
-    case Page::We_Undo:          result = action(Undo);                    result->setText(tr("Undo"));          return result;
-    case Page::We_Redo:          result = action(Redo);                    result->setText(tr("Redo"));          return result;
-    case Page::We_SelectAll:     result = action(SelectAll);               result->setText(tr("SelectAll"));     return result;
-    case Page::We_Reload:        result = action(Reload);                  result->setText(tr("Reload"));        return result;
-    case Page::We_Stop:          result = action(Stop);                    result->setText(tr("Stop"));          return result;
+    case Page::_Copy:          result = action(Copy);                    result->setText(tr("Copy"));          return result;
+    case Page::_Cut:           result = action(Cut);                     result->setText(tr("Cut"));           return result;
+    case Page::_Paste:         result = action(Paste);                   result->setText(tr("Paste"));         return result;
+    case Page::_Undo:          result = action(Undo);                    result->setText(tr("Undo"));          return result;
+    case Page::_Redo:          result = action(Redo);                    result->setText(tr("Redo"));          return result;
+    case Page::_SelectAll:     result = action(SelectAll);               result->setText(tr("SelectAll"));     return result;
+    case Page::_Reload:        result = action(Reload);                  result->setText(tr("Reload"));        return result;
+    case Page::_Stop:          result = action(Stop);                    result->setText(tr("Stop"));          return result;
 
     //[[!WEV]]
 
-  //case Page::We_LoadLink:      result = action(OpenLink);                result->setText(tr("LoadLink"));      return result;
-    case Page::We_OpenLink:      result = action(OpenLinkInNewWindow);     result->setText(tr("OpenLink"));      return result;
-  //case Page::We_DownloadLink:  result = action(DownloadLinkToDisk);      result->setText(tr("DownloadLink"));  return result;
-    case Page::We_CopyLinkUrl:   result = action(CopyLinkToClipboard);     result->setText(tr("CopyLinkUrl"));   return result;
+  //case Page::_LoadLink:      result = action(OpenLink);                result->setText(tr("LoadLink"));      return result;
+    case Page::_OpenLink:      result = action(OpenLinkInNewWindow);     result->setText(tr("OpenLink"));      return result;
+  //case Page::_DownloadLink:  result = action(DownloadLinkToDisk);      result->setText(tr("DownloadLink"));  return result;
+    case Page::_CopyLinkUrl:   result = action(CopyLinkToClipboard);     result->setText(tr("CopyLinkUrl"));   return result;
 
-    case Page::We_OpenImage:     result = action(OpenImageInNewWindow);    result->setText(tr("OpenImage"));     return result;
-  //case Page::We_DownloadImage: result = action(DownloadImageToDisk);     result->setText(tr("DownloadImage")); return result;
-    case Page::We_CopyImage:     result = action(CopyImageToClipboard);    result->setText(tr("CopyImage"));     return result;
-  //case Page::We_CopyImageUrl:  result = action(CopyImageUrlToClipboard); result->setText(tr("CopyImageUrl"));  return result;
+    case Page::_OpenImage:     result = action(OpenImageInNewWindow);    result->setText(tr("OpenImage"));     return result;
+  //case Page::_DownloadImage: result = action(DownloadImageToDisk);     result->setText(tr("DownloadImage")); return result;
+    case Page::_CopyImage:     result = action(CopyImageToClipboard);    result->setText(tr("CopyImage"));     return result;
+  //case Page::_CopyImageUrl:  result = action(CopyImageUrlToClipboard); result->setText(tr("CopyImageUrl"));  return result;
 
     //[[/!WEV]]
     }

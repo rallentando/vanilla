@@ -299,8 +299,8 @@ public slots:
     virtual bool ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF basepos = QPointF());
     virtual bool ThumbList_ScrollUp();
     virtual bool ThumbList_ScrollDown();
-    virtual bool ThumbList_PageUp();
-    virtual bool ThumbList_PageDown();
+    virtual bool ThumbList_NextPage();
+    virtual bool ThumbList_PrevPage();
     virtual bool ThumbList_ZoomIn();
     virtual bool ThumbList_ZoomOut();
     virtual bool ThumbList_MoveToUpperItem();

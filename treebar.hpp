@@ -33,6 +33,15 @@ public:
     TreeBar(TreeBank *tb, QWidget *parent = 0);
     ~TreeBar();
 
+    enum LastAction{
+        None,
+        TreeStructureChanged,
+        NodeCreated,
+        NodeDeleted,
+        FoldedChanged,
+        CurrentChanged,
+    };
+
     static void Initialize();
 
     static void LoadSettings();
@@ -111,6 +120,7 @@ private:
     int m_AutoUpdateTimerID;
     int m_HorizontalNodeHeight;
     int m_VerticalNodeWidth;
+    LastAction m_LastAction;
 
     static int m_HorizontalNodeWidth;
     static int m_VerticalNodeHeight;
@@ -235,6 +245,14 @@ public:
     NodeItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent = 0);
     ~NodeItem();
 
+    enum ButtonState{
+        NotHovered,
+        CloseHovered,
+        ClosePressed,
+        CloneHovered,
+        ClonePressed,
+    } m_ButtonState;
+
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE;
     QRectF boundingRect() const DECL_OVERRIDE;
     QRectF CloseButtonRect() const;
@@ -259,6 +277,7 @@ public:
 
     QPropertyAnimation *GetAnimation() const;
 
+    void SetButtonState(ButtonState state);
     void SetHoveredWithItem(bool hovered);
 
     void UnfoldDirectory();
@@ -312,14 +331,6 @@ public slots:
     void ResetTargetPosition();
 
 private:
-    enum ButtonState{
-        NotHovered,
-        CloseHovered,
-        ClosePressed,
-        CloneHovered,
-        ClonePressed,
-    } m_ButtonState;
-
     TreeBank *m_TreeBank;
     TreeBar *m_TreeBar;
     Node *m_Node;

@@ -132,10 +132,10 @@ public:
         ThumbList_MoveToLeftItem();
     }
     virtual void PageDownKeyEvent() DECL_OVERRIDE {
-        ThumbList_PageDown();
+        ThumbList_NextPage();
     }
     virtual void PageUpKeyEvent() DECL_OVERRIDE {
-        ThumbList_PageUp();
+        ThumbList_PrevPage();
     }
     virtual void HomeKeyEvent() DECL_OVERRIDE {
         ThumbList_MoveToFirstItem();
@@ -160,11 +160,11 @@ public:
     QAction *Action(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
         Q_UNUSED(data);
         switch(a){
-        case Page::We_Reload:      return Action(Gadgets::Ge_Refresh);
-        case Page::We_Back:        return Action(Gadgets::Ge_UpDirectory);
-        case Page::We_Forward:     return Action(Gadgets::Ge_DownDirectory);
-        case Page::We_NewViewNode: return Action(Gadgets::Ge_NewNode);
-        case Page::We_NewHistNode: return Action(Gadgets::Ge_NewNode);
+        case Page::_Reload:      return Action(Gadgets::_Refresh);
+        case Page::_Back:        return Action(Gadgets::_UpDirectory);
+        case Page::_Forward:     return Action(Gadgets::_DownDirectory);
+        case Page::_NewViewNode: return Action(Gadgets::_NewNode);
+        case Page::_NewHistNode: return Action(Gadgets::_NewNode);
         }
         return Action(Gadgets::StringToAction(Page::ActionToString(a)));
     }
@@ -209,8 +209,8 @@ public:
     bool ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF basepos = QPointF()) DECL_OVERRIDE;
     bool ThumbList_ScrollUp() DECL_OVERRIDE;
     bool ThumbList_ScrollDown() DECL_OVERRIDE;
-    bool ThumbList_PageUp() DECL_OVERRIDE;
-    bool ThumbList_PageDown() DECL_OVERRIDE;
+    bool ThumbList_NextPage() DECL_OVERRIDE;
+    bool ThumbList_PrevPage() DECL_OVERRIDE;
     bool ThumbList_MoveToUpperItem() DECL_OVERRIDE;
     bool ThumbList_MoveToLowerItem() DECL_OVERRIDE;
     bool ThumbList_MoveToRightItem() DECL_OVERRIDE;

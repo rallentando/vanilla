@@ -2260,20 +2260,20 @@ QMenu *TreeBank::NodeMenu(){
     QMenu *menu = new QMenu(tr("Node"), this);
     menu->setToolTipsVisible(true);
 
-    menu->addAction(Action(Te_DisplayViewTree));
-    menu->addAction(Action(Te_DisplayHistTree));
-    menu->addAction(Action(Te_DisplayTrashTree));
+    menu->addAction(Action(_DisplayViewTree));
+    menu->addAction(Action(_DisplayHistTree));
+    menu->addAction(Action(_DisplayTrashTree));
     menu->addSeparator();
-    menu->addAction(Action(Te_Close));
-    menu->addAction(Action(Te_Restore));
-    menu->addAction(Action(Te_NextView));
-    menu->addAction(Action(Te_PrevView));
-    menu->addAction(Action(Te_DigView));
-    menu->addAction(Action(Te_BuryView));
-    menu->addAction(Action(Te_NewViewNode));
-    menu->addAction(Action(Te_NewHistNode));
-    menu->addAction(Action(Te_CloneViewNode));
-    menu->addAction(Action(Te_CloneHistNode));
+    menu->addAction(Action(_Close));
+    menu->addAction(Action(_Restore));
+    menu->addAction(Action(_NextView));
+    menu->addAction(Action(_PrevView));
+    menu->addAction(Action(_DigView));
+    menu->addAction(Action(_BuryView));
+    menu->addAction(Action(_NewViewNode));
+    menu->addAction(Action(_NewHistNode));
+    menu->addAction(Action(_CloneViewNode));
+    menu->addAction(Action(_CloneHistNode));
 
     return menu;
 }
@@ -2282,11 +2282,11 @@ QMenu *TreeBank::DisplayMenu(){
     QMenu *menu = new QMenu(tr("Display"), this);
     menu->setToolTipsVisible(true);
 
-    menu->addAction(Action(Te_ToggleNotifier));
-    menu->addAction(Action(Te_ToggleReceiver));
-    menu->addAction(Action(Te_ToggleMenuBar));
-    menu->addAction(Action(Te_ToggleTreeBar));
-    menu->addAction(Action(Te_ToggleToolBar));
+    menu->addAction(Action(_ToggleNotifier));
+    menu->addAction(Action(_ToggleReceiver));
+    menu->addAction(Action(_ToggleMenuBar));
+    menu->addAction(Action(_ToggleTreeBar));
+    menu->addAction(Action(_ToggleToolBar));
     UpdateAction();
 
     return menu;
@@ -2296,16 +2296,16 @@ QMenu *TreeBank::WindowMenu(){
     QMenu *menu = new QMenu(tr("Window"), this);
     menu->setToolTipsVisible(true);
 
-    menu->addAction(Action(Te_ToggleFullScreen));
-    menu->addAction(Action(Te_ToggleMaximized));
-    menu->addAction(Action(Te_ToggleMinimized));
+    menu->addAction(Action(_ToggleFullScreen));
+    menu->addAction(Action(_ToggleMaximized));
+    menu->addAction(Action(_ToggleMinimized));
     if(Application::EnableFramelessWindow())
-        menu->addAction(Action(Te_ToggleShaded));
-    menu->addAction(Action(Te_NewWindow));
-    menu->addAction(Action(Te_CloseWindow));
-    menu->addAction(Action(Te_SwitchWindow));
-    menu->addAction(Action(Te_NextWindow));
-    menu->addAction(Action(Te_PrevWindow));
+        menu->addAction(Action(_ToggleShaded));
+    menu->addAction(Action(_NewWindow));
+    menu->addAction(Action(_CloseWindow));
+    menu->addAction(Action(_SwitchWindow));
+    menu->addAction(Action(_NextWindow));
+    menu->addAction(Action(_PrevWindow));
 
     return menu;
 }
@@ -2314,20 +2314,20 @@ QMenu *TreeBank::PageMenu(){
     QMenu *menu = new QMenu(tr("Page"), this);
     menu->setToolTipsVisible(true);
 
-    menu->addAction(Action(Te_Copy));
-    menu->addAction(Action(Te_Cut));
-    menu->addAction(Action(Te_Paste));
-    menu->addAction(Action(Te_Undo));
-    menu->addAction(Action(Te_Redo));
-    menu->addAction(Action(Te_SelectAll));
-    menu->addAction(Action(Te_Reload));
-    menu->addAction(Action(Te_Stop));
+    menu->addAction(Action(_Copy));
+    menu->addAction(Action(_Cut));
+    menu->addAction(Action(_Paste));
+    menu->addAction(Action(_Undo));
+    menu->addAction(Action(_Redo));
+    menu->addAction(Action(_SelectAll));
+    menu->addAction(Action(_Reload));
+    menu->addAction(Action(_Stop));
     menu->addSeparator();
-    menu->addAction(Action(Te_ZoomIn));
-    menu->addAction(Action(Te_ZoomOut));
+    menu->addAction(Action(_ZoomIn));
+    menu->addAction(Action(_ZoomOut));
     menu->addSeparator();
-    menu->addAction(Action(Te_Load));
-    menu->addAction(Action(Te_Save));
+    menu->addAction(Action(_Load));
+    menu->addAction(Action(_Save));
 
     return menu;
 }
@@ -2336,20 +2336,20 @@ QMenu *TreeBank::ApplicationMenu(bool expanded){
     QMenu *menu = new QMenu(tr("Application"), this);
     menu->setToolTipsVisible(true);
 
-    menu->addAction(Action(Te_Import));
-    menu->addAction(Action(Te_Export));
-    menu->addAction(Action(Te_AboutVanilla));
-    menu->addAction(Action(Te_AboutQt));
+    menu->addAction(Action(_Import));
+    menu->addAction(Action(_Export));
+    menu->addAction(Action(_AboutVanilla));
+    menu->addAction(Action(_AboutQt));
 
     if(expanded){
         menu->addSeparator();
-        menu->addAction(Action(Te_OpenTextSeeker));
-        menu->addAction(Action(Te_OpenQueryEditor));
-        menu->addAction(Action(Te_OpenUrlEditor));
-        menu->addAction(Action(Te_OpenCommand));
-        menu->addAction(Action(Te_ReleaseHiddenView));
+        menu->addAction(Action(_OpenTextSeeker));
+        menu->addAction(Action(_OpenQueryEditor));
+        menu->addAction(Action(_OpenUrlEditor));
+        menu->addAction(Action(_OpenCommand));
+        menu->addAction(Action(_ReleaseHiddenView));
         menu->addSeparator();
-        menu->addAction(Action(Te_Quit));
+        menu->addAction(Action(_Quit));
     }
 
     return menu;
@@ -2365,13 +2365,13 @@ QMenu *TreeBank::GlobalContextMenu(){
     menu->addMenu(WindowMenu());
     menu->addMenu(PageMenu());
     menu->addSeparator();
-    menu->addAction(Action(Te_OpenTextSeeker));
-    menu->addAction(Action(Te_OpenQueryEditor));
-    menu->addAction(Action(Te_OpenUrlEditor));
-    menu->addAction(Action(Te_OpenCommand));
-    menu->addAction(Action(Te_ReleaseHiddenView));
+    menu->addAction(Action(_OpenTextSeeker));
+    menu->addAction(Action(_OpenQueryEditor));
+    menu->addAction(Action(_OpenUrlEditor));
+    menu->addAction(Action(_OpenCommand));
+    menu->addAction(Action(_ReleaseHiddenView));
     menu->addSeparator();
-    menu->addAction(Action(Te_Quit));
+    menu->addAction(Action(_Quit));
 
     return menu;
 }
@@ -2577,7 +2577,7 @@ void TreeBank::Up(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::Ke_Up);
+    if(view) view->TriggerAction(Page::_Up);
 }
 
 void TreeBank::Down(SharedView view){
@@ -2585,7 +2585,7 @@ void TreeBank::Down(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::Ke_Down);
+    if(view) view->TriggerAction(Page::_Down);
 }
 
 void TreeBank::Right(SharedView view){
@@ -2593,7 +2593,7 @@ void TreeBank::Right(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::Ke_Right);
+    if(view) view->TriggerAction(Page::_Right);
 }
 
 void TreeBank::Left(SharedView view){
@@ -2601,7 +2601,7 @@ void TreeBank::Left(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::Ke_Left);
+    if(view) view->TriggerAction(Page::_Left);
 }
 
 void TreeBank::PageUp(SharedView view){
@@ -2609,7 +2609,7 @@ void TreeBank::PageUp(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::Ke_PageUp);
+    if(view) view->TriggerAction(Page::_PageUp);
 }
 
 void TreeBank::PageDown(SharedView view){
@@ -2617,7 +2617,7 @@ void TreeBank::PageDown(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::Ke_PageDown);
+    if(view) view->TriggerAction(Page::_PageDown);
 }
 
 void TreeBank::Home(SharedView view){
@@ -2625,7 +2625,7 @@ void TreeBank::Home(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::Ke_Home);
+    if(view) view->TriggerAction(Page::_Home);
 }
 
 void TreeBank::End(SharedView view){
@@ -2633,7 +2633,7 @@ void TreeBank::End(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::Ke_End);
+    if(view) view->TriggerAction(Page::_End);
 }
 
 void TreeBank::Import(){
@@ -3290,32 +3290,32 @@ void TreeBank::ReleaseHiddenView(SharedView){
 
 void TreeBank::Load(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Load);
+    if(view) view->TriggerAction(Page::_Load);
 }
 
 void TreeBank::Copy(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Copy);
+    if(view) view->TriggerAction(Page::_Copy);
 }
 
 void TreeBank::Cut(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Cut);
+    if(view) view->TriggerAction(Page::_Cut);
 }
 
 void TreeBank::Paste(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Paste);
+    if(view) view->TriggerAction(Page::_Paste);
 }
 
 void TreeBank::Undo(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Undo);
+    if(view) view->TriggerAction(Page::_Undo);
 }
 
 void TreeBank::Redo(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Redo);
+    if(view) view->TriggerAction(Page::_Redo);
 }
 
 void TreeBank::SelectAll(SharedView view){
@@ -3323,42 +3323,42 @@ void TreeBank::SelectAll(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_SelectAll);
+    if(view) view->TriggerAction(Page::_SelectAll);
 }
 
 void TreeBank::Unselect(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Unselect);
+    if(view) view->TriggerAction(Page::_Unselect);
 }
 
 void TreeBank::Reload(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Reload);
+    if(view) view->TriggerAction(Page::_Reload);
 }
 
 void TreeBank::ReloadAndBypassCache(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_ReloadAndBypassCache);
+    if(view) view->TriggerAction(Page::_ReloadAndBypassCache);
 }
 
 void TreeBank::Stop(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Stop);
+    if(view) view->TriggerAction(Page::_Stop);
 }
 
 void TreeBank::StopAndUnselect(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_StopAndUnselect);
+    if(view) view->TriggerAction(Page::_StopAndUnselect);
 }
 
 void TreeBank::Print(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Print);
+    if(view) view->TriggerAction(Page::_Print);
 }
 
 void TreeBank::Save(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_Save);
+    if(view) view->TriggerAction(Page::_Save);
 }
 
 void TreeBank::ZoomIn(SharedView view){
@@ -3366,7 +3366,7 @@ void TreeBank::ZoomIn(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_ZoomIn);
+    if(view) view->TriggerAction(Page::_ZoomIn);
 }
 
 void TreeBank::ZoomOut(SharedView view){
@@ -3374,100 +3374,100 @@ void TreeBank::ZoomOut(SharedView view){
     if(m_Gadgets && m_Gadgets->IsActive()) return;
 
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_ZoomOut);
+    if(view) view->TriggerAction(Page::_ZoomOut);
 }
 
 void TreeBank::ViewSource(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_ViewSource);
+    if(view) view->TriggerAction(Page::_ViewSource);
 }
 
 void TreeBank::ApplySource(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_ApplySource);
+    if(view) view->TriggerAction(Page::_ApplySource);
 }
 
 void TreeBank::InspectElement(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_InspectElement);
+    if(view) view->TriggerAction(Page::_InspectElement);
 }
 
 void TreeBank::CopyUrl(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_CopyUrl);
+    if(view) view->TriggerAction(Page::_CopyUrl);
 }
 
 void TreeBank::CopyTitle(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_CopyTitle);
+    if(view) view->TriggerAction(Page::_CopyTitle);
 }
 
 void TreeBank::CopyPageAsLink(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_CopyPageAsLink);
+    if(view) view->TriggerAction(Page::_CopyPageAsLink);
 }
 
 void TreeBank::CopySelectedHtml(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_CopySelectedHtml);
+    if(view) view->TriggerAction(Page::_CopySelectedHtml);
 }
 
 void TreeBank::OpenWithIE(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithIE);
+    if(view) view->TriggerAction(Page::_OpenWithIE);
 }
 
 void TreeBank::OpenWithEdge(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithEdge);
+    if(view) view->TriggerAction(Page::_OpenWithEdge);
 }
 
 void TreeBank::OpenWithFF(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithFF);
+    if(view) view->TriggerAction(Page::_OpenWithFF);
 }
 
 void TreeBank::OpenWithOpera(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithOpera);
+    if(view) view->TriggerAction(Page::_OpenWithOpera);
 }
 
 void TreeBank::OpenWithOPR(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithOPR);
+    if(view) view->TriggerAction(Page::_OpenWithOPR);
 }
 
 void TreeBank::OpenWithSafari(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithSafari);
+    if(view) view->TriggerAction(Page::_OpenWithSafari);
 }
 
 void TreeBank::OpenWithChrome(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithChrome);
+    if(view) view->TriggerAction(Page::_OpenWithChrome);
 }
 
 void TreeBank::OpenWithSleipnir(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithSleipnir);
+    if(view) view->TriggerAction(Page::_OpenWithSleipnir);
 }
 
 void TreeBank::OpenWithVivaldi(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithVivaldi);
+    if(view) view->TriggerAction(Page::_OpenWithVivaldi);
 }
 
 void TreeBank::OpenWithCustom(SharedView view){
     if(!view) view = m_CurrentView;
-    if(view) view->TriggerAction(Page::We_OpenWithCustom);
+    if(view) view->TriggerAction(Page::_OpenWithCustom);
 }
 
 void TreeBank::UpdateAction(){
-    Action(Te_ToggleNotifier)->setChecked(m_Notifier);
-    Action(Te_ToggleReceiver)->setChecked(m_Receiver);
-    Action(Te_ToggleMenuBar)->setChecked(!GetMainWindow()->IsMenuBarEmpty());
-    Action(Te_ToggleTreeBar)->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
-    Action(Te_ToggleToolBar)->setChecked(GetMainWindow()->GetToolBar()->isVisible());
+    Action(_ToggleNotifier)->setChecked(m_Notifier);
+    Action(_ToggleReceiver)->setChecked(m_Receiver);
+    Action(_ToggleMenuBar)->setChecked(!GetMainWindow()->IsMenuBarEmpty());
+    Action(_ToggleTreeBar)->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
+    Action(_ToggleToolBar)->setChecked(GetMainWindow()->GetToolBar()->isVisible());
 }
 
 bool TreeBank::TriggerAction(QString str){
@@ -3490,20 +3490,20 @@ QAction *TreeBank::Action(QString str){
 QAction *TreeBank::Action(TreeBankAction a){
     // forbid many times call of same action.
     static const QList<TreeBankAction> exclude = QList<TreeBankAction>()
-        << Te_NoAction << Ke_End      << Te_Undo
-        << Ke_Up       << Ke_PageUp   << Te_Redo
-        << Ke_Down     << Ke_PageDown << Te_SelectAll
-        << Ke_Right    << Te_Cut      << Te_SwitchWindow
-        << Ke_Left     << Te_Copy     << Te_NextWindow
-        << Ke_Home     << Te_Paste    << Te_PrevWindow;
-    static TreeBankAction previousAction = Te_NoAction;
+        << _NoAction << _End      << _Undo
+        << _Up       << _PageUp   << _Redo
+        << _Down     << _PageDown << _SelectAll
+        << _Right    << _Cut      << _SwitchWindow
+        << _Left     << _Copy     << _NextWindow
+        << _Home     << _Paste    << _PrevWindow;
+    static TreeBankAction previousAction = _NoAction;
     static int sameActionCount = 0;
     if(exclude.contains(a)){
         sameActionCount = 0;
-        previousAction = Te_NoAction;
+        previousAction = _NoAction;
     } else if(a == previousAction){
         if(++sameActionCount > MAX_SAME_ACTION_COUNT)
-            a = Te_NoAction;
+            a = _NoAction;
     } else {
         sameActionCount = 0;
         previousAction = a;
@@ -3512,19 +3512,19 @@ QAction *TreeBank::Action(TreeBankAction a){
     QAction *action = m_ActionTable[a];
     if(action){
         switch(a){
-        case Te_ToggleNotifier:
+        case _ToggleNotifier:
             action->setChecked(m_Notifier);
             break;
-        case Te_ToggleReceiver:
+        case _ToggleReceiver:
             action->setChecked(m_Receiver);
             break;
-        case Te_ToggleMenuBar:
+        case _ToggleMenuBar:
             action->setChecked(!GetMainWindow()->IsMenuBarEmpty());
             break;
-        case Te_ToggleTreeBar:
+        case _ToggleTreeBar:
             action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
             break;
-        case Te_ToggleToolBar:
+        case _ToggleToolBar:
             action->setChecked(GetMainWindow()->GetToolBar()->isVisible());
             break;
         }
@@ -3534,21 +3534,21 @@ QAction *TreeBank::Action(TreeBankAction a){
     m_ActionTable[a] = action = new QAction(this);
 
     switch(a){
-    case Ke_Up:      action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case Ke_Down:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case Ke_Right:   action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case Ke_Left:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-    case Te_Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
-    case Te_Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
-    case Te_Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
-    case Te_Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
+    case _Up:      action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
+    case _Down:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
+    case _Right:   action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
+    case _Left:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
+    case _Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
+    case _Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
+    case _Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
+    case _Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
 
     switch(a){
-    case Te_NoAction: break;
+    case _NoAction: break;
 
 #define DEFINE_ACTION(name, text)                                       \
-        case Ke_##name:                                                 \
+        case _##name:                                                   \
             action->setText(text);                                      \
             action->setToolTip(text);                                   \
             connect(action, SIGNAL(triggered()),                        \
@@ -3567,7 +3567,7 @@ QAction *TreeBank::Action(TreeBankAction a){
 
 #undef  DEFINE_ACTION
 #define DEFINE_ACTION(name, text)                                       \
-        case Te_##name:                                                 \
+        case _##name:                                                   \
             action->setText(text);                                      \
             action->setToolTip(text);                                   \
             connect(action, SIGNAL(triggered()),                        \
@@ -3668,65 +3668,65 @@ QAction *TreeBank::Action(TreeBankAction a){
     }
     switch(a){
 
-    case Te_ToggleNotifier:
+    case _ToggleNotifier:
         action->setCheckable(true);
         action->setChecked(m_Notifier);
         action->setText(tr("Notifier"));
         action->setToolTip(tr("Notifier"));
         break;
-    case Te_ToggleReceiver:
+    case _ToggleReceiver:
         action->setCheckable(true);
         action->setChecked(m_Receiver);
         action->setText(tr("Receiver"));
         action->setToolTip(tr("Receiver"));
         break;
-    case Te_ToggleMenuBar:
+    case _ToggleMenuBar:
         action->setCheckable(true);
         action->setChecked(!GetMainWindow()->IsMenuBarEmpty());
         action->setText(tr("MenuBar"));
         action->setToolTip(tr("MenuBar"));
         break;
-    case Te_ToggleTreeBar:
+    case _ToggleTreeBar:
         action->setCheckable(true);
         action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
         action->setText(tr("TreeBar"));
         action->setToolTip(tr("TreeBar"));
         break;
-    case Te_ToggleToolBar:
+    case _ToggleToolBar:
         action->setCheckable(true);
         action->setChecked(GetMainWindow()->GetToolBar()->isVisible());
         action->setText(tr("ToolBar"));
         action->setToolTip(tr("ToolBar"));
         break;
 
-    case Te_OpenWithIE:
+    case _OpenWithIE:
         action->setIcon(Application::BrowserIcon_IE());
         break;
-    case Te_OpenWithEdge:
+    case _OpenWithEdge:
         action->setIcon(Application::BrowserIcon_Edge());
         break;
-    case Te_OpenWithFF:
+    case _OpenWithFF:
         action->setIcon(Application::BrowserIcon_FF());
         break;
-    case Te_OpenWithOpera:
+    case _OpenWithOpera:
         action->setIcon(Application::BrowserIcon_Opera());
         break;
-    case Te_OpenWithOPR:
+    case _OpenWithOPR:
         action->setIcon(Application::BrowserIcon_OPR());
         break;
-    case Te_OpenWithSafari:
+    case _OpenWithSafari:
         action->setIcon(Application::BrowserIcon_Safari());
         break;
-    case Te_OpenWithChrome:
+    case _OpenWithChrome:
         action->setIcon(Application::BrowserIcon_Chrome());
         break;
-    case Te_OpenWithSleipnir:
+    case _OpenWithSleipnir:
         action->setIcon(Application::BrowserIcon_Sleipnir());
         break;
-    case Te_OpenWithVivaldi:
+    case _OpenWithVivaldi:
         action->setIcon(Application::BrowserIcon_Vivaldi());
         break;
-    case Te_OpenWithCustom:
+    case _OpenWithCustom:
         action->setIcon(Application::BrowserIcon_Custom());
         action->setText(tr("OpenWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;

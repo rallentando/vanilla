@@ -1296,8 +1296,7 @@ void Page::OpenLinkWithCustom(){
     ELEMENT_ACTION(Application::OpenUrlWith_Custom(e->LinkUrl()));
 }
 
-// cannot use 'LoadImage' because of WINAPI...
-void Page::LoadImage_(){
+void Page::LoadImage(){
     ELEMENT_ACTION(m_View->Load(e->ImageUrl()));
 }
 
@@ -1597,20 +1596,20 @@ void Page::SaveTextAsUrl(){
 QAction *Page::Action(CustomAction a, QVariant data){
     // forbid many times call of same action.
     static const QList<CustomAction> exclude = QList<CustomAction>()
-        << We_NoAction << Ke_End      << We_Undo
-        << Ke_Up       << Ke_PageUp   << We_Redo
-        << Ke_Down     << Ke_PageDown << We_SelectAll
-        << Ke_Right    << We_Cut      << We_SwitchWindow
-        << Ke_Left     << We_Copy     << We_NextWindow
-        << Ke_Home     << We_Paste    << We_PrevWindow;
-    static CustomAction previousAction = We_NoAction;
+        << _NoAction << _End      << _Undo
+        << _Up       << _PageUp   << _Redo
+        << _Down     << _PageDown << _SelectAll
+        << _Right    << _Cut      << _SwitchWindow
+        << _Left     << _Copy     << _NextWindow
+        << _Home     << _Paste    << _PrevWindow;
+    static CustomAction previousAction = _NoAction;
     static int sameActionCount = 0;
     if(exclude.contains(a)){
         sameActionCount = 0;
-        previousAction = We_NoAction;
+        previousAction = _NoAction;
     } else if(a == previousAction){
         if(++sameActionCount > MAX_SAME_ACTION_COUNT)
-            a = We_NoAction;
+            a = _NoAction;
     } else {
         sameActionCount = 0;
         previousAction = a;
@@ -1626,19 +1625,19 @@ QAction *Page::Action(CustomAction a, QVariant data){
     webaction->setData(data);
     if(!create){
         switch(a){
-        case We_ToggleNotifier:
+        case _ToggleNotifier:
             webaction->setChecked(GetTB()->GetNotifier());
             break;
-        case We_ToggleReceiver:
+        case _ToggleReceiver:
             webaction->setChecked(GetTB()->GetReceiver());
             break;
-        case We_ToggleMenuBar:
+        case _ToggleMenuBar:
             webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty());
             break;
-        case We_ToggleTreeBar:
+        case _ToggleTreeBar:
             webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible());
             break;
-        case We_ToggleToolBar:
+        case _ToggleToolBar:
             webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible());
             break;
         }
@@ -1646,21 +1645,21 @@ QAction *Page::Action(CustomAction a, QVariant data){
     }
 
     switch(a){
-    case Ke_Up:      webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case Ke_Down:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case Ke_Right:   webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case Ke_Left:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-    case We_Back:    webaction->setIcon(QIcon(":/resources/menu/back.png"));    break;
-    case We_Forward: webaction->setIcon(QIcon(":/resources/menu/forward.png")); break;
-    case We_Reload:  webaction->setIcon(QIcon(":/resources/menu/reload.png"));  break;
-    case We_Stop:    webaction->setIcon(QIcon(":/resources/menu/stop.png"));    break;
+    case _Up:      webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
+    case _Down:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
+    case _Right:   webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
+    case _Left:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
+    case _Back:    webaction->setIcon(QIcon(":/resources/menu/back.png"));    break;
+    case _Forward: webaction->setIcon(QIcon(":/resources/menu/forward.png")); break;
+    case _Reload:  webaction->setIcon(QIcon(":/resources/menu/reload.png"));  break;
+    case _Stop:    webaction->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
 
     switch(a){
-    case We_NoAction: break;
+    case _NoAction: break;
 
 #define DEFINE_ACTION(name, text)                                       \
-        case Ke_##name:                                                 \
+        case _##name:                                                   \
             webaction->setText(text);                                   \
             webaction->setToolTip(text);                                \
             connect(webaction, SIGNAL(triggered()),                     \
@@ -1679,7 +1678,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
 
 #undef  DEFINE_ACTION
 #define DEFINE_ACTION(name, text)                                       \
-        case We_##name:                                                 \
+        case _##name:                                                   \
             webaction->setText(text);                                   \
             webaction->setToolTip(text);                                \
             connect(webaction, SIGNAL(triggered()),                     \
@@ -1803,14 +1802,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(OpenLinkWithVivaldi,   tr("OpenLinkWithVivaldi"));
         DEFINE_ACTION(OpenLinkWithCustom,    tr("OpenLinkWithCustom"));
 
-        case We_LoadImage:
-            webaction->setText(tr("LoadImage"));
-            webaction->setToolTip(tr("LoadImage"));
-            connect(webaction, SIGNAL(triggered()),
-                    this,      SLOT(LoadImage_()));
-            break;
-       //DEFINE_ACTION(LoadImage,             tr("LoadImage"));
-
+        DEFINE_ACTION(LoadImage,             tr("LoadImage"));
         DEFINE_ACTION(OpenImage,             tr("OpenImage"));
         DEFINE_ACTION(DownloadImage,         tr("DownloadImage"));
         DEFINE_ACTION(CopyImage,             tr("CopyImage"));
@@ -1891,110 +1883,110 @@ QAction *Page::Action(CustomAction a, QVariant data){
     }
     switch(a){
 
-    case We_ToggleNotifier:
+    case _ToggleNotifier:
         webaction->setCheckable(true);
         webaction->setChecked(GetTB()->GetNotifier());
         webaction->setText(tr("Notifier"));
         webaction->setToolTip(tr("Notifier"));
         break;
-    case We_ToggleReceiver:
+    case _ToggleReceiver:
         webaction->setCheckable(true);
         webaction->setChecked(GetTB()->GetReceiver());
         webaction->setText(tr("Receiver"));
         webaction->setToolTip(tr("Receiver"));
         break;
-    case We_ToggleMenuBar:
+    case _ToggleMenuBar:
         webaction->setCheckable(true);
         webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty());
         webaction->setText(tr("MenuBar"));
         webaction->setToolTip(tr("MenuBar"));
         break;
-    case We_ToggleTreeBar:
+    case _ToggleTreeBar:
         webaction->setCheckable(true);
         webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible());
         webaction->setText(tr("TreeBar"));
         webaction->setToolTip(tr("TreeBar"));
         break;
-    case We_ToggleToolBar:
+    case _ToggleToolBar:
         webaction->setCheckable(true);
         webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible());
         webaction->setText(tr("ToolBar"));
         webaction->setToolTip(tr("ToolBar"));
         break;
 
-    case We_OpenWithIE:
-    case We_OpenLinkWithIE:
-    case We_OpenImageWithIE:
+    case _OpenWithIE:
+    case _OpenLinkWithIE:
+    case _OpenImageWithIE:
         webaction->setIcon(Application::BrowserIcon_IE());
         break;
-    case We_OpenWithEdge:
-    case We_OpenLinkWithEdge:
-    case We_OpenImageWithEdge:
+    case _OpenWithEdge:
+    case _OpenLinkWithEdge:
+    case _OpenImageWithEdge:
         webaction->setIcon(Application::BrowserIcon_Edge());
         break;
-    case We_OpenWithFF:
-    case We_OpenLinkWithFF:
-    case We_OpenImageWithFF:
+    case _OpenWithFF:
+    case _OpenLinkWithFF:
+    case _OpenImageWithFF:
         webaction->setIcon(Application::BrowserIcon_FF());
         break;
-    case We_OpenWithOpera:
-    case We_OpenLinkWithOpera:
-    case We_OpenImageWithOpera:
+    case _OpenWithOpera:
+    case _OpenLinkWithOpera:
+    case _OpenImageWithOpera:
         webaction->setIcon(Application::BrowserIcon_Opera());
         break;
-    case We_OpenWithOPR:
-    case We_OpenLinkWithOPR:
-    case We_OpenImageWithOPR:
+    case _OpenWithOPR:
+    case _OpenLinkWithOPR:
+    case _OpenImageWithOPR:
         webaction->setIcon(Application::BrowserIcon_OPR());
         break;
-    case We_OpenWithSafari:
-    case We_OpenLinkWithSafari:
-    case We_OpenImageWithSafari:
+    case _OpenWithSafari:
+    case _OpenLinkWithSafari:
+    case _OpenImageWithSafari:
         webaction->setIcon(Application::BrowserIcon_Safari());
         break;
-    case We_OpenWithChrome:
-    case We_OpenLinkWithChrome:
-    case We_OpenImageWithChrome:
+    case _OpenWithChrome:
+    case _OpenLinkWithChrome:
+    case _OpenImageWithChrome:
         webaction->setIcon(Application::BrowserIcon_Chrome());
         break;
-    case We_OpenWithSleipnir:
-    case We_OpenLinkWithSleipnir:
-    case We_OpenImageWithSleipnir:
+    case _OpenWithSleipnir:
+    case _OpenLinkWithSleipnir:
+    case _OpenImageWithSleipnir:
         webaction->setIcon(Application::BrowserIcon_Sleipnir());
         break;
-    case We_OpenWithVivaldi:
-    case We_OpenLinkWithVivaldi:
-    case We_OpenImageWithVivaldi:
+    case _OpenWithVivaldi:
+    case _OpenLinkWithVivaldi:
+    case _OpenImageWithVivaldi:
         webaction->setIcon(Application::BrowserIcon_Vivaldi());
         break;
-    case We_OpenWithCustom:
+    case _OpenWithCustom:
         webaction->setIcon(Application::BrowserIcon_Custom());
         webaction->setText(tr("OpenWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;
-    case We_OpenLinkWithCustom:
+    case _OpenLinkWithCustom:
         webaction->setIcon(Application::BrowserIcon_Custom());
         webaction->setText(tr("OpenLinkWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;
-    case We_OpenImageWithCustom:
+    case _OpenImageWithCustom:
         webaction->setIcon(Application::BrowserIcon_Custom());
         webaction->setText(tr("OpenImageWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;
-    case We_NewViewNode:
-    case We_NewHistNode:
-    case We_CloneViewNode:
-    case We_CloneHistNode:
-    case We_OpenInNewHistNode:
-    case We_OpenInNewViewNode:
-    case We_OpenInNewDirectory:
-    case We_OpenOnRoot:
-    case We_OpenImageInNewHistNode:
-    case We_OpenImageInNewViewNode:
-    case We_OpenImageInNewDirectory:
-    case We_OpenImageOnRoot:
-    case We_ViewSource:
-    case We_OpenAllUrl:
-    case We_OpenAllImage:
-    case We_OpenTextAsUrl:
+    case _NewViewNode:
+    case _NewHistNode:
+    case _CloneViewNode:
+    case _CloneHistNode:
+    case _OpenInNewHistNode:
+    case _OpenInNewViewNode:
+    case _OpenInNewDirectory:
+    case _OpenOnRoot:
+    case _OpenImageInNewHistNode:
+    case _OpenImageInNewViewNode:
+    case _OpenImageInNewDirectory:
+    case _OpenImageOnRoot:
+    case _ViewSource:
+    case _OpenAllUrl:
+    case _OpenAllImage:
+    case _OpenTextAsUrl:
         webaction->setToolTip(webaction->toolTip() +
                               (View::ActivateNewViewDefault()
                                ? tr("\n Shift+Click: InNewWindow"
@@ -2002,33 +1994,33 @@ QAction *Page::Action(CustomAction a, QVariant data){
                                : tr("\n Shift+Click: InNewWindow"
                                     "\n Ctrl +Click: InForeground")));
         break;
-    case We_OpenInNewHistNodeForeground:
-    case We_OpenInNewViewNodeForeground:
-    case We_OpenInNewDirectoryForeground:
-    case We_OpenOnRootForeground:
-    case We_OpenInNewHistNodeBackground:
-    case We_OpenInNewViewNodeBackground:
-    case We_OpenInNewDirectoryBackground:
-    case We_OpenOnRootBackground:
-    case We_OpenImageInNewHistNodeForeground:
-    case We_OpenImageInNewViewNodeForeground:
-    case We_OpenImageInNewDirectoryForeground:
-    case We_OpenImageOnRootForeground:
-    case We_OpenImageInNewHistNodeBackground:
-    case We_OpenImageInNewViewNodeBackground:
-    case We_OpenImageInNewDirectoryBackground:
-    case We_OpenImageOnRootBackground:
+    case _OpenInNewHistNodeForeground:
+    case _OpenInNewViewNodeForeground:
+    case _OpenInNewDirectoryForeground:
+    case _OpenOnRootForeground:
+    case _OpenInNewHistNodeBackground:
+    case _OpenInNewViewNodeBackground:
+    case _OpenInNewDirectoryBackground:
+    case _OpenOnRootBackground:
+    case _OpenImageInNewHistNodeForeground:
+    case _OpenImageInNewViewNodeForeground:
+    case _OpenImageInNewDirectoryForeground:
+    case _OpenImageOnRootForeground:
+    case _OpenImageInNewHistNodeBackground:
+    case _OpenImageInNewViewNodeBackground:
+    case _OpenImageInNewDirectoryBackground:
+    case _OpenImageOnRootBackground:
         webaction->setToolTip(webaction->toolTip() +
                               tr("\n Shift+Click: InNewWindow"));
         break;
-    case We_OpenInNewHistNodeThisWindow:
-    case We_OpenInNewViewNodeThisWindow:
-    case We_OpenInNewDirectoryThisWindow:
-    case We_OpenOnRootThisWindow:
-    case We_OpenImageInNewHistNodeThisWindow:
-    case We_OpenImageInNewViewNodeThisWindow:
-    case We_OpenImageInNewDirectoryThisWindow:
-    case We_OpenImageOnRootThisWindow:
+    case _OpenInNewHistNodeThisWindow:
+    case _OpenInNewViewNodeThisWindow:
+    case _OpenInNewDirectoryThisWindow:
+    case _OpenOnRootThisWindow:
+    case _OpenImageInNewHistNodeThisWindow:
+    case _OpenImageInNewViewNodeThisWindow:
+    case _OpenImageInNewDirectoryThisWindow:
+    case _OpenImageOnRootThisWindow:
         webaction->setToolTip(webaction->toolTip() +
                               (View::ActivateNewViewDefault()
                                ? tr("\n Ctrl+Click: InBackground")

@@ -42,6 +42,7 @@ TARGET = vanilla
 
 HEADERS += \
     application.hpp \
+    actionmapper.hpp \
     mainwindow.hpp \
     saver.hpp \
     node.hpp \
@@ -130,6 +131,7 @@ lupdate_only {
         gen/quickwebview.qml \
         gen/quickwebengineview.qml \
         application.hpp \
+        actionmapper.hpp \
         mainwindow.hpp \
         saver.hpp \
         node.hpp \
