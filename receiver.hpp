@@ -152,6 +152,16 @@ signals:
     void PrevView();
     void BuryView();
     void DigView();
+    void FirstView();
+    void SecondView();
+    void ThirdView();
+    void FourthView();
+    void FifthView();
+    void SixthView();
+    void SeventhView();
+    void EighthView();
+    void NinthView();
+    void TenthView();
     void NewViewNode();
     void NewHistNode();
     void CloneViewNode();
@@ -240,8 +250,8 @@ signals:
     void ToggleTrash();
     void ScrollUp();
     void ScrollDown();
-  //void PageUp();
-  //void PageDown();
+    void NextPage();
+    void PrevPage();
   //void ZoomIn();
   //void ZoomOut();
     void MoveToUpperItem();

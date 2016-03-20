@@ -578,9 +578,7 @@ protected:
           VV"    if(base.length > 0 && base[0].href){\n"
           VV"        baseUrl = base[0].href.replace(baseDocument, \"\");\n"
           VV"    } else {\n"
-          VV"        baseUrl = \n"
-          VV"            location.protocol + \"//\" + location.hostname + \n"
-          VV"            (location.port && \":\" + location.port) + \"/\";\n"
+          VV"        baseUrl = location.href;\n"
           VV"    }\n"
           VV"    return baseUrl;\n"
           VV"})()");

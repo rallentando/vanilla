@@ -28,7 +28,11 @@ class ScrollIndicator;
 class InPlaceNotifier;
 class CloseButton;
 class CloneButton;
+#if QT_VERSION >= 0x050700
+class SoundButton;
+#endif
 class UpDirectoryButton;
+class ToggleTrashButton;
 
 class GraphicsTableView : public QGraphicsObject{
     Q_OBJECT
@@ -421,9 +425,15 @@ protected:
     // close, clone button.
     CloseButton *m_CloseButton;
     CloneButton *m_CloneButton;
+#if QT_VERSION >= 0x050700
+    SoundButton *m_SoundButton;
+#endif
 
     // up directory button.
     UpDirectoryButton *m_UpDirectoryButton;
+
+    // toggle trash button.
+    ToggleTrashButton *m_ToggleTrashButton;
 
     inline bool IsDisplayingNode() const {
         if(!isVisible()) return false;
@@ -628,7 +638,7 @@ public:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
 
 protected:
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
 
 private:
     Node *m_Node;
@@ -648,11 +658,35 @@ public:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
 
 protected:
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
 
 private:
     Node *m_Node;
 };
+
+#if QT_VERSION >= 0x050700
+class SoundButton : public GraphicsButton {
+
+public:
+    SoundButton(QGraphicsItem *parent = 0);
+    ~SoundButton();
+
+    Node *GetNode() const { return m_Node;}
+
+    void UnsetItem();
+    void SetItem(Thumbnail *thumb);
+    void SetItem(NodeTitle *title);
+
+    QRectF boundingRect() const DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+
+protected:
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+
+private:
+    Node *m_Node;
+};
+#endif
 
 class UpDirectoryButton : public GraphicsButton {
 
@@ -664,7 +698,20 @@ public:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
 
 protected:
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+};
+
+class ToggleTrashButton : public GraphicsButton {
+
+public:
+    ToggleTrashButton(QGraphicsItem *parent = 0);
+    ~ToggleTrashButton();
+
+    QRectF boundingRect() const DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+
+protected:
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(GraphicsTableView::SortFlags);

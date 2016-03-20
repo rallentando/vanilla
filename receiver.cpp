@@ -10,7 +10,6 @@
 #include <QFocusEvent>
 #include <QPaintEvent>
 #include <QTimerEvent>
-#include <QThread>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QDomDocument>
@@ -160,6 +159,16 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     connect(this, SIGNAL(PrevView()),         parent, SLOT(PrevView()));
     connect(this, SIGNAL(BuryView()),         parent, SLOT(BuryView()));
     connect(this, SIGNAL(DigView()),          parent, SLOT(DigView()));
+    connect(this, SIGNAL(FirstView()),        parent, SLOT(FirstView()));
+    connect(this, SIGNAL(SecondView()),       parent, SLOT(SecondView()));
+    connect(this, SIGNAL(ThirdView()),        parent, SLOT(ThirdView()));
+    connect(this, SIGNAL(FourthView()),       parent, SLOT(FourthView()));
+    connect(this, SIGNAL(FifthView()),        parent, SLOT(FifthView()));
+    connect(this, SIGNAL(SixthView()),        parent, SLOT(SixthView()));
+    connect(this, SIGNAL(SeventhView()),      parent, SLOT(SeventhView()));
+    connect(this, SIGNAL(EighthView()),       parent, SLOT(EighthView()));
+    connect(this, SIGNAL(NinthView()),        parent, SLOT(NinthView()));
+    connect(this, SIGNAL(TenthView()),        parent, SLOT(TenthView()));
     connect(this, SIGNAL(NewViewNode()),      parent, SLOT(NewViewNode()));
     connect(this, SIGNAL(NewHistNode()),      parent, SLOT(NewHistNode()));
     connect(this, SIGNAL(CloneViewNode()),    parent, SLOT(CloneViewNode()));
@@ -421,9 +430,9 @@ void Receiver::SetString(QString str){
         base.setQuery(param);
         emit SuggestRequest(base);
     }
-    QStringList list = str.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
+    QStringList list = str.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
     if(m_Mode == Command &&
-       QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
+       Application::ExactMatch(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?"), list[0])){
         QSettings *settings = Application::GlobalSettings();
         if(!settings->group().isEmpty()) return;
 
@@ -487,7 +496,8 @@ void Receiver::SetSuggest(QStringList list){
 void Receiver::SuitableAction(){
     switch (m_Mode){
     case Query:{
-        if(!m_SuggestStrings.isEmpty() && m_CurrentSuggestIndex != -1)
+        if(!m_SuggestStrings.isEmpty() && m_CurrentSuggestIndex != -1 &&
+           m_SuggestStrings[m_CurrentSuggestIndex] != m_LineEdit->text())
             m_LineEdit->setText(m_SuggestStrings[m_CurrentSuggestIndex]);
         else
             emit OpenQueryUrl(m_LineString);
@@ -513,9 +523,9 @@ void Receiver::SuitableAction(){
     case Command:{
         if(!m_SuggestStrings.isEmpty() && m_CurrentSuggestIndex != -1){
             QString key = m_SuggestStrings[m_CurrentSuggestIndex];
-            QStringList list = key.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
+            QStringList list = key.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
 
-            if(QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
+            if(Application::ExactMatch(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?"), list[0])){
                 QSettings *settings = Application::GlobalSettings();
                 if(!settings->value(list[1]).toString().isEmpty())
                     list << settings->value(list[1]).toString();
@@ -556,261 +566,273 @@ void Receiver::EditingFinished(){
 }
 
 void Receiver::ReceiveCommand(QString cmd){
-    QStringList list = cmd.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
+    QStringList list = cmd.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
     cmd = list.takeFirst();
 
     if(cmd.isEmpty()) return;
-    if(QRegExp(QStringLiteral("[uU]p")).exactMatch(cmd)){                            emit Up();                   return; }
-    if(QRegExp(QStringLiteral("[dD](?:ow)?n")).exactMatch(cmd)){                     emit Down();                 return; }
-    if(QRegExp(QStringLiteral("[rR]ight")).exactMatch(cmd)){                         emit Right();                return; }
-    if(QRegExp(QStringLiteral("[lL]eft")).exactMatch(cmd)){                          emit Left();                 return; }
-    if(QRegExp(QStringLiteral("[hH]ome")).exactMatch(cmd)){                          emit Home();                 return; }
-    if(QRegExp(QStringLiteral("[eE]nd")).exactMatch(cmd)){                           emit End();                  return; }
-    if(QRegExp(QStringLiteral("[pP](?:g|age)?[uU]p")).exactMatch(cmd)){              emit PageUp();               return; }
-    if(QRegExp(QStringLiteral("[pP](?:g|age)?[dD](?:ow)?n")).exactMatch(cmd)){       emit PageDown();             return; }
+    if(Application::ExactMatch(QStringLiteral("[uU]p"), cmd)){                            emit Up();                   return; }
+    if(Application::ExactMatch(QStringLiteral("[dD](?:ow)?n"), cmd)){                     emit Down();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]ight"), cmd)){                         emit Right();                return; }
+    if(Application::ExactMatch(QStringLiteral("[lL]eft"), cmd)){                          emit Left();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[hH]ome"), cmd)){                          emit Home();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[eE]nd"), cmd)){                           emit End();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[pP](?:g|age)?[uU]p"), cmd)){              emit PageUp();               return; }
+    if(Application::ExactMatch(QStringLiteral("[pP](?:g|age)?[dD](?:ow)?n"), cmd)){       emit PageDown();             return; }
 
-    if(QRegExp(QStringLiteral("[iI]mport")).exactMatch(cmd)){                        emit Import();               return; }
-    if(QRegExp(QStringLiteral("[eE]xport")).exactMatch(cmd)){                        emit Export();               return; }
-    if(QRegExp(QStringLiteral("[aA]bout(?:[vV]anilla)?")).exactMatch(cmd)){          emit AboutVanilla();         return; }
-    if(QRegExp(QStringLiteral("[aA]bout[qQ]t")).exactMatch(cmd)){                    emit AboutQt();              return; }
-    if(QRegExp(QStringLiteral("[qQ]uit")).exactMatch(cmd)){                          emit Quit();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[iI]mport"), cmd)){                        emit Import();               return; }
+    if(Application::ExactMatch(QStringLiteral("[eE]xport"), cmd)){                        emit Export();               return; }
+    if(Application::ExactMatch(QStringLiteral("[aA]bout(?:[vV]anilla)?"), cmd)){          emit AboutVanilla();         return; }
+    if(Application::ExactMatch(QStringLiteral("[aA]bout[qQ]t"), cmd)){                    emit AboutQt();              return; }
+    if(Application::ExactMatch(QStringLiteral("[qQ]uit"), cmd)){                          emit Quit();                 return; }
 
-    if(QRegExp(QStringLiteral("(?:[tT]oggle)?[nN]otifier")).exactMatch(cmd)){        emit ToggleNotifier();       return; }
-    if(QRegExp(QStringLiteral("(?:[tT]oggle)?[rR]eceiver")).exactMatch(cmd)){        emit ToggleReceiver();       return; }
-    if(QRegExp(QStringLiteral("(?:[tT]oggle)?[mM]enu[bB]ar")).exactMatch(cmd)){      emit ToggleMenuBar();        return; }
-    if(QRegExp(QStringLiteral("(?:[tT]oggle)?(?:[tT]ree|[tT]ab)[bB]ar")).exactMatch(cmd)){ emit ToggleTreeBar();  return; }
-    if(QRegExp(QStringLiteral("(?:[tT]oggle)?(?:[tT]ool|[aA]ddress)[bB]ar")).exactMatch(cmd)){ emit ToggleToolBar(); return; }
-    if(QRegExp(QStringLiteral("(?:[tT]oggle)?[fF]ull[sS]creen")).exactMatch(cmd)){   emit ToggleFullScreen();     return; }
-    if(QRegExp(QStringLiteral("[tT]oggle[mM]aximized")).exactMatch(cmd)){            emit ToggleMaximized();      return; }
-    if(QRegExp(QStringLiteral("[mM]aximize(?:[wW]indow)?")).exactMatch(cmd)){        emit ToggleMaximized();      return; }
-    if(QRegExp(QStringLiteral("[tT]oggle[mM]inimized")).exactMatch(cmd)){            emit ToggleMinimized();      return; }
-    if(QRegExp(QStringLiteral("[mM]inimize(?:[wW]indow)?")).exactMatch(cmd)){        emit ToggleMinimized();      return; }
-    if(QRegExp(QStringLiteral("[tT]oggle[sS]haded")).exactMatch(cmd)){               emit ToggleShaded();         return; }
-    if(QRegExp(QStringLiteral("[sS]hade(?:[wW]indow)?")).exactMatch(cmd)){           emit ShadeWindow();          return; }
-    if(QRegExp(QStringLiteral("[uU]nshade(?:[wW]indow)?")).exactMatch(cmd)){         emit UnshadeWindow();        return; }
-    if(QRegExp(QStringLiteral("[nN]ew[wW]indow")).exactMatch(cmd)){                  emit NewWindow();            return; }
-    if(QRegExp(QStringLiteral("[cC]lose[wW]indow")).exactMatch(cmd)){                emit CloseWindow();          return; }
-    if(QRegExp(QStringLiteral("[sS]witch(?:[wW]indow)?")).exactMatch(cmd)){          emit SwitchWindow();         return; }
-    if(QRegExp(QStringLiteral("[nN]ext[wW]indow")).exactMatch(cmd)){                 emit NextWindow();           return; }
-    if(QRegExp(QStringLiteral("[pP]rev(?:ious)?[wW]indow")).exactMatch(cmd)){        emit PrevWindow();           return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[tT]oggle)?[nN]otifier"), cmd)){        emit ToggleNotifier();       return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[tT]oggle)?[rR]eceiver"), cmd)){        emit ToggleReceiver();       return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[tT]oggle)?[mM]enu[bB]ar"), cmd)){      emit ToggleMenuBar();        return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[tT]oggle)?(?:[tT]ree|[tT]ab)[bB]ar"), cmd)){ emit ToggleTreeBar();  return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[tT]oggle)?(?:[tT]ool|[aA]ddress)[bB]ar"), cmd)){ emit ToggleToolBar(); return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[tT]oggle)?[fF]ull[sS]creen"), cmd)){   emit ToggleFullScreen();     return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]oggle[mM]aximized"), cmd)){            emit ToggleMaximized();      return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]aximize(?:[wW]indow)?"), cmd)){        emit ToggleMaximized();      return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]oggle[mM]inimized"), cmd)){            emit ToggleMinimized();      return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]inimize(?:[wW]indow)?"), cmd)){        emit ToggleMinimized();      return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]oggle[sS]haded"), cmd)){               emit ToggleShaded();         return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]hade(?:[wW]indow)?"), cmd)){           emit ShadeWindow();          return; }
+    if(Application::ExactMatch(QStringLiteral("[uU]nshade(?:[wW]indow)?"), cmd)){         emit UnshadeWindow();        return; }
+    if(Application::ExactMatch(QStringLiteral("[nN]ew[wW]indow"), cmd)){                  emit NewWindow();            return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]lose[wW]indow"), cmd)){                emit CloseWindow();          return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]witch(?:[wW]indow)?"), cmd)){          emit SwitchWindow();         return; }
+    if(Application::ExactMatch(QStringLiteral("[nN]ext[wW]indow"), cmd)){                 emit NextWindow();           return; }
+    if(Application::ExactMatch(QStringLiteral("[pP]rev(?:ious)?[wW]indow"), cmd)){        emit PrevWindow();           return; }
 
-    if(QRegExp(QStringLiteral("[bB]ack(?:ward)?")).exactMatch(cmd)){                 emit Back();                 return; }
-    if(QRegExp(QStringLiteral("[fF]orward")).exactMatch(cmd)){                       emit Forward();              return; }
-    if(QRegExp(QStringLiteral("[uU]pdir(?:ectory)?")).exactMatch(cmd)){              emit UpDirectory();          return; }
-    if(QRegExp(QStringLiteral("[cC]lose")).exactMatch(cmd)){                         emit Close();                return; }
-    if(QRegExp(QStringLiteral("[rR]estore")).exactMatch(cmd)){                       emit Restore();              return; }
-    if(QRegExp(QStringLiteral("[rR]ecreate")).exactMatch(cmd)){                      emit Recreate();             return; }
-    if(QRegExp(QStringLiteral("[nN]ext(?:[vV]iew)?")).exactMatch(cmd)){              emit NextView();             return; }
-    if(QRegExp(QStringLiteral("[pP]rev(?:ious)?(?:[vV]iew)?")).exactMatch(cmd)){     emit PrevView();             return; }
-    if(QRegExp(QStringLiteral("[bB]ury(?:[vV]iew)?")).exactMatch(cmd)){              emit BuryView();             return; }
-    if(QRegExp(QStringLiteral("[dD]ig(?:[vV]iew)?")).exactMatch(cmd)){               emit DigView();              return; }
-    if(QRegExp(QStringLiteral("[nN]ew(?:[vV]iew)?(?:[nN]ode)?")).exactMatch(cmd)){   emit NewViewNode();          return; }
-    if(QRegExp(QStringLiteral("[nN]ew[hH]ist(?:[nN]ode)?")).exactMatch(cmd)){        emit NewHistNode();          return; }
-    if(QRegExp(QStringLiteral("[cC]lone(?:[vV]iew)?(?:[nN]ode)?")).exactMatch(cmd)){ emit CloneViewNode();        return; }
-    if(QRegExp(QStringLiteral("[cC]lone[hH]ist(?:[nN]ode)?")).exactMatch(cmd)){      emit CloneHistNode();        return; }
-    if(QRegExp(QStringLiteral("[lL]ocal[nN]ode")).exactMatch(cmd)){                  emit MakeLocalNode();        return; }
-    if(QRegExp(QStringLiteral("(?:[dD]isplay)?[aA]ccess[kK]ey")).exactMatch(cmd)){   emit DisplayAccessKey();     return; }
-    if(QRegExp(QStringLiteral("(?:[dD]isplay)?[vV]iew[tT]ree")).exactMatch(cmd)){    emit DisplayViewTree();      return; }
-    if(QRegExp(QStringLiteral("(?:[dD]isplay)?[hH]ist[tT]ree")).exactMatch(cmd)){    emit DisplayHistTree();      return; }
-    if(QRegExp(QStringLiteral("(?:[dD]isplay)?[tT]rash[tT]ree")).exactMatch(cmd)){   emit DisplayTrashTree();     return; }
-    if(QRegExp(QStringLiteral("[rR]elease[hH]idden[vV]iew")).exactMatch(cmd)){       emit ReleaseHiddenView();    return; }
+    if(Application::ExactMatch(QStringLiteral("[bB]ack(?:ward)?"), cmd)){                 emit Back();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[fF]orward"), cmd)){                       emit Forward();              return; }
+    if(Application::ExactMatch(QStringLiteral("[uU]pdir(?:ectory)?"), cmd)){              emit UpDirectory();          return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]lose"), cmd)){                         emit Close();                return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]estore"), cmd)){                       emit Restore();              return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]ecreate"), cmd)){                      emit Recreate();             return; }
+    if(Application::ExactMatch(QStringLiteral("[nN]ext(?:[vV]iew)?"), cmd)){              emit NextView();             return; }
+    if(Application::ExactMatch(QStringLiteral("[pP]rev(?:ious)?(?:[vV]iew)?"), cmd)){     emit PrevView();             return; }
+    if(Application::ExactMatch(QStringLiteral("[bB]ury(?:[vV]iew)?"), cmd)){              emit BuryView();             return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]ig(?:[vV]iew)?"), cmd)){               emit DigView();              return; }
+    if(Application::ExactMatch(QStringLiteral("[fF]irst(?:[VV]Iew)?"), cmd)){             emit FirstView();            return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]econd(?:[VV]Iew)?"), cmd)){            emit SecondView();           return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]hird(?:[VV]Iew)?"), cmd)){             emit ThirdView();            return; }
+    if(Application::ExactMatch(QStringLiteral("[fF]ourth(?:[VV]Iew)?"), cmd)){            emit FourthView();           return; }
+    if(Application::ExactMatch(QStringLiteral("[fF]ifth(?:[VV]Iew)?"), cmd)){             emit FifthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]ixth(?:[VV]Iew)?"), cmd)){             emit SixthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]eventh(?:[VV]Iew)?"), cmd)){           emit SeventhView();          return; }
+    if(Application::ExactMatch(QStringLiteral("[eE]ighth(?:[VV]Iew)?"), cmd)){            emit EighthView();           return; }
+    if(Application::ExactMatch(QStringLiteral("[nN]inth(?:[VV]Iew)?"), cmd)){             emit NinthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]enth(?:[VV]Iew)?"), cmd)){             emit TenthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("[nN]ew(?:[vV]iew)?(?:[nN]ode)?"), cmd)){   emit NewViewNode();          return; }
+    if(Application::ExactMatch(QStringLiteral("[nN]ew[hH]ist(?:[nN]ode)?"), cmd)){        emit NewHistNode();          return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]lone(?:[vV]iew)?(?:[nN]ode)?"), cmd)){ emit CloneViewNode();        return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]lone[hH]ist(?:[nN]ode)?"), cmd)){      emit CloneHistNode();        return; }
+    if(Application::ExactMatch(QStringLiteral("[lL]ocal[nN]ode"), cmd)){                  emit MakeLocalNode();        return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[dD]isplay)?[aA]ccess[kK]ey"), cmd)){   emit DisplayAccessKey();     return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[dD]isplay)?[vV]iew[tT]ree"), cmd)){    emit DisplayViewTree();      return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[dD]isplay)?[hH]ist[tT]ree"), cmd)){    emit DisplayHistTree();      return; }
+    if(Application::ExactMatch(QStringLiteral("(?:[dD]isplay)?[tT]rash[tT]ree"), cmd)){   emit DisplayTrashTree();     return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]elease[hH]idden[vV]iew"), cmd)){       emit ReleaseHiddenView();    return; }
 
-    if(QRegExp(QStringLiteral("[cC]opy")).exactMatch(cmd)){                          emit Copy();                 return; }
-    if(QRegExp(QStringLiteral("[cC]ut")).exactMatch(cmd)){                           emit Cut();                  return; }
-    if(QRegExp(QStringLiteral("[pP]aste")).exactMatch(cmd)){                         emit Paste();                return; }
-    if(QRegExp(QStringLiteral("[uU]ndo")).exactMatch(cmd)){                          emit Undo();                 return; }
-    if(QRegExp(QStringLiteral("[rR]edo")).exactMatch(cmd)){                          emit Redo();                 return; }
-    if(QRegExp(QStringLiteral("[sS]elect[aA]ll")).exactMatch(cmd)){                  emit SelectAll();            return; }
-    if(QRegExp(QStringLiteral("[uU]n[sS]elect")).exactMatch(cmd)){                   emit Unselect();             return; }
-    if(QRegExp(QStringLiteral("[rR]eload")).exactMatch(cmd)){                        emit Reload();               return; }
-    if(QRegExp(QStringLiteral("[rR]eload[aA]nd[bB]ypass[cC]ache")).exactMatch(cmd)){ emit ReloadAndBypassCache(); return; }
-    if(QRegExp(QStringLiteral("[sS]top")).exactMatch(cmd)){                          emit Stop();                 return; }
-    if(QRegExp(QStringLiteral("[sS]top[aA]nd[uU]n[sS]elect")).exactMatch(cmd)){      emit StopAndUnselect();      return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy"), cmd)){                          emit Copy();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]ut"), cmd)){                           emit Cut();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[pP]aste"), cmd)){                         emit Paste();                return; }
+    if(Application::ExactMatch(QStringLiteral("[uU]ndo"), cmd)){                          emit Undo();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]edo"), cmd)){                          emit Redo();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[aA]ll"), cmd)){                  emit SelectAll();            return; }
+    if(Application::ExactMatch(QStringLiteral("[uU]n[sS]elect"), cmd)){                   emit Unselect();             return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]eload"), cmd)){                        emit Reload();               return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]eload[aA]nd[bB]ypass[cC]ache"), cmd)){ emit ReloadAndBypassCache(); return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]top"), cmd)){                          emit Stop();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]top[aA]nd[uU]n[sS]elect"), cmd)){      emit StopAndUnselect();      return; }
 
-    if(QRegExp(QStringLiteral("[pP]rint")).exactMatch(cmd)){                         emit Print();                return; }
-    if(QRegExp(QStringLiteral("[sS]ave")).exactMatch(cmd)){                          emit Save();                 return; }
-    if(QRegExp(QStringLiteral("[zZ]oom[iI]n")).exactMatch(cmd)){                     emit ZoomIn();               return; }
-    if(QRegExp(QStringLiteral("[zZ]oom[oO]ut")).exactMatch(cmd)){                    emit ZoomOut();              return; }
-    if(QRegExp(QStringLiteral("[vV]iew[sS]ource")).exactMatch(cmd)){                 emit ViewSource();           return; }
-    if(QRegExp(QStringLiteral("[aA]pply[sS]ource")).exactMatch(cmd)){                emit ApplySource();          return; }
+    if(Application::ExactMatch(QStringLiteral("[pP]rint"), cmd)){                         emit Print();                return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]ave"), cmd)){                          emit Save();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[zZ]oom[iI]n"), cmd)){                     emit ZoomIn();               return; }
+    if(Application::ExactMatch(QStringLiteral("[zZ]oom[oO]ut"), cmd)){                    emit ZoomOut();              return; }
+    if(Application::ExactMatch(QStringLiteral("[vV]iew[sS]ource"), cmd)){                 emit ViewSource();           return; }
+    if(Application::ExactMatch(QStringLiteral("[aA]pply[sS]ource"), cmd)){                emit ApplySource();          return; }
 
-    if(QRegExp(QStringLiteral("[iI]nspect(?:[eE]lement)?")).exactMatch(cmd)){        emit InspectElement();       return; }
+    if(Application::ExactMatch(QStringLiteral("[iI]nspect(?:[eE]lement)?"), cmd)){        emit InspectElement();       return; }
 
-    if(QRegExp(QStringLiteral("[cC]opy[uU]rl")).exactMatch(cmd)){                    emit CopyUrl();              return; }
-    if(QRegExp(QStringLiteral("[cC]opy[tT]itle")).exactMatch(cmd)){                  emit CopyTitle();            return; }
-    if(QRegExp(QStringLiteral("[cC]opy[pP]age[aA]s[lL]ink")).exactMatch(cmd)){       emit CopyPageAsLink();       return; }
-    if(QRegExp(QStringLiteral("[cC]opy[sS]elected[hH]tml")).exactMatch(cmd)){        emit CopySelectedHtml();     return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(cmd)){ emit OpenWithIE(); return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[eE]dge")).exactMatch(cmd)){  emit OpenWithEdge();         return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?")).exactMatch(cmd)){ emit OpenWithFF(); return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[oO]pera")).exactMatch(cmd)){ emit OpenWithOpera();        return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[oO][pP][rR]")).exactMatch(cmd)){ emit OpenWithOPR();      return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[sS]afari")).exactMatch(cmd)){ emit OpenWithSafari();      return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[cC]hrome")).exactMatch(cmd)){ emit OpenWithChrome();      return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[sS]leipnir")).exactMatch(cmd)){ emit OpenWithSleipnir();  return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[vV]ivaldi")).exactMatch(cmd)){ emit OpenWithVivaldi();    return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[cC]ustom")).exactMatch(cmd)){ emit OpenWithCustom();      return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[uU]rl"), cmd)){                    emit CopyUrl();              return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[tT]itle"), cmd)){                  emit CopyTitle();            return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[pP]age[aA]s[lL]ink"), cmd)){       emit CopyPageAsLink();       return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[sS]elected[hH]tml"), cmd)){        emit CopySelectedHtml();     return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){ emit OpenWithIE(); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[eE]dge"), cmd)){  emit OpenWithEdge();         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){ emit OpenWithFF(); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[oO]pera"), cmd)){ emit OpenWithOpera();        return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){ emit OpenWithOPR();      return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[sS]afari"), cmd)){ emit OpenWithSafari();      return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){ emit OpenWithChrome();      return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){ emit OpenWithSleipnir();  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){ emit OpenWithVivaldi();    return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){ emit OpenWithCustom();      return; }
 
-    if(QRegExp(QStringLiteral("[cC]lick(?:[eE]lement)?")).exactMatch(cmd)){                                          emit TriggerElementAction(Page::_ClickElement);                      return; }
-    if(QRegExp(QStringLiteral("[fF]ocus(?:[eE]lement)?")).exactMatch(cmd)){                                          emit TriggerElementAction(Page::_FocusElement);                      return; }
-    if(QRegExp(QStringLiteral("[hH]over(?:[eE]lement)?")).exactMatch(cmd)){                                          emit TriggerElementAction(Page::_HoverElement);                      return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]lick(?:[eE]lement)?"), cmd)){                                          emit TriggerElementAction(Page::_ClickElement);                      return; }
+    if(Application::ExactMatch(QStringLiteral("[fF]ocus(?:[eE]lement)?"), cmd)){                                          emit TriggerElementAction(Page::_FocusElement);                      return; }
+    if(Application::ExactMatch(QStringLiteral("[hH]over(?:[eE]lement)?"), cmd)){                                          emit TriggerElementAction(Page::_HoverElement);                      return; }
 
-    if(QRegExp(QStringLiteral("[lL]oad[lL]ink")).exactMatch(cmd)){                                                   emit TriggerElementAction(Page::_LoadLink);                          return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink")).exactMatch(cmd)){                                                   emit TriggerElementAction(Page::_OpenLink);                          return; }
-    if(QRegExp(QStringLiteral("[dD]ownload[lL]ink")).exactMatch(cmd)){                                               emit TriggerElementAction(Page::_DownloadLink);                      return; }
-    if(QRegExp(QStringLiteral("[cC]opy[lL]ink[uU]rl")).exactMatch(cmd)){                                             emit TriggerElementAction(Page::_CopyLinkUrl);                       return; }
-    if(QRegExp(QStringLiteral("[cC]opy[lL]ink[hH]tml")).exactMatch(cmd)){                                            emit TriggerElementAction(Page::_CopyLinkHtml);                      return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(cmd)){  emit TriggerElementAction(Page::_OpenLinkWithIE);                    return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[eE]dge")).exactMatch(cmd)){                           emit TriggerElementAction(Page::_OpenLinkWithEdge);                  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?")).exactMatch(cmd)){           emit TriggerElementAction(Page::_OpenLinkWithFF);                    return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[oO]pera")).exactMatch(cmd)){                          emit TriggerElementAction(Page::_OpenLinkWithOpera);                 return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[oO][pP][rR]")).exactMatch(cmd)){                      emit TriggerElementAction(Page::_OpenLinkWithOPR);                   return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[sS]afari")).exactMatch(cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithSafari);                return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[cC]hrome")).exactMatch(cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithChrome);                return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[sS]leipnir")).exactMatch(cmd)){                       emit TriggerElementAction(Page::_OpenLinkWithSleipnir);              return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[vV]ivaldi")).exactMatch(cmd)){                        emit TriggerElementAction(Page::_OpenLinkWithVivaldi);               return; }
-    if(QRegExp(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[cC]ustom")).exactMatch(cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithCustom);                return; }
+    if(Application::ExactMatch(QStringLiteral("[lL]oad[lL]ink"), cmd)){                                                   emit TriggerElementAction(Page::_LoadLink);                          return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink"), cmd)){                                                   emit TriggerElementAction(Page::_OpenLink);                          return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]ownload[lL]ink"), cmd)){                                               emit TriggerElementAction(Page::_DownloadLink);                      return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[lL]ink[uU]rl"), cmd)){                                             emit TriggerElementAction(Page::_CopyLinkUrl);                       return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[lL]ink[hH]tml"), cmd)){                                            emit TriggerElementAction(Page::_CopyLinkHtml);                      return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){  emit TriggerElementAction(Page::_OpenLinkWithIE);                    return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[eE]dge"), cmd)){                           emit TriggerElementAction(Page::_OpenLinkWithEdge);                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){           emit TriggerElementAction(Page::_OpenLinkWithFF);                    return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[oO]pera"), cmd)){                          emit TriggerElementAction(Page::_OpenLinkWithOpera);                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){                      emit TriggerElementAction(Page::_OpenLinkWithOPR);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[sS]afari"), cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithSafari);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithChrome);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){                       emit TriggerElementAction(Page::_OpenLinkWithSleipnir);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){                        emit TriggerElementAction(Page::_OpenLinkWithVivaldi);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithCustom);                return; }
 
-    if(QRegExp(QStringLiteral("[lL]oad[iI]mage")).exactMatch(cmd)){                                                  emit TriggerElementAction(Page::_LoadImage);                         return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage")).exactMatch(cmd)){                                                  emit TriggerElementAction(Page::_OpenImage);                         return; }
-    if(QRegExp(QStringLiteral("[dD]ownload[iI]mage")).exactMatch(cmd)){                                              emit TriggerElementAction(Page::_DownloadImage);                     return; }
-    if(QRegExp(QStringLiteral("[cC]opy[iI]mage")).exactMatch(cmd)){                                                  emit TriggerElementAction(Page::_CopyImage);                         return; }
-    if(QRegExp(QStringLiteral("[cC]opy[iI]mage[uU]rl")).exactMatch(cmd)){                                            emit TriggerElementAction(Page::_CopyImageUrl);                      return; }
-    if(QRegExp(QStringLiteral("[cC]opy[iI]mage[hH]tml")).exactMatch(cmd)){                                           emit TriggerElementAction(Page::_CopyImageHtml);                     return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(cmd)){ emit TriggerElementAction(Page::_OpenImageWithIE);                   return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[eE]dge")).exactMatch(cmd)){                          emit TriggerElementAction(Page::_OpenImageWithEdge);                 return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?")).exactMatch(cmd)){          emit TriggerElementAction(Page::_OpenImageWithFF);                   return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[oO]pera")).exactMatch(cmd)){                         emit TriggerElementAction(Page::_OpenImageWithOpera);                return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[oO][pP][rR]")).exactMatch(cmd)){                     emit TriggerElementAction(Page::_OpenImageWithOPR);                  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[sS]afari")).exactMatch(cmd)){                        emit TriggerElementAction(Page::_OpenImageWithSafari);               return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[cC]hrome")).exactMatch(cmd)){                        emit TriggerElementAction(Page::_OpenImageWithChrome);               return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[sS]leipnir")).exactMatch(cmd)){                      emit TriggerElementAction(Page::_OpenImageWithSleipnir);             return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[vV]ivaldi")).exactMatch(cmd)){                       emit TriggerElementAction(Page::_OpenImageWithVivaldi);              return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[cC]ustom")).exactMatch(cmd)){                        emit TriggerElementAction(Page::_OpenImageWithCustom);               return; }
+    if(Application::ExactMatch(QStringLiteral("[lL]oad[iI]mage"), cmd)){                                                  emit TriggerElementAction(Page::_LoadImage);                         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage"), cmd)){                                                  emit TriggerElementAction(Page::_OpenImage);                         return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]ownload[iI]mage"), cmd)){                                              emit TriggerElementAction(Page::_DownloadImage);                     return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[iI]mage"), cmd)){                                                  emit TriggerElementAction(Page::_CopyImage);                         return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[iI]mage[uU]rl"), cmd)){                                            emit TriggerElementAction(Page::_CopyImageUrl);                      return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[iI]mage[hH]tml"), cmd)){                                           emit TriggerElementAction(Page::_CopyImageHtml);                     return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){ emit TriggerElementAction(Page::_OpenImageWithIE);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[eE]dge"), cmd)){                          emit TriggerElementAction(Page::_OpenImageWithEdge);                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){          emit TriggerElementAction(Page::_OpenImageWithFF);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[oO]pera"), cmd)){                         emit TriggerElementAction(Page::_OpenImageWithOpera);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){                     emit TriggerElementAction(Page::_OpenImageWithOPR);                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[sS]afari"), cmd)){                        emit TriggerElementAction(Page::_OpenImageWithSafari);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){                        emit TriggerElementAction(Page::_OpenImageWithChrome);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){                      emit TriggerElementAction(Page::_OpenImageWithSleipnir);             return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){                       emit TriggerElementAction(Page::_OpenImageWithVivaldi);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){                        emit TriggerElementAction(Page::_OpenImageWithCustom);               return; }
 
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode")).exactMatch(cmd)){                 emit TriggerElementAction(Page::_OpenInNewViewNode);                 return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode")).exactMatch(cmd)){                 emit TriggerElementAction(Page::_OpenInNewHistNode);                 return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory")).exactMatch(cmd)){                   emit TriggerElementAction(Page::_OpenInNewDirectory);                return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot")).exactMatch(cmd)){                              emit TriggerElementAction(Page::_OpenOnRoot);                        return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode[fF]oreground")).exactMatch(cmd)){    emit TriggerElementAction(Page::_OpenInNewViewNodeForeground);       return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode[fF]oreground")).exactMatch(cmd)){    emit TriggerElementAction(Page::_OpenInNewHistNodeForeground);       return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory[fF]oreground")).exactMatch(cmd)){      emit TriggerElementAction(Page::_OpenInNewDirectoryForeground);      return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot[fF]oreground")).exactMatch(cmd)){                 emit TriggerElementAction(Page::_OpenOnRootForeground);              return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode[bB]ackground")).exactMatch(cmd)){    emit TriggerElementAction(Page::_OpenInNewViewNodeBackground);       return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode[bB]ackground")).exactMatch(cmd)){    emit TriggerElementAction(Page::_OpenInNewHistNodeBackground);       return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory[bB]ackground")).exactMatch(cmd)){      emit TriggerElementAction(Page::_OpenInNewDirectoryBackground);      return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot[bB]ackground")).exactMatch(cmd)){                 emit TriggerElementAction(Page::_OpenOnRootBackground);              return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode[tT]his[wW]indow")).exactMatch(cmd)){ emit TriggerElementAction(Page::_OpenInNewViewNodeThisWindow);       return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode[tT]his[wW]indow")).exactMatch(cmd)){ emit TriggerElementAction(Page::_OpenInNewHistNodeThisWindow);       return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory[tT]his[wW]indow")).exactMatch(cmd)){   emit TriggerElementAction(Page::_OpenInNewDirectoryThisWindow);      return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot[tT]his[wW]indow")).exactMatch(cmd)){              emit TriggerElementAction(Page::_OpenOnRootThisWindow);              return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode[nN]ew[wW]indow")).exactMatch(cmd)){  emit TriggerElementAction(Page::_OpenInNewViewNodeNewWindow);        return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode[nN]ew[wW]indow")).exactMatch(cmd)){  emit TriggerElementAction(Page::_OpenInNewHistNodeNewWindow);        return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory[nN]ew[wW]indow")).exactMatch(cmd)){    emit TriggerElementAction(Page::_OpenInNewDirectoryNewWindow);       return; }
-    if(QRegExp(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot[nN]ew[wW]indow")).exactMatch(cmd)){               emit TriggerElementAction(Page::_OpenOnRootNewWindow);               return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode")).exactMatch(cmd)){                     emit TriggerElementAction(Page::_OpenImageInNewViewNode);            return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode")).exactMatch(cmd)){                     emit TriggerElementAction(Page::_OpenImageInNewHistNode);            return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory")).exactMatch(cmd)){                       emit TriggerElementAction(Page::_OpenImageInNewDirectory);           return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot")).exactMatch(cmd)){                                  emit TriggerElementAction(Page::_OpenImageOnRoot);                   return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode[fF]oreground")).exactMatch(cmd)){        emit TriggerElementAction(Page::_OpenImageInNewViewNodeForeground);  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[fF]oreground")).exactMatch(cmd)){        emit TriggerElementAction(Page::_OpenImageInNewHistNodeForeground);  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[fF]oreground")).exactMatch(cmd)){          emit TriggerElementAction(Page::_OpenImageInNewDirectoryForeground); return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[fF]oreground")).exactMatch(cmd)){                     emit TriggerElementAction(Page::_OpenImageOnRootForeground);         return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode[bB]ackground")).exactMatch(cmd)){        emit TriggerElementAction(Page::_OpenImageInNewViewNodeBackground);  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[bB]ackground")).exactMatch(cmd)){        emit TriggerElementAction(Page::_OpenImageInNewHistNodeBackground);  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[bB]ackground")).exactMatch(cmd)){          emit TriggerElementAction(Page::_OpenImageInNewDirectoryBackground); return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[bB]ackground")).exactMatch(cmd)){                     emit TriggerElementAction(Page::_OpenImageOnRootBackground);         return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode[tT]his[wW]indow")).exactMatch(cmd)){     emit TriggerElementAction(Page::_OpenImageInNewViewNodeThisWindow);  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[tT]his[wW]indow")).exactMatch(cmd)){     emit TriggerElementAction(Page::_OpenImageInNewHistNodeThisWindow);  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[tT]his[wW]indow")).exactMatch(cmd)){       emit TriggerElementAction(Page::_OpenImageInNewDirectoryThisWindow); return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[tT]his[wW]indow")).exactMatch(cmd)){                  emit TriggerElementAction(Page::_OpenImageOnRootThisWindow);         return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode[nN]ew[wW]indow")).exactMatch(cmd)){      emit TriggerElementAction(Page::_OpenImageInNewViewNodeNewWindow);   return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[nN]ew[wW]indow")).exactMatch(cmd)){      emit TriggerElementAction(Page::_OpenImageInNewHistNodeNewWindow);   return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[nN]ew[wW]indow")).exactMatch(cmd)){        emit TriggerElementAction(Page::_OpenImageInNewDirectoryNewWindow);  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[nN]ew[wW]indow")).exactMatch(cmd)){                   emit TriggerElementAction(Page::_OpenImageOnRootNewWindow);          return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode"), cmd)){                 emit TriggerElementAction(Page::_OpenInNewViewNode);                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode"), cmd)){                 emit TriggerElementAction(Page::_OpenInNewHistNode);                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory"), cmd)){                   emit TriggerElementAction(Page::_OpenInNewDirectory);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot"), cmd)){                              emit TriggerElementAction(Page::_OpenOnRoot);                        return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode[fF]oreground"), cmd)){    emit TriggerElementAction(Page::_OpenInNewViewNodeForeground);       return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode[fF]oreground"), cmd)){    emit TriggerElementAction(Page::_OpenInNewHistNodeForeground);       return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory[fF]oreground"), cmd)){      emit TriggerElementAction(Page::_OpenInNewDirectoryForeground);      return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot[fF]oreground"), cmd)){                 emit TriggerElementAction(Page::_OpenOnRootForeground);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode[bB]ackground"), cmd)){    emit TriggerElementAction(Page::_OpenInNewViewNodeBackground);       return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode[bB]ackground"), cmd)){    emit TriggerElementAction(Page::_OpenInNewHistNodeBackground);       return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory[bB]ackground"), cmd)){      emit TriggerElementAction(Page::_OpenInNewDirectoryBackground);      return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot[bB]ackground"), cmd)){                 emit TriggerElementAction(Page::_OpenOnRootBackground);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode[tT]his[wW]indow"), cmd)){ emit TriggerElementAction(Page::_OpenInNewViewNodeThisWindow);       return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode[tT]his[wW]indow"), cmd)){ emit TriggerElementAction(Page::_OpenInNewHistNodeThisWindow);       return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory[tT]his[wW]indow"), cmd)){   emit TriggerElementAction(Page::_OpenInNewDirectoryThisWindow);      return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot[tT]his[wW]indow"), cmd)){              emit TriggerElementAction(Page::_OpenOnRootThisWindow);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode[nN]ew[wW]indow"), cmd)){  emit TriggerElementAction(Page::_OpenInNewViewNodeNewWindow);        return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode[nN]ew[wW]indow"), cmd)){  emit TriggerElementAction(Page::_OpenInNewHistNodeNewWindow);        return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory[nN]ew[wW]indow"), cmd)){    emit TriggerElementAction(Page::_OpenInNewDirectoryNewWindow);       return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[oO]n[rR]oot[nN]ew[wW]indow"), cmd)){               emit TriggerElementAction(Page::_OpenOnRootNewWindow);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode"), cmd)){                     emit TriggerElementAction(Page::_OpenImageInNewViewNode);            return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode"), cmd)){                     emit TriggerElementAction(Page::_OpenImageInNewHistNode);            return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory"), cmd)){                       emit TriggerElementAction(Page::_OpenImageInNewDirectory);           return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot"), cmd)){                                  emit TriggerElementAction(Page::_OpenImageOnRoot);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode[fF]oreground"), cmd)){        emit TriggerElementAction(Page::_OpenImageInNewViewNodeForeground);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[fF]oreground"), cmd)){        emit TriggerElementAction(Page::_OpenImageInNewHistNodeForeground);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[fF]oreground"), cmd)){          emit TriggerElementAction(Page::_OpenImageInNewDirectoryForeground); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[fF]oreground"), cmd)){                     emit TriggerElementAction(Page::_OpenImageOnRootForeground);         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode[bB]ackground"), cmd)){        emit TriggerElementAction(Page::_OpenImageInNewViewNodeBackground);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[bB]ackground"), cmd)){        emit TriggerElementAction(Page::_OpenImageInNewHistNodeBackground);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[bB]ackground"), cmd)){          emit TriggerElementAction(Page::_OpenImageInNewDirectoryBackground); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[bB]ackground"), cmd)){                     emit TriggerElementAction(Page::_OpenImageOnRootBackground);         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode[tT]his[wW]indow"), cmd)){     emit TriggerElementAction(Page::_OpenImageInNewViewNodeThisWindow);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[tT]his[wW]indow"), cmd)){     emit TriggerElementAction(Page::_OpenImageInNewHistNodeThisWindow);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[tT]his[wW]indow"), cmd)){       emit TriggerElementAction(Page::_OpenImageInNewDirectoryThisWindow); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[tT]his[wW]indow"), cmd)){                  emit TriggerElementAction(Page::_OpenImageOnRootThisWindow);         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[vV]iew[nN]ode[nN]ew[wW]indow"), cmd)){      emit TriggerElementAction(Page::_OpenImageInNewViewNodeNewWindow);   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[nN]ew[wW]indow"), cmd)){      emit TriggerElementAction(Page::_OpenImageInNewHistNodeNewWindow);   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[nN]ew[wW]indow"), cmd)){        emit TriggerElementAction(Page::_OpenImageInNewDirectoryNewWindow);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[nN]ew[wW]indow"), cmd)){                   emit TriggerElementAction(Page::_OpenImageOnRootNewWindow);          return; }
 
-    if(QRegExp(QStringLiteral("[dD]eactivate")).exactMatch(cmd)){                                         emit Deactivate();                      return; }
-    if(QRegExp(QStringLiteral("[rR]efresh")).exactMatch(cmd)){                                            emit Refresh();                         return; }
-    if(QRegExp(QStringLiteral("[rR]efresh[nN]o[sS]croll")).exactMatch(cmd)){                              emit RefreshNoScroll();                 return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode")).exactMatch(cmd)){                                        emit OpenNode();                        return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode[oO]n[nN]ew[wW]indow")).exactMatch(cmd)){                    emit OpenNodeOnNewWindow();             return; }
-    if(QRegExp(QStringLiteral("[dD]elete[nN]ode")).exactMatch(cmd)){                                      emit DeleteNode();                      return; }
-    if(QRegExp(QStringLiteral("[dD]elete[rR]ight[nN]ode")).exactMatch(cmd)){                              emit DeleteRightNode();                 return; }
-    if(QRegExp(QStringLiteral("[dD]elete[lL]eft[nN]ode")).exactMatch(cmd)){                               emit DeleteLeftNode();                  return; }
-    if(QRegExp(QStringLiteral("[dD]elete[oO]ther[nN]ode")).exactMatch(cmd)){                              emit DeleteOtherNode();                 return; }
-    if(QRegExp(QStringLiteral("[pP]aste[nN]ode")).exactMatch(cmd)){                                       emit PasteNode();                       return; }
-    if(QRegExp(QStringLiteral("[rR]estore[nN]ode")).exactMatch(cmd)){                                     emit RestoreNode();                     return; }
-    if(QRegExp(QStringLiteral("[nN]ew[nN]ode")).exactMatch(cmd)){                                         emit NewNode();                         return; }
-    if(QRegExp(QStringLiteral("[cC]lone[nN]ode")).exactMatch(cmd)){                                       emit CloneNode();                       return; }
-    if(QRegExp(QStringLiteral("[uU]p[dD]irectory")).exactMatch(cmd)){                                     emit UpDirectory();                     return; }
-    if(QRegExp(QStringLiteral("[dD]own[dD]irectory")).exactMatch(cmd)){                                   emit DownDirectory();                   return; }
-    if(QRegExp(QStringLiteral("[mM]ake[lL]ocal[nN]ode")).exactMatch(cmd)){                                emit MakeLocalNode();                   return; }
-    if(QRegExp(QStringLiteral("[mM]ake[dD]irectory")).exactMatch(cmd)){                                   emit MakeDirectory();                   return; }
-    if(QRegExp(QStringLiteral("[mM]ake[dD]irectory[wW]ith[sS]elected[nN]ode")).exactMatch(cmd)){          emit MakeDirectoryWithSelectedNode();   return; }
-    if(QRegExp(QStringLiteral("[mM]ake[dD]irectory[wW]ith[sS]ame[dD]omain[nN]ode")).exactMatch(cmd)){     emit MakeDirectoryWithSameDomainNode(); return; }
-    if(QRegExp(QStringLiteral("[rR]ename[nN]ode")).exactMatch(cmd)){                                      emit RenameNode();                      return; }
-    if(QRegExp(QStringLiteral("[cC]opy[nN]ode[uU]rl")).exactMatch(cmd)){                                  emit CopyNodeUrl();                     return; }
-    if(QRegExp(QStringLiteral("[cC]opy[nN]ode[tT]itle")).exactMatch(cmd)){                                emit CopyNodeTitle();                   return; }
-    if(QRegExp(QStringLiteral("[cC]opy[nN]ode[aA]s[lL]ink")).exactMatch(cmd)){                            emit CopyNodeAsLink();                  return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(cmd)){ emit OpenNodeWithIE();        return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[eE]dge")).exactMatch(cmd)){                emit OpenNodeWithEdge();                return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?")).exactMatch(cmd)){ emit OpenNodeWithFF();                 return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[oO]pera")).exactMatch(cmd)){               emit OpenNodeWithOpera();               return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[oO][pP][rR]")).exactMatch(cmd)){           emit OpenNodeWithOPR();                 return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[sS]afari")).exactMatch(cmd)){              emit OpenNodeWithSafari();              return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[cC]hrome")).exactMatch(cmd)){              emit OpenNodeWithChrome();              return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[sS]leipnir")).exactMatch(cmd)){            emit OpenNodeWithSleipnir();            return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[vV]ivaldi")).exactMatch(cmd)){             emit OpenNodeWithVivaldi();             return; }
-    if(QRegExp(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[cC]ustom")).exactMatch(cmd)){              emit OpenNodeWithCustom();              return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]eactivate"), cmd)){                                         emit Deactivate();                      return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]efresh"), cmd)){                                            emit Refresh();                         return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]efresh[nN]o[sS]croll"), cmd)){                              emit RefreshNoScroll();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode"), cmd)){                                        emit OpenNode();                        return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode[oO]n[nN]ew[wW]indow"), cmd)){                    emit OpenNodeOnNewWindow();             return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]elete[nN]ode"), cmd)){                                      emit DeleteNode();                      return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]elete[rR]ight[nN]ode"), cmd)){                              emit DeleteRightNode();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]elete[lL]eft[nN]ode"), cmd)){                               emit DeleteLeftNode();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]elete[oO]ther[nN]ode"), cmd)){                              emit DeleteOtherNode();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[pP]aste[nN]ode"), cmd)){                                       emit PasteNode();                       return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]estore[nN]ode"), cmd)){                                     emit RestoreNode();                     return; }
+    if(Application::ExactMatch(QStringLiteral("[nN]ew[nN]ode"), cmd)){                                         emit NewNode();                         return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]lone[nN]ode"), cmd)){                                       emit CloneNode();                       return; }
+    if(Application::ExactMatch(QStringLiteral("[uU]p[dD]irectory"), cmd)){                                     emit UpDirectory();                     return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]own[dD]irectory"), cmd)){                                   emit DownDirectory();                   return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ake[lL]ocal[nN]ode"), cmd)){                                emit MakeLocalNode();                   return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ake[dD]irectory"), cmd)){                                   emit MakeDirectory();                   return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ake[dD]irectory[wW]ith[sS]elected[nN]ode"), cmd)){          emit MakeDirectoryWithSelectedNode();   return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ake[dD]irectory[wW]ith[sS]ame[dD]omain[nN]ode"), cmd)){     emit MakeDirectoryWithSameDomainNode(); return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]ename[nN]ode"), cmd)){                                      emit RenameNode();                      return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[nN]ode[uU]rl"), cmd)){                                  emit CopyNodeUrl();                     return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[nN]ode[tT]itle"), cmd)){                                emit CopyNodeTitle();                   return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[nN]ode[aA]s[lL]ink"), cmd)){                            emit CopyNodeAsLink();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){ emit OpenNodeWithIE();        return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[eE]dge"), cmd)){                emit OpenNodeWithEdge();                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){ emit OpenNodeWithFF();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[oO]pera"), cmd)){               emit OpenNodeWithOpera();               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){           emit OpenNodeWithOPR();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[sS]afari"), cmd)){              emit OpenNodeWithSafari();              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){              emit OpenNodeWithChrome();              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){            emit OpenNodeWithSleipnir();            return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){             emit OpenNodeWithVivaldi();             return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){              emit OpenNodeWithCustom();              return; }
 
-    if(QRegExp(QStringLiteral("[tT]oggle[tT]rash")).exactMatch(cmd)){                                     emit ToggleTrash();                     return; }
-    if(QRegExp(QStringLiteral("[sS]croll[uU]p")).exactMatch(cmd)){                                        emit ScrollUp();                        return; }
-    if(QRegExp(QStringLiteral("[sS]croll[dD]own")).exactMatch(cmd)){                                      emit ScrollDown();                      return; }
-    if(QRegExp(QStringLiteral("[pP]age[uU]p")).exactMatch(cmd)){                                          emit PageUp();                          return; }
-    if(QRegExp(QStringLiteral("[pP]age[dD]own")).exactMatch(cmd)){                                        emit PageDown();                        return; }
-    if(QRegExp(QStringLiteral("[zZ]oom[iI]n")).exactMatch(cmd)){                                          emit ZoomIn();                          return; }
-    if(QRegExp(QStringLiteral("[zZ]oom[oO]ut")).exactMatch(cmd)){                                         emit ZoomOut();                         return; }
-    if(QRegExp(QStringLiteral("[mM]ove[tT]o[uU]pper[iI]tem")).exactMatch(cmd)){                           emit MoveToUpperItem();                 return; }
-    if(QRegExp(QStringLiteral("[mM]ove[tT]o[lL]ower[iI]tem")).exactMatch(cmd)){                           emit MoveToLowerItem();                 return; }
-    if(QRegExp(QStringLiteral("[mM]ove[tT]o[rR]ight[iI]tem")).exactMatch(cmd)){                           emit MoveToRightItem();                 return; }
-    if(QRegExp(QStringLiteral("[mM]ove[tT]o[lL]eft[iI]tem")).exactMatch(cmd)){                            emit MoveToLeftItem();                  return; }
-    if(QRegExp(QStringLiteral("[mM]ove[tT]o[pP]rev[pP]age")).exactMatch(cmd)){                            emit MoveToPrevPage();                  return; }
-    if(QRegExp(QStringLiteral("[mM]ove[tT]o[nN]ext[pP]age")).exactMatch(cmd)){                            emit MoveToNextPage();                  return; }
-    if(QRegExp(QStringLiteral("[mM]ove[tT]o[fF]irst[iI]tem")).exactMatch(cmd)){                           emit MoveToFirstItem();                 return; }
-    if(QRegExp(QStringLiteral("[mM]ove[tT]o[lL]ast[iI]tem")).exactMatch(cmd)){                            emit MoveToLastItem();                  return; }
-    if(QRegExp(QStringLiteral("[sS]elect[tT]o[uU]pper[iI]tem")).exactMatch(cmd)){                         emit SelectToUpperItem();               return; }
-    if(QRegExp(QStringLiteral("[sS]elect[tT]o[lL]ower[iI]tem")).exactMatch(cmd)){                         emit SelectToLowerItem();               return; }
-    if(QRegExp(QStringLiteral("[sS]elect[tT]o[rR]ight[iI]tem")).exactMatch(cmd)){                         emit SelectToRightItem();               return; }
-    if(QRegExp(QStringLiteral("[sS]elect[tT]o[lL]eft[iI]tem")).exactMatch(cmd)){                          emit SelectToLeftItem();                return; }
-    if(QRegExp(QStringLiteral("[sS]elect[tT]o[pP]rev[pP]age")).exactMatch(cmd)){                          emit SelectToPrevPage();                return; }
-    if(QRegExp(QStringLiteral("[sS]elect[tT]o[nN]ext[pP]age")).exactMatch(cmd)){                          emit SelectToNextPage();                return; }
-    if(QRegExp(QStringLiteral("[sS]elect[tT]o[fF]irst[iI]tem")).exactMatch(cmd)){                         emit SelectToFirstItem();               return; }
-    if(QRegExp(QStringLiteral("[sS]elect[tT]o[lL]ast[iI]tem")).exactMatch(cmd)){                          emit SelectToLastItem();                return; }
-    if(QRegExp(QStringLiteral("[sS]elect[iI]tem")).exactMatch(cmd)){                                      emit SelectItem();                      return; }
-    if(QRegExp(QStringLiteral("[sS]elect[rR]ange")).exactMatch(cmd)){                                     emit SelectRange();                     return; }
-    if(QRegExp(QStringLiteral("[sS]elect[aA]ll")).exactMatch(cmd)){                                       emit SelectAll();                       return; }
-    if(QRegExp(QStringLiteral("[cC]lear[sS]election")).exactMatch(cmd)){                                  emit ClearSelection();                  return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[uU]pper")).exactMatch(cmd)){                              emit TransferToUpper();                 return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[lL]ower")).exactMatch(cmd)){                              emit TransferToLower();                 return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[rR]ight")).exactMatch(cmd)){                              emit TransferToRight();                 return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[lL]eft")).exactMatch(cmd)){                               emit TransferToLeft();                  return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[pP]rev[pP]age")).exactMatch(cmd)){                        emit TransferToPrevPage();              return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[nN]ext[pP]age")).exactMatch(cmd)){                        emit TransferToNextPage();              return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[fF]irst")).exactMatch(cmd)){                              emit TransferToFirst();                 return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[lL]ast")).exactMatch(cmd)){                               emit TransferToLast();                  return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[uU]p[dD]irectory")).exactMatch(cmd)){                     emit TransferToUpDirectory();           return; }
-    if(QRegExp(QStringLiteral("[tT]ransfer[tT]o[dD]own[dD]irectory")).exactMatch(cmd)){                   emit TransferToDownDirectory();         return; }
-    if(QRegExp(QStringLiteral("[sS]witch[nN]ode[cC]ollection[tT]ype")).exactMatch(cmd)){                  emit SwitchNodeCollectionType();        return; }
-    if(QRegExp(QStringLiteral("[sS]witch[nN]ode[cC]ollection[tT]ype[rR]everse")).exactMatch(cmd)){        emit SwitchNodeCollectionTypeReverse(); return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]oggle[tT]rash"), cmd)){                                     emit ToggleTrash();                     return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]croll[uU]p"), cmd)){                                        emit ScrollUp();                        return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]croll[dD]own"), cmd)){                                      emit ScrollDown();                      return; }
+    if(Application::ExactMatch(QStringLiteral("[pP]age[uU]p"), cmd)){                                          emit PageUp();                          return; }
+    if(Application::ExactMatch(QStringLiteral("[pP]age[dD]own"), cmd)){                                        emit PageDown();                        return; }
+    if(Application::ExactMatch(QStringLiteral("[nN]ext[pP]age"), cmd)){                                        emit NextPage();                        return; }
+    if(Application::ExactMatch(QStringLiteral("[pP]rev(?:ious)[pP]age"), cmd)){                                emit PrevPage();                        return; }
+    if(Application::ExactMatch(QStringLiteral("[zZ]oom[iI]n"), cmd)){                                          emit ZoomIn();                          return; }
+    if(Application::ExactMatch(QStringLiteral("[zZ]oom[oO]ut"), cmd)){                                         emit ZoomOut();                         return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ove[tT]o[uU]pper[iI]tem"), cmd)){                           emit MoveToUpperItem();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ove[tT]o[lL]ower[iI]tem"), cmd)){                           emit MoveToLowerItem();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ove[tT]o[rR]ight[iI]tem"), cmd)){                           emit MoveToRightItem();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ove[tT]o[lL]eft[iI]tem"), cmd)){                            emit MoveToLeftItem();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ove[tT]o[pP]rev[pP]age"), cmd)){                            emit MoveToPrevPage();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ove[tT]o[nN]ext[pP]age"), cmd)){                            emit MoveToNextPage();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ove[tT]o[fF]irst[iI]tem"), cmd)){                           emit MoveToFirstItem();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[mM]ove[tT]o[lL]ast[iI]tem"), cmd)){                            emit MoveToLastItem();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[tT]o[uU]pper[iI]tem"), cmd)){                         emit SelectToUpperItem();               return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[tT]o[lL]ower[iI]tem"), cmd)){                         emit SelectToLowerItem();               return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[tT]o[rR]ight[iI]tem"), cmd)){                         emit SelectToRightItem();               return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[tT]o[lL]eft[iI]tem"), cmd)){                          emit SelectToLeftItem();                return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[tT]o[pP]rev[pP]age"), cmd)){                          emit SelectToPrevPage();                return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[tT]o[nN]ext[pP]age"), cmd)){                          emit SelectToNextPage();                return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[tT]o[fF]irst[iI]tem"), cmd)){                         emit SelectToFirstItem();               return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[tT]o[lL]ast[iI]tem"), cmd)){                          emit SelectToLastItem();                return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[iI]tem"), cmd)){                                      emit SelectItem();                      return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[rR]ange"), cmd)){                                     emit SelectRange();                     return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]elect[aA]ll"), cmd)){                                       emit SelectAll();                       return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]lear[sS]election"), cmd)){                                  emit ClearSelection();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[uU]pper"), cmd)){                              emit TransferToUpper();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[lL]ower"), cmd)){                              emit TransferToLower();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[rR]ight"), cmd)){                              emit TransferToRight();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[lL]eft"), cmd)){                               emit TransferToLeft();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[pP]rev[pP]age"), cmd)){                        emit TransferToPrevPage();              return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[nN]ext[pP]age"), cmd)){                        emit TransferToNextPage();              return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[fF]irst"), cmd)){                              emit TransferToFirst();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[lL]ast"), cmd)){                               emit TransferToLast();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[uU]p[dD]irectory"), cmd)){                     emit TransferToUpDirectory();           return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]ransfer[tT]o[dD]own[dD]irectory"), cmd)){                   emit TransferToDownDirectory();         return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]witch[nN]ode[cC]ollection[tT]ype"), cmd)){                  emit SwitchNodeCollectionType();        return; }
+    if(Application::ExactMatch(QStringLiteral("[sS]witch[nN]ode[cC]ollection[tT]ype[rR]everse"), cmd)){        emit SwitchNodeCollectionTypeReverse(); return; }
 
-    if(QRegExp(QStringLiteral("[rR]econf(?:ig(?:ure)?)?")).exactMatch(cmd)){                              emit Reconfigure();                     return; }
-    if(QRegExp(QStringLiteral("[bB]lank")).exactMatch(cmd)){                                              emit OpenUrl(QUrl(QStringLiteral("about:blank"))); return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]econf(?:ig(?:ure)?)?"), cmd)){                              emit Reconfigure();                     return; }
+    if(Application::ExactMatch(QStringLiteral("[bB]lank"), cmd)){                                              emit OpenUrl(QUrl(QStringLiteral("about:blank"))); return; }
 
     if(list.isEmpty() && Page::GetBookmarkletMap().contains(cmd)){
 
         emit OpenBookmarklet(Page::GetBookmarklet(cmd).first());
 
-    } else if(QRegExp(QStringLiteral("[oO]pen")).exactMatch(cmd)){
+    } else if(Application::ExactMatch(QStringLiteral("[oO]pen"), cmd)){
 
         QStringList args;
         foreach(QString arg, list){
@@ -819,22 +841,22 @@ void Receiver::ReceiveCommand(QString cmd){
         }
         emit OpenUrl(Page::DirtyStringToUrlList(args.join(QStringLiteral(" "))));
 
-    } else if(QRegExp(QStringLiteral("[lL]oad")).exactMatch(cmd)){
+    } else if(Application::ExactMatch(QStringLiteral("[lL]oad"), cmd)){
 
         QString args = list.join(QStringLiteral(" "));
         if(args == QStringLiteral("blank")) emit OpenUrl(QUrl(QStringLiteral("about:blank")));
         else                emit OpenUrl(QUrl(args));
 
-    } else if(QRegExp(QStringLiteral("[qQ]uery")).exactMatch(cmd)){
+    } else if(Application::ExactMatch(QStringLiteral("[qQ]uery"), cmd)){
 
         emit OpenQueryUrl(list.join(QStringLiteral(" ")));
 
-    } else if(QRegExp(QStringLiteral("[dD]ownload")).exactMatch(cmd)){
+    } else if(Application::ExactMatch(QStringLiteral("[dD]ownload"), cmd)){
 
         if(list.length() >= 2) // ignore excess arguments.
             emit Download(list[0], list[1]);
 
-    } else if(QRegExp(QStringLiteral("[sS]earch|[sS]eek")).exactMatch(cmd)){
+    } else if(Application::ExactMatch(QStringLiteral("[sS]earch|[sS]eek"), cmd)){
 
         if(Application::keyboardModifiers() & Qt::ShiftModifier){
             emit SeekText(list.join(QStringLiteral(" ")), View::WrapsAroundDocument | View::FindBackward);
@@ -842,7 +864,7 @@ void Receiver::ReceiveCommand(QString cmd){
             emit SeekText(list.join(QStringLiteral(" ")), View::WrapsAroundDocument);
         }
 
-    } else if(QRegExp(QStringLiteral("[sS]et(?:tings?)?")).exactMatch(cmd)){
+    } else if(Application::ExactMatch(QStringLiteral("[sS]et(?:tings?)?"), cmd)){
 
         if(list.length() >= 2){ // ignore excess arguments.
             QString key = list.takeFirst();
@@ -851,14 +873,14 @@ void Receiver::ReceiveCommand(QString cmd){
             emit Reconfigure();
         }
 
-    } else if(QRegExp(QStringLiteral("[uU]n[sS]et(?:tings?)?")).exactMatch(cmd)){
+    } else if(Application::ExactMatch(QStringLiteral("[uU]n[sS]et(?:tings?)?"), cmd)){
 
         if(list.length() >= 1){ // ignore excess arguments.
             Application::GlobalSettings()->remove(list[0]);
             emit Reconfigure();
         }
 
-    } else if(QRegExp(QStringLiteral("[kK]ey")).exactMatch(cmd)){
+    } else if(Application::ExactMatch(QStringLiteral("[kK]ey"), cmd)){
 
         emit KeyEvent(list.join(QStringLiteral(" ")));
 
@@ -1007,9 +1029,9 @@ void Receiver::mousePressEvent(QMouseEvent *ev){
     if(m_Mode == Command){
         if(!m_SuggestStrings.isEmpty() && m_CurrentSuggestIndex != -1){
             QString key = m_SuggestStrings[m_CurrentSuggestIndex];
-            QStringList list = key.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
+            QStringList list = key.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
 
-            if(QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
+            if(Application::ExactMatch(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?"), list[0])){
                 QSettings *settings = Application::GlobalSettings();
                 if(!settings->value(list[1]).toString().isEmpty())
                     list << settings->value(list[1]).toString();
@@ -1036,9 +1058,9 @@ void Receiver::mouseMoveEvent(QMouseEvent *ev){
             repaint();
         }
     }
-    QStringList list = m_LineString.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
+    QStringList list = m_LineString.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
     if(m_Mode == Command &&
-       QRegExp(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?")).exactMatch(list[0])){
+       Application::ExactMatch(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?"), list[0])){
         if(!m_SuggestStrings.isEmpty()){
             m_CurrentSuggestIndex = m_SuggestStrings.length() - ev->pos().y() / SUGGEST_HEIGHT - 1;
             if(m_CurrentSuggestIndex >= m_SuggestStrings.length())

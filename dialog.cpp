@@ -45,7 +45,7 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     QEventLoop loop;
 
     QVBoxLayout *vlayout = new QVBoxLayout();
-    vlayout->setContentsMargins(10, 10, 10, 10);
+    vlayout->setContentsMargins(10, 7, 10, 7);
 
     QLabel *titleLabel = new QLabel(m_Title, this);
     titleLabel->setStyleSheet(DIALOG_TITLE_STYLE_SHEET);

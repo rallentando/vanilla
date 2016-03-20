@@ -251,14 +251,24 @@ public:
         ClosePressed,
         CloneHovered,
         ClonePressed,
+#if QT_VERSION >= 0x050700
+        SoundHovered,
+        SoundPressed,
+#endif
     } m_ButtonState;
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE;
     QRectF boundingRect() const DECL_OVERRIDE;
     QRectF CloseButtonRect() const;
     QRectF CloneButtonRect() const;
+#if QT_VERSION >= 0x050700
+    QRectF SoundButtonRect() const;
+#endif
     QRect CloseIconRect() const;
     QRect CloneIconRect() const;
+#if QT_VERSION >= 0x050700
+    QRect SoundIconRect() const;
+#endif
 
     int GetNest() const;
     void SetNest(int);

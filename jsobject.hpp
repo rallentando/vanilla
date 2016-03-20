@@ -69,6 +69,16 @@ public slots:
     void previousView         (){ m_TreeBank->PrevView(); }
     void buryView             (){ m_TreeBank->BuryView(); }
     void digView              (){ m_TreeBank->DigView(); }
+    void firstView            (){ m_TreeBank->FirstView(); }
+    void secondView           (){ m_TreeBank->SecondView(); }
+    void thirdView            (){ m_TreeBank->ThirdView(); }
+    void fourthView           (){ m_TreeBank->FourthView(); }
+    void fifthView            (){ m_TreeBank->FifthView(); }
+    void sixthView            (){ m_TreeBank->SixthView(); }
+    void seventhView          (){ m_TreeBank->SeventhView(); }
+    void eighthView           (){ m_TreeBank->EighthView(); }
+    void ninthView            (){ m_TreeBank->NinthView(); }
+    void tenthView            (){ m_TreeBank->TenthView(); }
     void displayHistTree      (){ m_TreeBank->DisplayHistTree(); }
     void displayViewtree      (){ m_TreeBank->DisplayViewTree(); }
     void displayAccessKey     (){ m_TreeBank->DisplayAccessKey(); }
@@ -149,6 +159,16 @@ public slots:
     void nextView              (){ m_View->TriggerAction(Page::_NextView); }
     void buryView              (){ m_View->TriggerAction(Page::_BuryView); }
     void digView               (){ m_View->TriggerAction(Page::_DigView); }
+    void firstView             (){ m_View->TriggerAction(Page::_FirstView); }
+    void secondView            (){ m_View->TriggerAction(Page::_SecondView); }
+    void thirdView             (){ m_View->TriggerAction(Page::_ThirdView); }
+    void fourthView            (){ m_View->TriggerAction(Page::_FourthView); }
+    void fifthView             (){ m_View->TriggerAction(Page::_FifthView); }
+    void sixthView             (){ m_View->TriggerAction(Page::_SixthView); }
+    void seventhView           (){ m_View->TriggerAction(Page::_SeventhView); }
+    void eighthView            (){ m_View->TriggerAction(Page::_EighthView); }
+    void ninthView             (){ m_View->TriggerAction(Page::_NinthView); }
+    void tenthView             (){ m_View->TriggerAction(Page::_TenthView); }
     void newViewNode           (){ m_View->TriggerAction(Page::_NewViewNode); }
     void newHistNode           (){ m_View->TriggerAction(Page::_NewHistNode); }
     void cloneViewNode         (){ m_View->TriggerAction(Page::_CloneViewNode); }

@@ -295,15 +295,16 @@ QList<QUrl> Page::ExtractUrlFromHtml(QString html, QUrl baseUrl, FindElementsOpt
 #else
     QList<QUrl> list;
     int pos = 0;
-    QRegExp reg;
+    QRegularExpression reg;
     if(option == HaveSource)
-        reg = QRegExp(QStringLiteral("src=(\"?)([^<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
+        reg = QRegularExpression(QStringLiteral("src=(\"?)([^<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
     if(option == HaveReference)
-        reg = QRegExp(QStringLiteral("href=(\"?)([^<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
-    if(!reg.isEmpty()){
-        while ((pos = reg.indexIn(html, pos)) != -1) {
-            list << StringToUrl(reg.cap(2), baseUrl);
-            pos += reg.matchedLength();
+        reg = QRegularExpression(QStringLiteral("href=(\"?)([^<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
+    if(reg.isValid()){
+        QRegularExpressionMatch match;
+        while((match = reg.match(html, pos)).hasMatch()){
+            list << StringToUrl(match.captured(2), baseUrl);
+            pos = match.capturedEnd();
         }
     }
     return list.toSet().toList();
@@ -313,43 +314,43 @@ QList<QUrl> Page::ExtractUrlFromHtml(QString html, QUrl baseUrl, FindElementsOpt
 QList<QUrl> Page::ExtractUrlFromText(QString text, QUrl baseUrl){
     QList<QUrl> list;
     // '(', ')' are usable in url, but it's thought to be undesirable...
-    QStringList strs = text.split(QRegExp(QStringLiteral("[<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+")));
+    QStringList strs = text.split(QRegularExpression(QStringLiteral("[<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+")));
     foreach(QString str, strs){
         str = str.trimmed();
         if(str.startsWith(QStringLiteral("/")) || str.startsWith(QStringLiteral("./")) || str.startsWith(QStringLiteral("../"))) ; // do nothing.
-        else if(str.contains(QRegExp(QStringLiteral("^.*view-source:")))) str = QString       (           ) + str.mid(str.indexOf(QRegExp(QStringLiteral("view-source:"))));
-        else if(str.contains(QRegExp(QStringLiteral( "^.*iew-source:")))) str = QStringLiteral("v"        ) + str.mid(str.indexOf(QRegExp(QStringLiteral( "iew-source:"))));
-        else if(str.contains(QRegExp(QStringLiteral(  "^.*ew-source:")))) str = QStringLiteral("vi"       ) + str.mid(str.indexOf(QRegExp(QStringLiteral(  "ew-source:"))));
-        else if(str.contains(QRegExp(QStringLiteral(   "^.*w-source:")))) str = QStringLiteral("vie"      ) + str.mid(str.indexOf(QRegExp(QStringLiteral(   "w-source:"))));
-        else if(str.contains(QRegExp(QStringLiteral(    "^.*-source:")))) str = QStringLiteral("view"     ) + str.mid(str.indexOf(QRegExp(QStringLiteral(    "-source:"))));
-        else if(str.contains(QRegExp(QStringLiteral(     "^.*source:")))) str = QStringLiteral("view-"    ) + str.mid(str.indexOf(QRegExp(QStringLiteral(     "source:"))));
-        else if(str.contains(QRegExp(QStringLiteral(      "^.*ource:")))) str = QStringLiteral("view-s"   ) + str.mid(str.indexOf(QRegExp(QStringLiteral(      "ource:"))));
-        else if(str.contains(QRegExp(QStringLiteral(       "^.*urce:")))) str = QStringLiteral("view-so"  ) + str.mid(str.indexOf(QRegExp(QStringLiteral(       "urce:"))));
-        else if(str.contains(QRegExp(QStringLiteral(        "^.*rce:")))) str = QStringLiteral("view-sou" ) + str.mid(str.indexOf(QRegExp(QStringLiteral(        "rce:"))));
-        else if(str.contains(QRegExp(QStringLiteral(         "^.*ce:")))) str = QStringLiteral("view-sour") + str.mid(str.indexOf(QRegExp(QStringLiteral(         "ce:"))));
-        else if(str.contains(QRegExp(QStringLiteral(     "^.*sftp://")))) str = QString       (           ) + str.mid(str.indexOf(QRegExp(QStringLiteral(     "sftp://"))));
-        else if(str.contains(QRegExp(QStringLiteral(      "^.*ftp://")))) str = QString       (           ) + str.mid(str.indexOf(QRegExp(QStringLiteral(      "ftp://"))));
-        else if(str.contains(QRegExp(QStringLiteral(   "^.*https?://")))) str = QString       (           ) + str.mid(str.indexOf(QRegExp(QStringLiteral(   "https?://"))));
-        else if(str.contains(QRegExp(QStringLiteral(    "^.*ttps?://")))) str = QStringLiteral("h"        ) + str.mid(str.indexOf(QRegExp(QStringLiteral(    "ttps?://"))));
-        else if(str.contains(QRegExp(QStringLiteral(     "^.*tps?://")))) str = QStringLiteral("ht"       ) + str.mid(str.indexOf(QRegExp(QStringLiteral(     "tps?://"))));
-        else if(str.contains(QRegExp(QStringLiteral(      "^.*ps?://")))) str = QStringLiteral("htt"      ) + str.mid(str.indexOf(QRegExp(QStringLiteral(      "ps?://"))));
-        else if(str.contains(QRegExp(QStringLiteral(       "^.*s?://")))) str = QStringLiteral("http"     ) + str.mid(str.indexOf(QRegExp(QStringLiteral(       "s?://"))));
-        else if(str.contains(QRegExp(QStringLiteral(       "^.*file:")))) str = QString       (           ) + str.mid(str.indexOf(QRegExp(QStringLiteral(       "file:"))));
-        else if(str.contains(QRegExp(QStringLiteral(        "^.*ile:")))) str = QStringLiteral("f"        ) + str.mid(str.indexOf(QRegExp(QStringLiteral(        "ile:"))));
-        else if(str.contains(QRegExp(QStringLiteral(         "^.*le:")))) str = QStringLiteral("fi"       ) + str.mid(str.indexOf(QRegExp(QStringLiteral(         "le:"))));
-        else if(str.contains(QRegExp(QStringLiteral(          "^.*e:")))) str = QStringLiteral("fil"      ) + str.mid(str.indexOf(QRegExp(QStringLiteral(          "e:"))));
-        else if(str.contains(QRegExp(QStringLiteral(      "^.*about:")))) str = QString       (           ) + str.mid(str.indexOf(QRegExp(QStringLiteral(      "about:"))));
-        else if(str.contains(QRegExp(QStringLiteral(       "^.*bout:")))) str = QStringLiteral("a"        ) + str.mid(str.indexOf(QRegExp(QStringLiteral(       "bout:"))));
-        else if(str.contains(QRegExp(QStringLiteral(        "^.*out:")))) str = QStringLiteral("ab"       ) + str.mid(str.indexOf(QRegExp(QStringLiteral(        "out:"))));
-        else if(str.contains(QRegExp(QStringLiteral(         "^.*ut:")))) str = QStringLiteral("abo"      ) + str.mid(str.indexOf(QRegExp(QStringLiteral(         "ut:"))));
-        else if(str.contains(QRegExp(QStringLiteral(          "^.*t:")))) str = QStringLiteral("abou"     ) + str.mid(str.indexOf(QRegExp(QStringLiteral(          "t:"))));
-        else if(str.split(QStringLiteral("/")).first().contains(QRegExp(QStringLiteral(".\\.[a-z]+(?::[0-9]+)?$"))))
+        else if(str.contains(QRegularExpression(QStringLiteral("^.*view-source:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral("view-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral( "^.*iew-source:")))) str = QStringLiteral("v"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral( "iew-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(  "^.*ew-source:")))) str = QStringLiteral("vi"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(  "ew-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(   "^.*w-source:")))) str = QStringLiteral("vie"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(   "w-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(    "^.*-source:")))) str = QStringLiteral("view"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(    "-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(     "^.*source:")))) str = QStringLiteral("view-"    ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*ource:")))) str = QStringLiteral("view-s"   ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "ource:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*urce:")))) str = QStringLiteral("view-so"  ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "urce:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*rce:")))) str = QStringLiteral("view-sou" ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "rce:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(         "^.*ce:")))) str = QStringLiteral("view-sour") + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "ce:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(     "^.*sftp://")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "sftp://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*ftp://")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "ftp://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(   "^.*https?://")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(   "https?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(    "^.*ttps?://")))) str = QStringLiteral("h"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(    "ttps?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(     "^.*tps?://")))) str = QStringLiteral("ht"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "tps?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*ps?://")))) str = QStringLiteral("htt"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "ps?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*s?://")))) str = QStringLiteral("http"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "s?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*file:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "file:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*ile:")))) str = QStringLiteral("f"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "ile:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(         "^.*le:")))) str = QStringLiteral("fi"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "le:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(          "^.*e:")))) str = QStringLiteral("fil"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(          "e:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*about:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "about:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*bout:")))) str = QStringLiteral("a"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "bout:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*out:")))) str = QStringLiteral("ab"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "out:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(         "^.*ut:")))) str = QStringLiteral("abo"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "ut:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(          "^.*t:")))) str = QStringLiteral("abou"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(          "t:"))));
+        else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral(".\\.[a-z]+(?::[0-9]+)?$"))))
             str = QStringLiteral("http://") + str;
-        else if(str.split(QStringLiteral("/")).first().contains(QRegExp(QStringLiteral("(?:[1-9]|[1-9][0-9]|[1-2][0-9][0-9])(?:\\.(?:[1-9]|[1-9][0-9]|[1-2][0-9][0-9])){3}(?::[0-9]+)?$"))))
+        else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral("(?:[1-9]|[1-9][0-9]|[1-2][0-9][0-9])(?:\\.(?:[1-9]|[1-9][0-9]|[1-2][0-9][0-9])){3}(?::[0-9]+)?$"))))
             str = QStringLiteral("http://") + str;
-        else if(str.split(QStringLiteral("/")).first().contains(QRegExp(QStringLiteral("\\[[0-9a-f]{1,4}(?::[0-9a-f]{0,4}){1,7}\\](?::[0-9]+)?$"))))
+        else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral("\\[[0-9a-f]{1,4}(?::[0-9a-f]{0,4}){1,7}\\](?::[0-9]+)?$"))))
             str = QStringLiteral("http://") + str;
-        else if(str.split(QStringLiteral("/")).first().contains(QRegExp(QStringLiteral("[0-9a-f]{1,4}(?::[0-9a-f]{0,4}){1,7}$")))){
+        else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral("[0-9a-f]{1,4}(?::[0-9a-f]{0,4}){1,7}$")))){
             QStringList l = str.split(QStringLiteral("/"));
             QString host = l.takeFirst();
             str = QStringLiteral("http://[") + host + QStringLiteral("]");
@@ -526,37 +527,37 @@ void Page::SetSource(const QString &html){
     viewable.replace(QStringLiteral("<"), QStringLiteral("&lt;"));
     viewable.replace(QStringLiteral(">"), QStringLiteral("&gt;"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;!([dD][oO][cC][tT][yY][pP][eE](?:(?!&gt;).)*)&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!([dD][oO][cC][tT][yY][pP][eE](?:(?!&gt;).)*)&gt;")),
                      QStringLiteral("{{{doctype}}}!\\1{{{/doctype}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;!(--+)&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!(--+)&gt;")),
                      QStringLiteral("{{{lt}}}!\\1{{{gt}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;!--((?:(?:(?!&gt;|&lt;|\\[).)*)\\[(?:(?:(?!&gt;|&lt;|\\]).)*)\\](?:(?:(?!&gt;).)*))--&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--((?:(?:(?!&gt;|&lt;|\\[).)*)\\[(?:(?:(?!&gt;|&lt;|\\]).)*)\\](?:(?:(?!&gt;).)*))--&gt;")),
                      QStringLiteral("{{{switch0}}}!--\\1--{{{/switch0}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;!--\\[((?:(?!&gt;|\\]).)*)\\]&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--\\[((?:(?!&gt;|\\]).)*)\\]&gt;")),
                      QStringLiteral("{{{switch1}}}\\1{{{/switch1}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;!--&lt;!\\[((?:(?!&gt;|\\]).)*)\\]--&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--&lt;!\\[((?:(?!&gt;|\\]).)*)\\]--&gt;")),
                      QStringLiteral("{{{lt}}}!--{{{switch2}}}\\1{{{/switch2}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;!--\\[((?:(?!\\]|&gt;).)*)\\]&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--\\[((?:(?!\\]|&gt;).)*)\\]&gt;")),
                      QStringLiteral("{{{switch1}}}\\1{{{/switch1}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;!\\[((?:(?!\\]|&gt;).)*)\\]--&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!\\[((?:(?!\\]|&gt;).)*)\\]--&gt;")),
                      QStringLiteral("{{{switch2}}}\\1{{{/switch2}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;!--((?:(?!--&gt;).)*)--&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--((?:(?!--&gt;).)*)--&gt;")),
                      QStringLiteral("{{{comment}}}\\1{{{/comment}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;(/?script(?:(?!&gt;).)*)&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;(/?script(?:(?!&gt;).)*)&gt;")),
                      QStringLiteral("{{{script}}}\\1{{{/script}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;(/?style(?:(?!&gt;).)*)&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;(/?style(?:(?!&gt;).)*)&gt;")),
                      QStringLiteral("{{{style}}}\\1{{{/style}}}"));
 
-    viewable.replace(QRegExp(QStringLiteral("&lt;(/?[a-zA-Z][a-zA-Z0-9]*(?:[ \t\n\r\f](?:(?!&gt;).)*)?)&gt;")),
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;(/?[a-zA-Z][a-zA-Z0-9]*(?:[ \t\n\r\f](?:(?!&gt;).)*)?)&gt;")),
                      QStringLiteral("{{{alltag}}}\\1{{{/alltag}}}"));
 
     viewable.replace(QStringLiteral("{{{doctype}}}")  , QStringLiteral("<font color=\"purple\">&lt;"));
@@ -587,7 +588,7 @@ void Page::SetSource(const QString &html){
     viewable.replace(QStringLiteral("{{{gt}}}")       , QStringLiteral("&amp;gt;"));
 
     viewable.replace(QStringLiteral("\n"), QStringLiteral("<br>\n"));
-    viewable.replace(QRegExp(QStringLiteral("^(.*)$")),
+    viewable.replace(QRegularExpression(QStringLiteral("^(.*)$")),
                      QStringLiteral("<pre style=\"white-space:normal;\">\\1</pre>"));
     viewable = QStringLiteral(
         "<html><head></head>"
@@ -759,6 +760,66 @@ void Page::DigView(){
     View::SetSwitchingState(true);
     GetTB()->DigView();
     View::SetSwitchingState(false);
+}
+
+void Page::FirstView(){
+    View::SetSwitchingState(true);
+    GetTB()->FirstView();
+    View::SetSwitchingState(false);
+}
+
+void Page::SecondView(){
+    View::SetSwitchingState(true);
+    GetTB()->SecondView();
+    View::SetSwitchingState(false);
+}
+
+void Page::ThirdView(){
+    View::SetSwitchingState(true);
+    GetTB()->ThirdView();
+    View::SetSwitchingState(false);
+}
+
+void Page::FourthView(){
+    View::SetSwitchingState(true);
+    GetTB()->FourthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::FifthView(){
+    View::SetSwitchingState(true);
+    GetTB()->FifthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::SixthView(){
+    View::SetSwitchingState(true);
+    GetTB()->SixthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::SeventhView(){
+    View::SetSwitchingState(true);
+    GetTB()->SeventhView();
+    View::SetSwitchingState(false);
+}
+
+void Page::EighthView(){
+    View::SetSwitchingState(true);
+    GetTB()->EighthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::NinthView(){
+    View::SetSwitchingState(true);
+    GetTB()->NinthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::TenthView(){
+    View::SetSwitchingState(True);
+    GetTB()->TenthView();
+    View::SetSwitchingState(False);
 }
 
 void Page::NewViewNode(){
@@ -1721,6 +1782,16 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(PrevView,              tr("PrevView"));
         DEFINE_ACTION(BuryView,              tr("BuryView"));
         DEFINE_ACTION(DigView,               tr("DigView"));
+        DEFINE_ACTION(FirstView,             tr("FirstView"));
+        DEFINE_ACTION(SecondView,            tr("SecondView"));
+        DEFINE_ACTION(ThirdView,             tr("ThirdView"));
+        DEFINE_ACTION(FourthView,            tr("FourthView"));
+        DEFINE_ACTION(FifthView,             tr("FifthView"));
+        DEFINE_ACTION(SixthView,             tr("SixthView"));
+        DEFINE_ACTION(SeventhView,           tr("SeventhView"));
+        DEFINE_ACTION(EighthView,            tr("EighthView"));
+        DEFINE_ACTION(NinthView,             tr("NinthView"));
+        DEFINE_ACTION(TenthView,             tr("TenthView"));
         DEFINE_ACTION(NewViewNode,           tr("NewViewNode"));
         DEFINE_ACTION(NewHistNode,           tr("NewHistNode"));
         DEFINE_ACTION(CloneViewNode,         tr("CloneViewNode"));

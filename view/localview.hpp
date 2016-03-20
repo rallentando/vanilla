@@ -12,7 +12,6 @@
 #include <QGraphicsPixmapItem>
 #include <QMediaPlayer>
 #include <QGraphicsVideoItem>
-#include <QtConcurrent/QtConcurrent>
 
 #include <functional>
 

@@ -313,7 +313,7 @@ HistNode *HistNode::Clone(HistNode *parent, ViewNode *partner){
     }
     clone->m_ScrollX = m_ScrollX;
     clone->m_ScrollY = m_ScrollY;
-    clone->m_Zoom = m_Zoom;
+    clone->m_Zoom.store(m_Zoom.load());
     if(m_EnableDeepCopyOfNode){
         // Node::m_Children, Node::m_Primary
         foreach(Node *child, children){
@@ -332,7 +332,8 @@ QUrl HistNode::GetUrl(){
 
 QImage HistNode::GetImage(){
     if(m_Image.isNull() && !m_ImageFileName.isEmpty()){
-        QTimer::singleShot(0, [this](){
+        QtConcurrent::run([this](){
+                // QImage is shared implicitly.
                 QImage image = QImage(Application::ThumbnailDirectory() + m_ImageFileName);
                 if(m_Image.isNull()) m_Image = image;
             });

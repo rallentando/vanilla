@@ -16,13 +16,12 @@
 #include <QDir>
 #include <QLocale>
 #include <QSslSocket>
-#include <QThread>
 #include <QDomDocument>
 #include <QDomNode>
 #include <QDomElement>
 #include <QTextCodec>
 #include <QAbstractButton>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QMimeDatabase>
 #include <QWebEngineProfile>
 #include <QWebEngineDownloadItem>
@@ -334,21 +333,21 @@ void NetworkAccessManager::SetUserAgent(QString ua){
     QString location = QLocale::system().name().replace(QStringLiteral("_"), QStringLiteral("-"));
 
     if(ua.isEmpty()) return;
-    else if(QRegExp(QStringLiteral("[iI](?:nternet)?[eE](?:xplorer)?")).exactMatch(ua)){ ua = Application::UserAgent_IE();}
-    else if(QRegExp(QStringLiteral("[eE]dge")).exactMatch(ua))         { ua = Application::UserAgent_Edge();}
-    else if(QRegExp(QStringLiteral("[fF](?:ire)?[fF](?:ox)?")).exactMatch(ua)){ ua = Application::UserAgent_FF();}
-    else if(QRegExp(QStringLiteral("[oO]pera")).exactMatch(ua))        { ua = Application::UserAgent_Opera();}
-    else if(QRegExp(QStringLiteral("[oO][pP][rR]")).exactMatch(ua))    { ua = Application::UserAgent_OPR();}
-    else if(QRegExp(QStringLiteral("[sS]afari")).exactMatch(ua))       { ua = Application::UserAgent_Safari();}
-    else if(QRegExp(QStringLiteral("[cC]hrome")).exactMatch(ua))       { ua = Application::UserAgent_Chrome();}
-    else if(QRegExp(QStringLiteral("[sS]leipnir")).exactMatch(ua))     { ua = Application::UserAgent_Sleipnir();}
-    else if(QRegExp(QStringLiteral("[vV]ivaldi")).exactMatch(ua))      { ua = Application::UserAgent_Vivaldi();}
-    else if(QRegExp(QStringLiteral("[nN]et[sS]cape")).exactMatch(ua))  { ua = Application::UserAgent_NetScape();}
-    else if(QRegExp(QStringLiteral("[sS]ea[mM]onkey")).exactMatch(ua)) { ua = Application::UserAgent_SeaMonkey();}
-    else if(QRegExp(QStringLiteral("[gG]ecko")).exactMatch(ua))        { ua = Application::UserAgent_Gecko();}
-    else if(QRegExp(QStringLiteral("[iI][cC]ab")).exactMatch(ua))      { ua = Application::UserAgent_iCab();}
-    else if(QRegExp(QStringLiteral("[cC]amino")).exactMatch(ua))       { ua = Application::UserAgent_Camino();}
-    else if(QRegExp(QStringLiteral("[cC]ustom")).exactMatch(ua))       { ua = Application::UserAgent_Custom();}
+    else if(Application::ExactMatch(QStringLiteral("[iI](?:nternet)?[eE](?:xplorer)?"), ua)){ ua = Application::UserAgent_IE();}
+    else if(Application::ExactMatch(QStringLiteral("[eE]dge"), ua))         { ua = Application::UserAgent_Edge();}
+    else if(Application::ExactMatch(QStringLiteral("[fF](?:ire)?[fF](?:ox)?"), ua)){ ua = Application::UserAgent_FF();}
+    else if(Application::ExactMatch(QStringLiteral("[oO]pera"), ua))        { ua = Application::UserAgent_Opera();}
+    else if(Application::ExactMatch(QStringLiteral("[oO][pP][rR]"), ua))    { ua = Application::UserAgent_OPR();}
+    else if(Application::ExactMatch(QStringLiteral("[sS]afari"), ua))       { ua = Application::UserAgent_Safari();}
+    else if(Application::ExactMatch(QStringLiteral("[cC]hrome"), ua))       { ua = Application::UserAgent_Chrome();}
+    else if(Application::ExactMatch(QStringLiteral("[sS]leipnir"), ua))     { ua = Application::UserAgent_Sleipnir();}
+    else if(Application::ExactMatch(QStringLiteral("[vV]ivaldi"), ua))      { ua = Application::UserAgent_Vivaldi();}
+    else if(Application::ExactMatch(QStringLiteral("[nN]et[sS]cape"), ua))  { ua = Application::UserAgent_NetScape();}
+    else if(Application::ExactMatch(QStringLiteral("[sS]ea[mM]onkey"), ua)) { ua = Application::UserAgent_SeaMonkey();}
+    else if(Application::ExactMatch(QStringLiteral("[gG]ecko"), ua))        { ua = Application::UserAgent_Gecko();}
+    else if(Application::ExactMatch(QStringLiteral("[iI][cC]ab"), ua))      { ua = Application::UserAgent_iCab();}
+    else if(Application::ExactMatch(QStringLiteral("[cC]amino"), ua))       { ua = Application::UserAgent_Camino();}
+    else if(Application::ExactMatch(QStringLiteral("[cC]ustom"), ua))       { ua = Application::UserAgent_Custom();}
 
     ua = ua.replace(QStringLiteral("%SYSTEM%"), system).replace(QStringLiteral("%LOCATION%"), location);
 
@@ -425,15 +424,15 @@ void NetworkAccessManager::SetProxy(QString proxySet){
 
     if(!host.isEmpty() && proxy().hostName() != host){
         QNetworkProxy proxy;
-        if     (QRegExp(QStringLiteral("[dD]efault(?:[pP]roxy)?")).exactMatch(type))
+        if     (Application::ExactMatch(QStringLiteral("[dD]efault(?:[pP]roxy)?"), type))
             proxy.setType(QNetworkProxy::DefaultProxy);
-        else if(QRegExp(QStringLiteral("[sS]ocks5?(?:[pP]roxy)?")).exactMatch(type))
+        else if(Application::ExactMatch(QStringLiteral("[sS]ocks5?(?:[pP]roxy)?"), type))
             proxy.setType(QNetworkProxy::Socks5Proxy);
-        else if(QRegExp(QStringLiteral("[hH]ttp(?:[pP]roxy)?")).exactMatch(type))
+        else if(Application::ExactMatch(QStringLiteral("[hH]ttp(?:[pP]roxy)?"), type))
             proxy.setType(QNetworkProxy::HttpProxy);
-        else if(QRegExp(QStringLiteral("[hH]ttp[cC]aching(?:[pP]roxy)?")).exactMatch(type))
+        else if(Application::ExactMatch(QStringLiteral("[hH]ttp[cC]aching(?:[pP]roxy)?"), type))
             proxy.setType(QNetworkProxy::HttpCachingProxy);
-        else if(QRegExp(QStringLiteral("[fF]tp[cC]aching(?:[pP]roxy)?")).exactMatch(type))
+        else if(Application::ExactMatch(QStringLiteral("[fF]tp[cC]aching(?:[pP]roxy)?"), type))
             proxy.setType(QNetworkProxy::FtpCachingProxy);
         else
             proxy.setType(QNetworkProxy::DefaultProxy);
@@ -449,31 +448,31 @@ void NetworkAccessManager::SetProxy(QString proxySet){
 void NetworkAccessManager::SetSslProtocol(QString sslSet){
     QString version = sslSet.split(QStringLiteral(" ")).last();
 
-    if     (QRegExp(QStringLiteral("[sS][sS][lL][vV](?:ersion)?3(?:.0)?")).exactMatch(version))
+    if     (Application::ExactMatch(QStringLiteral("[sS][sS][lL][vV](?:ersion)?3(?:.0)?"), version))
         m_SslProtocol = QSsl::SslV3;
-    else if(QRegExp(QStringLiteral("[sS][sS][lL][vV](?:ersion)?2(?:.0)?")).exactMatch(version))
+    else if(Application::ExactMatch(QStringLiteral("[sS][sS][lL][vV](?:ersion)?2(?:.0)?"), version))
         m_SslProtocol = QSsl::SslV2;
-    else if(QRegExp(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1(?:.0)?")).exactMatch(version))
+    else if(Application::ExactMatch(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1(?:.0)?"), version))
         m_SslProtocol = QSsl::TlsV1_0;
-    else if(QRegExp(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1.1")).exactMatch(version))
+    else if(Application::ExactMatch(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1.1"), version))
         m_SslProtocol = QSsl::TlsV1_1;
-    else if(QRegExp(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1.2")).exactMatch(version))
+    else if(Application::ExactMatch(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1.2"), version))
         m_SslProtocol = QSsl::TlsV1_2;
-    else if(QRegExp(QStringLiteral("[aA]ny(?:[pP]rotocol)?")).exactMatch(version))
+    else if(Application::ExactMatch(QStringLiteral("[aA]ny(?:[pP]rotocol)?"), version))
         m_SslProtocol = QSsl::AnyProtocol;
-    else if(QRegExp(QStringLiteral("[sS]ecure(?:[pP]rotocol)?")).exactMatch(version))
+    else if(Application::ExactMatch(QStringLiteral("[sS]ecure(?:[pP]rotocol)?"), version))
         m_SslProtocol = QSsl::SecureProtocols;
-    else if(QRegExp(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1(?:.0)?"
-                                 VV"[sS][sS][lL][vV](?:ersion)?3(?:.0)?")).exactMatch(version))
+    else if(Application::ExactMatch(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1(?:.0)?"
+                                                 VV"[sS][sS][lL][vV](?:ersion)?3(?:.0)?"), version))
         m_SslProtocol = QSsl::TlsV1SslV3;
     else
         m_SslProtocol = QSsl::UnknownProtocol;
 }
 
 void NetworkAccessManager::SetOffTheRecord(QString offTheRecordSet){
-    if       (!m_Profile->isOffTheRecord() && QRegExp(QStringLiteral( "(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)")).exactMatch(offTheRecordSet)){
+    if       (!m_Profile->isOffTheRecord() && Application::ExactMatch(QStringLiteral( "(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"), offTheRecordSet)){
         m_Profile->deleteLater(); m_Profile = new QWebEngineProfile();
-    } else if( m_Profile->isOffTheRecord() && QRegExp(QStringLiteral("!(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)")).exactMatch(offTheRecordSet)){
+    } else if( m_Profile->isOffTheRecord() && Application::ExactMatch(QStringLiteral("!(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"), offTheRecordSet)){
         m_Profile->deleteLater(); m_Profile = new QWebEngineProfile(m_Id);
     }
 }
@@ -904,7 +903,8 @@ DownloadItem* NetworkController::Download(QNetworkReply *reply,
             item->SetPathAndReady(Application::TemporaryDirectory() + QStringLiteral("index.html"));
         } else {
             item->SetPathAndReady(Application::TemporaryDirectory() +
-                                  filename.replace(QRegExp(QStringLiteral("[\\/:,;*?\"<>\\|]")), QString()));
+                                  filename.replace(QRegularExpression(QStringLiteral("[\\/:,;*?\"<>\\|]")),
+                                                   QString()));
         }
         break;
     }
@@ -939,25 +939,25 @@ void NetworkController::RemoveItem(UploadItem *item){
 }
 
 void NetworkController::SetUserAgent(NetworkAccessManager *nam, QStringList set){
-    int pos = set.indexOf(QRegExp(QStringLiteral("^[uU](?:ser)?[aA](?:gent)? [^ ]+")));
+    int pos = set.indexOf(QRegularExpression(QStringLiteral("\\A[uU](?:ser)?[aA](?:gent)? [^ ]+")));
     if(pos == -1) return;
     nam->SetUserAgent(set[pos]);
 }
 
 void NetworkController::SetProxy(NetworkAccessManager *nam, QStringList set){
-    int pos = set.indexOf(QRegExp(QStringLiteral("^[pP][rR][oO][xX][yY] [^ ].*")));
+    int pos = set.indexOf(QRegularExpression(QStringLiteral("\\A[pP][rR][oO][xX][yY] [^ ].*")));
     if(pos == -1) return;
     nam->SetProxy(set[pos]);
 }
 
 void NetworkController::SetSslProtocol(NetworkAccessManager *nam, QStringList set){
-    int pos = set.indexOf(QRegExp(QStringLiteral("^[sS][sS][lL] [^ ]+")));
+    int pos = set.indexOf(QRegularExpression(QStringLiteral("\\A[sS][sS][lL] [^ ]+")));
     if(pos == -1) return;
     nam->SetSslProtocol(set[pos]);
 }
 
 void NetworkController::SetOffTheRecord(NetworkAccessManager *nam, QStringList set){
-    int pos = set.indexOf(QRegExp(QStringLiteral("^!?(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)$")));
+    int pos = set.indexOf(QRegularExpression(QStringLiteral("\\A!?(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)\\Z")));
     if(pos == -1) return;
     nam->SetOffTheRecord(set[pos]);
 }

@@ -8,7 +8,6 @@
 #include <QDomDocument>
 #include <QDomElement>
 #include <QTextStream>
-#include <QThread>
 #include <QDateTime>
 #include <QUrl>
 #include <QDir>
@@ -23,7 +22,8 @@
 #include <QTranslator>
 #include <QLibraryInfo>
 #include <QLocale>
-#include <QRegExp>
+#include <QRegularExpression>
+#include <QtConcurrent/QtConcurrent>
 
 #ifdef QTWEBKIT
 #  include <QWebPage>
@@ -63,7 +63,6 @@ QSettings::Format Application::XMLFormat =
 
 NetworkController* Application::m_NetworkController = 0;
 AutoSaver*  Application::m_AutoSaver         = 0;
-QThread*    Application::m_SaverThread       = 0;
 QSettings*  Application::m_GlobalSettings    = 0;
 
 bool        Application::m_EnableGoogleSuggest = false;
@@ -123,7 +122,6 @@ Application::Application(int &argc, char **argv)
 {
     m_NetworkController = 0;
     m_AutoSaver = 0;
-    m_SaverThread = 0;
     srand(static_cast<unsigned int>(time(NULL)));
     qputenv("QTWEBENGINE_REMOTE_DEBUGGING", VANILLA_REMOTE_DEBUGGING_PORT);
 }
@@ -134,10 +132,6 @@ Application::~Application(){
     }
     if(m_AutoSaver){
         m_AutoSaver->deleteLater();
-    }
-    if(m_SaverThread){
-        m_SaverThread->quit();
-        m_SaverThread->deleteLater();
     }
 }
 
@@ -231,11 +225,9 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     TridentView::SetFeatureControl();
 #endif
     LoadGlobalSettings();
-    CreateBackUpFiles();
 
     m_NetworkController = new NetworkController();
     m_AutoSaver = new AutoSaver();
-    m_SaverThread = new QThread();
     TreeBar::Initialize();
     ToolBar::Initialize();
     TreeBank::Initialize();
@@ -267,32 +259,25 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         }
     }
 
-    connect(m_Instance,  &Application::SaveAllDataRequest,
-            m_AutoSaver, &AutoSaver::SaveAll);
-    m_AutoSaver->moveToThread(m_SaverThread);
-    m_SaverThread->start(QThread::IdlePriority);
+    QTimer::singleShot(0, [=](){
 
-    StartAutoSaveTimer();
-    StartAutoLoadTimer();
+        CreateBackUpFiles();
+        StartAutoSaveTimer();
+        StartAutoLoadTimer();
 
-    if(m_CurrentWindow){
-        QStringList list;
-        // skip first.
-        for(int i = 1; i < argc; i++){
-            QString arg = QLatin1String(argv[i]);
-            if(arg.startsWith(QStringLiteral("--"))){
-                // not yet implemented.
-                break;
+        if(m_CurrentWindow){
+            QStringList list;
+            // skip first.
+            for(int i = 1; i < argc; i++){
+                QString arg = QLatin1String(argv[i]);
+                if(arg.startsWith(QStringLiteral("--"))){ /*not yet implemented.*/ break;}
+                if(arg.startsWith(QStringLiteral("-"))){  /*not yet implemented.*/ break;}
+                list << arg;
             }
-            if(arg.startsWith(QStringLiteral("-"))){
-                // not yet implemented.
-                break;
-            }
-            list << arg;
+            if(Receiver *receiver = m_CurrentWindow->GetTreeBank()->GetReceiver())
+                receiver->ReceiveCommand(list.join(QStringLiteral(" ")));
         }
-        if(m_CurrentWindow->GetTreeBank()->GetReceiver())
-            m_CurrentWindow->GetTreeBank()->GetReceiver()->ReceiveCommand(list.join(QStringLiteral(" ")));
-    }
+    });
 }
 
 /*
@@ -887,11 +872,14 @@ void Application::Import(TreeBank *tb){
 #else
         QString source = QString::fromUtf8(data);
         ViewNode *vn = TreeBank::GetViewRoot();
-        QRegExp tagrx("<(/?)([a-zA-Z0-9]+)([^<>]*)>([^<>]*)");
-        QRegExp attrrx(" ([a-zA-Z-_]+)=([^ <>]+)");
+        QRegularExpression tagrx("<(/?)([a-zA-Z0-9]+)([^<>]*)>([^<>]*)");
+        QRegularExpression attrrx(" ([a-zA-Z-_]+)=([^ <>]+)");
+        QRegularExpressionMatch tagmatch;
+        QRegularExpressionMatch attrmatch;
         int pos = 0;
-        while((pos = tagrx.indexIn(source, pos)) != -1 && vn){
-            QStringList capture = tagrx.capturedTexts();
+        while((tagmatch = tagrx.match(source, pos)).hasMatch() && vn){
+            pos = tagmatch.capturedEnd();
+            QStringList capture = tagmatch.capturedTexts();
             capture.takeFirst();
 
             QString close = capture.takeFirst();
@@ -906,8 +894,9 @@ void Application::Import(TreeBank *tb){
             } else if(tagName == QStringLiteral("H3") && close.isEmpty()){
                 QString attrs = capture.takeFirst();
                 int attrpos = 0;
-                while((attrpos = attrrx.indexIn(attrs, attrpos)) != -1){
-                    QStringList attrcapture = attrrx.capturedTexts();
+                while((attrmatch = attrrx.match(attrs, attrpos)).hasMatch()){
+                    attrpos = attrmatch.capturedEnd();
+                    QStringList attrcapture = attrmatch.capturedTexts();
                     attrcapture.takeFirst();
                     QString name = attrcapture.takeFirst();
                     QString attr = attrcapture.takeFirst();
@@ -921,15 +910,15 @@ void Application::Import(TreeBank *tb){
                     } else if(name == QStringLiteral("FOLDED")){
                         vn->SetFolded(attr == QStringLiteral("true") ? true : false);
                     }
-                    attrpos += attrrx.matchedLength();
                 }
                 vn->SetTitle(capture.takeFirst());
             } else if(tagName == QStringLiteral("A") && close.isEmpty()){
                 HistNode *hn = TreeBank::GetHistRoot()->MakeChild();
                 QString attrs = capture.takeFirst();
                 int attrpos = 0;
-                while((attrpos = attrrx.indexIn(attrs, attrpos)) != -1){
-                    QStringList attrcapture = attrrx.capturedTexts();
+                while((attrmatch = attrrx.match(attrs, attrpos)).hasMatch()){
+                    attrpos = attrmatch.capturedEnd();
+                    QStringList attrcapture = attrmatch.capturedTexts();
                     attrcapture.takeFirst();
                     QString name = attrcapture.takeFirst();
                     QString attr = attrcapture.takeFirst();
@@ -946,7 +935,6 @@ void Application::Import(TreeBank *tb){
                         hn->SetLastUpdateDate(QDateTime::fromTime_t(attr.toUInt()));
                         vn->SetLastUpdateDate(QDateTime::fromTime_t(attr.toUInt()));
                     }
-                    attrpos += attrrx.matchedLength();
                 }
                 QString title = capture.takeFirst();
                 hn->SetTitle(title);
@@ -955,7 +943,6 @@ void Application::Import(TreeBank *tb){
                 vn->SetPartner(hn);
                 vn = vn->GetParent()->ToViewNode();
             }
-            pos += tagrx.matchedLength();
         }
 #endif
     };
@@ -1366,7 +1353,7 @@ void Application::Quit(){
                 Application::GetInstance()->disconnect();
                 QTimer::singleShot(0, Application::GetInstance(), &Application::quit);
             });
-    if(!m_AutoSaver->IsSaving()) m_Instance->SaveAllDataAsync();
+    if(!m_AutoSaver->IsSaving()) m_AutoSaver->SaveAll();
 }
 
 QSettings *Application::GlobalSettings(){
@@ -1742,7 +1729,7 @@ static bool WriteXMLFile(QIODevice &device, const QSettings::SettingsMap &map){
             // if list is [""], use variant.
             // "@stringlist/" is empty string list.
             if(!(list.length() == 1 && list[0].isEmpty()) &&
-               list.indexOf(QRegExp(QStringLiteral("(?:\n|[^\n])*[\n\r\t,](?:\n|[^\n])*"))) == -1){
+               list.indexOf(QRegularExpression(QStringLiteral("(?:\n|[^\n])*[\n\r\t,](?:\n|[^\n])*"))) == -1){
                 text = QStringLiteral("@stringlist/") + list.join(QStringLiteral(","));
                 break;
             }
@@ -1795,7 +1782,7 @@ int Application::GetMaxBackUpGenerationCount(){
 }
 
 QStringList Application::BackUpFileFilters(){
-    static QStringList filters =
+    static const QStringList filters =
         QStringList() << QStringLiteral(
             "[0-9][0-9][0-9][0-9]-" //yyyy-
           VV"[0-9][0-9]-" //MM-
@@ -2587,11 +2574,12 @@ bool Application::OpenUrlWith_Custom(QUrl url){
 }
 
 void Application::timerEvent(QTimerEvent *ev){
-    QApplication::timerEvent(ev);
     if(ev->timerId() == m_AutoSaveTimerID)
-        SaveAllDataAsync();
-    if(ev->timerId() == m_AutoLoadTimerID)
+        QtConcurrent::run(m_AutoSaver, &AutoSaver::SaveAll);
+    else if(ev->timerId() == m_AutoLoadTimerID)
         TreeBank::AutoLoad();
+    else
+        QApplication::timerEvent(ev);
 }
 
 void Application::CreateBackUpFiles(){
@@ -2619,14 +2607,6 @@ void Application::CreateBackUpFiles(){
     while(list.length() > m_MaxBackUpGenerationCount*backupfiles.length()){
         QFile::remove(Application::DataDirectory() + list.takeFirst());
     }
-}
-
-void Application::SaveAllDataAsync(){
-    emit SaveAllDataRequest();
-}
-
-QThread* Application::GetSaverThread(){
-    return m_SaverThread;
 }
 
 void Application::StartAutoSaveTimer(){

@@ -6,7 +6,6 @@
 #include <QObject>
 #include <QLocalServer>
 #include <QLocalSocket>
-#include <QThread>
 #include <QTimer>
 
 #include "application.hpp"

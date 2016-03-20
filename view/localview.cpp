@@ -829,6 +829,16 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         case Gadgets::_PrevView:
         case Gadgets::_BuryView:
         case Gadgets::_DigView:
+        case Gadgets::_FirstView:
+        case Gadgets::_SecondView:
+        case Gadgets::_ThirdView:
+        case Gadgets::_FourthView:
+        case Gadgets::_FifthView:
+        case Gadgets::_SixthView:
+        case Gadgets::_SeventhView:
+        case Gadgets::_EighthView:
+        case Gadgets::_NinthView:
+        case Gadgets::_TenthView:
         case Gadgets::_NewViewNode:
         case Gadgets::_NewHistNode:
         case Gadgets::_CloneViewNode:
@@ -944,6 +954,16 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(PrevView,           tr("PrevView"));
         DEFINE_ACTION(BuryView,           tr("BuryView"));
         DEFINE_ACTION(DigView,            tr("DigView"));
+        DEFINE_ACTION(FirstView,          tr("FirstView"));
+        DEFINE_ACTION(SecondView,         tr("SecondView"));
+        DEFINE_ACTION(ThirdView,          tr("ThirdView"));
+        DEFINE_ACTION(FourthView,         tr("FourthView"));
+        DEFINE_ACTION(FifthView,          tr("FifthView"));
+        DEFINE_ACTION(SixthView,          tr("SixthView"));
+        DEFINE_ACTION(SeventhView,        tr("SeventhView"));
+        DEFINE_ACTION(EighthView,         tr("EighthView"));
+        DEFINE_ACTION(NinthView,          tr("NinthView"));
+        DEFINE_ACTION(TenthView,          tr("TenthView"));
       //DEFINE_ACTION(NewViewNode,        tr("NewViewNode"));
       //DEFINE_ACTION(NewHistNode,        tr("NewHistNode"));
       //DEFINE_ACTION(CloneViewNode,      tr("CloneViewNode"));

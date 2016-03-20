@@ -1077,11 +1077,11 @@ void WebPageBase::AddBookmarklet(QPoint pos){
 
         // too dirty...
         for(int i = count; i > 0; i--){
-            bookmark.replace(QRegExp(QStringLiteral("%%%%%%%")), QStringLiteral("%25%25%25%25%25%25%25"));
-            bookmark.replace(QRegExp(QStringLiteral("%%%%%")), QStringLiteral("%25%25%25%25%25"));
-            bookmark.replace(QRegExp(QStringLiteral("%%%")), QStringLiteral("%25%25%25"));
-            bookmark.replace(QRegExp(QStringLiteral("%%")), QStringLiteral("%25%25"));
-            bookmark.replace(QRegExp(QStringLiteral("%([^0-9A-F][0-9A-F]|[0-9A-F][^0-9A-F]|[^0-9A-F][^0-9A-F])")),
+            bookmark.replace(QStringLiteral("%%%%%%%"), QStringLiteral("%25%25%25%25%25%25%25"));
+            bookmark.replace(QStringLiteral("%%%%%"), QStringLiteral("%25%25%25%25%25"));
+            bookmark.replace(QStringLiteral("%%%"), QStringLiteral("%25%25%25"));
+            bookmark.replace(QStringLiteral("%%"), QStringLiteral("%25%25"));
+            bookmark.replace(QRegularExpression(QStringLiteral("%([^0-9A-F][0-9A-F]|[0-9A-F][^0-9A-F]|[^0-9A-F][^0-9A-F])")),
                              QStringLiteral("%25\\1"));
             bookmark = QUrl::fromPercentEncoding(bookmark.toLatin1());
         }

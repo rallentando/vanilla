@@ -8,13 +8,13 @@
 #include <QKeySequence>
 #include <QKeyEvent>
 #include <QCryptographicHash>
+#include <QRegularExpression>
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
 #endif
 
 class QIODevice;
-class QThread;
 
 class MainWindow;
 class TreeBank;
@@ -59,7 +59,6 @@ private:
     static Application *m_Instance;
     static NetworkController *m_NetworkController;
     static AutoSaver *m_AutoSaver;
-    static QThread *m_SaverThread;
     static int m_DelayFileCount;
 
 
@@ -210,9 +209,7 @@ private:
     static int m_AutoSaveTimerID;
     static int m_AutoLoadTimerID;
     static void CreateBackUpFiles();
-    void SaveAllDataAsync();
 public:
-    static QThread* GetSaverThread();
     static void StartAutoSaveTimer();
     static void StartAutoLoadTimer();
     static void StopAutoSaveTimer();
@@ -220,7 +217,6 @@ public:
     static void RestartAutoSaveTimer();
     static void RestartAutoLoadTimer();
 signals:
-    void SaveAllDataRequest();
     void SaveCookieRequest();
     void SaveTreeRequest();
 
@@ -482,7 +478,7 @@ public:
         return key;
     }
 
-    static void AddModifiersToString(QString &str, Qt::KeyboardModifiers modifiers){
+    static inline void AddModifiersToString(QString &str, Qt::KeyboardModifiers modifiers){
         static const QMap<Qt::KeyboardModifier, QString> table = QMap<Qt::KeyboardModifier, QString>()
             << qMakePair(Qt::ControlModifier, QStringLiteral("Ctrl"))
             << qMakePair(Qt::AltModifier,     QStringLiteral("Alt"))
@@ -497,7 +493,7 @@ public:
         }
     }
 
-    static void AddMouseButtonToString(QString &str, Qt::MouseButton button){
+    static inline void AddMouseButtonToString(QString &str, Qt::MouseButton button){
         QString pre = str.isEmpty() ? QString() : QStringLiteral("+");
         switch(button){
         case Qt::LeftButton:    str += pre + QStringLiteral("LeftButton");    break;
@@ -530,7 +526,7 @@ public:
         }
     }
 
-    static void AddMouseButtonsToString(QString &str, Qt::MouseButtons buttons){
+    static inline void AddMouseButtonsToString(QString &str, Qt::MouseButtons buttons){
         static const QMap<Qt::MouseButton, QString> table = QMap<Qt::MouseButton, QString>()
             << qMakePair(Qt::LeftButton,    QStringLiteral("LeftButton"))
             << qMakePair(Qt::RightButton,   QStringLiteral("RightButton"))
@@ -567,10 +563,14 @@ public:
         }
     }
 
-    static void AddWheelDirectionToString(QString &str, bool up){
+    static inline void AddWheelDirectionToString(QString &str, bool up){
         QString pre = str.isEmpty() ? QString() : QStringLiteral("+");
         if(up) str += pre + QStringLiteral("WheelUp");
         else   str += pre + QStringLiteral("WheelDown");
+    }
+
+    static inline bool ExactMatch(QString &reg, QString &str){
+        return QRegularExpression(QStringLiteral("\\A%1\\Z").arg(reg)).match(str).hasMatch();
     }
 };
 

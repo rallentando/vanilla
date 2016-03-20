@@ -182,6 +182,16 @@ public slots:
     void PrevView();
     void BuryView();
     void DigView();
+    void FirstView();
+    void SecondView();
+    void ThirdView();
+    void FourthView();
+    void FifthView();
+    void SixthView();
+    void SeventhView();
+    void EighthView();
+    void NinthView();
+    void TenthView();
     void NewViewNode();
     void NewHistNode();
     void CloneViewNode();

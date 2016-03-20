@@ -295,8 +295,8 @@ static QList<int> Compare(QString str1, QString str2){
     if(str1.isEmpty() || str2.isEmpty())
         return QList<int>() << 0;
 
-    if(str1.contains(QRegExp(QStringLiteral(".\\.[a-z]+$"))) &&
-       str2.contains(QRegExp(QStringLiteral(".\\.[a-z]+$")))){
+    if(str1.contains(QRegularExpression(QStringLiteral(".\\.[a-z]+$"))) &&
+       str2.contains(QRegularExpression(QStringLiteral(".\\.[a-z]+$")))){
         // accept subdomain.
         if(str1.startsWith(str2) || str2.startsWith(str1) ||
            str1.endsWith(str2)   || str2.endsWith(str1)){
@@ -306,16 +306,20 @@ static QList<int> Compare(QString str1, QString str2){
         }
     }
 
-    QRegExp reg =
-        QRegExp(QRegExp::escape(str1).replace(QRegExp(QStringLiteral("[0-9]+")),
-                                              QString(QStringLiteral("([0-9]+)"))));
+    QRegularExpression reg =
+        QRegularExpression(QRegularExpression::escape(str1)
+                           .replace(QRegularExpression(QStringLiteral("[0-9]+")),
+                                    QString(QStringLiteral("([0-9]+)"))));
+    QRegularExpressionMatch match;
 
-    if(!reg.exactMatch(str1)) return QList<int>() << INT_MAX;
-    QStringList nums1 = reg.capturedTexts();
+    match = reg.match(str1);
+    if(!match.hasMatch()) return QList<int>() << INT_MAX;
+    QStringList nums1 = match.capturedTexts();
     if(nums1.length() > 1) nums1.removeFirst();
 
-    if(!reg.exactMatch(str2)) return QList<int>() << INT_MAX;
-    QStringList nums2 = reg.capturedTexts();
+    match = reg.match(str2);
+    if(!match.hasMatch()) return QList<int>() << INT_MAX;
+    QStringList nums2 = match.capturedTexts();
     if(nums2.length() > 1) nums2.removeFirst();
 
     Q_ASSERT(nums1.length() == nums2.length());
@@ -419,8 +423,8 @@ void View::GoBackToInferedUrl(){
     SharedWebElement currentHighValidityElement = 0;
     QList<int> currentHighValidityDistance = QList<int>();
 
-    QRegExp reg =
-        QRegExp(QObject::tr("(?:<<.*|.*<<|<|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*reer.*|.*behind.*|.*before.*)"));
+    QRegularExpression reg =
+        QRegularExpression(QObject::tr("(?:<<.*|.*<<|<|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*reer.*|.*behind.*|.*before.*)"));
 
     /*
       [0] > [-1] > [-2]
@@ -439,7 +443,7 @@ void View::GoBackToInferedUrl(){
         if(url.toString().startsWith(QStringLiteral("javascript:")))
             continue;
 
-        if(reg.exactMatch(text.toLower())){
+        if(reg.match(text.toLower()).hasMatch()){
             GoBackTo(url);
             return;
         }
@@ -488,7 +492,7 @@ void View::GoBackToInferedUrl(){
                     result[i] == -400 || result[i] == -500)){
 
                     if(0 < length && length < 20){
-                        if(QRegExp(QStringLiteral("[0-9]+")).exactMatch(text.trimmed())){
+                        if(Application::ExactMatch(QStringLiteral("[0-9]+"), text.trimmed())){
                             // url residue or part of query.
                             // restore url.
                             //url.setQuery(query);
@@ -563,8 +567,8 @@ void View::GoForwardToInferedUrl(){
     SharedWebElement currentHighValidityElement = 0;
     QList<int> currentHighValidityDistance = QList<int>();
 
-    QRegExp reg =
-        QRegExp(QObject::tr("(?:>>.*|.*>>|>|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*)"));
+    QRegularExpression reg =
+        QRegularExpression(QObject::tr("(?:>>.*|.*>>|>|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*)"));
 
     /*
       [0] > [1] > [2]
@@ -583,7 +587,7 @@ void View::GoForwardToInferedUrl(){
         if(url.toString().startsWith(QStringLiteral("javascript:")))
             continue;
 
-        if(reg.exactMatch(text.toLower())){
+        if(reg.match(text.toLower()).hasMatch()){
             GoForwardTo(url);
             return;
         }
@@ -632,7 +636,7 @@ void View::GoForwardToInferedUrl(){
                     result[i] == 400 || result[i] == 500)){
 
                     if(0 < length && length < 20){
-                        if(QRegExp(QStringLiteral("[0-9]+")).exactMatch(text.trimmed())){
+                        if(Application::ExactMatch(QStringLiteral("[0-9]+"), text.trimmed())){
                             // url residue or part of query.
                             // restore url.
                             //url.setQuery(query);
@@ -1618,15 +1622,15 @@ void View::ApplySpecificSettings(QStringList set){
         QWebSettings *s = p->settings();
         QWebSettings *g = QWebSettings::globalSettings();
 
-        int pos = set.indexOf(QRegExp(QStringLiteral("^(?:[dD]efault)?(?:[tT]ext)?(?:[eE]ncod(?:e|ing)|[cC]odecs?) [^ ].*")));
+        int pos = set.indexOf(QRegularExpression(QStringLiteral("\\A(?:[dD]efault)?(?:[tT]ext)?(?:[eE]ncod(?:e|ing)|[cC]odecs?) [^ ].*")));
         if(pos != -1)
             s->setDefaultTextEncoding(set[pos].split(QStringLiteral(" ")).last());
 
         foreach(QWebSettings::WebAttribute attr, m_WebSwitches.keys()){
             QString str = m_WebSwitches[attr];
             s->setAttribute(attr,
-                            set.indexOf(QRegExp(QStringLiteral("!")+str)) != -1 ? false :
-                            set.indexOf(QRegExp(str))     != -1 ? true  :
+                            set.indexOf(QRegularExpression(QStringLiteral("\\A!%1\\Z").arg(str))) != -1 ? false :
+                            set.indexOf(QRegularExpression(QStringLiteral("\\A%1\\Z").arg(str)))  != -1 ? true  :
                             g->testAttribute(attr));
         }
     } else
@@ -1680,28 +1684,28 @@ void View::ApplySpecificSettings(QStringList set){
         s->setFontSize(QWebEngineSettings::DefaultFontSize, g->fontSize(QWebEngineSettings::DefaultFontSize));
         s->setFontSize(QWebEngineSettings::DefaultFixedFontSize, g->fontSize(QWebEngineSettings::DefaultFixedFontSize));
 
-        int pos = set.indexOf(QRegExp(QStringLiteral("^(?:[dD]efault)?(?:[tT]ext)?(?:[eE]ncod(?:e|ing)|[cC]odecs?) [^ ].*")));
+        int pos = set.indexOf(QRegularExpression(QStringLiteral("\\A(?:[dD]efault)?(?:[tT]ext)?(?:[eE]ncod(?:e|ing)|[cC]odecs?) [^ ].*")));
         if(pos != -1)
             s->setDefaultTextEncoding(set[pos].split(QStringLiteral(" ")).last());
 
         foreach(QWebEngineSettings::WebAttribute attr, m_WebEngineSwitches.keys()){
             QString str = m_WebEngineSwitches[attr];
             s->setAttribute(attr,
-                            set.indexOf(QRegExp(QStringLiteral("!")+str)) != -1 ? false :
-                            set.indexOf(QRegExp(str))     != -1 ? true  :
+                            set.indexOf(QRegularExpression(QStringLiteral("\\A!%1\\Z").arg(str))) != -1 ? false :
+                            set.indexOf(QRegularExpression(QStringLiteral("\\A%1\\Z").arg(str)))  != -1 ? true  :
                             g->testAttribute(attr));
         }
     }
 
-    if     (set.indexOf(QRegExp(QStringLiteral( "[lL](?:oad)?[hH](?:ack)?"))) != -1) m_EnableLoadHackLocal = true;
-    else if(set.indexOf(QRegExp(QStringLiteral("![lL](?:oad)?[hH](?:ack)?"))) != -1) m_EnableLoadHackLocal = false;
-    if     (set.indexOf(QRegExp(QStringLiteral( "[dD](?:rag)?[hH](?:ack)?"))) != -1) m_EnableDragHackLocal = true;
-    else if(set.indexOf(QRegExp(QStringLiteral("![dD](?:rag)?[hH](?:ack)?"))) != -1) m_EnableDragHackLocal = false;
+    if     (set.indexOf(QRegularExpression(QStringLiteral( "\\A[lL](?:oad)?[hH](?:ack)?\\Z"))) != -1) m_EnableLoadHackLocal = true;
+    else if(set.indexOf(QRegularExpression(QStringLiteral("\\A![lL](?:oad)?[hH](?:ack)?\\Z"))) != -1) m_EnableLoadHackLocal = false;
+    if     (set.indexOf(QRegularExpression(QStringLiteral( "\\A[dD](?:rag)?[hH](?:ack)?\\Z"))) != -1) m_EnableDragHackLocal = true;
+    else if(set.indexOf(QRegularExpression(QStringLiteral("\\A![dD](?:rag)?[hH](?:ack)?\\Z"))) != -1) m_EnableDragHackLocal = false;
 
-    if     (set.indexOf(QRegExp(QStringLiteral( "[hH](?:ist)?[nN](?:ode)?"))) != -1) m_EnableLoadHackLocal = true;
-    else if(set.indexOf(QRegExp(QStringLiteral("![hH](?:ist)?[nN](?:ode)?"))) != -1) m_EnableLoadHackLocal = false;
-    if     (set.indexOf(QRegExp(QStringLiteral( "[dD](?:rag)?[gG](?:esture)?"))) != -1) m_EnableDragHackLocal = true;
-    else if(set.indexOf(QRegExp(QStringLiteral("![dD](?:rag)?[gG](?:esture)?"))) != -1) m_EnableDragHackLocal = false;
+    if     (set.indexOf(QRegularExpression(QStringLiteral( "\\A[hH](?:ist)?[nN](?:ode)?\\Z"))) != -1) m_EnableLoadHackLocal = true;
+    else if(set.indexOf(QRegularExpression(QStringLiteral("\\A![hH](?:ist)?[nN](?:ode)?\\Z"))) != -1) m_EnableLoadHackLocal = false;
+    if     (set.indexOf(QRegularExpression(QStringLiteral( "\\A[dD](?:rag)?[gG](?:esture)?\\Z"))) != -1) m_EnableDragHackLocal = true;
+    else if(set.indexOf(QRegularExpression(QStringLiteral("\\A![dD](?:rag)?[gG](?:esture)?\\Z"))) != -1) m_EnableDragHackLocal = false;
 }
 
 QUrl View::url(){ return QUrl();}
@@ -1887,11 +1891,11 @@ void View::Load(const QNetworkRequest &req){
 
         // too dirty...
         for(int i = count; i > 0; i--){
-            code.replace(QRegExp(QStringLiteral("%%%%%%%")), QStringLiteral("%25%25%25%25%25%25%25"));
-            code.replace(QRegExp(QStringLiteral("%%%%%")), QStringLiteral("%25%25%25%25%25"));
-            code.replace(QRegExp(QStringLiteral("%%%")), QStringLiteral("%25%25%25"));
-            code.replace(QRegExp(QStringLiteral("%%")), QStringLiteral("%25%25"));
-            code.replace(QRegExp(QStringLiteral("%([^0-9A-F][0-9A-F]|[0-9A-F][^0-9A-F]|[^0-9A-F][^0-9A-F])")),
+            code.replace(QStringLiteral("%%%%%%%"), QStringLiteral("%25%25%25%25%25%25%25"));
+            code.replace(QStringLiteral("%%%%%"), QStringLiteral("%25%25%25%25%25"));
+            code.replace(QStringLiteral("%%%"), QStringLiteral("%25%25%25"));
+            code.replace(QStringLiteral("%%"), QStringLiteral("%25%25"));
+            code.replace(QRegularExpression(QStringLiteral("%([^0-9A-F][0-9A-F]|[0-9A-F][^0-9A-F]|[^0-9A-F][^0-9A-F])")),
                          QStringLiteral("%25\\1"));
             code = QUrl::fromPercentEncoding(code.toLatin1());
         }

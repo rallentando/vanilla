@@ -655,13 +655,13 @@ void Gadgets::KeyEvent(QString str){
         AccessibleWebElement *awe = 0;
 
         if(items.length() == 1){
-            if(QRegExp(QStringLiteral("[eE]sc(?:ape)?")).exactMatch(str)){
+            if(Application::ExactMatch(QStringLiteral("[eE]sc(?:ape)?"), str)){
                 AccessKey_ClearSelection();
             } else if(master->IsRenderable() &&
                       (awe = dynamic_cast<AccessibleWebElement*>(items.first()))){
                 AccessKey_TriggerAction(awe, seq);
             }
-        } else if(QRegExp(QStringLiteral("[eE]sc(?:ape)?")).exactMatch(str)){
+        } else if(Application::ExactMatch(QStringLiteral("[eE]sc(?:ape)?"), str)){
 
             Deactivate();
 
@@ -678,32 +678,32 @@ void Gadgets::KeyEvent(QString str){
             }
             AccessKey_SieveLabel();
 
-        } else if(QRegExp(QStringLiteral("[uU]p")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[lL]eft")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[pP](?:g|age)?[uU]p")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[bB]ack[tT]ab")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[bB]ack[sS]pace")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[sS]hift\\+[sS]pace")).exactMatch(str)){
+        } else if(Application::ExactMatch(QStringLiteral("[uU]p"), str) ||
+                  Application::ExactMatch(QStringLiteral("[lL]eft"), str) ||
+                  Application::ExactMatch(QStringLiteral("[pP](?:g|age)?[uU]p"), str) ||
+                  Application::ExactMatch(QStringLiteral("[bB]ack[tT]ab"), str) ||
+                  Application::ExactMatch(QStringLiteral("[bB]ack[sS]pace"), str) ||
+                  Application::ExactMatch(QStringLiteral("[sS]hift\\+[sS]pace"), str)){
 
             AccessKey_PrevBlock();
 
-        } else if(QRegExp(QStringLiteral("[dD]own")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[rR]ight")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[pP](?:g|age)?[dD](?:ow)?n")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[tT]ab")).exactMatch(str) ||
-                  QRegExp(QStringLiteral("[sS]pace")).exactMatch(str)){
+        } else if(Application::ExactMatch(QStringLiteral("[dD]own"), str) ||
+                  Application::ExactMatch(QStringLiteral("[rR]ight"), str) ||
+                  Application::ExactMatch(QStringLiteral("[pP](?:g|age)?[dD](?:ow)?n"), str) ||
+                  Application::ExactMatch(QStringLiteral("[tT]ab"), str) ||
+                  Application::ExactMatch(QStringLiteral("[sS]pace"), str)){
 
             AccessKey_NextBlock();
 
-        } else if(QRegExp(QStringLiteral("[hH]ome")).exactMatch(str)){
+        } else if(Application::ExactMatch(QStringLiteral("[hH]ome"), str)){
 
             AccessKey_FirstBlock();
 
-        } else if(QRegExp(QStringLiteral("[eE]nd")).exactMatch(str)){
+        } else if(Application::ExactMatch(QStringLiteral("[eE]nd"), str)){
 
             AccessKey_LastBlock();
 
-        } else if(QRegExp(QStringLiteral("[0-9]+")).exactMatch(str)){
+        } else if(Application::ExactMatch(QStringLiteral("[0-9]+"), str)){
 
             AccessKey_NthBlock(str.toInt());
 
@@ -909,6 +909,7 @@ void Gadgets::CollectAccessibleWebElement(View *view){
     view->CallWithFoundElements
         (Page::ForAccessKey,
          [this](SharedWebElementList elems){
+            if(m_DisplayType != AccessKey) return;
             int count = 0;
             foreach(SharedWebElement elem, elems){
 
@@ -1123,16 +1124,16 @@ bool Gadgets::IsValidAccessKey(int k){
 }
 
 bool Gadgets::IsValidAccessKey(QString s){
-    //return QRegExp(QStringLiteral("[a-z;,\\./]")).exactMatch(s)
-    //    || QRegExp(QStringLiteral("[A-Z:\\+<>\\?]")).exactMatch(s);
+    //return Application::ExactMatch(QStringLiteral("[a-z;,\\./]"), s)
+    //    || Application::ExactMatch(QStringLiteral("[A-Z:\\+<>\\?]"), s);
 
     switch(m_AccessKeyMode){
 
         // both hands' keys: alphabets.
     case BothHands :
-        if(QRegExp(QStringLiteral("[a-z]")).exactMatch(s))
+        if(Application::ExactMatch(QStringLiteral("[a-z]"), s))
             return true;
-        if(QRegExp(QStringLiteral("[A-Z]")).exactMatch(s))
+        if(Application::ExactMatch(QStringLiteral("[A-Z]"), s))
             return true;
         break;
 
@@ -1368,9 +1369,9 @@ int Gadgets::KeyToIndex(QString s) const {
 
         // both hands' keys: alphabets.
     case BothHands :
-        if(QRegExp(QStringLiteral("[a-z]")).exactMatch(s))
+        if(Application::ExactMatch(QStringLiteral("[a-z]"), s))
             return n + s.at(0).toLatin1() - 'a';
-        if(QRegExp(QStringLiteral("[A-Z]")).exactMatch(s))
+        if(Application::ExactMatch(QStringLiteral("[A-Z]"), s))
             return n + s.at(0).toLatin1() - 'A';
         break;
 
@@ -2014,6 +2015,16 @@ QAction *Gadgets::Action(GadgetsAction a){
         DEFINE_ACTION(PrevView,           tr("PrevView"));
         DEFINE_ACTION(BuryView,           tr("BuryView"));
         DEFINE_ACTION(DigView,            tr("DigView"));
+        DEFINE_ACTION(FirstView,          tr("FirstView"));
+        DEFINE_ACTION(SecondView,         tr("SecondView"));
+        DEFINE_ACTION(ThirdView,          tr("ThirdView"));
+        DEFINE_ACTION(FourthView,         tr("FourthView"));
+        DEFINE_ACTION(FifthView,          tr("FifthView"));
+        DEFINE_ACTION(SixthView,          tr("SixthView"));
+        DEFINE_ACTION(SeventhView,        tr("SeventhView"));
+        DEFINE_ACTION(EighthView,         tr("EighthView"));
+        DEFINE_ACTION(NinthView,          tr("NinthView"));
+        DEFINE_ACTION(TenthView,          tr("TenthView"));
         DEFINE_ACTION(NewViewNode,        tr("NewViewNode"));
         DEFINE_ACTION(NewHistNode,        tr("NewHistNode"));
         DEFINE_ACTION(CloneViewNode,      tr("CloneViewNode"));

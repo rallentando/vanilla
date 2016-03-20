@@ -82,9 +82,13 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
         m_EnableCloseButton ? new CloseButton(this) : 0;
     m_CloneButton =
         m_EnableCloneButton ? new CloneButton(this) : 0;
+#if QT_VERSION >= 0x050700
+    m_SoundButton = new SoundButton(this);
+#endif
 
     m_ScrollIndicator = new ScrollIndicator(this);
     m_UpDirectoryButton = new UpDirectoryButton(this);
+    m_ToggleTrashButton = new ToggleTrashButton(this);
 
     m_CurrentThumbnailZoomFactor = 1.0f;
     m_ScrollAnimation = new QPropertyAnimation(this, "scroll");
@@ -275,11 +279,11 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     std::function<void(Node*, int)> convertOneNode = [filter, this](Node *nd, int nest){
         if(!filter.isEmpty()){
             if(filter.startsWith(QStringLiteral("/")) && filter.endsWith(QStringLiteral("/"))){
-                QRegExp reg = QRegExp(filter.mid(1, filter.length() - 2));
+                QRegularExpression reg = QRegularExpression(filter.mid(1, filter.length() - 2));
                 if(!nd->GetTitle().contains(reg))
                     return;
             } else {
-                QStringList keys = filter.split(QRegExp(QStringLiteral("[\n\r\t ]+")));
+                QStringList keys = filter.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
                 foreach(QString key, keys){
                     if(!nd->GetTitle().toLower().contains(key.toLower()))
                         return;
@@ -474,6 +478,15 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     m_ScrollIndicator->setVisible(true);
 
     m_UpDirectoryButton->SetState(GraphicsButton::NotHovered);
+    m_ToggleTrashButton->SetState(GraphicsButton::NotHovered);
+
+    if(IsDisplayingViewNode()){
+        m_ToggleTrashButton->setEnabled(true);
+        m_ToggleTrashButton->setVisible(true);
+    } else {
+        m_ToggleTrashButton->setEnabled(false);
+        m_ToggleTrashButton->setVisible(false);
+    }
 
     if(IsDisplayingViewNode() && nd && nd->GetParent() && nd->GetParent()->GetParent()){
         m_UpDirectoryButton->setEnabled(true);
@@ -857,12 +870,18 @@ void GraphicsTableView::SetHoveredItem(int index){
 void GraphicsTableView::SetHoveredItem(Thumbnail *thumb){
     if(m_CloseButton) m_CloseButton->SetItem(thumb);
     if(m_CloneButton) m_CloneButton->SetItem(thumb);
+#if QT_VERSION >= 0x050700
+    if(m_SoundButton) m_SoundButton->SetItem(thumb);
+#endif
     SetHoveredItem(m_DisplayThumbnails.indexOf(thumb));
 }
 
 void GraphicsTableView::SetHoveredItem(NodeTitle *title){
     if(m_CloseButton) m_CloseButton->SetItem(title);
     if(m_CloneButton) m_CloneButton->SetItem(title);
+#if QT_VERSION >= 0x050700
+    if(m_SoundButton) m_SoundButton->SetItem(title);
+#endif
     SetHoveredItem(m_DisplayNodeTitles.indexOf(title));
 }
 
@@ -3558,7 +3577,9 @@ QRectF CloneButton::boundingRect() const {
     if(!m_Item) return QRectF();
     QRectF rect = m_Item->boundingRect();
     rect.translate(m_Item->pos());
-    rect.setLeft(rect.right() - (GraphicsTableView::EnableCloseButton() ? 40 : 20));
+    rect.setLeft(rect.right() - 20);
+    if(GraphicsTableView::EnableCloseButton())
+        rect.setLeft(rect.left() - 20);
     rect.setWidth(16);
     rect.setBottom(rect.top() + 19);
     rect.setTop(rect.top() + 3);
@@ -3601,6 +3622,75 @@ void CloneButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     ev->setAccepted(true);
 }
 
+#if QT_VERSION >= 0x050700
+SoundButton::SoundButton(QGraphicsItem *parent)
+    : GraphicsButton(parent)
+{
+    m_Node = 0;
+}
+
+SoundButton::~SoundButton(){}
+
+QRectF SoundButton::boundingRect() const {
+    if(!m_Item) return QRectF();
+    QRectF rect = m_Item->boundingRect();
+    rect.translate(m_Item->pos());
+    rect.setLeft(rect.right() - 20);
+    if(GraphicsTableView::EnableCloseButton())
+        rect.setLeft(rect.left() - 20);
+    if(GraphicsTableView::EnableCloneButton())
+        rect.setLeft(rect.left() - 20);
+    rect.setWidth(16);
+    rect.setBottom(rect.top() + 19);
+    rect.setTop(rect.top() + 3);
+    return rect;
+}
+
+void SoundButton::UnsetItem(){
+    setVisible(false);
+    setEnabled(false);
+    m_Item = 0;
+    m_Node = 0;
+    m_ButtonState = NotHovered;
+}
+
+void SoundButton::SetItem(Thumbnail *thumb){
+    m_Item = thumb;
+    m_Node = thumb->GetNode();
+    setVisible(true);
+    setEnabled(true);
+    SetState(NotHovered);
+}
+
+void SoundButton::SetItem(NodeTitle *title){
+    m_Item = title;
+    m_Node = title->GetNode();
+    setVisible(true);
+    setEnabled(true);
+    SetState(NotHovered);
+}
+
+void SoundButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
+    Q_UNUSED(item); Q_UNUSED(widget);
+    m_TableView->GetStyle()->Render(this, painter);
+}
+
+void SoundButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    bool pressed = m_ButtonState == Pressed;
+    GraphicsButton::mouseReleaseEvent(ev);
+    if(pressed){
+        if(View *view = m_Node->GetView()){
+            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
+                WebEnginePage *p = w->page();
+                if(p->isAudioMuted() || p->wasRecentlyAudible())
+                    p->setAudioMuted(!p->isAudioMuted())
+            }
+        }
+    }
+    ev->setAccepted(true);
+}
+#endif
+
 UpDirectoryButton::UpDirectoryButton(QGraphicsItem *parent)
     : GraphicsButton(parent)
 {
@@ -3621,5 +3711,28 @@ void UpDirectoryButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     bool pressed = m_ButtonState == Pressed;
     GraphicsButton::mousePressEvent(ev);
     if(pressed) m_TableView->ThumbList_UpDirectory();
+    ev->setAccepted(true);
+}
+
+ToggleTrashButton::ToggleTrashButton(QGraphicsItem *parent)
+    : GraphicsButton(parent)
+{
+}
+
+ToggleTrashButton::~ToggleTrashButton(){}
+
+QRectF ToggleTrashButton::boundingRect() const {
+    return QRectF(-5, 23, 23, 23);
+}
+
+void ToggleTrashButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
+    Q_UNUSED(item); Q_UNUSED(widget);
+    m_TableView->GetStyle()->Render(this, painter);
+}
+
+void ToggleTrashButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    bool pressed = m_ButtonState == Pressed;
+    GraphicsButton::mousePressEvent(ev);
+    if(pressed) m_TableView->ThumbList_ToggleTrash();
     ev->setAccepted(true);
 }

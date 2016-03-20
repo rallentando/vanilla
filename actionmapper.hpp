@@ -27,7 +27,7 @@
     F(NextWindow)                               \
     F(PrevWindow)
 
-#define FOR_EACH_NAVIGATION_EVENTS(F)           \
+#define FOR_EACH_NAVIGATION_EVENTS(F) \
     F(Back) F(Forward) F(UpDirectory) F(Load)
 
 #define FOR_EACH_VIEW_EVENTS(F)                 \
@@ -38,6 +38,16 @@
     F(PrevView)                                 \
     F(BuryView)                                 \
     F(DigView)                                  \
+    F(FirstView)                                \
+    F(SecondView)                               \
+    F(ThirdView)                                \
+    F(FourthView)                               \
+    F(FifthView)                                \
+    F(SixthView)                                \
+    F(SeventhView)                              \
+    F(EighthView)                               \
+    F(NinthView)                                \
+    F(TenthView)                                \
     F(NewViewNode)                              \
     F(NewHistNode)                              \
     F(CloneViewNode)                            \

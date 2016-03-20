@@ -14,6 +14,8 @@
 #include <QMutex>
 #include <QFileInfo>
 
+#include <atomic>
+
 class QString;
 class QUrl;
 class QImage;
@@ -89,12 +91,12 @@ protected:
 
     View *m_View;
 
-    bool m_Folded;
+    std::atomic_bool m_Folded;
     QString m_Title;
 
-    Node* m_Parent;
-    Node* m_Primary;
-    Node* m_Partner;
+    Node *m_Parent;
+    Node *m_Primary;
+    Node *m_Partner;
     NodeList m_Children;
     static bool m_Booting;
     static QStringList m_AllImageFileName;
@@ -360,15 +362,15 @@ private:
 
     QImage m_Image;
     QString m_ImageFileName;
-    bool m_NeedToSaveImage;
+    std::atomic_bool m_NeedToSaveImage;
 
     QByteArray m_HistoryData;
     QString m_HistoryFileName;
-    bool m_NeedToSaveHistory;
+    std::atomic_bool m_NeedToSaveHistory;
 
-    int m_ScrollX;
-    int m_ScrollY;
-    float m_Zoom;
+    std::atomic_int m_ScrollX;
+    std::atomic_int m_ScrollY;
+    std::atomic<float> m_Zoom;
     QDateTime m_CreateDate;
     QDateTime m_LastUpdateDate;
     QDateTime m_LastAccessDate;

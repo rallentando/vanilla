@@ -176,6 +176,8 @@ public:
     bool SetCurrent(Node *nd);
     bool SetCurrent(SharedView view);
 
+    void NthView(int n, ViewNode *vn = 0);
+
     // for gadgets.
 public:
 #if defined(Q_OS_WIN)
@@ -297,6 +299,16 @@ public slots:
     void PrevView             (ViewNode *vn = 0);
     void BuryView             (ViewNode *vn = 0);
     void DigView              (ViewNode *vn = 0);
+    void FirstView            (ViewNode *vn = 0);
+    void SecondView           (ViewNode *vn = 0);
+    void ThirdView            (ViewNode *vn = 0);
+    void FourthView           (ViewNode *vn = 0);
+    void FifthView            (ViewNode *vn = 0);
+    void SixthView            (ViewNode *vn = 0);
+    void SeventhView          (ViewNode *vn = 0);
+    void EighthView           (ViewNode *vn = 0);
+    void NinthView            (ViewNode *vn = 0);
+    void TenthView            (ViewNode *vn = 0);
     ViewNode *NewViewNode     (ViewNode *vn = 0);
     HistNode *NewHistNode     (HistNode *hn = 0);
     ViewNode *CloneViewNode   (ViewNode *vn = 0);

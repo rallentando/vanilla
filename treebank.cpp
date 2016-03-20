@@ -347,7 +347,7 @@ bool TreeBank::RenameNode(Node *nd){
         return false;
 
     if(title.isEmpty() ||
-       title.contains(QRegExp(QStringLiteral("[<>\":\\?\\|\\*/\\\\]")))){
+       title.contains(QRegularExpression(QStringLiteral("[<>\":\\?\\|\\*/\\\\]")))){
 
         ModelessDialog::Information
             (tr("Invalid node name."),
@@ -374,9 +374,8 @@ void TreeBank::ReconfigureDirectory(ViewNode *vn, QString before, QString after)
     QString aftname = after .split(QStringLiteral(";")).first();
     QStringList befset = before.split(QStringLiteral(";")).mid(1);
     QStringList aftset = after .split(QStringLiteral(";")).mid(1);
-    // 'QStringList::indexOf' uses 'QRegExp::exactMatch'.
-    bool bef = befset.indexOf(QRegExp(QStringLiteral("[iI][dD]"))) != -1;
-    bool aft = aftset.indexOf(QRegExp(QStringLiteral("[iI][dD]"))) != -1;
+    bool bef = befset.indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD]\\Z"))) != -1;
+    bool aft = aftset.indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD]\\Z"))) != -1;
 
     NetworkAccessManager *nam = bef ?
         (aft ? NetworkController::MoveNetworkAccessManager(befname, aftname, aftset) :
@@ -431,8 +430,7 @@ static QString GetNetworkSpaceID(ViewNode* vn){
         title = vn->GetTitle();
         if(vn == TreeBank::GetViewRoot() || vn == TreeBank::GetTrashRoot() ||
            (vn->IsDirectory() && !title.isEmpty() &&
-            // 'QStringList::indexOf' uses 'QRegExp::exactMatch'.
-            title.split(QStringLiteral(";")).indexOf(QRegExp(QStringLiteral("[iI][dD]"))) != -1)){
+            title.split(QStringLiteral(";")).indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD]\\Z"))) != -1)){
 
             return title.split(QStringLiteral(";")).first();
 
@@ -804,7 +802,9 @@ static void CollectHistDom(QDomElement &elem, HistNode *parent, ViewNode *partne
 
         MainWindow *win = Application::NewWindow(id);
         TreeBank *tb = win->GetTreeBank();
+        tb->blockSignals(true);
         tb->SetCurrent(hn);
+        tb->blockSignals(false);
 
     } else if(prt){
         LinkNode(hn);
@@ -1709,6 +1709,16 @@ bool TreeBank::SetCurrent(SharedView view){
     return SetCurrent(view->GetHistNode());
 }
 
+void TreeBank::NthView(int n, ViewNode *vn){
+    m_TraverseMode = ViewMode;
+    if(!vn) vn = m_CurrentViewNode;
+    if(!vn) return;
+
+    NodeList siblings = vn->GetSiblings();
+    if(n >= 0 && n < siblings.length())
+        SetCurrent(siblings[n]);
+}
+
 #if defined(Q_OS_WIN)
 bool TreeBank::TridentViewExist(){
     static bool exists = false;
@@ -2162,8 +2172,7 @@ static SharedView LoadWithNoLink(ViewNode *vn){
 static SharedView AutoLoadWithLink(QNetworkRequest req, HistNode *hn, ViewNode *vn){
     QUrl u = req.url();
     SharedView view = SharedView();
-    // 'QStringList::indexOf' uses 'QRegExp::exactMatch'.
-    if(GetNodeSettings(vn).indexOf(QRegExp(QStringLiteral("[nN](?:o)?[lL](?:oad)?"))) == -1)
+    if(GetNodeSettings(vn).indexOf(QRegularExpression(QStringLiteral("\\A[nN](?:o)?[lL](?:oad)?\\Z"))) == -1)
         view = TreeBank::CreateView(req, hn, vn);
     SetPartner(u, hn, vn, view);
     SetPartner(u, vn, hn, view);
@@ -2192,8 +2201,7 @@ static SharedView AutoLoadWithLink(ViewNode *vn){
 static SharedView AutoLoadWithNoLink(QNetworkRequest req, HistNode *hn, ViewNode *vn){
     QUrl u = req.url();
     SharedView view = SharedView();
-    // 'QStringList::indexOf' uses 'QRegExp::exactMatch'.
-    if(GetNodeSettings(vn).indexOf(QRegExp(QStringLiteral("[nN](?:o)?[lL](?:oad)?"))) == -1)
+    if(GetNodeSettings(vn).indexOf(QRegularExpression(QStringLiteral("\\A[nN](?:o)?[lL](?:oad)?\\Z"))) == -1)
         view = TreeBank::CreateView(req, hn, vn);
     SetPartner(u, hn, vn, view);
     if(view){
@@ -3064,6 +3072,46 @@ void TreeBank::DigView(ViewNode *vn){
     }
 }
 
+void TreeBank::FirstView(ViewNode *vn){
+    NthView(0, vn);
+}
+
+void TreeBank::SecondView(ViewNode *vn){
+    NthView(1, vn);
+}
+
+void TreeBank::ThirdView(ViewNode *vn){
+    NthView(2, vn);
+}
+
+void TreeBank::FourthView(ViewNode *vn){
+    NthView(3, vn);
+}
+
+void TreeBank::FifthView(ViewNode *vn){
+    NthView(4, vn);
+}
+
+void TreeBank::SixthView(ViewNode *vn){
+    NthView(5, vn);
+}
+
+void TreeBank::SeventhView(ViewNode *vn){
+    NthView(6, vn);
+}
+
+void TreeBank::EighthView(ViewNode *vn){
+    NthView(7, vn);
+}
+
+void TreeBank::NinthView(ViewNode *vn){
+    NthView(8, vn);
+}
+
+void TreeBank::TenthView(ViewNode *vn){
+    NthView(9, vn);
+}
+
 ViewNode *TreeBank::NewViewNode(ViewNode *vn){
     m_TraverseMode = ViewMode;
     if(!vn) vn = m_CurrentViewNode;
@@ -3610,6 +3658,16 @@ QAction *TreeBank::Action(TreeBankAction a){
         DEFINE_ACTION(PrevView,         tr("PrevView"));
         DEFINE_ACTION(BuryView,         tr("BuryView"));
         DEFINE_ACTION(DigView,          tr("DigView"));
+        DEFINE_ACTION(FirstView,        tr("FirstView"));
+        DEFINE_ACTION(SecondView,       tr("SecondView"));
+        DEFINE_ACTION(ThirdView,        tr("ThirdView"));
+        DEFINE_ACTION(FourthView,       tr("FourthView"));
+        DEFINE_ACTION(FifthView,        tr("FifthView"));
+        DEFINE_ACTION(SixthView,        tr("SixthView"));
+        DEFINE_ACTION(SeventhView,      tr("SeventhView"));
+        DEFINE_ACTION(EighthView,       tr("EighthView"));
+        DEFINE_ACTION(NinthView,        tr("NinthView"));
+        DEFINE_ACTION(TenthView,        tr("TenthView"));
         DEFINE_ACTION(NewViewNode,      tr("NewViewNode"));
         DEFINE_ACTION(NewHistNode,      tr("NewHistNode"));
         DEFINE_ACTION(CloneViewNode,    tr("CloneViewNode"));
@@ -3780,30 +3838,29 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
 
     } else {
         view = SharedView(
-            // 'QStringList::indexOf' uses 'QRegExp::exactMatch'.
 #ifdef QTWEBKIT
-            set.indexOf(QRegExp(QStringLiteral(""                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new WebView(tb, id, set) :
-            set.indexOf(QRegExp(QStringLiteral("[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new GraphicsWebView(tb, id, set) :
-            set.indexOf(QRegExp(QStringLiteral("[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new QuickWebView(tb, id, set) :
 #else
-            set.indexOf(QRegExp(QStringLiteral(""                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new WebEngineView(tb, id, set) :
-            set.indexOf(QRegExp(QStringLiteral("[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new WebEngineView(tb, id, set) :
-            set.indexOf(QRegExp(QStringLiteral("[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new QuickWebEngineView(tb, id, set) :
 #endif
-            set.indexOf(QRegExp(QStringLiteral(""                 VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new WebEngineView(tb, id, set) :
-            set.indexOf(QRegExp(QStringLiteral("[qQ](?:uick)?"    VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new QuickWebEngineView(tb, id, set) :
-            set.indexOf(QRegExp(QStringLiteral(""                 VV"[lL](?:ocal)?"                  VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[lL](?:ocal)?"                  VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new LocalView(tb, id, set) :
 #if defined(Q_OS_WIN)
-            set.indexOf(QRegExp(QStringLiteral(""                 VV"[tT](?:rident)?"                VV"(?:[vV](?:iew)?)?"))) != -1 ?
+            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[tT](?:rident)?"                VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new TridentView(tb, id, set) :
 #endif
 #if defined(WEBENGINEVIEW_DEFAULT) || !defined(QTWEBKIT)

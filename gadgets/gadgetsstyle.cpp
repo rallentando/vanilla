@@ -633,6 +633,51 @@ void GlassStyle::Render(CloneButton *button, QPainter *painter) const {
     painter->restore();
 }
 
+#if QT_VERSION >= 0x050700
+void GlassStyle::Render(SoundButton *button, QPainter *painter) const {
+    if(!button->GetNode()) return;
+
+    bool muted = false;
+    bool audible = false;
+
+    if(View *view = button->GetNode()->GetView()){
+        if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
+            muted = w->page()->isAudioMuted();
+            audible = w->page()->wasRecentlyAudible();
+        }
+    }
+
+    if(!muted && !audible) return;
+
+    painter->save();
+    QRect rect = button->boundingRect();
+
+    if(button->GetState() == GraphicsButton::NotHovered)
+        painter->setOpacity(0.5);
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 255));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(b);
+    painter->drawRect(rect);
+
+    if(button->GetState() != GraphicsButton::Pressed){
+        rect.setLeft(rect.left() + 3);
+        rect.setRight(rect.right() - 3);
+        rect.setTop(rect.top() + 3);
+        rect.setBottom(rect.bottom() - 3);
+        if(muted){
+            static QPixmap muted_ = QPixmap(":/resources/tableview/muted.png");
+            painter->drawPixmap(rect, muted_, QRect(QPoint(), muted_.size()));
+        } else if(audible){
+            static QPixmap audible_ = QPixmap(":/resources/tableview/audible.png");
+            painter->drawPixmap(rect, audible_, QRect(QPoint(), audible_.size()));
+        }
+    }
+
+    painter->restore();
+}
+#endif
+
 void GlassStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
@@ -648,6 +693,38 @@ void GlassStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     if(button->GetState() != GraphicsButton::Pressed){
         static QPixmap icon = Application::style()->standardIcon(QStyle::SP_TitleBarShadeButton).pixmap(QSize(10, 10));
         painter->drawPixmap(QRect(QPoint(4,4), QSize(10, 10)), icon, QRect(QPoint(), icon.size()));
+    }
+
+    painter->restore();
+}
+
+void GlassStyle::Render(ToggleTrashButton *button, QPainter *painter) const {
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+
+    if(button->GetState() == GraphicsButton::NotHovered)
+        painter->setOpacity(0.5);
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 200));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(b);
+    painter->drawRoundedRect(button->boundingRect(), 3, 3);
+
+    if(button->GetState() != GraphicsButton::Pressed){
+        switch(static_cast<GraphicsTableView*>(button->parentItem())->m_DisplayType){
+        case GraphicsTableView::HistTree: // fall through.
+        case GraphicsTableView::TrashTree:{
+            static QPixmap table = QPixmap(":/resources/tableview/table.png");
+            painter->drawPixmap(QRect(QPoint(3,29), QSize(11, 11)), table, QRect(QPoint(), table.size()));
+            break;
+        }
+        case GraphicsTableView::ViewTree:{
+            static QPixmap trash = QPixmap(":/resources/tableview/trash.png");
+            painter->drawPixmap(QRect(QPoint(3,29), QSize(11, 11)), trash, QRect(QPoint(), trash.size()));
+            break;
+        }
+        case GraphicsTableView::AccessKey: break;
+        }
     }
 
     painter->restore();
@@ -1088,6 +1165,48 @@ void FlatStyle::Render(CloneButton *button, QPainter *painter) const {
     painter->restore();
 }
 
+#if QT_VERSION >= 0x050700
+void FlatStyle::Render(SoundButton *button, QPainter *painter) const {
+    if(!button->GetNode()) return;
+
+    bool muted = false;
+    bool audible = false;
+
+    if(View *view = button->GetNode()->GetView()){
+        if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
+            muted = w->page()->isAudioMuted();
+            audible = w->page()->wasRecentlyAudible();
+        }
+    }
+
+    if(!muted && !audible) return;
+
+    painter->save();
+    QRect rect = button->boundingRect();
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 255));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(b);
+    painter->drawRect(rect);
+
+    if(button->GetState() != GraphicsButton::Pressed){
+        rect.setLeft(rect.left() + 3);
+        rect.setRight(rect.right() - 3);
+        rect.setTop(rect.top() + 3);
+        rect.setBottom(rect.bottom() - 3);
+        if(muted){
+            static QPixmap muted_ = QPixmap(":/resources/tableview/muted.png");
+            painter->drawPixmap(rect, muted_, QRect(QPoint(), muted_.size()));
+        } else if(audible){
+            static QPixmap audible_ = QPixmap(":/resources/tableview/audible.png");
+            painter->drawPixmap(rect, audible_, QRect(QPoint(), audible_.size()));
+        }
+    }
+
+    painter->restore();
+}
+#endif
+
 void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
@@ -1099,6 +1218,33 @@ void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
 
     static QPixmap icon = Application::style()->standardIcon(QStyle::SP_TitleBarShadeButton).pixmap(QSize(10, 10));
     painter->drawPixmap(QRect(QPoint(4,4), QSize(10, 10)), icon, QRect(QPoint(), icon.size()));
+
+    painter->restore();
+}
+
+void FlatStyle::Render(ToggleTrashButton *button, QPainter *painter) const {
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+
+    static const QBrush b = QBrush(QColor(255, 255, 255, 255));
+    painter->setBrush(b);
+    painter->setPen(Qt::NoPen);
+    painter->drawRoundedRect(button->boundingRect(), 3, 3);
+
+    switch(static_cast<GraphicsTableView*>(button->parentItem())->m_DisplayType){
+    case GraphicsTableView::HistTree: // fall through.
+    case GraphicsTableView::TrashTree:{
+        static QPixmap table = QPixmap(":/resources/tableview/table.png");
+        painter->drawPixmap(QRect(QPoint(3,29), QSize(11, 11)), table, QRect(QPoint(), table.size()));
+        break;
+    }
+    case GraphicsTableView::ViewTree:{
+        static QPixmap trash = QPixmap(":/resources/tableview/trash.png");
+        painter->drawPixmap(QRect(QPoint(3,29), QSize(11, 11)), trash, QRect(QPoint(), trash.size()));
+        break;
+    }
+    case GraphicsTableView::AccessKey: break;
+    }
 
     painter->restore();
 }
