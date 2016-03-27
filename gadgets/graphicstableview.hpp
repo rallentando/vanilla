@@ -6,6 +6,7 @@
 #include <QGraphicsObject>
 #include <QtConcurrent/QtConcurrent>
 
+#include "treebank.hpp"
 #include "thumbnail.hpp"
 #include "nodetitle.hpp"
 
@@ -90,6 +91,9 @@ public:
     }
     float GetZoomFactor() const {
         return m_CurrentThumbnailZoomFactor;
+    }
+    template <class T> T ScaleByDevice(T t) const {
+        return t * m_TreeBank->logicalDpiY() / 96;
     }
 
     virtual void SetNodeCollectionType(NodeCollectionType){}
@@ -686,7 +690,7 @@ protected:
 private:
     Node *m_Node;
 };
-#endif
+#endif //if QT_VERSION >= 0x050700
 
 class UpDirectoryButton : public GraphicsButton {
 
@@ -716,4 +720,4 @@ protected:
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(GraphicsTableView::SortFlags);
 
-#endif
+#endif //ifndef GRAPHICSTABLEVIEW_HPP

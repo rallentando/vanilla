@@ -989,5 +989,5 @@ void QuickWebViewBase::CallWithEvaluatedJavaScriptResult(const QString &code,
 }
 
 //[[!QWEV]]
-#endif
+#endif //ifdef QTWEBKIT
 //[[/!QWEV]]

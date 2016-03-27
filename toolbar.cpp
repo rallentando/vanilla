@@ -190,17 +190,13 @@ void ToolBar::Initialize(){
 }
 
 void ToolBar::LoadSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
-
+    Settings &s = Application::GlobalSettings();
     Q_UNUSED(s);
     // not yet implemented.
 }
 
 void ToolBar::SaveSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
-
+    Settings &s = Application::GlobalSettings();
     Q_UNUSED(s);
     // not yet implemented.
 }

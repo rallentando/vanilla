@@ -1030,33 +1030,37 @@ void NetworkController::InitializeNetworkAccessManager(QString id, const QList<Q
 }
 
 void NetworkController::LoadAllCookies(){
+    QString filename = Application::CookieFileName();
+    QString datadir = Application::DataDirectory();
     QDomDocument doc;
-    QString dbdir = Application::DataDirectory();
-    QString name  = Application::CookieFileName();
-    QString pre   = Application::BackUpPreposition();
-    QFile file(dbdir + name);
-    if(!doc.setContent(&file)){
+    QFile file(datadir + filename);
+    bool check = doc.setContent(&file);
+    file.close();
 
-        QDir dir = QDir(Application::DataDirectory());
+    if(!check){
 
-        foreach(QString backup,
-                dir.entryList(Application::BackUpFileFilters(),
-                              QDir::NoFilter, QDir::Name | QDir::Reversed)){
-            if(backup.contains(name)){
-                QFile backupfile(Application::DataDirectory() + backup);
-                bool check = doc.setContent(&backupfile);
-                backupfile.close();
+        QDir dir = QDir(datadir);
+        QStringList list =
+            dir.entryList(Application::BackUpFileFilters(),
+                          QDir::NoFilter, QDir::Name | QDir::Reversed);
+        if(list.isEmpty()) return;
 
-                if(check){
-                    ModelessDialog::Information
-                        (tr("Restored from a back up file")+ QStringLiteral(" [") + backup + QStringLiteral("]."),
-                         tr("Because of a failure to read the latest file, it was restored from a backup file."));
-                    break;
-                }
-            }
+        foreach(QString backup, list){
+
+            if(!backup.contains(filename)) continue;
+
+            QFile backupfile(datadir + backup);
+            check = doc.setContent(&backupfile);
+            backupfile.close();
+
+            if(!check) continue;
+
+            ModelessDialog::Information
+                (tr("Restored from a back up file")+ QStringLiteral(" [") + backup + QStringLiteral("]."),
+                 tr("Because of a failure to read the latest file, it was restored from a backup file."));
+            break;
         }
     }
-    file.close();
 
     QDomNodeList children = doc.documentElement().childNodes();
     for(uint i = 0; i < static_cast<uint>(children.length()); i++){
@@ -1068,12 +1072,10 @@ void NetworkController::LoadAllCookies(){
 }
 
 void NetworkController::SaveAllCookies(){
-    QString cookie =
-        Application::DataDirectory() +
-        Application::CookieFileName(false);
-    QString cookieb =
-        Application::DataDirectory() +
-        Application::CookieFileName(true);
+    QString datadir = Application::DataDirectory();
+
+    QString cookie  = datadir + Application::CookieFileName(false);
+    QString cookieb = datadir + Application::CookieFileName(true);
 
     if(QFile::exists(cookieb)) QFile::remove(cookieb);
 
@@ -1096,7 +1098,7 @@ void NetworkController::SaveAllCookies(){
         root.appendChild(child);
     }
 
-    QFile file(Application::DataDirectory() + Application::CookieFileName(true));
+    QFile file(cookieb);
     if(file.open(QIODevice::WriteOnly)){
         QTextStream out(&file);
         doc.save(out, 2);

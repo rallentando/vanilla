@@ -1189,4 +1189,4 @@ protected:
     QString m_Action;
 };
 
-#endif
+#endif //ifndef VIEW_HPP

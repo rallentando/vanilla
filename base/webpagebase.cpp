@@ -700,7 +700,7 @@ void WebPageBase::HandleProcessTermination(RenderProcessTerminationStatus status
                                 info.arg(code), m_View->base());
     QTimer::singleShot(0, m_Page, SLOT(Reload()));
 }
-#endif
+#endif //if QT_VERSION >= 0x050600
 //[[/WEV]]
 
 void WebPageBase::HandleUnsupportedContent(QNetworkReply *reply){
@@ -1153,5 +1153,5 @@ void WebPageBase::DownloadSuggest(const QUrl& url){
 }
 
 //[[!WEV]]
-#endif
+#endif //ifdef QTWEBKIT
 //[[/!WEV]]

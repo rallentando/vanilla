@@ -354,4 +354,4 @@ signals:
     void FocusOut();
 };
 
-#endif
+#endif //ifndef DIALOG_HPP

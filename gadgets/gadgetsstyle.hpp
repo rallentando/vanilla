@@ -49,7 +49,7 @@ public:
     virtual bool UseGraphicsItemUpdate() const = 0;
 
     virtual bool NodeTitleDrawBorder() const = 0;
-    virtual int NodeTitleHeight() const = 0;
+    virtual int NodeTitleHeight(GraphicsTableView *gtv) const = 0;
     virtual int InPlaceNotifierWidth() const = 0;
     virtual int InPlaceNotifierHeight() const = 0;
 };
@@ -71,9 +71,6 @@ public:
     static const int m_ThumbnailAreaWidthPercentage;
 
     static const bool m_ThumbnailDrawBorder;
-
-    static const QSize m_DefaultThumbnailWholeSize;
-    static const QSize m_MinimumThumbnailWholeSize;
 
     static const QFont m_NodeTitleFont;
 
@@ -117,7 +114,7 @@ public:
     bool UseGraphicsItemUpdate() const DECL_OVERRIDE { return false;}
 
     bool NodeTitleDrawBorder() const DECL_OVERRIDE { return m_NodeTitleDrawBorder;}
-    int NodeTitleHeight() const DECL_OVERRIDE { return m_NodeTitleHeight;}
+    int NodeTitleHeight(GraphicsTableView *gtv) const DECL_OVERRIDE;
     int InPlaceNotifierWidth() const DECL_OVERRIDE { return m_InPlaceNotifierWidth;}
     int InPlaceNotifierHeight() const DECL_OVERRIDE { return m_InPlaceNotifierHeight;}
 };
@@ -139,9 +136,6 @@ public:
     static const int m_ThumbnailAreaWidthPercentage;
 
     static const bool m_ThumbnailDrawBorder;
-
-    static const QSize m_DefaultThumbnailWholeSize;
-    static const QSize m_MinimumThumbnailWholeSize;
 
     void ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const DECL_OVERRIDE;
     void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const DECL_OVERRIDE;
@@ -176,9 +170,9 @@ public:
     bool UseGraphicsItemUpdate() const DECL_OVERRIDE { return true;}
 
     bool NodeTitleDrawBorder() const DECL_OVERRIDE { return false;}
-    int NodeTitleHeight() const DECL_OVERRIDE { return 1;} // dummy value.
+    int NodeTitleHeight(GraphicsTableView*) const DECL_OVERRIDE { return 1;} // dummy value.
     int InPlaceNotifierWidth() const DECL_OVERRIDE { return 706;} // dummy value.
     int InPlaceNotifierHeight() const DECL_OVERRIDE { return 154;} // dummy value.
 };
 
-#endif
+#endif //ifndef GADGETSSTYLE_HPP

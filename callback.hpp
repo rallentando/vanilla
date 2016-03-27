@@ -28,4 +28,4 @@ typedef std::function<void(const QRect&)> RectCallBack;
 typedef std::function<void(const QRectF&)> RectFCallBack;
 typedef std::function<void(const QRegion&)> RegionCallBack;
 
-#endif
+#endif //ifndef CALLBACK_HPP

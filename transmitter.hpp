@@ -26,4 +26,4 @@ private:
     QLocalSocket *m_LocalSocket;
 };
 
-#endif
+#endif //ifndef TRANSMITTER_HPP

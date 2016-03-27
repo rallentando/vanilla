@@ -1,3 +1,5 @@
+#ifndef KEYMAP_HPP
+#define KEYMAP_HPP
 
 #define TREEBANK_KEYMAP                                                 \
     m_KeyMap[QKeySequence(QKeySequence::Copy)]          = QStringLiteral("Copy"); \
@@ -345,3 +347,5 @@
     m_AccessKeyKeyMap[QKeySequence(Qt::Key_K)] = QStringLiteral("ClickElement"); \
     m_AccessKeyKeyMap[QKeySequence(Qt::Key_Semicolon)] = QStringLiteral("FocusElement"); \
     m_AccessKeyKeyMap[QKeySequence(Qt::Key_Comma)] = QStringLiteral("HoverElement");
+
+#endif //ifndef KEYMAP_HPP

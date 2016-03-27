@@ -678,24 +678,25 @@ void TreeBank::LoadTree(){
     foreach(ViewNode *root, QList<ViewNode*>() << m_ViewRoot << m_TrashRoot){
 
         QString filename = m[root];
-        QString path = Application::DataDirectory() + filename;
+        QString datadir = Application::DataDirectory();
         QDomDocument doc;
-        QFile file(path);
+        QFile file(datadir + filename);
         bool check = doc.setContent(&file);
         file.close();
 
         if(!check){
 
-            QDir dir = QDir(Application::DataDirectory());
+            QDir dir = QDir(datadir);
             QStringList list =
                 dir.entryList(Application::BackUpFileFilters(),
                               QDir::NoFilter, QDir::Name | QDir::Reversed);
+            if(list.isEmpty()) return;
 
             foreach(QString backup, list){
 
                 if(!backup.contains(filename)) continue;
 
-                QFile backupfile(Application::DataDirectory() + backup);
+                QFile backupfile(datadir + backup);
                 check = doc.setContent(&backupfile);
                 backupfile.close();
 
@@ -821,21 +822,13 @@ static void CollectHistDom(QDomElement &elem, HistNode *parent, ViewNode *partne
 void TreeBank::SaveTree(){
     DoDelete();
 
-    QString primary =
-        Application::DataDirectory() +
-        Application::PrimaryTreeFileName(false);
+    QString datadir = Application::DataDirectory();
 
-    QString primaryb =
-        Application::DataDirectory() +
-        Application::PrimaryTreeFileName(true);
+    QString primary  = datadir + Application::PrimaryTreeFileName(false);
+    QString primaryb = datadir + Application::PrimaryTreeFileName(true);
 
-    QString secondary =
-        Application::DataDirectory() +
-        Application::SecondaryTreeFileName(false);
-
-    QString secondaryb =
-        Application::DataDirectory() +
-        Application::SecondaryTreeFileName(true);
+    QString secondary  = datadir + Application::SecondaryTreeFileName(false);
+    QString secondaryb = datadir + Application::SecondaryTreeFileName(true);
 
     if(QFile::exists(primaryb))   QFile::remove(primaryb);
     if(QFile::exists(secondaryb)) QFile::remove(secondaryb);
@@ -864,7 +857,7 @@ void TreeBank::SaveTree(){
             out << "</viewnode>\n";
         }
         file.close();
-#else
+#else //ifdef FAST_SAVER
         QDomDocument doc;
         doc.appendChild(doc.createProcessingInstruction("xml", "version=\"1.0\" encoding=\"UTF-8\""));
         QDomElement root = doc.createElement(QStringLiteral("viewnode"));
@@ -878,7 +871,7 @@ void TreeBank::SaveTree(){
             doc.save(out, 2);
         }
         file.close();
-#endif
+#endif //ifdef FAST_SAVER
     }
 
     if(QFile::exists(primary))   QFile::remove(primary);
@@ -996,31 +989,27 @@ static void CollectHistNodeFlat(HistNode *nd, QTextStream &out){
 }
 
 void TreeBank::LoadSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    m_RootName             = s->value(QStringLiteral("application/@RootName"), QStringLiteral("root;id")).value<QString>();
-    m_MaxViewCount         = s->value(QStringLiteral("application/@MaxViewCount")         , -1)   .value<int>();
-    m_MaxTrashEntryCount   = s->value(QStringLiteral("application/@MaxTrashEntryCount")   , -1)   .value<int>();
-    m_TraverseAllView      = s->value(QStringLiteral("application/@TraverseAllView")      , false).value<bool>();
-    m_PurgeNotifier        = s->value(QStringLiteral("application/@PurgeNotifier")        , false).value<bool>();
-    m_PurgeReceiver        = s->value(QStringLiteral("application/@PurgeReceiver")        , false).value<bool>();
-    m_PurgeView            = s->value(QStringLiteral("application/@PurgeView")            , false).value<bool>();
+    m_RootName             = s.value(QStringLiteral("application/@RootName"), QStringLiteral("root;id")).value<QString>();
+    m_MaxViewCount         = s.value(QStringLiteral("application/@MaxViewCount")         , -1)   .value<int>();
+    m_MaxTrashEntryCount   = s.value(QStringLiteral("application/@MaxTrashEntryCount")   , -1)   .value<int>();
+    m_TraverseAllView      = s.value(QStringLiteral("application/@TraverseAllView")      , false).value<bool>();
+    m_PurgeNotifier        = s.value(QStringLiteral("application/@PurgeNotifier")        , false).value<bool>();
+    m_PurgeReceiver        = s.value(QStringLiteral("application/@PurgeReceiver")        , false).value<bool>();
+    m_PurgeView            = s.value(QStringLiteral("application/@PurgeView")            , false).value<bool>();
 
-    QString viewport = s->value(QStringLiteral("application/@Viewport"), QStringLiteral("Widget")).value<QString>();
+    QString viewport = s.value(QStringLiteral("application/@Viewport"), QStringLiteral("Widget")).value<QString>();
     if(viewport == QStringLiteral("Widget"))       m_Viewport = Widget;
     if(viewport == QStringLiteral("GLWidget"))     m_Viewport = GLWidget;
     if(viewport == QStringLiteral("OpenGLWidget")) m_Viewport = OpenGLWidget;
 
-    if(m_MaxViewCount == -1)       m_MaxViewCount       = s->value(QStringLiteral("application/@MaxView")  , -1).value<int>();
+    if(m_MaxViewCount == -1)       m_MaxViewCount       = s.value(QStringLiteral("application/@MaxView")  , -1).value<int>();
     if(m_MaxViewCount == -1)       m_MaxViewCount       = 10;
-    if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = s->value(QStringLiteral("application/@MaxTrash") , -1).value<int>();
+    if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = s.value(QStringLiteral("application/@MaxTrash") , -1).value<int>();
     if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = 100;
 
-    {   QStringList keys;
-        s->beginGroup(QStringLiteral("application/keymap"));
-        keys = s->allKeys();
-        s->endGroup();
+    {   QStringList keys = s.allKeys(QStringLiteral("application/keymap"));
 
         if(keys.isEmpty()){
             /* default key map. */
@@ -1028,19 +1017,17 @@ void TreeBank::LoadSettings(){
         } else {
             if(!m_KeyMap.isEmpty()) m_KeyMap.clear();
             foreach(QString key, keys){
-                if(key.isEmpty()) continue;
-                m_KeyMap[Application::MakeKeySequence(key)] =
-                    s->value(QStringLiteral("application/keymap/") + key, QStringLiteral("NoAction")).value<QString>()
+                QString last = key.split(QStringLiteral("/")).last();
+                if(last.isEmpty()) continue;
+                m_KeyMap[Application::MakeKeySequence(last)] =
+                    s.value(key, QStringLiteral("NoAction")).value<QString>()
                     // cannot use slashes on QSettings.
                       .replace(QStringLiteral("Backslash"), QStringLiteral("\\"))
                       .replace(QStringLiteral("Slash"), QStringLiteral("/"));
             }
         }
     }
-    {   QStringList keys;
-        s->beginGroup(QStringLiteral("application/mouse"));
-        keys = s->allKeys();
-        s->endGroup();
+    {   QStringList keys = s.allKeys(QStringLiteral("application/mouse"));
 
         if(keys.isEmpty()){
             /* default mouse map. */
@@ -1048,9 +1035,10 @@ void TreeBank::LoadSettings(){
         } else {
             if(!m_MouseMap.isEmpty()) m_MouseMap.clear();
             foreach(QString key, keys){
-                if(key.isEmpty()) continue;
-                m_MouseMap[key] =
-                    s->value(QStringLiteral("application/mouse/") + key, QStringLiteral("NoAction")).value<QString>();
+                QString last = key.split(QStringLiteral("/")).last();
+                if(last.isEmpty()) continue;
+                m_MouseMap[last] =
+                    s.value(key, QStringLiteral("NoAction")).value<QString>();
             }
         }
     }
@@ -1060,24 +1048,23 @@ void TreeBank::LoadSettings(){
 }
 
 void TreeBank::SaveSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    s->setValue(QStringLiteral("application/@RootName"),             m_RootName);
-    s->setValue(QStringLiteral("application/@MaxViewCount"),         m_MaxViewCount);
-    s->setValue(QStringLiteral("application/@MaxTrashEntryCount"),   m_MaxTrashEntryCount);
-    s->setValue(QStringLiteral("application/@TraverseAllView"),      m_TraverseAllView);
-    s->setValue(QStringLiteral("application/@PurgeNotifier"),        m_PurgeNotifier);
-    s->setValue(QStringLiteral("application/@PurgeReceiver"),        m_PurgeReceiver);
-    s->setValue(QStringLiteral("application/@PurgeView"),            m_PurgeView);
+    s.setValue(QStringLiteral("application/@RootName"),             m_RootName);
+    s.setValue(QStringLiteral("application/@MaxViewCount"),         m_MaxViewCount);
+    s.setValue(QStringLiteral("application/@MaxTrashEntryCount"),   m_MaxTrashEntryCount);
+    s.setValue(QStringLiteral("application/@TraverseAllView"),      m_TraverseAllView);
+    s.setValue(QStringLiteral("application/@PurgeNotifier"),        m_PurgeNotifier);
+    s.setValue(QStringLiteral("application/@PurgeReceiver"),        m_PurgeReceiver);
+    s.setValue(QStringLiteral("application/@PurgeView"),            m_PurgeView);
 
-    if(m_Viewport == Widget)       s->setValue(QStringLiteral("application/@Viewport"), QStringLiteral("Widget"));
-    if(m_Viewport == GLWidget)     s->setValue(QStringLiteral("application/@Viewport"), QStringLiteral("GLWidget"));
-    if(m_Viewport == OpenGLWidget) s->setValue(QStringLiteral("application/@Viewport"), QStringLiteral("OpenGLWidget"));
+    if(m_Viewport == Widget)       s.setValue(QStringLiteral("application/@Viewport"), QStringLiteral("Widget"));
+    if(m_Viewport == GLWidget)     s.setValue(QStringLiteral("application/@Viewport"), QStringLiteral("GLWidget"));
+    if(m_Viewport == OpenGLWidget) s.setValue(QStringLiteral("application/@Viewport"), QStringLiteral("OpenGLWidget"));
 
     foreach(QKeySequence seq, m_KeyMap.keys()){
         if(!seq.isEmpty() && !seq.toString().isEmpty()){
-            s->setValue(QStringLiteral("application/keymap/") + seq.toString()
+            s.setValue(QStringLiteral("application/keymap/") + seq.toString()
                         // cannot use slashes on QSettings.
                           .replace(QStringLiteral("\\"), QStringLiteral("Backslash"))
                           .replace(QStringLiteral("/"), QStringLiteral("Slash")),
@@ -1087,7 +1074,7 @@ void TreeBank::SaveSettings(){
 
     foreach(QString button, m_MouseMap.keys()){
         if(!button.isEmpty())
-            s->setValue(QStringLiteral("application/keymap/") + button, m_MouseMap[button]);
+            s.setValue(QStringLiteral("application/keymap/") + button, m_MouseMap[button]);
     }
     Node::SaveSettings();
     View::SaveSettings();

@@ -305,7 +305,7 @@ void Notifier::UpdateTaskbarProgress(){
     if(progress == 100)
         m_Progress->setVisible(false);
 }
-#endif
+#endif //if defined(Q_OS_WIN)
 
 bool Notifier::EmitScrollRequest(QPoint pos){
     if(!m_HotSpot.isNull()) return false;

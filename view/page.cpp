@@ -308,7 +308,7 @@ QList<QUrl> Page::ExtractUrlFromHtml(QString html, QUrl baseUrl, FindElementsOpt
         }
     }
     return list.toSet().toList();
-#endif
+#endif //ifdef QTWEBKIT
 }
 
 QList<QUrl> Page::ExtractUrlFromText(QString text, QUrl baseUrl){

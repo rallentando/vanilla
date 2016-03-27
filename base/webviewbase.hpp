@@ -544,7 +544,7 @@ public slots:
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
     void AssignInspector();
-    void UpdateIcon(const QUrl &url);
+    void UpdateIcon(const QUrl &iconUrl);
     //[[/WEV]]
 
 signals:
@@ -725,7 +725,7 @@ private:
 //[[/WEV]]
 
 //[[!WEV]]
-#endif
+#endif //ifdef QTWEBKIT
 //[[/!WEV]]
 
-#endif
+#endif //ifndef WEBVIEWBASE_HPP

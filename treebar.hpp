@@ -353,4 +353,4 @@ private:
     QPointF m_TargetPosition;
 };
 
-#endif
+#endif //ifndef TREEBAR_HPP

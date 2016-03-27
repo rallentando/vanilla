@@ -126,45 +126,43 @@ GraphicsTableView::~GraphicsTableView(){
 }
 
 void GraphicsTableView::LoadSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    QString style = s->value(QStringLiteral("gadgets/@Style"), QStringLiteral("GlassStyle")).value<QString>();
+    QString style = s.value(QStringLiteral("gadgets/@Style"), QStringLiteral("GlassStyle")).value<QString>();
     GadgetsStyle *style_ = m_Style;
 
     if(style == QStringLiteral("GlassStyle")) m_Style = new GlassStyle;
     if(style == QStringLiteral("FlatStyle"))  m_Style = new FlatStyle;
     if(style_) delete style_;
 
-    m_ScrollToChangeDirectory = s->value(QStringLiteral("gadgets/thumblist/@ScrollToChangeDirectory"), false).value<bool>();
-    m_RightClickToRenameNode  = s->value(QStringLiteral("gadgets/thumblist/@RightClickToRenameNode"),  false).value<bool>();
-    m_EnablePrimarySpotLight  = s->value(QStringLiteral("gadgets/thumblist/@EnablePrimarySpotLight"),  false).value<bool>();
-    m_EnableHoveredSpotLight  = s->value(QStringLiteral("gadgets/thumblist/@EnableHoveredSpotLight"),   true).value<bool>();
-    m_EnableLoadedSpotLight   = s->value(QStringLiteral("gadgets/thumblist/@EnableLoadedSpotLight"),   false).value<bool>();
-    m_EnableInPlaceNotifier   = s->value(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),    true).value<bool>();
-    m_EnableCloseButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),        true).value<bool>();
-    m_EnableCloneButton       = s->value(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),        true).value<bool>();
-    m_EnableAnimation         = s->value(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         false).value<bool>();
+    m_ScrollToChangeDirectory = s.value(QStringLiteral("gadgets/thumblist/@ScrollToChangeDirectory"), false).value<bool>();
+    m_RightClickToRenameNode  = s.value(QStringLiteral("gadgets/thumblist/@RightClickToRenameNode"),  false).value<bool>();
+    m_EnablePrimarySpotLight  = s.value(QStringLiteral("gadgets/thumblist/@EnablePrimarySpotLight"),  false).value<bool>();
+    m_EnableHoveredSpotLight  = s.value(QStringLiteral("gadgets/thumblist/@EnableHoveredSpotLight"),   true).value<bool>();
+    m_EnableLoadedSpotLight   = s.value(QStringLiteral("gadgets/thumblist/@EnableLoadedSpotLight"),   false).value<bool>();
+    m_EnableInPlaceNotifier   = s.value(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),    true).value<bool>();
+    m_EnableCloseButton       = s.value(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),        true).value<bool>();
+    m_EnableCloneButton       = s.value(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),        true).value<bool>();
+    m_EnableAnimation         = s.value(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         false).value<bool>();
 
     Thumbnail::Initialize();
     NodeTitle::Initialize();
 }
 
 void GraphicsTableView::SaveSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    s->setValue(QStringLiteral("gadgets/@Style"), GetStyle()->StyleName());
+    s.setValue(QStringLiteral("gadgets/@Style"), GetStyle()->StyleName());
 
-    s->setValue(QStringLiteral("gadgets/thumblist/@ScrollToChangeDirectory"), m_ScrollToChangeDirectory);
-    s->setValue(QStringLiteral("gadgets/thumblist/@RightClickToRenameNode"),  m_RightClickToRenameNode);
-    s->setValue(QStringLiteral("gadgets/thumblist/@EnablePrimarySpotLight"),  m_EnablePrimarySpotLight);
-    s->setValue(QStringLiteral("gadgets/thumblist/@EnableHoveredSpotLight"),  m_EnableHoveredSpotLight);
-    s->setValue(QStringLiteral("gadgets/thumblist/@EnableLoadedSpotLight"),   m_EnableLoadedSpotLight);
-    s->setValue(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),   m_EnableInPlaceNotifier);
-    s->setValue(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),       m_EnableCloseButton);
-    s->setValue(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),       m_EnableCloneButton);
-    s->setValue(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         m_EnableAnimation);
+    s.setValue(QStringLiteral("gadgets/thumblist/@ScrollToChangeDirectory"), m_ScrollToChangeDirectory);
+    s.setValue(QStringLiteral("gadgets/thumblist/@RightClickToRenameNode"),  m_RightClickToRenameNode);
+    s.setValue(QStringLiteral("gadgets/thumblist/@EnablePrimarySpotLight"),  m_EnablePrimarySpotLight);
+    s.setValue(QStringLiteral("gadgets/thumblist/@EnableHoveredSpotLight"),  m_EnableHoveredSpotLight);
+    s.setValue(QStringLiteral("gadgets/thumblist/@EnableLoadedSpotLight"),   m_EnableLoadedSpotLight);
+    s.setValue(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),   m_EnableInPlaceNotifier);
+    s.setValue(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),       m_EnableCloseButton);
+    s.setValue(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),       m_EnableCloneButton);
+    s.setValue(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         m_EnableAnimation);
 }
 
 void GraphicsTableView::Activate(DisplayType type){
@@ -554,7 +552,7 @@ bool GraphicsTableView::DeleteNodes(NodeList list){
     if(!success) m_CurrentNode = backup;
 #else
     success = m_TreeBank->DeleteNode(list);
-#endif
+#endif //ifdef USE_LIGHTNODE
 
     // no deletion, needless to refresh.
     if(!success) return false;
@@ -1088,14 +1086,14 @@ QRectF GraphicsTableView::ComputeRect(const Thumbnail *thumb, const int index) c
 
 QRectF GraphicsTableView::ComputeRect(const NodeTitle *title, const int index) const {
     Q_UNUSED(title);
+    int height = GetStyle()->NodeTitleHeight(const_cast<GraphicsTableView* const>(this));
     if(index == -1) return QRectF();
     return QRectF(DISPLAY_PADDING_X
                   + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
                   + GADGETS_SCROLL_BAR_MARGIN * 2
                   + GADGETS_SCROLL_BAR_WIDTH,
-                  DISPLAY_PADDING_Y + GetStyle()->NodeTitleHeight() * index
-                  - round(m_CurrentScroll
-                          * GetStyle()->NodeTitleHeight()),
+                  DISPLAY_PADDING_Y + height * index
+                  - round(m_CurrentScroll * height),
 
                   m_Size.width()
                   - (GetStyle()->NodeTitleDrawBorder() ?
@@ -1104,7 +1102,7 @@ QRectF GraphicsTableView::ComputeRect(const NodeTitle *title, const int index) c
                   - m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
                   - GADGETS_SCROLL_BAR_MARGIN * 2
                   - GADGETS_SCROLL_BAR_WIDTH,
-                  GetStyle()->NodeTitleHeight());
+                  height);
 }
 
 void GraphicsTableView::RelocateContents(){
@@ -2583,6 +2581,8 @@ void GraphicsTableView::ScrollToItem(qreal target){
 
     if(target > m_CurrentScroll){
 
+        int nodetitleheight = GetStyle()->NodeTitleHeight(const_cast<GraphicsTableView* const>(this));
+
         int thumbnailscroll = target -
             m_CurrentThumbnailColumnCount *
             (m_CurrentThumbnailLineCount - 1);
@@ -2590,7 +2590,7 @@ void GraphicsTableView::ScrollToItem(qreal target){
 
         int nodetitlescroll = target + m_CurrentThumbnailColumnCount -
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
-            GetStyle()->NodeTitleHeight();
+            nodetitleheight;
         if(nodetitlescroll < 0) nodetitlescroll = 0;
 
         int thumbnailcount =
@@ -2599,7 +2599,7 @@ void GraphicsTableView::ScrollToItem(qreal target){
 
         int nodetitlecount =
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
-            GetStyle()->NodeTitleHeight();
+            nodetitleheight;
 
         Scroll(qMax(static_cast<int>(m_CurrentScroll),
                     thumbnailcount  < nodetitlecount ?
@@ -2652,6 +2652,9 @@ void GraphicsTableView::SetScrollToItem(qreal target){
 
     if(target > m_CurrentScroll){
 
+        int nodetitleheight =
+            GetStyle()->NodeTitleHeight(const_cast<GraphicsTableView* const>(this));
+
         int thumbnailscroll = target -
             m_CurrentThumbnailColumnCount *
             (m_CurrentThumbnailLineCount - 1);
@@ -2659,7 +2662,7 @@ void GraphicsTableView::SetScrollToItem(qreal target){
 
         int nodetitlescroll = target + m_CurrentThumbnailColumnCount -
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
-            GetStyle()->NodeTitleHeight();
+            nodetitleheight;
         if(nodetitlescroll < 0) nodetitlescroll = 0;
 
         int thumbnailcount =
@@ -2668,7 +2671,7 @@ void GraphicsTableView::SetScrollToItem(qreal target){
 
         int nodetitlecount =
             (static_cast<int>(m_Size.height()) - DISPLAY_PADDING_Y) /
-            GetStyle()->NodeTitleHeight();
+            nodetitleheight;
 
         SetScroll(qMax(static_cast<int>(m_CurrentScroll),
                        thumbnailcount  < nodetitlecount ?
@@ -3190,7 +3193,7 @@ QPointF GraphicsTableView::CurrentNodeTitleOffset() const {
                    round(- m_CurrentScroll
                          // / m_CurrentThumbnailColumnCount
                          // * m_CurrentThumbnailColumnCount
-                         * GetStyle()->NodeTitleHeight()));
+                         * GetStyle()->NodeTitleHeight(const_cast<GraphicsTableView* const>(this))));
 }
 
 SpotLight::SpotLight(GraphicsTableView::SpotLightType type, QGraphicsItem *parent)
@@ -3689,7 +3692,7 @@ void SoundButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     }
     ev->setAccepted(true);
 }
-#endif
+#endif //if QT_VERSION >= 0x050700
 
 UpDirectoryButton::UpDirectoryButton(QGraphicsItem *parent)
     : GraphicsButton(parent)

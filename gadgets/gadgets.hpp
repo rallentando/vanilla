@@ -364,4 +364,4 @@ private:
     bool m_IsNumber;
 };
 
-#endif
+#endif //ifndef GADGETS_HPP

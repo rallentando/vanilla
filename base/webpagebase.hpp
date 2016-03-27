@@ -208,7 +208,7 @@ private:
 };
 
 //[[!WEV]]
-#endif
+#endif //ifdef QTWEBKIT
 //[[/!WEV]]
 
-#endif
+#endif //ifndef WEBPAGEBASE_HPP

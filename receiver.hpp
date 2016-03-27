@@ -304,4 +304,4 @@ public slots:
 signals:
     void SuggestRequest(const QUrl&);
 };
-#endif
+#endif //ifndef RECEIVER_HPP

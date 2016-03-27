@@ -115,6 +115,8 @@ public:
 
     bool IsRead();
     QString ReadableTitle();
+    QImage VisibleImage();
+    QIcon GetIcon();
 
     virtual bool IsRoot(){ return false;}
     virtual bool IsDirectory(){ return false;}
@@ -531,5 +533,5 @@ public:
     QDateTime GetLastAccessDate() DECL_OVERRIDE;
 };
 
-#endif // ifdef USE_LIGHTNODE
-#endif
+#endif //ifdef USE_LIGHTNODE
+#endif //ifndef LIGHTNODE_HPP

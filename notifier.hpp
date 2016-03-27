@@ -90,4 +90,4 @@ protected:
     void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
 };
 
-#endif
+#endif //ifndef NOTIFIER_H

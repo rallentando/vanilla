@@ -24,6 +24,21 @@ class ModelessDialogFrame;
 
 typedef QMap<int, MainWindow*> WinMap;
 
+class Settings : public QSettings::SettingsMap {
+public:
+    void setValue(QString key, QVariant value){
+        insert(key, value);
+    }
+    QStringList allKeys(QString group){
+        QStringList sieved;
+        foreach(QString key, keys()){
+            if(key.startsWith(group))
+                sieved << key;
+        }
+        return sieved;
+    }
+};
+
 template <class Key, class T>
 QMap<Key, T>& operator<<(QMap<Key, T>& map, const QPair<Key, T>& data){
     map.insert(data.first, data.second);
@@ -65,9 +80,13 @@ private:
     // for settings.
 
 public:
-    static QSettings *GlobalSettings();
+    static Settings &GlobalSettings();
     static void SaveGlobalSettings();
     static void LoadGlobalSettings();
+    static void SaveIconDatabase();
+    static void LoadIconDatabase();
+    static void RegisterIcon(QString, QIcon);
+    static QIcon GetIcon(QString);
     static void Reconfigure();
     static bool EnableGoogleSuggest();
     static bool EnableFramelessWindow();
@@ -77,7 +96,8 @@ public:
     static double WheelScrollRate();
 private:
     static QSettings::Format XMLFormat;
-    static QSettings *m_GlobalSettings;
+    static Settings m_GlobalSettings;
+    static Settings m_IconTable;
     static bool m_EnableGoogleSuggest;
     static bool m_EnableFramelessWindow;
     static bool m_EnableTransparentBar;
@@ -201,7 +221,8 @@ public:
     static QString PrimaryTreeFileName(bool tmp = false);
     static QString SecondaryTreeFileName(bool tmp = false);
     static QString CookieFileName(bool tmp = false);
-    static QString GlobalSettingsFileName();
+    static QString GlobalSettingsFileName(bool tmp = false);
+    static QString IconDatabaseFileName(bool tmp = false);
 
 protected:
     void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
@@ -574,4 +595,4 @@ public:
     }
 };
 
-#endif
+#endif //ifndef APPLICATION_HPP

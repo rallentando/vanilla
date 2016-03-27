@@ -1,3 +1,6 @@
+#ifndef MOUSEMAP_HPP
+#define MOUSEMAP_HPP
+
 #define TREEBANK_MOUSEMAP                                               \
     m_MouseMap[QStringLiteral("ExtraButton1")] = QStringLiteral("Back"); \
     m_MouseMap[QStringLiteral("ExtraButton2")] = QStringLiteral("Forward"); \
@@ -73,3 +76,5 @@
     m_LeftGestureMap[QStringLiteral("U,L")] = QStringLiteral("OpenOnRootBackground"); \
     m_LeftGestureMap[QStringLiteral("D,R")] = QStringLiteral("OpenInNewDirectoryBackground"); \
     m_LeftGestureMap[QStringLiteral("D,L")] = QStringLiteral("OpenInNewViewNodeBackground");
+
+#endif //ifndef MOUSEMAP_HPP

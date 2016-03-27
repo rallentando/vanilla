@@ -68,4 +68,4 @@ private:
     QPoint m_Pos;
 };
 
-#endif
+#endif //ifndef ACCESSIBLEWEBELEMNT_HPP

@@ -10,6 +10,7 @@
 #include "view.hpp"
 
 #include <QUuid>
+#include <QtConcurrent/QtConcurrent>
 
 bool Node::m_Booting = false;
 QStringList Node::m_AllImageFileName = QStringList();
@@ -75,12 +76,11 @@ void Node::SetBooting(bool b){
 }
 
 void Node::LoadSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    m_EnableDeepCopyOfNode = s->value(QStringLiteral("application/@EnableDeepCopyOfNode") , false).value<bool>();
+    m_EnableDeepCopyOfNode = s.value(QStringLiteral("application/@EnableDeepCopyOfNode") , false).value<bool>();
     {
-        QString position = s->value(QStringLiteral("application/@AddChildViewNodePosition"),
+        QString position = s.value(QStringLiteral("application/@AddChildViewNodePosition"),
                                     QStringLiteral("RightEnd")).value<QString>();
         if(position == QStringLiteral("RightEnd"))                    m_AddChildViewNodePosition = RightEnd;
         if(position == QStringLiteral("LeftEnd"))                     m_AddChildViewNodePosition = LeftEnd;
@@ -90,7 +90,7 @@ void Node::LoadSettings(){
         if(position == QStringLiteral("HeadOfLeftUnreadsOfPrimary"))  m_AddChildViewNodePosition = HeadOfLeftUnreadsOfPrimary;
     }
     {
-        QString position = s->value(QStringLiteral("application/@AddSiblingViewNodePosition"),
+        QString position = s.value(QStringLiteral("application/@AddSiblingViewNodePosition"),
                                     QStringLiteral("RightOfPrimary")).value<QString>();
         if(position == QStringLiteral("RightEnd"))                    m_AddSiblingViewNodePosition = RightEnd;
         if(position == QStringLiteral("LeftEnd"))                     m_AddSiblingViewNodePosition = LeftEnd;
@@ -102,27 +102,26 @@ void Node::LoadSettings(){
 }
 
 void Node::SaveSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    s->setValue(QStringLiteral("application/@EnableDeepCopyOfNode"), m_EnableDeepCopyOfNode);
+    s.setValue(QStringLiteral("application/@EnableDeepCopyOfNode"), m_EnableDeepCopyOfNode);
     {
         AddNodePosition position = m_AddChildViewNodePosition;
-        if(position == RightEnd)                    s->setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("RightEnd"));
-        if(position == LeftEnd)                     s->setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("LeftEnd"));
-        if(position == RightOfPrimary)              s->setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("RightOfPrimary"));
-        if(position == LeftOfPrimary)               s->setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("LeftOfPrimary"));
-        if(position == TailOfRightUnreadsOfPrimary) s->setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("TailOfRightUnreadsOfPrimary"));
-        if(position == HeadOfLeftUnreadsOfPrimary)  s->setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("HeadOfLeftUnreadsOfPrimary"));
+        if(position == RightEnd)                    s.setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("RightEnd"));
+        if(position == LeftEnd)                     s.setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("LeftEnd"));
+        if(position == RightOfPrimary)              s.setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("RightOfPrimary"));
+        if(position == LeftOfPrimary)               s.setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("LeftOfPrimary"));
+        if(position == TailOfRightUnreadsOfPrimary) s.setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("TailOfRightUnreadsOfPrimary"));
+        if(position == HeadOfLeftUnreadsOfPrimary)  s.setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("HeadOfLeftUnreadsOfPrimary"));
     }
     {
         AddNodePosition position = m_AddSiblingViewNodePosition;
-        if(position == RightEnd)                    s->setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("RightEnd"));
-        if(position == LeftEnd)                     s->setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("LeftEnd"));
-        if(position == RightOfPrimary)              s->setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("RightOfPrimary"));
-        if(position == LeftOfPrimary)               s->setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("LeftOfPrimary"));
-        if(position == TailOfRightUnreadsOfPrimary) s->setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("TailOfRightUnreadsOfPrimary"));
-        if(position == HeadOfLeftUnreadsOfPrimary)  s->setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("HeadOfLeftUnreadsOfPrimary"));
+        if(position == RightEnd)                    s.setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("RightEnd"));
+        if(position == LeftEnd)                     s.setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("LeftEnd"));
+        if(position == RightOfPrimary)              s.setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("RightOfPrimary"));
+        if(position == LeftOfPrimary)               s.setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("LeftOfPrimary"));
+        if(position == TailOfRightUnreadsOfPrimary) s.setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("TailOfRightUnreadsOfPrimary"));
+        if(position == HeadOfLeftUnreadsOfPrimary)  s.setValue(QStringLiteral("application/@AddSiblingViewNodePosition"), QStringLiteral("HeadOfLeftUnreadsOfPrimary"));
     }
 }
 
@@ -144,9 +143,34 @@ QString Node::ReadableTitle(){
             title = url.toString();
         }
     } else if(IsDirectory()){
-        title = QStringLiteral("Dir - ") + title.split(QStringLiteral(";")).first();
+        title = title.split(QStringLiteral(";")).first();
     }
     return title;
+}
+
+QImage Node::VisibleImage(){
+    QImage image = GetImage();
+    if(image.isNull()){
+        Node *nd = this;
+        if(nd->IsViewNode() && nd->IsDirectory()){
+            while(!nd->HasNoChildren()){
+                if(nd->GetPrimary()){
+                    nd = nd->GetPrimary();
+                } else {
+                    nd = nd->GetFirstChild();
+                }
+            }
+            if(!nd->GetImage().isNull()){
+                image = nd->GetImage();
+            }
+        }
+    }
+    return image;
+}
+
+QIcon Node::GetIcon(){
+    if(GetUrl().isEmpty()) return QIcon();
+    return Application::GetIcon(GetUrl().host());
 }
 
 void Node::SetCreateDateToCurrent(){

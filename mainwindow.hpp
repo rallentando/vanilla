@@ -262,4 +262,4 @@ protected:
     Qt::CursorShape CursorShape() DECL_OVERRIDE;
 };
 
-#endif
+#endif //ifndef MAINWINDOW_HPP

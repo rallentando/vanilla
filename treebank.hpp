@@ -437,5 +437,4 @@ public:
     static bool PurgeView(){ return m_PurgeView;}
 };
 
-
-#endif
+#endif //ifndef TREEBANK_HPP

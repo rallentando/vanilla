@@ -447,4 +447,4 @@ private:
 
     void UrlCountCheck(int count, BoolCallBack callBack);
 };
-#endif
+#endif //ifndef PAGE_HPP

@@ -1845,10 +1845,10 @@ bool TridentView::translateKeyEvent(int message, int keycode) const {
     return true;
 }
 
-void TridentView::UpdateIcon(const QUrl &url){
+void TridentView::UpdateIcon(const QUrl &iconUrl){
     m_Icon = QIcon();
     if(!page()) return;
-    QNetworkRequest req(url);
+    QNetworkRequest req(iconUrl);
     DownloadItem *item = NetworkController::Download
         (page()->GetNetworkAccessManager(),
          req, NetworkController::ToVariable);
@@ -1857,10 +1857,12 @@ void TridentView::UpdateIcon(const QUrl &url){
 
     item->setParent(base());
 
-    connect(item, &DownloadItem::DownloadResult, [=](const QByteArray &result){
+    connect(item, &DownloadItem::DownloadResult, [this](const QByteArray &result){
             QPixmap pixmap;
             if(pixmap.loadFromData(result)){
                 m_Icon = QIcon(pixmap);
+                if(!m_Icon.isNull())
+                    Application::RegisterIcon(url().host(), m_Icon);
                 emit iconChanged();
             }
         });

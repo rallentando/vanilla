@@ -102,13 +102,9 @@ void Gadgets::setParent(TreeBank *tb){
 void Gadgets::LoadSettings(){
     GraphicsTableView::LoadSettings();
 
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    {   QStringList keys;
-        s->beginGroup(QStringLiteral("gadgets/thumblist/keymap"));
-        keys = s->allKeys();
-        s->endGroup();
+    {   QStringList keys = s.allKeys(QStringLiteral("gadgets/thumblist/keymap"));
 
         if(keys.isEmpty()){
             /* default key map. */
@@ -116,20 +112,17 @@ void Gadgets::LoadSettings(){
         } else {
             if(!m_ThumbListKeyMap.isEmpty()) m_ThumbListKeyMap.clear();
             foreach(QString key, keys){
-                if(key.isEmpty()) continue;
-                m_ThumbListKeyMap[Application::MakeKeySequence(key)] =
-                    s->value(QStringLiteral("gadgets/thumblist/keymap/") + key,
-                             QStringLiteral("NoAction")).value<QString>()
+                QString last = key.split(QStringLiteral("/")).last();
+                if(last.isEmpty()) continue;
+                m_ThumbListKeyMap[Application::MakeKeySequence(last)] =
+                    s.value(key, QStringLiteral("NoAction")).value<QString>()
                     // cannot use slashes on QSettings.
-                    .replace(QStringLiteral("Backslash"), QStringLiteral("\\"))
-                    .replace(QStringLiteral("Slash"), QStringLiteral("/"));
+                      .replace(QStringLiteral("Backslash"), QStringLiteral("\\"))
+                      .replace(QStringLiteral("Slash"), QStringLiteral("/"));
             }
         }
     }
-    {   QStringList keys;
-        s->beginGroup(QStringLiteral("gadgets/thumblist/mouse"));
-        keys = s->allKeys();
-        s->endGroup();
+    {   QStringList keys = s.allKeys(QStringLiteral("gadgets/thumblist/mouse"));
 
         if(keys.isEmpty()){
             /* default mouse map. */
@@ -137,28 +130,28 @@ void Gadgets::LoadSettings(){
         } else {
             if(!m_MouseMap.isEmpty()) m_MouseMap.clear();
             foreach(QString key, keys){
-                if(key.isEmpty()) continue;
-                m_MouseMap[key] =
-                    s->value(QStringLiteral("gadgets/thumblist/mouse/") + key,
-                             QStringLiteral("NoAction")).value<QString>();
+                QString last = key.split(QStringLiteral("/")).last();
+                if(last.isEmpty()) continue;
+                m_MouseMap[last] =
+                    s.value(key, QStringLiteral("NoAction")).value<QString>();
             }
         }
     }
 
-    m_EnableMultiStroke = s->value(QStringLiteral("gadgets/accesskey/@EnableMultiStroke"), false).value<bool>();
+    m_EnableMultiStroke = s.value(QStringLiteral("gadgets/accesskey/@EnableMultiStroke"), false).value<bool>();
     m_AccessKeyCustomSequence =
-        s->value(QStringLiteral("gadgets/accesskey/@AccessKeyCustomSequence"), QString()).value<QString>().toUpper()
+        s.value(QStringLiteral("gadgets/accesskey/@AccessKeyCustomSequence"), QString()).value<QString>().toUpper()
         // cannot use slashes on QSettings.
           .replace(QStringLiteral("Backslash"), QStringLiteral("\\"))
           .replace(QStringLiteral("Slash"), QStringLiteral("/"));
 
-    QString mode = s->value(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("BothHands")).value<QString>();
+    QString mode = s.value(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("BothHands")).value<QString>();
     if     (mode == QStringLiteral("BothHands")) m_AccessKeyMode = BothHands;
     else if(mode == QStringLiteral("LeftHand"))  m_AccessKeyMode = LeftHand;
     else if(mode == QStringLiteral("RightHand")) m_AccessKeyMode = RightHand;
     else if(mode == QStringLiteral("Custom"))    m_AccessKeyMode = Custom;
 
-    QString action = s->value(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenMenu")).value<QString>();
+    QString action = s.value(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenMenu")).value<QString>();
     if     (action == QStringLiteral("OpenMenu"))                     m_AccessKeyAction = OpenMenu;
     else if(action == QStringLiteral("ClickElement"))                 m_AccessKeyAction = ClickElement;
     else if(action == QStringLiteral("FocusElement"))                 m_AccessKeyAction = FocusElement;
@@ -176,21 +169,18 @@ void Gadgets::LoadSettings(){
     else if(action == QStringLiteral("OpenInNewDirectoryNewWindow"))  m_AccessKeyAction = OpenInNewDirectoryNewWindow;
     else if(action == QStringLiteral("OpenOnRootNewWindow"))          m_AccessKeyAction = OpenOnRootNewWindow;
 
-    QString orientation = s->value(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Vertical")).value<QString>();
+    QString orientation = s.value(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Vertical")).value<QString>();
     if     (orientation == QStringLiteral("Vertical"))   m_AccessKeySortOrientation = Vertical;
     else if(orientation == QStringLiteral("Horizontal")) m_AccessKeySortOrientation = Horizontal;
 
-    QString method = s->value(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("Number")).value<QString>();
+    QString method = s.value(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("Number")).value<QString>();
     if     (method == QStringLiteral("Number"))      m_AccessKeySelectBlockMethod = Number;
     else if(method == QStringLiteral("ShiftedChar")) m_AccessKeySelectBlockMethod = ShiftedChar;
     else if(method == QStringLiteral("CtrledChar"))  m_AccessKeySelectBlockMethod = CtrledChar;
     else if(method == QStringLiteral("AltedChar"))   m_AccessKeySelectBlockMethod = AltedChar;
     else if(method == QStringLiteral("MetaChar"))    m_AccessKeySelectBlockMethod = MetaChar;
 
-    {   QStringList keys;
-        s->beginGroup(QStringLiteral("gadgets/accesskey/keymap"));
-        keys = s->allKeys();
-        s->endGroup();
+    {   QStringList keys = s.allKeys(QStringLiteral("gadgets/accesskey/keymap"));
 
         if(keys.isEmpty()){
             /* default key map. */
@@ -198,12 +188,13 @@ void Gadgets::LoadSettings(){
         } else {
             if(!m_AccessKeyKeyMap.isEmpty()) m_AccessKeyKeyMap.clear();
             foreach(QString key, keys){
-                if(key.isEmpty()) continue;
-                m_AccessKeyKeyMap[Application::MakeKeySequence(key)] =
-                    s->value(QStringLiteral("gadgets/accesskey/keymap/") + key, QStringLiteral("NoAction")).value<QString>()
+                QString last = key.split(QStringLiteral("/")).last();
+                if(last.isEmpty()) continue;
+                m_AccessKeyKeyMap[Application::MakeKeySequence(last)] =
+                    s.value(key, QStringLiteral("NoAction")).value<QString>()
                     // cannot use slashes on QSettings.
-                    .replace(QStringLiteral("Backslash"), QStringLiteral("\\"))
-                    .replace(QStringLiteral("Slash"), QStringLiteral("/"));
+                      .replace(QStringLiteral("Backslash"), QStringLiteral("\\"))
+                      .replace(QStringLiteral("Slash"), QStringLiteral("/"));
             }
         }
     }
@@ -215,12 +206,11 @@ void Gadgets::LoadSettings(){
 void Gadgets::SaveSettings(){
     GraphicsTableView::SaveSettings();
 
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
     foreach(QKeySequence seq, m_ThumbListKeyMap.keys()){
         if(!seq.isEmpty() && !seq.toString().isEmpty())
-            s->setValue(QStringLiteral("gadgets/thumblist/keymap/") + seq.toString()
+            s.setValue(QStringLiteral("gadgets/thumblist/keymap/") + seq.toString()
                         // cannot use slashes on QSettings.
                           .replace(QStringLiteral("\\"), QStringLiteral("Backslash"))
                           .replace(QStringLiteral("/"), QStringLiteral("Slash")),
@@ -229,50 +219,50 @@ void Gadgets::SaveSettings(){
 
     foreach(QString button, m_MouseMap.keys()){
         if(!button.isEmpty())
-            s->setValue(QStringLiteral("gadgets/thumblist/mouse/") + button, m_MouseMap[button]);
+            s.setValue(QStringLiteral("gadgets/thumblist/mouse/") + button, m_MouseMap[button]);
     }
 
-    s->setValue(QStringLiteral("gadgets/accesskey/@EnableMultiStroke"), m_EnableMultiStroke);
-    s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyCustomSequence"),
+    s.setValue(QStringLiteral("gadgets/accesskey/@EnableMultiStroke"), m_EnableMultiStroke);
+    s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyCustomSequence"),
                 m_AccessKeyCustomSequence
                 // cannot use slashes on QSettings.
                   .replace(QStringLiteral("\\"), QStringLiteral("Backslash"))
                   .replace(QStringLiteral("/"), QStringLiteral("Slash")));
 
-    if     (m_AccessKeyMode == BothHands) s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("BothHands"));
-    else if(m_AccessKeyMode == LeftHand)  s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("LeftHand"));
-    else if(m_AccessKeyMode == RightHand) s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("RightHand"));
-    else if(m_AccessKeyMode == Custom)    s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("Custom"));
+    if     (m_AccessKeyMode == BothHands) s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("BothHands"));
+    else if(m_AccessKeyMode == LeftHand)  s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("LeftHand"));
+    else if(m_AccessKeyMode == RightHand) s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("RightHand"));
+    else if(m_AccessKeyMode == Custom)    s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyMode"), QStringLiteral("Custom"));
 
-    if     (m_AccessKeyAction == OpenMenu)                     s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenMenu"));
-    else if(m_AccessKeyAction == ClickElement)                 s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("ClickElement"));
-    else if(m_AccessKeyAction == FocusElement)                 s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("FocusElement"));
-    else if(m_AccessKeyAction == HoverElement)                 s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("HoverElement"));
-    else if(m_AccessKeyAction == OpenInNewViewNode)            s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewViewNode"));
-    else if(m_AccessKeyAction == OpenInNewHistNode)            s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewHistNode"));
-    else if(m_AccessKeyAction == OpenInNewDirectory)           s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewDirectory"));
-    else if(m_AccessKeyAction == OpenOnRoot)                   s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenOnRoot"));
-    else if(m_AccessKeyAction == OpenInNewViewNodeBackground)  s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewViewNodeBackground"));
-    else if(m_AccessKeyAction == OpenInNewHistNodeBackground)  s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewHistNodeBackground"));
-    else if(m_AccessKeyAction == OpenInNewDirectoryBackground) s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewDirectoryBackground"));
-    else if(m_AccessKeyAction == OpenOnRootBackground)         s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenOnRootBackground"));
-    else if(m_AccessKeyAction == OpenInNewViewNodeNewWindow)   s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewViewNodeNewWindow"));
-    else if(m_AccessKeyAction == OpenInNewHistNodeNewWindow)   s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewHistNodeNewWindow"));
-    else if(m_AccessKeyAction == OpenInNewDirectoryNewWindow)  s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewDirectoryNewWindow"));
-    else if(m_AccessKeyAction == OpenOnRootNewWindow)          s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenOnRootNewWindow"));
+    if     (m_AccessKeyAction == OpenMenu)                     s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenMenu"));
+    else if(m_AccessKeyAction == ClickElement)                 s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("ClickElement"));
+    else if(m_AccessKeyAction == FocusElement)                 s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("FocusElement"));
+    else if(m_AccessKeyAction == HoverElement)                 s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("HoverElement"));
+    else if(m_AccessKeyAction == OpenInNewViewNode)            s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewViewNode"));
+    else if(m_AccessKeyAction == OpenInNewHistNode)            s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewHistNode"));
+    else if(m_AccessKeyAction == OpenInNewDirectory)           s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewDirectory"));
+    else if(m_AccessKeyAction == OpenOnRoot)                   s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenOnRoot"));
+    else if(m_AccessKeyAction == OpenInNewViewNodeBackground)  s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewViewNodeBackground"));
+    else if(m_AccessKeyAction == OpenInNewHistNodeBackground)  s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewHistNodeBackground"));
+    else if(m_AccessKeyAction == OpenInNewDirectoryBackground) s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewDirectoryBackground"));
+    else if(m_AccessKeyAction == OpenOnRootBackground)         s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenOnRootBackground"));
+    else if(m_AccessKeyAction == OpenInNewViewNodeNewWindow)   s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewViewNodeNewWindow"));
+    else if(m_AccessKeyAction == OpenInNewHistNodeNewWindow)   s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewHistNodeNewWindow"));
+    else if(m_AccessKeyAction == OpenInNewDirectoryNewWindow)  s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewDirectoryNewWindow"));
+    else if(m_AccessKeyAction == OpenOnRootNewWindow)          s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenOnRootNewWindow"));
 
-    if     (m_AccessKeySortOrientation == Vertical)   s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Vertical"));
-    else if(m_AccessKeySortOrientation == Horizontal) s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Horizontal"));
+    if     (m_AccessKeySortOrientation == Vertical)   s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Vertical"));
+    else if(m_AccessKeySortOrientation == Horizontal) s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Horizontal"));
 
-    if     (m_AccessKeySelectBlockMethod == Number)      s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("Number"));
-    else if(m_AccessKeySelectBlockMethod == ShiftedChar) s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("ShiftedChar"));
-    else if(m_AccessKeySelectBlockMethod == CtrledChar)  s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("CtrledChar"));
-    else if(m_AccessKeySelectBlockMethod == AltedChar)   s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("AltedChar"));
-    else if(m_AccessKeySelectBlockMethod == MetaChar)    s->setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("MetaChar"));
+    if     (m_AccessKeySelectBlockMethod == Number)      s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("Number"));
+    else if(m_AccessKeySelectBlockMethod == ShiftedChar) s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("ShiftedChar"));
+    else if(m_AccessKeySelectBlockMethod == CtrledChar)  s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("CtrledChar"));
+    else if(m_AccessKeySelectBlockMethod == AltedChar)   s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("AltedChar"));
+    else if(m_AccessKeySelectBlockMethod == MetaChar)    s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("MetaChar"));
 
     foreach(QKeySequence seq, m_AccessKeyKeyMap.keys()){
         if(!seq.isEmpty() && !seq.toString().isEmpty())
-            s->setValue(QStringLiteral("gadgets/accesskey/keymap/") + seq.toString()
+            s.setValue(QStringLiteral("gadgets/accesskey/keymap/") + seq.toString()
                         // cannot use slashes on QSettings.
                           .replace(QStringLiteral("\\"), QStringLiteral("Backslash"))
                           .replace(QStringLiteral("/"), QStringLiteral("Slash")),

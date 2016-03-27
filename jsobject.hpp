@@ -319,4 +319,4 @@ public slots:
     void saveTextAsUrl (){ m_View->TriggerAction(Page::_SaveTextAsUrl); }
 };
 
-#endif
+#endif //ifndef JSOBJECT_HPP

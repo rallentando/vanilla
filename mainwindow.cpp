@@ -127,32 +127,30 @@ int MainWindow::GetIndex(){
 }
 
 void MainWindow::SaveSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    s->setValue(QStringLiteral("mainwindow/tableview%1").arg(m_Index), m_TreeBank->GetGadgets()->GetStat());
-    s->setValue(QStringLiteral("mainwindow/notifier%1").arg(m_Index), m_TreeBank->GetNotifier() ? true : false);
-    s->setValue(QStringLiteral("mainwindow/receiver%1").arg(m_Index), m_TreeBank->GetReceiver() ? true : false);
-    s->setValue(QStringLiteral("mainwindow/menubar%1").arg(m_Index), !IsMenuBarEmpty());
-    s->setValue(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), saveState());
-    s->setValue(QStringLiteral("mainwindow/treebar%1").arg(m_Index), m_TreeBar->GetStat());
-    s->setValue(QStringLiteral("mainwindow/status%1").arg(m_Index), static_cast<int>(windowState()));
+    s.setValue(QStringLiteral("mainwindow/tableview%1").arg(m_Index), m_TreeBank->GetGadgets()->GetStat());
+    s.setValue(QStringLiteral("mainwindow/notifier%1").arg(m_Index), m_TreeBank->GetNotifier() ? true : false);
+    s.setValue(QStringLiteral("mainwindow/receiver%1").arg(m_Index), m_TreeBank->GetReceiver() ? true : false);
+    s.setValue(QStringLiteral("mainwindow/menubar%1").arg(m_Index), !IsMenuBarEmpty());
+    s.setValue(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), saveState());
+    s.setValue(QStringLiteral("mainwindow/treebar%1").arg(m_Index), m_TreeBar->GetStat());
+    s.setValue(QStringLiteral("mainwindow/status%1").arg(m_Index), static_cast<int>(windowState()));
     if(!isFullScreen() && !isMaximized() && !isMinimized())
-        s->setValue(QStringLiteral("mainwindow/geometry%1").arg(m_Index), geometry());
+        s.setValue(QStringLiteral("mainwindow/geometry%1").arg(m_Index), geometry());
 }
 
 void MainWindow::LoadSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
     MainWindow *current = Application::GetCurrentWindow();
-    QVariant tableview_data = s->value(QStringLiteral("mainwindow/tableview%1").arg(m_Index), QVariant());
-    QVariant geometry_data  = s->value(QStringLiteral("mainwindow/geometry%1").arg(m_Index), QVariant());
-    QVariant notifier_data  = s->value(QStringLiteral("mainwindow/notifier%1").arg(m_Index), QVariant());
-    QVariant receiver_data  = s->value(QStringLiteral("mainwindow/receiver%1").arg(m_Index), QVariant());
-    QVariant menubar_data   = s->value(QStringLiteral("mainwindow/menubar%1").arg(m_Index), QVariant());
-    QVariant toolbar_data   = s->value(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), QVariant());
-    QVariant treebar_data   = s->value(QStringLiteral("mainwindow/treebar%1").arg(m_Index), QVariant());
+    QVariant tableview_data = s.value(QStringLiteral("mainwindow/tableview%1").arg(m_Index), QVariant());
+    QVariant geometry_data  = s.value(QStringLiteral("mainwindow/geometry%1").arg(m_Index), QVariant());
+    QVariant notifier_data  = s.value(QStringLiteral("mainwindow/notifier%1").arg(m_Index), QVariant());
+    QVariant receiver_data  = s.value(QStringLiteral("mainwindow/receiver%1").arg(m_Index), QVariant());
+    QVariant menubar_data   = s.value(QStringLiteral("mainwindow/menubar%1").arg(m_Index), QVariant());
+    QVariant toolbar_data   = s.value(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), QVariant());
+    QVariant treebar_data   = s.value(QStringLiteral("mainwindow/treebar%1").arg(m_Index), QVariant());
 
     if(tableview_data.isNull()){
 
@@ -263,7 +261,7 @@ void MainWindow::LoadSettings(){
     }
     if(!contains) setGeometry(DEFAULT_WINDOW_RECT);
 
-    QVariant status = s->value(QStringLiteral("mainwindow/status%1").arg(m_Index), QVariant());
+    QVariant status = s.value(QStringLiteral("mainwindow/status%1").arg(m_Index), QVariant());
 
     if(status.isNull()){
         /* do nothing. */
@@ -274,18 +272,17 @@ void MainWindow::LoadSettings(){
 }
 
 void MainWindow::RemoveSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    s->remove(QStringLiteral("mainwindow/tableview%1").arg(m_Index));
-    s->remove(QStringLiteral("mainwindow/geometry%1").arg(m_Index));
-    s->remove(QStringLiteral("mainwindow/notifier%1").arg(m_Index));
-    s->remove(QStringLiteral("mainwindow/receiver%1").arg(m_Index));
-    s->remove(QStringLiteral("mainwindow/menubar%1").arg(m_Index));
-    s->remove(QStringLiteral("mainwindow/toolbar%1").arg(m_Index));
-    s->remove(QStringLiteral("mainwindow/treebar%1").arg(m_Index));
-    s->remove(QStringLiteral("mainwindow/status%1").arg(m_Index));
-    s->sync();
+    s.remove(QStringLiteral("mainwindow/tableview%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/geometry%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/notifier%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/receiver%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/menubar%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/toolbar%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/treebar%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/status%1").arg(m_Index));
+    //s.sync();
 }
 
 TreeBank *MainWindow::GetTreeBank() const {
@@ -796,7 +793,7 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
     return ret;
 }
 
-#endif // defined(Q_OS_WIN)
+#endif //defined(Q_OS_WIN)
 
 namespace{
     static const QPen tpen = QPen(QColor(0,0,0,1));

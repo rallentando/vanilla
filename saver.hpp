@@ -32,4 +32,4 @@ public slots:
     void SaveAll();
 };
 
-#endif
+#endif //ifndef SAVER_HPP

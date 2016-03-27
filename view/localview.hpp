@@ -396,4 +396,4 @@ private:
 
 };
 
-#endif
+#endif //ifndef LOCALVIEW_HPP

@@ -294,7 +294,7 @@ public slots:
         // not yet implemented.
         return false;
     }
-    void UpdateIcon(const QUrl &url);
+    void UpdateIcon(const QUrl &iconUrl);
     void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint globalPos);
 
 signals:
@@ -408,4 +408,4 @@ private:
     QString m_Title;
     QIcon m_Icon;
 };
-#endif
+#endif //ifndef TRIDENTVIEW_HPP

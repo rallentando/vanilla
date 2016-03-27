@@ -188,4 +188,4 @@ private:
     static QList<UploadItem*>   m_UploadList;
 };
 
-#endif
+#endif //ifndef NETCONTROL_HPP

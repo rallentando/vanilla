@@ -36,4 +36,4 @@ protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
 };
 
-#endif
+#endif //ifndef THUMBNAIL_HPP

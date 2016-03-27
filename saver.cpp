@@ -54,14 +54,6 @@ void AutoSaver::SaveAll(){
         return;
     }
 
-    // save global settings.
-    TRY{
-        Application::SaveGlobalSettings();
-    } CATCH{
-        emit Failed();
-        return;
-    }
-
     // save treebar settings.
     TRY{
         TreeBar::SaveSettings();
@@ -86,9 +78,25 @@ void AutoSaver::SaveAll(){
         return;
     }
 
+    // save global settings.
+    TRY{
+        Application::SaveGlobalSettings();
+    } CATCH{
+        emit Failed();
+        return;
+    }
+
     // save all tree.
     TRY{
         TreeBank::SaveTree();
+    } CATCH{
+        emit Failed();
+        return;
+    }
+
+    // save icon database.
+    TRY{
+        Application::SaveIconDatabase();
     } CATCH{
         emit Failed();
         return;

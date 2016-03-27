@@ -42,4 +42,4 @@
 
 #define FAST_SAVER
 
-#endif
+#endif //ifndef SWITCH_HPP

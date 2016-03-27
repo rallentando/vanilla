@@ -68,4 +68,4 @@ private:
     static QStringList m_CommandCandidates;
 };
 
-#endif
+#endif //ifndef TOOLBAR_HPP

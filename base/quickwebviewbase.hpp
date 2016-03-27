@@ -429,7 +429,7 @@ private:
 };
 
 //[[!QWEV]]
-#endif
+#endif //ifdef QTWEBKIT
 //[[/!QWEV]]
 
-#endif
+#endif //ifndef QUICKWEBVIEWBASE_HPP

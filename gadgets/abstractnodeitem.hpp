@@ -68,4 +68,4 @@ protected:
     void wheelEvent            (QGraphicsSceneWheelEvent *ev) DECL_OVERRIDE;
 };
 
-#endif
+#endif //ifndef ABSTRACTNODEITEM_HPP_HPP

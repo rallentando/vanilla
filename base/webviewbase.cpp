@@ -627,9 +627,9 @@ void WebViewBase::AssignInspector(){
         });
 }
 
-void WebViewBase::UpdateIcon(const QUrl &url){
+void WebViewBase::UpdateIcon(const QUrl &iconUrl){
     if(!page()) return;
-    QNetworkRequest req(url);
+    QNetworkRequest req(iconUrl);
     DownloadItem *item = NetworkController::Download
         (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
          req, NetworkController::ToVariable);
@@ -642,6 +642,8 @@ void WebViewBase::UpdateIcon(const QUrl &url){
             QPixmap pixmap;
             if(pixmap.loadFromData(result)){
                 m_Icon = QIcon(pixmap);
+                if(!m_Icon.isNull())
+                    Application::RegisterIcon(url().host(), m_Icon);
                 emit iconChanged();
             }
         });
@@ -1691,5 +1693,5 @@ void WebViewBase::CallWithEvaluatedJavaScriptResult(const QString &code, Variant
 //[[/WEV]]
 
 //[[!WEV]]
-#endif
+#endif //ifdef QTWEBKIT
 //[[/!WEV]]

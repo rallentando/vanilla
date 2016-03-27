@@ -433,8 +433,7 @@ void Receiver::SetString(QString str){
     QStringList list = str.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
     if(m_Mode == Command &&
        Application::ExactMatch(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?"), list[0])){
-        QSettings *settings = Application::GlobalSettings();
-        if(!settings->group().isEmpty()) return;
+        Settings &s = Application::GlobalSettings();
 
         switch (list.length()){
         case 1:
@@ -442,37 +441,10 @@ void Receiver::SetString(QString str){
             list << QString();
         case 2:{
             QStringList result;
-            QStringList path = list[1].split(QStringLiteral("/"));
             QString command = list[0];
-            QString parent = QString();
-            for(int i = 0; i < (path.length()-1); i++){
-                if(path[i].isEmpty()) break;
-
-                settings->beginGroup(path[i]);
-
-                if(parent.isEmpty())
-                    parent = path[i];
-                else
-                    parent = parent + QString(QStringLiteral("/")) + path[i];
-            }
-            foreach(QString group, settings->childGroups()){
-                if(group.startsWith(path.last())){
-                    if(parent.isEmpty())
-                        result << command + QStringLiteral(" ") + group + QStringLiteral("/");
-                    else
-                        result << command + QStringLiteral(" ") + parent + QStringLiteral("/") + group + QStringLiteral("/");
-                }
-            }
-            foreach(QString key, settings->childKeys()){
-                if(key.startsWith(path.last())){
-                    if(parent.isEmpty())
-                        result << command + QStringLiteral(" ") + key;
-                    else
-                        result << command + QStringLiteral(" ") + parent + QStringLiteral("/") + key;
-                }
-            }
-            while(!settings->group().isEmpty()){
-                settings->endGroup();
+            // TODO: implement completer.
+            foreach(QString key, s.allKeys(list[1])){
+                result << command + QStringLiteral(" ") + key;
             }
             SetSuggest(result);
             break;
@@ -526,9 +498,9 @@ void Receiver::SuitableAction(){
             QStringList list = key.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
 
             if(Application::ExactMatch(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?"), list[0])){
-                QSettings *settings = Application::GlobalSettings();
-                if(!settings->value(list[1]).toString().isEmpty())
-                    list << settings->value(list[1]).toString();
+                Settings &s = Application::GlobalSettings();
+                if(!s.value(list[1]).toString().isEmpty())
+                    list << s.value(list[1]).toString();
                 m_LineEdit->setText(list.join(" "));
             }
         } else {
@@ -869,14 +841,16 @@ void Receiver::ReceiveCommand(QString cmd){
         if(list.length() >= 2){ // ignore excess arguments.
             QString key = list.takeFirst();
             QString val = list.join(" ");
-            Application::GlobalSettings()->setValue(key, val);
+            // TODO: not work for now.
+            Application::GlobalSettings().setValue(key, val);
             emit Reconfigure();
         }
 
     } else if(Application::ExactMatch(QStringLiteral("[uU]n[sS]et(?:tings?)?"), cmd)){
 
         if(list.length() >= 1){ // ignore excess arguments.
-            Application::GlobalSettings()->remove(list[0]);
+            // TODO: not work for now.
+            Application::GlobalSettings().remove(list[0]);
             emit Reconfigure();
         }
 
@@ -1032,9 +1006,9 @@ void Receiver::mousePressEvent(QMouseEvent *ev){
             QStringList list = key.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
 
             if(Application::ExactMatch(QStringLiteral("(?:[uU]n)?[sS]et(?:tings?)?"), list[0])){
-                QSettings *settings = Application::GlobalSettings();
-                if(!settings->value(list[1]).toString().isEmpty())
-                    list << settings->value(list[1]).toString();
+                Settings &s = Application::GlobalSettings();
+                if(!s.value(list[1]).toString().isEmpty())
+                    list << s.value(list[1]).toString();
                 m_LineEdit->setText(list.join(" "));
             } else {
                 m_LineEdit->setText(key);

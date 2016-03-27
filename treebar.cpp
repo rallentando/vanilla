@@ -773,31 +773,29 @@ void TreeBar::Initialize(){
 }
 
 void TreeBar::LoadSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    m_HorizontalNodeWidth = s->value(QStringLiteral("treebar/@HorizontalNodeWidth"), TREEBAR_HORIZONTAL_NODE_DEFAULT_WIDTH).value<int>();
-    m_VerticalNodeHeight  = s->value(QStringLiteral("treebar/@VerticalNodeHeight"),  TREEBAR_VERTICAL_NODE_DEFAULT_HEIGHT).value<int>();
-    m_EnableAnimation     = s->value(QStringLiteral("treebar/@EnableAnimation"),    true ).value<bool>();
-    m_EnableCloseButton   = s->value(QStringLiteral("treebar/@EnableCloseButton"),  true ).value<bool>();
-    m_EnableCloneButton   = s->value(QStringLiteral("treebar/@EnableCloneButton"),  true ).value<bool>();
-    m_ScrollToSwitchNode  = s->value(QStringLiteral("treebar/@ScrollToSwitchNode"), false).value<bool>();
-    m_DoubleClickToClose  = s->value(QStringLiteral("treebar/@DoubleClickToClose"), false).value<bool>();
-    m_WheelClickToClose   = s->value(QStringLiteral("treebar/@WheelClickToClose"),  true ).value<bool>();
+    m_HorizontalNodeWidth = s.value(QStringLiteral("treebar/@HorizontalNodeWidth"), TREEBAR_HORIZONTAL_NODE_DEFAULT_WIDTH).value<int>();
+    m_VerticalNodeHeight  = s.value(QStringLiteral("treebar/@VerticalNodeHeight"),  TREEBAR_VERTICAL_NODE_DEFAULT_HEIGHT).value<int>();
+    m_EnableAnimation     = s.value(QStringLiteral("treebar/@EnableAnimation"),    true ).value<bool>();
+    m_EnableCloseButton   = s.value(QStringLiteral("treebar/@EnableCloseButton"),  true ).value<bool>();
+    m_EnableCloneButton   = s.value(QStringLiteral("treebar/@EnableCloneButton"),  true ).value<bool>();
+    m_ScrollToSwitchNode  = s.value(QStringLiteral("treebar/@ScrollToSwitchNode"), false).value<bool>();
+    m_DoubleClickToClose  = s.value(QStringLiteral("treebar/@DoubleClickToClose"), false).value<bool>();
+    m_WheelClickToClose   = s.value(QStringLiteral("treebar/@WheelClickToClose"),  true ).value<bool>();
 }
 
 void TreeBar::SaveSettings(){
-    QSettings *s = Application::GlobalSettings();
-    if(!s->group().isEmpty()) return;
+    Settings &s = Application::GlobalSettings();
 
-    s->setValue(QStringLiteral("treebar/@HorizontalNodeWidth"), m_HorizontalNodeWidth);
-    s->setValue(QStringLiteral("treebar/@VerticalNodeHeight"),  m_VerticalNodeHeight);
-    s->setValue(QStringLiteral("treebar/@EnableAnimation"),     m_EnableAnimation);
-    s->setValue(QStringLiteral("treebar/@EnableCloseButton"),   m_EnableCloseButton);
-    s->setValue(QStringLiteral("treebar/@EnableCloneButton"),   m_EnableCloneButton);
-    s->setValue(QStringLiteral("treebar/@ScrollToSwitchNode"),  m_ScrollToSwitchNode);
-    s->setValue(QStringLiteral("treebar/@DoubleClickToClose"),  m_DoubleClickToClose);
-    s->setValue(QStringLiteral("treebar/@WheelClickToClose"),   m_WheelClickToClose);
+    s.setValue(QStringLiteral("treebar/@HorizontalNodeWidth"), m_HorizontalNodeWidth);
+    s.setValue(QStringLiteral("treebar/@VerticalNodeHeight"),  m_VerticalNodeHeight);
+    s.setValue(QStringLiteral("treebar/@EnableAnimation"),     m_EnableAnimation);
+    s.setValue(QStringLiteral("treebar/@EnableCloseButton"),   m_EnableCloseButton);
+    s.setValue(QStringLiteral("treebar/@EnableCloneButton"),   m_EnableCloneButton);
+    s.setValue(QStringLiteral("treebar/@ScrollToSwitchNode"),  m_ScrollToSwitchNode);
+    s.setValue(QStringLiteral("treebar/@DoubleClickToClose"),  m_DoubleClickToClose);
+    s.setValue(QStringLiteral("treebar/@WheelClickToClose"),   m_WheelClickToClose);
 }
 
 int TreeBar::HorizontalNodeWidth(){
@@ -2482,8 +2480,13 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 
     painter->save();
 
+    View *view = m_Node->GetView();
+    bool isDir = m_Node->IsDirectory();
+
     QRect title_rect = bound.toRect();
-    title_rect.setTop(qMax(title_rect.top() + 2, title_rect.bottom() - 22));
+    title_rect.setTop(qMax(title_rect.top() + 2,
+                           title_rect.bottom()
+                           - 22 * m_TreeBar->logicalDpiY() / 96));
     title_rect.setBottom(title_rect.bottom() - 2);
     title_rect.setLeft(title_rect.left() + 4);
     title_rect.setRight(title_rect.right() - 4);
@@ -2498,7 +2501,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 #if QT_VERSION >= 0x050700
     bool muted = false;
     bool audible = false;
-    if(View *view = m_Node->GetView()){
+    if(view){
         if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
             muted = w->page()->isAudioMuted();
             audible = w->page()->wasRecentlyAudible();
@@ -2535,29 +2538,14 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 
     if(!title_rect.isValid()){ painter->restore(); return;}
 
-    QImage image = m_Node->GetImage();
-
-    if(image.isNull()){
-        Node *tempnode = m_Node;
-        if(tempnode->IsViewNode() && tempnode->IsDirectory()){
-            while(!tempnode->HasNoChildren()){
-                if(tempnode->GetPrimary()){
-                    tempnode = tempnode->GetPrimary();
-                } else {
-                    tempnode = tempnode->GetFirstChild();
-                }
-            }
-            if(!tempnode->GetImage().isNull()){
-                image = tempnode->GetImage();
-            }
-        }
-    }
+    QImage image = m_Node->VisibleImage();
 
     QRectF image_rect = bound;
-    image_rect.setTop(image_rect.top() + 3);
     image_rect.setLeft(image_rect.left() + 3);
-    image_rect.setWidth(image_rect.width() - 3);
-    image_rect.setHeight(image_rect.height() - 25);
+    image_rect.setRight(image_rect.right() - 3);
+    image_rect.setTop(image_rect.top() + 3);
+    image_rect.setBottom(image_rect.bottom() - 3
+                         - 22 * m_TreeBar->logicalDpiY() / 96);
 
     if(!image_rect.isValid()){
         // nothing to do.
@@ -2568,7 +2556,6 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
                                image.width() * image_rect.height() / defaultWitdh);
         painter->drawImage(image_rect, image, source);
     } else {
-        bool isDir = m_Node->IsDirectory();
         static const QBrush db = QBrush(QColor(200, 255, 200, 255));
         static const QBrush nb = QBrush(QColor(200, 255, 255, 255));
         painter->setPen(Qt::NoPen);
@@ -2587,16 +2574,41 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         painter->setRenderHint(QPainter::Antialiasing, false);
     }
 
-    if(View *view = m_Node->GetView()){
-        QIcon icon = view->GetIcon();
-        if(!icon.isNull()){
-            QPixmap pixmap = icon.pixmap(QSize(16, 16));
-            if(title_rect.isValid() && pixmap.width() > 2){
-                painter->drawPixmap(title_rect.intersected
-                                    (QRect(title_rect.topLeft() + QPoint(0, 2), QSize(16, 16))),
-                                    pixmap, QRect(QPoint(), pixmap.size()));
-                title_rect.setLeft(title_rect.left() + 20);
+    {
+        static const QPen p = QPen(QColor(0, 0, 0, 255));
+        painter->setPen(p);
+        painter->setBrush(Qt::NoBrush);
+        painter->setFont(QFont("Meiryo", 9));
+        if(m_TreeBar->orientation() == Qt::Vertical && title_rect.isValid()){
+            if(isDir){
+                QString prefix = m_Node->GetFolded() ? QStringLiteral("+") : QStringLiteral("-");
+                painter->drawText(title_rect, Qt::AlignLeft, prefix);
+                title_rect.setLeft(title_rect.left() + 12);
             }
+        }
+    }
+
+    {
+        QIcon icon;
+        static QIcon blank  = QIcon(":/resources/blank.png");
+        static QIcon folder = QIcon(":/resources/folder.png");
+        if(view){
+            icon = view->GetIcon();
+        }
+        if(icon.isNull() || icon.availableSizes().first().width() <= 2){
+            icon = m_Node->GetIcon();
+        }
+        if(icon.isNull() || icon.availableSizes().first().width() <= 2){
+            icon = isDir ? folder : blank;
+        }
+        QSize iconSize = QSize(16, 16) * m_TreeBar->logicalDpiY() / 96;
+        QPixmap pixmap = icon.pixmap(iconSize, (view || isDir) ? QIcon::Normal : QIcon::Disabled);
+        if(title_rect.isValid() && pixmap.width() > 2){
+            painter->drawPixmap(title_rect.intersected
+                                (QRect(title_rect.topLeft() + QPoint(0, 2), iconSize)),
+                                pixmap, QRect(QPoint(), pixmap.size()));
+            title_rect.setLeft(title_rect.left() +
+                               20 * m_TreeBar->logicalDpiY() / 96);
         }
     }
 
@@ -2605,15 +2617,6 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
         painter->setFont(QFont("Meiryo", 9));
-
-        if(m_TreeBar->orientation() == Qt::Vertical){
-            if(m_Node->IsDirectory()){
-                QString prefix = m_Node->GetFolded() ? QStringLiteral("+") : QStringLiteral("-");
-                painter->drawText(title_rect, Qt::AlignLeft, prefix);
-                title_rect.setLeft(title_rect.left() + 15);
-            }
-        }
-
         if(title_rect.isValid()){
             painter->drawText(bound.intersected(title_rect),
                               Qt::AlignLeft | Qt::AlignVCenter,
