@@ -14,7 +14,6 @@
 #include <QGraphicsSceneWheelEvent>
 #include <QGraphicsDropShadowEffect>
 #include <QtWidgets>
-#include <QtConcurrent/QtConcurrent>
 
 #include "application.hpp"
 #include "graphicstableview.hpp"

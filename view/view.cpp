@@ -791,7 +791,9 @@ QMenu *View::SearchMenu(){
     QMenu *menu = new QMenu(QObject::tr("SearchWith"));
     if(Page *page = base()->findChild<Page*>()){
         foreach(QString key, Page::GetSearchEngineMap().keys()){
-            menu->addAction(key, page, SLOT(SearchWith()));
+            QAction *action = menu->addAction(key, page, SLOT(SearchWith()));
+            QUrl url = QUrl::fromEncoded(Page::GetSearchEngine(key).first().toLatin1());
+            action->setIcon(Application::GetIcon(url.host()));
         }
     }
     return menu;

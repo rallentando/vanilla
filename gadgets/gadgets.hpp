@@ -4,7 +4,6 @@
 #include "switch.hpp"
 
 #include <QGraphicsObject>
-#include <QtConcurrent/QtConcurrent>
 
 #include "actionmapper.hpp"
 #include "view.hpp"
@@ -185,7 +184,6 @@ public:
     void lower() DECL_OVERRIDE { setZValue(HIDDEN_CONTENTS_LAYER);}
     void repaint() DECL_OVERRIDE {
         QGraphicsObject::update();
-        //QtConcurrent::run(this, &GraphicsTableView::Update, QRectF());
     }
     bool visible() DECL_OVERRIDE { return QGraphicsObject::isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) DECL_OVERRIDE {

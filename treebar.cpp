@@ -260,6 +260,8 @@ namespace {
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
 
+            painter->save();
+
             if(Application::EnableTransparentBar()){
                 QPainter::CompositionMode mode = painter->compositionMode();
                 painter->setCompositionMode(QPainter::CompositionMode_Clear);
@@ -299,6 +301,8 @@ namespace {
                 (QRect(boundingRect().center().toPoint() + offset,
                        table.size()),
                  table, QRect(QPoint(), table.size()));
+
+            painter->restore();
         }
 
     protected:
@@ -2529,8 +2533,8 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         QRectF rect = bound;
         if(!Application::EnableTransparentBar()){
             switch(m_TreeBar->orientation()){
-            case Qt::Horizontal: rect.setHeight(rect.height() + 1); break;
-            case Qt::Vertical:   rect.setWidth(rect.width() + 1);   break;
+            case Qt::Horizontal: rect.setBottom(rect.bottom() + 1); break;
+            case Qt::Vertical:   rect.setRight(rect.right() + 1);   break;
             }
         }
         painter->drawRect(rect);
@@ -2630,8 +2634,8 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         painter->setPen(Qt::NoPen);
         QRectF rect = bound;
         switch(m_TreeBar->orientation()){
-        case Qt::Horizontal: rect.setHeight(rect.height() + 1); break;
-        case Qt::Vertical:   rect.setWidth(rect.width() + 1);   break;
+        case Qt::Horizontal: rect.setBottom(rect.bottom() + 1); break;
+        case Qt::Vertical:   rect.setRight(rect.right() + 1);   break;
         }
         painter->drawRect(rect);
     }
@@ -2698,7 +2702,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         QRectF rect = bound;
         switch(m_TreeBar->orientation()){
         case Qt::Horizontal:
-            rect.setWidth(rect.width() - 1);
+            rect.setRight(rect.right() - 1);
             painter->drawLine(rect.bottomLeft(),
                               rect.topLeft());
             painter->drawLine(rect.topLeft(),
@@ -2707,7 +2711,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
                               rect.bottomRight());
             break;
         case Qt::Vertical:
-            rect.setHeight(rect.height() - 1);
+            rect.setBottom(rect.bottom() - 1);
             painter->drawLine(rect.topRight(),
                               rect.topLeft());
             painter->drawLine(rect.topLeft(),

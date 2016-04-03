@@ -3,7 +3,6 @@
 
 #include "networkcontroller.hpp"
 
-#include <QSettings>
 #include <QStringList>
 #include <QNetworkProxy>
 #include <QNetworkCookie>

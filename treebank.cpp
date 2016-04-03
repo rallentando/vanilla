@@ -10,19 +10,16 @@
 #include <QDomElement>
 #include <QUrl>
 #include <QNetworkRequest>
-#include <QThread>
 #include <QGLWidget>
 #include <QOpenGLWidget>
 #include <QFile>
 #include <QDir>
-#include <QFuture>
 #include <QImageReader>
 #include <QFileInfo>
 #include <QStyle>
 
 #include <QGraphicsRotation>
 #include <QGraphicsScale>
-#include <QtConcurrent/QtConcurrent>
 
 #include "application.hpp"
 #include "networkcontroller.hpp"
@@ -475,8 +472,6 @@ static QStringList GetNodeSettings(SharedView view){
 void TreeBank::DoUpdate(){
     foreach(SharedView view, m_ViewUpdateBox){
         view->UpdateThumbnail();
-        // write access violation in 'render' function.
-        //QtConcurrent::run(View::UpdateThumbnail, view);
     }
     m_ViewUpdateBox.clear();
 }

@@ -19,7 +19,6 @@
 #include <QTimer>
 #include <QStyle>
 #include <QKeySequence>
-#include <QtConcurrent/QtConcurrent>
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
@@ -109,9 +108,14 @@ WebViewBase::WebViewBase(TreeBank *parent, QString id, QStringList set)
     //[[WEV]]
     m_Inspector = 0;
     m_PreventScrollRestoration = false;
+#if QT_VERSION >= 0x050700
+    connect(this, SIGNAL(iconChanged(const QIcon&)),
+            this, SLOT(OnIconChanged(const QIcon&)));
+#else
     m_Icon = QIcon();
     connect(this, SIGNAL(iconUrlChanged(const QUrl&)),
             this, SLOT(UpdateIcon(const QUrl&)));
+#endif
     //[[/WEV]]
 
     setAcceptDrops(true);
@@ -256,8 +260,10 @@ void WebViewBase::OnLoadStarted(){
     //[[WEV]]
     m_PreventScrollRestoration = false;
     AssignInspector();
+#if QT_VERSION < 0x050700
     if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
+#endif
     //[[/WEV]]
 }
 
@@ -627,6 +633,11 @@ void WebViewBase::AssignInspector(){
         });
 }
 
+#if QT_VERSION >= 0x050700
+void WebViewBase::OnIconChanged(const QIcon &icon){
+    Application::RegisterIcon(url().host(), icon);
+}
+#else
 void WebViewBase::UpdateIcon(const QUrl &iconUrl){
     if(!page()) return;
     QNetworkRequest req(iconUrl);
@@ -642,12 +653,11 @@ void WebViewBase::UpdateIcon(const QUrl &iconUrl){
             QPixmap pixmap;
             if(pixmap.loadFromData(result)){
                 m_Icon = QIcon(pixmap);
-                if(!m_Icon.isNull())
-                    Application::RegisterIcon(url().host(), m_Icon);
-                emit iconChanged();
+                Application::RegisterIcon(url().host(), m_Icon);
             }
         });
 }
+#endif
 
 void WebViewBase::childEvent(QChildEvent *ev){
     QWebViewBase::childEvent(ev);

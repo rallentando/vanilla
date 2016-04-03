@@ -175,10 +175,11 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     }
 
     QRectF image_rect = rect;
-    image_rect.translate(m_ThumbnailPaddingX, m_ThumbnailPaddingY);
-    image_rect.setWidth (rect.width()  - (m_ThumbnailPaddingX * 2));
-    image_rect.setHeight(rect.height() - (m_ThumbnailPaddingY * 2
-                                          + gtv->ScaleByDevice(m_ThumbnailTitleHeight)));
+    image_rect.setLeft(image_rect.left() + m_ThumbnailPaddingX);
+    image_rect.setRight(image_rect.right() - m_ThumbnailPaddingX);
+    image_rect.setTop(image_rect.top() + m_ThumbnailPaddingY);
+    image_rect.setBottom(image_rect.bottom() - m_ThumbnailPaddingY
+                         - gtv->ScaleByDevice(m_ThumbnailTitleHeight));
 
     QRectF title_rect = image_rect;
     title_rect.moveTop(image_rect.bottom());
@@ -209,8 +210,7 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         if(pixmap.width() > 2){
             painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 2), iconSize),
                                 pixmap, QRect(QPoint(), pixmap.size()));
-            title_rect.setLeft(title_rect.left()
-                               + gtv->ScaleByDevice(17));
+            title_rect.setLeft(title_rect.left() + gtv->ScaleByDevice(17));
         }
     } else {
         static const QBrush db = QBrush(QColor(50, 100, 100, 150));
@@ -230,8 +230,9 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
                           : QStringLiteral("NoImage"));
     }
 
-    title_rect = QRectF(title_rect.topLeft() + QPointF(2.0, 0.0),
-                        title_rect.size() + QSizeF(-5.0, -1.0));
+    title_rect.setLeft(title_rect.left() + 2.0);
+    title_rect.setRight(title_rect.right() - 5.0);
+    title_rect.setBottom(title_rect.bottom() - 1.0);
 
     {
         static const QPen p = QPen(QColor(255,255,255,255));
@@ -341,8 +342,7 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
         if(pixmap.width() > 2){
             painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 1), iconSize),
                                 pixmap, QRect(QPoint(), pixmap.size()));
-            title_rect.setLeft(title_rect.left()
-                               + gtv->ScaleByDevice(19));
+            title_rect.setLeft(title_rect.left() + gtv->ScaleByDevice(19));
         }
     }
 
@@ -522,9 +522,9 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
     }
 
     const int basex = m_ThumbnailPaddingX * 3 + image_rect.width();
-    const int basey = 17;
-    const int width = 495;
-    const int height = 25;
+    static const int basey = 17;
+    static const int width = 495;
+    static const int height = 25;
 
     {
         static const QPen p = QPen(QColor(255,255,255,255));
@@ -959,7 +959,8 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     bool isDir = nd->IsDirectory();
 
     QRectF rect = bound;
-    rect.setBottomRight(bound.bottomRight() - QPointF(1.0, 1.0));
+    rect.setBottom(rect.bottom() - 1.0);
+    rect.setRight(rect.right() - 1.0);
 
     QImage image = nd->VisibleImage();
 
@@ -976,13 +977,16 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     // loaded : none
 
     QRectF image_rect = bound;
-    image_rect.translate(m_ThumbnailPaddingX, m_ThumbnailPaddingY);
-    image_rect.setWidth (bound.width()  - (m_ThumbnailPaddingX * 2.0));
-    image_rect.setHeight(bound.height() - (m_ThumbnailPaddingY * 2.0));
+    image_rect.setLeft(image_rect.left() + m_ThumbnailPaddingX);
+    image_rect.setRight(image_rect.right() - m_ThumbnailPaddingX);
+    image_rect.setTop(image_rect.top() + m_ThumbnailPaddingY);
+    image_rect.setBottom(image_rect.bottom() - m_ThumbnailPaddingY);
 
     if(thumb->IsHovered()){
-        image_rect = QRectF(image_rect.topLeft() - QPointF(3.0, 3.0),
-                            image_rect.size() + QSizeF(6.0, 6.0));
+        image_rect.setLeft(image_rect.left() + 3.0);
+        image_rect.setRight(image_rect.right() - 3.0);
+        image_rect.setTop(image_rect.top() + 3.0);
+        image_rect.setBottom(image_rect.bottom() - 3.0);
     }
 
     QRectF title_rect = image_rect;
@@ -1044,8 +1048,7 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     if(pixmap.width() > 2){
         painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 2), iconSize),
                             pixmap, QRect(QPoint(), pixmap.size()));
-        title_rect.setLeft(title_rect.left()
-                           + gtv->ScaleByDevice(17));
+        title_rect.setLeft(title_rect.left() + gtv->ScaleByDevice(17));
     }
 
     {

@@ -1529,7 +1529,6 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         QList<QGraphicsItem*> collidings;
         if(m_SelectRect){
             rect = m_SelectRect->rect().normalized();
-            m_SelectRect->setRect(rect);
             collidings = scene()->items(rect);
         }
 
@@ -1619,7 +1618,7 @@ void GraphicsTableView::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     if(m_SelectRect){
         QRectF rect1 = m_SelectRect->rect().normalized();
 
-        m_SelectRect->setRect(QRectF(ev->pos(), ev->buttonDownPos(Qt::LeftButton)));
+        m_SelectRect->setRect(QRectF(m_SelectRect->rect().topLeft(), ev->pos()));
 
         QRectF rect2 = m_SelectRect->rect().normalized();
 
@@ -2631,6 +2630,21 @@ void GraphicsTableView::SetScroll(qreal target){
     if(target < min) target = min;
 
     if(target != m_CurrentScroll){
+        if(m_SelectRect && !m_SelectRect->rect().isNull()){
+            qreal delta = m_CurrentScroll - target;
+            qreal unit = 0;
+            QRectF rect = m_SelectRect->rect();
+
+            if(rect.left() <= GetStyle()->ThumbnailAreaRect(this).right())
+                unit = static_cast<qreal>(m_CurrentThumbnailHeight)
+                    / static_cast<qreal>(m_CurrentThumbnailColumnCount);
+
+            if(rect.left() >= GetStyle()->NodeTitleAreaRect(this).left())
+                unit = GetStyle()->NodeTitleHeight(this);
+
+            rect.setTop(rect.top() + delta * unit);
+            m_SelectRect->setRect(rect);
+        }
         m_CurrentScroll = target;
         RelocateContents();
         RelocateScrollBar();

@@ -1861,9 +1861,7 @@ void TridentView::UpdateIcon(const QUrl &iconUrl){
             QPixmap pixmap;
             if(pixmap.loadFromData(result)){
                 m_Icon = QIcon(pixmap);
-                if(!m_Icon.isNull())
-                    Application::RegisterIcon(url().host(), m_Icon);
-                emit iconChanged();
+                Application::RegisterIcon(url().host(), m_Icon);
             }
         });
 }

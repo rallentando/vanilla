@@ -86,6 +86,15 @@ void AutoSaver::SaveAll(){
         return;
     }
 
+    // save settings file.
+    TRY{
+        Application::SaveSettingsFile();
+    } CATCH{
+        emit Failed();
+        return;
+    }
+
+
     // save all tree.
     TRY{
         TreeBank::SaveTree();

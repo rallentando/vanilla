@@ -298,7 +298,6 @@ public slots:
     void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint globalPos);
 
 signals:
-    void iconChanged();
     void statusBarMessage(const QString&);
     void statusBarMessage2(const QString&, const QString&);
     void linkHovered(const QString&, const QString&, const QString&);

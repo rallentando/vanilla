@@ -83,6 +83,8 @@ public:
     static Settings &GlobalSettings();
     static void SaveGlobalSettings();
     static void LoadGlobalSettings();
+    static void SaveSettingsFile();
+    static void LoadSettingsFile();
     static void SaveIconDatabase();
     static void LoadIconDatabase();
     static void RegisterIcon(QString, QIcon);

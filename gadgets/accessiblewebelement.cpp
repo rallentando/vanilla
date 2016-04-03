@@ -9,7 +9,6 @@
 #include <QFontMetrics>
 #include <QKeySequence>
 #include <QMap>
-#include <QtConcurrent/QtConcurrent>
 
 #include "view.hpp"
 #include "gadgets.hpp"

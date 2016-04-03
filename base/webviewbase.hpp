@@ -232,7 +232,11 @@ public:
     }
     QIcon GetIcon() DECL_OVERRIDE {
         //[[WEV]]
+#if QT_VERSION >= 0x050700
+        return page() ? page()->icon() : QIcon();
+#else
         return m_Icon;
+#endif
         //[[/WEV]]
         //[[!WEV]]
         return icon();
@@ -544,12 +548,18 @@ public slots:
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
     void AssignInspector();
+#if QT_VERSION >= 0x050700
+    void OnIconChanged(const QIcon &icon);
+#else
     void UpdateIcon(const QUrl &iconUrl);
+#endif
     //[[/WEV]]
 
 signals:
     //[[WEV]]
-    void iconChanged();
+#if QT_VERSION >= 0x050700
+    void iconChanged(const QIcon&);
+#endif
     void statusBarMessage(const QString&);
     //[[/WEV]]
     void statusBarMessage2(const QString&, const QString&);
@@ -558,7 +568,9 @@ signals:
 
 private:
     //[[WEV]]
+#if QT_VERSION < 0x050700
     QIcon m_Icon;
+#endif
     QImage m_GrabedDisplayData;
     static QMap<View*, QUrl> m_InspectorTable;
     QWebViewBase *m_Inspector;

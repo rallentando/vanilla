@@ -284,8 +284,10 @@ public:
                     action->deleteLater();
                 });
         } else if(Page::GetSearchEngineMap().contains(str)){
+            QUrl url = QUrl::fromEncoded(Page::GetSearchEngine(str).first().toLatin1());
             action = new QAction(base());
             action->setText(str);
+            action->setIcon(Application::GetIcon(url.host()));
             base()->connect(action, &QAction::triggered,
                  [this, str, action](){
                     CallWithSelectedText([this, str, action](QString text){

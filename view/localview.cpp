@@ -8,7 +8,6 @@
 #include <QFileSystemModel>
 #include <QFileIconProvider>
 #include <QImageReader>
-#include <QModelIndex>
 #include <QIcon>
 #include <QTimer>
 #include <QMediaPlayer>

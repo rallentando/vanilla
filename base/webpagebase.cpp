@@ -84,6 +84,12 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
             parent, SIGNAL(titleChanged(const QString&)));
     connect(this,   SIGNAL(statusBarMessage2(const QString&, const QString&)),
             parent, SIGNAL(statusBarMessage2(const QString&, const QString&)));
+    //[[WEV]]
+#if QT_VERSION >= 0x050700
+    connect(this,   SIGNAL(iconChanged(const QIcon&)),
+            parent, SIGNAL(iconChanged(const QIcon&)));
+#endif
+    //[[/WEV]]
 
     // needless, because it's connected yet.
     //connect(this,   SIGNAL(loadStarted()),

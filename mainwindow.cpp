@@ -653,6 +653,7 @@ void MainWindow::closeEvent(QCloseEvent *ev){
         RemoveSettings();
         TreeBank::SaveSettings();
         Application::SaveGlobalSettings();
+        Application::SaveSettingsFile();
         // 'RemoveWindow' doesn't call 'SwitchWindow',
         // but calls 'setFocus' manually.
         deleteLater();

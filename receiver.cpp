@@ -440,12 +440,20 @@ void Receiver::SetString(QString str){
             // fall through.
             list << QString();
         case 2:{
-            QStringList result;
             QString command = list[0];
-            // TODO: implement completer.
-            foreach(QString key, s.allKeys(list[1])){
-                result << command + QStringLiteral(" ") + key;
+            QString query = list[1];
+            QStringList path = query.split(QStringLiteral("/"));
+            QSet<QString> cand;
+            foreach(QString key, s.allKeys(query)){
+                QStringList split = key.split(QStringLiteral("/"));
+                while(split.length() >= path.length() + 1)
+                    split.removeLast();
+                if(split.join(QStringLiteral("/")) != key)
+                    split << QString();
+                cand << command + QStringLiteral(" ") + split.join(QStringLiteral("/"));
             }
+            QStringList result = cand.toList();
+            qSort(result.begin(), result.end(), qGreater<QString>());
             SetSuggest(result);
             break;
         }
@@ -841,7 +849,6 @@ void Receiver::ReceiveCommand(QString cmd){
         if(list.length() >= 2){ // ignore excess arguments.
             QString key = list.takeFirst();
             QString val = list.join(" ");
-            // TODO: not work for now.
             Application::GlobalSettings().setValue(key, val);
             emit Reconfigure();
         }
@@ -849,7 +856,6 @@ void Receiver::ReceiveCommand(QString cmd){
     } else if(Application::ExactMatch(QStringLiteral("[uU]n[sS]et(?:tings?)?"), cmd)){
 
         if(list.length() >= 1){ // ignore excess arguments.
-            // TODO: not work for now.
             Application::GlobalSettings().remove(list[0]);
             emit Reconfigure();
         }

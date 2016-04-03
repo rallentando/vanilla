@@ -41,9 +41,9 @@ Notifier::Notifier(TreeBank *parent, bool purge)
     //m_UploadItemTable["ulfile"] = 50;
     //m_DownloadItemTable["dlfile"] = 50;
 
-    ResizeNotify(parent->size());
+    // not display normally untill next ResizeNotify.
+    resize(0, 0);
     show();
-    raise();
 }
 
 Notifier::~Notifier(){}

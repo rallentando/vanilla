@@ -4,7 +4,6 @@
 #include "switch.hpp"
 
 #include <QGraphicsObject>
-#include <QtConcurrent/QtConcurrent>
 
 #include "treebank.hpp"
 #include "thumbnail.hpp"
@@ -93,7 +92,7 @@ public:
         return m_CurrentThumbnailZoomFactor;
     }
     template <class T> T ScaleByDevice(T t) const {
-        return t * m_TreeBank->logicalDpiY() / 96;
+        return m_TreeBank ? t * m_TreeBank->logicalDpiY() / 96 : t;
     }
 
     virtual void SetNodeCollectionType(NodeCollectionType){}

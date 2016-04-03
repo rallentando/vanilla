@@ -12,7 +12,6 @@
 #include <QUrl>
 #include <QDir>
 #include <QStandardPaths>
-#include <QCryptographicHash>
 #include <QSharedMemory>
 #include <QOpenGLContext>
 #include <QDesktopWidget>
@@ -225,6 +224,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
 #if defined(Q_OS_WIN)
     TridentView::SetFeatureControl();
 #endif
+    LoadSettingsFile();
     LoadGlobalSettings();
     LoadIconDatabase();
 
@@ -1355,7 +1355,10 @@ void Application::Quit(){
 }
 
 Settings &Application::GlobalSettings(){
-    if(m_GlobalSettings.keys().isEmpty()) LoadGlobalSettings();
+    if(m_GlobalSettings.keys().isEmpty()){
+        LoadSettingsFile();
+        LoadGlobalSettings();
+    }
     return m_GlobalSettings;
 }
 
@@ -1419,57 +1422,9 @@ void Application::SaveGlobalSettings(){
     s.setValue(QStringLiteral("application/BrowserPath_Sleipnir"), m_BrowserPath_Sleipnir );
     s.setValue(QStringLiteral("application/BrowserPath_Vivaldi"),  m_BrowserPath_Vivaldi  );
     s.setValue(QStringLiteral("application/BrowserPath_Custom"),   m_BrowserPath_Custom   );
-
-    QString datadir = Application::DataDirectory();
-
-    QString settings  = datadir + Application::GlobalSettingsFileName(false);
-    QString settingsb = datadir + Application::GlobalSettingsFileName(true);
-
-    if(QFile::exists(settingsb)) QFile::remove(settingsb);
-
-    QFile file(settingsb);
-    if(file.open(QIODevice::WriteOnly)){
-        WriteXMLFile(file, m_GlobalSettings);
-    }
-    file.close();
-    if(QFile::exists(settings)) QFile::remove(settings);
-    QFile::rename(settingsb, settings);
 }
 
 void Application::LoadGlobalSettings(){
-    QString filename = GlobalSettingsFileName();;
-    QString datadir = DataDirectory();
-    QFile file(datadir + filename);
-    bool check = file.open(QIODevice::ReadOnly) &&
-        ReadXMLFile(file, m_GlobalSettings);
-    file.close();
-
-    if(!check){
-
-        QDir dir = QDir(datadir);
-        QStringList list =
-            dir.entryList(BackUpFileFilters(),
-                          QDir::NoFilter, QDir::Name | QDir::Reversed);
-        if(list.isEmpty()) return;
-
-        foreach(QString backup, list){
-
-            if(!backup.contains(filename)) continue;
-
-            QFile backupfile(datadir + backup);
-            check = backupfile.open(QIODevice::ReadOnly) &&
-                ReadXMLFile(backupfile, m_GlobalSettings);
-            backupfile.close();
-
-            if(!check) continue;
-
-            ModelessDialog::Information
-                (tr("Restored from a back up file")+ QStringLiteral(" [") + backup + QStringLiteral("]."),
-                 tr("Because of a failure to read the latest file, it was restored from a backup file."));
-            break;
-        }
-    }
-
     Settings &s = GlobalSettings();
 
     m_EnableGoogleSuggest      = s.value(QStringLiteral("application/@EnableGoogleSuggest"), false).value<bool>();
@@ -1545,6 +1500,58 @@ void Application::LoadGlobalSettings(){
     m_BrowserPath_Custom   = s.value(QStringLiteral("application/BrowserPath_Custom"),   QString()).value<QString>();
 }
 
+void Application::SaveSettingsFile(){
+    QString datadir = Application::DataDirectory();
+
+    QString settings  = datadir + Application::GlobalSettingsFileName(false);
+    QString settingsb = datadir + Application::GlobalSettingsFileName(true);
+
+    if(QFile::exists(settingsb)) QFile::remove(settingsb);
+
+    QFile file(settingsb);
+    if(file.open(QIODevice::WriteOnly)){
+        WriteXMLFile(file, m_GlobalSettings);
+    }
+    file.close();
+    if(QFile::exists(settings)) QFile::remove(settings);
+    QFile::rename(settingsb, settings);
+}
+
+void Application::LoadSettingsFile(){
+    QString filename = GlobalSettingsFileName();;
+    QString datadir = DataDirectory();
+    QFile file(datadir + filename);
+    bool check = file.open(QIODevice::ReadOnly) &&
+        ReadXMLFile(file, m_GlobalSettings);
+    file.close();
+
+    if(!check){
+
+        QDir dir = QDir(datadir);
+        QStringList list =
+            dir.entryList(BackUpFileFilters(),
+                          QDir::NoFilter, QDir::Name | QDir::Reversed);
+        if(list.isEmpty()) return;
+
+        foreach(QString backup, list){
+
+            if(!backup.contains(filename)) continue;
+
+            QFile backupfile(datadir + backup);
+            check = backupfile.open(QIODevice::ReadOnly) &&
+                ReadXMLFile(backupfile, m_GlobalSettings);
+            backupfile.close();
+
+            if(!check) continue;
+
+            ModelessDialog::Information
+                (tr("Restored from a back up file")+ QStringLiteral(" [") + backup + QStringLiteral("]."),
+                 tr("Because of a failure to read the latest file, it was restored from a backup file."));
+            break;
+        }
+    }
+}
+
 void Application::SaveIconDatabase(){
     QString datadir = Application::DataDirectory();
 
@@ -1598,7 +1605,8 @@ void Application::LoadIconDatabase(){
 }
 
 void Application::RegisterIcon(QString host, QIcon icon){
-    m_IconTable[host] = QVariant::fromValue(icon);
+    if(!host.isEmpty() && !icon.isNull())
+        m_IconTable[host] = QVariant::fromValue(icon);
 }
 
 QIcon Application::GetIcon(QString host){
