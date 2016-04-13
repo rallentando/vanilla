@@ -70,6 +70,7 @@ bool        Application::m_EnableFramelessWindow = false;
 bool        Application::m_EnableTransparentBar = false;
 bool        Application::m_EnableAutoSave    = false;
 bool        Application::m_EnableAutoLoad    = false;
+int         Application::m_RemoteDebuggingPort = VANILLA_REMOTE_DEBUGGING_PORT;
 int         Application::m_AutoSaveInterval  = 0;
 int         Application::m_AutoLoadInterval  = 0;
 int         Application::m_AutoSaveTimerID   = 0;
@@ -123,7 +124,7 @@ Application::Application(int &argc, char **argv)
     m_NetworkController = 0;
     m_AutoSaver = 0;
     srand(static_cast<unsigned int>(time(NULL)));
-    qputenv("QTWEBENGINE_REMOTE_DEBUGGING", VANILLA_REMOTE_DEBUGGING_PORT);
+    SetUpDevTools();
 }
 
 Application::~Application(){
@@ -167,6 +168,22 @@ bool Application::notify(QObject *receiver, QEvent *ev){
     // qFatal aborts, so this isn't really necessary
     // but you might continue if you use a different logging lib
     return false;
+}
+
+void Application::SetUpDevTools(){
+    QProcess process;
+
+    process.start("netstat", QStringList() << QStringLiteral("-an"));
+    process.waitForFinished(-1);
+
+    QString result = process.readAllStandardOutput();
+
+    while(result.contains(QStringLiteral("127.0.0.1:%1 ")
+                          .arg(m_RemoteDebuggingPort))){
+        m_RemoteDebuggingPort++;
+    }
+    qputenv("QTWEBENGINE_REMOTE_DEBUGGING",
+            QStringLiteral("%1").arg(m_RemoteDebuggingPort).toLatin1());
 }
 
 void Application::BootApplication(int &argc, char **argv, Application *instance){
@@ -388,7 +405,7 @@ void Application::Import(TreeBank *tb){
         };
 
         makenode = [&](ViewNode *parent, QString path) -> ViewNode*{
-            ViewNode *vn = parent->MakeChild(true);
+            ViewNode *vn = parent->MakeChild(INT_MAX);
             QString title = path.split(QStringLiteral("/")).last();
             if(title.endsWith(QStringLiteral(".url"))){
                 title = title.left(title.length()-4);
@@ -486,7 +503,7 @@ void Application::Import(TreeBank *tb){
             }
         };
         makenode = [&](ViewNode *parent, QJsonObject obj){
-            ViewNode *vn = parent->MakeChild(true);
+            ViewNode *vn = parent->MakeChild(INT_MAX);
             const QString title = QStringLiteral("title");
             const QString children = QStringLiteral("children");
             const QString uri = QStringLiteral("uri");
@@ -621,7 +638,7 @@ void Application::Import(TreeBank *tb){
         };
 
         makenode = [&](ViewNode *parent, QJsonObject obj){
-            ViewNode *vn = parent->MakeChild(true);
+            ViewNode *vn = parent->MakeChild(INT_MAX);
             const QString name = QStringLiteral("name");
             const QString children = QStringLiteral("children");
             const QString url = QStringLiteral("url");
@@ -636,7 +653,7 @@ void Application::Import(TreeBank *tb){
             }
             return vn;
         };
-        ViewNode *rootnode = TreeBank::GetViewRoot()->MakeChild(true);
+        ViewNode *rootnode = TreeBank::GetViewRoot()->MakeChild(INT_MAX);
         rootnode->SetTitle(QStringLiteral("Favorites"));
         foreach(QString key, root.keys()){
             traverse(rootnode, root[key].toObject());
@@ -656,7 +673,7 @@ void Application::Import(TreeBank *tb){
         std::function<void(QDomElement elem, HistNode *parent, ViewNode *partner)> collectHistDom;
 
         collectViewDom = [&](QDomElement elem, ViewNode *parent){
-            ViewNode *vn = parent->MakeChild(true);
+            ViewNode *vn = parent->MakeChild(INT_MAX);
             if(elem.attribute(QStringLiteral("primary"), QStringLiteral("false")) == QStringLiteral("true"))
                 parent->SetPrimary(vn);
             if(elem.attribute(QStringLiteral("title"), QString()) != QString())
@@ -736,7 +753,7 @@ void Application::Import(TreeBank *tb){
 
         collectDom = [&](QDomElement elem, ViewNode *parent){
             if(elem.tagName() == QStringLiteral("folder")){
-                ViewNode *vn = parent->MakeChild(true);
+                ViewNode *vn = parent->MakeChild(INT_MAX);
                 QString added = elem.attribute(QStringLiteral("added"), QString());
 
                 vn->SetCreateDate    (added.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromString(added, Qt::ISODate));
@@ -748,7 +765,7 @@ void Application::Import(TreeBank *tb){
                     collectDom(children.item(i).toElement(), vn);
                 }
             } else if(elem.tagName() == QStringLiteral("bookmark")){
-                ViewNode *vn = parent->MakeChild(true);
+                ViewNode *vn = parent->MakeChild(INT_MAX);
                 HistNode *hn = TreeBank::GetHistRoot()->MakeChild();
 
                 QString href = elem.attribute(QStringLiteral("href"), QString());
@@ -818,7 +835,7 @@ void Application::Import(TreeBank *tb){
             QWebElement first = elem.firstChild();
 
             if(first.tagName().toLower() == QStringLiteral("a")){
-                ViewNode *vn = parent->MakeChild(true);
+                ViewNode *vn = parent->MakeChild(INT_MAX);
                 HistNode *hn = TreeBank::GetHistRoot()->MakeChild();
 
                 QString title = first.toPlainText();
@@ -840,7 +857,7 @@ void Application::Import(TreeBank *tb){
                 hn->SetPartner(vn);
                 vn->SetPartner(hn);
             } else if(first.tagName().toLower() == QStringLiteral("h3")){
-                ViewNode *vn = parent->MakeChild(true);
+                ViewNode *vn = parent->MakeChild(INT_MAX);
 
                 QString title = first.toPlainText();
                 QString added = first.attribute(QStringLiteral("ADD_DATE"), QString());
@@ -885,7 +902,7 @@ void Application::Import(TreeBank *tb){
 
             if(tagName == QStringLiteral("DT")){
                 if(close.isEmpty())
-                    vn = vn->MakeChild(true);
+                    vn = vn->MakeChild(INT_MAX);
             } else if(tagName == QStringLiteral("DL")){
                 if(!close.isEmpty() && vn->GetParent())
                     vn = vn->GetParent()->ToViewNode();
@@ -1630,6 +1647,10 @@ bool Application::EnableAutoSave(){
 
 bool Application::EnableAutoLoad(){
     return m_EnableAutoLoad;
+}
+
+int Application::RemoteDebuggingPort(){
+    return m_RemoteDebuggingPort;
 }
 
 double Application::WheelScrollRate(){

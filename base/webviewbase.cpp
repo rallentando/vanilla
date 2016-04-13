@@ -600,11 +600,10 @@ void WebViewBase::SetTextValue(QString xpath, QString text){
 }
 
 void WebViewBase::AssignInspector(){
-    static const QString addr = QStringLiteral("http://localhost:%1").arg(VANILLA_REMOTE_DEBUGGING_PORT);
-    static const QNetworkRequest req(QUrl(addr + QStringLiteral("/json")));
-
     if(m_InspectorTable.contains(this)) return;
 
+    QString addr = QStringLiteral("http://localhost:%1").arg(Application::RemoteDebuggingPort());
+    QNetworkRequest req(QUrl(addr + QStringLiteral("/json")));
     DownloadItem *item = NetworkController::Download
         (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
          req, NetworkController::ToVariable);
@@ -613,7 +612,7 @@ void WebViewBase::AssignInspector(){
 
     item->setParent(base());
 
-    connect(item, &DownloadItem::DownloadResult, [this](const QByteArray &result){
+    connect(item, &DownloadItem::DownloadResult, [this, addr](const QByteArray &result){
 
             foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
 

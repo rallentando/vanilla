@@ -144,6 +144,8 @@ signals:
     // treebank action;
     void Back();
     void Forward();
+    void Rewind();
+    void FastForward();
     void UpDirectory();
     void Close();
     void Restore();

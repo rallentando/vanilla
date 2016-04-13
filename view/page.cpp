@@ -707,6 +707,18 @@ void Page::Forward(){
     View::SetSwitchingState(false);
 }
 
+void Page::Rewind(){
+    View::SetSwitchingState(true);
+    GetTB()->Rewind();
+    View::SetSwitchingState(false);
+}
+
+void Page::FastForward(){
+    View::SetSwitchingState(true);
+    GetTB()->FastForward();
+    View::SetSwitchingState(false);
+}
+
 void Page::UpDirectory(){
     View::SetSwitchingState(true);
     GetTB()->UpDirectory();
@@ -1712,6 +1724,8 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case _Left:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
     case _Back:    webaction->setIcon(QIcon(":/resources/menu/back.png"));    break;
     case _Forward: webaction->setIcon(QIcon(":/resources/menu/forward.png")); break;
+    case _Rewind:  webaction->setIcon(QIcon(":/resources/menu/rewind.png"));  break;
+    case _FastForward: webaction->setIcon(QIcon(":/resources/menu/fastforward.png")); break;
     case _Reload:  webaction->setIcon(QIcon(":/resources/menu/reload.png"));  break;
     case _Stop:    webaction->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
@@ -1774,6 +1788,8 @@ QAction *Page::Action(CustomAction a, QVariant data){
         // treebank events.
         DEFINE_ACTION(Back,                  tr("Back"));
         DEFINE_ACTION(Forward,               tr("Forward"));
+        DEFINE_ACTION(Rewind,                tr("Rewind"));
+        DEFINE_ACTION(FastForward,           tr("FastForward"));
         DEFINE_ACTION(UpDirectory,           tr("UpDirectory"));
         DEFINE_ACTION(Close,                 tr("Close"));
         DEFINE_ACTION(Restore,               tr("Restore"));

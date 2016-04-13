@@ -680,6 +680,52 @@ bool TridentView::CanGoForward(){
     return ok;
 }
 
+void TridentView::TriggerNativeRewindAction(){
+    if(!m_Interface) return;
+    IServiceProvider *provider = 0;
+    m_Interface->QueryInterface(IID_IServiceProvider, (void**)&provider);
+    if(provider){
+        ITravelLogStg *log = 0;
+        provider->QueryService(IID_ITravelLogStg, &log);
+        if(log){
+            ITravelLogEntry *entry = 0;
+            ITravelLogEntry *result = 0;
+            for(int i = -1;; i--){
+                entry = 0;
+                log->GetRelativeEntry(i, &entry);
+                if(entry) result = entry;
+                else break;
+            }
+            if(result) log->TravelTo(result);
+            log->Release();
+        }
+        provider->Release();
+    }
+}
+
+void TridentView::TriggerNativeFastForwardAction(){
+    if(!m_Interface) return;
+    IServiceProvider *provider = 0;
+    m_Interface->QueryInterface(IID_IServiceProvider, (void**)&provider);
+    if(provider){
+        ITravelLogStg *log = 0;
+        provider->QueryService(IID_ITravelLogStg, &log);
+        if(log){
+            ITravelLogEntry *entry = 0;
+            ITravelLogEntry *result = 0;
+            for(int i = 1;; i++){
+                entry = 0;
+                log->GetRelativeEntry(i, &entry);
+                if(entry) result = entry;
+                else break;
+            }
+            if(result) log->TravelTo(result);
+            log->Release();
+        }
+        provider->Release();
+    }
+}
+
 void TridentView::UpKeyEvent(){
     if(!m_HtmlDocument) return;
     IHTMLDocument3 *doc = 0;
@@ -1705,14 +1751,21 @@ void TridentView::DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPo
     if(linkUrl.isEmpty() && imageUrl.isEmpty() && SelectedText().isEmpty()){
         QAction *backAction    = Action(Page::_Back);
         QAction *forwardAction = Action(Page::_Forward);
+        QAction *rewindAction  = Action(Page::_Rewind);
+        QAction *fastForwardAction = Action(Page::_FastForward);
         QAction *stopAction    = Action(Page::_Stop);
         QAction *reloadAction  = Action(Page::_Reload);
 
         if(CanGoBack())
             menu->addAction(backAction);
-
         if(CanGoForward())
             menu->addAction(forwardAction);
+
+        if(!View::EnableDestinationInferrer()){
+            if(CanGoBack())
+                menu->addAction(rewindAction);
+            menu->addAction(fastForwardAction);
+        }
 
         if(IsLoading())
             menu->addAction(stopAction);

@@ -54,6 +54,7 @@ public:
 
     bool notify(QObject *receiver, QEvent *ev) DECL_OVERRIDE;
 
+    static void SetUpDevTools();
     static void BootApplication(int &argc, char **argv, Application *instance);
     static void Import(TreeBank *tb);
     static void Export(TreeBank *tb);
@@ -95,6 +96,7 @@ public:
     static bool EnableTransparentBar();
     static bool EnableAutoSave();
     static bool EnableAutoLoad();
+    static int RemoteDebuggingPort();
     static double WheelScrollRate();
 private:
     static QSettings::Format XMLFormat;
@@ -105,6 +107,7 @@ private:
     static bool m_EnableTransparentBar;
     static bool m_EnableAutoSave;
     static bool m_EnableAutoLoad;
+    static int m_RemoteDebuggingPort;
     static int m_AutoSaveInterval;
     static int m_AutoLoadInterval;
     static double m_WheelScrollRate;

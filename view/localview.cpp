@@ -883,6 +883,8 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
     case Gadgets::_Left:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
   //case Gadgets::_Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
   //case Gadgets::_Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
+  //case Gadgets::_Rewind:  action->setIcon(QIcon(":/resources/menu/rewind.png"));  braek;
+  //case Gadgets::_FastForward: action->setIcon(QIcon(":/resources/menu/fastforward.png")); braek;
   //case Gadgets::_Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
   //case Gadgets::_Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
@@ -945,6 +947,8 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         // treebank events.
       //DEFINE_ACTION(Back,               tr("Back"));
       //DEFINE_ACTION(Forward,            tr("Forward"));
+      //DEFINE_ACTION(Rewind,             tr("Rewind"));
+      //DEFINE_ACTION(FastForward,        tr("FastForward"));
       //DEFINE_ACTION(UpDirectory,        tr("UpDirectory"));
         DEFINE_ACTION(Close,              tr("Close"));
         DEFINE_ACTION(Restore,            tr("Restore"));

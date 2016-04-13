@@ -61,6 +61,8 @@ public slots:
 
     void back                 (){ m_TreeBank->Back(); }
     void forward              (){ m_TreeBank->Forward(); }
+    void rewind               (){ m_TreeBank->Rewind(); }
+    void fastForward          (){ m_TreeBank->FastForward(); }
     void upDirectory          (){ m_TreeBank->UpDirectory(); }
     void close                (){ QTimer::singleShot(0, m_TreeBank, SLOT(Close())); }
     void restore              (){ m_TreeBank->Restore(); }
@@ -151,6 +153,8 @@ public slots:
 
     void back                  (){ m_View->TriggerAction(Page::_Back); }
     void forward               (){ m_View->TriggerAction(Page::_Forward); }
+    void rewind                (){ m_View->TriggerAction(Page::_Rewind); }
+    void fastForward           (){ m_View->TriggerAction(Page::_FastForward); }
     void upDirectory           (){ m_View->TriggerAction(Page::_UpDirectory); }
     void close                 (){ QTimer::singleShot(0, m_View->GetTreeBank(), SLOT(Close())); }
     void restore               (){ m_View->TriggerAction(Page::_Restore); }

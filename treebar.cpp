@@ -737,6 +737,75 @@ namespace {
             scene()->update(rect);
         }
     };
+
+    class InsertPosition : public QGraphicsItem {
+    public:
+        InsertPosition(TreeBank *tb, TreeBar *bar, QGraphicsItem *parent = 0)
+            : QGraphicsItem(parent)
+        {
+            setZValue(DRAGGING_NODE_LAYER);
+            m_TreeBank = tb;
+            m_TreeBar = bar;
+            m_Target = 0;
+            m_Where = NoWhere;
+        }
+
+        enum Where{
+            NoWhere,
+            LeftOfTarget,
+            RightOfTarget,
+        } m_Where;
+
+        void SetTarget(NodeItem *item, Where where = NoWhere){
+            if(m_TreeBar->orientation() == Qt::Horizontal && item != m_Target){
+                if(m_Target) m_Target->SetHoveredWithItem(false);
+                if(item) item->SetHoveredWithItem(true);
+            }
+            QRectF rect = boundingRect();
+            m_Target = item;
+            m_Where = where;
+            if(rect != boundingRect()){
+                scene()->update(rect);
+                scene()->update(boundingRect());
+            }
+        }
+        NodeItem *GetTarget(){
+            return m_Target;
+        }
+        Where GetWhere(){
+            return m_Where;
+        }
+
+        QRectF boundingRect() const DECL_OVERRIDE {
+            if(!m_Target || m_Where == NoWhere) return QRectF();
+            QRectF rect = m_Target->boundingRect();
+            switch(m_TreeBar->orientation()){
+            case Qt::Horizontal:
+                if(m_Where == LeftOfTarget)
+                    rect.moveRight(rect.center().x());
+                else rect.moveLeft(rect.center().x());
+                break;
+            case Qt::Vertical:
+                if(m_Where == LeftOfTarget)
+                    rect.moveBottom(rect.center().y());
+                else rect.moveTop(rect.center().y());
+                break;
+            }
+            return rect;
+        }
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+            Q_UNUSED(option); Q_UNUSED(widget);
+            if(!m_Target) return;
+            static const QBrush brush(QColor(0, 0, 0, 48));
+            painter->setBrush(brush);
+            painter->setPen(Qt::NoPen);
+            painter->drawRect(boundingRect());
+        }
+    private:
+        TreeBank *m_TreeBank;
+        TreeBar *m_TreeBar;
+        NodeItem *m_Target;
+    };
 }
 
 TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
@@ -747,6 +816,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     m_Scene->setSceneRect(QRect(0, 0, width(), height()));
     m_View = new GraphicsView(m_Scene, this);
     m_View->setFrameShape(QGraphicsView::NoFrame);
+    m_View->setAcceptDrops(true);
     m_ResizeGrip = new ResizeGrip(this);
     m_OverrideSize = QSize();
     m_LayerList = QList<LayerItem*>();
@@ -759,6 +829,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     setObjectName(QStringLiteral("TreeBar"));
     setContextMenuPolicy(Qt::PreventContextMenu);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    setAcceptDrops(true);
     setMouseTracking(true);
 
     if(Application::EnableTransparentBar()){
@@ -1119,7 +1190,7 @@ void TreeBar::OnNodeCreated(NodeList &nds){
                 }
                 foreach(Node *nd, nds){
                     if(nd->IsSiblingOf(items.first()->GetNode())){
-                        int j = nd->SiblingsIndexOf(nd);
+                        int j = nd->Index();
                         NodeItem *item = layer->CreateNodeItem(nd, i, j, 0, previousHeight);
                         layer->SetFocusedNode(item);
                         layer->CorrectOrder();
@@ -1191,7 +1262,7 @@ void TreeBar::OnNodeCreated(NodeList &nds){
                 m_LastAction = NodeCreated;
                 return;
             }
-            i = nd->SiblingsIndexOf(nd);
+            i = nd->Index();
             if(i >= 1 && i < siblings.length())
                 upper = siblings[i-1];
             if(i >= 0 && i < siblings.length() - 1)
@@ -1596,6 +1667,8 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     m_PrevScrollButton = 0;
     m_NextScrollButton = 0;
 
+    m_InsertPosition = new InsertPosition(tb, bar, this);
+
     m_Line = new QGraphicsLineItem(this);
     if(Application::EnableTransparentBar()){
         m_Line->setPen(Qt::NoPen);
@@ -1616,6 +1689,8 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     m_DummyNode = new DummyNode();
     if(!nd) m_Node = m_DummyNode;
     if(pnd) m_DummyNode->SetParent(pnd);
+
+    setAcceptDrops(true);
 }
 
 LayerItem::~LayerItem(){
@@ -2256,7 +2331,7 @@ QMenu *LayerItem::AddNodeMenu(){
                  [t, nd, pnd, tb](){
                     // both function emits TreeStructureChanged for current.
                     if(nd)
-                        tb->MoveNode(t, nd->GetParent(), nd->SiblingsIndexOf(nd) + 1);
+                        tb->MoveNode(t, nd->GetParent(), nd->Index() + 1);
                     else if(pnd)
                         tb->MoveNode(t, pnd);
                     else
@@ -2359,6 +2434,91 @@ void LayerItem::timerEvent(QTimerEvent *ev){
         m_ScrollUpTimerID = 0;
         AutoScrollUp();
     }
+}
+
+void LayerItem::dragEnterEvent(QGraphicsSceneDragDropEvent *ev){
+    QGraphicsObject::dragEnterEvent(ev);
+}
+
+void LayerItem::dropEvent(QGraphicsSceneDragDropEvent *ev){
+    InsertPosition *position = static_cast<InsertPosition*>(m_InsertPosition);
+    if(NodeItem *item = position->GetTarget()){
+        if(item->boundingRect().contains(ev->scenePos())){
+            if(const QMimeData *mime = ev->mimeData()){
+                QList<QUrl> urls;
+                Node *nd = item->GetNode();
+                ViewNode *parent = nd->GetParent()->ToViewNode();
+                int index = nd->Index();
+
+                if(position->GetWhere() == InsertPosition::RightOfTarget){
+                    index++;
+                }
+                if(!mime->urls().isEmpty()){
+                    urls = mime->urls();
+                }
+                if(urls.isEmpty() && !mime->html().isEmpty()){
+                    urls = Page::ExtractUrlFromHtml(mime->html(), QUrl(), Page::HaveReference);
+                }
+                if(urls.isEmpty() && !mime->text().isEmpty()){
+                    urls = Page::DirtyStringToUrlList(mime->text());
+                }
+                if(!urls.isEmpty()){
+                    m_TreeBank->OpenOnSuitableNode(urls, true, parent, index);
+                    ev->setAccepted(true);
+                }
+            }
+        }
+    }
+    position->SetTarget(0);
+    QGraphicsObject::dropEvent(ev);
+}
+
+void LayerItem::dragMoveEvent(QGraphicsSceneDragDropEvent *ev){
+    InsertPosition *position = static_cast<InsertPosition*>(m_InsertPosition);
+    foreach(QGraphicsItem *item, scene()->items(ev->scenePos())){
+        if(NodeItem *node = dynamic_cast<NodeItem*>(item)){
+            InsertPosition::Where where = InsertPosition::NoWhere;
+            switch(m_TreeBar->orientation()){
+            case Qt::Horizontal:
+
+                if(ev->scenePos().x() < node->boundingRect().center().x())
+                    where = InsertPosition::LeftOfTarget;
+                else where = InsertPosition::RightOfTarget;
+
+                if(ev->scenePos().x() < scene()->sceneRect().left() + FRINGE_BUTTON_SIZE)
+                    AutoScrollUp();
+                else if(ev->scenePos().x() > scene()->sceneRect().right() - FRINGE_BUTTON_SIZE)
+                    AutoScrollDown();
+                else
+                    AutoScrollStop();
+                break;
+
+            case Qt::Vertical:
+
+                if(ev->scenePos().y() < node->boundingRect().center().y())
+                    where = InsertPosition::LeftOfTarget;
+                else where = InsertPosition::RightOfTarget;
+
+                if(ev->scenePos().y() < scene()->sceneRect().top() + FRINGE_BUTTON_SIZE)
+                    AutoScrollUp();
+                else if(ev->scenePos().y() > scene()->sceneRect().bottom() - FRINGE_BUTTON_SIZE)
+                    AutoScrollDown();
+                else
+                    AutoScrollStop();
+                break;
+            }
+            position->SetTarget(node, where);
+            ev->setAccepted(true);
+            break;
+        }
+    }
+    QGraphicsObject::dragMoveEvent(ev);
+}
+
+void LayerItem::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
+    AutoScrollStop();
+    static_cast<InsertPosition*>(m_InsertPosition)->SetTarget(0);
+    QGraphicsObject::dragLeaveEvent(ev);
 }
 
 void LayerItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
@@ -2628,9 +2788,10 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         }
     }
 
-    if(m_IsHovered && !Application::EnableTransparentBar()){
-        static const QBrush b = QBrush(QColor(0, 0, 0, 20));
-        painter->setBrush(b);
+    if(m_IsHovered){
+        static const QBrush nb = QBrush(QColor(0, 0, 0, 20));
+        static const QBrush tb = QBrush(QColor(0, 0, 0, 10));
+        painter->setBrush(Application::EnableTransparentBar() ? tb : nb);
         painter->setPen(Qt::NoPen);
         QRectF rect = bound;
         switch(m_TreeBar->orientation()){

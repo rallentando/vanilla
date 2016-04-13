@@ -209,10 +209,10 @@ public:
     SharedView OpenInNewDirectory (QUrl                    url, bool activate, ViewNode *parent = 0);
     SharedView OpenInNewDirectory (QList<QNetworkRequest> reqs, bool activate, ViewNode *parent = 0);
     SharedView OpenInNewDirectory (QList<QUrl>            urls, bool activate, ViewNode *parent = 0);
-    SharedView OpenOnSuitableNode (QNetworkRequest         req, bool activate, ViewNode *older  = 0);
-    SharedView OpenOnSuitableNode (QUrl                    url, bool activate, ViewNode *older  = 0);
-    SharedView OpenOnSuitableNode (QList<QNetworkRequest> reqs, bool activate, ViewNode *older  = 0);
-    SharedView OpenOnSuitableNode (QList<QUrl>            urls, bool activate, ViewNode *older  = 0);
+    SharedView OpenOnSuitableNode (QNetworkRequest         req, bool activate, ViewNode *parent = 0, int position = -1);
+    SharedView OpenOnSuitableNode (QUrl                    url, bool activate, ViewNode *parent = 0, int position = -1);
+    SharedView OpenOnSuitableNode (QList<QNetworkRequest> reqs, bool activate, ViewNode *parent = 0, int position = -1);
+    SharedView OpenOnSuitableNode (QList<QUrl>            urls, bool activate, ViewNode *parent = 0, int position = -1);
     SharedView OpenInNewHistNode  (QNetworkRequest         req, bool activate, HistNode *parent = 0);
     SharedView OpenInNewHistNode  (QUrl                    url, bool activate, HistNode *parent = 0);
     SharedView OpenInNewHistNode  (QList<QNetworkRequest> reqs, bool activate, HistNode *parent = 0);
@@ -291,6 +291,8 @@ public slots:
 
     void Back                 (HistNode *hn = 0);
     void Forward              (HistNode *hn = 0);
+    void Rewind               (HistNode *hn = 0);
+    void FastForward          (HistNode *hn = 0);
     void UpDirectory          (HistNode *hn = 0);
     void Close                (ViewNode *vn = 0);
     void Restore              (ViewNode *vn = 0, ViewNode *dir = 0);

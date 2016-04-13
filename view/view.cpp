@@ -401,7 +401,7 @@ void View::GoForwardTo(QUrl target){
 }
 
 void View::GoBackToInferedUrl(){
-    if(!m_EnableDestinationInferrer || !m_EnableLoadHackLocal) return;
+    if(!m_EnableLoadHackLocal) return;
 
     CallWithFoundElements(Page::RelIsPrev, [this](SharedWebElementList prevs){
 
@@ -541,20 +541,15 @@ void View::GoBackToInferedUrl(){
 }
 
 void View::GoForwardToInferedUrl(){
-    if(!m_EnableDestinationInferrer) return;
 
-    CallWithFoundElements
-        (Page::RelIsNext,
-         [this](SharedWebElementList nexts){
+    CallWithFoundElements(Page::RelIsNext, [this](SharedWebElementList nexts){
 
     if(!nexts.isEmpty() && !nexts[0]->LinkUrl().isEmpty()){
         GoForwardTo(nexts[0]->LinkUrl());
         return;
     }
 
-    CallWithFoundElements
-        (Page::HaveReference,
-         [this](SharedWebElementList elements){
+    CallWithFoundElements(Page::HaveReference, [this](SharedWebElementList elements){
 
     QUrl base = url();
     QUrl copy = base;
@@ -1035,6 +1030,8 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::WebAudioEnabled,                   s.value(QStringLiteral("webview/preferences/WebAudioEnabled"),                   gwes->testAttribute(QWebEngineSettings::WebAudioEnabled)                  ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::WebGLEnabled,                      s.value(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                     ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::AutoLoadIconsForPage,              s.value(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)             ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::TouchIconsEnabled,                 s.value(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                ).value<bool>());
 #endif
     gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
 #if QT_VERSION >= 0x050600
@@ -1480,6 +1477,8 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/preferences/WebAudioEnabled"),                   gwes->testAttribute(QWebEngineSettings::WebAudioEnabled)                   );
     s.setValue(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                      );
     s.setValue(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)        );
+    s.setValue(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)              );
+    s.setValue(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                 );
 #  endif
     s.setValue(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                  );
 #  if QT_VERSION >= 0x050600
@@ -1653,6 +1652,8 @@ void View::ApplySpecificSettings(QStringList set){
         s->setAttribute(QWebEngineSettings::WebAudioEnabled, g->testAttribute(QWebEngineSettings::WebAudioEnabled));
         s->setAttribute(QWebEngineSettings::WebGLEnabled, g->testAttribute(QWebEngineSettings::WebGLEnabled));
         s->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, g->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled));
+        s->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, g->testAttribute(QWebEngineSettings::AutoLoadIconsForPage));
+        s->setAttribute(QWebEngineSettings::TouchIconsEnabled, g->testAttribute(QWebEngineSettings::TouchIconsEnabled));
 #endif
         s->setAttribute(QWebEngineSettings::ErrorPageEnabled, g->testAttribute(QWebEngineSettings::ErrorPageEnabled));
 #if QT_VERSION >= 0x050600

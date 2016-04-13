@@ -549,12 +549,12 @@ bool ViewNode::TitleEditable(){
     return IsDirectory();
 }
 
-ViewNode *ViewNode::MakeChild(bool forceAppend){
-    if(!forceAppend) return MakeChild();
+ViewNode *ViewNode::MakeChild(int position){
+    if(position == -1) return MakeChild();
 
     ViewNode *child = new ViewNode();
     child->SetParent(this);
-    AppendChild(child);
+    InsertChild(position, child);
     return child;
 }
 

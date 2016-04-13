@@ -62,6 +62,8 @@ private:
     QStringListModel *m_Model;
     QAction *m_BackAction;
     QAction *m_ForwardAction;
+    QAction *m_RewindAction;
+    QAction *m_FastForwardAction;
     QAction *m_ReloadAction;
     QAction *m_StopAction;
 

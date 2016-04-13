@@ -509,16 +509,24 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
     if(linkUrl.isEmpty() && imageUrl.isEmpty() && selectedText().isEmpty()){
         static QIcon backIcon = QIcon(":/resources/menu/back.png");
         static QIcon forwardIcon = QIcon(":/resources/menu/forward.png");
+        static QIcon rewindIcon = QIcon(":/resources/menu/rewind.png");
+        static QIcon fastForwardIcon = QIcon(":/resources/menu/fastforward.png");
         static QIcon reloadIcon = QIcon(":/resources/menu/reload.png");
         static QIcon stopIcon = QIcon(":/resources/menu/stop.png");
         QAction *backAction    = Action(QWebPageBase::Back);
         QAction *forwardAction = Action(QWebPageBase::Forward);
+        QAction *rewindAction  = Action(Page::_Rewind);
+        QAction *fastForwardAction = Action(Page::_FastForward);
         QAction *reloadAction  = Action(QWebPageBase::Reload);
         QAction *stopAction    = Action(QWebPageBase::Stop);
         backAction->setText(tr("Back"));
         backAction->setIcon(backIcon);
         forwardAction->setText(tr("Forward"));
         forwardAction->setIcon(forwardIcon);
+        rewindAction->setText(tr("Rewind"));
+        rewindAction->setIcon(rewindIcon);
+        fastForwardAction->setText(tr("FastForward"));
+        fastForwardAction->setIcon(fastForwardIcon);
         reloadAction->setText(tr("Reload"));
         reloadAction->setIcon(reloadIcon);
         stopAction->setText(tr("Stop"));
@@ -526,9 +534,14 @@ void WebPageBase::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
 
         if(backAction->isEnabled())
             menu->addAction(backAction);
-
         if(forwardAction->isEnabled())
             menu->addAction(forwardAction);
+
+        if(!View::EnableDestinationInferrer()){
+            if(backAction->isEnabled())
+                menu->addAction(rewindAction);
+            menu->addAction(fastForwardAction);
+        }
 
         if(stopAction->isEnabled())
             menu->addAction(stopAction);

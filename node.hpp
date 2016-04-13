@@ -318,6 +318,9 @@ public:
         if(!m_Parent) return 0;
         return m_Parent->TakeLastChild();
     }
+    int Index(){
+        return SiblingsIndexOf(this);
+    }
 
     virtual QUrl GetUrl()    { return QUrl();}
     virtual QImage GetImage(){ return QImage();}
@@ -466,7 +469,7 @@ public:
     bool IsViewNode() const DECL_OVERRIDE;
     bool TitleEditable() DECL_OVERRIDE;
 
-    ViewNode *MakeChild(bool);
+    ViewNode *MakeChild(int);
     ViewNode *MakeChild() DECL_OVERRIDE;
     ViewNode *MakeParent() DECL_OVERRIDE;
     ViewNode *MakeSibling();

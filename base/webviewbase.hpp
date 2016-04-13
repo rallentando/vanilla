@@ -277,6 +277,14 @@ public:
     void TriggerNativeGoForwardAction() DECL_OVERRIDE {
         if(page()) page()->triggerAction(QWebPageBase::Forward);
     }
+    void TriggerNativeRewindAction() DECL_OVERRIDE {
+        QWebHistoryBase *h = history();
+        h->goToItem(h->itemAt(0));
+    }
+    void TriggerNativeFastForwardAction() DECL_OVERRIDE {
+        QWebHistoryBase *h = history();
+        h->goToItem(h->itemAt(h->count()-1));
+    }
 
     //[[!WEV]]
     void UpKeyEvent()       DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_UpKey);       EmitScrollChanged();}

@@ -28,7 +28,7 @@
     F(PrevWindow)
 
 #define FOR_EACH_NAVIGATION_EVENTS(F) \
-    F(Back) F(Forward) F(UpDirectory) F(Load)
+    F(Back) F(Forward) F(Rewind) F(FastForward) F(UpDirectory) F(Load)
 
 #define FOR_EACH_VIEW_EVENTS(F)                 \
     F(Close)                                    \

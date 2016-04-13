@@ -1874,7 +1874,7 @@ SharedView TreeBank::OpenInNewViewNode(QList<QUrl> urls, bool activate, ViewNode
 
 ////////////////////////////////////////////////////////////////
 
-SharedView TreeBank::OpenOnSuitableNode(QNetworkRequest req, bool activate, ViewNode *parent){
+SharedView TreeBank::OpenOnSuitableNode(QNetworkRequest req, bool activate, ViewNode *parent, int position){
     bool had_been_switching = View::GetSwitchingState();
     if(!had_been_switching) View::SetSwitchingState(true);
 
@@ -1887,7 +1887,7 @@ SharedView TreeBank::OpenOnSuitableNode(QNetworkRequest req, bool activate, View
         return 0;
     }
     HistNode *hist = m_HistRoot->MakeChild();
-    ViewNode *page = parent->MakeChild();
+    ViewNode *page = parent->MakeChild(position);
     SharedView view = LoadWithLink(req, hist, page);
     EmitNodeCreated(NodeList() << page);
     if(activate){
@@ -1903,17 +1903,17 @@ SharedView TreeBank::OpenOnSuitableNode(QNetworkRequest req, bool activate, View
     return view;
 }
 
-SharedView TreeBank::OpenOnSuitableNode(QUrl url, bool activate, ViewNode *parent){
-    return OpenOnSuitableNode(QNetworkRequest(url), activate, parent);
+SharedView TreeBank::OpenOnSuitableNode(QUrl url, bool activate, ViewNode *parent, int position){
+    return OpenOnSuitableNode(QNetworkRequest(url), activate, parent, position);
 }
 
-SharedView TreeBank::OpenOnSuitableNode(QList<QNetworkRequest> reqs, bool activate, ViewNode *parent){
+SharedView TreeBank::OpenOnSuitableNode(QList<QNetworkRequest> reqs, bool activate, ViewNode *parent, int position){
     View::SetSwitchingState(true);
 
     SharedView v = SharedView();
     for(int i = 0; i < reqs.length(); i++){
         bool last = (i == (reqs.length() - 1));
-        SharedView view = OpenOnSuitableNode(reqs[i], last && activate, parent);
+        SharedView view = OpenOnSuitableNode(reqs[i], last && activate, parent, position);
         // failed to open link(bad TreeBank status).
         if(!view){
             View::SetSwitchingState(false);
@@ -1927,10 +1927,10 @@ SharedView TreeBank::OpenOnSuitableNode(QList<QNetworkRequest> reqs, bool activa
     return v;
 }
 
-SharedView TreeBank::OpenOnSuitableNode(QList<QUrl> urls, bool activate, ViewNode *parent){
+SharedView TreeBank::OpenOnSuitableNode(QList<QUrl> urls, bool activate, ViewNode *parent, int position){
     QList<QNetworkRequest> reqs;
     foreach(QUrl url, urls) reqs << QNetworkRequest(url);
-    return OpenOnSuitableNode(reqs, activate, parent);
+    return OpenOnSuitableNode(reqs, activate, parent, position);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -2763,19 +2763,22 @@ void TreeBank::Back(HistNode *hist){
     if(!hist) hist = m_CurrentHistNode;
     if(!hist) return;
 
-    if(hist->IsRoot() && hist->HasNoChildren() &&
-       hist->GetView() && hist->GetView()->CanGoBack()){
+    View *view = hist->GetView();
 
-        hist->GetView()->SetScroll(QPointF());
-        hist->GetView()->TriggerNativeGoBackAction();
+    if(hist->IsRoot() && hist->HasNoChildren() &&
+       view && view->CanGoBack()){
+
+        view->SetScroll(QPointF());
+        view->TriggerNativeGoBackAction();
 
     } else if(Node *nd = hist->Prev()){
 
         SetCurrent(nd);
 
-    } else if(hist->GetView()){
+    } else if(view){
 
-        hist->GetView()->GoBackToInferedUrl();
+        if(View::EnableDestinationInferrer())
+            view->GoBackToInferedUrl();
     }
 }
 
@@ -2784,19 +2787,66 @@ void TreeBank::Forward(HistNode *hist){
     if(!hist) hist = m_CurrentHistNode;
     if(!hist) return;
 
-    if(hist->IsRoot() && hist->HasNoChildren() &&
-       hist->GetView() && hist->GetView()->CanGoForward()){
+    View *view = hist->GetView();
 
-        hist->GetView()->SetScroll(QPointF());
-        hist->GetView()->TriggerNativeGoForwardAction();
+    if(hist->IsRoot() && hist->HasNoChildren() &&
+       view && view->CanGoForward()){
+
+        view->SetScroll(QPointF());
+        view->TriggerNativeGoForwardAction();
 
     } else if(Node *nd = hist->Next()){
 
         SetCurrent(nd);
 
-    } else if(hist->GetView()){
+    } else if(view){
 
-        hist->GetView()->GoForwardToInferedUrl();
+        if(View::EnableDestinationInferrer())
+            view->GoForwardToInferedUrl();
+    }
+}
+
+void TreeBank::Rewind(HistNode *hist){
+    m_TraverseMode = HistMode;
+    if(!hist) hist = m_CurrentHistNode;
+    if(!hist) return;
+
+    View *view = hist->GetView();
+
+    if(hist->IsRoot() && hist->HasNoChildren() &&
+       view && view->CanGoBack()){
+
+        view->SetScroll(QPointF());
+        view->TriggerNativeRewindAction();
+
+    } else if(Node *nd = hist->Prev()){
+
+        while(nd->Prev()) nd = nd->Prev();
+        SetCurrent(nd);
+    }
+}
+
+void TreeBank::FastForward(HistNode *hist){
+    m_TraverseMode = HistMode;
+    if(!hist) hist = m_CurrentHistNode;
+    if(!hist) return;
+
+    View *view = hist->GetView();
+
+    if(hist->IsRoot() && hist->HasNoChildren() &&
+       view && view->CanGoForward()){
+
+        view->SetScroll(QPointF());
+        view->TriggerNativeFastForwardAction();
+
+    } else if(Node *nd = hist->Next()){
+
+        while(nd->Next()) nd = nd->Next();
+        SetCurrent(nd);
+
+    } else if(view){
+
+        view->GoForwardToInferedUrl();
     }
 }
 
@@ -3570,6 +3620,8 @@ QAction *TreeBank::Action(TreeBankAction a){
     case _Left:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
     case _Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
     case _Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
+    case _Rewind:  action->setIcon(QIcon(":/resources/menu/rewind.png"));  break;
+    case _FastForward: action->setIcon(QIcon(":/resources/menu/fastforward.png")); break;
     case _Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
     case _Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
     }
@@ -3632,6 +3684,8 @@ QAction *TreeBank::Action(TreeBankAction a){
         // treebank events.
         DEFINE_ACTION(Back,             tr("Back"));
         DEFINE_ACTION(Forward,          tr("Forward"));
+        DEFINE_ACTION(Rewind,           tr("Rewind"));
+        DEFINE_ACTION(FastForward,      tr("FastForward"));
         DEFINE_ACTION(UpDirectory,      tr("UpDirectory"));
         DEFINE_ACTION(Close,            tr("Close"));
         DEFINE_ACTION(Restore,          tr("Restore"));

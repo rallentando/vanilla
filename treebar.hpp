@@ -208,6 +208,10 @@ public slots:
 
 protected:
     void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
+    void dragEnterEvent(QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
+    void dropEvent(QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
+    void dragMoveEvent(QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
+    void dragLeaveEvent(QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
     void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
@@ -229,6 +233,7 @@ private:
     qreal m_TargetScroll;
     QGraphicsItem *m_PrevScrollButton;
     QGraphicsItem *m_NextScrollButton;
+    QGraphicsItem *m_InsertPosition;
     QList<NodeItem*> m_NodeItems;
     QGraphicsLineItem *m_Line;
     QPropertyAnimation *m_Animation;

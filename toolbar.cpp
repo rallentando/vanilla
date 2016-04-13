@@ -46,6 +46,8 @@ QStringList ToolBar::m_CommandCandidates = QStringList()
     << QStringLiteral("PrevWindow")
     << QStringLiteral("Back")
     << QStringLiteral("Forward")
+    << QStringLiteral("Rewind")
+    << QStringLiteral("FastForward")
     << QStringLiteral("UpDirectory")
     << QStringLiteral("Close")
     << QStringLiteral("Restore")
@@ -68,6 +70,7 @@ QStringList ToolBar::m_CommandCandidates = QStringList()
     << QStringLiteral("NewHistNode")
     << QStringLiteral("CloneViewNode")
     << QStringLiteral("CloneHistNode")
+    << QStringLiteral("MakeLocalNode")
     << QStringLiteral("DisplayAccessKey")
     << QStringLiteral("DisplayViewTree")
     << QStringLiteral("DisplayHistTree")
@@ -120,10 +123,17 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
 {
     m_View = SharedView();
     m_TreeBank = tb;
+
     addAction(m_BackAction = tb->Action(TreeBank::_Back));
     addAction(m_ForwardAction = tb->Action(TreeBank::_Forward));
+    addAction(m_RewindAction = tb->Action(TreeBank::_Rewind));
+    addAction(m_FastForwardAction = tb->Action(TreeBank::_FastForward));
     addAction(m_ReloadAction = tb->Action(TreeBank::_Reload));
     addAction(m_StopAction = tb->Action(TreeBank::_Stop));
+    if(View::EnableDestinationInferrer()){
+        m_RewindAction->setVisible(false);
+        m_FastForwardAction->setVisible(false);
+    }
     m_LineEdit = new LineEdit(this);
     m_Model = new QStringListModel(m_CommandCandidates);
     m_Completer = new QCompleter(m_Model);
@@ -236,6 +246,8 @@ void ToolBar::SetUrl(const QUrl &url){
     if(m_View){
         m_BackAction->setEnabled(m_View->CanGoBack());
         m_ForwardAction->setEnabled(m_View->CanGoForward());
+        m_RewindAction->setEnabled(m_View->CanGoBack());
+        m_FastForwardAction->setEnabled(true /*m_View->CanGoForward()*/);
         if(m_View->IsLoading()){
             m_ReloadAction->setVisible(false);
             m_StopAction->setVisible(true);
@@ -250,6 +262,8 @@ void ToolBar::SetFinished(bool ok){
     Q_UNUSED(ok);
     m_BackAction->setEnabled(m_View->CanGoBack());
     m_ForwardAction->setEnabled(m_View->CanGoForward());
+    m_RewindAction->setEnabled(m_View->CanGoBack());
+    m_FastForwardAction->setEnabled(true /*m_View->CanGoForward()*/);
     m_ReloadAction->setVisible(true);
     m_StopAction->setVisible(false);
 }
@@ -288,6 +302,8 @@ void ToolBar::showEvent(QShowEvent *ev){
         Connect(m_View);
         m_BackAction->setEnabled(m_View->CanGoBack());
         m_ForwardAction->setEnabled(m_View->CanGoForward());
+        m_RewindAction->setEnabled(m_View->CanGoBack());
+        m_FastForwardAction->setEnabled(true /*m_View->CanGoForward()*/);
         if(m_View->IsLoading()){
             m_ReloadAction->setVisible(false);
             m_StopAction->setVisible(true);

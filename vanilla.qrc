@@ -20,6 +20,8 @@
     <file>resources/treebar/plus.png</file>
     <file>resources/menu/back.png</file>
     <file>resources/menu/forward.png</file>
+    <file>resources/menu/rewind.png</file>
+    <file>resources/menu/fastforward.png</file>
     <file>resources/menu/reload.png</file>
     <file>resources/menu/stop.png</file>
 </qresource>

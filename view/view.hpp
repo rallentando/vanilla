@@ -191,6 +191,7 @@ public:
 
     static bool ActivateNewViewDefault(){ return m_ActivateNewViewDefault;}
     static bool NavigationBySpaceKey(){ return m_NavigationBySpaceKey;}
+    static bool EnableDestinationInferrer(){ return m_EnableDestinationInferrer;}
     static bool EnableLoadHack(){ return m_EnableLoadHack;}
     static bool EnableDragHack(){ return m_EnableDragHack;}
     bool EnableLoadHackLocal() const { return m_EnableLoadHackLocal;}
@@ -313,6 +314,8 @@ public:
                                          const QByteArray & = QByteArray()){}
     virtual void TriggerNativeGoBackAction(){}
     virtual void TriggerNativeGoForwardAction(){}
+    virtual void TriggerNativeRewindAction(){}
+    virtual void TriggerNativeFastForwardAction(){}
 
     virtual void UpKeyEvent(){}
     virtual void DownKeyEvent(){}

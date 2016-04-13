@@ -151,6 +151,8 @@ Receiver::Receiver(TreeBank *parent, bool purge)
 
     connect(this, SIGNAL(Back()),             parent, SLOT(Back()));
     connect(this, SIGNAL(Forward()),          parent, SLOT(Forward()));
+    connect(this, SIGNAL(Rewind()),           parent, SLOT(Rewind()));
+    connect(this, SIGNAL(FastForward()),      parent, SLOT(FastForward()));
     connect(this, SIGNAL(UpDirectory()),      parent, SLOT(UpDirectory()));
     connect(this, SIGNAL(Close()),            parent, SLOT(Close()));
     connect(this, SIGNAL(Restore()),          parent, SLOT(Restore()));
@@ -586,6 +588,8 @@ void Receiver::ReceiveCommand(QString cmd){
 
     if(Application::ExactMatch(QStringLiteral("[bB]ack(?:ward)?"), cmd)){                 emit Back();                 return; }
     if(Application::ExactMatch(QStringLiteral("[fF]orward"), cmd)){                       emit Forward();              return; }
+    if(Application::ExactMatch(QStringLiteral("[rR]ewind"), cmd)){                        emit Rewind();               return; }
+    if(Application::ExactMatch(QStringLiteral("[fF]ast[fF]orward"), cmd)){                emit FastForward();          return; }
     if(Application::ExactMatch(QStringLiteral("[uU]pdir(?:ectory)?"), cmd)){              emit UpDirectory();          return; }
     if(Application::ExactMatch(QStringLiteral("[cC]lose"), cmd)){                         emit Close();                return; }
     if(Application::ExactMatch(QStringLiteral("[rR]estore"), cmd)){                       emit Restore();              return; }
@@ -594,16 +598,16 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[pP]rev(?:ious)?(?:[vV]iew)?"), cmd)){     emit PrevView();             return; }
     if(Application::ExactMatch(QStringLiteral("[bB]ury(?:[vV]iew)?"), cmd)){              emit BuryView();             return; }
     if(Application::ExactMatch(QStringLiteral("[dD]ig(?:[vV]iew)?"), cmd)){               emit DigView();              return; }
-    if(Application::ExactMatch(QStringLiteral("[fF]irst(?:[VV]Iew)?"), cmd)){             emit FirstView();            return; }
-    if(Application::ExactMatch(QStringLiteral("[sS]econd(?:[VV]Iew)?"), cmd)){            emit SecondView();           return; }
-    if(Application::ExactMatch(QStringLiteral("[tT]hird(?:[VV]Iew)?"), cmd)){             emit ThirdView();            return; }
-    if(Application::ExactMatch(QStringLiteral("[fF]ourth(?:[VV]Iew)?"), cmd)){            emit FourthView();           return; }
-    if(Application::ExactMatch(QStringLiteral("[fF]ifth(?:[VV]Iew)?"), cmd)){             emit FifthView();            return; }
-    if(Application::ExactMatch(QStringLiteral("[sS]ixth(?:[VV]Iew)?"), cmd)){             emit SixthView();            return; }
-    if(Application::ExactMatch(QStringLiteral("[sS]eventh(?:[VV]Iew)?"), cmd)){           emit SeventhView();          return; }
-    if(Application::ExactMatch(QStringLiteral("[eE]ighth(?:[VV]Iew)?"), cmd)){            emit EighthView();           return; }
-    if(Application::ExactMatch(QStringLiteral("[nN]inth(?:[VV]Iew)?"), cmd)){             emit NinthView();            return; }
-    if(Application::ExactMatch(QStringLiteral("[tT]enth(?:[VV]Iew)?"), cmd)){             emit TenthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:1|[fF]ir)st(?:[vV]Iew)?"), cmd)){       emit FirstView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:2|[sS]eco)nd(?:[vV]Iew)?"), cmd)){      emit SecondView();           return; }
+    if(Application::ExactMatch(QStringLiteral("(?:3|[tT]hi)rd(?:[vV]Iew)?"), cmd)){       emit ThirdView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:4|[fF]our)th(?:[vV]Iew)?"), cmd)){      emit FourthView();           return; }
+    if(Application::ExactMatch(QStringLiteral("(?:5|[fF]if)th(?:[vV]Iew)?"), cmd)){       emit FifthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:6|[sS]ix)th(?:[vV]Iew)?"), cmd)){       emit SixthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:7|[sS]even)th(?:[vV]Iew)?"), cmd)){     emit SeventhView();          return; }
+    if(Application::ExactMatch(QStringLiteral("(?:8|[eE]igh)th(?:[vV]Iew)?"), cmd)){      emit EighthView();           return; }
+    if(Application::ExactMatch(QStringLiteral("(?:9|[nN]in)th(?:[vV]Iew)?"), cmd)){       emit NinthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:10|[tT]en)th(?:[vV]Iew)?"), cmd)){      emit TenthView();            return; }
     if(Application::ExactMatch(QStringLiteral("[nN]ew(?:[vV]iew)?(?:[nN]ode)?"), cmd)){   emit NewViewNode();          return; }
     if(Application::ExactMatch(QStringLiteral("[nN]ew[hH]ist(?:[nN]ode)?"), cmd)){        emit NewHistNode();          return; }
     if(Application::ExactMatch(QStringLiteral("[cC]lone(?:[vV]iew)?(?:[nN]ode)?"), cmd)){ emit CloneViewNode();        return; }

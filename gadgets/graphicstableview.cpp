@@ -689,7 +689,7 @@ void GraphicsTableView::SetSortPredicate(){
         if(m_SortFlags & Reverse){
             m_SortPredicate = [](Node *n1, Node *n2) -> bool {
                 if(n1->GetParent() == n2->GetParent())
-                    return n1->SiblingsIndexOf(n1) > n2->SiblingsIndexOf(n2);
+                    return n1->Index() > n2->Index();
                 if(n1->IsAncestorOf(n2)) return false;
                 if(n2->IsAncestorOf(n1)) return true;
 
@@ -703,12 +703,12 @@ void GraphicsTableView::SetSortPredicate(){
                 n1 = l1.last();
                 n2 = l2.last();
 
-                return n1->SiblingsIndexOf(n1) > n2->SiblingsIndexOf(n2);
+                return n1->Index() > n2->Index();
             };
         } else {
             m_SortPredicate = [](Node *n1, Node *n2) -> bool {
                 if(n1->GetParent() == n2->GetParent())
-                    return n1->SiblingsIndexOf(n1) < n2->SiblingsIndexOf(n2);
+                    return n1->Index() < n2->Index();
                 if(n1->IsAncestorOf(n2)) return true;
                 if(n2->IsAncestorOf(n1)) return false;
 
@@ -722,7 +722,7 @@ void GraphicsTableView::SetSortPredicate(){
                 n1 = l1.last();
                 n2 = l2.last();
 
-                return n1->SiblingsIndexOf(n1) < n2->SiblingsIndexOf(n2);
+                return n1->Index() < n2->Index();
             };
         }
     }

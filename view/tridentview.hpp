@@ -158,6 +158,8 @@ public:
     void TriggerNativeGoForwardAction() DECL_OVERRIDE {
         dynamicCall("GoForward()");
     }
+    void TriggerNativeRewindAction() DECL_OVERRIDE;
+    void TriggerNativeFastForwardAction() DECL_OVERRIDE;
 
     void TriggerNativeReloadAction(){
         dynamicCall("Refresh()");
