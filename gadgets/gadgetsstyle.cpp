@@ -13,6 +13,7 @@
 #include "nodetitle.hpp"
 #include "gadgets.hpp"
 #include "accessiblewebelement.hpp"
+#include "webengineview.hpp"
 
 namespace{
     QBrush MakeBrush(qreal start, qreal stop, QColor beg, QColor end){
@@ -600,14 +601,14 @@ void GlassStyle::Render(SoundButton *button, QPainter *painter) const {
     if(View *view = button->GetNode()->GetView()){
         if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
             muted = w->page()->isAudioMuted();
-            audible = w->page()->wasRecentlyAudible();
+            audible = w->page()->recentlyAudible();
         }
     }
 
     if(!muted && !audible) return;
 
     painter->save();
-    QRect rect = button->boundingRect();
+    QRectF rect = button->boundingRect();
 
     if(button->GetState() == GraphicsButton::NotHovered)
         painter->setOpacity(0.5);
@@ -1135,14 +1136,14 @@ void FlatStyle::Render(SoundButton *button, QPainter *painter) const {
     if(View *view = button->GetNode()->GetView()){
         if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
             muted = w->page()->isAudioMuted();
-            audible = w->page()->wasRecentlyAudible();
+            audible = w->page()->recentlyAudible();
         }
     }
 
     if(!muted && !audible) return;
 
     painter->save();
-    QRect rect = button->boundingRect();
+    QRectF rect = button->boundingRect();
 
     static const QBrush b = QBrush(QColor(255, 255, 255, 255));
     painter->setPen(Qt::NoPen);

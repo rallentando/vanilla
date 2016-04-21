@@ -1152,7 +1152,9 @@ void WebViewBase::dragLeaveEvent(QDragLeaveEventBase *ev){
 }
 
 void WebViewBase::wheelEvent(QWheelEventBase *ev){
-
+    // wheel event is called twice on Qt5.7.
+    // senders are EventEater and QWebEngineView.
+#if QT_VERSION < 0x050700
     QString wheel;
     bool up = ev->delta() > 0;
 
@@ -1169,7 +1171,9 @@ void WebViewBase::wheelEvent(QWheelEventBase *ev){
         }
         ev->setAccepted(true);
 
-    } else {
+    } else
+#endif
+    {
         //[[GWV]]
         QWebViewBase::wheelEvent(ev);
         //[[/GWV]]

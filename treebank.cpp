@@ -685,7 +685,7 @@ void TreeBank::LoadTree(){
             QStringList list =
                 dir.entryList(Application::BackUpFileFilters(),
                               QDir::NoFilter, QDir::Name | QDir::Reversed);
-            if(list.isEmpty()) return;
+            if(list.isEmpty()) break;
 
             foreach(QString backup, list){
 
@@ -1288,6 +1288,7 @@ void TreeBank::StripSubTree(Node *nd){
 }
 
 void TreeBank::ReleaseView(SharedView view){
+    view->hide();
     RemoveFromAllViews(view);
     RemoveFromUpdateBox(view);
 }

@@ -824,6 +824,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     m_HorizontalNodeHeight = 0;
     m_VerticalNodeWidth = 0;
     m_LastAction = None;
+    m_OtherWindow = 0;
 
     addWidget(m_View);
     setObjectName(QStringLiteral("TreeBar"));
@@ -969,6 +970,23 @@ QStringList TreeBar::GetStat() const {
         << QStringLiteral("%1").arg(m_VerticalNodeWidth);
 }
 
+MainWindow *TreeBar::GetWindow(){
+    return m_OtherWindow;
+}
+
+void TreeBar::SetWindow(MainWindow *win){
+    m_OtherWindow = win;
+}
+
+MainWindow *TreeBar::MakeWindow(){
+    return m_OtherWindow = Application::NewWindow();
+}
+
+void TreeBar::CloseWindow(){
+    Application::CloseWindow(m_OtherWindow);
+    m_OtherWindow = 0;
+}
+
 void TreeBar::Adjust(){
     m_OverrideSize = size();
     switch(orientation()){
@@ -1073,6 +1091,10 @@ QMenu *TreeBar::TreeBarMenu(){
 void TreeBar::CollectNodes(){
     int previousHeight = GetHorizontalNodeHeight();
     int previousWidth  = GetVerticalNodeWidth();
+    QList<qreal> previousScroll;
+    foreach(LayerItem *layer, m_LayerList){
+        previousScroll << layer->GetScroll();
+    }
     m_LayerList.clear();
     m_Scene->clear();
     m_Scene->addItem(new TableButton(m_TreeBank, this));
@@ -1164,8 +1186,14 @@ void TreeBar::CollectNodes(){
     }
 
     Adjust();
-    foreach(LayerItem *layer, m_LayerList){
-        layer->Adjust();
+
+    if(m_LastAction != None && previousScroll.length() == m_LayerList.length()){
+        for(int i = 0; i < m_LayerList.length(); i++){
+            m_LayerList[i]->SetScroll(previousScroll[i]);
+            m_LayerList[i]->ResetTargetScroll();
+        }
+    } else {
+        foreach(LayerItem *layer, m_LayerList){ layer->Adjust();}
     }
 }
 
@@ -1207,8 +1235,7 @@ void TreeBar::OnNodeCreated(NodeList &nds){
                         item->OnCreated(item->GetRect());
                         j++;
                     } else {
-                        // abort.
-                        CollectNodes();
+                        CollectNodes(); // abort.
                         m_LastAction = NodeCreated;
                         return;
                     }
@@ -1257,8 +1284,7 @@ void TreeBar::OnNodeCreated(NodeList &nds){
         foreach(Node *nd, nds){
             NodeList siblings = nd->GetSiblings();
             if(siblings.length() == 1){
-                // abort.
-                CollectNodes();
+                CollectNodes(); // abort.
                 m_LastAction = NodeCreated;
                 return;
             }
@@ -1297,8 +1323,7 @@ void TreeBar::OnNodeCreated(NodeList &nds){
                     }
                 }
             } else {
-                // abort.
-                CollectNodes();
+                CollectNodes(); // abort.
                 m_LastAction = NodeCreated;
                 return;
             }
@@ -1389,11 +1414,10 @@ void TreeBar::OnFoldedChanged(NodeList &nds){
                 int i = 0;
                 int nest = 0;
                 for(; i < items.length(); i++){
-                    if(items[i]->GetNode() != nd) continue;
-                    nest = items[i]->GetNest();
-                    if(i != items.length() - 1 &&
-                       nest != items[i+1]->GetNest()) return;
-                    i++; nest++; break;
+                    if(items[i]->GetNode() == nd){
+                        nest = items[i]->GetNest() + 1;
+                        i++; break;
+                    }
                 }
                 if(!nest) continue;
                 std::reverse(children.begin(), children.end());
@@ -1609,7 +1633,7 @@ void TreeBar::showEvent(QShowEvent *ev){
     connect(m_TreeBank, &TreeBank::NodeDeleted,          this, &TreeBar::OnNodeDeleted);
     connect(m_TreeBank, &TreeBank::FoldedChanged,        this, &TreeBar::OnFoldedChanged);
     connect(m_TreeBank, &TreeBank::CurrentChanged,       this, &TreeBar::OnCurrentChanged);
-    connect(this, &QToolBar::orientationChanged,         this, &TreeBar::CollectNodes);
+    connect(this,       &QToolBar::orientationChanged,   this, &TreeBar::CollectNodes);
     if(m_LayerList.isEmpty()) CollectNodes();
     StartAutoUpdateTimer();
 }
@@ -1621,7 +1645,7 @@ void TreeBar::hideEvent(QHideEvent *ev){
     disconnect(m_TreeBank, &TreeBank::NodeDeleted,          this, &TreeBar::OnNodeDeleted);
     disconnect(m_TreeBank, &TreeBank::FoldedChanged,        this, &TreeBar::OnFoldedChanged);
     disconnect(m_TreeBank, &TreeBank::CurrentChanged,       this, &TreeBar::OnCurrentChanged);
-    disconnect(this, &QToolBar::orientationChanged,         this, &TreeBar::CollectNodes);
+    disconnect(this,       &QToolBar::orientationChanged,   this, &TreeBar::CollectNodes);
     m_LayerList.clear();
     m_Scene->clear();
     StopAutoUpdateTimer();
@@ -2640,7 +2664,8 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     QRectF bound = boundingRect();
     QRectF realRect = bound.translated(pos());
 
-    if(!scene() || !realRect.intersects(scene()->sceneRect())) return;
+    if(!scene() || !realRect.intersects(scene()->sceneRect()) ||
+       (isSelected() && m_TreeBar->GetWindow())) return;
 
     painter->save();
 
@@ -2668,7 +2693,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     if(view){
         if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
             muted = w->page()->isAudioMuted();
-            audible = w->page()->wasRecentlyAudible();
+            audible = w->page()->recentlyAudible();
             if(muted || audible)
                 title_rect.setRight(title_rect.right() - 18);
         }
@@ -2916,8 +2941,10 @@ QRectF NodeItem::CloneButtonRect() const {
 #if QT_VERSION >= 0x050700
 QRectF NodeItem::SoundButtonRect() const {
     QRectF rect = QRectF(boundingRect().bottomRight() + QPointF(-18, -19), QSizeF(14, 14));
-    if(TreeBar::EnableCloseButton()) rect.moveLeft(rect.left() - 18);
-    if(TreeBar::EnableCloneButton()) rect.moveLeft(rect.left() - 18);
+    if(m_IsHovered){
+        if(TreeBar::EnableCloseButton()) rect.moveLeft(rect.left() - 18);
+        if(TreeBar::EnableCloneButton()) rect.moveLeft(rect.left() - 18);
+    }
     return rect;
 }
 #endif
@@ -2936,8 +2963,10 @@ QRect NodeItem::CloneIconRect() const {
 #if QT_VERSION >= 0x050700
 QRect NodeItem::SoundIconRect() const {
     QRect rect = QRect(boundingRect().bottomRight().toPoint() + QPoint(-16, -17), QSize(10, 10));
-    if(TreeBar::EnableCloseButton()) rect.moveLeft(rect.left() - 18);
-    if(TreeBar::EnableCloneButton()) rect.moveLeft(rect.left() - 18);
+    if(m_IsHovered){
+        if(TreeBar::EnableCloseButton()) rect.moveLeft(rect.left() - 18);
+        if(TreeBar::EnableCloneButton()) rect.moveLeft(rect.left() - 18);
+    }
     return rect;
 }
 #endif
@@ -3225,6 +3254,9 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    bool windowCreated = m_TreeBar->GetWindow();
+    m_TreeBar->SetWindow(0);
+
     if(ev->button() == Qt::LeftButton){
 
         Layer()->AutoScrollStop();
@@ -3240,22 +3272,28 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         }
 
         if((ev->buttonDownScreenPos(Qt::LeftButton) - ev->screenPos()).manhattanLength() < 4){
-            if(m_ButtonState == ClosePressed)
+            switch(m_ButtonState){
+
+            case ClosePressed:
                 m_TreeBank->DeleteNode(m_Node);
-            else if(m_ButtonState == ClonePressed)
+                break;
+
+            case ClonePressed:
                 m_TreeBank->CloneViewNode(m_Node->ToViewNode());
+                break;
+
 #if QT_VERSION >= 0x050700
-            else if(m_ButtonState == SoundPressed){
+            case SoundPressed:
                 if(View *view = m_Node->GetView()){
                     if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
                         WebEnginePage *p = w->page();
-                        if(p->isAudioMuted() || p->wasRecentlyAudible())
+                        if(p->isAudioMuted() || p->recentlyAudible())
                             p->setAudioMuted(!p->isAudioMuted());
                     }
                 }
-            }
+                // fall through.
 #endif
-            else {
+            default:
                 setSelected(false);
                 setPos(QPointF());
                 if(m_TreeBar->orientation() == Qt::Vertical && m_Node->IsDirectory()){
@@ -3270,7 +3308,11 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
             return;
         }
 
-        Layer()->ApplyChildrenOrder();
+        if(windowCreated){
+            m_TreeBar->CollectNodes();
+        } else {
+            Layer()->ApplyChildrenOrder();
+        }
 
     } else if(ev->button() == Qt::RightButton){
         if((ev->buttonDownScreenPos(Qt::RightButton) - ev->screenPos()).manhattanLength() < 4){
@@ -3325,6 +3367,24 @@ void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     }
     if(newLayer && Layer() != newLayer){
         Layer()->TransferNodeItem(this, newLayer);
+    }
+
+    if(scene()->sceneRect().contains(ev->scenePos())){
+        if(m_TreeBar->GetWindow()) m_TreeBar->CloseWindow();
+    } else {
+        MainWindow *win = m_TreeBar->GetWindow();
+        if(!win && !m_Node->IsDirectory() &&
+           (!m_Node->GetView() || !m_Node->GetView()->visible())){
+            win = m_TreeBar->MakeWindow();
+            win->GetTreeBank()->SetCurrent(m_Node);
+        }
+        if(win){
+            foreach(LayerItem *layer, m_TreeBar->GetLayerList()){
+                layer->AutoScrollStop();
+            }
+            win->move(ev->screenPos());
+            return;
+        }
     }
 
     switch(m_TreeBar->orientation()){

@@ -726,6 +726,22 @@ protected:
         }
         case QEvent::Wheel:{
             QWheelEvent *we = static_cast<QWheelEvent*>(ev);
+#if QT_VERSION >= 0x050700
+            QString wheel;
+            bool up = we->delta() > 0;
+            Application::AddModifiersToString(wheel, we->modifiers());
+            Application::AddMouseButtonsToString(wheel, we->buttons());
+            Application::AddWheelDirectionToString(wheel, up);
+            if(m_View->m_MouseMap.contains(wheel)){
+                QString str = m_View->m_MouseMap[wheel];
+                if(!str.isEmpty()){
+                    m_View->GestureAborted();
+                    m_View->View::TriggerAction
+                        (str, MapToView(widget, we->pos()));
+                }
+                return true;
+            }
+#endif
             QWheelEvent we_ =
                 QWheelEvent(MapToView(widget, we->pos()),
                             we->delta(),

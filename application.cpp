@@ -1372,10 +1372,6 @@ void Application::Quit(){
 }
 
 Settings &Application::GlobalSettings(){
-    if(m_GlobalSettings.keys().isEmpty()){
-        LoadSettingsFile();
-        LoadGlobalSettings();
-    }
     return m_GlobalSettings;
 }
 
@@ -1587,7 +1583,7 @@ void Application::SaveIconDatabase(){
 }
 
 void Application::LoadIconDatabase(){
-    QString filename = IconDatabaseFileName();;
+    QString filename = IconDatabaseFileName();
     QString datadir = DataDirectory();
     QFile file(datadir + filename);
     bool check = file.open(QIODevice::ReadOnly) &&
@@ -1622,8 +1618,12 @@ void Application::LoadIconDatabase(){
 }
 
 void Application::RegisterIcon(QString host, QIcon icon){
-    if(!host.isEmpty() && !icon.isNull())
+    if(!host.isEmpty() && !icon.isNull()){
+        QSize size = icon.availableSizes().first();
+        if(size.width() > 32) size = QSize(32, 32);
+        icon = QIcon(icon.pixmap(size));
         m_IconTable[host] = QVariant::fromValue(icon);
+    }
 }
 
 QIcon Application::GetIcon(QString host){

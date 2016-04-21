@@ -8,10 +8,14 @@
     <file>resources/folderw.png</file>
     <file>resources/tableview/close.png</file>
     <file>resources/tableview/clone.png</file>
+    <file>resources/tableview/audible.png</file>
+    <file>resources/tableview/muted.png</file>
     <file>resources/tableview/trash.png</file>
     <file>resources/tableview/table.png</file>
     <file>resources/treebar/close.png</file>
     <file>resources/treebar/clone.png</file>
+    <file>resources/treebar/audible.png</file>
+    <file>resources/treebar/muted.png</file>
     <file>resources/treebar/up.png</file>
     <file>resources/treebar/down.png</file>
     <file>resources/treebar/left.png</file>

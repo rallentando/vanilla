@@ -29,7 +29,15 @@ bool Transmitter::ServerAlreadyExists(){
 void Transmitter::SendCommand(QString command){
     QByteArray block;
     QDataStream out(&block, QIODevice::WriteOnly);
+
+#if   QT_VERSION >= 0x050700
+    out.setVersion(QDataStream::Qt_5_7);
+#elif QT_VERSION >= 0x050600
+    out.setVersion(QDataStream::Qt_5_6);
+#else
     out.setVersion(QDataStream::Qt_5_5);
+#endif
+
     out << QString(command);
     out.device()->seek(0);
     m_LocalSocket->write(block);

@@ -74,6 +74,11 @@ public:
     void SetStat(QStringList);
     QStringList GetStat() const;
 
+    MainWindow *GetWindow();
+    void SetWindow(MainWindow *win);
+    MainWindow *MakeWindow();
+    void CloseWindow();
+
     void Adjust();
 
     void ClearLowerLayer(int index);
@@ -121,6 +126,7 @@ private:
     int m_HorizontalNodeHeight;
     int m_VerticalNodeWidth;
     LastAction m_LastAction;
+    MainWindow *m_OtherWindow;
 
     static int m_HorizontalNodeWidth;
     static int m_VerticalNodeHeight;

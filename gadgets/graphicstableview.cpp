@@ -13,6 +13,7 @@
 #include "mainwindow.hpp"
 #include "view.hpp"
 #include "gadgetsstyle.hpp"
+#include "webengineview.hpp"
 
 /*
   ZValue
@@ -3699,8 +3700,8 @@ void SoundButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         if(View *view = m_Node->GetView()){
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
                 WebEnginePage *p = w->page();
-                if(p->isAudioMuted() || p->wasRecentlyAudible())
-                    p->setAudioMuted(!p->isAudioMuted())
+                if(p->isAudioMuted() || p->recentlyAudible())
+                    p->setAudioMuted(!p->isAudioMuted());
             }
         }
     }

@@ -406,7 +406,15 @@ void Receiver::ForeignCommandReceived(){
             clientConnection, SLOT(deleteLater()));
 
     QDataStream in(clientConnection);
+
+#if   QT_VERSION >= 0x050700
+    in.setVersion(QDataStream::Qt_5_7);
+#elif QT_VERSION >= 0x050600
+    in.setVersion(QDataStream::Qt_5_6);
+#else
     in.setVersion(QDataStream::Qt_5_5);
+#endif
+
     if(clientConnection->bytesAvailable() < static_cast<int>(sizeof(quint16))){
         return;
     }
