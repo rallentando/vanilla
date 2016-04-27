@@ -27,7 +27,7 @@ class MainWindow : public QMainWindow{
     Q_OBJECT
 
 public:
-    MainWindow(int id, QWidget *parent = 0);
+    MainWindow(int id, QPoint pos = QPoint(), QWidget *parent = 0);
     ~MainWindow();
 
     int GetIndex();

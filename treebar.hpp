@@ -54,13 +54,11 @@ public:
     static bool EnableCloseButton();
     static bool EnableCloneButton();
     static bool ScrollToSwitchNode();
-    static bool DoubleClickToClose();
     static bool WheelClickToClose();
     static void ToggleEnableAnimation();
     static void ToggleEnableCloseButton();
     static void ToggleEnableCloneButton();
     static void ToggleScrollToSwitchNode();
-    static void ToggleDoubleClickToClose();
     static void ToggleWheelClickToClose();
 
     int GetHorizontalNodeHeight() const;
@@ -76,7 +74,7 @@ public:
 
     MainWindow *GetWindow();
     void SetWindow(MainWindow *win);
-    MainWindow *MakeWindow();
+    MainWindow *MakeWindow(QPoint pos);
     void CloseWindow();
 
     void Adjust();
@@ -135,7 +133,6 @@ private:
     static bool m_EnableCloseButton;
     static bool m_EnableCloneButton;
     static bool m_ScrollToSwitchNode;
-    static bool m_DoubleClickToClose;
     static bool m_WheelClickToClose;
 };
 
@@ -174,7 +171,7 @@ public:
     void StopScrollDownTimer();
     void StopScrollUpTimer();
 
-    void Adjust();
+    void Adjust(qreal scroll = -DBL_MAX);
     void OnScrolled();
 
     NodeItem *GetFocusedNode() const;
@@ -306,6 +303,7 @@ public:
     void OnCreated(QRectF target, QRectF start = QRectF());
     void OnDeleted(QRectF target, QRectF start = QRectF());
     void OnNestChanged();
+    void OnUngrabbed();
     void Slide(int step);
 
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;

@@ -2114,13 +2114,13 @@ MainWindow *Application::UnshadeWindow(MainWindow *win){
     return win;
 }
 
-MainWindow *Application::NewWindow(int id){
+MainWindow *Application::NewWindow(int id, QPoint pos){
     if(id == 0)
         forever
             if(!m_MainWindows.value(id = rand() + 1, 0))
                 break;
     TreeBank::LiftMaxViewCountIfNeed(m_MainWindows.count());
-    return m_MainWindows[id] = m_CurrentWindow = new MainWindow(id);
+    return m_MainWindows[id] = m_CurrentWindow = new MainWindow(id, pos);
 }
 
 MainWindow *Application::CloseWindow(MainWindow *win){

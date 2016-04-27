@@ -15,7 +15,6 @@
 bool Node::m_Booting = false;
 QStringList Node::m_AllImageFileName = QStringList();
 QStringList Node::m_AllHistoryFileName = QStringList();
-bool Node::m_EnableDeepCopyOfNode = false;
 Node::AddNodePosition Node::m_AddChildViewNodePosition = RightEnd;
 Node::AddNodePosition Node::m_AddSiblingViewNodePosition = RightOfPrimary;
 
@@ -78,7 +77,6 @@ void Node::SetBooting(bool b){
 void Node::LoadSettings(){
     Settings &s = Application::GlobalSettings();
 
-    m_EnableDeepCopyOfNode = s.value(QStringLiteral("application/@EnableDeepCopyOfNode") , false).value<bool>();
     {
         QString position = s.value(QStringLiteral("application/@AddChildViewNodePosition"),
                                     QStringLiteral("RightEnd")).value<QString>();
@@ -104,7 +102,6 @@ void Node::LoadSettings(){
 void Node::SaveSettings(){
     Settings &s = Application::GlobalSettings();
 
-    s.setValue(QStringLiteral("application/@EnableDeepCopyOfNode"), m_EnableDeepCopyOfNode);
     {
         AddNodePosition position = m_AddChildViewNodePosition;
         if(position == RightEnd)                    s.setValue(QStringLiteral("application/@AddChildViewNodePosition"), QStringLiteral("RightEnd"));
@@ -338,14 +335,10 @@ HistNode *HistNode::Clone(HistNode *parent, ViewNode *partner){
     clone->m_ScrollX = m_ScrollX;
     clone->m_ScrollY = m_ScrollY;
     clone->m_Zoom.store(m_Zoom.load());
-    if(m_EnableDeepCopyOfNode){
-        // Node::m_Children, Node::m_Primary
-        foreach(Node *child, children){
-            HistNode *hn = child->ToHistNode()->Clone(clone, partner);
-            if(m_Primary == child) clone->m_Primary = hn;
-        }
-    } else {
-        partner->m_Partner = clone;
+    // Node::m_Children, Node::m_Primary
+    foreach(Node *child, children){
+        HistNode *hn = child->ToHistNode()->Clone(clone, partner);
+        if(m_Primary == child) clone->m_Primary = hn;
     }
     return clone;
 }
@@ -762,21 +755,15 @@ ViewNode *ViewNode::Clone(ViewNode *parent){
     clone->m_Folded = m_Folded;
     clone->m_Title = m_Title;
 
-    if(m_EnableDeepCopyOfNode){
-        // HistNode::Clone sets ViewNode::m_Partner automatically.
-        if(IsDirectory()){
-            foreach(Node *child, GetChildren()){
-                ViewNode *vn = child->ToViewNode()->Clone(clone);
-                if(m_Primary == child) clone->m_Primary = vn;
-            }
-        } else {
-            HistNode *root = m_Partner->GetRoot()->ToHistNode();
-            root->Clone(TreeBank::GetHistRoot(), clone);
+    // HistNode::Clone sets ViewNode::m_Partner automatically.
+    if(IsDirectory()){
+        foreach(Node *child, GetChildren()){
+            ViewNode *vn = child->ToViewNode()->Clone(clone);
+            if(m_Primary == child) clone->m_Primary = vn;
         }
     } else {
-        if(!IsDirectory()){
-            m_Partner->ToHistNode()->Clone(TreeBank::GetHistRoot(), clone);
-        }
+        HistNode *root = m_Partner->GetRoot()->ToHistNode();
+        root->Clone(TreeBank::GetHistRoot(), clone);
     }
     return clone;
 }

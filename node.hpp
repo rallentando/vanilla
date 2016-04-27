@@ -85,7 +85,6 @@ protected:
         HeadOfLeftUnreadsOfPrimary,
     };
 
-    static bool m_EnableDeepCopyOfNode;
     static AddNodePosition m_AddChildViewNodePosition;
     static AddNodePosition m_AddSiblingViewNodePosition;
 

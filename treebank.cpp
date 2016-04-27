@@ -1132,10 +1132,13 @@ void TreeBank::DislinkView(HistNode *hn){
 
             Node *partner = hn->GetPartner();
             TreeBank *tb = v->GetTreeBank();
+            ToolBar *bar = tb ? tb->GetMainWindow()->GetToolBar() : 0;
 
             if(tb && v == tb->GetCurrentView()){
                 v->Disconnect(tb);
                 tb->SetCurrentView(0);
+                if(bar && bar->isVisible())
+                    bar->Disconnect(v);
             }
             if(partner && partner->GetPartner() == hn){
                 partner->SetView(0);
@@ -1288,7 +1291,6 @@ void TreeBank::StripSubTree(Node *nd){
 }
 
 void TreeBank::ReleaseView(SharedView view){
-    view->hide();
     RemoveFromAllViews(view);
     RemoveFromUpdateBox(view);
 }
@@ -1565,14 +1567,15 @@ bool TreeBank::SetCurrent(Node *nd){
 
     //save current view to image if need.
     if(prev != m_CurrentView){
+        ToolBar *bar = GetMainWindow()->GetToolBar();
         if(prev){
             AddToUpdateBox(prev);
             prev->Disconnect(this);
-            if(GetMainWindow()->GetToolBar()->isVisible())
-                GetMainWindow()->GetToolBar()->Disconnect(prev);
+            if(bar->isVisible())
+                bar->Disconnect(prev);
         }
-        if(GetMainWindow()->GetToolBar()->isVisible())
-            GetMainWindow()->GetToolBar()->Connect(m_CurrentView);
+        if(bar->isVisible())
+            bar->Connect(m_CurrentView);
         m_CurrentView->Connect(this);
     }
     if(m_AllViews.length() > 1){

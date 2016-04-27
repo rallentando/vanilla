@@ -180,7 +180,7 @@ private:
 public:
     static MainWindow *ShadeWindow(MainWindow *win = 0);
     static MainWindow *UnshadeWindow(MainWindow *win = 0);
-    static MainWindow *NewWindow(int id = 0);
+    static MainWindow *NewWindow(int id = 0, QPoint pos = QPoint());
     static MainWindow *CloseWindow(MainWindow *win = 0);
     static MainWindow *SwitchWindow(bool next = true);
     static MainWindow *NextWindow();

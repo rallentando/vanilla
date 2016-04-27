@@ -37,7 +37,7 @@
 #  include "tridentview.hpp"
 #endif
 
-MainWindow::MainWindow(int id, QWidget *parent)
+MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
     : QMainWindow(parent)
 {
     m_Index = id;
@@ -69,6 +69,7 @@ MainWindow::MainWindow(int id, QWidget *parent)
              "QMenuBar::item:selected{ background-color:rgba(255, 255, 255, 225);}");
     }
 
+    move(pos);
     LoadSettings();
 
     if(Application::EnableFramelessWindow()){
@@ -171,8 +172,13 @@ void MainWindow::LoadSettings(){
     if(geometry_data.isNull()){
 
         QRect rect = current
-            ? current->geometry().translated(20, 20)
+            ? current->geometry()
             : DEFAULT_WINDOW_RECT;
+
+        if(pos().isNull())
+            rect.translate(20, 20);
+        else
+            rect.moveTopLeft(pos());
 
         setGeometry(rect);
 
