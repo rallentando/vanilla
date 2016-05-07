@@ -556,6 +556,9 @@ public slots:
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
     void AssignInspector();
+#ifdef USE_WEBCHANNEL
+    void SetUpWebChannel();
+#endif
 #if QT_VERSION >= 0x050700
     void OnIconChanged(const QIcon &icon);
 #else

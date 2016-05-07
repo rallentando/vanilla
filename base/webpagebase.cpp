@@ -833,9 +833,8 @@ void WebPageBase::HandleUnsupportedContent(QNetworkReply *reply){
 void WebPageBase::AddJsObject(){
     //[[WEV]]
 #ifdef USE_WEBCHANNEL
-    if(webChannel()) return;
-
-    setWebChannel(new QWebChannel(this));
+    if(!webChannel())
+        setWebChannel(new QWebChannel(this));
 
     if(m_View && m_View->GetJsObject()){
         webChannel()->registerObject(QStringLiteral("_view"), m_View->GetJsObject());

@@ -336,6 +336,9 @@ void WebViewBase::OnLoadFinished(bool ok){
     //[[/!WEV]]
     //[[WEV]]
     AssignInspector();
+#ifdef USE_WEBCHANNEL
+    SetUpWebChannel();
+#endif
     //[[/WEV]]
     if(visible() && m_TreeBank &&
        m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
@@ -631,6 +634,26 @@ void WebViewBase::AssignInspector(){
             }
         });
 }
+
+#ifdef USE_WEBCHANNEL
+void WebViewBase::SetUpWebChannel(){
+    QString source;
+    if(source.isEmpty()){
+        QFile file(":/qtwebchannel/qwebchannel.js");
+        if(file.open(QFile::ReadOnly)){
+            source = QString::fromLatin1(file.readAll());
+        }
+        file.close();
+    }
+    page()->runJavaScript(source, [this](QVariant){
+            page()->runJavaScript
+                (QStringLiteral("new QWebChannel(qt.webChannelTransport, function(channel){\n"
+                              VV"    window._vanilla = channel.objects._vanilla;\n"
+                              VV"    window._view = channel.objects._view;\n"
+                              VV"});"));
+        });
+}
+#endif
 
 #if QT_VERSION >= 0x050700
 void WebViewBase::OnIconChanged(const QIcon &icon){

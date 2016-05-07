@@ -193,26 +193,6 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
                                image_rect.height() - size.height());
         painter->drawImage(QRectF(image_rect.topLeft() + diff / 2.0, size),
                            image, QRectF(QPointF(), image.size()));
-
-        QIcon icon;
-        static QIcon blank  = QIcon(":/resources/blankw.png");
-        static QIcon folder = QIcon(":/resources/folderw.png");
-        if(view){
-            icon = view->GetIcon();
-        }
-        if(icon.isNull() || icon.availableSizes().first().width() <= 2){
-            icon = nd->GetIcon();
-        }
-        if(icon.isNull() || icon.availableSizes().first().width() <= 2){
-            icon = isDir ? folder : blank;
-        }
-        QSize iconSize = gtv->ScaleByDevice(QSize(16, 16));
-        QPixmap pixmap = icon.pixmap(iconSize, (view || isDir) ? QIcon::Normal : QIcon::Disabled);
-        if(pixmap.width() > 2){
-            painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 2), iconSize),
-                                pixmap, QRect(QPoint(), pixmap.size()));
-            title_rect.setLeft(title_rect.left() + gtv->ScaleByDevice(17));
-        }
     } else {
         static const QBrush db = QBrush(QColor(50, 100, 100, 150));
         static const QBrush nb = QBrush(QColor(50, 100, 120, 150));
@@ -232,8 +212,34 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
     }
 
     title_rect.setLeft(title_rect.left() + 2.0);
-    title_rect.setRight(title_rect.right() - 5.0);
+    title_rect.setRight(title_rect.right() - 3.0);
     title_rect.setBottom(title_rect.bottom() - 1.0);
+
+    {
+        QIcon icon;
+        static QIcon blank    = QIcon(":/resources/blankw.png");
+        static QIcon folder   = QIcon(":/resources/folderw.png");
+        static QIcon folded   = QIcon(":/resources/foldedw.png");
+        static QIcon unfolded = QIcon(":/resources/unfoldedw.png");
+        bool foldable = gtv->GetNodeCollectionType() == GraphicsTableView::Foldable;
+        bool isFolded = nd->GetFolded();
+        if(view){
+            icon = view->GetIcon();
+        }
+        if(icon.isNull() || icon.availableSizes().first().width() <= 2){
+            icon = nd->GetIcon();
+        }
+        if(icon.isNull() || icon.availableSizes().first().width() <= 2){
+            icon = !isDir ? blank : !foldable ? folder : isFolded ? folded : unfolded;
+        }
+        QSize iconSize = gtv->ScaleByDevice(QSize(16, 16));
+        QPixmap pixmap = icon.pixmap(iconSize, (view || isDir) ? QIcon::Normal : QIcon::Disabled);
+        if(pixmap.width() > 2){
+            painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 2), iconSize),
+                                pixmap, QRect(QPoint(), pixmap.size()));
+            title_rect.setLeft(title_rect.left() + gtv->ScaleByDevice(19));
+        }
+    }
 
     {
         static const QPen p = QPen(QColor(255,255,255,255));
@@ -314,21 +320,13 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     title_rect.intersected(port);
 
     {
-        static const QPen p = QPen(QColor(255,255,255,255));
-        painter->setFont(m_NodeTitleFont);
-        painter->setPen(p);
-        painter->setBrush(Qt::NoBrush);
-        const QString prefix = gtv->GetDirectoryPrefix(nd);
-        if(!prefix.isEmpty()){
-            painter->drawText(title_rect, Qt::AlignLeft | Qt::AlignVCenter, prefix);
-            title_rect.setLeft(title_rect.left() + 12);
-        }
-    }
-
-    {
         QIcon icon;
-        static QIcon blank  = QIcon(":/resources/blankw.png");
-        static QIcon folder = QIcon(":/resources/folderw.png");
+        static QIcon blank    = QIcon(":/resources/blankw.png");
+        static QIcon folder   = QIcon(":/resources/folderw.png");
+        static QIcon folded   = QIcon(":/resources/foldedw.png");
+        static QIcon unfolded = QIcon(":/resources/unfoldedw.png");
+        bool foldable = gtv->GetNodeCollectionType() == GraphicsTableView::Foldable;
+        bool isFolded = nd->GetFolded();
         if(view){
             icon = view->GetIcon();
         }
@@ -336,7 +334,7 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
             icon = nd->GetIcon();
         }
         if(icon.isNull() || icon.availableSizes().first().width() <= 2){
-            icon = isDir ? folder : blank;
+            icon = !isDir ? blank : !foldable ? folder : isFolded ? folded : unfolded;
         }
         QSize iconSize = gtv->ScaleByDevice(QSize(16, 16));
         QPixmap pixmap = icon.pixmap(iconSize, (view || isDir) ? QIcon::Normal : QIcon::Disabled);
@@ -1029,27 +1027,34 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         painter->drawRect(title_rect);
     }
 
-    title_rect = QRectF(title_rect.topLeft() + QPointF(2.0, 0.0),
-                        title_rect.size() + QSizeF(-5.0, -1.0));
+    title_rect.setLeft(title_rect.left() + 3.0);
+    title_rect.setRight(title_rect.right() - 4.0);
+    title_rect.setBottom(title_rect.bottom() - 1.0);
 
-    QIcon icon;
-    static QIcon blank  = QIcon(":/resources/blank.png");
-    static QIcon folder = QIcon(":/resources/folder.png");
-    if(view){
-        icon = view->GetIcon();
-    }
-    if(icon.isNull() || icon.availableSizes().first().width() <= 2){
-        icon = nd->GetIcon();
-    }
-    if(icon.isNull() || icon.availableSizes().first().width() <= 2){
-        icon = isDir ? folder : blank;
-    }
-    QSize iconSize = gtv->ScaleByDevice(QSize(16, 16));
-    QPixmap pixmap = icon.pixmap(iconSize, (view || isDir) ? QIcon::Normal : QIcon::Disabled);
-    if(pixmap.width() > 2){
-        painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 2), iconSize),
-                            pixmap, QRect(QPoint(), pixmap.size()));
-        title_rect.setLeft(title_rect.left() + gtv->ScaleByDevice(17));
+    {
+        QIcon icon;
+        static QIcon blank    = QIcon(":/resources/blank.png");
+        static QIcon folder   = QIcon(":/resources/folder.png");
+        static QIcon folded   = QIcon(":/resources/folded.png");
+        static QIcon unfolded = QIcon(":/resources/unfolded.png");
+        bool foldable = gtv->GetNodeCollectionType() == GraphicsTableView::Foldable;
+        bool isFolded = nd->GetFolded();
+        if(view){
+            icon = view->GetIcon();
+        }
+        if(icon.isNull() || icon.availableSizes().first().width() <= 2){
+            icon = nd->GetIcon();
+        }
+        if(icon.isNull() || icon.availableSizes().first().width() <= 2){
+            icon = !isDir ? blank : !foldable ? folder : isFolded ? folder : unfolded;
+        }
+        QSize iconSize = gtv->ScaleByDevice(QSize(16, 16));
+        QPixmap pixmap = icon.pixmap(iconSize, (view || isDir) ? QIcon::Normal : QIcon::Disabled);
+        if(pixmap.width() > 2){
+            painter->drawPixmap(QRect(title_rect.topLeft().toPoint() + QPoint(0, 2), iconSize),
+                                pixmap, QRect(QPoint(), pixmap.size()));
+            title_rect.setLeft(title_rect.left() + gtv->ScaleByDevice(19));
+        }
     }
 
     {

@@ -354,4 +354,48 @@ signals:
     void FocusOut();
 };
 
+class DialogSlider : public QSlider{
+    Q_OBJECT
+
+public:
+    DialogSlider(QWidget *parent = 0)
+        : QSlider(parent)
+    {
+    }
+    ~DialogSlider(){}
+
+protected:
+    void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QSlider::focusInEvent(ev);
+        emit FocusIn();
+        ev->setAccepted(true);
+    }
+    void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+        QSlider::focusOutEvent(ev);
+        emit FocusOut();
+        ev->setAccepted(true);
+    }
+    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE {
+        QSlider::keyPressEvent(ev);
+        if(!ev->isAccepted()){
+            if(ev->key() == Qt::Key_Return){
+                emit Returned();
+                ev->setAccepted(true);
+                return;
+            }
+            if(ev->key() == Qt::Key_Escape){
+                emit Aborted();
+                ev->setAccepted(true);
+                return;
+            }
+        }
+    }
+
+signals:
+    void Returned();
+    void Aborted();
+    void FocusIn();
+    void FocusOut();
+};
+
 #endif //ifndef DIALOG_HPP

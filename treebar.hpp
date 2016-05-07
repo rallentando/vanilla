@@ -47,8 +47,10 @@ public:
     static void LoadSettings();
     static void SaveSettings();
 
-    static int HorizontalNodeWidth();
-    static int VerticalNodeHeight();
+    static int GetHorizontalNodeWidth();
+    static int GetVerticalNodeHeight();
+    static void SetHorizontalNodeWidth(int);
+    static void SetVerticalNodeHeight(int);
 
     static bool EnableAnimation();
     static bool EnableCloseButton();
@@ -86,6 +88,7 @@ public:
 
     QList<LayerItem*> &GetLayerList(){ return m_LayerList;}
 
+    void AddTreeBarMenu(QMenu *menu);
     QMenu *TreeBarMenu();
 
 public slots:
@@ -160,6 +163,7 @@ public:
     void SetScroll(qreal scroll);
     void Scroll(qreal delta);
     void ScrollForDelete(int count);
+    void LockWhileAnimating();
     void ResetTargetScroll();
     void AutoScrollDown();
     void AutoScrollUp();
@@ -196,7 +200,7 @@ public:
     void SwapWithPrev(int index);
 
     QMenu *LayerMenu();
-    QMenu *AddNodeMenu();
+    QMenu *MakeNodeMenu();
 
 public slots:
     void NewViewNode();
@@ -348,6 +352,8 @@ public slots:
     void OpenViewNodeWithCustom();
 
     void ResetTargetPosition();
+
+    void ApplySiblingsOrder();
 
 private:
     TreeBank *m_TreeBank;

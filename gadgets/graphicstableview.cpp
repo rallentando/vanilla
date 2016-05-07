@@ -781,17 +781,6 @@ void GraphicsTableView::Update(QRectF rect){
     }
 }
 
-QString GraphicsTableView::GetDirectoryPrefix(Node *nd) const {
-    if(!nd->IsDirectory()) return QString();
-
-    if(IsDisplayingNode()){
-        if(GetNodeCollectionType() == Foldable){
-            return nd->GetFolded() ? QStringLiteral("+") : QStringLiteral("-");
-        }
-    }
-    return QString();
-}
-
 SpotLight *GraphicsTableView::GetPrimarySpotLight() const {
     return m_PrimarySpotLight;
 }

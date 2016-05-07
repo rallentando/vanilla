@@ -124,7 +124,7 @@ Application::Application(int &argc, char **argv)
     m_NetworkController = 0;
     m_AutoSaver = 0;
     srand(static_cast<unsigned int>(time(NULL)));
-    SetUpDevTools();
+    SetUpInspector();
 }
 
 Application::~Application(){
@@ -170,7 +170,7 @@ bool Application::notify(QObject *receiver, QEvent *ev){
     return false;
 }
 
-void Application::SetUpDevTools(){
+void Application::SetUpInspector(){
     QProcess process;
 
     process.start("netstat", QStringList() << QStringLiteral("-an"));
