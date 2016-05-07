@@ -6,6 +6,10 @@
     <file>resources/blankw.png</file>
     <file>resources/folder.png</file>
     <file>resources/folderw.png</file>
+    <file>resources/folded.png</file>
+    <file>resources/foldedw.png</file>
+    <file>resources/unfolded.png</file>
+    <file>resources/unfoldedw.png</file>
     <file>resources/tableview/close.png</file>
     <file>resources/tableview/clone.png</file>
     <file>resources/tableview/audible.png</file>

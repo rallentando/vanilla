@@ -109,8 +109,6 @@ public slots:
 public:
     void Update(QRectF rect = QRectF());
 
-    QString GetDirectoryPrefix(Node *nd) const;
-
     SpotLight *GetPrimarySpotLight() const;
     SpotLight *GetHoveredSpotLight() const;
     QList<SpotLight*> GetLoadedSpotLights() const;

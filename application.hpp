@@ -54,7 +54,7 @@ public:
 
     bool notify(QObject *receiver, QEvent *ev) DECL_OVERRIDE;
 
-    static void SetUpDevTools();
+    static void SetUpInspector();
     static void BootApplication(int &argc, char **argv, Application *instance);
     static void Import(TreeBank *tb);
     static void Export(TreeBank *tb);
