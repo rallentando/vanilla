@@ -24,6 +24,11 @@
 #include <QWebFrameBase>
 #include <QWebElementBase>
 //[[/!WEV]]
+//[[WEV]]
+#ifdef PASSWORD_MANAGER
+# include <QWebEngineProfile>
+#endif
+//[[/WEV]]
 
 class QKeySequence;
 //[[WEV]]
@@ -220,10 +225,10 @@ public:
     void SetSource(const QUrl &url) DECL_OVERRIDE {
         if(page()) page()->SetSource(url);
     }
-    void SetSource(const QByteArray &html){
+    void SetSource(const QByteArray &html) DECL_OVERRIDE {
         if(page()) page()->SetSource(html);
     }
-    void SetSource(const QString &html){
+    void SetSource(const QString &html) DECL_OVERRIDE {
         if(page()) page()->SetSource(html);
     }
 
@@ -421,6 +426,9 @@ public:
     void CallWithWholeHtml(StringCallBack callBack) DECL_OVERRIDE;
     void CallWithSelectionRegion(RegionCallBack callBack) DECL_OVERRIDE;
     void CallWithEvaluatedJavaScriptResult(const QString &code, VariantCallBack callBack) DECL_OVERRIDE;
+#ifdef PASSWORD_MANAGER
+    bool PreventAuthRegistration(){ return m_PreventAuthRegisteration;}
+#endif
     //[[/WEV]]
 
 public slots:
@@ -556,9 +564,6 @@ public slots:
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
     void AssignInspector();
-#ifdef USE_WEBCHANNEL
-    void SetUpWebChannel();
-#endif
 #if QT_VERSION >= 0x050700
     void OnIconChanged(const QIcon &icon);
 #else
@@ -586,6 +591,9 @@ private:
     static QMap<View*, QUrl> m_InspectorTable;
     QWebViewBase *m_Inspector;
     bool m_PreventScrollRestoration;
+#ifdef PASSWORD_MANAGER
+    bool m_PreventAuthRegisteration;
+#endif
     //[[/WEV]]
 
 protected:
@@ -658,6 +666,53 @@ protected:
                 }
             }
 #endif
+
+#ifdef PASSWORD_MANAGER
+            if(ke->modifiers() & Qt::ControlModifier &&
+               ke->key() == Qt::Key_Return){
+
+                QString data = Application::GetAuthData
+                    (m_View->page()->profile()->storageName() +
+                     QStringLiteral(":") + m_View->url().host());
+
+                if(!data.isEmpty()){
+                    data = data.replace(QStringLiteral("\""), QStringLiteral("\\\""));
+                    m_View->m_PreventAuthRegisteration = true;
+                    m_View->page()->runJavaScript
+                        (QStringLiteral("(function(){\n"
+                                      VV"    var submitted = false;\n"
+                                      VV"    var data = \"%1\".split(\"&\");\n"
+                                      VV"    var forms = document.querySelectorAll(\"form\");\n"
+                                      VV"    for(var i = 0; i < forms.length; i++){\n"
+                                      VV"        var form = forms[i];\n"
+                                      VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
+                                      VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+                                      VV"        if(!submit || !password) continue;\n"
+                                      VV"        for(var j = 0; j < data.length; j++){\n"
+                                      VV"            var pair = data[j].split(\"=\");\n"
+                                      VV"            var name = decodeURIComponent(pair[0]);\n"
+                                      VV"            var val  = decodeURIComponent(pair[1]);\n"
+                                      VV"            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
+                                      VV"            if(!field) continue;\n"
+                                      VV"            submitted = true;\n"
+                                      VV"            field.value = val;\n"
+                                      VV"        }\n"
+                                      VV"        if(!submitted) continut;\n"
+                                      VV"        if(submit.click){\n"
+                                      VV"            submit.click();\n"
+                                      VV"        } else if(typeof submit == \"function\"){\n"
+                                      VV"            submit();\n"
+                                      VV"        }\n"
+                                      VV"    }\n"
+                                      VV"})()").arg(data),
+                         [this](QVariant){
+                            m_View->m_PreventAuthRegisteration = false;
+                        });
+                    return true;
+                }
+            }
+#endif //ifdef PASSWORD_MANAGER
+
             if(Application::HasAnyModifier(ke) ||
                Application::IsFunctionKey(ke)){
                 return m_View->TriggerKeyEvent(ke);

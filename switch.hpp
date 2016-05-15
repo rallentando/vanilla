@@ -40,6 +40,8 @@
 
 //#define USE_WEBCHANNEL
 
+#define PASSWORD_MANAGER
+
 #define FAST_SAVER
 
 #endif //ifndef SWITCH_HPP

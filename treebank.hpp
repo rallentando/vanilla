@@ -98,7 +98,7 @@ private:
     // for rename.
 public:
     bool RenameNode(Node*);
-    void ReconfigureDirectory(ViewNode*, QString, QString);
+    static void ReconfigureDirectory(ViewNode*, QString, QString);
 private:
     static void ApplySpecificSettings(ViewNode *vn, ViewNode *dir = 0);
     static void ApplySpecificSettings(ViewNode*, NetworkAccessManager*, QStringList, QString, QString);

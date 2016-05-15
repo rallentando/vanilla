@@ -133,7 +133,7 @@ const QMap<QWebSettings::WebAttribute, QString> View::m_WebSwitches = QMap<QWebS
     << qMakePair(QWebSettings::DnsPrefetchEnabled,       QString::fromLatin1("[dD][nN][sS][pP]refetch"))
     << qMakePair(QWebSettings::FrameFlatteningEnabled,   QString::fromLatin1("[fF]rame[fF]latten"))
     << qMakePair(QWebSettings::JavascriptEnabled,        QString::fromLatin1("[jJ](?:ava)?[sS](?:cript)?"))
-    << qMakePair(QWebSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugin"))
+    << qMakePair(QWebSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugins?"))
     << qMakePair(QWebSettings::PrivateBrowsingEnabled,   QString::fromLatin1("(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"))
     << qMakePair(QWebSettings::SpatialNavigationEnabled, QString::fromLatin1("[sS]patial(?:[nN]avigation)?"))
     << qMakePair(QWebSettings::TiledBackingStoreEnabled, QString::fromLatin1("[tT]iled[bB]acking[sS]tore"))
@@ -152,7 +152,7 @@ const QMap<QWebEngineSettings::WebAttribute, QString> View::m_WebEngineSwitches 
   //<< qMakePair(QWebEngineSettings::FrameFlatteningEnabled,   QString::fromLatin1("[fF]rame[fF]latten"))
     << qMakePair(QWebEngineSettings::JavascriptEnabled,        QString::fromLatin1("[jJ](?:ava)?[sS](?:cript)?"))
 #if QT_VERSION >= 0x050600
-    << qMakePair(QWebEngineSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugin"))
+    << qMakePair(QWebEngineSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugins?"))
 #endif
   //<< qMakePair(QWebEngineSettings::PrivateBrowsingEnabled,   QString::fromLatin1("(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"))
     << qMakePair(QWebEngineSettings::SpatialNavigationEnabled, QString::fromLatin1("[sS]patial(?:[nN]avigation)?"))

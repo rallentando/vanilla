@@ -12,6 +12,9 @@
 #ifdef USE_WEBCHANNEL
 #  include <QWebChannel>
 #endif
+#ifdef PASSWORD_MANAGER
+# include <QWebEngineProfile>
+#endif
 //[[/WEV]]
 //[[!WEV]]
 #include <QWebHistoryBase>
@@ -169,6 +172,11 @@ WebPageBase::WebPageBase(NetworkAccessManager *nam, QObject *parent)
 }
 
 WebPageBase::~WebPageBase(){
+    //[[WEV]]
+#ifdef USE_WEBCHANNEL
+    if(webChannel()) delete webChannel();
+#endif
+    //[[/WEV]]
     setNetworkAccessManager(0);
 }
 
@@ -451,6 +459,36 @@ bool WebPageBase::certificateError(const QWebEngineCertificateError& error){
     }
     }
     return QWebPageBase::certificateError(error);
+}
+
+void WebPageBase::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,
+                                           int lineNumber, const QString &sourceID){
+#ifdef PASSWORD_MANAGER
+    static QString reg;
+    if(reg.isEmpty()) reg = QStringLiteral("submit%1,([^,]+)").arg(Application::EventKey());
+
+    if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base())){
+        if(level == QWebPageBase::InfoMessageLevel &&
+           !profile()->isOffTheRecord() &&
+           !w->PreventAuthRegistration() &&
+           Application::ExactMatch(reg, msg)){
+
+            QString host = url().host();
+            BoolCallBack callBack = [this, host, msg](bool ok){
+                if(ok){
+                    Application::RegisterAuthData
+                        (profile()->storageName() +
+                         QStringLiteral(":") + host,
+                         msg.split(QStringLiteral(","))[1]);
+                }
+            };
+            ModelessDialog::Question(tr("An authentication has been executed."),
+                                     tr("Save this password?"), callBack);
+            return;
+        }
+    }
+#endif
+    QWebPageBase::javaScriptConsoleMessage(level, msg, lineNumber, sourceID);
 }
 
 QNetworkAccessManager *WebPageBase::networkAccessManager() const{
@@ -833,9 +871,18 @@ void WebPageBase::HandleUnsupportedContent(QNetworkReply *reply){
 void WebPageBase::AddJsObject(){
     //[[WEV]]
 #ifdef USE_WEBCHANNEL
-    if(!webChannel())
-        setWebChannel(new QWebChannel(this));
 
+    QWebChannel *channel = webChannel();
+
+#  if QT_VERSION >= 0x050700
+    setWebChannel(new QWebChannel(this));
+    if(channel) delete channel;
+#  else
+    //if(QWebChannel *old = webChannel()) delete old;
+    if(!channel) setWebChannel(new QWebChannel(this));
+#  endif
+
+#  ifdef USE_WEBCHANNEL
     if(m_View && m_View->GetJsObject()){
         webChannel()->registerObject(QStringLiteral("_view"), m_View->GetJsObject());
         m_View->OnSetJsObject(m_View->GetJsObject());
@@ -844,6 +891,7 @@ void WebPageBase::AddJsObject(){
         webChannel()->registerObject(QStringLiteral("_vanilla"), m_View->GetTreeBank()->GetJsObject());
         m_View->OnSetJsObject(m_View->GetTreeBank()->GetJsObject());
     }
+#  endif
 #endif
     //[[/WEV]]
     //[[!WEV]]

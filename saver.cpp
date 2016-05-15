@@ -111,6 +111,16 @@ void AutoSaver::SaveAll(){
         return;
     }
 
+#ifdef PASSWORD_MANAGER
+    // save password settings.
+    TRY{
+        Application::SavePasswordSettings();
+    } CATCH{
+        emit Failed();
+        return;
+    }
+#endif
+
     // save all cookies.
     TRY{
         NetworkController::SaveAllCookies();

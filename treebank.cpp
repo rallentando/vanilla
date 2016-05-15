@@ -114,7 +114,7 @@
   "[dD][nN][sS][pP]refetch"
   "[fF]rame[fF]latten"
   "[jJ](?:ava)?[sS](?:cript)?"
-  "[pP]lugin"
+  "[pP]lugins?"
   "[pP]rivate"
   "[sS]patial(?:[nN]avigation)?"
   "[tT]iled[bB]acking[sS]tore"
@@ -667,15 +667,16 @@ void TreeBank::LiftMaxViewCountIfNeed(int now){
 void TreeBank::LoadTree(){
     Node::SetBooting(true);
 
-    QMap<ViewNode*, QString> m;
-    m[m_ViewRoot]  = Application::PrimaryTreeFileName();
-    m[m_TrashRoot] = Application::SecondaryTreeFileName();
+    QString datadir = Application::DataDirectory();
+
+    QMap<ViewNode*, QString> map;
+    map[m_ViewRoot]  = Application::PrimaryTreeFileName();
+    map[m_TrashRoot] = Application::SecondaryTreeFileName();
     foreach(ViewNode *root, QList<ViewNode*>() << m_ViewRoot << m_TrashRoot){
 
-        QString filename = m[root];
-        QString datadir = Application::DataDirectory();
-        QDomDocument doc;
+        QString filename = map[root];
         QFile file(datadir + filename);
+        QDomDocument doc;
         bool check = doc.setContent(&file);
         file.close();
 
@@ -828,17 +829,13 @@ void TreeBank::SaveTree(){
     if(QFile::exists(primaryb))   QFile::remove(primaryb);
     if(QFile::exists(secondaryb)) QFile::remove(secondaryb);
 
-    QMap<ViewNode*, QStringList> map;
-    map[m_ViewRoot]  = QStringList() << QStringLiteral("viewnode") << Application::PrimaryTreeFileName(true);
-    map[m_TrashRoot] = QStringList() << QStringLiteral("trash")    << Application::SecondaryTreeFileName(true);
+    QMap<ViewNode*, QString> map;
+    map[m_ViewRoot]  = Application::PrimaryTreeFileName(true);
+    map[m_TrashRoot] = Application::SecondaryTreeFileName(true);
+    foreach(ViewNode *root, QList<ViewNode*>() << m_ViewRoot << m_TrashRoot){
 
-    foreach(ViewNode *vn, QList<ViewNode*>()
-            << m_ViewRoot << m_TrashRoot){
-        QString name = map[vn][0];
-        QString filename = map[vn][1];
-
-        QString path = Application::DataDirectory() + filename;
-        QFile file(path);
+        QString filename = map[root];
+        QFile file(datadir + filename);
 
 #ifdef FAST_SAVER
         if(file.open(QIODevice::WriteOnly)){
@@ -846,7 +843,7 @@ void TreeBank::SaveTree(){
             out.setCodec(QTextCodec::codecForName("UTF-8"));
             out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
             out << "<viewnode root=\"true\">\n";
-            foreach(Node *child, vn->GetChildren()){
+            foreach(Node *child, root->GetChildren()){
                 CollectViewNodeFlat(child->ToViewNode(), out);
             }
             out << "</viewnode>\n";
@@ -858,7 +855,7 @@ void TreeBank::SaveTree(){
         QDomElement root = doc.createElement(QStringLiteral("viewnode"));
         root.setAttribute(QStringLiteral("root"), QStringLiteral("true"));
         doc.appendChild(root);
-        foreach(Node *child, vn->GetChildren()){
+        foreach(Node *child, root->GetChildren()){
             CollectViewNode(child->ToViewNode(), root);
         }
         if(file.open(QIODevice::WriteOnly)){

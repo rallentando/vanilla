@@ -108,6 +108,9 @@ WebViewBase::WebViewBase(TreeBank *parent, QString id, QStringList set)
     //[[WEV]]
     m_Inspector = 0;
     m_PreventScrollRestoration = false;
+#ifdef PASSWORD_MANAGER
+    m_PreventAuthRegisteration = false;
+#endif
 #if QT_VERSION >= 0x050700
     connect(this, SIGNAL(iconChanged(const QIcon&)),
             this, SLOT(OnIconChanged(const QIcon&)));
@@ -260,6 +263,7 @@ void WebViewBase::OnLoadStarted(){
     //[[WEV]]
     m_PreventScrollRestoration = false;
     AssignInspector();
+
 #if QT_VERSION < 0x050700
     if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
@@ -336,10 +340,38 @@ void WebViewBase::OnLoadFinished(bool ok){
     //[[/!WEV]]
     //[[WEV]]
     AssignInspector();
-#ifdef USE_WEBCHANNEL
-    SetUpWebChannel();
-#endif
+
+#ifdef PASSWORD_MANAGER
+    QString data = Application::GetAuthDataWithNoDialog
+        (page()->profile()->storageName() +
+         QStringLiteral(":") + url().host());
+
+    if(!data.isEmpty()){
+        data = data.replace(QStringLiteral("\""), QStringLiteral("\\\""));
+        page()->runJavaScript
+            (QStringLiteral("(function(){\n"
+                          VV"    var data = \"%1\".split(\"&\");\n"
+                          VV"    var forms = document.querySelectorAll(\"form\");\n"
+                          VV"    for(var i = 0; i < forms.length; i++){\n"
+                          VV"        var form = forms[i];\n"
+                          VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
+                          VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+                          VV"        if(!submit || !password) continue;\n"
+                          VV"        for(var j = 0; j < data.length; j++){\n"
+                          VV"            var pair = data[j].split(\"=\");\n"
+                          VV"            var name = decodeURIComponent(pair[0]);\n"
+                          VV"            var val  = decodeURIComponent(pair[1]);\n"
+                          VV"            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
+                          VV"            if(!field) continue;\n"
+                          VV"            field.style.boxShadow = \"inset 0 0 2px 2px #eca\";\n"
+                          VV"            field.style.border = \"1px\";\n"
+                          VV"        }\n"
+                          VV"    }\n"
+                          VV"})()").arg(data));
+    }
+#endif //ifdef PASSWORD_MANAGER
     //[[/WEV]]
+
     if(visible() && m_TreeBank &&
        m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
         UpdateThumbnail();
@@ -634,26 +666,6 @@ void WebViewBase::AssignInspector(){
             }
         });
 }
-
-#ifdef USE_WEBCHANNEL
-void WebViewBase::SetUpWebChannel(){
-    QString source;
-    if(source.isEmpty()){
-        QFile file(":/qtwebchannel/qwebchannel.js");
-        if(file.open(QFile::ReadOnly)){
-            source = QString::fromLatin1(file.readAll());
-        }
-        file.close();
-    }
-    page()->runJavaScript(source, [this](QVariant){
-            page()->runJavaScript
-                (QStringLiteral("new QWebChannel(qt.webChannelTransport, function(channel){\n"
-                              VV"    window._vanilla = channel.objects._vanilla;\n"
-                              VV"    window._view = channel.objects._view;\n"
-                              VV"});"));
-        });
-}
-#endif
 
 #if QT_VERSION >= 0x050700
 void WebViewBase::OnIconChanged(const QIcon &icon){

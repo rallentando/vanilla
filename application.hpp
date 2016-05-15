@@ -90,6 +90,14 @@ public:
     static void LoadIconDatabase();
     static void RegisterIcon(QString, QIcon);
     static QIcon GetIcon(QString);
+#ifdef PASSWORD_MANAGER
+    static void SavePasswordSettings();
+    static void LoadPasswordSettings();
+    static bool AskMasterPassword();
+    static void RegisterAuthData(QString, QString);
+    static QString GetAuthData(QString);
+    static QString GetAuthDataWithNoDialog(QString);
+#endif
     static void Reconfigure();
     static bool EnableGoogleSuggest();
     static bool EnableFramelessWindow();
@@ -102,6 +110,10 @@ private:
     static QSettings::Format XMLFormat;
     static Settings m_GlobalSettings;
     static Settings m_IconTable;
+#ifdef PASSWORD_MANAGER
+    static Settings m_PasswordTable;
+    static QList<char> m_Key;
+#endif
     static bool m_EnableGoogleSuggest;
     static bool m_EnableFramelessWindow;
     static bool m_EnableTransparentBar;
@@ -150,6 +162,14 @@ public:
         AskForEachDownload
     };
 
+#ifdef PASSWORD_MANAGER
+    enum MasterPasswordPolicy {
+        Undefined__,
+        NeverAsk,
+        AskForEachLogin,
+    };
+#endif
+
     static bool SaveSessionCookie();
     static QString GetAcceptLanguage();
     static void SetAcceptLanguage(QString);
@@ -163,6 +183,10 @@ public:
     static void AskSslErrorPolicyIfNeed();
     static DownloadPolicy GetDownloadPolicy();
     static void AskDownloadPolicyIfNeed();
+#ifdef PASSWORD_MANAGER
+    static MasterPasswordPolicy GetMasterPasswordPolicy();
+    static void AskMasterPasswordPolicyIfNeed();
+#endif
     static QString LocalServerName();
     static QString SharedMemoryKey();
     static int EventKey();
@@ -173,6 +197,9 @@ private:
     static QStringList m_BlockedHosts;
     static SslErrorPolicy m_SslErrorPolicy;
     static DownloadPolicy m_DownloadPolicy;
+#ifdef PASSWORD_MANAGER
+    static MasterPasswordPolicy m_MasterPasswordPolicy;
+#endif
 
 
     // window.
@@ -228,6 +255,9 @@ public:
     static QString CookieFileName(bool tmp = false);
     static QString GlobalSettingsFileName(bool tmp = false);
     static QString IconDatabaseFileName(bool tmp = false);
+#ifdef PASSWORD_MANAGER
+    static QString PasswordSettingsFileName(bool tmp = false);
+#endif
 
 protected:
     void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
@@ -595,9 +625,48 @@ public:
         else   str += pre + QStringLiteral("WheelDown");
     }
 
-    static inline bool ExactMatch(QString &reg, QString &str){
+    static inline bool ExactMatch(const QString &reg, const QString &str){
         return QRegularExpression(QStringLiteral("\\A%1\\Z").arg(reg)).match(str).hasMatch();
     }
+
+#ifdef PASSWORD_MANAGER
+    static QByteArray Encrypt(QByteArray text){
+        if(m_Key.isEmpty()) return QByteArray();
+
+        QByteArray ba = QCryptographicHash::hash(text, QCryptographicHash::Sha1) + text;
+
+        int pos = 0;
+        int cnt = ba.count();
+        char lastChar = 0;
+
+        while (pos < cnt) {
+            char currentChar = ba.at(pos) ^ m_Key.at(pos % 8) ^ lastChar;
+            ba[pos] = currentChar;
+            lastChar = currentChar;
+            ++pos;
+        }
+        return ba;
+    }
+
+    static QByteArray Decrypt(QByteArray cypher){
+        if(m_Key.isEmpty()) return QByteArray();
+
+        QByteArray ba = cypher;
+
+        int pos = 0;
+        int cnt = ba.count();
+        char lastChar = 0;
+
+        while (pos < cnt) {
+            char currentChar = ba[pos];
+            ba[pos] = ba.at(pos) ^ lastChar ^ m_Key.at(pos % 8);
+            lastChar = currentChar;
+            ++pos;
+        }
+        ba = ba.mid(20);
+        return ba;
+    }
+#endif //ifdef PASSWORD_MANAGER
 };
 
 #endif //ifndef APPLICATION_HPP

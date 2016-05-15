@@ -111,9 +111,7 @@ public:
         return ok;
     }
     void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,
-                                  int lineNumber, const QString &sourceID) DECL_OVERRIDE {
-        QWebPageBase::javaScriptConsoleMessage(level, msg, lineNumber, sourceID);
-    }
+                                  int lineNumber, const QString &sourceID) DECL_OVERRIDE;
 
     QNetworkAccessManager *networkAccessManager() const;
     void setNetworkAccessManager(QNetworkAccessManager *nam);

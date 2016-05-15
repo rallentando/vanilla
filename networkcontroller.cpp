@@ -24,6 +24,10 @@
 #include <QMimeDatabase>
 #include <QWebEngineProfile>
 #include <QWebEngineDownloadItem>
+#if defined(USE_WEBCHANNEL) || defined(PASSWORD_MANAGER)
+#  include <QWebEngineScript>
+#  include <QWebEngineScriptCollection>
+#endif
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
@@ -72,6 +76,68 @@ NetworkAccessManager::NetworkAccessManager(QString id)
 
 #if QT_VERSION >= 0x050600
     m_Profile->setHttpAcceptLanguage(Application::GetAcceptLanguage());
+#endif
+
+#if defined(USE_WEBCHANNEL) || defined(PASSWORD_MANAGER)
+    static QString source;
+    if(source.isEmpty()){
+        QString inner;
+
+#  ifdef USE_WEBCHANNEL
+        QFile file(":/qtwebchannel/qwebchannel.js");
+        if(file.open(QFile::ReadOnly)){
+            inner = QString::fromLatin1(file.readAll());
+        }
+        file.close();
+        inner += QStringLiteral
+            ("\n"
+           VV"if(typeof qt === \"undefined\" && typeof top.qt !== \"undefined\"){\n"
+           VV"    window.qt = top.qt;\n"
+           VV"}\n"
+           VV"new QWebChannel(qt.webChannelTransport, function(channel){\n"
+           VV"    window._vanilla = channel.objects._vanilla;\n"
+           VV"    window._view = channel.objects._view;\n"
+           VV"});");
+#  endif
+#  ifdef PASSWORD_MANAGER
+        inner += QStringLiteral
+            ("\n"
+           VV"var forms = document.querySelectorAll(\"form\");\n"
+           VV"for(var i = 0; i < forms.length; i++){\n"
+           VV"    var form = forms[i];\n"
+           VV"    var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
+           VV"    var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+           VV"    if(!submit || !password) continue;\n"
+           VV"    form.addEventListener(\"submit\", function(e){\n"
+           VV"        var data = \"\";\n"
+           VV"        var inputs = e.target.querySelectorAll(\"input,textarea\");\n"
+           VV"        for(var j = 0; j < inputs.length; j++){\n"
+           VV"            var field = inputs[j];\n"
+           VV"            var type = (field.type || \"hidden\").toLowerCase();\n"
+           VV"            var name = field.name;\n"
+           VV"            var val = field.value;\n"
+           VV"            if(!name || type == \"hidden\" || type == \"submit\"){\n"
+           VV"                continue;\n"
+           VV"            }\n"
+           VV"            if(data) data = data + \"&\";\n"
+           VV"            data = data + encodeURIComponent(name) + \"=\" + encodeURIComponent(val);\n"
+           VV"        }\n"
+           VV"        console.info(\"submit%1,\" + data);\n"
+           VV"    }, false);\n"
+           VV"}\n").arg(Application::EventKey());
+#  endif
+        source = QStringLiteral
+            ("(function(){\n"
+           VV"    %1\n"
+           VV"})()").arg(inner);
+    }
+    QWebEngineScript script;
+    script.setName(QStringLiteral("vscript"));
+    script.setInjectionPoint(QWebEngineScript::DocumentReady);
+    script.setWorldId(QWebEngineScript::MainWorld);
+    script.setRunsOnSubFrames(true);
+    script.setSourceCode(source);
+    m_Profile->scripts()->insert(script);
 #endif
 
     connect(m_Profile, &QWebEngineProfile::downloadRequested,

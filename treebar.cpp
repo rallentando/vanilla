@@ -15,6 +15,7 @@
 #include <QWidgetAction>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QCheckBox>
 
 /*
   collecting model.
@@ -3610,11 +3611,56 @@ QMenu *NodeItem::NodeMenu(){
 
     menu->addSeparator();
 
-    if(GetNode()->IsDirectory()){
+    if(vn->IsDirectory()){
         QAction *rename = new QAction(menu);
         rename->setText(QObject::tr("RenameViewNode"));
         rename->connect(rename, &QAction::triggered, this, &NodeItem::RenameViewNode);
         menu->addAction(rename);
+
+        QMenu *directoryMenu = new QMenu(tr("DirectorySettings"), menu);
+
+        QWidgetAction *settings = new QWidgetAction(directoryMenu);
+        QWidget *widget = new QWidget(directoryMenu);
+        QGridLayout *layout = new QGridLayout();
+        static const QList<QStringList> list =
+            QList<QStringList>()
+            << (QStringList() << tr("Use name as profile ID.") << QStringLiteral(";[iI][dD]") << QStringLiteral(";ID"))
+            << (QStringList() << tr("Private mode.") << QStringLiteral(";(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)") << QStringLiteral(";Private"))
+            << (QStringList() << tr("Disable auto load.") << QStringLiteral(";!?[nN](?:o)?[lL](?:oad)?") << QStringLiteral(";NoLoad"))
+            << (QStringList() << tr("Enable drag gestuer.") << QStringLiteral(";!?[dD](?:rag)?[gG](?:esture)?") << QStringLiteral(";DragGesture"))
+            << (QStringList() << tr("Auto load images.") << QStringLiteral(";!?[iI]mage") << QStringLiteral(";Image"))
+            << (QStringList() << tr("Enable javascript.") << QStringLiteral(";!?[jJ](?:ava)?[sS](?:cript)?") << QStringLiteral(";Javascript"))
+            << (QStringList() << tr("Enable plugins.") << QStringLiteral(";!?[pP]lugins?") << QStringLiteral(";Plugins"));
+
+        for(int i = 0; i < list.length(); i++){
+            QCheckBox *checkBox = new QCheckBox();
+            checkBox->setChecked(vn->GetTitle().contains(QRegularExpression(list[i][1])));
+            QLabel *label = new QLabel(list[i][0]);
+            connect(checkBox, &QCheckBox::stateChanged,
+                    [vn, i](int state){
+                        QString before = vn->GetTitle();
+                        QString after = before;
+                        switch(state){
+                        case Qt::Unchecked:
+                            after.replace(QRegularExpression(list[i][1]), QString());
+                            break;
+                        case Qt::Checked:
+                            after = before + list[i][2];
+                            break;
+                        }
+                        vn->SetTitle(after);
+                        TreeBank::ReconfigureDirectory(vn, before, after);
+                    });
+            layout->addWidget(checkBox, i, 0);
+            layout->addWidget(label, i, 1);
+        }
+
+        widget->setLayout(layout);
+        settings->setDefaultWidget(widget);
+        directoryMenu->addAction(settings);
+
+        menu->addMenu(directoryMenu);
+
     } else {
         QAction *reload = new QAction(menu);
         reload->setText(QObject::tr("ReloadViewNode"));

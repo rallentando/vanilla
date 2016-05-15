@@ -64,6 +64,10 @@ NetworkController* Application::m_NetworkController = 0;
 AutoSaver*  Application::m_AutoSaver         = 0;
 Settings    Application::m_GlobalSettings    = Settings();
 Settings    Application::m_IconTable         = Settings();
+#ifdef PASSWORD_MANAGER
+Settings    Application::m_PasswordTable     = Settings();
+QList<char> Application::m_Key = QList<char>();
+#endif
 
 bool        Application::m_EnableGoogleSuggest = false;
 bool        Application::m_EnableFramelessWindow = false;
@@ -86,6 +90,9 @@ QStringList Application::m_AllowedHosts      = QStringList();
 QStringList Application::m_BlockedHosts      = QStringList();
 Application::SslErrorPolicy Application::m_SslErrorPolicy = Application::Undefined;
 Application::DownloadPolicy Application::m_DownloadPolicy = Application::Undefined_;
+#ifdef PASSWORD_MANAGER
+Application::MasterPasswordPolicy Application::m_MasterPasswordPolicy = Application::Undefined__;
+#endif
 
 WinMap      Application::m_MainWindows = WinMap();
 MainWindow *Application::m_CurrentWindow = 0;
@@ -244,6 +251,9 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     LoadSettingsFile();
     LoadGlobalSettings();
     LoadIconDatabase();
+#ifdef PASSWORD_MANAGER
+    LoadPasswordSettings();
+#endif
 
     m_NetworkController = new NetworkController();
     m_AutoSaver = new AutoSaver();
@@ -1410,6 +1420,13 @@ void Application::SaveGlobalSettings(){
     if(downPolicy == DownloadFolder)     s.setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("DownloadFolder"));
     if(downPolicy == AskForEachDownload) s.setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("AskForEachDownload"));
 
+#ifdef PASSWORD_MANAGER
+    MasterPasswordPolicy masterPasswordPolicy = m_MasterPasswordPolicy;
+    if(masterPasswordPolicy == Undefined__)     s.setValue(QStringLiteral("application/@MasterPasswordPolicy"), QStringLiteral("Undefined"));
+    if(masterPasswordPolicy == NeverAsk)        s.setValue(QStringLiteral("application/@MasterPasswordPolicy"), QStringLiteral("NeverAsk"));
+    if(masterPasswordPolicy == AskForEachLogin) s.setValue(QStringLiteral("application/@MasterPasswordPolicy"), QStringLiteral("AskForEachLogin"));
+#endif
+
     s.setValue(QStringLiteral("application/UserAgent_IE"),        DEFAULT_USER_AGENT_IE        == m_UserAgent_IE        ? QString() : m_UserAgent_IE        );
     s.setValue(QStringLiteral("application/UserAgent_Edge"),      DEFAULT_USER_AGENT_EDGE      == m_UserAgent_Edge      ? QString() : m_UserAgent_Edge      );
     s.setValue(QStringLiteral("application/UserAgent_Firefox"),   DEFAULT_USER_AGENT_FIREFOX   == m_UserAgent_FF        ? QString() : m_UserAgent_FF        );
@@ -1471,6 +1488,13 @@ void Application::LoadGlobalSettings(){
     if(downPolicy == QStringLiteral("FixedLocale"))        m_DownloadPolicy = FixedLocale;
     if(downPolicy == QStringLiteral("DownloadFolder"))     m_DownloadPolicy = DownloadFolder;
     if(downPolicy == QStringLiteral("AskForEachDownload")) m_DownloadPolicy = AskForEachDownload;
+
+#ifdef PASSWORD_MANAGER
+    QString masterPasswordPolicy = s.value(QStringLiteral("application/@MasterPasswordPolicy"), QStringLiteral("Undefined")).value<QString>();
+    if(masterPasswordPolicy == QStringLiteral("Undefined"))       m_MasterPasswordPolicy = Undefined__;
+    if(masterPasswordPolicy == QStringLiteral("NeverAsk"))        m_MasterPasswordPolicy = NeverAsk;
+    if(masterPasswordPolicy == QStringLiteral("AskForEachLogin")) m_MasterPasswordPolicy = AskForEachLogin;
+#endif
 
     m_UserAgent_IE        = s.value(QStringLiteral("application/UserAgent_IE"),        DEFAULT_USER_AGENT_IE        ).value<QString>();
     m_UserAgent_Edge      = s.value(QStringLiteral("application/UserAgent_Edge"),      DEFAULT_USER_AGENT_EDGE      ).value<QString>();
@@ -1632,9 +1656,136 @@ QIcon Application::GetIcon(QString host){
     return QIcon();
 }
 
+#ifdef PASSWORD_MANAGER
+void Application::SavePasswordSettings(){
+    QString datadir = Application::DataDirectory();
+
+    QString passdata  = datadir + Application::PasswordSettingsFileName(false);
+    QString passdatab = datadir + Application::PasswordSettingsFileName(true);
+
+    if(QFile::exists(passdatab)) QFile::remove(passdatab);
+
+    QFile file(passdatab);
+    if(file.open(QIODevice::WriteOnly)){
+        WriteXMLFile(file, m_PasswordTable);
+    }
+    file.close();
+    if(QFile::exists(passdata)) QFile::remove(passdata);
+    QFile::rename(passdatab, passdata);
+}
+
+void Application::LoadPasswordSettings(){
+    QString filename = PasswordSettingsFileName();;
+    QString datadir = DataDirectory();
+    QFile file(datadir + filename);
+    bool check = file.open(QIODevice::ReadOnly) &&
+        ReadXMLFile(file, m_PasswordTable);
+    file.close();
+
+    if(!check){
+
+        QDir dir = QDir(datadir);
+        QStringList list =
+            dir.entryList(BackUpFileFilters(),
+                          QDir::NoFilter, QDir::Name | QDir::Reversed);
+        if(list.isEmpty()) return;
+
+        foreach(QString backup, list){
+
+            if(!backup.contains(filename)) continue;
+
+            QFile backupfile(datadir + backup);
+            check = backupfile.open(QIODevice::ReadOnly) &&
+                ReadXMLFile(backupfile, m_PasswordTable);
+            backupfile.close();
+
+            if(!check) continue;
+
+            ModelessDialog::Information
+                (tr("Restored from a back up file")+ QStringLiteral(" [") + backup + QStringLiteral("]."),
+                 tr("Because of a failure to read the latest file, it was restored from a backup file."));
+            break;
+        }
+    }
+}
+
+bool Application::AskMasterPassword(){
+    if(m_MasterPasswordPolicy == Undefined__)
+        AskMasterPasswordPolicyIfNeed();
+    if(m_MasterPasswordPolicy == Undefined__)
+        return false;
+    bool ok;
+    QString pass;
+    if(m_MasterPasswordPolicy == NeverAsk){
+        ok = true;
+        pass = QString();
+    } if(m_MasterPasswordPolicy == AskForEachLogin){
+        pass = ModalDialog::GetPass
+            (tr("Input master password."),
+             tr("Input master password."),
+             QString(), &ok);
+    }
+    // TODO: check password mechanism.
+    if(!ok) return false;
+    QByteArray hash = QCryptographicHash::hash(pass.toUtf8(), QCryptographicHash::Sha1).toHex();
+    for(int i = 0; i < 8; i++) m_Key << 0;
+    for(int i = 0; i < hash.length(); i++) m_Key[i%8] ^= hash.at(i);
+    return true;
+}
+
+void Application::RegisterAuthData(QString key, QString data){
+    static const QString amp = QStringLiteral("&");
+    static const QString eql = QStringLiteral("=");
+
+    bool result = true;
+    if(m_Key.isEmpty()) result = AskMasterPassword();
+    if(result){
+        QString saveKey = QString::fromLatin1(Encrypt(key.toLatin1()).toHex());
+        if(m_PasswordTable.keys().contains(saveKey)){
+            // merge form data.
+            QMap<QString, QString> map;
+            QByteArray origin = m_PasswordTable[saveKey].toByteArray();
+            QString originalData = QString::fromLatin1(Decrypt(origin));
+            foreach(QString field, originalData.split(amp) + data.split(amp)){
+                if(field.isEmpty()) continue;
+                QStringList split = field.split(eql);
+                map[split[0]] = split[1];
+            }
+            data.clear();
+            foreach(QString k, map.keys()){
+                if(!data.isEmpty()) data += amp;
+                data += (k + eql + map[k]);
+            }
+        }
+        QByteArray saveData = Encrypt(data.toLatin1());
+        m_PasswordTable[saveKey] = saveData;
+    }
+}
+
+QString Application::GetAuthData(QString key){
+    bool result = true;
+    if(m_Key.isEmpty()) result = AskMasterPassword();
+    if(result){
+        QString saveKey = QString::fromLatin1(Encrypt(key.toLatin1()).toHex());
+        QByteArray data = m_PasswordTable[saveKey].toByteArray();
+        return QString::fromLatin1(Decrypt(data));
+    }
+    return QString();
+}
+
+QString Application::GetAuthDataWithNoDialog(QString key){
+    if(m_MasterPasswordPolicy == NeverAsk || !m_Key.isEmpty())
+        return GetAuthData(key);
+    return QString();
+}
+#endif //ifdef PASSWORD_MANAGER
+
 void Application::Reconfigure(){
     LoadGlobalSettings();
     LoadIconDatabase();
+#ifdef PASSWORD_MANAGER
+    LoadPasswordSettings();
+#endif
     TreeBar::LoadSettings();
     ToolBar::LoadSettings();
     // 'TreeBank::LoadSettings' calls 'View::LoadSettings' and 'Gadgets::LoadSettings'.
@@ -1968,6 +2119,12 @@ QString Application::IconDatabaseFileName(bool tmp){
     return (tmp ? BackUpPreposition() : QString()) + QStringLiteral("icondata.xml");
 }
 
+#ifdef PASSWORD_MANAGER
+QString Application::PasswordSettingsFileName(bool tmp){
+    return (tmp ? BackUpPreposition() : QString()) + QStringLiteral("password.xml");
+}
+#endif
+
 void Application::AppendChosenFile(QString file){
     m_ChosenFiles << file;
 }
@@ -2085,6 +2242,34 @@ void Application::AskDownloadPolicyIfNeed(){
         }
     }
 }
+
+#ifdef PASSWORD_MANAGER
+Application::MasterPasswordPolicy Application::GetMasterPasswordPolicy(){
+    return m_MasterPasswordPolicy;
+}
+
+void Application::AskMasterPasswordPolicyIfNeed(){
+    if(m_MasterPasswordPolicy == Undefined_){
+        QStringList policies;
+        policies << tr("NeverAsk")
+                 << tr("AskForEachLogin");
+        bool ok;
+
+        QString policy = ModalDialog::GetItem
+            (tr("Master password policy"),
+             tr("Select master password policy."),
+             policies, false, &ok);
+
+        if(!ok) return;
+
+        if(policy == tr("NeverAsk")){
+            m_MasterPasswordPolicy = NeverAsk;
+        } else if(policy == tr("AskForEachLogin")){
+            m_MasterPasswordPolicy = AskForEachLogin;
+        }
+    }
+}
+#endif
 
 QString Application::LocalServerName(){
     return VANILLA_LOCAL_SERVER_NAME_PREFIX +
@@ -2695,6 +2880,9 @@ void Application::CreateBackUpFiles(){
     QStringList backupfiles =
         QStringList() << GlobalSettingsFileName()
                       << IconDatabaseFileName()
+#ifdef PASSWORD_MANAGER
+                      << PasswordSettingsFileName()
+#endif
                       << PrimaryTreeFileName()
                       << SecondaryTreeFileName()
                       << CookieFileName();
