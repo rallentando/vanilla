@@ -1,16 +1,8 @@
 lessThan(QT_MAJOR_VERSION, 5){
-    error(please use Qt 5.5 or newer.)
+    error(please use Qt 5.6 or newer.)
 }
-equals(QT_MAJOR_VERSION, 5) : lessThan(QT_MINOR_VERSION, 5){
-    error(please use Qt 5.5 or newer.)
-}
-
-result = $$system("gosh $$PWD/scripts/GenerateWebView.scm")
-
-equals(result, "success"){
-    message("Source Generate Finished.")
-} else {
-    error("Source Generate Failed.")
+equals(QT_MAJOR_VERSION, 5) : lessThan(QT_MINOR_VERSION, 6){
+    error(please use Qt 5.6 or newer.)
 }
 
 INCLUDEPATH += . view gen gadgets
@@ -21,10 +13,6 @@ QT += \
     multimedia multimediawidgets \
     webengine webenginewidgets \
     quick quickwidgets
-
-lessThan(QT_MINOR_VERSION, 6){
-    QT += webkit webkitwidgets
-}
 
 win32: QT += winextras axcontainer
 
@@ -64,13 +52,9 @@ HEADERS += \
     view/view.hpp \
     view/page.hpp \
     view/localview.hpp \
-    gen/webpage.hpp \
-    gen/webview.hpp \
-    gen/graphicswebview.hpp \
-    gen/quickwebview.hpp \
-    gen/webenginepage.hpp \
-    gen/webengineview.hpp \
-    gen/quickwebengineview.hpp \
+    view/webenginepage.hpp \
+    view/webengineview.hpp \
+    view/quickwebengineview.hpp \
     gadgets/graphicstableview.hpp \
     gadgets/gadgets.hpp \
     gadgets/gadgetsstyle.hpp \
@@ -99,13 +83,9 @@ SOURCES += \
     view/view.cpp \
     view/page.cpp \
     view/localview.cpp \
-    gen/webpage.cpp \
-    gen/webview.cpp \
-    gen/graphicswebview.cpp \
-    gen/quickwebview.cpp \
-    gen/webenginepage.cpp \
-    gen/webengineview.cpp \
-    gen/quickwebengineview.cpp \
+    view/webenginepage.cpp \
+    view/webengineview.cpp \
+    view/quickwebengineview.cpp \
     gadgets/graphicstableview.cpp \
     gadgets/gadgets.cpp \
     gadgets/gadgetsstyle.cpp \
@@ -121,15 +101,15 @@ TRANSLATIONS += \
     translations/vanilla_ja.ts
 
 OTHER_FILES += \
-    gen/quickwebview.qml \
-    gen/quickwebengineview.qml
+    view/quickwebengineview5.6.qml \
+    view/quickwebengineview5.7.qml
 
 lupdate_only {
 
     ## lupdate cannot capture 'tr()' for translations.
     SOURCES = \
-        gen/quickwebview.qml \
-        gen/quickwebengineview.qml \
+        view/quickwebengineview5.6.qml \
+        view/quickwebengineview5.7.qml \
         application.hpp \
         actionmapper.hpp \
         mainwindow.hpp \
@@ -153,13 +133,9 @@ lupdate_only {
         view/view.hpp \
         view/page.hpp \
         view/localview.hpp \
-        gen/webpage.hpp \
-        gen/webview.hpp \
-        gen/graphicswebview.hpp \
-        gen/quickwebview.hpp \
-        gen/webenginepage.hpp \
-        gen/webengineview.hpp \
-        gen/quickwebengineview.hpp \
+        view/webenginepage.hpp \
+        view/webengineview.hpp \
+        view/quickwebengineview.hpp \
         gadgets/graphicstableview.hpp \
         gadgets/gadgets.hpp \
         gadgets/gadgetsstyle.hpp \
@@ -184,13 +160,9 @@ lupdate_only {
         view/view.cpp \
         view/page.cpp \
         view/localview.cpp \
-        gen/webpage.cpp \
-        gen/webview.cpp \
-        gen/graphicswebview.cpp \
-        gen/quickwebview.cpp \
-        gen/webenginepage.cpp \
-        gen/webengineview.cpp \
-        gen/quickwebengineview.cpp \
+        view/webenginepage.cpp \
+        view/webengineview.cpp \
+        view/quickwebengineview.cpp \
         gadgets/graphicstableview.cpp \
         gadgets/gadgets.cpp \
         gadgets/gadgetsstyle.cpp \

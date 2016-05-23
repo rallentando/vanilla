@@ -1,30 +1,17 @@
-#ifndef WEBPAGEBASE_HPP
-#define WEBPAGEBASE_HPP
+#ifndef WEBENGINEPAGE_HPP
+#define WEBENGINEPAGE_HPP
 
 #include "switch.hpp"
 
-//[[!WEV]]
-#ifdef QTWEBKIT
-//[[/!WEV]]
-
-#include <QWebPageBase>
-#include <QWebSettingsBase>
-
-//[[!WEV]]
-#include <QWebFrameBase>
-//[[/!WEV]]
+#include <QWebEnginePage>
+#include <QWebEngineSettings>
+#include <QWebEngineFullScreenRequest>
 
 #include <memory>
 
 #include "page.hpp"
 #include "application.hpp"
 #include "dialog.hpp"
-
-//[[WEV]]
-#if QT_VERSION >= 0x050600
-#  include <QWebEngineFullScreenRequest>
-#endif
-//[[/WEV]]
 
 class QMenu;
 class QObject;
@@ -41,70 +28,34 @@ class WebElement;
 typedef std::shared_ptr<WebElement> SharedWebElement;
 typedef QList<std::shared_ptr<WebElement>> SharedWebElementList;
 
-class WebPageBase : public QWebPageBase{
+class WebEnginePage : public QWebEnginePage{
     Q_OBJECT
 
 public:
-    WebPageBase(NetworkAccessManager *nam, QObject *parent = 0);
-    ~WebPageBase();
+    WebEnginePage(NetworkAccessManager *nam, QObject *parent = 0);
+    ~WebEnginePage();
     View* GetView();
-    WebPageBase* createWindow(WebWindowType type) DECL_OVERRIDE;
+    WebEnginePage* createWindow(WebWindowType type) DECL_OVERRIDE;
     void triggerAction(WebAction action, bool checked = false) DECL_OVERRIDE;
 
-    //[[!WEV]]
-    bool acceptNavigationRequest(QWebFrameBase *frame,
-                                 const QNetworkRequest &request,
-                                 NavigationType type) DECL_OVERRIDE;
-
-    QObject* createPlugin(const QString &id, const QUrl &url,
-                          const QStringList &names,
-                          const QStringList &values) DECL_OVERRIDE;
-
-    QString userAgentForUrl(const QUrl &url) const DECL_OVERRIDE;
-    QString chooseFile(QWebFrameBase *parentframe, const QString &suggested) DECL_OVERRIDE;
-    bool extension(Extension extension, const ExtensionOption *option = 0, ExtensionReturn *output = 0) DECL_OVERRIDE;
-    bool supportsExtension(Extension extension) const DECL_OVERRIDE;
-
-    void javaScriptAlert(QWebFrameBase *frame, const QString &msg) DECL_OVERRIDE {
-        //QWebPageBase::javaScriptAlert(frame, msg);
-        Q_UNUSED(frame);
-        ModalDialog::Information(QStringLiteral("Javascript Alert"), msg);
-    }
-    bool javaScriptConfirm(QWebFrameBase *frame, const QString & msg) DECL_OVERRIDE {
-        //return QWebPageBase::javaScriptConfirm(frame, msg);
-        Q_UNUSED(frame);
-        return ModalDialog::Question(QStringLiteral("Javascript Confirm"), msg);
-    }
-    bool javaScriptPrompt(QWebFrame *frame, const QString &msg, const QString &defaultValue, QString *result) DECL_OVERRIDE {
-        //return QWebPageBase::javaScriptPrompt(frame, msg, defaultValue, result);
-        Q_UNUSED(frame);
-        bool ok = true;
-        if(result) *result = ModalDialog::GetText(QStringLiteral("Javascript Prompt"), msg, defaultValue, &ok);
-        return ok;
-    }
-    void javaScriptConsoleMessage(const QString &msg, int lineNumber, const QString &sourceID) DECL_OVERRIDE {
-        QWebPageBase::javaScriptConsoleMessage(msg, lineNumber, sourceID);
-    }
-    //[[/!WEV]]
-    //[[WEV]]
     bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) DECL_OVERRIDE;
     QStringList chooseFiles(FileSelectionMode mode, const QStringList &oldFiles,
                             const QStringList &acceptedMimeTypes) DECL_OVERRIDE;
     bool certificateError(const QWebEngineCertificateError& error) DECL_OVERRIDE;
 
     void javaScriptAlert(const QUrl &securityOrigin, const QString &msg) DECL_OVERRIDE {
-        //QWebPageBase::javaScriptAlert(securityOrigin, msg);
+        //QWebEnginePage::javaScriptAlert(securityOrigin, msg);
         Q_UNUSED(securityOrigin);
         ModalDialog::Information(QStringLiteral("Javascript Alert"), msg);
     }
     bool javaScriptConfirm(const QUrl &securityOrigin, const QString &msg) DECL_OVERRIDE {
-        //return QWebPageBase::javaScriptConfirm(securityOrigin, msg);
+        //return QWebEnginePage::javaScriptConfirm(securityOrigin, msg);
         Q_UNUSED(securityOrigin);
         return ModalDialog::Question(QStringLiteral("Javascript Confirm"), msg);
     }
     bool javaScriptPrompt(const QUrl &securityOrigin, const QString &msg,
                           const QString &defaultValue, QString *result) DECL_OVERRIDE {
-        //return QWebPageBase::javaScriptPrompt(securityOrigin, msg, defaultValue, result);
+        //return QWebEnginePage::javaScriptPrompt(securityOrigin, msg, defaultValue, result);
         Q_UNUSED(securityOrigin);
         bool ok = true;
         if(result) *result = ModalDialog::GetText(QStringLiteral("Javascript Prompt"), msg, defaultValue, &ok);
@@ -117,14 +68,13 @@ public:
     void setNetworkAccessManager(QNetworkAccessManager *nam);
     QString userAgentForUrl(const QUrl &url) const;
     bool ObscureDisplay();
-    //[[/WEV]]
 
     void DisplayContextMenu(QWidget *parent, SharedWebElement elem,
                             QPoint localPos, QPoint globalPos);
 
-    void TriggerAction(QWebPageBase::WebAction);
+    void TriggerAction(QWebEnginePage::WebAction);
     void TriggerAction(Page::CustomAction, QVariant = QVariant());
-    QAction *Action(QWebPageBase::WebAction);
+    QAction *Action(QWebEnginePage::WebAction);
     QAction *Action(Page::CustomAction, QVariant = QVariant());
 
 public slots:
@@ -142,16 +92,12 @@ public slots:
         m_Page->Download(url, file);
     }
 
-    //[[WEV]]
     void OnLinkHovered(const QString &);
     void HandleFeaturePermission(const QUrl&, QWebEnginePage::Feature);
     void HandleAuthentication(const QUrl&, QAuthenticator*);
     void HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&);
-#if QT_VERSION >= 0x050600
     void HandleFullScreen(QWebEngineFullScreenRequest request);
     void HandleProcessTermination(RenderProcessTerminationStatus status, int code);
-#endif
-    //[[/WEV]]
 
     void HandleUnsupportedContent(QNetworkReply *reply);
 
@@ -175,21 +121,13 @@ public slots:
     void CloseLater();
 
 signals:
-    //[[WEV]]
     void statusBarMessage(const QString&);
-    //[[/WEV]]
     void statusBarMessage2(const QString&, const QString&);
-    //[[WEV]]
     void linkHovered(const QString&, const QString&, const QString&);
-    //[[/WEV]]
     void ViewChanged();
     void ScrollChanged(QPointF);
     void ButtonCleared();
     void RenderFinished();
-    //[[!WEV]]
-    void urlChanged(const QUrl&);
-    void titleChanged(const QString&);
-    //[[/!WEV]]
 
 public slots:
     void DownloadSuggest(const QUrl&);
@@ -199,14 +137,8 @@ signals:
 private:
     View *m_View;
     Page *m_Page;
-    //[[WEV]]
     QNetworkAccessManager *m_NetworkAccessManager;
     bool m_ObscureDisplay;
-    //[[/WEV]]
 };
 
-//[[!WEV]]
-#endif //ifdef QTWEBKIT
-//[[/!WEV]]
-
-#endif //ifndef WEBPAGEBASE_HPP
+#endif //ifndef WEBENGINEPAGE_HPP

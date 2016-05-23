@@ -1,7 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-    <file>gen/quickwebview.qml</file>
-    <file>gen/quickwebengineview.qml</file>
+    <file>view/quickwebengineview5.6.qml</file>
+    <file>view/quickwebengineview5.7.qml</file>
     <file>resources/blank.png</file>
     <file>resources/blankw.png</file>
     <file>resources/folder.png</file>

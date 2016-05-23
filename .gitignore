@@ -4,6 +4,5 @@
 *.pro.user*
 *.qm
 */#*#
-gen/*
 package/*
 Makefile*

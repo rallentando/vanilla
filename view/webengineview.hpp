@@ -1,13 +1,9 @@
-#ifndef WEBVIEWBASE_HPP
-#define WEBVIEWBASE_HPP
+#ifndef WEBENGINEVIEW_HPP
+#define WEBENGINEVIEW_HPP
 
 #include "switch.hpp"
 
-//[[!WEV]]
-#ifdef QTWEBKIT
-//[[/!WEV]]
-
-#include "webpagebase.hpp"
+#include "webenginepage.hpp"
 #include "view.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
@@ -16,37 +12,29 @@
 
 #include <stdlib.h>
 
-#include <QWebViewBase>
-#include <QWebPageBase>
-#include <QWebHistoryBase>
+#include <QWebEngineView>
+#include <QWebEnginePage>
+#include <QWebEngineHistory>
 
-//[[!WEV]]
-#include <QWebFrameBase>
-#include <QWebElementBase>
-//[[/!WEV]]
-//[[WEV]]
 #ifdef PASSWORD_MANAGER
 # include <QWebEngineProfile>
 #endif
-//[[/WEV]]
 
 class QKeySequence;
-//[[WEV]]
 class EventEater;
-//[[/WEV]]
 
-class WebViewBase : public QWebViewBase, public View{
+class WebEngineView : public QWebEngineView, public View{
     Q_OBJECT
 
 public:
-    WebViewBase(TreeBank *parent = 0, QString id = "", QStringList set = QStringList());
-    ~WebViewBase();
+    WebEngineView(TreeBank *parent = 0, QString id = "", QStringList set = QStringList());
+    ~WebEngineView();
 
-    QWebViewBase *base() DECL_OVERRIDE {
-        return static_cast<QWebViewBase*>(this);
+    QWebEngineView *base() DECL_OVERRIDE {
+        return static_cast<QWebEngineView*>(this);
     }
-    WebPageBase *page() DECL_OVERRIDE {
-        return static_cast<WebPageBase*>(View::page());
+    WebEnginePage *page() DECL_OVERRIDE {
+        return static_cast<WebEnginePage*>(View::page());
     }
 
     QUrl      url() DECL_OVERRIDE { return base()->url();}
@@ -64,16 +52,9 @@ public:
     TreeBank *parent() DECL_OVERRIDE { return m_TreeBank;}
     void   setParent(TreeBank* tb) DECL_OVERRIDE {
         View::SetTreeBank(tb);
-        //[[GWV]]
-        if(base()->scene()) base()->scene()->removeItem(this);
-        if(page()) page()->AddJsObject();
-        if(tb) tb->GetScene()->addItem(this);
-        //[[/GWV]]
-        //[[!GWV]]
         if(!TreeBank::PurgeView()) base()->setParent(tb);
         if(page()) page()->AddJsObject();
         if(tb) resize(size());
-        //[[/!GWV]]
     }
 
     void Connect(TreeBank *tb) DECL_OVERRIDE;
@@ -83,42 +64,17 @@ public:
     void ZoomOut() DECL_OVERRIDE;
 
     QUrl BaseUrl() DECL_OVERRIDE {
-        //[[!WEV]]
-        return page() ? page()->mainFrame()->baseUrl() : QUrl();
-        //[[/!WEV]]
-        //[[WEV]]
         return GetBaseUrl();
-        //[[/WEV]]
     }
     QUrl CurrentBaseUrl() DECL_OVERRIDE {
         QUrl url;
-        //[[!WEV]]
-        if(page() && page()->currentFrame())
-            url = page()->currentFrame()->baseUrl();
-        if(!url.isEmpty() && page() && page()->mainFrame())
-            url = page()->mainFrame()->baseUrl();
-        //[[/!WEV]]
-        //[[WEV]]
         // cannot access to sub frame.
         url = GetBaseUrl();
-        //[[/WEV]]
         return url;
     }
 
     bool ForbidToOverlap() DECL_OVERRIDE {
-        //[[!WEV]]
-        // for QTBUG-28854 or QTBUG-33053 or QTBUG-42588 or QTBUG-43024 or QTBUG-44401.
-        // https://bugreports.qt.io/browse/QTBUG-28854
-        // https://bugreports.qt.io/browse/QTBUG-33053
-        // https://bugreports.qt.io/browse/QTBUG-42588
-        // https://bugreports.qt.io/browse/QTBUG-43024
-        // https://bugreports.qt.io/browse/QTBUG-44401
-        return (url().toString().toLower().endsWith(QStringLiteral(".swf")) ||
-                url().toString().toLower().endsWith(QStringLiteral(".pdf")));
-        //[[/!WEV]]
-        //[[WEV]]
         return false;
-        //[[/WEV]]
     }
 
     bool CanGoBack() DECL_OVERRIDE {
@@ -127,19 +83,21 @@ public:
     bool CanGoForward() DECL_OVERRIDE {
         return page() ? page()->history()->canGoForward() : false;
     }
+#if QT_VERSION >= 0x050700
+    bool RecentlyAudible() DECL_OVERRIDE {
+        return page() ? page()->recentlyAudible() : false;
+    }
+    bool IsAudioMuted() DECL_OVERRIDE {
+        return page() ? page()->isAudioMuted() : false;
+    }
+    void SetAudioMuted(bool muted) DECL_OVERRIDE {
+        if(page()) page()->setAudioMuted(muted);
+    }
+#endif
 
-    //[[!WEV]]
-    void Print() DECL_OVERRIDE { if(page()) page()->Print();}
-    void AddSearchEngine(QPoint pos) DECL_OVERRIDE { if(page()) page()->AddSearchEngine(pos);}
-    void AddBookmarklet(QPoint pos)  DECL_OVERRIDE { if(page()) page()->AddBookmarklet(pos);}
-    void InspectElement()            DECL_OVERRIDE { if(page()) page()->InspectElement();}
-    void ReloadAndBypassCache()      DECL_OVERRIDE { if(page()) page()->ReloadAndBypassCache();}
-    //[[/!WEV]]
-    //[[WEV]]
-#if QT_VERSION >= 0x050600
-    void InspectElement()            DECL_OVERRIDE {
+    void InspectElement() DECL_OVERRIDE {
         if(!m_Inspector){
-            m_Inspector = new QWebViewBase();
+            m_Inspector = new QWebEngineView();
             m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
             m_Inspector->load(m_InspectorTable[this]);
         } else {
@@ -149,24 +107,13 @@ public:
         m_Inspector->raise();
         //if(page()) page()->InspectElement();
     }
-#endif
     void AddSearchEngine(QPoint pos) DECL_OVERRIDE { if(page()) page()->AddSearchEngine(pos);}
     void AddBookmarklet(QPoint pos)  DECL_OVERRIDE { if(page()) page()->AddBookmarklet(pos);}
-    //[[/WEV]]
 
     bool IsRenderable() DECL_OVERRIDE {
-        //[[!WEV]]
-        return page() != 0;
-        //[[/!WEV]]
-        //[[WEV]]
         return page() != 0 && (visible() || !m_GrabedDisplayData.isNull());
-        //[[/WEV]]
     }
     void Render(QPainter *painter) DECL_OVERRIDE {
-        //[[!WEV]]
-        if(page()) page()->mainFrame()->render(painter);
-        //[[/!WEV]]
-        //[[WEV]]
         if(visible()){
             QImage image(size(), QImage::Format_ARGB32);
             QPainter p(&image);
@@ -179,13 +126,8 @@ public:
         } else if(!m_GrabedDisplayData.isNull()){
             painter->drawImage(QPoint(), m_GrabedDisplayData);
         }
-        //[[/WEV]]
     }
     void Render(QPainter *painter, const QRegion &clip) DECL_OVERRIDE {
-        //[[!WEV]]
-        if(page()) page()->mainFrame()->render(painter, clip);
-        //[[/!WEV]]
-        //[[WEV]]
         // to investigate.
         //QTransform transform;
         //transform.scale(zoomFactor(), zoomFactor());
@@ -204,23 +146,12 @@ public:
                 painter->drawImage(rect, m_GrabedDisplayData.copy(rect));
             }
         }
-        //[[/WEV]]
     }
     QSize GetViewportSize() DECL_OVERRIDE {
-        //[[!WEV]]
-        return page() ? page()->viewportSize() : QSize();
-        //[[/!WEV]]
-        //[[WEV]]
         return size();
-        //[[/WEV]]
     }
     void SetViewportSize(QSize size) DECL_OVERRIDE {
-        //[[!WEV]]
-        if(page()) page()->setViewportSize(size);
-        //[[/!WEV]]
-        //[[WEV]]
         if(!visible()) resize(size);
-        //[[/WEV]]
     }
     void SetSource(const QUrl &url) DECL_OVERRIDE {
         if(page()) page()->SetSource(url);
@@ -236,25 +167,20 @@ public:
         return title();
     }
     QIcon GetIcon() DECL_OVERRIDE {
-        //[[WEV]]
 #if QT_VERSION >= 0x050700
         return page() ? page()->icon() : QIcon();
 #else
         return m_Icon;
 #endif
-        //[[/WEV]]
-        //[[!WEV]]
-        return icon();
-        //[[/!WEV]]
     }
 
-    void TriggerAction(QWebPageBase::WebAction a) DECL_OVERRIDE {
+    void TriggerAction(QWebEnginePage::WebAction a) DECL_OVERRIDE {
         if(page()) page()->TriggerAction(a);
     }
     void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
         if(page()) page()->TriggerAction(a, data);
     }
-    QAction *Action(QWebPageBase::WebAction a) DECL_OVERRIDE {
+    QAction *Action(QWebEnginePage::WebAction a) DECL_OVERRIDE {
         return page() ? page()->Action(a) : 0;
     }
     QAction *Action(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
@@ -267,41 +193,25 @@ public:
     void TriggerNativeLoadAction(const QNetworkRequest &req,
                                  QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
                                  const QByteArray &body = QByteArray()) DECL_OVERRIDE {
-        //[[!WEV]]
-        load(req, operation, body);
-        //[[/!WEV]]
-        //[[WEV]]
         Q_UNUSED(operation);
         Q_UNUSED(body);
         load(req.url());
-        //[[/WEV]]
     }
     void TriggerNativeGoBackAction() DECL_OVERRIDE {
-        if(page()) page()->triggerAction(QWebPageBase::Back);
+        if(page()) page()->triggerAction(QWebEnginePage::Back);
     }
     void TriggerNativeGoForwardAction() DECL_OVERRIDE {
-        if(page()) page()->triggerAction(QWebPageBase::Forward);
+        if(page()) page()->triggerAction(QWebEnginePage::Forward);
     }
     void TriggerNativeRewindAction() DECL_OVERRIDE {
-        QWebHistoryBase *h = history();
+        QWebEngineHistory *h = history();
         h->goToItem(h->itemAt(0));
     }
     void TriggerNativeFastForwardAction() DECL_OVERRIDE {
-        QWebHistoryBase *h = history();
+        QWebEngineHistory *h = history();
         h->goToItem(h->itemAt(h->count()-1));
     }
 
-    //[[!WEV]]
-    void UpKeyEvent()       DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_UpKey);       EmitScrollChanged();}
-    void DownKeyEvent()     DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_DownKey);     EmitScrollChanged();}
-    void RightKeyEvent()    DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_RightKey);    EmitScrollChanged();}
-    void LeftKeyEvent()     DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_LeftKey);     EmitScrollChanged();}
-    void PageDownKeyEvent() DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_PageDownKey); EmitScrollChanged();}
-    void PageUpKeyEvent()   DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_PageUpKey);   EmitScrollChanged();}
-    void HomeKeyEvent()     DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_HomeKey);     EmitScrollChanged();}
-    void EndKeyEvent()      DECL_OVERRIDE { QWebViewBase::keyPressEvent(m_EndKey);      EmitScrollChanged();}
-    //[[/!WEV]]
-    //[[WEV]]
     void UpKeyEvent() DECL_OVERRIDE {
         page()->runJavaScript(QStringLiteral("(function(){ document.body.scrollTop-=40;})()"),
                               [this](QVariant){ EmitScrollChanged();});
@@ -339,18 +249,9 @@ public:
                           VV"})()"),
              [this](QVariant){ EmitScrollChanged();});
     }
-    //[[/WEV]]
 
     void KeyPressEvent(QKeyEvent *ev) DECL_OVERRIDE { keyPressEvent(ev);}
     void KeyReleaseEvent(QKeyEvent *ev) DECL_OVERRIDE { keyReleaseEvent(ev);}
-    //[[GWV]]
-    void MousePressEvent(QMouseEvent *ev) DECL_OVERRIDE { m_TreeBank->MousePressEvent(ev);}
-    void MouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE { m_TreeBank->MouseReleaseEvent(ev);}
-    void MouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE { m_TreeBank->MouseMoveEvent(ev);}
-    void MouseDoubleClickEvent(QMouseEvent *ev) DECL_OVERRIDE { m_TreeBank->MouseDoubleClickEvent(ev);}
-    void WheelEvent(QWheelEvent *ev) DECL_OVERRIDE { m_TreeBank->WheelEvent(ev);}
-    //[[/GWV]]
-    //[[!GWV]]
     void MousePressEvent(QMouseEvent *ev) DECL_OVERRIDE { mousePressEvent(ev);}
     void MouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE { mouseReleaseEvent(ev);}
     void MouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE { mouseMoveEvent(ev);}
@@ -365,55 +266,7 @@ public:
         ev->setAccepted(true);
         delete newev;
     }
-    //[[/!GWV]]
 
-    //[[!WEV]]
-    QUrl GetBaseUrl() DECL_OVERRIDE {
-        return BaseUrl();
-    }
-    QUrl GetCurrentBaseUrl() DECL_OVERRIDE {
-        return CurrentBaseUrl();
-    }
-    SharedWebElementList FindElements(Page::FindElementsOption option) DECL_OVERRIDE;
-    SharedWebElement HitElement(const QPoint &pos) DECL_OVERRIDE;
-    QUrl HitLinkUrl(const QPoint &pos) DECL_OVERRIDE {
-        return page() ? page()->mainFrame()->hitTestContent(pos).linkUrl() : QUrl();
-    }
-    QUrl HitImageUrl(const QPoint &pos) DECL_OVERRIDE {
-        return page() ? page()->mainFrame()->hitTestContent(pos).imageUrl() : QUrl();
-    }
-    QString SelectedText() DECL_OVERRIDE {
-        return page() ? page()->selectedText() : QString();
-    }
-    QString SelectedHtml() DECL_OVERRIDE {
-        return page() ? page()->selectedHtml() : QString();
-    }
-    QString WholeText() DECL_OVERRIDE {
-        return page() ? page()->mainFrame()->toPlainText() : QString();
-    }
-    QString WholeHtml() DECL_OVERRIDE {
-        return page() ? page()->mainFrame()->toHtml() : QString();
-    }
-    QRegion SelectionRegion() DECL_OVERRIDE {
-        QRegion region;
-        QVariant var = EvaluateJavaScript(SelectionRegionJsCode());
-        if(!var.isValid() || !var.canConvert(QMetaType::QVariantMap)) return region;
-        QVariantMap map = var.toMap();
-        QRect viewport = QRect(QPoint(), size());
-        foreach(QString key, map.keys()){
-            QVariantMap m = map[key].toMap();
-            region |= QRect(m["x"].toInt()*zoomFactor(),
-                            m["y"].toInt()*zoomFactor(),
-                            m["width"].toInt()*zoomFactor(),
-                            m["height"].toInt()*zoomFactor()).intersected(viewport);
-        }
-        return region;
-    }
-    QVariant EvaluateJavaScript(const QString &code) DECL_OVERRIDE {
-        return page() ? page()->mainFrame()->evaluateJavaScript(code) : QVariant();
-    }
-    //[[/!WEV]]
-    //[[WEV]]
     void CallWithGotBaseUrl(UrlCallBack callBack) DECL_OVERRIDE;
     void CallWithGotCurrentBaseUrl(UrlCallBack callBack) DECL_OVERRIDE;
     void CallWithFoundElements(Page::FindElementsOption option, WebElementListCallBack callBack) DECL_OVERRIDE;
@@ -427,38 +280,26 @@ public:
     void CallWithSelectionRegion(RegionCallBack callBack) DECL_OVERRIDE;
     void CallWithEvaluatedJavaScriptResult(const QString &code, VariantCallBack callBack) DECL_OVERRIDE;
 #ifdef PASSWORD_MANAGER
-    bool PreventAuthRegistration(){ return m_PreventAuthRegisteration;}
+    bool PreventAuthRegistration(){ return m_PreventAuthRegistration;}
 #endif
-    //[[/WEV]]
 
 public slots:
     QSize size() DECL_OVERRIDE {
-        //[[GWV]]
-        return base()->size().toSize();
-        //[[/GWV]]
-        //[[!GWV]]
         return base()->size();
-        //[[/!GWV]]
     }
     void resize(QSize size) DECL_OVERRIDE {
-        //[[GWV]]
-        base()->resize(size);
-        //[[/GWV]]
-        //[[!GWV]]
         if(TreeBank::PurgeView()){
             MainWindow *win = m_TreeBank ? m_TreeBank->GetMainWindow() : 0;
             base()->setGeometry(win ? win->geometry() : QRect(QPoint(), size));
         } else {
             base()->setGeometry(QRect(QPoint(), size));
         }
-        //[[/!GWV]]
     }
     void show() DECL_OVERRIDE {
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
         if(HistNode *hn = GetHistNode()) hn->SetLastAccessDateToCurrent();
 
-        //[[WEV]]
         // view become to stop updating, when only call show method.
         // e.g. in coming back after making other view.
         MainWindow *win = Application::GetCurrentWindow();
@@ -469,14 +310,8 @@ public slots:
             DEFAULT_WINDOW_SIZE;
         resize(QSize(s.width(), s.height()+1));
         resize(s);
-        //[[/WEV]]
 
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
-        //[[!WEV]]
-        // set only notifier.
-        m_TreeBank->GetNotifier()->SetScroll(GetScroll());
-        //[[/!WEV]]
-        //[[WEV]]
         // set only notifier.
         CallWithScroll([this](QPointF pos){
                 if(m_TreeBank){
@@ -485,26 +320,14 @@ public slots:
                     }
                 }
             });
-        //[[/WEV]]
     }
     void hide() DECL_OVERRIDE {
         base()->hide();
-        //[[!WEV]]
-        // there is no sense to resize because plugins paint to window directly, but...
-        if(ForbidToOverlap()) resize(QSize(0,0));
-        //[[/!WEV]]
     }
 
-    //[[GWV]]
-    void raise()   DECL_OVERRIDE { setZValue(VIEW_CONTENTS_LAYER);}
-    void lower()   DECL_OVERRIDE { setZValue(HIDDEN_CONTENTS_LAYER);}
-    void repaint() DECL_OVERRIDE { update(boundingRect());}
-    //[[/GWV]]
-    //[[!GWV]]
     void raise()   DECL_OVERRIDE { base()->raise();}
     void lower()   DECL_OVERRIDE { base()->lower();}
     void repaint() DECL_OVERRIDE { base()->repaint();}
-    //[[/!GWV]]
 
     bool visible() DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) DECL_OVERRIDE {
@@ -518,11 +341,9 @@ public slots:
 
     void OnBeforeStartingDisplayGadgets() DECL_OVERRIDE {}
     void OnAfterFinishingDisplayGadgets() DECL_OVERRIDE {
-        //[[WEV]]
 #if defined(Q_OS_WIN)
         if(TreeBank::TridentViewExist()) show(); // for force update.
 #endif
-        //[[/WEV]]
     }
 
     void OnSetViewNode(ViewNode*) DECL_OVERRIDE;
@@ -543,9 +364,7 @@ public slots:
     void EmitScrollChanged() DECL_OVERRIDE;
     void EmitScrollChangedIfNeed() DECL_OVERRIDE;
 
-    //[[WEV]]
     void CallWithScroll(PointFCallBack callBack);
-    //[[/WEV]]
     void SetScrollBarState() DECL_OVERRIDE;
     QPointF GetScroll() DECL_OVERRIDE;
     void SetScroll(QPointF pos) DECL_OVERRIDE;
@@ -559,7 +378,6 @@ public slots:
     void KeyEvent(QString);
     bool SeekText(const QString&, View::FindFlags);
 
-    //[[WEV]]
     void SetFocusToElement(QString);
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
@@ -569,75 +387,60 @@ public slots:
 #else
     void UpdateIcon(const QUrl &iconUrl);
 #endif
-    //[[/WEV]]
 
 signals:
-    //[[WEV]]
 #if QT_VERSION >= 0x050700
     void iconChanged(const QIcon&);
 #endif
     void statusBarMessage(const QString&);
-    //[[/WEV]]
     void statusBarMessage2(const QString&, const QString&);
     void ViewChanged();
     void ScrollChanged(QPointF);
 
 private:
-    //[[WEV]]
 #if QT_VERSION < 0x050700
     QIcon m_Icon;
 #endif
     QImage m_GrabedDisplayData;
     static QMap<View*, QUrl> m_InspectorTable;
-    QWebViewBase *m_Inspector;
+    QWebEngineView *m_Inspector;
     bool m_PreventScrollRestoration;
 #ifdef PASSWORD_MANAGER
-    bool m_PreventAuthRegisteration;
+    bool m_PreventAuthRegistration;
 #endif
-    //[[/WEV]]
 
 protected:
-    //[[WEV]]
     void childEvent(QChildEvent *ev) DECL_OVERRIDE;
-    //[[/WEV]]
     void hideEvent(QHideEvent *ev) DECL_OVERRIDE;
     void showEvent(QShowEvent *ev) DECL_OVERRIDE;
     void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE;
     void keyReleaseEvent(QKeyEvent *ev) DECL_OVERRIDE;
-    void resizeEvent(QResizeEventBase *ev) DECL_OVERRIDE;
-    void contextMenuEvent(QContextMenuEventBase *ev) DECL_OVERRIDE;
-    //[[GWV]]
-    void hoverMoveEvent(QHoverEventBase *ev) DECL_OVERRIDE;
-    //[[/GWV]]
-    void mouseMoveEvent(QMouseEventBase *ev) DECL_OVERRIDE;
-    void mousePressEvent(QMouseEventBase *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEventBase *ev) DECL_OVERRIDE;
-    void mouseDoubleClickEvent(QMouseEventBase *ev) DECL_OVERRIDE;
-    void dragEnterEvent(QDragEnterEventBase *ev) DECL_OVERRIDE;
-    void dragMoveEvent(QDragMoveEventBase *ev) DECL_OVERRIDE;
-    void dropEvent(QDropEventBase *ev) DECL_OVERRIDE;
-    void dragLeaveEvent(QDragLeaveEventBase *ev) DECL_OVERRIDE;
-    void wheelEvent(QWheelEventBase *ev) DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent *ev) DECL_OVERRIDE;
+    void contextMenuEvent(QContextMenuEvent *ev) DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
+    void mouseDoubleClickEvent(QMouseEvent *ev) DECL_OVERRIDE;
+    void dragEnterEvent(QDragEnterEvent *ev) DECL_OVERRIDE;
+    void dragMoveEvent(QDragMoveEvent *ev) DECL_OVERRIDE;
+    void dropEvent(QDropEvent *ev) DECL_OVERRIDE;
+    void dragLeaveEvent(QDragLeaveEvent *ev) DECL_OVERRIDE;
+    void wheelEvent(QWheelEvent *ev) DECL_OVERRIDE;
     void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE;
     void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE;
     bool focusNextPrevChild(bool next) DECL_OVERRIDE;
-    //[[!GWV]]
 #if defined(Q_OS_WIN)
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) DECL_OVERRIDE;
 #endif
-    //[[/!GWV]]
 
-    //[[WEV]]
     friend class EventEater;
-    //[[/WEV]]
 };
 
-//[[WEV]]
 class EventEater : public QObject{
     Q_OBJECT
 
 public:
-    EventEater(WebViewBase *view, QObject *parent)
+    EventEater(WebEngineView *view, QObject *parent)
         : QObject(parent){
         m_View = view;
     }
@@ -658,14 +461,12 @@ protected:
         case QEvent::KeyPress:{
             QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
 
-#if QT_VERSION >= 0x050600
             if(m_View->page()->ObscureDisplay()){
                 if(ke->key() == Qt::Key_Escape || ke->key() == Qt::Key_F11){
                     m_View->page()->triggerAction(QWebEnginePage::ExitFullScreen);
                     return true;
                 }
             }
-#endif
 
 #ifdef PASSWORD_MANAGER
             if(ke->modifiers() & Qt::ControlModifier &&
@@ -676,37 +477,11 @@ protected:
                      QStringLiteral(":") + m_View->url().host());
 
                 if(!data.isEmpty()){
-                    data = data.replace(QStringLiteral("\""), QStringLiteral("\\\""));
-                    m_View->m_PreventAuthRegisteration = true;
+                    m_View->m_PreventAuthRegistration = true;
                     m_View->page()->runJavaScript
-                        (QStringLiteral("(function(){\n"
-                                      VV"    var submitted = false;\n"
-                                      VV"    var data = \"%1\".split(\"&\");\n"
-                                      VV"    var forms = document.querySelectorAll(\"form\");\n"
-                                      VV"    for(var i = 0; i < forms.length; i++){\n"
-                                      VV"        var form = forms[i];\n"
-                                      VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
-                                      VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
-                                      VV"        if(!submit || !password) continue;\n"
-                                      VV"        for(var j = 0; j < data.length; j++){\n"
-                                      VV"            var pair = data[j].split(\"=\");\n"
-                                      VV"            var name = decodeURIComponent(pair[0]);\n"
-                                      VV"            var val  = decodeURIComponent(pair[1]);\n"
-                                      VV"            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
-                                      VV"            if(!field) continue;\n"
-                                      VV"            submitted = true;\n"
-                                      VV"            field.value = val;\n"
-                                      VV"        }\n"
-                                      VV"        if(!submitted) continut;\n"
-                                      VV"        if(submit.click){\n"
-                                      VV"            submit.click();\n"
-                                      VV"        } else if(typeof submit == \"function\"){\n"
-                                      VV"            submit();\n"
-                                      VV"        }\n"
-                                      VV"    }\n"
-                                      VV"})()").arg(data),
+                        (View::SubmitFormDataJsCode(data),
                          [this](QVariant){
-                            m_View->m_PreventAuthRegisteration = false;
+                            m_View->m_PreventAuthRegistration = false;
                         });
                     return true;
                 }
@@ -737,7 +512,7 @@ protected:
         case QEvent::KeyRelease:{
             QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
             int k = ke->key();
-            int delay = m_View->page()->settings()->testAttribute(QWebSettingsBase::ScrollAnimatorEnabled)
+            int delay = m_View->page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)
                 ? 500
                 : 100;
             if(k == Qt::Key_Space ||
@@ -750,7 +525,7 @@ protected:
                k == Qt::Key_Home ||
                k == Qt::Key_End){
 
-                QTimer::singleShot(delay, m_View, &WebViewBase::EmitScrollChangedIfNeed);
+                QTimer::singleShot(delay, m_View, &WebEngineView::EmitScrollChangedIfNeed);
             }
             return false;
         }
@@ -814,12 +589,7 @@ protected:
     }
 
 private:
-    WebViewBase *m_View;
+    WebEngineView *m_View;
 };
-//[[/WEV]]
 
-//[[!WEV]]
-#endif //ifdef QTWEBKIT
-//[[/!WEV]]
-
-#endif //ifndef WEBVIEWBASE_HPP
+#endif //ifndef WEBENGINEVIEW_HPP

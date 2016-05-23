@@ -24,10 +24,6 @@
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "gadgetsstyle.hpp"
-#ifdef QTWEBKIT
-#  include "webview.hpp"
-#  include "quickwebview.hpp"
-#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "dialog.hpp"
@@ -241,13 +237,6 @@ void LocalView::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
-#ifdef QTWEBKIT
-        if(WebView *w = qobject_cast<WebView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-        else if(QuickWebView *w = qobject_cast<QuickWebView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-        else
-#endif
         if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
@@ -764,22 +753,23 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         << Gadgets::_Right                          << Gadgets::_SwitchWindow
         << Gadgets::_Left                           << Gadgets::_NextWindow
         << Gadgets::_Home                           << Gadgets::_PrevWindow
-        << Gadgets::_MoveToUpperItem   << Gadgets::_SelectToLastItem
-        << Gadgets::_MoveToLowerItem   << Gadgets::_SelectItem
-        << Gadgets::_MoveToRightItem   << Gadgets::_SelectRange
-        << Gadgets::_MoveToLeftItem    << Gadgets::_SelectAll
-        << Gadgets::_MoveToPrevPage    << Gadgets::_ClearSelection
-        << Gadgets::_MoveToNextPage    << Gadgets::_TransferToUpper
-        << Gadgets::_MoveToFirstItem   << Gadgets::_TransferToLower
-        << Gadgets::_MoveToLastItem    << Gadgets::_TransferToRight
-        << Gadgets::_SelectToUpperItem << Gadgets::_TransferToLeft
-        << Gadgets::_SelectToLowerItem << Gadgets::_TransferToPrevPage
-        << Gadgets::_SelectToRightItem << Gadgets::_TransferToNextPage
-        << Gadgets::_SelectToLeftItem  << Gadgets::_TransferToFirst
-        << Gadgets::_SelectToPrevPage  << Gadgets::_TransferToLast
-        << Gadgets::_SelectToNextPage  << Gadgets::_SwitchNodeCollectionType
-        << Gadgets::_SelectToFirstItem << Gadgets::_SwitchNodeCollectionTypeReverse;
-
+        << Gadgets::_ScrollUp          << Gadgets::_SelectToNextPage
+        << Gadgets::_ScrollDown        << Gadgets::_SelectToFirstItem
+        << Gadgets::_NextPage          << Gadgets::_SelectToLastItem
+        << Gadgets::_PrevPage          << Gadgets::_SelectItem
+        << Gadgets::_MoveToUpperItem   << Gadgets::_SelectRange
+        << Gadgets::_MoveToLowerItem   << Gadgets::_SelectAll
+        << Gadgets::_MoveToRightItem   << Gadgets::_ClearSelection
+        << Gadgets::_MoveToLeftItem    << Gadgets::_TransferToUpper
+        << Gadgets::_MoveToPrevPage    << Gadgets::_TransferToLower
+        << Gadgets::_MoveToNextPage    << Gadgets::_TransferToRight
+        << Gadgets::_MoveToFirstItem   << Gadgets::_TransferToLeft
+        << Gadgets::_MoveToLastItem    << Gadgets::_TransferToPrevPage
+        << Gadgets::_SelectToUpperItem << Gadgets::_TransferToNextPage
+        << Gadgets::_SelectToLowerItem << Gadgets::_TransferToFirst
+        << Gadgets::_SelectToRightItem << Gadgets::_TransferToLast
+        << Gadgets::_SelectToLeftItem  << Gadgets::_SwitchNodeCollectionType
+        << Gadgets::_SelectToPrevPage  << Gadgets::_SwitchNodeCollectionTypeReverse;
     static Gadgets::GadgetsAction previousAction = Gadgets::_NoAction;
     static int sameActionCount = 0;
     if(exclude.contains(a)){

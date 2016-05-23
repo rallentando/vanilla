@@ -3687,11 +3687,8 @@ void SoundButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     GraphicsButton::mouseReleaseEvent(ev);
     if(pressed){
         if(View *view = m_Node->GetView()){
-            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
-                WebEnginePage *p = w->page();
-                if(p->isAudioMuted() || p->recentlyAudible())
-                    p->setAudioMuted(!p->isAudioMuted());
-            }
+            if(view->IsAudioMuted() || view->RecentlyAudible())
+                view->SetAudioMuted(!view->IsAudioMuted());
         }
     }
     ev->setAccepted(true);

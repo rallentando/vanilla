@@ -28,10 +28,6 @@
 #include "nodetitle.hpp"
 #include "accessiblewebelement.hpp"
 #include "view.hpp"
-#ifdef QTWEBKIT
-#  include "webview.hpp"
-#  include "quickwebview.hpp"
-#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 
@@ -1558,13 +1554,6 @@ void Gadgets::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
-#ifdef QTWEBKIT
-        if(WebView *w = qobject_cast<WebView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-        else if(QuickWebView *w = qobject_cast<QuickWebView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-        else
-#endif
         if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
@@ -1876,21 +1865,23 @@ QAction *Gadgets::Action(GadgetsAction a){
         << _Right                 << _SwitchWindow
         << _Left                  << _NextWindow
         << _Home                  << _PrevWindow
-        << _MoveToUpperItem   << _SelectToLastItem
-        << _MoveToLowerItem   << _SelectItem
-        << _MoveToRightItem   << _SelectRange
-        << _MoveToLeftItem    << _SelectAll
-        << _MoveToPrevPage    << _ClearSelection
-        << _MoveToNextPage    << _TransferToUpper
-        << _MoveToFirstItem   << _TransferToLower
-        << _MoveToLastItem    << _TransferToRight
-        << _SelectToUpperItem << _TransferToLeft
-        << _SelectToLowerItem << _TransferToPrevPage
-        << _SelectToRightItem << _TransferToNextPage
-        << _SelectToLeftItem  << _TransferToFirst
-        << _SelectToPrevPage  << _TransferToLast
-        << _SelectToNextPage  << _SwitchNodeCollectionType
-        << _SelectToFirstItem << _SwitchNodeCollectionTypeReverse;
+        << _ScrollUp          << _SelectToNextPage
+        << _ScrollDown        << _SelectToFirstItem
+        << _NextPage          << _SelectToLastItem
+        << _PrevPage          << _SelectItem
+        << _MoveToUpperItem   << _SelectRange
+        << _MoveToLowerItem   << _SelectAll
+        << _MoveToRightItem   << _ClearSelection
+        << _MoveToLeftItem    << _TransferToUpper
+        << _MoveToPrevPage    << _TransferToLower
+        << _MoveToNextPage    << _TransferToRight
+        << _MoveToFirstItem   << _TransferToLeft
+        << _MoveToLastItem    << _TransferToPrevPage
+        << _SelectToUpperItem << _TransferToNextPage
+        << _SelectToLowerItem << _TransferToFirst
+        << _SelectToRightItem << _TransferToLast
+        << _SelectToLeftItem  << _SwitchNodeCollectionType
+        << _SelectToPrevPage  << _SwitchNodeCollectionTypeReverse;
     static GadgetsAction previousAction = _NoAction;
     static int sameActionCount = 0;
     if(exclude.contains(a)){

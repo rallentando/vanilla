@@ -25,9 +25,6 @@
 #include "receiver.hpp"
 #include "gadgets.hpp"
 #include "graphicstableview.hpp"
-#ifdef QTWEBKIT
-#  include "webview.hpp"
-#endif
 #include "webengineview.hpp"
 #include "dialog.hpp"
 #include "treebar.hpp"
@@ -334,11 +331,6 @@ void MainWindow::Shade(){
     setWindowOpacity(0.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-#ifdef QTWEBKIT
-            if(WebView *w = qobject_cast<WebView*>(view->base()))
-                w->hide();
-            else
-#endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->hide();
 #if defined(Q_OS_WIN)
@@ -359,11 +351,6 @@ void MainWindow::Unshade(){
     setWindowOpacity(1.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-#ifdef QTWEBKIT
-            if(WebView *w = qobject_cast<WebView*>(view->base()))
-                w->show();
-            else
-#endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
 #if defined(Q_OS_WIN)
@@ -676,11 +663,6 @@ void MainWindow::moveEvent(QMoveEvent *ev){
     QMainWindow::moveEvent(ev);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-#ifdef QTWEBKIT
-            if(WebView *w = qobject_cast<WebView*>(view->base()))
-                w->setGeometry(geometry());
-            else
-#endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->setGeometry(geometry());
 #if defined(Q_OS_WIN)
@@ -707,11 +689,6 @@ void MainWindow::showEvent(QShowEvent *ev){
     QMainWindow::showEvent(ev);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-#ifdef QTWEBKIT
-            if(WebView *w = qobject_cast<WebView*>(view->base()))
-                w->show();
-            else
-#endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
 #if defined(Q_OS_WIN)
@@ -730,11 +707,6 @@ void MainWindow::showEvent(QShowEvent *ev){
 void MainWindow::hideEvent(QHideEvent *ev){
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-#ifdef QTWEBKIT
-            if(WebView *w = qobject_cast<WebView*>(view->base()))
-                w->show();
-            else
-#endif
             if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
 #if defined(Q_OS_WIN)
@@ -775,11 +747,6 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
         case WM_WINDOWPOSCHANGED:{
             if(TreeBank::PurgeView()){
                 if(SharedView view = m_TreeBank->GetCurrentView()){
-#ifdef QTWEBKIT
-                    if(WebView *w = qobject_cast<WebView*>(view->base()))
-                        w->raise();
-                    else
-#endif
                     if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                         w->raise();
 #if defined(Q_OS_WIN)

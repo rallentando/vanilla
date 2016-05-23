@@ -2747,12 +2747,10 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     bool muted = false;
     bool audible = false;
     if(view){
-        if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
-            muted = w->page()->isAudioMuted();
-            audible = w->page()->recentlyAudible();
-            if(muted || audible)
-                title_rect.setRight(title_rect.right() - 18);
-        }
+        muted = view->IsAudioMuted();
+        audible = view->RecentlyAudible();
+        if(muted || audible)
+            title_rect.setRight(title_rect.right() - 18);
     }
 #endif
 
@@ -3401,11 +3399,8 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
                 setSelected(false);
                 setPos(QPointF());
                 if(View *view = m_Node->GetView()){
-                    if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
-                        WebEnginePage *p = w->page();
-                        if(p->isAudioMuted() || p->recentlyAudible())
-                            p->setAudioMuted(!p->isAudioMuted());
-                    }
+                    if(view->IsAudioMuted() || view->RecentlyAudible())
+                        view->SetAudioMuted(!view->IsAudioMuted());
                 }
                 break;
 #endif

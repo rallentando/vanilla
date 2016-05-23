@@ -27,12 +27,6 @@
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "view.hpp"
-#ifdef QTWEBKIT
-#  include "webview.hpp"
-#  include "graphicswebview.hpp"
-#  include "quickwebview.hpp"
-#  include "webpage.hpp"
-#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "webenginepage.hpp"
@@ -1624,27 +1618,6 @@ bool TreeBank::SetCurrent(Node *nd){
     if(m_Notifier) m_Notifier->ResizeNotify(size());
     if(m_Receiver) m_Receiver->ResizeNotify(size());
 
-    //                            high
-    // QuickWeb(Engine)View        ^
-    // Web(Engine)View             |
-    // Gadgets               order of layer
-    // LocalView                   |
-    // GraphicsWebView             V
-    //                            low
-
-#ifdef QTWEBKIT
-    if(qobject_cast<GraphicsWebView*>(m_CurrentView->base())){
-
-        m_CurrentView->show();
-        DoUpdate();
-        if(prev && prev != m_CurrentView){
-            prev->lower();
-            prev->hide();
-        }
-        m_CurrentView->raise();
-
-    } else
-#endif
     if(qobject_cast<LocalView*>(m_CurrentView->base())){
 
         m_CurrentView->show();
@@ -1656,7 +1629,7 @@ bool TreeBank::SetCurrent(Node *nd){
         m_View->raise();
         m_CurrentView->raise();
 
-    } else { // Web(Engine)View or QuickWeb(Engine)View.
+    } else { // WebEngineView or QuickWebEngineView.
 
         if(m_Gadgets && m_Gadgets->IsActive()){
             /* do nothing. */
@@ -1719,7 +1692,7 @@ bool TreeBank::TridentViewExist(){
 void TreeBank::BeforeStartingDisplayGadgets(){
     DoUpdate();
 
-    // if current focus is other widget(e.g. 'WebView'),
+    // if current focus is other widget(e.g. 'WebEngineView'),
     // cannot set focus to 'Gadgets' directly.
     parentWidget()->setFocus();
     setFocus();
@@ -3875,21 +3848,12 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
 
     } else {
         view = SharedView(
-#ifdef QTWEBKIT
-            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new WebView(tb, id, set) :
-            set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new GraphicsWebView(tb, id, set) :
-            set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new QuickWebView(tb, id, set) :
-#else
             set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new WebEngineView(tb, id, set) :
             set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new WebEngineView(tb, id, set) :
             set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new QuickWebEngineView(tb, id, set) :
-#endif
             set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new WebEngineView(tb, id, set) :
             set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
@@ -3900,11 +3864,7 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
             set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[tT](?:rident)?"                VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new TridentView(tb, id, set) :
 #endif
-#if defined(WEBENGINEVIEW_DEFAULT) || !defined(QTWEBKIT)
             static_cast<View*>(new WebEngineView(tb, id, set))
-#else
-            static_cast<View*>(new GraphicsWebView(tb, id, set))
-#endif
             , &DeleteView);
     }
 

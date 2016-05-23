@@ -16,10 +16,6 @@
 #  define VV ""
 #endif
 
-#if QT_VERSION < 0x050600
-#  define QTWEBKIT
-#endif
-
 #define QT_ASCII_CAST_WARNINGS
 
 #define QT_NO_CAST_FROM_ASCII
@@ -33,8 +29,6 @@
 // so the problem is resolved now,
 // by clearing thumbnail and nodetitle before deleting node.
 #define USE_LIGHTNODE
-
-//#define WEBENGINEVIEW_DEFAULT
 
 //#define USE_ANGLE
 

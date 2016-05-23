@@ -597,10 +597,8 @@ void GlassStyle::Render(SoundButton *button, QPainter *painter) const {
     bool audible = false;
 
     if(View *view = button->GetNode()->GetView()){
-        if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
-            muted = w->page()->isAudioMuted();
-            audible = w->page()->recentlyAudible();
-        }
+        muted = view->IsAudioMuted();
+        audible = view->RecentlyAudible();
     }
 
     if(!muted && !audible) return;
@@ -1139,10 +1137,8 @@ void FlatStyle::Render(SoundButton *button, QPainter *painter) const {
     bool audible = false;
 
     if(View *view = button->GetNode()->GetView()){
-        if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
-            muted = w->page()->isAudioMuted();
-            audible = w->page()->recentlyAudible();
-        }
+        muted = view->IsAudioMuted();
+        audible = view->RecentlyAudible();
     }
 
     if(!muted && !audible) return;

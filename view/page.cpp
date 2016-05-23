@@ -3,12 +3,6 @@
 
 #include "page.hpp"
 
-#ifdef QTWEBKIT
-#  include <QWebPage>
-#  include <QWebFrame>
-#  include <QWebElement>
-#endif
-
 #include <QClipboard>
 #include <QList>
 #include <QSet>
@@ -20,9 +14,6 @@
 #include "quickwebengineview.hpp"
 #if defined(Q_OS_WIN)
 #  include "tridentview.hpp"
-#endif
-#ifdef QTWEBKIT
-#  include "webpage.hpp"
 #endif
 #include "webenginepage.hpp"
 #include "treebank.hpp"
@@ -162,10 +153,6 @@ NetworkAccessManager *Page::GetNetworkAccessManager(){
     NetworkAccessManager *nam;
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page()))
         nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
-#ifdef QTWEBKIT
-    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page()))
-        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
-#endif
     else nam = m_NetworkAccessManager;
     return nam;
 }
@@ -275,24 +262,6 @@ QUrl Page::StringToUrl(QString str, QUrl baseUrl){
 }
 
 QList<QUrl> Page::ExtractUrlFromHtml(QString html, QUrl baseUrl, FindElementsOption option){
-#ifdef QTWEBKIT
-    QString selector;
-    QString attribute;
-    if(option == HaveSource){
-        selector = HAVE_SOURCE_CSS_SELECTOR;
-        attribute = "src";
-    } else if(option == HaveReference){
-        selector = HAVE_REFERENCE_CSS_SELECTOR;
-        attribute = "href";
-    }
-    QWebPage page;
-    page.mainFrame()->setHtml(html, baseUrl);
-    QList<QUrl> list;
-    foreach(QWebElement elem, page.mainFrame()->findAllElements(selector)){
-        list << StringToUrl(elem.attribute(attribute), baseUrl);
-    }
-    return list.toSet().toList();
-#else
     QList<QUrl> list;
     int pos = 0;
     QRegularExpression reg;
@@ -308,7 +277,6 @@ QList<QUrl> Page::ExtractUrlFromHtml(QString html, QUrl baseUrl, FindElementsOpt
         }
     }
     return list.toSet().toList();
-#endif //ifdef QTWEBKIT
 }
 
 QList<QUrl> Page::ExtractUrlFromText(QString text, QUrl baseUrl){
@@ -726,13 +694,11 @@ void Page::UpDirectory(){
 }
 
 void Page::Close(){
-#if QT_VERSION >= 0x050600
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         if(page->ObscureDisplay()){
             page->triggerAction(QWebEnginePage::ExitFullScreen);
         }
     }
-#endif
     View::SetSwitchingState(true);
     GetTB()->Close();
     View::SetSwitchingState(false);
@@ -911,11 +877,6 @@ void Page::Cut(){
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Cut);
     }
-#ifdef QTWEBKIT
-    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Cut);
-    }
-#endif
 #if defined(Q_OS_WIN)
     else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
         view->TriggerNativeCutAction();
@@ -928,11 +889,6 @@ void Page::Paste(){
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Paste);
     }
-#ifdef QTWEBKIT
-    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Paste);
-    }
-#endif
 #if defined(Q_OS_WIN)
     else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
         view->TriggerNativePasteAction();
@@ -945,11 +901,6 @@ void Page::Undo(){
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Undo);
     }
-#ifdef QTWEBKIT
-    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Undo);
-    }
-#endif
 #if defined(Q_OS_WIN)
     else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
         view->TriggerNativeUndoAction();
@@ -962,11 +913,6 @@ void Page::Redo(){
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Redo);
     }
-#ifdef QTWEBKIT
-    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Redo);
-    }
-#endif
 #if defined(Q_OS_WIN)
     else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
         view->TriggerNativeRedoAction();
@@ -987,11 +933,6 @@ void Page::SelectAll(){
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::SelectAll);
     }
-#ifdef QTWEBKIT
-    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::SelectAll);
-    }
-#endif
 #if defined(Q_OS_WIN)
     else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
         view->TriggerNativeSelectAllAction();
@@ -1004,11 +945,6 @@ void Page::Reload(){
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Reload);
     }
-#ifdef QTWEBKIT
-    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Reload);
-    }
-#endif
 #if defined(Q_OS_WIN)
     else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
         view->TriggerNativeReloadAction();
@@ -1025,11 +961,6 @@ void Page::Stop(){
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
         page->triggerAction(QWebEnginePage::Stop);
     }
-#ifdef QTWEBKIT
-    else if(WebPage *page = qobject_cast<WebPage*>(m_View->page())){
-        page->triggerAction(QWebPage::Stop);
-    }
-#endif
 #if defined(Q_OS_WIN)
     else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
         view->TriggerNativeStopAction();

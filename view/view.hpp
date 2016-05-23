@@ -12,9 +12,6 @@
 
 #include "callback.hpp"
 #include "page.hpp"
-#ifdef QTWEBKIT
-#  include "webpage.hpp"
-#endif
 #include "webenginepage.hpp"
 
 class QKeySequence;
@@ -231,6 +228,9 @@ public:
     virtual bool IsLoading(){ return m_IsLoading;}
     virtual bool CanGoBack(){ return false;}
     virtual bool CanGoForward(){ return false;}
+    virtual bool RecentlyAudible(){ return false;}
+    virtual bool IsAudioMuted(){ return false;}
+    virtual void SetAudioMuted(bool){}
 
     virtual void Print(){}
     virtual void AddSearchEngine(QPoint){}
@@ -265,9 +265,6 @@ public:
         return true;
     }
 
-#ifdef QTWEBKIT
-    virtual void TriggerAction(QWebPage::WebAction){}
-#endif
     virtual void TriggerAction(QWebEnginePage::WebAction){}
     virtual void TriggerAction(Page::CustomAction, QVariant = QVariant()){}
 
@@ -302,9 +299,6 @@ public:
         }
         return action;
     }
-#ifdef QTWEBKIT
-    virtual QAction *Action(QWebPage::WebAction){ return 0;}
-#endif
     virtual QAction *Action(QWebEnginePage::WebAction){ return 0;}
     virtual QAction *Action(Page::CustomAction, QVariant = QVariant()){ return 0;}
 
@@ -683,7 +677,6 @@ protected:
           VV"        data.imageUrl = elems[i].src;\n"
           VV"        data.imageHtml = elems[i].innerHTML;\n" // roughly capture.
           VV"        data.baseUrl = baseUrl;\n"
-            // devicePixelRatio is not set to right value on QtWebKit(2) api.
           VV"        data.x = elems[i].getBoundingClientRect().left * devicePixelRatio;\n"
           VV"        data.y = elems[i].getBoundingClientRect().top  * devicePixelRatio;\n"
           VV"        data.width  = elems[i].getBoundingClientRect().width  * devicePixelRatio;\n"
@@ -770,7 +763,7 @@ protected:
           VV"               elems[i].type.toLowerCase() == \"reset\" ||\n"
           VV"               elems[i].type.toLowerCase() == \"button\"))) ? \"Click\" :\n"
           VV"            (elems[i].onmouseover) ? \"Hover\" :\n"
-          VV"             \"None\";"
+          VV"             \"None\";\n"
             // traverse frames, security error?...
         //VV"        if(elems[i].tagName == \"FRAME\" ||\n"
         //VV"           elems[i].tagName == \"IFRAME\"){\n"
@@ -850,7 +843,6 @@ protected:
           VV"        image = image.parentNode;\n"
           VV"    }\n"
           VV"    data.baseUrl = baseUrl;\n"
-            // devicePixelRatio is not set to right value on QtWebKit(2) api.
           VV"    data.x = elem.getBoundingClientRect().left * devicePixelRatio;\n"
           VV"    data.y = elem.getBoundingClientRect().top  * devicePixelRatio;\n"
           VV"    data.width = elem.getBoundingClientRect().width   * devicePixelRatio;\n"
@@ -1022,7 +1014,6 @@ protected:
           VV"    var rects = getSelection().getRangeAt(0).getClientRects();\n"
           VV"    for(var i = 0; i < rects.length; i++){\n"
           VV"        map[i] = {};\n"
-            // devicePixelRatio is not set to right value on QtWebKit(2) api.
           VV"        map[i].x = rects[i].left * devicePixelRatio;\n"
           VV"        map[i].y = rects[i].top  * devicePixelRatio;\n"
           VV"        map[i].width  = rects[i].width  * devicePixelRatio;\n"
@@ -1041,6 +1032,173 @@ protected:
           VV"    elem.setAttribute(\"value\", \"%2\");\n"
           VV"    elem.focus();\n"
           VV"})()").arg(quotedXpath).arg(quotedText);
+    }
+
+    static inline QString DecorateFormFieldJsCode(const QString &data){
+        QString quoted = QString(data).replace(QStringLiteral("\""), QStringLiteral("\\\""));
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    var data = \"%1\".split(\"&\");\n"
+          VV"    var forms = document.querySelectorAll(\"form\");\n"
+          VV"    for(var i = 0; i < forms.length; i++){\n"
+          VV"        var form = forms[i];\n"
+          VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
+          VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+          VV"        if(!submit || !password) continue;\n"
+          VV"        for(var j = 0; j < data.length; j++){\n"
+          VV"            var pair = data[j].split(\"=\");\n"
+          VV"            var name = decodeURIComponent(pair[0]);\n"
+          VV"            var val  = decodeURIComponent(pair[1]);\n"
+          VV"            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
+          VV"            if(!field) continue;\n"
+          VV"            field.style.boxShadow = \"inset 0 0 2px 2px #eca\";\n"
+          VV"            field.style.border = \"1px\";\n"
+          VV"        }\n"
+          VV"    }\n"
+          VV"})()").arg(quoted);
+    }
+
+    static inline QString SubmitFormDataJsCode(const QString &data){
+        QString quoted = QString(data).replace(QStringLiteral("\""), QStringLiteral("\\\""));
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    var submitted = false;\n"
+          VV"    var data = \"%1\".split(\"&\");\n"
+          VV"    var forms = document.querySelectorAll(\"form\");\n"
+          VV"    for(var i = 0; i < forms.length; i++){\n"
+          VV"        var form = forms[i];\n"
+          VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
+          VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+          VV"        if(!submit || !password) continue;\n"
+          VV"        for(var j = 0; j < data.length; j++){\n"
+          VV"            var pair = data[j].split(\"=\");\n"
+          VV"            var name = decodeURIComponent(pair[0]);\n"
+          VV"            var val  = decodeURIComponent(pair[1]);\n"
+          VV"            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
+          VV"            if(!field) continue;\n"
+          VV"            submitted = true;\n"
+          VV"            field.value = val;\n"
+          VV"        }\n"
+          VV"        if(!submitted) continut;\n"
+          VV"        if(submit.click){\n"
+          VV"            submit.click();\n"
+          VV"        } else if(typeof submit == \"function\"){\n"
+          VV"            submit();\n"
+          VV"        }\n"
+          VV"    }\n"
+          VV"})()").arg(quoted);
+    }
+
+    static inline QString InstallEventFilterJsCode(const QList<QEvent::Type> &types){
+        QString inner;
+        if(types.contains(QEvent::KeyPress))
+            inner += QStringLiteral(
+                "document.addEventListener(\"keydown\", function(e){\n"
+              VV"    var prevent = false;\n"
+              VV"    var elem = document.activeElement;\n"
+                // tab key and return key and move key
+                // should call web event and prevent c++ shortcut.
+              VV"    if(e.keyCode == 9 || e.keyCode == 13){\n"
+              VV"        prevent = false;\n"
+              VV"    } else if(!e.altKey && !e.ctrlKey &&\n"
+              VV"       32 <= e.keyCode && e.keyCode <= 40){\n"
+              VV"        prevent = false;\n"
+              VV"    } else if(elem.isContentEditable ||\n"
+              VV"              elem.tagName == \"BUTTON\" ||\n"
+              VV"              elem.tagName == \"SELECT\" ||\n"
+              VV"              elem.tagName == \"INPUT\"  ||\n"
+              VV"              elem.tagName == \"TEXTAREA\"){\n"
+              VV"        if(e.ctrlKey || e.altKey){\n"
+              VV"            prevent = true;\n"
+              VV"        }\n"
+              VV"    } else {\n"
+              VV"        prevent = true;\n"
+              VV"    }\n"
+              VV"    if(prevent || (e.ctrlKey && e.keyCode == 13)){\n" // for password manager.
+              VV"        console.info(\"keyPressEvent%1,\" + \n"
+              VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
+              VV"        e.preventDefault();\n"
+              VV"    }\n"
+              VV"}, false);\n");
+
+        if(types.contains(QEvent::KeyRelease))
+            inner += QStringLiteral(
+                "document.addEventListener(\"keyup\", function(e){\n"
+              VV"    var prevent = false;\n"
+              VV"    var elem = document.activeElement;\n"
+                // tab key and return key and move key
+                // should call web content's event and call EmitScrollChanged.
+              VV"    if(e.keyCode == 9 || e.keyCode == 13){\n"
+              VV"        prevent = false;\n"
+              VV"        console.info(\"keyReleaseEvent%1,\" + \n"
+              VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
+              VV"    } else if(!e.altKey && !e.ctrlKey &&\n"
+              VV"       32 <= e.keyCode && e.keyCode <= 40){\n"
+              VV"        prevent = false;\n"
+              VV"        console.info(\"keyReleaseEvent%1,\" + \n"
+              VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
+              VV"    } else if(elem.isContentEditable ||\n"
+              VV"              elem.tagName == \"BUTTON\" ||\n"
+              VV"              elem.tagName == \"SELECT\" ||\n"
+              VV"              elem.tagName == \"INPUT\"  ||\n"
+              VV"              elem.tagName == \"TEXTAREA\"){\n"
+              VV"        if(e.ctrlKey || e.altKey){\n"
+              VV"            prevent = true;\n"
+              VV"        }\n"
+              VV"    } else {\n"
+              VV"        prevent = true;\n"
+              VV"    }\n"
+              VV"    if(prevent){\n"
+              VV"        console.info(\"keyReleaseEvent%1,\" + \n"
+              VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
+              VV"        e.preventDefault();\n"
+              VV"    }\n"
+              VV"}, false);\n");
+
+        if(types.contains(QEvent::MouseMove))
+            inner += QStringLiteral(
+                "document.addEventListener(\"mousemove\", function(e){\n"
+              VV"    console.info(\"mouseMoveEvent%1,\" + \n"
+              VV"                 e.button.toString() + \",\" + \n"
+              VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
+              VV"                 e.shiftKey.toString() + \",\" + e.ctrlKey.toString() + \",\" + \n"
+              VV"                 e.altKey.toString());\n"
+              VV"}, false);\n");
+
+        if(types.contains(QEvent::MouseButtonPress))
+            inner += QStringLiteral(
+                "document.addEventListener(\"mousedown\", function(e){\n"
+              VV"    console.info(\"mousePressEvent%1,\" + \n"
+              VV"                 e.button.toString() + \",\" + \n"
+              VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
+              VV"                 e.shiftKey.toString() + \",\" + e.ctrlKey.toString() + \",\" + \n"
+              VV"                 e.altKey.toString());\n"
+              VV"}, false);\n");
+
+        if(types.contains(QEvent::MouseButtonRelease))
+            inner += QStringLiteral(
+                "document.addEventListener(\"mouseup\", function(e){\n"
+              VV"    console.info(\"mouseReleaseEvent%1,\" + \n"
+              VV"                 e.button.toString() + \",\" + \n"
+              VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
+              VV"                 e.shiftKey.toString() + \",\" + e.ctrlKey.toString() + \",\" + \n"
+              VV"                 e.altKey.toString());\n"
+              VV"}, false);\n");
+
+        if(types.contains(QEvent::Wheel))
+            inner += QStringLiteral(
+                "document.addEventListener(\"mousewheel\", function(e){\n"
+              VV"    console.info(\"wheelEvent%1,\" + e.wheelDelta.toString());\n"
+              VV"}, false);\n");
+
+        return QStringLiteral(
+                "(function(){\n"
+              VV"    %1\n"
+              VV"})()").arg(inner.arg(Application::EventKey()));
     }
 
 private:
@@ -1119,9 +1277,6 @@ protected:
     bool m_EnableDragHackLocal;
 
     static const QList<float> m_ZoomFactorLevels;
-#ifdef QTWEBKIT
-    static const QMap<QWebSettings::WebAttribute, QString> m_WebSwitches;
-#endif
     static const QMap<QWebEngineSettings::WebAttribute, QString> m_WebEngineSwitches;
 
     static QString m_LinkMenu;

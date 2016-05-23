@@ -1,13 +1,9 @@
-#ifndef QUICKWEBVIEWBASE_HPP
-#define QUICKWEBVIEWBASE_HPP
+#ifndef QUICKWEBENGINEVIEW_HPP
+#define QUICKWEBENGINEVIEW_HPP
 
 #include "switch.hpp"
 
-//[[!QWEV]]
-#ifdef QTWEBKIT
-//[[/!QWEV]]
-
-#include "webpagebase.hpp"
+#include "webenginepage.hpp"
 #include "view.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
@@ -20,32 +16,33 @@
 #include <QNetworkRequest>
 #include <QQmlEngine>
 #include <QQuickWidget>
+#include <QWebEngineView>
 
-class QuickWebViewBase : public QQuickWidget, public View{
+class QuickWebEngineView : public QQuickWidget, public View{
     Q_OBJECT
 
 public:
-    QuickWebViewBase(TreeBank *parent = 0, QString id = QString(), QStringList set = QStringList());
-    ~QuickWebViewBase();
+    QuickWebEngineView(TreeBank *parent = 0, QString id = QString(), QStringList set = QStringList());
+    ~QuickWebEngineView();
 
     void ApplySpecificSettings(QStringList set) DECL_OVERRIDE;
 
     QQuickWidget *base() DECL_OVERRIDE {
         return static_cast<QQuickWidget*>(this);
     }
-    WebPageBase *page() DECL_OVERRIDE {
-        return static_cast<WebPageBase*>(View::page());
+    WebEnginePage *page() DECL_OVERRIDE {
+        return static_cast<WebEnginePage*>(View::page());
     }
 
-    QUrl      url() DECL_OVERRIDE { return m_QmlWebViewBase->property("url").toUrl();}
+    QUrl      url() DECL_OVERRIDE { return m_QmlWebEngineView->property("url").toUrl();}
     void   setUrl(const QUrl &url) DECL_OVERRIDE {
-        m_QmlWebViewBase->setProperty("url", url);
+        m_QmlWebEngineView->setProperty("url", url);
         emit urlChanged(url);
     }
 
     QString   html() DECL_OVERRIDE { return WholeHtml();}
     void   setHtml(const QString &html, const QUrl &url) DECL_OVERRIDE {
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "loadHtml",
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "loadHtml",
                                   Q_ARG(QString, html),
                                   Q_ARG(QUrl,    url));
         emit urlChanged(url);
@@ -60,10 +57,8 @@ public:
     void Connect(TreeBank *tb) DECL_OVERRIDE;
     void Disconnect(TreeBank *tb) DECL_OVERRIDE;
 
-    //[[QWEV]]
     void ZoomIn() DECL_OVERRIDE;
     void ZoomOut() DECL_OVERRIDE;
-    //[[/QWEV]]
 
     QUrl BaseUrl() DECL_OVERRIDE {
         return GetBaseUrl();
@@ -75,10 +70,34 @@ public:
     bool ForbidToOverlap() DECL_OVERRIDE { return true;}
 
     bool CanGoBack() DECL_OVERRIDE {
-        return m_QmlWebViewBase->property("canGoBack").toBool();
+        return m_QmlWebEngineView->property("canGoBack").toBool();
     }
     bool CanGoForward() DECL_OVERRIDE {
-        return m_QmlWebViewBase->property("canGoForward").toBool();
+        return m_QmlWebEngineView->property("canGoForward").toBool();
+    }
+#if QT_VERSION >= 0x050700
+    bool RecentlyAudible() DECL_OVERRIDE {
+        return m_QmlWebEngineView->property("recentlyAudible").toBool();
+    }
+    bool IsAudioMuted() DECL_OVERRIDE {
+        return m_QmlWebEngineView->property("audioMuted").toBool();
+    }
+    void SetAudioMuted(bool muted) DECL_OVERRIDE {
+        m_QmlWebEngineView->setProperty("audioMuted", muted);
+    }
+#endif
+
+    void InspectElement() DECL_OVERRIDE {
+        if(!m_Inspector){
+            m_Inspector = new QWebEngineView();
+            m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
+            m_Inspector->load(m_InspectorTable[this]);
+        } else {
+            m_Inspector->reload();
+        }
+        m_Inspector->show();
+        m_Inspector->raise();
+        //if(page()) page()->InspectElement();
     }
 
     bool IsRenderable() DECL_OVERRIDE {
@@ -112,33 +131,33 @@ public:
         if(page()) page()->SetSource(html);
     }
     QString GetTitle() DECL_OVERRIDE {
-        return m_QmlWebViewBase->property("title").toString();
+        return m_QmlWebEngineView->property("title").toString();
     }
 
-    void TriggerAction(QWebPageBase::WebAction a) DECL_OVERRIDE {
+    void TriggerAction(QWebEnginePage::WebAction a) DECL_OVERRIDE {
         Action(a)->trigger();
     }
     void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
         Action(a, data)->trigger();
     }
-    QAction *Action(QWebPageBase::WebAction a) DECL_OVERRIDE;
+    QAction *Action(QWebEnginePage::WebAction a) DECL_OVERRIDE;
     QAction *Action(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE;
 
-    void TriggerNativeLoadAction(const QUrl &url) DECL_OVERRIDE { m_QmlWebViewBase->setProperty("url", url);}
+    void TriggerNativeLoadAction(const QUrl &url) DECL_OVERRIDE { m_QmlWebEngineView->setProperty("url", url);}
     void TriggerNativeLoadAction(const QNetworkRequest &req,
                                  QNetworkAccessManager::Operation = QNetworkAccessManager::GetOperation,
-                                 const QByteArray & = QByteArray()) DECL_OVERRIDE { m_QmlWebViewBase->setProperty("url", req.url());}
-    void TriggerNativeGoBackAction() DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebViewBase, "goBack");}
-    void TriggerNativeGoForwardAction() DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebViewBase, "goForward");}
+                                 const QByteArray & = QByteArray()) DECL_OVERRIDE { m_QmlWebEngineView->setProperty("url", req.url());}
+    void TriggerNativeGoBackAction() DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goBack");}
+    void TriggerNativeGoForwardAction() DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goForward");}
 
-    void UpKeyEvent()       DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_UpKey);       QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void DownKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_DownKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void RightKeyEvent()    DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_RightKey);    QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void LeftKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_LeftKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void PageDownKeyEvent() DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_PageDownKey); QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void PageUpKeyEvent()   DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_PageUpKey);   QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void HomeKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_HomeKey);     QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
-    void EndKeyEvent()      DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_EndKey);      QMetaObject::invokeMethod(m_QmlWebViewBase, "emitScrollChangedIfNeed");}
+    void UpKeyEvent()       DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_UpKey);       QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
+    void DownKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_DownKey);     QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
+    void RightKeyEvent()    DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_RightKey);    QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
+    void LeftKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_LeftKey);     QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
+    void PageDownKeyEvent() DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_PageDownKey); QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
+    void PageUpKeyEvent()   DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_PageUpKey);   QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
+    void HomeKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_HomeKey);     QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
+    void EndKeyEvent()      DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_EndKey);      QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
 
     void KeyPressEvent(QKeyEvent *ev) DECL_OVERRIDE { keyPressEvent(ev);}
     void KeyReleaseEvent(QKeyEvent *ev) DECL_OVERRIDE { keyReleaseEvent(ev);}
@@ -207,7 +226,7 @@ public slots:
     bool visible() DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) DECL_OVERRIDE {
         base()->setFocus(reason);
-        m_QmlWebViewBase->setProperty("focus", true);
+        m_QmlWebEngineView->setProperty("focus", true);
     }
 
     void Load()                           DECL_OVERRIDE { View::Load();}
@@ -222,12 +241,11 @@ public slots:
 #endif
     }
 
-    // dummy slots.
-    void OnLoadStarted() DECL_OVERRIDE { View::OnLoadStarted();}
-    void OnLoadProgress(int progress) DECL_OVERRIDE { View::OnLoadProgress(progress);}
-    void OnLoadFinished(bool ok) DECL_OVERRIDE { View::OnLoadFinished(ok);}
-    void OnTitleChanged(const QString&) DECL_OVERRIDE {}
-    void OnUrlChanged(const QUrl&) DECL_OVERRIDE {}
+    void OnLoadStarted() DECL_OVERRIDE;
+    void OnLoadProgress(int progress) DECL_OVERRIDE;
+    void OnLoadFinished(bool ok) DECL_OVERRIDE;
+    void OnTitleChanged(const QString&) DECL_OVERRIDE;
+    void OnUrlChanged(const QUrl&) DECL_OVERRIDE;
 
     void OnViewChanged();
     void OnScrollChanged();
@@ -237,28 +255,29 @@ public slots:
     void SetScrollBarState() DECL_OVERRIDE;
 
     void SetScroll(QPointF pos) DECL_OVERRIDE {
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "setScroll",
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "setScroll",
                                   Q_ARG(QVariant, QVariant::fromValue(pos)));
     }
 
     bool SaveScroll() DECL_OVERRIDE {
         if(size().isEmpty()) return false;
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "saveScroll");
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "saveScroll");
         return true;
     }
     bool RestoreScroll() DECL_OVERRIDE {
         if(size().isEmpty()) return false;
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "restoreScroll");
+        if(m_PreventScrollRestoration) return false;
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreScroll");
         return true;
     }
     bool SaveZoom() DECL_OVERRIDE {
         if(size().isEmpty()) return false;
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "saveZoom");
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "saveZoom");
         return true;
     }
     bool RestoreZoom() DECL_OVERRIDE {
         if(size().isEmpty()) return false;
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "restoreZoom");
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreZoom");
         return true;
     }
 
@@ -266,19 +285,20 @@ public slots:
     bool SeekText(const QString&, View::FindFlags);
 
     void SetFocusToElement(QString xpath){
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "setFocusToElement",
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "setFocusToElement",
                                   Q_ARG(QVariant, QVariant::fromValue(xpath)));
     }
     void FireClickEvent(QString xpath, QPoint pos){
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "fireClickEvent",
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "fireClickEvent",
                                   Q_ARG(QVariant, QVariant::fromValue(xpath)),
                                   Q_ARG(QVariant, QVariant::fromValue(pos)));
     }
     void SetTextValue(QString xpath, QString text){
-        QMetaObject::invokeMethod(m_QmlWebViewBase, "setTextValue",
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "setTextValue",
                                   Q_ARG(QVariant, QVariant::fromValue(xpath)),
                                   Q_ARG(QVariant, QVariant::fromValue(text)));
     }
+    void AssignInspector();
 
     // dirty...
     int findBackwardIntValue()            { return static_cast<int>(FindBackward);}
@@ -298,6 +318,14 @@ public slots:
             tb->GetMainWindow()->SetFullScreen(on);
         }
     }
+
+    void triggerAction(QString str){ View::TriggerAction(str);}
+
+    void handleJavascriptConsoleMessage(QString msg);
+
+    void onLoadStarted(){ OnLoadStarted();}
+    void onLoadProgress(int progress){ OnLoadProgress(progress);}
+    void onLoadFinished(bool ok){ OnLoadFinished(ok);}
 
     QString setFocusToElementJsCode(const QString &xpath){ return SetFocusToElementJsCode(xpath);}
     QString fireClickEventJsCode(const QString &xpath, const QPoint &pos){ return FireClickEventJsCode(xpath, pos);}
@@ -320,26 +348,26 @@ public slots:
 
     QQuickItem *newViewNodeForeground(){
         SharedView view = GetTreeBank()->OpenInNewViewNode(QUrl(), true, GetViewNode());
-        if(QuickWebViewBase *v = qobject_cast<QuickWebViewBase*>(view->base()))
-            return v->m_QmlWebViewBase;
+        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
+            return v->m_QmlWebEngineView;
         return 0;
     }
     QQuickItem *newViewNodeBackground(){
         SharedView view = GetTreeBank()->OpenInNewViewNode(QUrl(), false, GetViewNode());
-        if(QuickWebViewBase *v = qobject_cast<QuickWebViewBase*>(view->base()))
-            return v->m_QmlWebViewBase;
+        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
+            return v->m_QmlWebEngineView;
         return 0;
     }
     QQuickItem *newHistNodeForeground(){
         SharedView view = GetTreeBank()->OpenInNewHistNode(QUrl(), true, GetHistNode());
-        if(QuickWebViewBase *v = qobject_cast<QuickWebViewBase*>(view->base()))
-            return v->m_QmlWebViewBase;
+        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
+            return v->m_QmlWebEngineView;
         return 0;
     }
     QQuickItem *newHistNodeBackground(){
         SharedView view = GetTreeBank()->OpenInNewHistNode(QUrl(), false, GetHistNode());
-        if(QuickWebViewBase *v = qobject_cast<QuickWebViewBase*>(view->base()))
-            return v->m_QmlWebViewBase;
+        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
+            return v->m_QmlWebEngineView;
         return 0;
     }
 
@@ -370,6 +398,7 @@ signals:
 
     void titleChanged(const QString&);
     void urlChanged(const QUrl&);
+    void iconChanged(const QIcon&);
     void loadStarted();
     void loadProgress(int);
     void loadFinished(bool);
@@ -399,37 +428,39 @@ protected:
     bool focusNextPrevChild(bool next) DECL_OVERRIDE;
 
 private:
-    QQuickItem *m_QmlWebViewBase;
+    QQuickItem *m_QmlWebEngineView;
     QImage m_GrabedDisplayData;
+    static QMap<View*, QUrl> m_InspectorTable;
+    QWebEngineView *m_Inspector;
+    bool m_PreventScrollRestoration;
+#ifdef PASSWORD_MANAGER
+    bool m_PreventAuthRegistration;
+#endif
 
     QMap<Page::CustomAction, QAction*> m_ActionTable;
 
     int m_RequestId;
 
-    inline void SetPreference(QWebSettingsBase::WebAttribute item, const char *text){
+    inline void SetPreference(QWebEngineSettings::WebAttribute item, const char *text){
         QMetaObject::invokeMethod
-            (m_QmlWebViewBase, "setPreference",
+            (m_QmlWebEngineView, "setPreference",
              Q_ARG(QVariant, QVariant::fromValue(QString(QLatin1String(text)))),
              Q_ARG(QVariant, QVariant::fromValue(page()->settings()->testAttribute(item))));
     }
 
-    inline void SetFontFamily(QWebSettingsBase::FontFamily item, const char *text){
+    inline void SetFontFamily(QWebEngineSettings::FontFamily item, const char *text){
         QMetaObject::invokeMethod
-            (m_QmlWebViewBase, "setFontFamily",
+            (m_QmlWebEngineView, "setFontFamily",
              Q_ARG(QVariant, QVariant::fromValue(QString::fromUtf8(text))),
              Q_ARG(QVariant, QVariant::fromValue(page()->settings()->fontFamily(item))));
     }
 
-    inline void SetFontSize(QWebSettingsBase::FontSize item, const char *text){
+    inline void SetFontSize(QWebEngineSettings::FontSize item, const char *text){
         QMetaObject::invokeMethod
-            (m_QmlWebViewBase, "setFontSize",
+            (m_QmlWebEngineView, "setFontSize",
              Q_ARG(QVariant, QVariant::fromValue(QString::fromUtf8(text))),
              Q_ARG(QVariant, QVariant::fromValue(page()->settings()->fontSize(item))));
     }
 };
 
-//[[!QWEV]]
-#endif //ifdef QTWEBKIT
-//[[/!QWEV]]
-
-#endif //ifndef QUICKWEBVIEWBASE_HPP
+#endif //ifndef QUICKWEBENGINEVIEW_HPP
