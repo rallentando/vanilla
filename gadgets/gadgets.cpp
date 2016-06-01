@@ -725,6 +725,11 @@ bool Gadgets::IsActive(){
     return isVisible();
 }
 
+bool Gadgets::IsDisplaying(DisplayType type){
+    if(!IsActive()) return false;
+    return m_DisplayType == type;
+}
+
 void Gadgets::SetCurrentView(View *view){
     if(m_DisplayType == AccessKey){
         SetMaster(view->GetThis());
@@ -1920,16 +1925,16 @@ QAction *Gadgets::Action(GadgetsAction a){
     m_ActionTable[a] = action = new QAction(this);
 
     switch(a){
-    case _Up:      action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case _Down:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case _Right:   action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case _Left:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-  //case _Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
-  //case _Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
-  //case _Rewind:  action->setIcon(QIcon(":/resources/menu/rewind.png"));  braek;
+    case _Up:          action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
+    case _Down:        action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
+    case _Right:       action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
+    case _Left:        action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
+  //case _Back:        action->setIcon(QIcon(":/resources/menu/back.png"));        break;
+  //case _Forward:     action->setIcon(QIcon(":/resources/menu/forward.png"));     break;
+  //case _Rewind:      action->setIcon(QIcon(":/resources/menu/rewind.png"));      braek;
   //case _FastForward: action->setIcon(QIcon(":/resources/menu/fastforward.png")); braek;
-  //case _Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
-  //case _Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
+  //case _Reload:      action->setIcon(QIcon(":/resources/menu/reload.png"));      break;
+  //case _Stop:        action->setIcon(QIcon(":/resources/menu/stop.png"));        break;
     }
 
     switch(a){

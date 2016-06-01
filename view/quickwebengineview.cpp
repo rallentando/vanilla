@@ -53,6 +53,21 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
     m_ActionTable = QMap<Page::CustomAction, QAction*>();
     m_RequestId = 0;
 
+    m_Icon = QIcon();
+    connect(this, SIGNAL(iconUrlChanged(const QUrl&)),
+            this, SLOT(UpdateIcon(const QUrl&)));
+
+    connect(this, SIGNAL(windowCloseRequested()),
+            this, SLOT(HandleWindowClose()));
+    connect(this, SIGNAL(javascriptConsoleMessage(int, const QString&)),
+            this, SLOT(HandleJavascriptConsoleMessage(int, const QString&)));
+    connect(this, SIGNAL(featurePermissionRequested(const QUrl&, int)),
+            this, SLOT(HandleFeaturePermission(const QUrl&, int)));
+    connect(this, SIGNAL(renderProcessTerminated(int, int)),
+            this, SLOT(HandleRenderProcessTermination(int, int)));
+    connect(this, SIGNAL(fullScreenRequested(bool)),
+            this, SLOT(HandleFullScreen(bool)));
+
     connect(m_QmlWebEngineView, SIGNAL(callBackResult(int, QVariant)),
             this,               SIGNAL(CallBackResult(int, QVariant)));
 
@@ -113,21 +128,58 @@ void QuickWebEngineView::ApplySpecificSettings(QStringList set){
                               Q_ARG(QVariant, QVariant::fromValue(page()->settings()->defaultTextEncoding())));
 }
 
+QQuickWidget *QuickWebEngineView::base(){
+    return static_cast<QQuickWidget*>(this);
+}
+
+WebEnginePage *QuickWebEngineView::page(){
+    return static_cast<WebEnginePage*>(View::page());
+}
+
+QUrl QuickWebEngineView::url(){
+    return m_QmlWebEngineView->property("url").toUrl();
+}
+
+QString QuickWebEngineView::html(){
+    return WholeHtml();
+}
+
+TreeBank *QuickWebEngineView::parent(){
+    return m_TreeBank;
+}
+
+void QuickWebEngineView::setUrl(const QUrl &url){
+    m_QmlWebEngineView->setProperty("url", url);
+    emit urlChanged(url);
+}
+
+void QuickWebEngineView::setHtml(const QString &html, const QUrl &url){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "loadHtml",
+                              Q_ARG(QString, html),
+                              Q_ARG(QUrl,    url));
+    emit urlChanged(url);
+}
+
+void QuickWebEngineView::setParent(TreeBank* t){
+    View::SetTreeBank(t);
+    base()->setParent(t);
+}
+
 void QuickWebEngineView::Connect(TreeBank *tb){
     View::Connect(tb);
 
     if(!tb || !page()) return;
 
-    connect(m_QmlWebEngineView, SIGNAL(titleChanged_(const QString&)),
-            tb->parent(), SLOT(setWindowTitle(const QString&)));
+    connect(this, SIGNAL(titleChanged(const QString&)),
+            tb->parent(), SLOT(SetWindowTitle(const QString&)));
+    //connect(this, SIGNAL(loadProgress(int)),
+    //        this, SLOT(RestoreScroll()));
     if(Notifier *notifier = tb->GetNotifier()){
         connect(this, SIGNAL(statusBarMessage(const QString&)),
                 notifier, SLOT(SetStatus(const QString&)));
         connect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
                 notifier, SLOT(SetStatus(const QString&, const QString&)));
-        connect(m_QmlWebEngineView, SIGNAL(statusBarMessage(const QString&)),
-                notifier, SLOT(SetStatus(const QString&)));
-        connect(m_QmlWebEngineView, SIGNAL(linkHovered_(const QString&, const QString&, const QString&)),
+        connect(this, SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
                 notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
 
         connect(this, SIGNAL(ScrollChanged(QPointF)),
@@ -155,16 +207,16 @@ void QuickWebEngineView::Disconnect(TreeBank *tb){
 
     if(!tb || !page()) return;
 
-    disconnect(m_QmlWebEngineView, SIGNAL(titleChanged_(const QString&)),
-               tb->parent(), SLOT(setWindowTitle(const QString&)));
+    disconnect(this, SIGNAL(titleChanged(const QString&)),
+               tb->parent(), SLOT(SetWindowTitle(const QString&)));
+    //disconnect(this, SIGNAL(loadProgress(int)),
+    //           this, SLOT(RestoreScroll()));
     if(Notifier *notifier = tb->GetNotifier()){
         disconnect(this, SIGNAL(statusBarMessage(const QString&)),
                    notifier, SLOT(SetStatus(const QString&)));
         disconnect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
                    notifier, SLOT(SetStatus(const QString&, const QString&)));
-        disconnect(m_QmlWebEngineView, SIGNAL(statusBarMessage(const QString&)),
-                   notifier, SLOT(SetStatus(const QString&)));
-        disconnect(m_QmlWebEngineView, SIGNAL(linkHovered_(const QString&, const QString&, const QString&)),
+        disconnect(this, SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
                    notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
 
         disconnect(this, SIGNAL(ScrollChanged(QPointF)),
@@ -187,63 +239,19 @@ void QuickWebEngineView::Disconnect(TreeBank *tb){
     }
 }
 
-void QuickWebEngineView::ZoomIn(){
-    float zoom = PrepareForZoomIn();
-    m_QmlWebEngineView->setProperty("devicePixelRatio", static_cast<qreal>(zoom));
-    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
-}
+void QuickWebEngineView::OnSetViewNode(ViewNode*){}
 
-void QuickWebEngineView::ZoomOut(){
-    float zoom = PrepareForZoomOut();
-    m_QmlWebEngineView->setProperty("devicePixelRatio", static_cast<qreal>(zoom));
-    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
-}
+void QuickWebEngineView::OnSetHistNode(HistNode*){}
 
-QAction *QuickWebEngineView::Action(QWebEnginePage::WebAction a){
-    switch(a){
-    case QWebEnginePage::Reload:  return Action(Page::_Reload);
-    case QWebEnginePage::Stop:    return Action(Page::_Stop);
-    case QWebEnginePage::Back:    return Action(Page::_Back);
-    case QWebEnginePage::Forward: return Action(Page::_Forward);
-    }
-    return page()->Action(a);
-}
+void QuickWebEngineView::OnSetThis(WeakView){}
 
-QAction *QuickWebEngineView::Action(Page::CustomAction a, QVariant data){
-    QAction *action = m_ActionTable[a];
+void QuickWebEngineView::OnSetMaster(WeakView){}
 
-    if(action) return action;
+void QuickWebEngineView::OnSetSlave(WeakView){}
 
-    if(a == Page::_Reload ||
-       a == Page::_Stop ||
-       a == Page::_Back ||
-       a == Page::_Forward){
+void QuickWebEngineView::OnSetJsObject(_View*){}
 
-        m_ActionTable[a] = action = new QAction(this);
-
-        switch(a){
-        case Page::_Reload:
-            action->setText(tr("Reload"));
-            connect(action, SIGNAL(triggered()), m_QmlWebEngineView, SLOT(reload()));
-            break;
-        case Page::_Stop:
-            action->setText(tr("Stop"));
-            connect(action, SIGNAL(triggered()), m_QmlWebEngineView, SLOT(stop()));
-            break;
-        case Page::_Back:
-            action->setText(tr("Back"));
-            connect(action, SIGNAL(triggered()), m_QmlWebEngineView, SLOT(goBack()));
-            break;
-        case Page::_Forward:
-            action->setText(tr("Forward"));
-            connect(action, SIGNAL(triggered()), m_QmlWebEngineView, SLOT(goForward()));
-            break;
-        }
-        action->setData(data);
-        return action;
-    }
-    return page()->Action(a, data);
-}
+void QuickWebEngineView::OnSetJsObject(_Vanilla*){}
 
 void QuickWebEngineView::OnLoadStarted(){
     if(!GetHistNode()) return;
@@ -257,10 +265,8 @@ void QuickWebEngineView::OnLoadStarted(){
     //page()->AddJsObject();
 #endif
 
-#if QT_VERSION < 0x050700
-    //if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
-    //    UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
-#endif
+    if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
+        UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
 }
 
 void QuickWebEngineView::OnLoadProgress(int progress){
@@ -336,62 +342,84 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
 }
 
 void QuickWebEngineView::OnTitleChanged(const QString &title){
-    Q_UNUSED(title);
+    if(!GetHistNode()) return;
+    ChangeNodeTitle(title);
 }
 
 void QuickWebEngineView::OnUrlChanged(const QUrl &url){
-    Q_UNUSED(url);
+    if(!GetHistNode()) return;
+    ChangeNodeUrl(url);
 }
 
 void QuickWebEngineView::OnViewChanged(){
+    if(!GetHistNode()) return;
     TreeBank::AddToUpdateBox(GetThis().lock());
 }
 
 void QuickWebEngineView::OnScrollChanged(){
+    if(!GetHistNode()) return;
     SaveScroll();
 }
 
 void QuickWebEngineView::CallWithScroll(PointFCallBack callBack){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant result){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(result.toPointF());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(GetScrollRatioPointJsCode())));
+    CallWithEvaluatedJavaScriptResult
+        (GetScrollRatioPointJsCode(), [callBack](QVariant var){
+            if(!var.isValid()) return callBack(QPointF(0.5f, 0.5f));
+            QVariantList list = var.toList();
+            callBack(QPointF(list[0].toFloat(), list[1].toFloat()));
+        });
 }
 
 void QuickWebEngineView::SetScrollBarState(){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, connection](int id, QVariant result){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    if(!result.isValid()) return;
-                    QVariantList list = result.toList();
-                    int hmax = list[0].toInt();
-                    int vmax = list[1].toInt();
-                    if(hmax < 0) hmax = 0;
-                    if(vmax < 0) vmax = 0;
-                    if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
-                    else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
-                    else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
-                    else             m_ScrollBarState = NoScrollBarEnabled;
-                });
+    CallWithEvaluatedJavaScriptResult
+        (GetScrollBarStateJsCode(), [this](QVariant var){
+            if(!var.isValid()) return;
+            QVariantList list = var.toList();
+            int hmax = list[0].toInt();
+            int vmax = list[1].toInt();
+            if(hmax < 0) hmax = 0;
+            if(vmax < 0) vmax = 0;
+            if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
+            else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
+            else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
+            else             m_ScrollBarState = NoScrollBarEnabled;
+        });
+}
 
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(GetScrollBarStateJsCode())));
+QPointF QuickWebEngineView::GetScroll(){
+    if(!page()) return QPointF(0.5f, 0.5f);
+    // this function does not return actual value on WebEngineView.
+    return QPointF(0.5f, 0.5f);
+}
+
+void QuickWebEngineView::SetScroll(QPointF pos){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "setScroll",
+                              Q_ARG(QVariant, QVariant::fromValue(pos)));
+}
+
+bool QuickWebEngineView::SaveScroll(){
+    if(size().isEmpty()) return false;
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "saveScroll");
+    return true;
+}
+
+bool QuickWebEngineView::RestoreScroll(){
+    if(size().isEmpty()) return false;
+    if(m_PreventScrollRestoration) return false;
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreScroll");
+    return true;
+}
+
+bool QuickWebEngineView::SaveZoom(){
+    if(size().isEmpty()) return false;
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "saveZoom");
+    return true;
+}
+
+bool QuickWebEngineView::RestoreZoom(){
+    if(size().isEmpty()) return false;
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreZoom");
+    return true;
 }
 
 void QuickWebEngineView::KeyEvent(QString key){
@@ -403,6 +431,23 @@ bool QuickWebEngineView::SeekText(const QString &str, View::FindFlags opt){
                               Q_ARG(QVariant, QVariant::fromValue(str)),
                               Q_ARG(QVariant, QVariant::fromValue(static_cast<int>(opt))));
     return true;
+}
+
+void QuickWebEngineView::SetFocusToElement(QString xpath){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "setFocusToElement",
+                              Q_ARG(QVariant, QVariant::fromValue(xpath)));
+}
+
+void QuickWebEngineView::FireClickEvent(QString xpath, QPoint pos){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "fireClickEvent",
+                              Q_ARG(QVariant, QVariant::fromValue(xpath)),
+                              Q_ARG(QVariant, QVariant::fromValue(pos)));
+}
+
+void QuickWebEngineView::SetTextValue(QString xpath, QString text){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "setTextValue",
+                              Q_ARG(QVariant, QVariant::fromValue(xpath)),
+                              Q_ARG(QVariant, QVariant::fromValue(text)));
 }
 
 void QuickWebEngineView::AssignInspector(){
@@ -438,7 +483,36 @@ void QuickWebEngineView::AssignInspector(){
         });
 }
 
-void QuickWebEngineView::handleJavascriptConsoleMessage(QString msg){
+void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
+    m_Icon = QIcon();
+    if(!page()) return;
+    QString host = url().host();
+    QNetworkRequest req(iconUrl);
+    DownloadItem *item = NetworkController::Download
+        (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
+         req, NetworkController::ToVariable);
+
+    if(!item) return;
+
+    item->setParent(base());
+
+    connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
+            QPixmap pixmap;
+            if(pixmap.loadFromData(result)){
+                QIcon icon = QIcon(pixmap);
+                Application::RegisterIcon(host, icon);
+                if(url().host() == host) m_Icon = icon;
+            }
+        });
+}
+
+void QuickWebEngineView::HandleWindowClose(){
+    page()->CloseLater();
+}
+
+void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString &msg){
+    // 0: InfoMessageLevel
+    if(level != 0) return;
 #ifdef PASSWORD_MANAGER
     static QString reg;
     if(reg.isEmpty()) reg = QStringLiteral("submit%1,([^,]+)").arg(Application::EventKey());
@@ -468,61 +542,201 @@ void QuickWebEngineView::handleJavascriptConsoleMessage(QString msg){
         if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
         KeyReleaseEvent(&QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers));
-    } /*else if(Application::ExactMatch(QStringLiteral("mouseMoveEvent%1,([0-9]+),([0-9]+),([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
-        QStringList args = msg.split(QStringLiteral(","));
-        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
-        if(args[4] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
-        if(args[5] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
-        if(args[6] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        Qt::MouseButton button = Qt::NoButton;
-        switch(args[1].toInt()){
-        case 0: button = Qt::LeftButton;  break;
-        case 1: button = Qt::MidButton;   break;
-        case 2: button = Qt::RightButton; break; }
-        MouseMoveEvent(&QMouseEvent(QEvent::MouseMove, QPointF(args[2].toInt(), args[3].toInt()), button, button, modifiers));
-    } else if(Application::ExactMatch(QStringLiteral("mousePressEvent%1,([0-9]+),([0-9]+),([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
-        QStringList args = msg.split(QStringLiteral(","));
-        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
-        if(args[4] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
-        if(args[5] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
-        if(args[6] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        Qt::MouseButton button = Qt::NoButton;
-        switch(args[1].toInt()){
-        case 0: button = Qt::LeftButton;  break;
-        case 1: button = Qt::MidButton;   break;
-        case 2: button = Qt::RightButton; break; }
-        MousePressEvent(&QMouseEvent(QEvent::MouseButtonPress, QPointF(args[2].toInt(), args[3].toInt()), button, button, modifiers));
-    } else if(Application::ExactMatch(QStringLiteral("mouseReleaseEvent%1,([0-9]+),([0-9]+),([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
-        QStringList args = msg.split(QStringLiteral(","));
-        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
-        if(args[4] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
-        if(args[5] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
-        if(args[6] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        Qt::MouseButton button = Qt::NoButton;
-        switch(args[1].toInt()){
-        case 0: button = Qt::LeftButton;  break;
-        case 1: button = Qt::MidButton;   break;
-        case 2: button = Qt::RightButton; break; }
-        MouseReleaseEvent(&QMouseEvent(QEvent::MouseButtonRelease, QPointF(args[2].toInt(), args[3].toInt()), button, button, modifiers));
-    } else if(Application::ExactMatch(QStringLiteral("wheelEvent%1,(-?[0-9]+)").arg(Application::EventKey()), msg)){
-        QStringList args = msg.split(QStringLiteral(","));
-        WheelEvent(&QWheelEvent(QPointF(), args[1].toInt(), Qt::NoButton, Qt::NoModifier, Qt::Vertical));
     }
-    */
+}
+
+void QuickWebEngineView::HandleFeaturePermission(const QUrl &securityOrigin, int feature){
+    QString featureString;
+    switch(feature){
+    case 0: //QQuickWebEngineView::MediaAudioCapture:
+        featureString = QStringLiteral("MediaAudioCapture");      break;
+    case 1: //QQuickWebEngineView::MediaVideoCapture:
+        featureString = QStringLiteral("MediaVideoCapture");      break;
+    case 2: //QQuickWebEngineView::MediaAudioVideoCapture:
+        featureString = QStringLiteral("MediaAudioVideoCapture"); break;
+    case 3: //QQuickWebEngineView::Geolocation:
+        featureString = QStringLiteral("Geolocation");            break;
+    default: return;
+    }
+
+    ModalDialog *dialog = new ModalDialog();
+    dialog->SetTitle(tr("Feature Permission Requested."));
+    dialog->SetCaption(tr("Feature Permission Requested."));
+    dialog->SetInformativeText
+        (tr("Url: ") + securityOrigin.toString() + QStringLiteral("\n") +
+         tr("Feature: ") + featureString + QStringLiteral("\n\n") +
+         tr("Allow this feature?"));
+    dialog->SetButtons(QStringList() << tr("Yes") << tr("No") << tr("Cancel"));
+    dialog->Execute();
+
+    QString text = dialog->ClickedButton();
+    if(text == tr("Yes")){
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "grantFeaturePermission_",
+                                  Q_ARG(QVariant, QVariant::fromValue(securityOrigin)),
+                                  Q_ARG(QVariant, QVariant::fromValue(feature)),
+                                  Q_ARG(QVariant, QVariant::fromValue(true)));
+    } else if(text == tr("No")){
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "grantFeaturePermission_",
+                                  Q_ARG(QVariant, QVariant::fromValue(securityOrigin)),
+                                  Q_ARG(QVariant, QVariant::fromValue(feature)),
+                                  Q_ARG(QVariant, QVariant::fromValue(false)));
+    } else if(text == tr("Cancel")){
+        // nothing to do.
+    }
+}
+
+void QuickWebEngineView::HandleRenderProcessTermination(int status, int code){
+    QString info = tr("A page is reloaded, because that's process is terminated.\n");
+    switch(status){
+    case 0: //QQuickWebEngineView::NormalTerminationStatus:
+        info += tr("Normal termination. (code: %1)");   break;
+    case 1: //QQuickWebEngineView::AbnormalTerminationStatus:
+        info += tr("Abnormal termination. (code: %1)"); break;
+    case 2: //QQuickWebEngineView::CrashedTerminationStatus:
+        info += tr("Crashed termination. (code: %1)");  break;
+    case 3: //QQuickWebEngineView::KilledTerminationStatus:
+        info += tr("Killed termination. (code: %1)");   break;
+    }
+    ModelessDialog::Information(tr("Render process terminated."),
+                                info.arg(code), base());
+    QTimer::singleShot(0, m_QmlWebEngineView, SLOT(reload()));
+}
+
+void QuickWebEngineView::HandleFullScreen(bool on){
+    if(TreeBank *tb = GetTreeBank()){
+        tb->GetMainWindow()->SetFullScreen(on);
+        SetDisplayObscured(on);
+        if(!on) return;
+        ModelessDialog *dialog = new ModelessDialog();
+        // connect to 'Returned', because default value is true.
+        connect(this, &QuickWebEngineView::destroyed, dialog, &ModelessDialog::Returned);
+        connect(this, &QuickWebEngineView::fullScreenRequested, dialog, &ModelessDialog::Returned);
+        dialog->SetTitle(tr("This page becomes full screen mode."));
+        dialog->SetCaption(tr("Press Esc to exit."));
+        dialog->SetButtons(QStringList() << tr("OK") << tr("Cancel"));
+        dialog->SetDefaultValue(true);
+        dialog->SetCallBack([this](bool ok){ if(!ok) ExitFullScreen();});
+        QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    }
+}
+
+void QuickWebEngineView::Copy(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "copy");
+}
+
+void QuickWebEngineView::Cut(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "cut");
+}
+
+void QuickWebEngineView::Paste(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "paste");
+}
+
+void QuickWebEngineView::Undo(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "undo");
+}
+
+void QuickWebEngineView::Redo(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "redo");
+}
+
+void QuickWebEngineView::SelectAll(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "selectAll");
+}
+
+void QuickWebEngineView::Unselect(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "unselect");
+}
+
+void QuickWebEngineView::Reload(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "reload");
+}
+
+void QuickWebEngineView::ReloadAndBypassCache(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "reloadAndBypassCache");
+}
+
+void QuickWebEngineView::Stop(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "stop");
+}
+
+void QuickWebEngineView::StopAndUnselect(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "stopAndUnselect");
+}
+void QuickWebEngineView::Print(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "print_");
+}
+
+void QuickWebEngineView::Save(){
+#if QT_VERSION >= 0x050700
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "save");
+#else
+    if(!page()) return;
+    QNetworkRequest req(url());
+    req.setRawHeader("Referer", url().toEncoded());
+    page()->Download(req);
+#endif
+}
+
+void QuickWebEngineView::ZoomIn(){
+    float zoom = PrepareForZoomIn();
+    m_QmlWebEngineView->setProperty("zoomFactor", static_cast<qreal>(zoom));
+    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void QuickWebEngineView::ZoomOut(){
+    float zoom = PrepareForZoomOut();
+    m_QmlWebEngineView->setProperty("zoomFactor", static_cast<qreal>(zoom));
+    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void QuickWebEngineView::ExitFullScreen(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "fullScreenCancelled");
+}
+
+void QuickWebEngineView::InspectElement(){
+    if(!m_Inspector){
+        m_Inspector = new QWebEngineView();
+        m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
+        m_Inspector->load(m_InspectorTable[this]);
+    } else {
+        m_Inspector->reload();
+    }
+    m_Inspector->show();
+    m_Inspector->raise();
+    //if(page()) page()->InspectElement();
+}
+
+void QuickWebEngineView::AddSearchEngine(QPoint pos){
+    if(page()) page()->AddSearchEngine(pos);
+}
+
+void QuickWebEngineView::AddBookmarklet(QPoint pos){
+    if(page()) page()->AddBookmarklet(pos);
 }
 
 void QuickWebEngineView::hideEvent(QHideEvent *ev){
+    if(GetDisplayObscured()) ExitFullScreen();
     SaveViewState();
     QQuickWidget::hideEvent(ev);
 }
 
 void QuickWebEngineView::showEvent(QShowEvent *ev){
+    m_PreventScrollRestoration = false;
     QQuickWidget::showEvent(ev);
     RestoreViewState();
 }
 
 void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
     if(!visible()) return;
+
+    if(GetDisplayObscured()){
+        if(ev->key() == Qt::Key_Escape || ev->key() == Qt::Key_F11){
+            ExitFullScreen();
+            ev->setAccepted(true);
+            return;
+        }
+    }
 
 #ifdef PASSWORD_MANAGER
     if(ev->modifiers() & Qt::ControlModifier &&
@@ -645,7 +859,6 @@ void QuickWebEngineView::mouseMoveEvent(QMouseEvent *ev){
             ev->setAccepted(false);
             return;
         }
-
         QDrag *drag = new QDrag(this);
 
         // clear or make directory if need.
@@ -909,6 +1122,7 @@ void QuickWebEngineView::wheelEvent(QWheelEvent *ev){
         ev->setAccepted(true);
 
     } else {
+        m_PreventScrollRestoration = true;
         QQuickWidget::wheelEvent(ev);
         ev->setAccepted(true);
     }
@@ -932,243 +1146,123 @@ bool QuickWebEngineView::focusNextPrevChild(bool next){
 }
 
 void QuickWebEngineView::CallWithGotBaseUrl(UrlCallBack callBack){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant url){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(url.toUrl());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(GetBaseUrlJsCode())));
+    CallWithEvaluatedJavaScriptResult
+        (GetBaseUrlJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toUrl() : QUrl());
+        });
 }
 
 void QuickWebEngineView::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
     // this implementation is same as baseurl...
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant url){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(url.toUrl());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(GetBaseUrlJsCode())));
+    CallWithEvaluatedJavaScriptResult
+        (GetBaseUrlJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toUrl() : QUrl());
+        });
 }
 
 void QuickWebEngineView::CallWithFoundElements(Page::FindElementsOption option,
-                                             WebElementListCallBack callBack){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant var){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    QVariantList list = var.toMap().values();
-                    SharedWebElementList result;
+                                               WebElementListCallBack callBack){
+    CallWithEvaluatedJavaScriptResult
+        (FindElementsJsCode(option), [this, callBack](QVariant var){
+            if(!var.isValid()) return callBack(SharedWebElementList());
+            QVariantList list = var.toMap().values();
+            SharedWebElementList result;
 
-                    MainWindow *win = Application::GetCurrentWindow();
-                    QSize s =
-                        m_TreeBank ? m_TreeBank->size() :
-                        win ? win->GetTreeBank()->size() :
-                        !size().isEmpty() ? size() :
-                        DEFAULT_WINDOW_SIZE;
-                    QRect viewport = QRect(QPoint(), s);
+            MainWindow *win = Application::GetCurrentWindow();
+            QSize s =
+                m_TreeBank ? m_TreeBank->size() :
+                win ? win->GetTreeBank()->size() :
+                !size().isEmpty() ? size() :
+                DEFAULT_WINDOW_SIZE;
+            QRect viewport = QRect(QPoint(), s);
 
-                    for(int i = 0; i < list.length(); i++){
-                        std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
-                        *e = JsWebElement(this, list[i]);
-                        if(!viewport.intersects(e->Rectangle()))
-                            e->SetRectangle(QRect());
-                        result << e;
-                    }
-                    callBack(result);
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(FindElementsJsCode(option))));
+            for(int i = 0; i < list.length(); i++){
+                std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
+                *e = JsWebElement(this, list[i]);
+                if(!viewport.intersects(e->Rectangle()))
+                    e->SetRectangle(QRect());
+                result << e;
+            }
+            callBack(result);
+        });
 }
 
-void QuickWebEngineView::CallWithHitElement(const QPoint &pos,
-                                          WebElementCallBack callBack){
-    if(pos.isNull()){
-        callBack(SharedWebElement());
-        return;
-    }
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant var){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
-                    *e = JsWebElement(this, var);
-                    callBack(e);
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(HitElementJsCode(pos / m_HistNode->GetZoom()))));
+void QuickWebEngineView::CallWithHitElement(const QPoint &pos, WebElementCallBack callBack){
+    if(pos.isNull()) return callBack(SharedWebElement());
+    CallWithEvaluatedJavaScriptResult
+        (HitElementJsCode(pos / m_HistNode->GetZoom()), [this, callBack](QVariant var){
+            if(!var.isValid()) return callBack(SharedWebElement());
+            std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
+            *e = JsWebElement(this, var);
+            callBack(e);
+        });
 }
 
 void QuickWebEngineView::CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack){
-    if(pos.isNull()){
-        callBack(QUrl());
-        return;
-    }
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant url){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(url.toUrl());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(HitLinkUrlJsCode(pos / m_HistNode->GetZoom()))));
+    if(pos.isNull()) return callBack(QUrl());
+    CallWithEvaluatedJavaScriptResult
+        (HitLinkUrlJsCode(pos / m_HistNode->GetZoom()), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toUrl() : QUrl());
+        });
 }
 
 void QuickWebEngineView::CallWithHitImageUrl(const QPoint &pos, UrlCallBack callBack){
-    if(pos.isNull()){
-        callBack(QUrl());
-        return;
-    }
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant url){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(url.toUrl());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(HitImageUrlJsCode(pos / m_HistNode->GetZoom()))));
+    if(pos.isNull()) return callBack(QUrl());
+    CallWithEvaluatedJavaScriptResult
+        (HitImageUrlJsCode(pos / m_HistNode->GetZoom()), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toUrl() : QUrl());
+        });
 }
 
 void QuickWebEngineView::CallWithSelectedText(StringCallBack callBack){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant result){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(result.toString());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(SelectedTextJsCode())));
+    CallWithEvaluatedJavaScriptResult
+        (SelectedTextJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toString() : QString());
+        });
 }
 
 void QuickWebEngineView::CallWithSelectedHtml(StringCallBack callBack){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant result){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(result.toString());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(SelectedHtmlJsCode())));
+    CallWithEvaluatedJavaScriptResult
+        (SelectedHtmlJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toString() : QString());
+        });
 }
 
 void QuickWebEngineView::CallWithWholeText(StringCallBack callBack){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant result){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(result.toString());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(WholeTextJsCode())));
+    CallWithEvaluatedJavaScriptResult
+        (WholeTextJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toString() : QString());
+        });
 }
 
 void QuickWebEngineView::CallWithWholeHtml(StringCallBack callBack){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant result){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    callBack(result.toString());
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(WholeHtmlJsCode())));
+    CallWithEvaluatedJavaScriptResult
+        (WholeHtmlJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toString() : QString());
+        });
 }
 
 void QuickWebEngineView::CallWithSelectionRegion(RegionCallBack callBack){
-    int requestId = m_RequestId++;
-    std::shared_ptr<QMetaObject::Connection> connection =
-        std::make_shared<QMetaObject::Connection>();
-    *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
-                [this, requestId, callBack, connection](int id, QVariant var){
-                    if(requestId != id) return;
-                    QObject::disconnect(*connection);
-                    QRegion region;
-                    if(!var.isValid() || !var.canConvert(QMetaType::QVariantMap)){
-                        callBack(region);
-                        return;
-                    }
-                    QVariantMap map = var.toMap();
-                    QRect viewport = QRect(QPoint(), size());
-                    foreach(QString key, map.keys()){
-                        QVariantMap m = map[key].toMap();
-                        region |= QRect(m["x"].toInt(),
-                                        m["y"].toInt(),
-                                        m["width"].toInt(),
-                                        m["height"].toInt()).intersected(viewport);
-                    }
-                    callBack(region);
-                });
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
-                              Q_ARG(QVariant, QVariant::fromValue(requestId)),
-                              Q_ARG(QVariant, QVariant::fromValue(SelectionRegionJsCode())));
+    QRect viewport = QRect(QPoint(), size());
+    CallWithEvaluatedJavaScriptResult
+        (SelectionRegionJsCode(), [viewport, callBack](QVariant var){
+            if(!var.isValid() || !var.canConvert(QMetaType::QVariantMap))
+                return callBack(QRegion());
+            QRegion region;
+            QVariantMap map = var.toMap();
+            foreach(QString key, map.keys()){
+                QVariantMap m = map[key].toMap();
+                region |= QRect(m["x"].toInt(),
+                                m["y"].toInt(),
+                                m["width"].toInt(),
+                                m["height"].toInt()).intersected(viewport);
+            }
+            callBack(region);
+        });
 }
 
 void QuickWebEngineView::CallWithEvaluatedJavaScriptResult(const QString &code,
-                                                         VariantCallBack callBack){
+                                                           VariantCallBack callBack){
     int requestId = m_RequestId++;
     std::shared_ptr<QMetaObject::Connection> connection =
         std::make_shared<QMetaObject::Connection>();

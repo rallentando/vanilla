@@ -10,13 +10,13 @@
 
 #include "actionmapper.hpp"
 #include "callback.hpp"
-#include "application.hpp"
 
 class QUrl;
 class QString;
 class QStringList;
 class QNetworkRequest;
 class QMenu;
+class QAction;
 
 class View;
 class ViewNode;

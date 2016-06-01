@@ -596,6 +596,8 @@ void Page::AboutQt(){
 }
 
 void Page::Quit(){
+    if(m_View->GetDisplayObscured())
+        m_View->ExitFullScreen();
     Application::Quit();
 }
 
@@ -694,11 +696,8 @@ void Page::UpDirectory(){
 }
 
 void Page::Close(){
-    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
-        if(page->ObscureDisplay()){
-            page->triggerAction(QWebEnginePage::ExitFullScreen);
-        }
-    }
+    if(m_View->GetDisplayObscured())
+        m_View->ExitFullScreen();
     View::SetSwitchingState(true);
     GetTB()->Close();
     View::SetSwitchingState(false);
@@ -711,6 +710,8 @@ void Page::Restore(){
 }
 
 void Page::Recreate(){
+    if(m_View->GetDisplayObscured())
+        m_View->ExitFullScreen();
     View::SetSwitchingState(true);
     GetTB()->Recreate();
     View::SetSwitchingState(false);
@@ -795,9 +796,9 @@ void Page::NinthView(){
 }
 
 void Page::TenthView(){
-    View::SetSwitchingState(True);
+    View::SetSwitchingState(true);
     GetTB()->TenthView();
-    View::SetSwitchingState(False);
+    View::SetSwitchingState(false);
 }
 
 void Page::NewViewNode(){
@@ -865,91 +866,35 @@ void Page::Load(){
 }
 
 void Page::Copy(){
-    m_View->CallWithSelectedText
-        ([](QString text){
-            if(!text.isEmpty())
-                Application::clipboard()->setText(text);
-        });
+    m_View->Copy();
 }
 
 void Page::Cut(){
-    // can implement without WebPage and WebEnginePage?
-    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
-        page->triggerAction(QWebEnginePage::Cut);
-    }
-#if defined(Q_OS_WIN)
-    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
-        view->TriggerNativeCutAction();
-    }
-#endif
+    m_View->Cut();
 }
 
 void Page::Paste(){
-    // can implement without WebPage and WebEnginePage?
-    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
-        page->triggerAction(QWebEnginePage::Paste);
-    }
-#if defined(Q_OS_WIN)
-    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
-        view->TriggerNativePasteAction();
-    }
-#endif
+    m_View->Paste();
 }
 
 void Page::Undo(){
-    // can implement without WebPage and WebEnginePage?
-    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
-        page->triggerAction(QWebEnginePage::Undo);
-    }
-#if defined(Q_OS_WIN)
-    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
-        view->TriggerNativeUndoAction();
-    }
-#endif
+    m_View->Undo();
 }
 
 void Page::Redo(){
-    // can implement without WebPage and WebEnginePage?
-    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
-        page->triggerAction(QWebEnginePage::Redo);
-    }
-#if defined(Q_OS_WIN)
-    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
-        view->TriggerNativeRedoAction();
-    }
-#endif
-}
-
-void Page::Unselect(){
-    m_View->EvaluateJavaScript(
-        "(function(){\n"
-        "    document.activeElement.blur();\n"
-        "    getSelection().removeAllRanges();\n"
-        "}());");
+    m_View->Redo();
 }
 
 void Page::SelectAll(){
-    // can implement without WebPage and WebEnginePage?
-    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
-        page->triggerAction(QWebEnginePage::SelectAll);
-    }
-#if defined(Q_OS_WIN)
-    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
-        view->TriggerNativeSelectAllAction();
-    }
-#endif
+    m_View->SelectAll();
+}
+
+void Page::Unselect(){
+    m_View->Unselect();
 }
 
 void Page::Reload(){
-    // can implement without WebPage and WebEnginePage?
-    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
-        page->triggerAction(QWebEnginePage::Reload);
-    }
-#if defined(Q_OS_WIN)
-    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
-        view->TriggerNativeReloadAction();
-    }
-#endif
+    m_View->Reload();
 }
 
 void Page::ReloadAndBypassCache(){
@@ -957,20 +902,11 @@ void Page::ReloadAndBypassCache(){
 }
 
 void Page::Stop(){
-    // can implement without WebPage and WebEnginePage?
-    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page())){
-        page->triggerAction(QWebEnginePage::Stop);
-    }
-#if defined(Q_OS_WIN)
-    else if(TridentView *view = qobject_cast<TridentView*>(m_View->base())){
-        view->TriggerNativeStopAction();
-    }
-#endif
+    m_View->Stop();
 }
 
 void Page::StopAndUnselect(){
-    Stop();
-    Unselect();
+    m_View->StopAndUnselect();
 }
 
 void Page::Print(){
@@ -978,10 +914,7 @@ void Page::Print(){
 }
 
 void Page::Save(){
-    QUrl url = m_View->url();
-    QNetworkRequest req(url);
-    req.setRawHeader("Referer", url.toEncoded());
-    Download(req);
+    m_View->Save();
 }
 
 void Page::ZoomIn(){
@@ -1300,6 +1233,7 @@ void Page::OpenLinkWithCustom(){
     ELEMENT_ACTION(Application::OpenUrlWith_Custom(e->LinkUrl()));
 }
 
+#undef LoadImage
 void Page::LoadImage(){
     ELEMENT_ACTION(m_View->Load(e->ImageUrl()));
 }
@@ -1649,16 +1583,16 @@ QAction *Page::Action(CustomAction a, QVariant data){
     }
 
     switch(a){
-    case _Up:      webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case _Down:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case _Right:   webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case _Left:    webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-    case _Back:    webaction->setIcon(QIcon(":/resources/menu/back.png"));    break;
-    case _Forward: webaction->setIcon(QIcon(":/resources/menu/forward.png")); break;
-    case _Rewind:  webaction->setIcon(QIcon(":/resources/menu/rewind.png"));  break;
+    case _Up:          webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
+    case _Down:        webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
+    case _Right:       webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
+    case _Left:        webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
+    case _Back:        webaction->setIcon(QIcon(":/resources/menu/back.png"));        webaction->setEnabled(m_View->CanGoBack()); break;
+    case _Forward:     webaction->setIcon(QIcon(":/resources/menu/forward.png"));     webaction->setEnabled(m_View->CanGoForward()); break;
+    case _Rewind:      webaction->setIcon(QIcon(":/resources/menu/rewind.png"));      webaction->setEnabled(m_View->CanGoBack()); break;
     case _FastForward: webaction->setIcon(QIcon(":/resources/menu/fastforward.png")); break;
-    case _Reload:  webaction->setIcon(QIcon(":/resources/menu/reload.png"));  break;
-    case _Stop:    webaction->setIcon(QIcon(":/resources/menu/stop.png"));    break;
+    case _Reload:      webaction->setIcon(QIcon(":/resources/menu/reload.png"));      webaction->setEnabled(!m_View->IsLoading()); break;
+    case _Stop:        webaction->setIcon(QIcon(":/resources/menu/stop.png"));        webaction->setEnabled(m_View->IsLoading()); break;
     }
 
     switch(a){

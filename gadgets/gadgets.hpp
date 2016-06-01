@@ -148,6 +148,7 @@ private slots:
 
 public:
     bool IsActive();
+    bool IsDisplaying(DisplayType type);
 
     static QMap<QKeySequence, QString> GetThumbListKeyMap();
     static QMap<QKeySequence, QString> GetAccessKeyKeyMap();
@@ -169,10 +170,10 @@ public:
     Page *page() DECL_OVERRIDE { return 0;}
 
     QUrl url() DECL_OVERRIDE { return QUrl();}
-    void setUrl(const QUrl &) DECL_OVERRIDE {}
     QString html() DECL_OVERRIDE { return QString();}
-    void setHtml(const QString &, const QUrl &) DECL_OVERRIDE {}
     TreeBank *parent() DECL_OVERRIDE;
+    void setUrl(const QUrl &) DECL_OVERRIDE {}
+    void setHtml(const QString &, const QUrl &) DECL_OVERRIDE {}
     void setParent(TreeBank *tb) DECL_OVERRIDE;
 
     QSize size() DECL_OVERRIDE { return Size().toSize();}

@@ -89,6 +89,43 @@ WebEngineView::~WebEngineView(){
     if(m_Inspector) m_Inspector->deleteLater();
 }
 
+QWebEngineView *WebEngineView::base(){
+    return static_cast<QWebEngineView*>(this);
+}
+
+WebEnginePage *WebEngineView::page(){
+    return static_cast<WebEnginePage*>(View::page());
+}
+
+QUrl WebEngineView::url(){
+    return base()->url();
+}
+
+QString WebEngineView::html(){
+    return WholeHtml();
+}
+
+TreeBank *WebEngineView::parent(){
+    return m_TreeBank;
+}
+
+void WebEngineView::setUrl(const QUrl &url){
+    base()->setUrl(url);
+    emit urlChanged(url);
+}
+
+void WebEngineView::setHtml(const QString &html, const QUrl &url){
+    base()->setHtml(html, url);
+    emit urlChanged(url);
+}
+
+void WebEngineView::setParent(TreeBank* tb){
+    View::SetTreeBank(tb);
+    if(!TreeBank::PurgeView()) base()->setParent(tb);
+    if(page()) page()->AddJsObject();
+    if(tb) resize(size());
+}
+
 void WebEngineView::Connect(TreeBank *tb){
     View::Connect(tb);
 
@@ -161,18 +198,6 @@ void WebEngineView::Disconnect(TreeBank *tb){
         disconnect(page(), SIGNAL(SuggestResult(const QByteArray&)),
                    receiver, SLOT(DisplaySuggest(const QByteArray&)));
     }
-}
-
-void WebEngineView::ZoomIn(){
-    float zoom = PrepareForZoomIn();
-    setZoomFactor(static_cast<qreal>(zoom));
-    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
-}
-
-void WebEngineView::ZoomOut(){
-    float zoom = PrepareForZoomOut();
-    setZoomFactor(static_cast<qreal>(zoom));
-    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
 }
 
 void WebEngineView::OnSetViewNode(ViewNode*){}
@@ -292,12 +317,8 @@ void WebEngineView::CallWithScroll(PointFCallBack callBack){
         return;
     }
     page()->runJavaScript
-        (GetScrollRatioPointJsCode(),
-         [this, callBack](QVariant var){
-            if(!var.isValid()){
-                callBack(QPointF(0.5f, 0.5f));
-                return;
-            }
+        (GetScrollRatioPointJsCode(), [callBack](QVariant var){
+            if(!var.isValid()) return callBack(QPointF(0.5f, 0.5f));
             QVariantList list = var.toList();
             callBack(QPointF(list[0].toFloat(),list[1].toFloat()));
         });
@@ -305,20 +326,19 @@ void WebEngineView::CallWithScroll(PointFCallBack callBack){
 
 void WebEngineView::SetScrollBarState(){
     if(!page()) return;
-    page()->runJavaScript(GetScrollBarStateJsCode(), [this](QVariant var){
-    if(!var.isValid()) return;
-    QVariantList list = var.toList();
-    int hmax = list[0].toInt();
-    int vmax = list[1].toInt();
-    if(hmax < 0) hmax = 0;
-    if(vmax < 0) vmax = 0;
-
-    if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
-    else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
-    else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
-    else             m_ScrollBarState = NoScrollBarEnabled;
-
-    });
+    page()->runJavaScript
+        (GetScrollBarStateJsCode(), [this](QVariant var){
+            if(!var.isValid()) return;
+            QVariantList list = var.toList();
+            int hmax = list[0].toInt();
+            int vmax = list[1].toInt();
+            if(hmax < 0) hmax = 0;
+            if(vmax < 0) vmax = 0;
+            if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
+            else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
+            else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
+            else             m_ScrollBarState = NoScrollBarEnabled;
+        });
 }
 
 QPointF WebEngineView::GetScroll(){
@@ -330,8 +350,7 @@ QPointF WebEngineView::GetScroll(){
 void WebEngineView::SetScroll(QPointF pos){
     if(!page()) return;
     page()->runJavaScript
-        (SetScrollRatioPointJsCode(pos),
-         [this](QVariant){
+        (SetScrollRatioPointJsCode(pos), [this](QVariant){
             EmitScrollChanged();
         });
 }
@@ -339,8 +358,7 @@ void WebEngineView::SetScroll(QPointF pos){
 bool WebEngineView::SaveScroll(){
     if(!page()) return false;
     page()->runJavaScript
-        (GetScrollValuePointJsCode(),
-         [this](QVariant var){
+        (GetScrollValuePointJsCode(), [this](QVariant var){
             if(!var.isValid() || !GetHistNode()) return;
             QVariantList list = var.toList();
             GetHistNode()->SetScrollX(list[0].toInt());
@@ -461,7 +479,9 @@ void WebEngineView::OnIconChanged(const QIcon &icon){
 }
 #else
 void WebEngineView::UpdateIcon(const QUrl &iconUrl){
+    m_Icon = QIcon();
     if(!page()) return;
+    QString host = url().host();
     QNetworkRequest req(iconUrl);
     DownloadItem *item = NetworkController::Download
         (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
@@ -471,15 +491,115 @@ void WebEngineView::UpdateIcon(const QUrl &iconUrl){
 
     item->setParent(base());
 
-    connect(item, &DownloadItem::DownloadResult, [this](const QByteArray &result){
+    connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
             QPixmap pixmap;
             if(pixmap.loadFromData(result)){
-                m_Icon = QIcon(pixmap);
-                Application::RegisterIcon(url().host(), m_Icon);
+                QIcon icon = QIcon(pixmap);
+                Application::RegisterIcon(host, icon);
+                if(url().host() == host) m_Icon = icon;
             }
         });
 }
 #endif
+
+void WebEngineView::Copy(){
+    if(page()) page()->triggerAction(QWebEnginePage::Copy);
+}
+
+void WebEngineView::Cut(){
+    if(page()) page()->triggerAction(QWebEnginePage::Cut);
+}
+
+void WebEngineView::Paste(){
+    if(page()) page()->triggerAction(QWebEnginePage::Paste);
+}
+
+void WebEngineView::Undo(){
+    if(page()) page()->triggerAction(QWebEnginePage::Undo);
+}
+
+void WebEngineView::Redo(){
+    if(page()) page()->triggerAction(QWebEnginePage::Redo);
+}
+
+void WebEngineView::SelectAll(){
+    if(page()) page()->triggerAction(QWebEnginePage::SelectAll);
+}
+
+void WebEngineView::Unselect(){
+#if QT_VERSION >= 0x050700
+    if(page()) page()->triggerAction(QWebEnginePage::Unselect);
+#else
+    EvaluateJavaScript(QStringLiteral(
+                           "(function(){\n"
+                           VV"    document.activeElement.blur();\n"
+                           VV"    getSelection().removeAllRanges();\n"
+                           VV"}());"));
+#endif
+}
+
+void WebEngineView::Reload(){
+    if(page()) page()->triggerAction(QWebEnginePage::Reload);
+}
+
+void WebEngineView::ReloadAndBypassCache(){
+    if(page()) page()->triggerAction(QWebEnginePage::ReloadAndBypassCache);
+}
+
+void WebEngineView::Stop(){
+    if(page()) page()->triggerAction(QWebEnginePage::Stop);
+}
+
+void WebEngineView::StopAndUnselect(){
+    Stop(); Unselect();
+}
+
+void WebEngineView::Print(){
+    // not yet implemented.
+}
+
+void WebEngineView::Save(){
+#if QT_VERSION >= 0x050700
+    if(page()) page()->triggerAction(QWebEnginePage::SavePage);
+#endif
+}
+
+void WebEngineView::ZoomIn(){
+    float zoom = PrepareForZoomIn();
+    setZoomFactor(static_cast<qreal>(zoom));
+    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void WebEngineView::ZoomOut(){
+    float zoom = PrepareForZoomOut();
+    setZoomFactor(static_cast<qreal>(zoom));
+    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void WebEngineView::ExitFullScreen(){
+    if(page()) page()->triggerAction(QWebEnginePage::ExitFullScreen);
+}
+
+void WebEngineView::InspectElement(){
+    if(!m_Inspector){
+        m_Inspector = new QWebEngineView();
+        m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
+        m_Inspector->load(m_InspectorTable[this]);
+    } else {
+        m_Inspector->reload();
+    }
+    m_Inspector->show();
+    m_Inspector->raise();
+    //if(page()) page()->InspectElement();
+}
+
+void WebEngineView::AddSearchEngine(QPoint pos){
+    if(page()) page()->AddSearchEngine(pos);
+}
+
+void WebEngineView::AddBookmarklet(QPoint pos){
+    if(page()) page()->AddBookmarklet(pos);
+}
 
 void WebEngineView::childEvent(QChildEvent *ev){
     QWebEngineView::childEvent(ev);
@@ -491,7 +611,7 @@ void WebEngineView::childEvent(QChildEvent *ev){
 }
 
 void WebEngineView::hideEvent(QHideEvent *ev){
-    if(page()->ObscureDisplay()) page()->triggerAction(QWebEnginePage::ExitFullScreen);
+    if(GetDisplayObscured()) ExitFullScreen();
     SaveViewState();
     QWebEngineView::hideEvent(ev);
 }
@@ -916,43 +1036,34 @@ bool WebEngineView::nativeEvent(const QByteArray &eventType, void *message, long
 #endif
 
 void WebEngineView::CallWithGotBaseUrl(UrlCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank"))){
-        callBack(QUrl());
-        return;
-    }
+    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+        return callBack(QUrl());
+
     page()->runJavaScript
-        (GetBaseUrlJsCode(),
-         [this, callBack](QVariant url){
-            callBack(url.isValid() ? url.toUrl() : QUrl());
+        (GetBaseUrlJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toUrl() : QUrl());
         });
 }
 
 void WebEngineView::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
     // this implementation is same as baseurl...
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank"))){
-        callBack(QUrl());
-        return;
-    }
+    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+        return callBack(QUrl());
+
     page()->runJavaScript
-        (GetBaseUrlJsCode(),
-         [this, callBack](QVariant url){
-            callBack(url.isValid() ? url.toUrl() : QUrl());
+        (GetBaseUrlJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toUrl() : QUrl());
         });
 }
 
 void WebEngineView::CallWithFoundElements(Page::FindElementsOption option,
-                                        WebElementListCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank"))){
-        callBack(SharedWebElementList());
-        return;
-    }
+                                          WebElementListCallBack callBack){
+    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+        return callBack(SharedWebElementList());
+
     page()->runJavaScript
-        (FindElementsJsCode(option),
-         [this, callBack](QVariant var){
-            if(!var.isValid()){
-                callBack(SharedWebElementList());
-                return;
-            }
+        (FindElementsJsCode(option), [this, callBack](QVariant var){
+            if(!var.isValid()) return callBack(SharedWebElementList());
             QVariantList list = var.toMap().values();
             SharedWebElementList result;
 
@@ -975,48 +1086,36 @@ void WebEngineView::CallWithFoundElements(Page::FindElementsOption option,
         });
 }
 
-void WebEngineView::CallWithHitElement(const QPoint &pos,
-                                     WebElementCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull()){
-        callBack(SharedWebElement());
-        return;
-    }
+void WebEngineView::CallWithHitElement(const QPoint &pos, WebElementCallBack callBack){
+    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull())
+        return callBack(SharedWebElement());
+
     page()->runJavaScript
-        (HitElementJsCode(pos/zoomFactor()),
-         [this, callBack](QVariant var){
-            if(!var.isValid()){
-                callBack(SharedWebElement());
-                return;
-            }
+        (HitElementJsCode(pos/zoomFactor()), [this, callBack](QVariant var){
+            if(!var.isValid()) return callBack(SharedWebElement());
             std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
             *e = JsWebElement(this, var);
             callBack(e);
         });
 }
 
-void WebEngineView::CallWithHitLinkUrl(const QPoint &pos,
-                                     UrlCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull()){
-        callBack(QUrl());
-        return;
-    }
+void WebEngineView::CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack){
+    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull())
+        return callBack(QUrl());
+
     page()->runJavaScript
-        (HitLinkUrlJsCode(pos/zoomFactor()),
-         [this, callBack](QVariant url){
-            callBack(url.isValid() ? url.toUrl() : QUrl());
+        (HitLinkUrlJsCode(pos/zoomFactor()), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toUrl() : QUrl());
         });
 }
 
-void WebEngineView::CallWithHitImageUrl(const QPoint &pos,
-                                      UrlCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull()){
-        callBack(QUrl());
-        return;
-    }
+void WebEngineView::CallWithHitImageUrl(const QPoint &pos, UrlCallBack callBack){
+    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull())
+        return callBack(QUrl());
+
     page()->runJavaScript
-        (HitImageUrlJsCode(pos/zoomFactor()),
-         [this, callBack](QVariant url){
-            callBack(url.isValid() ? url.toUrl() : QUrl());
+        (HitImageUrlJsCode(pos/zoomFactor()), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toUrl() : QUrl());
         });
 }
 
@@ -1025,14 +1124,12 @@ void WebEngineView::CallWithSelectedText(StringCallBack callBack){
 }
 
 void WebEngineView::CallWithSelectedHtml(StringCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank"))){
-        callBack(QString());
-        return;
-    }
+    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+        return callBack(QString());
+
     page()->runJavaScript
-        (SelectedHtmlJsCode(),
-         [callBack](QVariant result){
-            callBack(result.isValid() ? result.toString() : QString());
+        (SelectedHtmlJsCode(), [callBack](QVariant var){
+            callBack(var.isValid() ? var.toString() : QString());
         });
 }
 
@@ -1045,17 +1142,14 @@ void WebEngineView::CallWithWholeHtml(StringCallBack callBack){
 }
 
 void WebEngineView::CallWithSelectionRegion(RegionCallBack callBack){
-    if(!page() || !hasSelection()) callBack(QRegion());
+    if(!page() || !hasSelection()) return callBack(QRegion());
+    QRect viewport = QRect(QPoint(), size());
     page()->runJavaScript
-        (SelectionRegionJsCode(),
-         [this, callBack](QVariant var){
+        (SelectionRegionJsCode(), [viewport, callBack](QVariant var){
+            if(!var.isValid() || !var.canConvert(QMetaType::QVariantMap))
+                return callBack(QRegion());
             QRegion region;
-            if(!var.isValid() || !var.canConvert(QMetaType::QVariantMap)){
-                callBack(region);
-                return;
-            }
             QVariantMap map = var.toMap();
-            QRect viewport = QRect(QPoint(), size());
             foreach(QString key, map.keys()){
                 QVariantMap m = map[key].toMap();
                 region |= QRect(m["x"].toInt(),
@@ -1067,11 +1161,11 @@ void WebEngineView::CallWithSelectionRegion(RegionCallBack callBack){
         });
 }
 
-void WebEngineView::CallWithEvaluatedJavaScriptResult(const QString &code, VariantCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank"))){
-        callBack(QVariant());
-        return;
-    }
+void WebEngineView::CallWithEvaluatedJavaScriptResult(const QString &code,
+                                                      VariantCallBack callBack){
+    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+        return callBack(QVariant());
+
     page()->runJavaScript(code, callBack);
 }
 

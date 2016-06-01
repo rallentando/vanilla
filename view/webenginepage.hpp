@@ -67,14 +67,11 @@ public:
     QNetworkAccessManager *networkAccessManager() const;
     void setNetworkAccessManager(QNetworkAccessManager *nam);
     QString userAgentForUrl(const QUrl &url) const;
-    bool ObscureDisplay();
 
     void DisplayContextMenu(QWidget *parent, SharedWebElement elem,
                             QPoint localPos, QPoint globalPos);
 
-    void TriggerAction(QWebEnginePage::WebAction);
     void TriggerAction(Page::CustomAction, QVariant = QVariant());
-    QAction *Action(QWebEnginePage::WebAction);
     QAction *Action(Page::CustomAction, QVariant = QVariant());
 
 public slots:
@@ -112,11 +109,9 @@ public slots:
     void SetSource(const QByteArray &html){ m_Page->SetSource(html);}
     void SetSource(const QString &html){ m_Page->SetSource(html);}
 
-    void Print();
+    void InspectElement();
     void AddSearchEngine(QPoint);
     void AddBookmarklet(QPoint);
-    void InspectElement();
-    void ReloadAndBypassCache();
 
     void CloseLater();
 
@@ -138,7 +133,6 @@ private:
     View *m_View;
     Page *m_Page;
     QNetworkAccessManager *m_NetworkAccessManager;
-    bool m_ObscureDisplay;
 };
 
 #endif //ifndef WEBENGINEPAGE_HPP

@@ -3283,6 +3283,8 @@ ViewNode *TreeBank::MakeSiblingDirectory(ViewNode *vn){
 ////////////////////////////////////////////////////////////////
 
 void TreeBank::DisplayViewTree(ViewNode *vn){
+    if(m_Gadgets->IsDisplaying(Gadgets::ViewTree))
+        return m_Gadgets->Deactivate();
     m_Gadgets->Activate(Gadgets::ViewTree);
     if(!vn) vn = m_CurrentViewNode;
     if(!vn && !m_ViewRoot->HasNoChildren())
@@ -3291,6 +3293,8 @@ void TreeBank::DisplayViewTree(ViewNode *vn){
 }
 
 void TreeBank::DisplayHistTree(HistNode *hn){
+    if(m_Gadgets->IsDisplaying(Gadgets::HistTree))
+        return m_Gadgets->Deactivate();
     m_Gadgets->Activate(Gadgets::HistTree);
     if(!hn) hn = m_CurrentHistNode;
     if(!hn && !m_HistRoot->HasNoChildren())
@@ -3299,6 +3303,8 @@ void TreeBank::DisplayHistTree(HistNode *hn){
 }
 
 void TreeBank::DisplayTrashTree(ViewNode *vn){
+    if(m_Gadgets->IsDisplaying(Gadgets::TrashTree))
+        return m_Gadgets->Deactivate();
     m_Gadgets->Activate(Gadgets::TrashTree);
     if(vn && IsTrash(vn))
         m_Gadgets->SetCurrent(vn);
@@ -3588,16 +3594,16 @@ QAction *TreeBank::Action(TreeBankAction a){
     m_ActionTable[a] = action = new QAction(this);
 
     switch(a){
-    case _Up:      action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case _Down:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case _Right:   action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case _Left:    action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-    case _Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
-    case _Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
-    case _Rewind:  action->setIcon(QIcon(":/resources/menu/rewind.png"));  break;
+    case _Up:          action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
+    case _Down:        action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
+    case _Right:       action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
+    case _Left:        action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
+    case _Back:        action->setIcon(QIcon(":/resources/menu/back.png"));        break;
+    case _Forward:     action->setIcon(QIcon(":/resources/menu/forward.png"));     break;
+    case _Rewind:      action->setIcon(QIcon(":/resources/menu/rewind.png"));      break;
     case _FastForward: action->setIcon(QIcon(":/resources/menu/fastforward.png")); break;
-    case _Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
-    case _Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
+    case _Reload:      action->setIcon(QIcon(":/resources/menu/reload.png"));      break;
+    case _Stop:        action->setIcon(QIcon(":/resources/menu/stop.png"));        break;
     }
 
     switch(a){

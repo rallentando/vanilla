@@ -134,7 +134,7 @@ void MainWindow::SaveSettings(){
     s.setValue(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), saveState());
     s.setValue(QStringLiteral("mainwindow/treebar%1").arg(m_Index), m_TreeBar->GetStat());
     s.setValue(QStringLiteral("mainwindow/status%1").arg(m_Index), static_cast<int>(windowState()));
-    if(!isFullScreen() && !isMaximized() && !isMinimized())
+    if(!isFullScreen() && !isMaximized() && !isMinimized() && width() && height())
         s.setValue(QStringLiteral("mainwindow/geometry%1").arg(m_Index), geometry());
 }
 

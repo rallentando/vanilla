@@ -15,6 +15,13 @@
 #include "application.hpp"
 #include "mainwindow.hpp"
 
+#include <Exdisp.h>
+#include <Mshtml.h>
+#include <Mshtmhst.h>
+#include <Comdef.h>
+#include <Shlobj.h>
+#include <Tlogstg.h>
+
 namespace {
 
     inline QPoint ToPoint(QPoint p){
@@ -524,6 +531,31 @@ void TridentView::SetZoomFactor(int zoom){
     m_Interface->ExecWB(OLECMDID_OPTICAL_ZOOM, OLECMDEXECOPT_DONTPROMPTUSER, &zoomVariant, 0);
 }
 
+QAxWidget *TridentView::base(){
+    return static_cast<QAxWidget*>(this);
+}
+
+Page *TridentView::page(){
+    return static_cast<Page*>(View::page());
+}
+
+QUrl TridentView::url(){
+    return m_Url;
+}
+
+QString TridentView::html(){
+    return WholeHtml();
+}
+
+TreeBank *TridentView::parent(){
+    return m_TreeBank;
+}
+
+void TridentView::setUrl(const QUrl &url){
+    TriggerNativeLoadAction(url);
+    emit urlChanged(url);
+}
+
 void TridentView::setHtml(const QString &html, const QUrl &url){
     Q_UNUSED(url);
     if(!m_HtmlDocument) return;
@@ -538,6 +570,12 @@ void TridentView::setHtml(const QString &html, const QUrl &url){
         }
         doc->Release();
     }
+}
+
+void TridentView::setParent(TreeBank* tb){
+    View::SetTreeBank(tb);
+    if(!TreeBank::PurgeView()) base()->setParent(tb);
+    if(tb) resize(size());
 }
 
 void TridentView::Connect(TreeBank *tb){
@@ -608,24 +646,6 @@ void TridentView::Disconnect(TreeBank *tb){
         disconnect(page(), SIGNAL(SuggestResult(const QByteArray&)),
                    receiver, SLOT(DisplaySuggest(const QByteArray&)));
     }
-}
-
-void TridentView::ZoomIn(){
-    if(!m_Interface) return;
-    float zoom = PrepareForZoomIn();
-    WinI4Variant zoomVariant;
-    V_I4(&zoomVariant) = zoom*100;
-    m_Interface->ExecWB(OLECMDID_OPTICAL_ZOOM, OLECMDEXECOPT_DONTPROMPTUSER, &zoomVariant, 0);
-    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
-}
-
-void TridentView::ZoomOut(){
-    if(!m_Interface) return;
-    float zoom = PrepareForZoomOut();
-    WinI4Variant zoomVariant;
-    V_I4(&zoomVariant) = zoom*100;
-    m_Interface->ExecWB(OLECMDID_OPTICAL_ZOOM, OLECMDEXECOPT_DONTPROMPTUSER, &zoomVariant, 0);
-    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
 }
 
 QUrl TridentView::BaseUrl(){
@@ -1749,34 +1769,115 @@ void TridentView::DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPo
     QUrl imageUrl = elem ? elem->ImageUrl() : QUrl();
 
     if(linkUrl.isEmpty() && imageUrl.isEmpty() && SelectedText().isEmpty()){
-        QAction *backAction    = Action(Page::_Back);
-        QAction *forwardAction = Action(Page::_Forward);
-        QAction *rewindAction  = Action(Page::_Rewind);
-        QAction *fastForwardAction = Action(Page::_FastForward);
-        QAction *stopAction    = Action(Page::_Stop);
-        QAction *reloadAction  = Action(Page::_Reload);
-
         if(CanGoBack())
-            menu->addAction(backAction);
+            menu->addAction(Action(Page::_Back));
         if(CanGoForward())
-            menu->addAction(forwardAction);
+            menu->addAction(Action(Page::_Forward));
 
         if(!View::EnableDestinationInferrer()){
             if(CanGoBack())
-                menu->addAction(rewindAction);
-            menu->addAction(fastForwardAction);
+                menu->addAction(Action(Page::_Rewind));
+            menu->addAction(Action(Page::_FastForward));
         }
 
         if(IsLoading())
-            menu->addAction(stopAction);
+            menu->addAction(Action(Page::_Stop));
         else
-            menu->addAction(reloadAction);
+            menu->addAction(Action(Page::_Reload));
     }
 
     AddContextMenu(menu, elem);
     AddRegularMenu(menu, elem);
     menu->exec(globalPos);
     delete menu;
+}
+
+void TridentView::Copy(){
+    if(m_Interface) m_Interface->ExecWB(OLECMDID_COPY, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
+}
+
+void TridentView::Cut(){
+    if(m_Interface) m_Interface->ExecWB(OLECMDID_CUT, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
+}
+
+void TridentView::Paste(){
+    if(m_Interface) m_Interface->ExecWB(OLECMDID_PASTE, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
+}
+
+void TridentView::Undo(){
+    if(m_Interface) m_Interface->ExecWB(OLECMDID_UNDO, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
+}
+
+void TridentView::Redo(){
+    if(m_Interface) m_Interface->ExecWB(OLECMDID_REDO, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
+}
+
+void TridentView::SelectAll(){
+    if(m_Interface) m_Interface->ExecWB(OLECMDID_SELECTALL, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
+}
+
+void TridentView::Unselect(){
+    EvaluateJavaScript(QStringLiteral(
+                           "(function(){\n"
+                           VV"    document.activeElement.blur();\n"
+                           VV"    getSelection().removeAllRanges();\n"
+                           VV"}());"));
+}
+
+void TridentView::Reload(){
+    dynamicCall("Refresh()");
+}
+
+void TridentView::ReloadAndBypassCache(){
+    // not yet implemented.
+}
+
+void TridentView::Stop(){
+    dynamicCall("Stop()");
+}
+
+void TridentView::StopAndUnselect(){
+    Stop(); Unselect();
+}
+
+void TridentView::Print(){
+    if(m_Interface) m_Interface->ExecWB(OLECMDID_PRINT, OLECMDEXECOPT_PROMPTUSER, 0, 0);
+}
+
+void TridentView::Save(){
+    if(m_Interface) m_Interface->ExecWB(OLECMDID_SAVEAS, OLECMDEXECOPT_PROMPTUSER, 0, 0);
+}
+
+void TridentView::ZoomIn(){
+    if(!m_Interface) return;
+    float zoom = PrepareForZoomIn();
+    WinI4Variant zoomVariant;
+    V_I4(&zoomVariant) = zoom*100;
+    m_Interface->ExecWB(OLECMDID_OPTICAL_ZOOM, OLECMDEXECOPT_DONTPROMPTUSER, &zoomVariant, 0);
+    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void TridentView::ZoomOut(){
+    if(!m_Interface) return;
+    float zoom = PrepareForZoomOut();
+    WinI4Variant zoomVariant;
+    V_I4(&zoomVariant) = zoom*100;
+    m_Interface->ExecWB(OLECMDID_OPTICAL_ZOOM, OLECMDEXECOPT_DONTPROMPTUSER, &zoomVariant, 0);
+    emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void TridentView::InspectElement(){
+    // not yet implemented.
+}
+
+void TridentView::AddSearchEngine(QPoint pos){
+    // not yet implemented.
+    Q_UNUSED(pos);
+}
+
+void TridentView::AddBookmarklet(QPoint pos){
+    // not yet implemented.
+    Q_UNUSED(pos);
 }
 
 void TridentView::OnSignal(const QString &str, int i, void *v){
@@ -1901,6 +2002,7 @@ bool TridentView::translateKeyEvent(int message, int keycode) const {
 void TridentView::UpdateIcon(const QUrl &iconUrl){
     m_Icon = QIcon();
     if(!page()) return;
+    QString host = url().host();
     QNetworkRequest req(iconUrl);
     DownloadItem *item = NetworkController::Download
         (page()->GetNetworkAccessManager(),
@@ -1910,11 +2012,12 @@ void TridentView::UpdateIcon(const QUrl &iconUrl){
 
     item->setParent(base());
 
-    connect(item, &DownloadItem::DownloadResult, [this](const QByteArray &result){
+    connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
             QPixmap pixmap;
             if(pixmap.loadFromData(result)){
-                m_Icon = QIcon(pixmap);
-                Application::RegisterIcon(url().host(), m_Icon);
+                QIcon icon = QIcon(pixmap);
+                Application::RegisterIcon(host, icon);
+                if(url().host() == host) m_Icon = icon;
             }
         });
 }

@@ -33,12 +33,8 @@ public:
     LocalView(TreeBank *parent = 0, QString id = QString(), QStringList set = QStringList());
     virtual ~LocalView();
 
-    virtual QGraphicsObject *base() DECL_OVERRIDE {
-        return static_cast<QGraphicsObject*>(this);
-    }
-    virtual Page *page() DECL_OVERRIDE {
-        return static_cast<Page*>(View::page());
-    }
+    virtual QGraphicsObject *base() DECL_OVERRIDE;
+    virtual Page *page() DECL_OVERRIDE;
 
     virtual TreeBank *parent() DECL_OVERRIDE;
     virtual void setParent(TreeBank *tb) DECL_OVERRIDE;

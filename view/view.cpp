@@ -123,7 +123,7 @@ const QList<float> View::m_ZoomFactorLevels = QList<float>()
     << 10.00000000000000000f
     ;
 
-const QMap<QWebEngineSettings::WebAttribute, QString> View::m_WebEngineSwitches = QMap<QWebEngineSettings::WebAttribute, QString>()
+static const QMap<QWebEngineSettings::WebAttribute, QString> m_WebEngineSwitches = QMap<QWebEngineSettings::WebAttribute, QString>()
     << qMakePair(QWebEngineSettings::AutoLoadImages,           QString::fromLatin1("[iI]mage"))
   //<< qMakePair(QWebEngineSettings::DeveloperExtrasEnabled,   QString::fromLatin1("[iI]nspector"))
   //<< qMakePair(QWebEngineSettings::DnsPrefetchEnabled,       QString::fromLatin1("[dD][nN][sS][pP]refetch"))
@@ -160,6 +160,7 @@ View::View(TreeBank *parent, QString id, QStringList set){
     m_JsObject = new _View(this);
     m_LoadProgress = 0;
     m_IsLoading = false;
+    m_DisplayObscured = false;
 }
 
 View::~View(){
@@ -1424,15 +1425,6 @@ void View::ApplySpecificSettings(QStringList set){
     else if(set.indexOf(QRegularExpression(QStringLiteral("\\A![dD](?:rag)?[gG](?:esture)?\\Z"))) != -1) m_EnableDragHackLocal = false;
 }
 
-QUrl View::url(){ return QUrl();}
-void View::setUrl(const QUrl&){}
-
-QString View::html(){ return QString();}
-void View::setHtml(const QString&, const QUrl&){}
-
-TreeBank *View::parent(){ return 0;}
-void View::setParent(TreeBank*){}
-
 void View::Connect(TreeBank *tb){
     if(!tb || !page()) return;
 
@@ -1552,12 +1544,53 @@ height |  |         |  | height
     }
 }
 
-void View::SetSwitchingState(bool switching){
-    m_Switching = switching;
+bool View::TriggerAction(QString str, QVariant data){
+    qDebug() << str;
+    if(Page::IsValidAction(str))
+        TriggerAction(Page::StringToAction(str), data);
+    else if(Page::GetBookmarkletMap().contains(str))
+        Load(Page::GetBookmarklet(str).first());
+    else if(Page::GetSearchEngineMap().contains(str))
+        CallWithSelectedText([this, str](QString text){
+            if(text.isEmpty()) return;
+            QMetaObject::invokeMethod(page(), "OpenInNew",
+                                      Q_ARG(QString, str),
+                                      Q_ARG(QString, text));
+        });
+    else return false;
+    return true;
 }
 
-bool View::GetSwitchingState(){
-    return m_Switching;
+QAction *View::Action(QString str, QVariant data){
+    if(Page::IsValidAction(str))
+        return Action(Page::StringToAction(str), data);
+    if(!base() || !page()) return 0;
+    QAction *action = 0;
+    if(Page::GetBookmarkletMap().contains(str)){
+        action = new QAction(base());
+        action->setText(str);
+        base()->connect(action, &QAction::triggered,
+                        [this, str, action](){
+                            Load(Page::GetBookmarklet(str).first());
+                            action->deleteLater();
+                        });
+    } else if(Page::GetSearchEngineMap().contains(str)){
+        QUrl url = QUrl::fromEncoded(Page::GetSearchEngine(str).first().toLatin1());
+        action = new QAction(base());
+        action->setText(str);
+        action->setIcon(Application::GetIcon(url.host()));
+        base()->connect(action, &QAction::triggered,
+            [this, str, action](){
+                CallWithSelectedText([this, str, action](QString text){
+                    if(!text.isEmpty())
+                        QMetaObject::invokeMethod(page(), "OpenInNew",
+                                                  Q_ARG(QString, str),
+                                                  Q_ARG(QString, text));
+                    action->deleteLater();
+                });
+            });
+    }
+    return action;
 }
 
 // no referer.

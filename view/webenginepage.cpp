@@ -108,7 +108,6 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, QObject *parent)
 #ifdef USE_WEBCHANNEL
     AddJsObject();
 #endif
-    m_ObscureDisplay = false;
 }
 
 WebEnginePage::~WebEnginePage(){
@@ -140,7 +139,7 @@ bool WebEnginePage::acceptNavigationRequest(const QUrl &url, NavigationType type
 }
 
 QStringList WebEnginePage::chooseFiles(FileSelectionMode mode, const QStringList &oldFiles,
-                                     const QStringList &acceptedMimeTypes){
+                                       const QStringList &acceptedMimeTypes){
     Q_UNUSED(acceptedMimeTypes);
 
     QStringList suggestedFiles = oldFiles;
@@ -266,7 +265,7 @@ bool WebEnginePage::certificateError(const QWebEngineCertificateError& error){
 }
 
 void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,
-                                           int lineNumber, const QString &sourceID){
+                                             int lineNumber, const QString &sourceID){
 #ifdef PASSWORD_MANAGER
     static QString reg;
     if(reg.isEmpty()) reg = QStringLiteral("submit%1,([^,]+)").arg(Application::EventKey());
@@ -301,12 +300,8 @@ QString WebEnginePage::userAgentForUrl(const QUrl &url) const{
     return static_cast<NetworkAccessManager*>(networkAccessManager())->GetUserAgent();
 }
 
-bool WebEnginePage::ObscureDisplay(){
-    return m_ObscureDisplay;
-}
-
 void WebEnginePage::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
-                                     QPoint localPos, QPoint globalPos){
+                                       QPoint localPos, QPoint globalPos){
 
     QMenu *menu = new QMenu(parent);
     menu->setToolTipsVisible(true);
@@ -316,46 +311,21 @@ void WebEnginePage::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
 
     // 'selectedText' only work for WebEngineView.
     if(linkUrl.isEmpty() && imageUrl.isEmpty() && selectedText().isEmpty()){
-        static QIcon backIcon = QIcon(":/resources/menu/back.png");
-        static QIcon forwardIcon = QIcon(":/resources/menu/forward.png");
-        static QIcon rewindIcon = QIcon(":/resources/menu/rewind.png");
-        static QIcon fastForwardIcon = QIcon(":/resources/menu/fastforward.png");
-        static QIcon reloadIcon = QIcon(":/resources/menu/reload.png");
-        static QIcon stopIcon = QIcon(":/resources/menu/stop.png");
-        QAction *backAction    = Action(QWebEnginePage::Back);
-        QAction *forwardAction = Action(QWebEnginePage::Forward);
-        QAction *rewindAction  = Action(Page::_Rewind);
-        QAction *fastForwardAction = Action(Page::_FastForward);
-        QAction *reloadAction  = Action(QWebEnginePage::Reload);
-        QAction *stopAction    = Action(QWebEnginePage::Stop);
-        backAction->setText(tr("Back"));
-        backAction->setIcon(backIcon);
-        forwardAction->setText(tr("Forward"));
-        forwardAction->setIcon(forwardIcon);
-        rewindAction->setText(tr("Rewind"));
-        rewindAction->setIcon(rewindIcon);
-        fastForwardAction->setText(tr("FastForward"));
-        fastForwardAction->setIcon(fastForwardIcon);
-        reloadAction->setText(tr("Reload"));
-        reloadAction->setIcon(reloadIcon);
-        stopAction->setText(tr("Stop"));
-        stopAction->setIcon(stopIcon);
-
-        if(backAction->isEnabled())
-            menu->addAction(backAction);
-        if(forwardAction->isEnabled())
-            menu->addAction(forwardAction);
+        if(m_View->CanGoBack())
+            menu->addAction(Action(Page::_Back));
+        if(m_View->CanGoForward())
+            menu->addAction(Action(Page::_Forward));
 
         if(!View::EnableDestinationInferrer()){
-            if(backAction->isEnabled())
-                menu->addAction(rewindAction);
-            menu->addAction(fastForwardAction);
+            if(m_View->CanGoBack())
+                menu->addAction(Action(Page::_Rewind));
+            menu->addAction(Action(Page::_FastForward));
         }
 
-        if(stopAction->isEnabled())
-            menu->addAction(stopAction);
+        if(m_View->IsLoading())
+            menu->addAction(Action(Page::_Stop));
         else
-            menu->addAction(reloadAction);
+            menu->addAction(Action(Page::_Reload));
     }
 
     m_View->AddContextMenu(menu, elem);
@@ -374,31 +344,11 @@ void WebEnginePage::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
     delete menu;
 }
 
-void WebEnginePage::TriggerAction(QWebEnginePage::WebAction action){
-    Action(action)->trigger();
-}
-
 void WebEnginePage::TriggerAction(Page::CustomAction action, QVariant data){
     Action(action, data)->trigger();
 }
 
-QAction *WebEnginePage::Action(QWebEnginePage::WebAction a){
-    return action(a);
-}
-
 QAction *WebEnginePage::Action(Page::CustomAction a, QVariant data){
-    QAction *result = 0;
-    switch(a){
-    // set text manually.
-    case Page::_Copy:      result = action(Copy);      result->setText(tr("Copy"));      return result;
-    case Page::_Cut:       result = action(Cut);       result->setText(tr("Cut"));       return result;
-    case Page::_Paste:     result = action(Paste);     result->setText(tr("Paste"));     return result;
-    case Page::_Undo:      result = action(Undo);      result->setText(tr("Undo"));      return result;
-    case Page::_Redo:      result = action(Redo);      result->setText(tr("Redo"));      return result;
-    case Page::_SelectAll: result = action(SelectAll); result->setText(tr("SelectAll")); return result;
-    case Page::_Reload:    result = action(Reload);    result->setText(tr("Reload"));    return result;
-    case Page::_Stop:      result = action(Stop);      result->setText(tr("Stop"));      return result;
-    }
     return m_Page->Action(a, data);
 }
 
@@ -407,7 +357,7 @@ void WebEnginePage::OnLinkHovered(const QString &url){
 }
 
 void WebEnginePage::HandleFeaturePermission(const QUrl &securityOrigin,
-                                          QWebEnginePage::Feature feature){
+                                            QWebEnginePage::Feature feature){
     QString featureString;
     switch(feature){
     case QWebEnginePage::Notifications:
@@ -448,15 +398,15 @@ void WebEnginePage::HandleFeaturePermission(const QUrl &securityOrigin,
 }
 
 void WebEnginePage::HandleAuthentication(const QUrl &requestUrl,
-                                       QAuthenticator *authenticator){
+                                         QAuthenticator *authenticator){
     Q_UNUSED(requestUrl);
 
     ModalDialog::Authentication(authenticator);
 }
 
 void WebEnginePage::HandleProxyAuthentication(const QUrl &requestUrl,
-                                            QAuthenticator *authenticator,
-                                            const QString &proxyHost){
+                                              QAuthenticator *authenticator,
+                                              const QString &proxyHost){
     Q_UNUSED(requestUrl);
     Q_UNUSED(proxyHost);
 
@@ -465,21 +415,21 @@ void WebEnginePage::HandleProxyAuthentication(const QUrl &requestUrl,
 
 void WebEnginePage::HandleFullScreen(QWebEngineFullScreenRequest request){
     if(TreeBank *tb = m_View->GetTreeBank()){
-        bool fullScreen = request.toggleOn();
-        tb->GetMainWindow()->SetFullScreen(fullScreen);
-        m_ObscureDisplay = fullScreen;
-        if(fullScreen){
-            ModelessDialog *dialog = new ModelessDialog();
-            connect(this, &WebEnginePage::destroyed, dialog, &ModelessDialog::Aborted);
-            connect(this, &WebEnginePage::fullScreenRequested, dialog, &ModelessDialog::Aborted);
-            dialog->SetTitle(tr("This page becomes full screen mode."));
-            dialog->SetCaption(tr("Press Esc to exit."));
-            dialog->SetButtons(QStringList() << tr("OK") << tr("Cancel"));
-            dialog->SetDefaultValue(true);
-            dialog->SetCallBack([this](bool ok){ if(!ok) triggerAction(ExitFullScreen);});
-            QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
-        }
+        bool on = request.toggleOn();
+        tb->GetMainWindow()->SetFullScreen(on);
+        m_View->SetDisplayObscured(on);
         request.accept();
+        if(!on) return;
+        ModelessDialog *dialog = new ModelessDialog();
+        // connect to 'Returned', because default value is true.
+        connect(this, &WebEnginePage::destroyed, dialog, &ModelessDialog::Returned);
+        connect(this, &WebEnginePage::fullScreenRequested, dialog, &ModelessDialog::Returned);
+        dialog->SetTitle(tr("This page becomes full screen mode."));
+        dialog->SetCaption(tr("Press Esc to exit."));
+        dialog->SetButtons(QStringList() << tr("OK") << tr("Cancel"));
+        dialog->SetDefaultValue(true);
+        dialog->SetCallBack([this](bool ok){ if(!ok) triggerAction(ExitFullScreen);});
+        QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
     } else {
         request.reject();
     }
@@ -488,13 +438,13 @@ void WebEnginePage::HandleFullScreen(QWebEngineFullScreenRequest request){
 void WebEnginePage::HandleProcessTermination(RenderProcessTerminationStatus status, int code){
     QString info = tr("A page is reloaded, because that's process is terminated.\n");
     switch(status){
-    case NormalTerminationStatus:
+    case QWebEnginePage::NormalTerminationStatus:
         info += tr("Normal termination. (code: %1)");   break;
-    case AbnormalTerminationStatus:
+    case QWebEnginePage::AbnormalTerminationStatus:
         info += tr("Abnormal termination. (code: %1)"); break;
-    case CrashedTerminationStatus:
+    case QWebEnginePage::CrashedTerminationStatus:
         info += tr("Crashed termination. (code: %1)");  break;
-    case KilledTerminationStatus:
+    case QWebEnginePage::KilledTerminationStatus:
         info += tr("Killed termination. (code: %1)");   break;
     }
     ModelessDialog::Information(tr("Render process terminated."),
@@ -534,13 +484,18 @@ void WebEnginePage::AddJsObject(){
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void WebEnginePage::Print(){
+void WebEnginePage::InspectElement(){
+    // my inspector doesn't catch element.
+    //QWebInspector *inspector = new QWebInspector;
+    //inspector->setPage(this);
+    //inspector->show();
+    QWebEnginePage::triggerAction(QWebEnginePage::InspectElement);
 }
 
 void WebEnginePage::AddSearchEngine(QPoint pos){
     m_View->CallWithGotCurrentBaseUrl([this, pos](QUrl base){
 
-    runJavaScript(QStringLiteral(
+    m_View->CallWithEvaluatedJavaScriptResult(QStringLiteral(
   "(function(){\n"
 VV"   var x = %1;\n"
 VV"   var y = %2;\n"
@@ -727,19 +682,6 @@ void WebEnginePage::AddBookmarklet(QPoint pos){
 
     Page::RegisterBookmarklet(tag, result);
     });
-}
-
-void WebEnginePage::InspectElement(){
-    // my inspector doesn't catch element.
-    //QWebInspector *inspector = new QWebInspector;
-    //inspector->setPage(this);
-    //inspector->show();
-    QWebEnginePage::triggerAction(QWebEnginePage::InspectElement);
-}
-
-void WebEnginePage::ReloadAndBypassCache(){
-    // 'action(ReloadAndBypassCache)' returns 0...
-    QWebEnginePage::triggerAction(QWebEnginePage::ReloadAndBypassCache);
 }
 
 void WebEnginePage::CloseLater(){

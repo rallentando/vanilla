@@ -27,38 +27,18 @@ public:
 
     void ApplySpecificSettings(QStringList set) DECL_OVERRIDE;
 
-    QQuickWidget *base() DECL_OVERRIDE {
-        return static_cast<QQuickWidget*>(this);
-    }
-    WebEnginePage *page() DECL_OVERRIDE {
-        return static_cast<WebEnginePage*>(View::page());
-    }
+    QQuickWidget *base() DECL_OVERRIDE;
+    WebEnginePage *page() DECL_OVERRIDE;
 
-    QUrl      url() DECL_OVERRIDE { return m_QmlWebEngineView->property("url").toUrl();}
-    void   setUrl(const QUrl &url) DECL_OVERRIDE {
-        m_QmlWebEngineView->setProperty("url", url);
-        emit urlChanged(url);
-    }
-
-    QString   html() DECL_OVERRIDE { return WholeHtml();}
-    void   setHtml(const QString &html, const QUrl &url) DECL_OVERRIDE {
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "loadHtml",
-                                  Q_ARG(QString, html),
-                                  Q_ARG(QUrl,    url));
-        emit urlChanged(url);
-    }
-
-    TreeBank *parent() DECL_OVERRIDE { return m_TreeBank;}
-    void   setParent(TreeBank* t) DECL_OVERRIDE {
-        View::SetTreeBank(t);
-        base()->setParent(t);
-    }
+    QUrl url() DECL_OVERRIDE;
+    QString html() DECL_OVERRIDE;
+    TreeBank *parent() DECL_OVERRIDE;
+    void setUrl(const QUrl &url) DECL_OVERRIDE;
+    void setHtml(const QString &html, const QUrl &url) DECL_OVERRIDE;
+    void setParent(TreeBank* t) DECL_OVERRIDE;
 
     void Connect(TreeBank *tb) DECL_OVERRIDE;
     void Disconnect(TreeBank *tb) DECL_OVERRIDE;
-
-    void ZoomIn() DECL_OVERRIDE;
-    void ZoomOut() DECL_OVERRIDE;
 
     QUrl BaseUrl() DECL_OVERRIDE {
         return GetBaseUrl();
@@ -86,19 +66,6 @@ public:
         m_QmlWebEngineView->setProperty("audioMuted", muted);
     }
 #endif
-
-    void InspectElement() DECL_OVERRIDE {
-        if(!m_Inspector){
-            m_Inspector = new QWebEngineView();
-            m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
-            m_Inspector->load(m_InspectorTable[this]);
-        } else {
-            m_Inspector->reload();
-        }
-        m_Inspector->show();
-        m_Inspector->raise();
-        //if(page()) page()->InspectElement();
-    }
 
     bool IsRenderable() DECL_OVERRIDE {
         return status() == QQuickWidget::Ready && (visible() || !m_GrabedDisplayData.isNull());
@@ -133,15 +100,16 @@ public:
     QString GetTitle() DECL_OVERRIDE {
         return m_QmlWebEngineView->property("title").toString();
     }
+    QIcon GetIcon() DECL_OVERRIDE {
+        return m_Icon;
+    }
 
-    void TriggerAction(QWebEnginePage::WebAction a) DECL_OVERRIDE {
-        Action(a)->trigger();
-    }
     void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
-        Action(a, data)->trigger();
+        if(page()) page()->TriggerAction(a, data);
     }
-    QAction *Action(QWebEnginePage::WebAction a) DECL_OVERRIDE;
-    QAction *Action(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE;
+    QAction *Action(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
+        return page() ? page()->Action(a, data) : 0;
+    }
 
     void TriggerNativeLoadAction(const QUrl &url) DECL_OVERRIDE { m_QmlWebEngineView->setProperty("url", url);}
     void TriggerNativeLoadAction(const QNetworkRequest &req,
@@ -222,7 +190,6 @@ public slots:
         resize(QSize(s.width(), s.height()+1));
         resize(s);
     }
-
     bool visible() DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) DECL_OVERRIDE {
         base()->setFocus(reason);
@@ -241,64 +208,65 @@ public slots:
 #endif
     }
 
+    void OnSetViewNode(ViewNode*) DECL_OVERRIDE;
+    void OnSetHistNode(HistNode*) DECL_OVERRIDE;
+    void OnSetThis(WeakView) DECL_OVERRIDE;
+    void OnSetMaster(WeakView) DECL_OVERRIDE;
+    void OnSetSlave(WeakView) DECL_OVERRIDE;
+    void OnSetJsObject(_View*) DECL_OVERRIDE;
+    void OnSetJsObject(_Vanilla*) DECL_OVERRIDE;
     void OnLoadStarted() DECL_OVERRIDE;
-    void OnLoadProgress(int progress) DECL_OVERRIDE;
-    void OnLoadFinished(bool ok) DECL_OVERRIDE;
+    void OnLoadProgress(int) DECL_OVERRIDE;
+    void OnLoadFinished(bool) DECL_OVERRIDE;
     void OnTitleChanged(const QString&) DECL_OVERRIDE;
     void OnUrlChanged(const QUrl&) DECL_OVERRIDE;
-
-    void OnViewChanged();
-    void OnScrollChanged();
+    void OnViewChanged() DECL_OVERRIDE;
+    void OnScrollChanged() DECL_OVERRIDE;
 
     void CallWithScroll(PointFCallBack callBack);
-
     void SetScrollBarState() DECL_OVERRIDE;
-
-    void SetScroll(QPointF pos) DECL_OVERRIDE {
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "setScroll",
-                                  Q_ARG(QVariant, QVariant::fromValue(pos)));
-    }
-
-    bool SaveScroll() DECL_OVERRIDE {
-        if(size().isEmpty()) return false;
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "saveScroll");
-        return true;
-    }
-    bool RestoreScroll() DECL_OVERRIDE {
-        if(size().isEmpty()) return false;
-        if(m_PreventScrollRestoration) return false;
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreScroll");
-        return true;
-    }
-    bool SaveZoom() DECL_OVERRIDE {
-        if(size().isEmpty()) return false;
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "saveZoom");
-        return true;
-    }
-    bool RestoreZoom() DECL_OVERRIDE {
-        if(size().isEmpty()) return false;
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreZoom");
-        return true;
-    }
+    QPointF GetScroll() DECL_OVERRIDE;
+    void SetScroll(QPointF pos) DECL_OVERRIDE;
+    bool SaveScroll() DECL_OVERRIDE;
+    bool RestoreScroll() DECL_OVERRIDE;
+    bool SaveZoom() DECL_OVERRIDE;
+    bool RestoreZoom() DECL_OVERRIDE;
 
     void KeyEvent(QString);
     bool SeekText(const QString&, View::FindFlags);
 
-    void SetFocusToElement(QString xpath){
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "setFocusToElement",
-                                  Q_ARG(QVariant, QVariant::fromValue(xpath)));
-    }
-    void FireClickEvent(QString xpath, QPoint pos){
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "fireClickEvent",
-                                  Q_ARG(QVariant, QVariant::fromValue(xpath)),
-                                  Q_ARG(QVariant, QVariant::fromValue(pos)));
-    }
-    void SetTextValue(QString xpath, QString text){
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "setTextValue",
-                                  Q_ARG(QVariant, QVariant::fromValue(xpath)),
-                                  Q_ARG(QVariant, QVariant::fromValue(text)));
-    }
+    void SetFocusToElement(QString xpath);
+    void FireClickEvent(QString xpath, QPoint pos);
+    void SetTextValue(QString xpath, QString text);
     void AssignInspector();
+    void UpdateIcon(const QUrl &iconUrl);
+
+    void HandleWindowClose();
+    void HandleJavascriptConsoleMessage(int, const QString&);
+    void HandleFeaturePermission(const QUrl&, int);
+    void HandleRenderProcessTermination(int, int);
+    void HandleFullScreen(bool);
+
+    void Copy() DECL_OVERRIDE;
+    void Cut() DECL_OVERRIDE;
+    void Paste() DECL_OVERRIDE;
+    void Undo() DECL_OVERRIDE;
+    void Redo() DECL_OVERRIDE;
+    void SelectAll() DECL_OVERRIDE;
+    void Unselect() DECL_OVERRIDE;
+    void Reload() DECL_OVERRIDE;
+    void ReloadAndBypassCache() DECL_OVERRIDE;
+    void Stop() DECL_OVERRIDE;
+    void StopAndUnselect() DECL_OVERRIDE;
+    void Print() DECL_OVERRIDE;
+    void Save() DECL_OVERRIDE;
+    void ZoomIn() DECL_OVERRIDE;
+    void ZoomOut() DECL_OVERRIDE;
+
+    void ExitFullScreen() DECL_OVERRIDE;
+    void InspectElement() DECL_OVERRIDE;
+    void AddSearchEngine(QPoint pos) DECL_OVERRIDE;
+    void AddBookmarklet(QPoint pos) DECL_OVERRIDE;
 
     // dirty...
     int findBackwardIntValue()            { return static_cast<int>(FindBackward);}
@@ -307,25 +275,7 @@ public slots:
     int highlightAllOccurrencesIntValue() { return static_cast<int>(HighlightAllOccurrences);}
 
     // for qml object.
-    void changeNodeTitle(const QString &title){
-        ChangeNodeTitle(title);
-    }
-    void changeNodeUrl(const QUrl &url){
-        ChangeNodeUrl(url);
-    }
-    void setFullScreen(bool on){
-        if(TreeBank *tb = GetTreeBank()){
-            tb->GetMainWindow()->SetFullScreen(on);
-        }
-    }
-
     void triggerAction(QString str){ View::TriggerAction(str);}
-
-    void handleJavascriptConsoleMessage(QString msg);
-
-    void onLoadStarted(){ OnLoadStarted();}
-    void onLoadProgress(int progress){ OnLoadProgress(progress);}
-    void onLoadFinished(bool ok){ OnLoadFinished(ok);}
 
     QString setFocusToElementJsCode(const QString &xpath){ return SetFocusToElementJsCode(xpath);}
     QString fireClickEventJsCode(const QString &xpath, const QPoint &pos){ return FireClickEventJsCode(xpath, pos);}
@@ -399,12 +349,18 @@ signals:
     void titleChanged(const QString&);
     void urlChanged(const QUrl&);
     void iconChanged(const QIcon&);
+    void iconUrlChanged(const QUrl&);
     void loadStarted();
     void loadProgress(int);
     void loadFinished(bool);
     void statusBarMessage(const QString&);
     void statusBarMessage2(const QString&, const QString&);
     void linkHovered(const QString&, const QString&, const QString&);
+    void windowCloseRequested();
+    void javascriptConsoleMessage(int, const QString&);
+    void featurePermissionRequested(const QUrl&, int);
+    void renderProcessTerminated(int, int);
+    void fullScreenRequested(bool);
 
 protected:
     void hideEvent(QHideEvent *ev) DECL_OVERRIDE;
@@ -429,6 +385,7 @@ protected:
 
 private:
     QQuickItem *m_QmlWebEngineView;
+    QIcon m_Icon;
     QImage m_GrabedDisplayData;
     static QMap<View*, QUrl> m_InspectorTable;
     QWebEngineView *m_Inspector;

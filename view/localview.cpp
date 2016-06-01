@@ -75,6 +75,14 @@ LocalView::~LocalView(){
     m_DummyLocalNode->Delete();
 }
 
+QGraphicsObject *LocalView::base(){
+    return static_cast<QGraphicsObject*>(this);
+}
+
+Page *LocalView::page(){
+    return static_cast<Page*>(View::page());
+}
+
 TreeBank *LocalView::parent(){
     return View::m_TreeBank;
 }
@@ -867,16 +875,16 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
     }
 
     switch(a){
-    case Gadgets::_Up:      action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case Gadgets::_Down:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case Gadgets::_Right:   action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case Gadgets::_Left:    action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-  //case Gadgets::_Back:    action->setIcon(QIcon(":/resources/menu/back.png"));    break;
-  //case Gadgets::_Forward: action->setIcon(QIcon(":/resources/menu/forward.png")); break;
-  //case Gadgets::_Rewind:  action->setIcon(QIcon(":/resources/menu/rewind.png"));  braek;
+    case Gadgets::_Up:          action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowUp));       break;
+    case Gadgets::_Down:        action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowDown));     break;
+    case Gadgets::_Right:       action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowRight));    break;
+    case Gadgets::_Left:        action->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
+  //case Gadgets::_Back:        action->setIcon(QIcon(":/resources/menu/back.png"));        break;
+  //case Gadgets::_Forward:     action->setIcon(QIcon(":/resources/menu/forward.png"));     break;
+  //case Gadgets::_Rewind:      action->setIcon(QIcon(":/resources/menu/rewind.png"));      braek;
   //case Gadgets::_FastForward: action->setIcon(QIcon(":/resources/menu/fastforward.png")); braek;
-  //case Gadgets::_Reload:  action->setIcon(QIcon(":/resources/menu/reload.png"));  break;
-  //case Gadgets::_Stop:    action->setIcon(QIcon(":/resources/menu/stop.png"));    break;
+  //case Gadgets::_Reload:      action->setIcon(QIcon(":/resources/menu/reload.png"));      break;
+  //case Gadgets::_Stop:        action->setIcon(QIcon(":/resources/menu/stop.png"));        break;
     }
 
     switch(a){

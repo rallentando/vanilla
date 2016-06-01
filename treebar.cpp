@@ -16,6 +16,8 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QCheckBox>
+#include <QStyle>
+#include <QStyleOptionToolBar>
 
 /*
   collecting model.
@@ -94,10 +96,10 @@ namespace {
         {
         }
         QSize sizeHint() const DECL_OVERRIDE {
-            return QSize(1, 1);
+            return QGraphicsView::sizeHint();
         }
         QSize minimumSizeHint() const DECL_OVERRIDE {
-            return QSize(1, 1);
+            return QSize(0, 0);
         }
     };
 
@@ -1039,19 +1041,19 @@ QSize TreeBar::sizeHint() const {
     }
 
     if(m_OverrideSize.isValid()){
-        int width =  m_OverrideSize.width();
+        int width  = m_OverrideSize.width();
         int height = m_OverrideSize.height();
         Cramp(width,  MinWidth(),  MaxWidth());
         Cramp(height, MinHeight(), MaxHeight());
         return QSize(width, height);
     }
 
-    return minimumSizeHint();
+    return QSize(TREEBAR_VERTICAL_NODE_MINIMUM_WIDTH + 7,
+                 (TREEBAR_HORIZONTAL_NODE_MINIMUM_HEIGHT + 3) * m_LayerList.length() + 4);
 }
 
 QSize TreeBar::minimumSizeHint() const {
-    return QSize(TREEBAR_VERTICAL_NODE_MINIMUM_WIDTH + 7,
-                 (TREEBAR_HORIZONTAL_NODE_MINIMUM_HEIGHT + 3) * m_LayerList.length() + 4);
+    return QSize(0, 0);
 }
 
 QMenu *TreeBar::TreeBarMenu(){

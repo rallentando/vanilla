@@ -9,15 +9,12 @@
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
 
-#include <Exdisp.h>
-#include <Mshtml.h>
-#include <Mshtmhst.h>
-#include <Comdef.h>
-#include <Shlobj.h>
-#include <Tlogstg.h>
 #include <ActiveQt/QAxWidget>
 #include <ActiveQt/qaxtypes.h>
 
+struct IWebBrowser2;
+struct IHTMLDocument2;
+struct ICustomDoc;
 class Handler;
 
 class TridentView : public QAxWidget, public View{
@@ -37,34 +34,18 @@ public:
     int GetZoomFactor();
     void SetZoomFactor(int);
 
-    QAxWidget *base() DECL_OVERRIDE {
-        return static_cast<QAxWidget*>(this);
-    }
-    Page *page() DECL_OVERRIDE {
-        return static_cast<Page*>(View::page());
-    }
+    QAxWidget *base() DECL_OVERRIDE;
+    Page *page() DECL_OVERRIDE;
 
-    QUrl      url() DECL_OVERRIDE { return m_Url;}
-    void   setUrl(const QUrl &url) DECL_OVERRIDE {
-        TriggerNativeLoadAction(url);
-        emit urlChanged(url);
-    }
-
-    QString   html() DECL_OVERRIDE { return WholeHtml();}
-    void   setHtml(const QString &html, const QUrl &url) DECL_OVERRIDE;
-
-    TreeBank *parent() DECL_OVERRIDE { return m_TreeBank;}
-    void   setParent(TreeBank* tb) DECL_OVERRIDE {
-        View::SetTreeBank(tb);
-        if(!TreeBank::PurgeView()) base()->setParent(tb);
-        if(tb) resize(size());
-    }
+    QUrl url() DECL_OVERRIDE;
+    QString html() DECL_OVERRIDE;
+    TreeBank *parent() DECL_OVERRIDE;
+    void setUrl(const QUrl &url) DECL_OVERRIDE;
+    void setHtml(const QString &html, const QUrl &url) DECL_OVERRIDE;
+    void setParent(TreeBank* tb) DECL_OVERRIDE;
 
     void Connect(TreeBank *tb) DECL_OVERRIDE;
     void Disconnect(TreeBank *tb) DECL_OVERRIDE;
-
-    void ZoomIn() DECL_OVERRIDE;
-    void ZoomOut() DECL_OVERRIDE;
 
     QUrl BaseUrl() DECL_OVERRIDE;
 
@@ -79,19 +60,6 @@ public:
 
     bool CanGoBack() DECL_OVERRIDE;
     bool CanGoForward() DECL_OVERRIDE;
-
-    void Print() DECL_OVERRIDE {
-        if(!m_Interface) return;
-        m_Interface->ExecWB(OLECMDID_PRINT, OLECMDEXECOPT_PROMPTUSER, 0, 0);
-    }
-    void AddSearchEngine(QPoint pos) DECL_OVERRIDE {
-        // not yet implemented.
-        Q_UNUSED(pos);
-    }
-    void AddBookmarklet(QPoint pos) DECL_OVERRIDE {
-        // not yet implemented.
-        Q_UNUSED(pos);
-    }
 
     bool IsRenderable() DECL_OVERRIDE {
         return true;
@@ -160,29 +128,6 @@ public:
     }
     void TriggerNativeRewindAction() DECL_OVERRIDE;
     void TriggerNativeFastForwardAction() DECL_OVERRIDE;
-
-    void TriggerNativeReloadAction(){
-        dynamicCall("Refresh()");
-    }
-    void TriggerNativeStopAction(){
-        dynamicCall("Stop()");
-    }
-
-    void TriggerNativeCutAction(){
-        m_Interface->ExecWB(OLECMDID_CUT, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
-    }
-    void TriggerNativePasteAction(){
-        m_Interface->ExecWB(OLECMDID_PASTE, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
-    }
-    void TriggerNativeUndoAction(){
-        m_Interface->ExecWB(OLECMDID_UNDO, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
-    }
-    void TriggerNativeRedoAction(){
-        m_Interface->ExecWB(OLECMDID_REDO, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
-    }
-    void TriggerNativeSelectAllAction(){
-        m_Interface->ExecWB(OLECMDID_SELECTALL, OLECMDEXECOPT_DONTPROMPTUSER, 0, 0);
-    }
 
     void UpKeyEvent() DECL_OVERRIDE;
     void DownKeyEvent() DECL_OVERRIDE;
@@ -298,6 +243,26 @@ public slots:
     }
     void UpdateIcon(const QUrl &iconUrl);
     void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint globalPos);
+
+    void Copy() DECL_OVERRIDE;
+    void Cut() DECL_OVERRIDE;
+    void Paste() DECL_OVERRIDE;
+    void Undo() DECL_OVERRIDE;
+    void Redo() DECL_OVERRIDE;
+    void SelectAll() DECL_OVERRIDE;
+    void Unselect() DECL_OVERRIDE;
+    void Reload() DECL_OVERRIDE;
+    void ReloadAndBypassCache() DECL_OVERRIDE;
+    void Stop() DECL_OVERRIDE;
+    void StopAndUnselect() DECL_OVERRIDE;
+    void Print() DECL_OVERRIDE;
+    void Save() DECL_OVERRIDE;
+    void ZoomIn() DECL_OVERRIDE;
+    void ZoomOut() DECL_OVERRIDE;
+
+    void InspectElement() DECL_OVERRIDE;
+    void AddSearchEngine(QPoint pos) DECL_OVERRIDE;
+    void AddBookmarklet(QPoint pos) DECL_OVERRIDE;
 
 signals:
     void statusBarMessage(const QString&);

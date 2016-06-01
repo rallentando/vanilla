@@ -8,6 +8,8 @@
 
 #include <QLineEdit>
 #include <QCompleter>
+#include <QStyle>
+#include <QStyleOptionToolBar>
 
 QStringList ToolBar::m_CommandCandidates = QStringList()
     << QStringLiteral("Open [text or url]")
@@ -216,7 +218,7 @@ QSize ToolBar::sizeHint() const {
 }
 
 QSize ToolBar::minimumSizeHint() const {
-    return QToolBar::minimumSizeHint();
+    return QSize(0, 0);
 }
 
 void ToolBar::Connect(SharedView view){

@@ -30,38 +30,18 @@ public:
     WebEngineView(TreeBank *parent = 0, QString id = "", QStringList set = QStringList());
     ~WebEngineView();
 
-    QWebEngineView *base() DECL_OVERRIDE {
-        return static_cast<QWebEngineView*>(this);
-    }
-    WebEnginePage *page() DECL_OVERRIDE {
-        return static_cast<WebEnginePage*>(View::page());
-    }
+    QWebEngineView *base() DECL_OVERRIDE;
+    WebEnginePage *page() DECL_OVERRIDE;
 
-    QUrl      url() DECL_OVERRIDE { return base()->url();}
-    void   setUrl(const QUrl &url) DECL_OVERRIDE {
-        base()->setUrl(url);
-        emit urlChanged(url);
-    }
-
-    QString   html() DECL_OVERRIDE { return WholeHtml();}
-    void   setHtml(const QString &html, const QUrl &url) DECL_OVERRIDE {
-        base()->setHtml(html, url);
-        emit urlChanged(url);
-    }
-
-    TreeBank *parent() DECL_OVERRIDE { return m_TreeBank;}
-    void   setParent(TreeBank* tb) DECL_OVERRIDE {
-        View::SetTreeBank(tb);
-        if(!TreeBank::PurgeView()) base()->setParent(tb);
-        if(page()) page()->AddJsObject();
-        if(tb) resize(size());
-    }
+    QUrl url() DECL_OVERRIDE;
+    QString html() DECL_OVERRIDE;
+    TreeBank *parent() DECL_OVERRIDE;
+    void setUrl(const QUrl &url) DECL_OVERRIDE;
+    void setHtml(const QString &html, const QUrl &url) DECL_OVERRIDE;
+    void setParent(TreeBank* tb) DECL_OVERRIDE;
 
     void Connect(TreeBank *tb) DECL_OVERRIDE;
     void Disconnect(TreeBank *tb) DECL_OVERRIDE;
-
-    void ZoomIn() DECL_OVERRIDE;
-    void ZoomOut() DECL_OVERRIDE;
 
     QUrl BaseUrl() DECL_OVERRIDE {
         return GetBaseUrl();
@@ -94,21 +74,6 @@ public:
         if(page()) page()->setAudioMuted(muted);
     }
 #endif
-
-    void InspectElement() DECL_OVERRIDE {
-        if(!m_Inspector){
-            m_Inspector = new QWebEngineView();
-            m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
-            m_Inspector->load(m_InspectorTable[this]);
-        } else {
-            m_Inspector->reload();
-        }
-        m_Inspector->show();
-        m_Inspector->raise();
-        //if(page()) page()->InspectElement();
-    }
-    void AddSearchEngine(QPoint pos) DECL_OVERRIDE { if(page()) page()->AddSearchEngine(pos);}
-    void AddBookmarklet(QPoint pos)  DECL_OVERRIDE { if(page()) page()->AddBookmarklet(pos);}
 
     bool IsRenderable() DECL_OVERRIDE {
         return page() != 0 && (visible() || !m_GrabedDisplayData.isNull());
@@ -174,14 +139,8 @@ public:
 #endif
     }
 
-    void TriggerAction(QWebEnginePage::WebAction a) DECL_OVERRIDE {
-        if(page()) page()->TriggerAction(a);
-    }
     void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
         if(page()) page()->TriggerAction(a, data);
-    }
-    QAction *Action(QWebEnginePage::WebAction a) DECL_OVERRIDE {
-        return page() ? page()->Action(a) : 0;
     }
     QAction *Action(Page::CustomAction a, QVariant data = QVariant()) DECL_OVERRIDE {
         return page() ? page()->Action(a, data) : 0;
@@ -284,9 +243,7 @@ public:
 #endif
 
 public slots:
-    QSize size() DECL_OVERRIDE {
-        return base()->size();
-    }
+    QSize size() DECL_OVERRIDE { return base()->size();}
     void resize(QSize size) DECL_OVERRIDE {
         if(TreeBank::PurgeView()){
             MainWindow *win = m_TreeBank ? m_TreeBank->GetMainWindow() : 0;
@@ -321,14 +278,10 @@ public slots:
                 }
             });
     }
-    void hide() DECL_OVERRIDE {
-        base()->hide();
-    }
-
+    void hide()    DECL_OVERRIDE { base()->hide();}
     void raise()   DECL_OVERRIDE { base()->raise();}
     void lower()   DECL_OVERRIDE { base()->lower();}
     void repaint() DECL_OVERRIDE { base()->repaint();}
-
     bool visible() DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) DECL_OVERRIDE {
         base()->setFocus(reason);
@@ -368,11 +321,11 @@ public slots:
     void SetScrollBarState() DECL_OVERRIDE;
     QPointF GetScroll() DECL_OVERRIDE;
     void SetScroll(QPointF pos) DECL_OVERRIDE;
-    bool SaveScroll()     DECL_OVERRIDE;
-    bool RestoreScroll()  DECL_OVERRIDE;
-    bool SaveZoom()       DECL_OVERRIDE;
-    bool RestoreZoom()    DECL_OVERRIDE;
-    bool SaveHistory()    DECL_OVERRIDE;
+    bool SaveScroll() DECL_OVERRIDE;
+    bool RestoreScroll() DECL_OVERRIDE;
+    bool SaveZoom() DECL_OVERRIDE;
+    bool RestoreZoom() DECL_OVERRIDE;
+    bool SaveHistory() DECL_OVERRIDE;
     bool RestoreHistory() DECL_OVERRIDE;
 
     void KeyEvent(QString);
@@ -388,6 +341,27 @@ public slots:
     void UpdateIcon(const QUrl &iconUrl);
 #endif
 
+    void Copy() DECL_OVERRIDE;
+    void Cut() DECL_OVERRIDE;
+    void Paste() DECL_OVERRIDE;
+    void Undo() DECL_OVERRIDE;
+    void Redo() DECL_OVERRIDE;
+    void SelectAll() DECL_OVERRIDE;
+    void Unselect() DECL_OVERRIDE;
+    void Reload() DECL_OVERRIDE;
+    void ReloadAndBypassCache() DECL_OVERRIDE;
+    void Stop() DECL_OVERRIDE;
+    void StopAndUnselect() DECL_OVERRIDE;
+    void Print() DECL_OVERRIDE;
+    void Save() DECL_OVERRIDE;
+    void ZoomIn() DECL_OVERRIDE;
+    void ZoomOut() DECL_OVERRIDE;
+
+    void ExitFullScreen() DECL_OVERRIDE;
+    void InspectElement() DECL_OVERRIDE;
+    void AddSearchEngine(QPoint pos) DECL_OVERRIDE;
+    void AddBookmarklet(QPoint pos)  DECL_OVERRIDE;
+
 signals:
 #if QT_VERSION >= 0x050700
     void iconChanged(const QIcon&);
@@ -396,18 +370,6 @@ signals:
     void statusBarMessage2(const QString&, const QString&);
     void ViewChanged();
     void ScrollChanged(QPointF);
-
-private:
-#if QT_VERSION < 0x050700
-    QIcon m_Icon;
-#endif
-    QImage m_GrabedDisplayData;
-    static QMap<View*, QUrl> m_InspectorTable;
-    QWebEngineView *m_Inspector;
-    bool m_PreventScrollRestoration;
-#ifdef PASSWORD_MANAGER
-    bool m_PreventAuthRegistration;
-#endif
 
 protected:
     void childEvent(QChildEvent *ev) DECL_OVERRIDE;
@@ -431,6 +393,18 @@ protected:
     bool focusNextPrevChild(bool next) DECL_OVERRIDE;
 #if defined(Q_OS_WIN)
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) DECL_OVERRIDE;
+#endif
+
+private:
+#if QT_VERSION < 0x050700
+    QIcon m_Icon;
+#endif
+    QImage m_GrabedDisplayData;
+    static QMap<View*, QUrl> m_InspectorTable;
+    QWebEngineView *m_Inspector;
+    bool m_PreventScrollRestoration;
+#ifdef PASSWORD_MANAGER
+    bool m_PreventAuthRegistration;
 #endif
 
     friend class EventEater;
@@ -461,9 +435,9 @@ protected:
         case QEvent::KeyPress:{
             QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
 
-            if(m_View->page()->ObscureDisplay()){
+            if(m_View->GetDisplayObscured()){
                 if(ke->key() == Qt::Key_Escape || ke->key() == Qt::Key_F11){
-                    m_View->page()->triggerAction(QWebEnginePage::ExitFullScreen);
+                    m_View->ExitFullScreen();
                     return true;
                 }
             }

@@ -3,18 +3,13 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Controls 1.4
 import QtQuick.Window 2.2
 import QtWebEngine 1.2
-import QtWebEngine.experimental 1.0
 
 Rectangle {
     WebEngineView {
         id: webEngineView
         signal viewChanged()
         signal scrollChanged(point pos)
-        signal statusBarMessage(string message)
-        signal titleChanged_(string title)
-        signal linkHovered_(string arg1, string arg2, string arg3)
         signal callBackResult(int id, variant result)
-        property real devicePixelRatio : 1.0
 
         anchors.fill: parent
 
@@ -22,45 +17,55 @@ Rectangle {
             var status = loadRequest.status
 
             if(status == WebEngineView.LoadStartedStatus){
-                viewInterface.onLoadStarted()
+                viewInterface.loadStarted()
             }
             if(status == WebEngineView.LoadSucceededStatus){
-                viewInterface.onLoadFinished(true)
+                viewInterface.loadFinished(true)
             }
             if(status == WebEngineView.LoadFaliedStatus){
-                viewInterface.onLoadFinished(false)
+                viewInterface.loadFinished(false)
             }
         }
 
         onLoadProgressChanged: {
-            viewInterface.onLoadProgress(loadProgress)
+            viewInterface.loadProgress(loadProgress)
         }
 
         onLinkHovered: {
-            linkHovered_(hoveredUrl.toString(), '', '')
+            viewInterface.linkHovered(hoveredUrl.toString(), '', '')
         }
 
         onTitleChanged: {
-            titleChanged_(title)
-            viewInterface.changeNodeTitle(title)
+            viewInterface.titleChanged(title)
         }
 
         onUrlChanged: {
-            viewInterface.changeNodeUrl(url)
+            viewInterface.urlChanged(url)
         }
 
-        onFullScreenRequested: {
-            viewInterface.setFullScreen(request.toggleOn)
-            request.accept()
+        onIconChanged: {
+            viewInterface.iconUrlChanged(icon)
         }
 
-        onDevicePixelRatioChanged: {
-            experimental.viewport.devicePixelRatio = devicePixelRatio
+        onWindowCloseRequested: {
+            viewInterface.windowCloseRequested()
         }
 
         onJavaScriptConsoleMessage: {
-            if(level === WebEngineView.InfoMessageLevel)
-                viewInterface.handleJavascriptConsoleMessage(message)
+            viewInterface.javascriptConsoleMessage(level, message)
+        }
+
+        onFeaturePermissionRequested: {
+            viewInterface.featurePermissionRequested(securityOrigin, feature)
+        }
+
+        onRenderProcessTerminated: {
+            viewInterface.renderProcessTerminated(terminationStatus, exitCode)
+        }
+
+        onFullScreenRequested: {
+            viewInterface.fullScreenRequested(request.toggleOn)
+            request.accept()
         }
 
         function setScroll(pos){
@@ -86,11 +91,11 @@ Rectangle {
         }
 
         function saveZoom(){
-            viewInterface.saveZoomToNode(devicePixelRatio)
+            viewInterface.saveZoomToNode(zoomFactor)
         }
 
         function restoreZoom(){
-            devicePixelRatio = viewInterface.restoreZoomFromNode()
+            zoomFactor = viewInterface.restoreZoomFromNode()
         }
 
         function evaluateJavaScript(id, code){
@@ -124,7 +129,7 @@ Rectangle {
 
         function fireClickEvent(xpath, pos){
             runJavaScript
-            (viewInterface.fireClickEventJsCode(xpath, pos/devicePixelRatio))
+            (viewInterface.fireClickEventJsCode(xpath, pos/zoomFactor))
         }
 
         function setTextValue(xpath, text){
@@ -147,6 +152,42 @@ Rectangle {
             emitScrollChangedIfNeed()
         }
 
+        function cut(){
+            triggerWebAction(WebEngineView.Cut)
+        }
+        function copy(){
+            triggerWebAction(WebEngineView.Copy)
+        }
+        function paste(){
+            triggerWebAction(WebEngineView.Paste)
+        }
+        function undo(){
+            triggerWebAction(WebEngineView.Undo)
+        }
+        function redo(){
+            triggerWebAction(WebEngineView.Redo)
+        }
+        function selectAll(){
+            triggerWebAction(WebEngineView.SelectAll)
+        }
+        function unselect(){
+            runJavaScript("(function(){ document.activeElement.blur(); getSelection().removeAllRanges();})()",
+                          WebEngineScript.MainWorld)
+        }
+        function reloadAndBypassCache(){
+            triggerWebAction(WebEngineView.ReloadAndBypassCache)
+        }
+        function stopAndUnselect(){
+            stop(); unselect()
+        }
+        function print_(){
+            // not yet implemented.
+        }
+
+        function grantFeaturePermission_(securityOrigin, feature, granted){
+            grantFeaturePermission(securityOrigin, feature, granted);
+        }
+
         function setUserAgent(agent){
             //experimental.userAgent = agent
         }
@@ -167,14 +208,6 @@ Rectangle {
             else if(item == "PluginsEnabled")                  settings.pluginsEnabled = value
             else if(item == "SpatialNavigationEnabled")        settings.spatialNavigationEnabled = value
             else if(item == "HyperlinkAuditingEnabled")        settings.hyperlinkAuditingEnabled = value
-            else if(item == "ScrollAnimatorEnabled")           settings.scrollAnimatorEnabled = value
-
-            else if(item == "ScreenCaptureEnabled")            settings.screenCaptureEnabled = value
-            else if(item == "WebAudioEnabled")                 settings.webAudioEnabled = value
-            else if(item == "WebGLEnabled")                    settings.webGLEnabled = value
-            else if(item == "Accelerated2dCanvasEnabled")      settings.accelerated2dCanvasEnabled = value
-            else if(item == "AutoLoadIconsForPage")            settings.autoLoadIconsForPage = value
-            else if(item == "TouchIconsEnabled")               settings.touchIconsEnabled = value
 
             else if(item == "ErrorPageEnabled")                settings.errorPageEnabled = value
             else if(item == "FullScreenSupportEnabled")        settings.fullScreenSupportEnabled = value
@@ -195,57 +228,6 @@ Rectangle {
             //if     (item == "MinimumFontSize")      experimental.settings.minimumFontSize = value
             //else if(item == "DefaultFontSize")      experimental.settings.defaultFontSize = value
             //else if(item == "DefaultFixedFontSize") experimental.settings.defaultFixedFontSize = value
-        }
-
-        experimental {
-
-            //onFullScreenRequested: {
-            //    if(viewInterface.isFullScreen())
-            //        viewInterface.showNormal()
-            //    else
-            //        viewInterface.showFullScreen()
-            //}
-
-            //onIsFullScreenChanged: {
-            //}
-
-            onExtraContextMenuEntriesComponentChanged: {
-            }
-
-            //extraContextMenuEntriesComponent: ContextMenuExtras {}
-
-            //onFeaturePermissionRequested: {
-            //    var featureString
-            //    switch(feature){
-            //    case MediaAudioDevices:      featureString = "MediaAudioDevices"      break
-            //    case MediaVideoDevices:      featureString = "MediaVideoDevices"      break
-            //    case MediaAudioVideoDevices: featureString = "MediaAudioVideoDevices" break
-            //    }
-            //    featurePermissionDialog.securityOrigin = securityOrigin
-            //    featurePermissionDialog.title = "Feature Permission Requested."
-            //    featurePermissionDialog.text = "Feature Permission Requested."
-            //    featurePermissionDialog.informativeText =
-            //        qsTr("Url: ") + securityOrigin.toString() + "\n"
-            //        qsTr("Feature: ") + featureString + "\n\n"
-            //        qsTr("Allow this feature?")
-            //    featurePermissionDialog.visible = true
-            //}
-            //featurePermissionDialog : MessageDialog {
-            //    url securityOrigin
-            //    Feature feature
-            //    standardButtons : StandardButton.Yes | StandardButton.No
-            //    onYes: {
-            //        grantFeaturePermission(securityOrigin, feature, true)
-            //        visible = false
-            //    }
-            //    onNo: {
-            //        grantFeaturePermission(securityOrigin, feature, false)
-            //        visible = false
-            //    }
-            //    Component.onCompleted:{
-            //        visible = true
-            //    }
-            //}
         }
     }
 }

@@ -7,12 +7,13 @@
 #include <QMenu>
 #include <QContextMenuEvent>
 #include <QGraphicsSceneContextMenuEvent>
+#include <QNetworkAccessManager>
 
 #include <memory>
 
 #include "callback.hpp"
+#include "application.hpp"
 #include "page.hpp"
-#include "webenginepage.hpp"
 
 class QKeySequence;
 class QMimeData;
@@ -182,6 +183,9 @@ public:
     void AddContextMenu(QMenu *menu, SharedWebElement elem);
     void AddRegularMenu(QMenu *menu, SharedWebElement elem);
 
+    bool GetDisplayObscured(){ return m_DisplayObscured;}
+    void SetDisplayObscured(bool obscured){ m_DisplayObscured = obscured;}
+
     static void LoadSettings();
     static void SaveSettings();
     virtual void ApplySpecificSettings(QStringList set);
@@ -201,23 +205,20 @@ public:
 
     static QList<float> GetZoomFactorLevels(){ return m_ZoomFactorLevels;}
 
-    virtual QUrl      url();
-    virtual void   setUrl(const QUrl&);
-    virtual QString   html();
-    virtual void   setHtml(const QString&, const QUrl&);
-    virtual TreeBank *parent();
-    virtual void   setParent(TreeBank*);
+    static bool GetSwitchingState(){ return m_Switching;}
+    static void SetSwitchingState(bool switching){ m_Switching = switching;}
+
+    virtual QUrl url(){ return QUrl();}
+    virtual QString html(){ return QString();}
+    virtual TreeBank *parent(){ return 0;}
+    virtual void setUrl(const QUrl&){}
+    virtual void setHtml(const QString&, const QUrl&){}
+    virtual void setParent(TreeBank*){}
 
     virtual void Connect(TreeBank*);
     virtual void Disconnect(TreeBank*);
 
-    virtual void ZoomIn(){}
-    virtual void ZoomOut(){}
-
     virtual void UpdateThumbnail();
-
-    static void SetSwitchingState(bool switching);
-    static bool GetSwitchingState();
 
     virtual QUrl BaseUrl(){ return QUrl();}
     virtual QUrl CurrentBaseUrl(){ return QUrl();}
@@ -232,11 +233,26 @@ public:
     virtual bool IsAudioMuted(){ return false;}
     virtual void SetAudioMuted(bool){}
 
+    virtual void Copy(){}
+    virtual void Cut(){}
+    virtual void Paste(){}
+    virtual void Undo(){}
+    virtual void Redo(){}
+    virtual void Unselect(){}
+    virtual void SelectAll(){}
+    virtual void Reload(){}
+    virtual void ReloadAndBypassCache(){}
+    virtual void Stop(){}
+    virtual void StopAndUnselect(){}
     virtual void Print(){}
+    virtual void Save(){}
+    virtual void ZoomIn(){}
+    virtual void ZoomOut(){}
+
+    virtual void ExitFullScreen(){}
+    virtual void InspectElement(){}
     virtual void AddSearchEngine(QPoint){}
     virtual void AddBookmarklet(QPoint){}
-    virtual void InspectElement(){}
-    virtual void ReloadAndBypassCache(){}
 
     virtual bool IsRenderable(){ return false;}
     virtual void Render(QPainter*){}
@@ -249,57 +265,10 @@ public:
     virtual QString GetTitle(){ return QString();}
     virtual QIcon GetIcon(){ return QIcon();}
 
-    virtual bool TriggerAction(QString str, QVariant data = QVariant()){
-        if(Page::IsValidAction(str))
-            TriggerAction(Page::StringToAction(str), data);
-        else if(Page::GetBookmarkletMap().contains(str))
-            Load(Page::GetBookmarklet(str).first());
-        else if(Page::GetSearchEngineMap().contains(str))
-            CallWithSelectedText([this, str](QString text){
-                    if(text.isEmpty()) return;
-                    QMetaObject::invokeMethod(page(), "OpenInNew",
-                                              Q_ARG(QString, str),
-                                              Q_ARG(QString, text));
-                });
-        else return false;
-        return true;
-    }
-
-    virtual void TriggerAction(QWebEnginePage::WebAction){}
+    virtual bool TriggerAction(QString str, QVariant data = QVariant());
     virtual void TriggerAction(Page::CustomAction, QVariant = QVariant()){}
 
-    virtual QAction *Action(QString str, QVariant data = QVariant()){
-        if(Page::IsValidAction(str))
-            return Action(Page::StringToAction(str), data);
-        if(!base() || !page()) return 0;
-        QAction *action = 0;
-        if(Page::GetBookmarkletMap().contains(str)){
-            action = new QAction(base());
-            action->setText(str);
-            base()->connect(action, &QAction::triggered,
-                 [this, str, action](){
-                    Load(Page::GetBookmarklet(str).first());
-                    action->deleteLater();
-                });
-        } else if(Page::GetSearchEngineMap().contains(str)){
-            QUrl url = QUrl::fromEncoded(Page::GetSearchEngine(str).first().toLatin1());
-            action = new QAction(base());
-            action->setText(str);
-            action->setIcon(Application::GetIcon(url.host()));
-            base()->connect(action, &QAction::triggered,
-                 [this, str, action](){
-                    CallWithSelectedText([this, str, action](QString text){
-                            if(!text.isEmpty())
-                                QMetaObject::invokeMethod(page(), "OpenInNew",
-                                                          Q_ARG(QString, str),
-                                                          Q_ARG(QString, text));
-                            action->deleteLater();
-                        });
-                });
-        }
-        return action;
-    }
-    virtual QAction *Action(QWebEnginePage::WebAction){ return 0;}
+    virtual QAction *Action(QString str, QVariant data = QVariant());
     virtual QAction *Action(Page::CustomAction, QVariant = QVariant()){ return 0;}
 
     virtual void TriggerNativeLoadAction(const QUrl&){}
@@ -666,7 +635,7 @@ protected:
           VV"            location.protocol + \"//\" + location.hostname + \n"
           VV"            (location.port && \":\" + location.port) + \"/\";\n"
           VV"    }\n"
-          VV"    var elems = document.querySelectorAll(\"%1\");\n"
+          VV"    var elems = Array.from(document.querySelectorAll(\"%1\"));\n"
           VV"    var map = {};\n"
           VV"    for(var i = 0; i < elems.length; i++){\n"
           VV"        var data = {};\n"
@@ -677,16 +646,26 @@ protected:
           VV"        data.imageUrl = elems[i].src;\n"
           VV"        data.imageHtml = elems[i].innerHTML;\n" // roughly capture.
           VV"        data.baseUrl = baseUrl;\n"
-          VV"        data.x = elems[i].getBoundingClientRect().left * devicePixelRatio;\n"
-          VV"        data.y = elems[i].getBoundingClientRect().top  * devicePixelRatio;\n"
-          VV"        data.width  = elems[i].getBoundingClientRect().width  * devicePixelRatio;\n"
-          VV"        data.height = elems[i].getBoundingClientRect().height * devicePixelRatio;\n"
+          VV"        var offsetX = 0;\n"
+          VV"        var offsetY = 0;\n"
+          VV"        var win = elems[i].ownerDocument.defaultView;\n"
+          VV"        while(win && top !== win){\n"
+          VV"            var rect = win.frameElement.getBoundingClientRect();\n"
+          VV"            offsetX += rect.left;\n"
+          VV"            offsetY += rect.top;\n"
+          VV"            win = win.parent;\n"
+          VV"        }\n"
+          VV"        var rect = elems[i].getBoundingClientRect();\n"
+          VV"        data.x = (rect.left + offsetX) * devicePixelRatio;\n"
+          VV"        data.y = (rect.top  + offsetY) * devicePixelRatio;\n"
+          VV"        data.width  = rect.width  * devicePixelRatio;\n"
+          VV"        data.height = rect.height * devicePixelRatio;\n"
           VV"        data.region = {};\n"
           VV"        var rects = elems[i].getClientRects();\n"
           VV"        for(var j = 0; j < rects.length; j++){\n"
           VV"            data.region[j] = {};\n"
-          VV"            data.region[j].x = rects[j].left * devicePixelRatio;\n"
-          VV"            data.region[j].y = rects[j].top  * devicePixelRatio;\n"
+          VV"            data.region[j].x = (rects[j].left + offsetX) * devicePixelRatio;\n"
+          VV"            data.region[j].y = (rects[j].top  + offsetY) * devicePixelRatio;\n"
           VV"            data.region[j].width  = rects[j].width  * devicePixelRatio;\n"
           VV"            data.region[j].height = rects[j].height * devicePixelRatio;\n"
           VV"        }\n"
@@ -764,35 +743,39 @@ protected:
           VV"               elems[i].type.toLowerCase() == \"button\"))) ? \"Click\" :\n"
           VV"            (elems[i].onmouseover) ? \"Hover\" :\n"
           VV"             \"None\";\n"
-            // traverse frames, security error?...
-        //VV"        if(elems[i].tagName == \"FRAME\" ||\n"
-        //VV"           elems[i].tagName == \"IFRAME\"){\n"
-        //VV"            var frameDocument = elems[i].contentWindow.document;\n"
-        //VV"            elems = elems.concat(frameDocument.querySelectorAll(\"%1\"));\n"
-        //VV"        }\n"
-            // XPath
-            // 1 : document.ELEMENT_NODE
-          VV"        var iter = elems[i];\n"
+          VV"        if(elems[i].tagName == \"FRAME\" || elems[i].tagName == \"IFRAME\"){\n"
+          VV"            try{\n"
+          VV"                var frameDocument = elems[i].contentDocument;\n"
+          VV"                elems = elems.concat(Array.from(frameDocument.querySelectorAll(\"%1\")));\n"
+          VV"            }\n"
+          VV"            catch(e){}\n"
+          VV"        }\n"
           VV"        var xpath = \"\";\n"
-          VV"        while(iter && iter.nodeType == 1){\n"
-          VV"            var str = iter.tagName;\n"
-          VV"            var siblings = iter.parentNode.childNodes;\n"
-          VV"            var synonym = [];\n"
-          VV"            for(var j = 0; j < siblings.length; j++){\n"
-          VV"                if(siblings[j].nodeType == 1 &&\n"
-          VV"                   siblings[j].tagName == iter.tagName){\n"
-          VV"                    synonym.push(siblings[j]);\n"
+          VV"        if(elems[i].ownerDocument !== document){\n"
+          VV"            xpath = \"body\";\n"
+          VV"        } else {\n"
+          VV"            var iter = elems[i];\n"
+            //           1 : document.ELEMENT_NODE
+          VV"            while(iter && iter.nodeType == 1){\n"
+          VV"                var str = iter.tagName;\n"
+          VV"                var siblings = iter.parentNode.childNodes;\n"
+          VV"                var synonym = [];\n"
+          VV"                for(var j = 0; j < siblings.length; j++){\n"
+          VV"                    if(siblings[j].nodeType == 1 &&\n"
+          VV"                       siblings[j].tagName == iter.tagName){\n"
+          VV"                        synonym.push(siblings[j]);\n"
+          VV"                    }\n"
           VV"                }\n"
+          VV"                if(synonym.length > 1 && synonym.indexOf(iter) != -1){\n"
+          VV"                    str += \"[\" + (synonym.indexOf(iter) + 1) + \"]\";\n"
+          VV"                }\n"
+          VV"                if(xpath){\n"
+          VV"                    xpath = str + \"/\" + xpath;\n"
+          VV"                } else {\n"
+          VV"                    xpath = str;\n"
+          VV"                }\n"
+          VV"                iter = iter.parentNode;\n"
           VV"            }\n"
-          VV"            if(synonym.length > 1 && synonym.indexOf(iter) != -1){\n"
-          VV"                str += \"[\" + (synonym.indexOf(iter) + 1) + \"]\";\n"
-          VV"            }\n"
-          VV"            if(xpath){\n"
-          VV"                xpath = str + \"/\" + xpath;\n"
-          VV"            } else {\n"
-          VV"                xpath = str;\n"
-          VV"            }\n"
-          VV"            iter = iter.parentNode;\n"
           VV"        }\n"
           VV"        data.xPath = \"//\" + xpath.toLowerCase();\n"
           VV"        map[i] = data;\n"
@@ -820,6 +803,16 @@ protected:
           VV"    var x = %1;\n"
           VV"    var y = %2;\n"
           VV"    var elem = document.elementFromPoint(x, y);\n"
+          VV"    while(elem && (elem.tagName == \"FRAME\" || elem.tagName ==\"IFRAME\")){\n"
+          VV"        try{\n"
+          VV"            var frameDocument = elem.contentDocument;\n"
+          VV"            var rect = elem.getBoundingClientRect();\n"
+          VV"            x -= rect.left * devicePixelRatio;\n"
+          VV"            y -= rect.top  * devicePixelRatio;\n"
+          VV"            elem = frameDocument.elementFromPoint(x, y);\n"
+          VV"        }\n"
+          VV"        catch(e){ break;}\n"
+          VV"    }\n"
           VV"    if(!elem) return;\n"
           VV"    var data = {};\n"
           VV"    data.tagName = elem.tagName;\n"
@@ -843,10 +836,11 @@ protected:
           VV"        image = image.parentNode;\n"
           VV"    }\n"
           VV"    data.baseUrl = baseUrl;\n"
-          VV"    data.x = elem.getBoundingClientRect().left * devicePixelRatio;\n"
-          VV"    data.y = elem.getBoundingClientRect().top  * devicePixelRatio;\n"
-          VV"    data.width = elem.getBoundingClientRect().width   * devicePixelRatio;\n"
-          VV"    data.height = elem.getBoundingClientRect().height * devicePixelRatio;\n"
+          VV"    var rect = elem.getBoundingClientRect();\n"
+          VV"    data.x = rect.left * devicePixelRatio;\n"
+          VV"    data.y = rect.top  * devicePixelRatio;\n"
+          VV"    data.width = rect.width   * devicePixelRatio;\n"
+          VV"    data.height = rect.height * devicePixelRatio;\n"
           VV"    data.region = {};\n"
           VV"    var rects = elem.getClientRects();\n"
           VV"    for(var i = 0; i < rects.length; i++){\n"
@@ -928,30 +922,33 @@ protected:
           VV"           elem.type.toLowerCase() == \"reset\" ||\n"
           VV"           elem.type.toLowerCase() == \"button\"))) ? \"Click\" :\n"
           VV"         (elem.onmouseover) ? \"Hover\" :\n"
-          VV"         \"None\";"
-            // XPath
-            // 1 : document.ELEMENT_NODE
-          VV"    var iter = elem;\n"
+          VV"         \"None\";\n"
           VV"    var xpath = \"\";\n"
-          VV"    while(iter && iter.nodeType == 1){\n"
-          VV"        var str = iter.tagName;\n"
-          VV"        var siblings = iter.parentNode.childNodes;\n"
-          VV"        var synonym = [];\n"
-          VV"        for(var j = 0; j < siblings.length; j++){\n"
-          VV"            if(siblings[j].nodeType == 1 &&\n"
-          VV"               siblings[j].tagName == iter.tagName){\n"
-          VV"                synonym.push(siblings[j]);\n"
+          VV"    if(elem.ownerDocument !== document){\n"
+          VV"        xpath = \"body\";\n"
+          VV"    } else {\n"
+          VV"        var iter = elem;\n"
+            //       1 : document.ELEMENT_NODE
+          VV"        while(iter && iter.nodeType == 1){\n"
+          VV"            var str = iter.tagName;\n"
+          VV"            var siblings = iter.parentNode.childNodes;\n"
+          VV"            var synonym = [];\n"
+          VV"            for(var j = 0; j < siblings.length; j++){\n"
+          VV"                if(siblings[j].nodeType == 1 &&\n"
+          VV"                   siblings[j].tagName == iter.tagName){\n"
+          VV"                    synonym.push(siblings[j]);\n"
+          VV"                }\n"
           VV"            }\n"
+          VV"            if(synonym.length > 1 && synonym.indexOf(iter) != -1){\n"
+          VV"                str += \"[\" + (synonym.indexOf(iter) + 1) + \"]\";\n"
+          VV"            }\n"
+          VV"            if(xpath){\n"
+          VV"                xpath = str + \"/\" + xpath;\n"
+          VV"            } else {\n"
+          VV"                xpath = str;\n"
+          VV"            }\n"
+          VV"            iter = iter.parentNode;\n"
           VV"        }\n"
-          VV"        if(synonym.length > 1 && synonym.indexOf(iter) != -1){\n"
-          VV"            str += \"[\" + (synonym.indexOf(iter) + 1) + \"]\";\n"
-          VV"        }\n"
-          VV"        if(xpath){\n"
-          VV"            xpath = str + \"/\" + xpath;\n"
-          VV"        } else {\n"
-          VV"            xpath = str;\n"
-          VV"        }\n"
-          VV"        iter = iter.parentNode;\n"
           VV"    }\n"
           VV"    data.xPath = \"//\" + xpath.toLowerCase();\n"
           VV"    return data;\n"
@@ -1277,7 +1274,6 @@ protected:
     bool m_EnableDragHackLocal;
 
     static const QList<float> m_ZoomFactorLevels;
-    static const QMap<QWebEngineSettings::WebAttribute, QString> m_WebEngineSwitches;
 
     static QString m_LinkMenu;
     static QString m_ImageMenu;
@@ -1294,6 +1290,7 @@ protected:
     _View    *m_JsObject;
     int m_LoadProgress;
     bool m_IsLoading;
+    bool m_DisplayObscured;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(View::FindFlags);
