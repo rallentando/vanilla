@@ -95,7 +95,7 @@ NetworkAccessManager::NetworkAccessManager(QString id)
            VV"new QWebChannel(qt.webChannelTransport, function(channel){\n"
            VV"    window._vanilla = channel.objects._vanilla;\n"
            VV"    window._view = channel.objects._view;\n"
-           VV"});");
+           VV"});\n");
 #  endif
 #  ifdef PASSWORD_MANAGER
         inner += QStringLiteral
@@ -126,7 +126,7 @@ NetworkAccessManager::NetworkAccessManager(QString id)
 #  endif
         source = QStringLiteral
             ("(function(){\n"
-           VV"    %1\n"
+           VV"%1\n"
            VV"})()").arg(inner);
     }
     QWebEngineScript script;

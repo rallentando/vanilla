@@ -101,7 +101,6 @@ void QuickWebEngineView::ApplySpecificSettings(QStringList set){
     SetPreference(QWebEngineSettings::ScrollAnimatorEnabled,             "ScrollAnimatorEnabled");
 #if QT_VERSION >= 0x050700
     SetPreference(QWebEngineSettings::ScreenCaptureEnabled,              "ScreenCaptureEnabled");
-    SetPreference(QWebEngineSettings::WebAudioEnabled,                   "WebAudioEnabled");
     SetPreference(QWebEngineSettings::WebGLEnabled,                      "WebGLEnabled");
     SetPreference(QWebEngineSettings::Accelerated2dCanvasEnabled,        "Accelerated2dCanvasEnabled");
     SetPreference(QWebEngineSettings::AutoLoadIconsForPage,              "AutoLoadIconsForPage");

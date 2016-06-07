@@ -125,19 +125,11 @@ const QList<float> View::m_ZoomFactorLevels = QList<float>()
 
 static const QMap<QWebEngineSettings::WebAttribute, QString> m_WebEngineSwitches = QMap<QWebEngineSettings::WebAttribute, QString>()
     << qMakePair(QWebEngineSettings::AutoLoadImages,           QString::fromLatin1("[iI]mage"))
-  //<< qMakePair(QWebEngineSettings::DeveloperExtrasEnabled,   QString::fromLatin1("[iI]nspector"))
-  //<< qMakePair(QWebEngineSettings::DnsPrefetchEnabled,       QString::fromLatin1("[dD][nN][sS][pP]refetch"))
-  //<< qMakePair(QWebEngineSettings::FrameFlatteningEnabled,   QString::fromLatin1("[fF]rame[fF]latten"))
     << qMakePair(QWebEngineSettings::JavascriptEnabled,        QString::fromLatin1("[jJ](?:ava)?[sS](?:cript)?"))
     << qMakePair(QWebEngineSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugins?"))
-  //<< qMakePair(QWebEngineSettings::PrivateBrowsingEnabled,   QString::fromLatin1("(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"))
     << qMakePair(QWebEngineSettings::SpatialNavigationEnabled, QString::fromLatin1("[sS]patial(?:[nN]avigation)?"))
-  //<< qMakePair(QWebEngineSettings::TiledBackingStoreEnabled, QString::fromLatin1("[tT]iled[bB]acking[sS]tore"))
-  //<< qMakePair(QWebEngineSettings::ZoomTextOnly,             QString::fromLatin1("[zZ]oom[tT]ext[oO]nly"))
-  //<< qMakePair(QWebEngineSettings::CaretBrowsingEnabled,     QString::fromLatin1("[cC]aret[bB]rowse"))
     << qMakePair(QWebEngineSettings::ScrollAnimatorEnabled,    QString::fromLatin1("[sS]croll[aA]nimator"))
 #if QT_VERSION >= 0x050700
-    << qMakePair(QWebEngineSettings::WebAudioEnabled,          QString::fromLatin1("[wW]eb[aA]udio"))
     << qMakePair(QWebEngineSettings::WebGLEnabled,             QString::fromLatin1("[wW]eb[gG][lL]"))
 #endif
     ;
@@ -355,11 +347,6 @@ void View::GoBackTo(QUrl target){
 
     if(m_EnableLoadHackLocal){
         m_TreeBank->OpenInNewHistNodeBackward(req, true, m_HistNode);
-    } else {
-        /* do nothing */
-        // instead of load backward url.
-        //SetScroll(QPointF());
-        //Load(req);
     }
 }
 
@@ -927,40 +914,21 @@ void View::LoadSettings(){
     if(operation == QStringLiteral("InNewDirectoryNewWindow")) Page::SetOpenCommandOperation(Page::InNewDirectoryNewWindow);
     if(operation == QStringLiteral("OnRootNewWindow"))         Page::SetOpenCommandOperation(Page::OnRootNewWindow);
 
-  //gwes->setAttribute(QWebEngineSettings::AcceleratedCompositingEnabled,     s.value(QStringLiteral("webview/preferences/AcceleratedCompositingEnabled"),     gwes->testAttribute(QWebEngineSettings::AcceleratedCompositingEnabled)    ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::AutoLoadImages,                    s.value(QStringLiteral("webview/preferences/AutoLoadImages"),                    gwes->testAttribute(QWebEngineSettings::AutoLoadImages)                   ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled,            s.value(QStringLiteral("webview/preferences/DeveloperExtrasEnabled"),            gwes->testAttribute(QWebEngineSettings::DeveloperExtrasEnabled)           ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::DnsPrefetchEnabled,                s.value(QStringLiteral("webview/preferences/DnsPrefetchEnabled"),                gwes->testAttribute(QWebEngineSettings::DnsPrefetchEnabled)               ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::FrameFlatteningEnabled,            s.value(QStringLiteral("webview/preferences/FrameFlatteningEnabled"),            gwes->testAttribute(QWebEngineSettings::FrameFlatteningEnabled)           ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::JavaEnabled,                       s.value(QStringLiteral("webview/preferences/JavaEnabled"),                       gwes->testAttribute(QWebEngineSettings::JavaEnabled)                      ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard,      s.value(QStringLiteral("webview/preferences/JavascriptCanAccessClipboard"),      gwes->testAttribute(QWebEngineSettings::JavascriptCanAccessClipboard)     ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::JavascriptCanCloseWindows,         s.value(QStringLiteral("webview/preferences/JavascriptCanCloseWindows"),         gwes->testAttribute(QWebEngineSettings::JavascriptCanCloseWindows)        ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows,          s.value(QStringLiteral("webview/preferences/JavascriptCanOpenWindows"),        /*gwes->testAttribute(QWebEngineSettings::JavascriptCanOpenWindows)*/  true ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::JavascriptEnabled,                 s.value(QStringLiteral("webview/preferences/JavascriptEnabled"),                 gwes->testAttribute(QWebEngineSettings::JavascriptEnabled)                ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::LinksIncludedInFocusChain,         s.value(QStringLiteral("webview/preferences/LinksIncludedInFocusChain"),         gwes->testAttribute(QWebEngineSettings::LinksIncludedInFocusChain)        ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls,     s.value(QStringLiteral("webview/preferences/LocalContentCanAccessFileUrls"),     gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls)    ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls,   s.value(QStringLiteral("webview/preferences/LocalContentCanAccessRemoteUrls"),   gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls)  ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::LocalStorageDatabaseEnabled,       s.value(QStringLiteral("webview/preferences/LocalStorageDatabaseEnabled"),       gwes->testAttribute(QWebEngineSettings::LocalStorageDatabaseEnabled)      ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::LocalStorageEnabled,               s.value(QStringLiteral("webview/preferences/LocalStorageEnabled"),               gwes->testAttribute(QWebEngineSettings::LocalStorageEnabled)              ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled,     s.value(QStringLiteral("webview/preferences/OfflineStorageDatabaseEnabled"),     gwes->testAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled)    ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled, s.value(QStringLiteral("webview/preferences/OfflineWebApplicationCacheEnabled"), gwes->testAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled)).value<bool>());
     gwes->setAttribute(QWebEngineSettings::PluginsEnabled,                    s.value(QStringLiteral("webview/preferences/PluginsEnabled"),                  /*gwes->testAttribute(QWebEngineSettings::PluginsEnabled)*/            true ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::PrintElementBackgrounds,           s.value(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)          ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::PrivateBrowsingEnabled,            s.value(QStringLiteral("webview/preferences/PrivateBrowsingEnabled"),            gwes->testAttribute(QWebEngineSettings::PrivateBrowsingEnabled)           ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::SiteSpecificQuirksEnabled,         s.value(QStringLiteral("webview/preferences/SiteSpecificQuirksEnabled"),         gwes->testAttribute(QWebEngineSettings::SiteSpecificQuirksEnabled)        ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::SpatialNavigationEnabled,          s.value(QStringLiteral("webview/preferences/SpatialNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::SpatialNavigationEnabled)         ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::TiledBackingStoreEnabled,          s.value(QStringLiteral("webview/preferences/TiledBackingStoreEnabled"),          gwes->testAttribute(QWebEngineSettings::TiledBackingStoreEnabled)         ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::XSSAuditingEnabled,                s.value(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                gwes->testAttribute(QWebEngineSettings::XSSAuditingEnabled)               ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::ZoomTextOnly,                      s.value(QStringLiteral("webview/preferences/ZoomTextOnly"),                      gwes->testAttribute(QWebEngineSettings::ZoomTextOnly)                     ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::CSSGridLayoutEnabled,              s.value(QStringLiteral("webview/preferences/CSSGridLayoutEnabled"),              gwes->testAttribute(QWebEngineSettings::CSSGridLayoutEnabled)             ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::CSSRegionsEnabled,                 s.value(QStringLiteral("webview/preferences/CSSRegionsEnabled"),                 gwes->testAttribute(QWebEngineSettings::CSSRegionsEnabled)                ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::CaretBrowsingEnabled,              s.value(QStringLiteral("webview/preferences/CaretBrowsingEnabled"),              gwes->testAttribute(QWebEngineSettings::CaretBrowsingEnabled)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled,          s.value(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          gwes->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled)         ).value<bool>());
-  //gwes->setAttribute(QWebEngineSettings::NotificationsEnabled,              s.value(QStringLiteral("webview/preferences/NotificationsEnabled"),              gwes->testAttribute(QWebEngineSettings::NotificationsEnabled)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled,             s.value(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             gwes->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)            ).value<bool>());
 #if QT_VERSION >= 0x050700
     gwes->setAttribute(QWebEngineSettings::ScreenCaptureEnabled,              s.value(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              gwes->testAttribute(QWebEngineSettings::ScreenCaptureEnabled)             ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::WebAudioEnabled,                   s.value(QStringLiteral("webview/preferences/WebAudioEnabled"),                   gwes->testAttribute(QWebEngineSettings::WebAudioEnabled)                  ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::WebGLEnabled,                      s.value(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                     ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::AutoLoadIconsForPage,              s.value(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)             ).value<bool>());
@@ -969,77 +937,9 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::FullScreenSupportEnabled,          s.value(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),        /*gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)*/  true ).value<bool>());
 
-    //if(gwes->testAttribute(QWebEngineSettings::LocalStorageEnabled) ||
-    //   gwes->testAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled) ||
-    //   gwes->testAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled)){
-    //
-    //    QWebEngineSettings::enablePersistentStorage();
-    //}
-
     gwes->setDefaultTextEncoding
         (s.value(QStringLiteral("webview/detail/DefaultTextEncoding"),
                   gwes->defaultTextEncoding()).value<QString>());
-
-    //gwes->setMaximumPagesInCache
-    //    (s.value(QStringLiteral("webview/detail/MaximumPagesInCache"),
-    //              gwes->maximumPagesInCache()).value<int>());
-    //
-    //if(gwes->testAttribute(QWebEngineSettings::LocalStorageEnabled)){
-    //    QString iconDatabasePath =
-    //        s.value(QStringLiteral("webview/detail/IconDatabasePath"),
-    //                 gwes->iconDatabasePath()).value<QString>();
-    //    QString localStoragePath =
-    //        s.value(QStringLiteral("webview/detail/LocalStoragePath"),
-    //                 gwes->localStoragePath()).value<QString>();
-    //    if(!iconDatabasePath.isEmpty()){
-    //        gwes->setIconDatabasePath(iconDatabasePath);
-    //    }
-    //    if(!localStoragePath.isEmpty()){
-    //        QDir dir = localStoragePath;
-    //        dir.mkpath(localStoragePath);
-    //        gwes->setLocalStoragePath(localStoragePath);
-    //    }
-    //}
-    //
-    //if(gwes->testAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled)){
-    //    QString path =
-    //        s.value(QStringLiteral("webview/detail/OfflineStoragePath"),
-    //                 gwes->offlineStoragePath()).value<QString>();
-    //    if(!path.isEmpty()){
-    //        QDir dir = path;
-    //        dir.mkpath(path);
-    //        gwes->setOfflineStoragePath(path);
-    //    }
-    //    gwes->setOfflineStorageDefaultQuota
-    //        (s.value(QStringLiteral("webview/detail/OfflineStorageDefaultQuota"),
-    //                  gwes->offlineStorageDefaultQuota()).value<qint64>());
-    //}
-    //
-    //if(gwes->testAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled)){
-    //    QString path =
-    //        s.value(QStringLiteral("webview/detail/OfflineWebApplicationCachePath"),
-    //                 gwes->offlineWebApplicationCachePath()).value<QString>();
-    //    if(!path.isEmpty()){
-    //        QDir dir = path;
-    //        dir.mkpath(path);
-    //        gwes->setOfflineWebApplicationCachePath(path);
-    //    }
-    //    gwes->setOfflineWebApplicationCacheQuota
-    //        (s.value(QStringLiteral("webview/detail/OfflineWebApplicationCacheQuota"),
-    //                  gwes->offlineWebApplicationCacheQuota()).value<qint64>());
-    //}
-    //
-    //gwes->setUserStyleSheetUrl
-    //    (s.value(QStringLiteral("webview/detail/UserStyleSheetUrl"),
-    //              gwes->userStyleSheetUrl()).value<QUrl>());
-
-    QString policy = s.value(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AlwaysAllowThirdPartyCookies")).value<QString>();
-    //if(policy == QStringLiteral("AlwaysAllowThirdPartyCookies"))
-    //    gwes->setThirdPartyCookiePolicy(QWebEngineSettings::AlwaysAllowThirdPartyCookies);
-    //if(policy == QStringLiteral("AlwaysBlockThirdPartyCookies"))
-    //    gwes->setThirdPartyCookiePolicy(QWebEngineSettings::AlwaysBlockThirdPartyCookies);
-    //if(policy == QStringLiteral("AllowThirdPartyWithExistingCookies"))
-    //    gwes->setThirdPartyCookiePolicy(QWebEngineSettings::AllowThirdPartyWithExistingCookies);
 
     gwes->setFontFamily(QWebEngineSettings::StandardFont,         s.value(QStringLiteral("webview/font/StandardFont"),           gwes->fontFamily(QWebEngineSettings::StandardFont)         ).value<QString>());
     gwes->setFontFamily(QWebEngineSettings::SansSerifFont,        s.value(QStringLiteral("webview/font/SansSerifFont"),          gwes->fontFamily(QWebEngineSettings::SansSerifFont)        ).value<QString>());
@@ -1229,40 +1129,21 @@ void View::SaveSettings(){
     if(operation == Page::InNewDirectoryNewWindow) s.setValue(QStringLiteral("webview/@OpenCommandOperation"), QStringLiteral("InNewDirectoryNewWindow"));
     if(operation == Page::OnRootNewWindow)         s.setValue(QStringLiteral("webview/@OpenCommandOperation"), QStringLiteral("OnRootNewWindow"));
 
-  //s.setValue(QStringLiteral("webview/preferences/AcceleratedCompositingEnabled"),     gwes->testAttribute(QWebEngineSettings::AcceleratedCompositingEnabled)     );
     s.setValue(QStringLiteral("webview/preferences/AutoLoadImages"),                    gwes->testAttribute(QWebEngineSettings::AutoLoadImages)                    );
-  //s.setValue(QStringLiteral("webview/preferences/DeveloperExtrasEnabled"),            gwes->testAttribute(QWebEngineSettings::DeveloperExtrasEnabled)            );
-  //s.setValue(QStringLiteral("webview/preferences/DnsPrefetchEnabled"),                gwes->testAttribute(QWebEngineSettings::DnsPrefetchEnabled)                );
-  //s.setValue(QStringLiteral("webview/preferences/FrameFlatteningEnabled"),            gwes->testAttribute(QWebEngineSettings::FrameFlatteningEnabled)            );
-  //s.setValue(QStringLiteral("webview/preferences/JavaEnabled"),                       gwes->testAttribute(QWebEngineSettings::JavaEnabled)                       );
     s.setValue(QStringLiteral("webview/preferences/JavascriptCanAccessClipboard"),      gwes->testAttribute(QWebEngineSettings::JavascriptCanAccessClipboard)      );
-  //s.setValue(QStringLiteral("webview/preferences/JavascriptCanCloseWindows"),         gwes->testAttribute(QWebEngineSettings::JavascriptCanCloseWindows)         );
     s.setValue(QStringLiteral("webview/preferences/JavascriptCanOpenWindows"),          gwes->testAttribute(QWebEngineSettings::JavascriptCanOpenWindows)          );
     s.setValue(QStringLiteral("webview/preferences/JavascriptEnabled"),                 gwes->testAttribute(QWebEngineSettings::JavascriptEnabled)                 );
     s.setValue(QStringLiteral("webview/preferences/LinksIncludedInFocusChain"),         gwes->testAttribute(QWebEngineSettings::LinksIncludedInFocusChain)         );
     s.setValue(QStringLiteral("webview/preferences/LocalContentCanAccessFileUrls"),     gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls)     );
     s.setValue(QStringLiteral("webview/preferences/LocalContentCanAccessRemoteUrls"),   gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls)   );
-  //s.setValue(QStringLiteral("webview/preferences/LocalStorageDatabaseEnabled"),       gwes->testAttribute(QWebEngineSettings::LocalStorageDatabaseEnabled)       );
     s.setValue(QStringLiteral("webview/preferences/LocalStorageEnabled"),               gwes->testAttribute(QWebEngineSettings::LocalStorageEnabled)               );
-  //s.setValue(QStringLiteral("webview/preferences/OfflineStorageDatabaseEnabled"),     gwes->testAttribute(QWebEngineSettings::OfflineStorageDatabaseEnabled)     );
-  //s.setValue(QStringLiteral("webview/preferences/OfflineWebApplicationCacheEnabled"), gwes->testAttribute(QWebEngineSettings::OfflineWebApplicationCacheEnabled) );
     s.setValue(QStringLiteral("webview/preferences/PluginsEnabled"),                    gwes->testAttribute(QWebEngineSettings::PluginsEnabled)                    );
-  //s.setValue(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)           );
-  //s.setValue(QStringLiteral("webview/preferences/PrivateBrowsingEnabled"),            gwes->testAttribute(QWebEngineSettings::PrivateBrowsingEnabled)            );
-  //s.setValue(QStringLiteral("webview/preferences/SiteSpecificQuirksEnabled"),         gwes->testAttribute(QWebEngineSettings::SiteSpecificQuirksEnabled)         );
     s.setValue(QStringLiteral("webview/preferences/SpatialNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::SpatialNavigationEnabled)          );
-  //s.setValue(QStringLiteral("webview/preferences/TiledBackingStoreEnabled"),          gwes->testAttribute(QWebEngineSettings::TiledBackingStoreEnabled)          );
     s.setValue(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                gwes->testAttribute(QWebEngineSettings::XSSAuditingEnabled)                );
-  //s.setValue(QStringLiteral("webview/preferences/ZoomTextOnly"),                      gwes->testAttribute(QWebEngineSettings::ZoomTextOnly)                      );
-  //s.setValue(QStringLiteral("webview/preferences/CSSGridLayoutEnabled"),              gwes->testAttribute(QWebEngineSettings::CSSGridLayoutEnabled)              );
-  //s.setValue(QStringLiteral("webview/preferences/CSSRegionsEnabled"),                 gwes->testAttribute(QWebEngineSettings::CSSRegionsEnabled)                 );
-  //s.setValue(QStringLiteral("webview/preferences/CaretBrowsingEnabled"),              gwes->testAttribute(QWebEngineSettings::CaretBrowsingEnabled)              );
     s.setValue(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          gwes->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled)          );
-  //s.setValue(QStringLiteral("webview/preferences/NotificationsEnabled"),              gwes->testAttribute(QWebEngineSettings::NotificationsEnabled)              );
     s.setValue(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             gwes->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)             );
 #  if QT_VERSION >= 0x050700
     s.setValue(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              gwes->testAttribute(QWebEngineSettings::ScreenCaptureEnabled)              );
-    s.setValue(QStringLiteral("webview/preferences/WebAudioEnabled"),                   gwes->testAttribute(QWebEngineSettings::WebAudioEnabled)                   );
     s.setValue(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                      );
     s.setValue(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)        );
     s.setValue(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)              );
@@ -1272,24 +1153,6 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),          gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)          );
 
     s.setValue(QStringLiteral("webview/detail/DefaultTextEncoding"),             gwes->defaultTextEncoding());
-  //s.setValue(QStringLiteral("webview/detail/MaximumPagesInCache"),             gwes->maximumPagesInCache());
-    //setting non-default value to crash...
-  //s.setValue(QStringLiteral("webview/detail/IconDatabasePath"),                gwes->iconDatabasePath());
-  //s.setValue(QStringLiteral("webview/detail/LocalStoragePath"),                gwes->localStoragePath());
-  //s.setValue(QStringLiteral("webview/detail/OfflineStoragePath"),              gwes->offlineStoragePath());
-  //s.setValue(QStringLiteral("webview/detail/OfflineStorageDefaultQuota"),      gwes->offlineStorageDefaultQuota());
-    //setting value to crash...
-  //s.setValue(QStringLiteral("webview/detail/OfflineWebApplicationCachePath"),  gwes->offlineWebApplicationCachePath());
-  //s.setValue(QStringLiteral("webview/detail/OfflineWebApplicationCacheQuota"), gwes->offlineWebApplicationCacheQuota());
-  //s.setValue(QStringLiteral("webview/detail/UserStyleSheetUrl"),               gwes->userStyleSheetUrl());
-
-  //QWebEngineSettings::ThirdPartyCookiePolicy policy = gwes->thirdPartyCookiePolicy();
-  //if(policy == QWebSettings::AlwaysAllowThirdPartyCookies)
-  //    s.setValue(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AlwaysAllowThirdPartyCookies"));
-  //if(policy == QWebSettings::AlwaysBlockThirdPartyCookies)
-  //    s.setValue(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AlwaysBlockThirdPartyCookies"));
-  //if(policy == QWebSettings::AllowThirdPartyWithExistingCookies)
-  //    s.setValue(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AllowThirdPartyWithExistingCookies"));
 
     s.setValue(QStringLiteral("webview/font/StandardFont"),           gwes->fontFamily(QWebEngineSettings::StandardFont)         );
     s.setValue(QStringLiteral("webview/font/FixedFont"),              gwes->fontFamily(QWebEngineSettings::FixedFont)            );
@@ -1377,7 +1240,6 @@ void View::ApplySpecificSettings(QStringList set){
         s->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, g->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled));
 #if QT_VERSION >= 0x050700
         s->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, g->testAttribute(QWebEngineSettings::ScreenCaptureEnabled));
-        s->setAttribute(QWebEngineSettings::WebAudioEnabled, g->testAttribute(QWebEngineSettings::WebAudioEnabled));
         s->setAttribute(QWebEngineSettings::WebGLEnabled, g->testAttribute(QWebEngineSettings::WebGLEnabled));
         s->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, g->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled));
         s->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, g->testAttribute(QWebEngineSettings::AutoLoadIconsForPage));
@@ -1793,7 +1655,11 @@ void View::GestureFinished(QPoint pos, Qt::MouseButton button){
 
         QString str = m_RightGestureMap[ges];
         if(!str.isEmpty()){
-            TriggerAction(str, m_GestureStartedPos);
+            if(m_ClickedElement){
+                TriggerAction(str, QVariant::fromValue(m_ClickedElement));
+            } else {
+                TriggerAction(str, m_GestureStartedPos);
+            }
         }
     }
 
@@ -1801,7 +1667,11 @@ void View::GestureFinished(QPoint pos, Qt::MouseButton button){
 
         QString str = m_LeftGestureMap[ges];
         if(!str.isEmpty()){
-            TriggerAction(str, m_GestureStartedPos);
+            if(m_ClickedElement){
+                TriggerAction(str, QVariant::fromValue(m_ClickedElement));
+            } else {
+                TriggerAction(str, m_GestureStartedPos);
+            }
         }
     }
     m_Gesture.clear();
