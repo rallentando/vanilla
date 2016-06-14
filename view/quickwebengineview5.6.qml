@@ -63,9 +63,17 @@ Rectangle {
             viewInterface.renderProcessTerminated(terminationStatus, exitCode)
         }
 
+        onNewViewRequested: {
+            request.openIn(viewInterface.newView())
+        }
+
         onFullScreenRequested: {
             viewInterface.fullScreenRequested(request.toggleOn)
             request.accept()
+        }
+
+        profile.onDownloadRequested: {
+            viewInterface.downloadRequested(download)
         }
 
         function setScroll(pos){
@@ -137,10 +145,6 @@ Rectangle {
             (viewInterface.setTextValueJsCode(xpath, text))
         }
 
-        function adjustContents(){
-            //experimental.preferredMinimumContentsWidth = parent.width
-        }
-
         function seekText(str, opt){
             var option = 0
             if(opt & viewInterface.findBackwardIntValue())
@@ -189,7 +193,11 @@ Rectangle {
         }
 
         function setUserAgent(agent){
-            //experimental.userAgent = agent
+            profile.httpUserAgent = agent
+        }
+
+        function setAcceptLanguage(language){
+            profile.httpAcceptLanguage = language
         }
 
         function setDefaultTextEncoding(encoding){

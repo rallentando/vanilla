@@ -43,18 +43,9 @@ public:
     void Connect(TreeBank *tb) DECL_OVERRIDE;
     void Disconnect(TreeBank *tb) DECL_OVERRIDE;
 
-    QUrl BaseUrl() DECL_OVERRIDE {
-        return GetBaseUrl();
-    }
-    QUrl CurrentBaseUrl() DECL_OVERRIDE {
-        QUrl url;
-        // cannot access to sub frame.
-        url = GetBaseUrl();
-        return url;
-    }
-
     bool ForbidToOverlap() DECL_OVERRIDE {
-        return false;
+        // performance issue.
+        return true;
     }
 
     bool CanGoBack() DECL_OVERRIDE {
@@ -462,6 +453,10 @@ protected:
             }
 #endif //ifdef PASSWORD_MANAGER
 
+            // all key events are ignored, if input method is activated.
+            // so input method specific keys are accepted.
+
+            // 'HasAnyModifier' ignores ShiftModifier.
             if(Application::HasAnyModifier(ke) ||
                Application::IsFunctionKey(ke)){
                 return m_View->TriggerKeyEvent(ke);
@@ -490,10 +485,10 @@ protected:
                 ? 500
                 : 100;
             if(k == Qt::Key_Space ||
-               k == Qt::Key_Up ||
-               k == Qt::Key_Down ||
-               k == Qt::Key_Right ||
-               k == Qt::Key_Left ||
+             //k == Qt::Key_Up ||
+             //k == Qt::Key_Down ||
+             //k == Qt::Key_Right ||
+             //k == Qt::Key_Left ||
                k == Qt::Key_PageUp ||
                k == Qt::Key_PageDown ||
                k == Qt::Key_Home ||

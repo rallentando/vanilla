@@ -898,8 +898,7 @@ void Gadgets::CollectAccessibleWebElement(View *view){
     }
 
     view->CallWithFoundElements
-        (Page::ForAccessKey,
-         [this](SharedWebElementList elems){
+        (Page::ForAccessKey, [this](SharedWebElementList elems){
             if(m_DisplayType != AccessKey) return;
             int count = 0;
             foreach(SharedWebElement elem, elems){

@@ -123,7 +123,7 @@ View* WebEnginePage::GetView(){
 
 WebEnginePage* WebEnginePage::createWindow(WebWindowType type){
     Q_UNUSED(type);
-    View *view = m_Page->OpenInNew(QUrl(QStringLiteral("about:blank")));
+    View *view = OpenInNew(QUrl(QStringLiteral("about:blank")));
 
     if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
         return w->page();
@@ -500,13 +500,24 @@ void WebEnginePage::AddSearchEngine(QPoint pos){
 VV"   var x = %1;\n"
 VV"   var y = %2;\n"
 VV"   var elem = document.elementFromPoint(x, y);\n"
+VV"   while(elem && (elem.tagName == \"FRAME\" || elem.tagName == \"IFRAME\")){\n"
+VV"       try{\n"
+VV"           var frameDocument = elem.contentDocument;\n"
+VV"           var rect = elem.getBoundingClientRect();\n"
+VV"           x -= rect.left;\n"
+VV"           y -= rect.top;\n"
+VV"           elem = frameDocument.elementFromPoint(x, y);\n"
+VV"       }\n"
+VV"       catch(e){ break;}\n"
+VV"   }\n"
+VV"   if(!elem) return {};\n"
 VV"   var name = elem.name;\n"
 VV"   var form = elem;\n"
 VV"   while(form && form.tagName != \"FORM\"){\n"
 VV"       form = form.parentNode;\n"
 VV"   }\n"
 VV"   if(!form) return {};\n"
-VV"   var encode = form.getAttribute(\"accept-charset\") || \"UTF-8\";\n"
+VV"   var encode = form.getAttribute(\"accept-charset\") || form.ownerDocument.charset || \"UTF-8\";\n"
 VV"   var method = form.method || \"get\";\n"
 VV"   if(method.toLowerCase() != \"get\") return {};\n"
 VV"   var result = {};\n"

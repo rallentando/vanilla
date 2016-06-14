@@ -2525,9 +2525,10 @@ void LayerItem::dragEnterEvent(QGraphicsSceneDragDropEvent *ev){
 void LayerItem::dropEvent(QGraphicsSceneDragDropEvent *ev){
     InsertPosition *position = static_cast<InsertPosition*>(m_InsertPosition);
     if(NodeItem *item = position->GetTarget()){
-        if(item->boundingRect().contains(ev->scenePos())){
+        if(item->boundingRect().intersects(scene()->sceneRect())){
             if(const QMimeData *mime = ev->mimeData()){
                 QList<QUrl> urls;
+                QObject *source = ev->source();
                 Node *nd = item->GetNode();
                 ViewNode *parent = nd->GetParent()->ToViewNode();
                 int index = nd->Index();
@@ -2536,7 +2537,9 @@ void LayerItem::dropEvent(QGraphicsSceneDragDropEvent *ev){
                     index++;
                 }
                 if(!mime->urls().isEmpty()){
-                    urls = mime->urls();
+                    if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source))
+                        foreach(QUrl u, mime->urls()){ if(!u.isLocalFile()) urls << u;}
+                    else urls = mime->urls();
                 }
                 if(urls.isEmpty() && !mime->html().isEmpty()){
                     urls = Page::ExtractUrlFromHtml(mime->html(), QUrl(), Page::HaveReference);
@@ -2591,9 +2594,11 @@ void LayerItem::dragMoveEvent(QGraphicsSceneDragDropEvent *ev){
             }
             position->SetTarget(node, where);
             ev->setAccepted(true);
-            break;
+            QGraphicsObject::dragMoveEvent(ev);
+            return;
         }
     }
+    position->SetTarget(0);
     QGraphicsObject::dragMoveEvent(ev);
 }
 
@@ -3623,11 +3628,11 @@ QMenu *NodeItem::NodeMenu(){
             QList<QStringList>()
             << (QStringList() << tr("Use name as profile ID.") << QStringLiteral(";[iI][dD]") << QStringLiteral(";ID"))
             << (QStringList() << tr("Private mode.") << QStringLiteral(";(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)") << QStringLiteral(";Private"))
-            << (QStringList() << tr("Disable auto load.") << QStringLiteral(";!?[nN](?:o)?[lL](?:oad)?") << QStringLiteral(";NoLoad"))
-            << (QStringList() << tr("Enable drag gestuer.") << QStringLiteral(";!?[dD](?:rag)?[gG](?:esture)?") << QStringLiteral(";DragGesture"))
-            << (QStringList() << tr("Auto load images.") << QStringLiteral(";!?[iI]mage") << QStringLiteral(";Image"))
-            << (QStringList() << tr("Enable javascript.") << QStringLiteral(";!?[jJ](?:ava)?[sS](?:cript)?") << QStringLiteral(";Javascript"))
-            << (QStringList() << tr("Enable plugins.") << QStringLiteral(";!?[pP]lugins?") << QStringLiteral(";Plugins"));
+            << (QStringList() << tr("Disable auto load.") << QStringLiteral(";!?[nN](?:o)?[lL](?:oad)?") << QStringLiteral(";NoLoad") << QStringLiteral(";!NoLoad"))
+            << (QStringList() << tr("Enable drag gestuer.") << QStringLiteral(";!?[dD](?:rag)?[gG](?:esture)?") << QStringLiteral(";DragGesture") << QStringLiteral(";!DragGesture"))
+            << (QStringList() << tr("Auto load images.") << QStringLiteral(";!?[iI]mage") << QStringLiteral(";Image") << QStringLiteral(";!Image"))
+            << (QStringList() << tr("Enable javascript.") << QStringLiteral(";!?[jJ](?:ava)?[sS](?:cript)?") << QStringLiteral(";Javascript") << QStringLiteral(";!Javascript"))
+            << (QStringList() << tr("Enable plugins.") << QStringLiteral(";!?[pP]lugins?") << QStringLiteral(";Plugins") << QStringLiteral(";!Plugins"));
 
         for(int i = 0; i < list.length(); i++){
             QCheckBox *checkBox = new QCheckBox();
@@ -3638,11 +3643,15 @@ QMenu *NodeItem::NodeMenu(){
                         QString before = vn->GetTitle();
                         QString after = before;
                         switch(state){
+                        case Qt::Checked:
+                            if(list[i].length() > 3)
+                                after.replace(QRegularExpression(list[i][1]), QString());
+                            after = after + list[i][2];
+                            break;
                         case Qt::Unchecked:
                             after.replace(QRegularExpression(list[i][1]), QString());
-                            break;
-                        case Qt::Checked:
-                            after = before + list[i][2];
+                            if(list[i].length() > 3)
+                                after = after + list[i][3];
                             break;
                         }
                         vn->SetTitle(after);

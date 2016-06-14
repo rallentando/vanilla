@@ -239,25 +239,45 @@ void NetworkAccessManager::HandleProxyAuthentication(const QNetworkProxy &proxy,
     ModalDialog::Authentication(authenticator);
 }
 
-void NetworkAccessManager::HandleDownload(QWebEngineDownloadItem *orig_item){
+void NetworkAccessManager::HandleDownload(QObject *object){
+
+    static QSet<QObject*> set;
+    if(set.contains(object)) return;
+    set << object;
+    connect(object, &QObject::destroyed, [object](){ set.remove(object);});
 
     Application::AskDownloadPolicyIfNeed();
 
-    DownloadItem *item = new DownloadItem(orig_item);
-    QString dir = Application::GetDownloadDirectory();
-    QString filename = orig_item->path().isEmpty() ? dir
-        : dir + orig_item->path().split(QStringLiteral("/")).last();
+    DownloadItem *item = new DownloadItem(object);
+    QWebEngineDownloadItem *orig_item = qobject_cast<QWebEngineDownloadItem*>(object);
 
-    if(orig_item->path().isEmpty() ||
+    QString dir = Application::GetDownloadDirectory();
+    QString filename;
+    QString mime;
+    QUrl url;
+    if(orig_item){
+        filename = orig_item->path();
+        mime = orig_item->mimeType();
+        url = orig_item->url();
+    } else {
+        filename = object->property("path").toString();
+        mime = object->property("mimeType").toString();
+        url = object->property("url").toUrl();
+    }
+
+    filename = filename.isEmpty() ? dir
+        : dir + filename.split(QStringLiteral("/")).last();
+
+    if(filename.isEmpty() ||
        Application::GetDownloadPolicy() == Application::Undefined_ ||
        Application::GetDownloadPolicy() == Application::AskForEachDownload){
 
         QString filter;
 
         QMimeDatabase db;
-        QMimeType mimeType = db.mimeTypeForName(orig_item->mimeType());
+        QMimeType mimeType = db.mimeTypeForName(mime);
         if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForFile(filename);
-        if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForUrl(orig_item->url());
+        if(!mimeType.isValid() || mimeType.isDefault()) mimeType = db.mimeTypeForUrl(url);
 
         if(mimeType.isValid() && !mimeType.isDefault()) filter = mimeType.filterString();
 
@@ -265,14 +285,18 @@ void NetworkAccessManager::HandleDownload(QWebEngineDownloadItem *orig_item){
     }
 
     if(filename.isEmpty()){
-        orig_item->cancel();
+        QMetaObject::invokeMethod(object, "cancel");
         item->deleteLater();
         return;
     }
 
     item->SetPath(filename);
-    orig_item->setPath(filename);
-    orig_item->accept();
+    if(orig_item){
+        orig_item->setPath(filename);
+    } else {
+        object->setProperty("path", filename);
+    }
+    QMetaObject::invokeMethod(object, "accept");
     MainWindow *win = Application::GetCurrentWindow();
     if(win && win->GetTreeBank()->GetNotifier())
         win->GetTreeBank()->GetNotifier()->RegisterDownload(item);
@@ -572,20 +596,29 @@ DownloadItem::DownloadItem(QNetworkReply *reply, QString defaultfilename)
     m_FinishedFlag = false;
 }
 
-DownloadItem::DownloadItem(QWebEngineDownloadItem *item)
+DownloadItem::DownloadItem(QObject *object)
     : QObject(0)
 {
     m_DefaultFileName = QString();
-    m_DownloadItem = item;
+    m_DownloadItem = object;
     m_DownloadReply = 0;
-    connect(m_DownloadItem, &QWebEngineDownloadItem::finished,
-            this,           &DownloadItem::Finished);
-    connect(m_DownloadItem, &QWebEngineDownloadItem::downloadProgress,
-            this,           &DownloadItem::DownloadProgress);
+    if(QWebEngineDownloadItem *item = qobject_cast<QWebEngineDownloadItem*>(object)){
+        connect(item, &QWebEngineDownloadItem::finished,
+                this, &DownloadItem::Finished);
+        connect(item, &QWebEngineDownloadItem::downloadProgress,
+                this, &DownloadItem::DownloadProgress);
+        m_RemoteUrl = item->url();
+        m_Path = item->path();
+    } else {
+        connect(object, SIGNAL(stateChanged()),
+                this, SLOT(StateChanged()));
+        connect(object, SIGNAL(receivedBytesChanged()),
+                this, SLOT(ReceivedBytesChanged()));
+        m_RemoteUrl = object->property("url").toUrl();
+        m_Path = object->property("path").toString();
+    }
     // for disabling ReadyRead.
     m_GettingPath = true;
-    m_RemoteUrl = item->url();
-    m_Path = item->path();
     m_BAOut = QByteArray();
     m_FinishedFlag = false;
 }
@@ -695,6 +728,19 @@ QString DownloadItem::CreateDefaultFromReplyOrRequest(){
     return Application::GetDownloadDirectory() + filename;
 }
 
+void DownloadItem::StateChanged(){
+    if(!m_DownloadItem) return;
+    int state = m_DownloadItem->property("state").toInt();
+    // 2 : QQuickWebEngineDownloadItem::DownloadCompleted
+    if(state == 2) Finished();
+}
+
+void DownloadItem::ReceivedBytesChanged(){
+    if(!m_DownloadItem) return;
+    DownloadProgress(m_DownloadItem->property("receivedBytes").toLongLong(),
+                     m_DownloadItem->property("totalBytes").toLongLong());
+}
+
 void DownloadItem::ReadyRead(){
     if(m_GettingPath) return;
 
@@ -786,7 +832,9 @@ void DownloadItem::Finished(){
 void DownloadItem::Stop(){
     if(m_FileOut.isOpen()) m_FileOut.close();
     if(m_DownloadReply) m_DownloadReply->abort();
-    if(m_DownloadItem) m_DownloadItem->cancel();
+    if(m_DownloadItem){
+        QMetaObject::invokeMethod(m_DownloadItem, "cancel");
+    }
     disconnect();
     m_FinishedFlag = true;
     if(!m_Path.isEmpty()){
@@ -808,9 +856,20 @@ void DownloadItem::DownloadProgress(qint64 received, qint64 total){
 
     if(!received && !total) return;
 
-    if(received == total
-       || (m_DownloadReply && m_DownloadReply->isFinished())
-       || (m_DownloadItem && m_DownloadItem->isFinished())){
+    bool finished = false;
+    if(received == total) finished = true;
+    if(!finished && m_DownloadReply)
+        finished = m_DownloadReply->isFinished();
+
+    if(!finished && m_DownloadItem){
+        if(QWebEngineDownloadItem *item = qobject_cast<QWebEngineDownloadItem*>(m_DownloadItem))
+            finished = item->isFinished();
+        else
+            // 2 : QQuickWebEngineDownloadItem::DownloadCompleted
+            finished = m_DownloadItem->property("state").toInt() == 2;
+    }
+
+    if(finished){
 
         Finished();
     }

@@ -13,7 +13,6 @@
 #include <QStringList> // default argument
 
 class QWebEngineProfile;
-class QWebEngineDownloadItem;
 
 // NetworkCookieJar
 ////////////////////////////////////////////////////////////////
@@ -55,7 +54,8 @@ private slots:
                               QAuthenticator *authenticator);
     void HandleProxyAuthentication(const QNetworkProxy &proxy,
                                    QAuthenticator *authenticator);
-    void HandleDownload(QWebEngineDownloadItem *item);
+public slots:
+    void HandleDownload(QObject *download);
 
 private:
     QString m_Id;
@@ -72,7 +72,7 @@ class DownloadItem : public QObject{
 
 public:
     DownloadItem(QNetworkReply *reply, QString defaultfilename);
-    DownloadItem(QWebEngineDownloadItem *item);
+    DownloadItem(QObject *object);
     ~DownloadItem();
     void SetRemoteUrl(QUrl url);
     QUrl GetRemoteUrl() const;
@@ -87,7 +87,7 @@ private:
     QString CreateDefaultFromReplyOrRequest();
 
     QNetworkReply *m_DownloadReply;
-    QWebEngineDownloadItem *m_DownloadItem;
+    QObject *m_DownloadItem;
 
     bool       m_GettingPath;
     QString    m_Path;
@@ -98,6 +98,10 @@ private:
     bool       m_FinishedFlag;
 
 private slots:
+    // for QuickWebEngineView.
+    void StateChanged();
+    void ReceivedBytesChanged();
+
     void ReadyRead();
     void Finished();
     void Stop();

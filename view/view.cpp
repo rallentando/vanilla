@@ -51,6 +51,7 @@ QString View::m_SelectedHtml = QString();
 
 bool View::m_ActivateNewViewDefault = false;
 bool View::m_NavigationBySpaceKey = false;
+bool View::m_DragToStartDownload = false;
 bool View::m_DragStarted = false;
 bool View::m_HadSelection = false;
 bool View::m_Switching = false;
@@ -674,17 +675,23 @@ QMimeData *View::CreateMimeDataFromElement(NetworkAccessManager *nam){
     QList<QUrl> urls;
 
     if(!imageUrl.isEmpty()){
-        // should be switchable?
-        //urls << NetworkController::Download(nam, imageUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
-        urls << imageUrl;
+        if(m_DragToStartDownload){
+            urls << NetworkController::Download
+                (nam, imageUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
+        } else {
+            urls << imageUrl;
+        }
         mime->setText(imageUrl.toString());
         mime->setHtml(m_ClickedElement->ImageHtml());
     }
     // overwrite text and html, if linkUrl is not empty.
     if(!linkUrl.isEmpty()){
-        // should be switchable?
-        //urls << NetworkController::Download(nam, linkUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
-        urls << linkUrl;
+        if(m_DragToStartDownload){
+            urls << NetworkController::Download
+                (nam, linkUrl, url(), NetworkController::TemporaryDirectory)->GetUrls();
+        } else {
+            urls << linkUrl;
+        }
         mime->setText(linkUrl.toString());
         mime->setHtml(m_ClickedElement->LinkHtml());
     }
@@ -897,6 +904,7 @@ void View::LoadSettings(){
         ||                        s.value(QStringLiteral("webview/@EnableDragGesture"), false).value<bool>();
     m_ActivateNewViewDefault    = s.value(QStringLiteral("webview/@ActivateNewViewDefault"), true).value<bool>();
     m_NavigationBySpaceKey      = s.value(QStringLiteral("webview/@NavigationBySpaceKey"), false).value<bool>();
+    m_DragToStartDownload       = s.value(QStringLiteral("webview/@DragToStartDownload"), false).value<bool>();
 
     QString operation = s.value(QStringLiteral("webview/@OpenCommandOperation"), QStringLiteral("InNewViewNode")).value<QString>();
     if(operation == QStringLiteral("InNewViewNode"))  Page::SetOpenCommandOperation(Page::InNewViewNode);
@@ -1112,6 +1120,7 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/@EnableDragGesture"),    m_EnableDragHack);
     s.setValue(QStringLiteral("webview/@ActivateNewViewDefault"), m_ActivateNewViewDefault);
     s.setValue(QStringLiteral("webview/@NavigationBySpaceKey"), m_NavigationBySpaceKey);
+    s.setValue(QStringLiteral("webview/@DragToStartDownload"),  m_DragToStartDownload);
 
     Page::OpenCommandOperation operation = Page::GetOpenOparation();
     if(operation == Page::InNewViewNode)  s.setValue(QStringLiteral("webview/@OpenCommandOperation"), QStringLiteral("InNewViewNode"));
@@ -1920,7 +1929,7 @@ QPixmap JsWebElement::Pixmap(){
 }
 
 bool JsWebElement::IsNull() const {
-    return Position().isNull() || Rectangle().isEmpty();
+    return Position().isNull() || Rectangle().isNull();
 }
 
 bool JsWebElement::IsEditableElement() const {

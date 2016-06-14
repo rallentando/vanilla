@@ -192,6 +192,7 @@ public:
 
     static bool ActivateNewViewDefault(){ return m_ActivateNewViewDefault;}
     static bool NavigationBySpaceKey(){ return m_NavigationBySpaceKey;}
+    static bool DragToStartDownload(){ return m_DragToStartDownload;}
     static bool EnableDestinationInferrer(){ return m_EnableDestinationInferrer;}
     static bool EnableLoadHack(){ return m_EnableLoadHack;}
     static bool EnableDragHack(){ return m_EnableDragHack;}
@@ -220,8 +221,6 @@ public:
 
     virtual void UpdateThumbnail();
 
-    virtual QUrl BaseUrl(){ return QUrl();}
-    virtual QUrl CurrentBaseUrl(){ return QUrl();}
     virtual bool ForbidToOverlap(){ return false;}
 
     // page's function.
@@ -547,6 +546,30 @@ protected:
           VV"        baseUrl = base[0].href.replace(baseDocument, \"\");\n"
           VV"    } else {\n"
           VV"        baseUrl = location.href;\n"
+          VV"    }\n"
+          VV"    return baseUrl;\n"
+          VV"})()");
+    }
+
+    static inline QString GetCurrentBaseUrlJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    var doc = document;\n"
+          VV"    for(var i = 0; i < frames.length; i++){\n"
+          VV"        try{\n"
+          VV"            if(frames[i].document.hasFocus()){\n"
+          VV"                doc = frames[i].document;\n"
+          VV"            }\n"
+          VV"        }\n"
+          VV"        catch(e){}\n"
+          VV"    }\n"
+          VV"    var baseUrl = \"\";\n"
+          VV"    var baseDocument = \"index.html\";\n"
+          VV"    var base = doc.getElementsByTagName(\"base\");\n"
+          VV"    if(base.length > 0 && base[0].href){\n"
+          VV"        baseUrl = base[0].href.replace(baseDocument, \"\");\n"
+          VV"    } else {\n"
+          VV"        baseUrl = doc.location.href;\n"
           VV"    }\n"
           VV"    return baseUrl;\n"
           VV"})()");
@@ -1172,28 +1195,35 @@ protected:
         QString inner;
         if(types.contains(QEvent::KeyPress))
             inner += QStringLiteral(
-                "document.addEventListener(\"keydown\", function(e){\n"
+                "\n"
+              VV"doc.addEventListener(\"keydown\", function(e){\n"
               VV"    var prevent = false;\n"
-              VV"    var elem = document.activeElement;\n"
-                // tab key and return key and move key
-                // should call web event and prevent c++ shortcut.
+              VV"    var elem = e.target.ownerDocument.activeElement;\n"
               VV"    if(e.keyCode == 9 || e.keyCode == 13){\n"
               VV"        prevent = false;\n"
+              VV"        console.info(\"keyPressEvent%1,\" + \n"
+              VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
               VV"    } else if(!e.altKey && !e.ctrlKey &&\n"
               VV"       32 <= e.keyCode && e.keyCode <= 40){\n"
               VV"        prevent = false;\n"
+            /*VV"        console.info(\"keyPressEvent%1,\" + \n"
+              VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"*/
               VV"    } else if(elem.isContentEditable ||\n"
               VV"              elem.tagName == \"BUTTON\" ||\n"
               VV"              elem.tagName == \"SELECT\" ||\n"
               VV"              elem.tagName == \"INPUT\"  ||\n"
-              VV"              elem.tagName == \"TEXTAREA\"){\n"
+              VV"              elem.tagName == \"TEXTAREA\" ||\n"
+              VV"              elem.tagName == \"FRAME\" ||\n"
+              VV"              elem.tagName == \"IFRAME\"){\n"
               VV"        if(e.ctrlKey || e.altKey){\n"
               VV"            prevent = true;\n"
               VV"        }\n"
               VV"    } else {\n"
               VV"        prevent = true;\n"
               VV"    }\n"
-              VV"    if(prevent || (e.ctrlKey && e.keyCode == 13)){\n" // for password manager.
+              VV"    if(prevent){\n"
               VV"        console.info(\"keyPressEvent%1,\" + \n"
               VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
               VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
@@ -1203,11 +1233,10 @@ protected:
 
         if(types.contains(QEvent::KeyRelease))
             inner += QStringLiteral(
-                "document.addEventListener(\"keyup\", function(e){\n"
+                "\n"
+              VV"doc.addEventListener(\"keyup\", function(e){\n"
               VV"    var prevent = false;\n"
-              VV"    var elem = document.activeElement;\n"
-                // tab key and return key and move key
-                // should call web content's event and call EmitScrollChanged.
+              VV"    var elem = e.target.ownerDocument.activeElement;\n"
               VV"    if(e.keyCode == 9 || e.keyCode == 13){\n"
               VV"        prevent = false;\n"
               VV"        console.info(\"keyReleaseEvent%1,\" + \n"
@@ -1223,7 +1252,9 @@ protected:
               VV"              elem.tagName == \"BUTTON\" ||\n"
               VV"              elem.tagName == \"SELECT\" ||\n"
               VV"              elem.tagName == \"INPUT\"  ||\n"
-              VV"              elem.tagName == \"TEXTAREA\"){\n"
+              VV"              elem.tagName == \"TEXTAREA\" ||\n"
+              VV"              elem.tagName == \"FRAME\" ||\n"
+              VV"              elem.tagName == \"IFRAME\"){\n"
               VV"        if(e.ctrlKey || e.altKey){\n"
               VV"            prevent = true;\n"
               VV"        }\n"
@@ -1240,7 +1271,8 @@ protected:
 
         if(types.contains(QEvent::MouseMove))
             inner += QStringLiteral(
-                "document.addEventListener(\"mousemove\", function(e){\n"
+                "\n"
+              VV"doc.addEventListener(\"mousemove\", function(e){\n"
               VV"    console.info(\"mouseMoveEvent%1,\" + \n"
               VV"                 e.button.toString() + \",\" + \n"
               VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
@@ -1250,7 +1282,8 @@ protected:
 
         if(types.contains(QEvent::MouseButtonPress))
             inner += QStringLiteral(
-                "document.addEventListener(\"mousedown\", function(e){\n"
+                "\n"
+              VV"doc.addEventListener(\"mousedown\", function(e){\n"
               VV"    console.info(\"mousePressEvent%1,\" + \n"
               VV"                 e.button.toString() + \",\" + \n"
               VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
@@ -1260,7 +1293,8 @@ protected:
 
         if(types.contains(QEvent::MouseButtonRelease))
             inner += QStringLiteral(
-                "document.addEventListener(\"mouseup\", function(e){\n"
+                "\n"
+              VV"doc.addEventListener(\"mouseup\", function(e){\n"
               VV"    console.info(\"mouseReleaseEvent%1,\" + \n"
               VV"                 e.button.toString() + \",\" + \n"
               VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
@@ -1270,13 +1304,22 @@ protected:
 
         if(types.contains(QEvent::Wheel))
             inner += QStringLiteral(
-                "document.addEventListener(\"mousewheel\", function(e){\n"
+                "\n"
+              VV"doc.addEventListener(\"mousewheel\", function(e){\n"
               VV"    console.info(\"wheelEvent%1,\" + e.wheelDelta.toString());\n"
               VV"}, false);\n");
 
         return QStringLiteral(
                 "(function(){\n"
-              VV"    %1\n"
+              VV"    var wins = [window];\n"
+              VV"    wins = wins.concat(Array.from(frames));\n"
+              VV"    for(var i = 0; i < wins.length; i++){\n"
+              VV"        try{\n"
+              VV"            var doc = wins[i].document;\n"
+              VV"            %1\n"
+              VV"        }\n"
+              VV"        catch(e){}\n"
+              VV"    }\n"
               VV"})()").arg(inner.arg(Application::EventKey()));
     }
 
@@ -1348,6 +1391,7 @@ protected:
 
     static bool m_ActivateNewViewDefault;
     static bool m_NavigationBySpaceKey;
+    static bool m_DragToStartDownload;
     static bool m_EnableDestinationInferrer;
     static bool m_EnableLoadHack;
     static bool m_EnableDragHack;

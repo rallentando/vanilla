@@ -648,20 +648,6 @@ void TridentView::Disconnect(TreeBank *tb){
     }
 }
 
-QUrl TridentView::BaseUrl(){
-    QString str;
-    IHTMLDocument3 *doc = 0;
-    m_HtmlDocument->QueryInterface(IID_IHTMLDocument3, (void**)&doc);
-    if(doc){
-        WinString wstr;
-        doc->get_baseUrl(&wstr.data);
-        str = toQt(wstr);
-        doc->Release();
-    }
-    if(str.isEmpty()) return url();
-    return QUrl(str);
-}
-
 bool TridentView::CanGoBack(){
     if(!m_Interface) return false;
     bool ok = false;
@@ -1016,7 +1002,7 @@ namespace {
             return text;
         }
         QUrl BaseUrl() const DECL_OVERRIDE {
-            return m_Parent->BaseUrl();
+            return m_Parent->GetBaseUrl();
         }
         QUrl LinkUrl() const DECL_OVERRIDE {
             if(m_Element && m_LinkUrl.isEmpty()){
@@ -1272,6 +1258,35 @@ namespace {
         bool m_CoordinateOverridden;
         QRect m_OverriddenRectangle;
     };
+}
+
+QUrl TridentView::GetBaseUrl(){
+    QString str;
+    IHTMLDocument3 *doc = 0;
+    m_HtmlDocument->QueryInterface(IID_IHTMLDocument3, (void**)&doc);
+    if(doc){
+        WinString wstr;
+        doc->get_baseUrl(&wstr.data);
+        str = toQt(wstr);
+        doc->Release();
+    }
+    if(str.isEmpty()) return url();
+    return QUrl(str);
+}
+
+QUrl TridentView::GetCurrentBaseUrl(){
+    // this implementation is same as baseurl...
+    QString str;
+    IHTMLDocument3 *doc = 0;
+    m_HtmlDocument->QueryInterface(IID_IHTMLDocument3, (void**)&doc);
+    if(doc){
+        WinString wstr;
+        doc->get_baseUrl(&wstr.data);
+        str = toQt(wstr);
+        doc->Release();
+    }
+    if(str.isEmpty()) return url();
+    return QUrl(str);
 }
 
 SharedWebElementList TridentView::FindElements(Page::FindElementsOption option){

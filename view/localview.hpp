@@ -111,9 +111,6 @@ public:
     void ZoomIn()  DECL_OVERRIDE { ThumbList_ZoomIn();}
     void ZoomOut() DECL_OVERRIDE { ThumbList_ZoomOut();}
 
-    QUrl BaseUrl() DECL_OVERRIDE { return QUrl();}
-    QUrl CurrentBaseUrl() DECL_OVERRIDE { return QUrl();}
-
     virtual void UpKeyEvent() DECL_OVERRIDE {
         ThumbList_MoveToUpperItem();
     }

@@ -40,14 +40,9 @@ public:
     void Connect(TreeBank *tb) DECL_OVERRIDE;
     void Disconnect(TreeBank *tb) DECL_OVERRIDE;
 
-    QUrl BaseUrl() DECL_OVERRIDE {
-        return GetBaseUrl();
+    bool ForbidToOverlap() DECL_OVERRIDE {
+        return false;
     }
-    QUrl CurrentBaseUrl() DECL_OVERRIDE {
-        return GetBaseUrl();
-    }
-
-    bool ForbidToOverlap() DECL_OVERRIDE { return true;}
 
     bool CanGoBack() DECL_OVERRIDE {
         return m_QmlWebEngineView->property("canGoBack").toBool();
@@ -118,14 +113,52 @@ public:
     void TriggerNativeGoBackAction() DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goBack");}
     void TriggerNativeGoForwardAction() DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goForward");}
 
-    void UpKeyEvent()       DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_UpKey);       QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
-    void DownKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_DownKey);     QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
-    void RightKeyEvent()    DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_RightKey);    QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
-    void LeftKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_LeftKey);     QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
-    void PageDownKeyEvent() DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_PageDownKey); QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
-    void PageUpKeyEvent()   DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_PageUpKey);   QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
-    void HomeKeyEvent()     DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_HomeKey);     QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
-    void EndKeyEvent()      DECL_OVERRIDE { QQuickWidget::keyPressEvent(m_EndKey);      QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChangedIfNeed");}
+    void UpKeyEvent() DECL_OVERRIDE {
+        CallWithEvaluatedJavaScriptResult
+            (QStringLiteral("(function(){ document.body.scrollTop-=40;})()"),
+             [this](QVariant){ EmitScrollChanged();});
+    }
+    void DownKeyEvent() DECL_OVERRIDE {
+        CallWithEvaluatedJavaScriptResult
+            (QStringLiteral("(function(){ document.body.scrollTop+=40;})()"),
+             [this](QVariant){ EmitScrollChanged();});
+    }
+    void RightKeyEvent() DECL_OVERRIDE {
+        CallWithEvaluatedJavaScriptResult
+            (QStringLiteral("(function(){ document.body.scrollLeft+=40;})()"),
+             [this](QVariant){ EmitScrollChanged();});
+    }
+    void LeftKeyEvent() DECL_OVERRIDE {
+        CallWithEvaluatedJavaScriptResult
+            (QStringLiteral("(function(){ document.body.scrollLeft-=40;})()"),
+             [this](QVariant){ EmitScrollChanged();});
+    }
+    void PageDownKeyEvent() DECL_OVERRIDE {
+        CallWithEvaluatedJavaScriptResult
+            (QStringLiteral("(function(){ document.body.scrollTop+=document.documentElement.clientHeight*0.9;})()"),
+             [this](QVariant){ EmitScrollChanged();});
+    }
+    void PageUpKeyEvent() DECL_OVERRIDE {
+        CallWithEvaluatedJavaScriptResult
+            (QStringLiteral("(function(){ document.body.scrollTop-=document.documentElement.clientHeight*0.9;})()"),
+             [this](QVariant){ EmitScrollChanged();});
+    }
+    void HomeKeyEvent() DECL_OVERRIDE {
+        qDebug() << "home";
+        CallWithEvaluatedJavaScriptResult
+            (QStringLiteral("(function(){ document.body.scrollTop=0;})()"),
+             [this](QVariant){ EmitScrollChanged();});
+    }
+    void EndKeyEvent() DECL_OVERRIDE {
+        qDebug() << "end";
+        CallWithEvaluatedJavaScriptResult
+            (QStringLiteral("(function(){\n"
+                          VV"    document.body.scrollTop = \n"
+                          VV"        (document.documentElement.scrollHeight - \n"
+                          VV"         document.documentElement.clientHeight);\n"
+                          VV"})()"),
+             [this](QVariant){ EmitScrollChanged();});
+    }
 
     void KeyPressEvent(QKeyEvent *ev) DECL_OVERRIDE { keyPressEvent(ev);}
     void KeyReleaseEvent(QKeyEvent *ev) DECL_OVERRIDE { keyReleaseEvent(ev);}
@@ -246,6 +279,7 @@ public slots:
     void HandleFeaturePermission(const QUrl&, int);
     void HandleRenderProcessTermination(int, int);
     void HandleFullScreen(bool);
+    void HandleDownload(QObject*);
 
     void Copy() DECL_OVERRIDE;
     void Cut() DECL_OVERRIDE;
@@ -289,36 +323,16 @@ public slots:
         return m_EnableLoadHackLocal;
     }
 
-    void openInNewViewNode(QUrl url, bool changefocus){
-        GetTreeBank()->OpenInNewViewNode(QNetworkRequest(url), changefocus, GetViewNode());
-    }
-    void openInNewHistNode(QUrl url, bool changefocus){
-        GetTreeBank()->OpenInNewHistNode(QNetworkRequest(url), changefocus, GetHistNode());
+    void openInNew(QUrl url){
+        if(page()) page()->OpenInNew(url);
     }
 
-    QQuickItem *newViewNodeForeground(){
-        SharedView view = GetTreeBank()->OpenInNewViewNode(QUrl(), true, GetViewNode());
+    QQuickItem *newView(){
+        View *view = this;
+        if(page()) view = page()->OpenInNew(QUrl(QStringLiteral("about:blank")));
         if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
             return v->m_QmlWebEngineView;
-        return 0;
-    }
-    QQuickItem *newViewNodeBackground(){
-        SharedView view = GetTreeBank()->OpenInNewViewNode(QUrl(), false, GetViewNode());
-        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
-            return v->m_QmlWebEngineView;
-        return 0;
-    }
-    QQuickItem *newHistNodeForeground(){
-        SharedView view = GetTreeBank()->OpenInNewHistNode(QUrl(), true, GetHistNode());
-        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
-            return v->m_QmlWebEngineView;
-        return 0;
-    }
-    QQuickItem *newHistNodeBackground(){
-        SharedView view = GetTreeBank()->OpenInNewHistNode(QUrl(), false, GetHistNode());
-        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
-            return v->m_QmlWebEngineView;
-        return 0;
+        return m_QmlWebEngineView;
     }
 
     // save to or restore from 'm_HistNode'.
@@ -361,6 +375,7 @@ signals:
     void featurePermissionRequested(const QUrl&, int);
     void renderProcessTerminated(int, int);
     void fullScreenRequested(bool);
+    void downloadRequested(QObject*);
 
 protected:
     void hideEvent(QHideEvent *ev) DECL_OVERRIDE;

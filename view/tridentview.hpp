@@ -47,15 +47,9 @@ public:
     void Connect(TreeBank *tb) DECL_OVERRIDE;
     void Disconnect(TreeBank *tb) DECL_OVERRIDE;
 
-    QUrl BaseUrl() DECL_OVERRIDE;
-
-    QUrl CurrentBaseUrl() DECL_OVERRIDE {
-        return BaseUrl();
-    }
-
     bool ForbidToOverlap() DECL_OVERRIDE {
-        // not yet implemented.
-        return false;
+        // rendering issue.
+        return true;
     }
 
     bool CanGoBack() DECL_OVERRIDE;
@@ -155,12 +149,8 @@ public:
         delete newev;
     }
 
-    QUrl GetBaseUrl() DECL_OVERRIDE {
-        return BaseUrl();
-    }
-    QUrl GetCurrentBaseUrl() DECL_OVERRIDE {
-        return CurrentBaseUrl();
-    }
+    QUrl GetBaseUrl() DECL_OVERRIDE;
+    QUrl GetCurrentBaseUrl() DECL_OVERRIDE;
     SharedWebElementList FindElements(Page::FindElementsOption option) DECL_OVERRIDE;
     SharedWebElement HitElement(const QPoint&) DECL_OVERRIDE;
     QUrl HitLinkUrl(const QPoint&) DECL_OVERRIDE;

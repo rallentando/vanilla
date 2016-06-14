@@ -238,7 +238,9 @@ void WebEngineView::OnLoadStarted(){
 void WebEngineView::OnLoadProgress(int progress){
     if(!GetHistNode()) return;
     View::OnLoadProgress(progress);
-    emit statusBarMessage(tr("Loading ... (%1 percent)").arg(progress));
+    // loadProgress: 100% signal is emitted after loadFinished.
+    if(progress != 100)
+        emit statusBarMessage(tr("Loading ... (%1 percent)").arg(progress));
 }
 
 void WebEngineView::OnLoadFinished(bool ok){
@@ -625,13 +627,29 @@ void WebEngineView::showEvent(QShowEvent *ev){
 void WebEngineView::keyPressEvent(QKeyEvent *ev){
     // all key events are ignored, if input method is activated.
     // so input method specific keys are accepted.
-    if(Application::HasAnyModifier(ev) ||
-       // 'HasAnyModifier' ignores ShiftModifier.
-       Application::IsFunctionKey(ev)){
 
+    // 'HasAnyModifier' ignores ShiftModifier.
+    if(Application::HasAnyModifier(ev) ||
+       Application::IsFunctionKey(ev)){
         ev->setAccepted(TriggerKeyEvent(ev));
         return;
     }
+
+    int k = ev->key();
+    if(!m_PreventScrollRestoration &&
+       (k == Qt::Key_Space ||
+        k == Qt::Key_Up ||
+        k == Qt::Key_Down ||
+        k == Qt::Key_Right ||
+        k == Qt::Key_Left ||
+        k == Qt::Key_PageUp ||
+        k == Qt::Key_PageDown ||
+        k == Qt::Key_Home ||
+        k == Qt::Key_End)){
+
+        m_PreventScrollRestoration = true;
+    }
+
     QWebEngineView::keyPressEvent(ev);
 
     if(!ev->isAccepted() &&
@@ -645,23 +663,20 @@ void WebEngineView::keyReleaseEvent(QKeyEvent *ev){
     QWebEngineView::keyReleaseEvent(ev);
 
     int k = ev->key();
+    int delay = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)
+        ? 500
+        : 100;
+    if(k == Qt::Key_Space ||
+     //k == Qt::Key_Up ||
+     //k == Qt::Key_Down ||
+     //k == Qt::Key_Right ||
+     //k == Qt::Key_Left ||
+       k == Qt::Key_PageUp ||
+       k == Qt::Key_PageDown ||
+       k == Qt::Key_Home ||
+       k == Qt::Key_End){
 
-    if(page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled) &&
-       (k == Qt::Key_Space ||
-      //k == Qt::Key_Up ||
-      //k == Qt::Key_Down ||
-      //k == Qt::Key_Right ||
-      //k == Qt::Key_Left ||
-        k == Qt::Key_PageUp ||
-        k == Qt::Key_PageDown ||
-        k == Qt::Key_Home ||
-        k == Qt::Key_End)){
-
-        for(int i = 1; i < 6; i++){
-            QTimer::singleShot(i*200, this, &WebEngineView::EmitScrollChangedIfNeed);
-        }
-    } else {
-        EmitScrollChangedIfNeed();
+        QTimer::singleShot(delay, this, &WebEngineView::EmitScrollChangedIfNeed);
     }
 }
 
@@ -916,7 +931,11 @@ void WebEngineView::dropEvent(QDropEvent *ev){
     QList<QUrl> urls = ev->mimeData()->urls();
     QObject *source = ev->source();
     QWidget *widget = this;
+    bool isLocal = false;
     QString text;
+
+    foreach(QUrl u, urls){ if(u.isLocalFile()) isLocal = true;}
+
     if(!ev->mimeData()->text().isEmpty()){
         text = ev->mimeData()->text().replace(QStringLiteral("\""), QStringLiteral("\\\""));
     } else if(!urls.isEmpty()){
@@ -956,7 +975,11 @@ void WebEngineView::dropEvent(QDropEvent *ev){
 
     });
 
-    QWebEngineView::dropEvent(ev);
+    if(isLocal ||
+       (DragToStartDownload() && !urls.isEmpty() && source == widget))
+        ; // do nothing.
+    else
+        QWebEngineView::dropEvent(ev);
     ev->setAccepted(true);
 }
 
@@ -1046,12 +1069,11 @@ void WebEngineView::CallWithGotBaseUrl(UrlCallBack callBack){
 }
 
 void WebEngineView::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
-    // this implementation is same as baseurl...
     if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
         return callBack(QUrl());
 
     page()->runJavaScript
-        (GetBaseUrlJsCode(), [callBack](QVariant var){
+        (GetCurrentBaseUrlJsCode(), [callBack](QVariant var){
             callBack(var.isValid() ? var.toUrl() : QUrl());
         });
 }

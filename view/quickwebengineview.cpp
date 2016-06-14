@@ -67,6 +67,8 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
             this, SLOT(HandleRenderProcessTermination(int, int)));
     connect(this, SIGNAL(fullScreenRequested(bool)),
             this, SLOT(HandleFullScreen(bool)));
+    connect(this, SIGNAL(downloadRequested(QObject*)),
+            this, SLOT(HandleDownload(QObject*)));
 
     connect(m_QmlWebEngineView, SIGNAL(callBackResult(int, QVariant)),
             this,               SIGNAL(CallBackResult(int, QVariant)));
@@ -123,6 +125,8 @@ void QuickWebEngineView::ApplySpecificSettings(QStringList set){
 
     QMetaObject::invokeMethod(m_QmlWebEngineView, "setUserAgent",
                               Q_ARG(QVariant, QVariant::fromValue(page()->userAgentForUrl(QUrl()))));
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "setAcceptLanguage",
+                              Q_ARG(QVariant, QVariant::fromValue(page()->profile()->httpAcceptLanguage())));
     QMetaObject::invokeMethod(m_QmlWebEngineView, "setDefaultTextEncoding",
                               Q_ARG(QVariant, QVariant::fromValue(page()->settings()->defaultTextEncoding())));
 }
@@ -271,7 +275,9 @@ void QuickWebEngineView::OnLoadStarted(){
 void QuickWebEngineView::OnLoadProgress(int progress){
     if(!GetHistNode()) return;
     View::OnLoadProgress(progress);
-    emit statusBarMessage(tr("Loading ... (%1 percent)").arg(progress));
+    // loadProgress: 100% signal is emitted after loadFinished.
+    if(progress != 100)
+        emit statusBarMessage(tr("Loading ... (%1 percent)").arg(progress));
 }
 
 void QuickWebEngineView::OnLoadFinished(bool ok){
@@ -619,6 +625,10 @@ void QuickWebEngineView::HandleFullScreen(bool on){
     }
 }
 
+void QuickWebEngineView::HandleDownload(QObject *object){
+    static_cast<NetworkAccessManager*>(page()->networkAccessManager())->HandleDownload(object);
+}
+
 void QuickWebEngineView::Copy(){
     QMetaObject::invokeMethod(m_QmlWebEngineView, "copy");
 }
@@ -662,6 +672,7 @@ void QuickWebEngineView::Stop(){
 void QuickWebEngineView::StopAndUnselect(){
     QMetaObject::invokeMethod(m_QmlWebEngineView, "stopAndUnselect");
 }
+
 void QuickWebEngineView::Print(){
     QMetaObject::invokeMethod(m_QmlWebEngineView, "print_");
 }
@@ -760,14 +771,13 @@ void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
 
     // all key events are ignored, if input method is activated.
     // so input method specific keys are accepted.
-    if(Application::HasAnyModifier(ev) ||
-       // 'HasAnyModifier' ignores ShiftModifier.
-       Application::IsFunctionKey(ev)){
 
+    // 'HasAnyModifier' ignores ShiftModifier.
+    if(Application::HasAnyModifier(ev) ||
+       Application::IsFunctionKey(ev)){
         ev->setAccepted(TriggerKeyEvent(ev));
         return;
     }
-    //QQuickWidget::keyPressEvent(ev);
 
     int k = ev->key();
     if(!m_PreventScrollRestoration &&
@@ -782,7 +792,10 @@ void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
         k == Qt::Key_End)){
 
         m_PreventScrollRestoration = true;
+        return;
     }
+
+    //QQuickWidget::keyPressEvent(ev);
 
     if(/*!ev->isAccepted() &&*/
        !Application::IsOnlyModifier(ev)){
@@ -802,7 +815,6 @@ void QuickWebEngineView::keyReleaseEvent(QKeyEvent *ev){
 
 void QuickWebEngineView::resizeEvent(QResizeEvent *ev){
     QQuickWidget::resizeEvent(ev);
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "adjustContents");
 }
 
 void QuickWebEngineView::contextMenuEvent(QContextMenuEvent *ev){
@@ -1052,7 +1064,11 @@ void QuickWebEngineView::dropEvent(QDropEvent *ev){
     QList<QUrl> urls = ev->mimeData()->urls();
     QObject *source = ev->source();
     QWidget *widget = this;
+    bool isLocal = false;
     QString text;
+
+    foreach(QUrl u, urls){ if(u.isLocalFile()) isLocal = true;}
+
     if(!ev->mimeData()->text().isEmpty()){
         text = ev->mimeData()->text().replace(QStringLiteral("\""), QStringLiteral("\\\""));
     } else if(!urls.isEmpty()){
@@ -1092,7 +1108,11 @@ void QuickWebEngineView::dropEvent(QDropEvent *ev){
 
     });
 
-    QQuickWidget::dropEvent(ev);
+    if(isLocal ||
+       (DragToStartDownload() && !urls.isEmpty() && source == widget))
+        ; // do nothing.
+    else
+        QQuickWidget::dropEvent(ev);
     ev->setAccepted(true);
 }
 
@@ -1152,9 +1172,8 @@ void QuickWebEngineView::CallWithGotBaseUrl(UrlCallBack callBack){
 }
 
 void QuickWebEngineView::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
-    // this implementation is same as baseurl...
     CallWithEvaluatedJavaScriptResult
-        (GetBaseUrlJsCode(), [callBack](QVariant var){
+        (GetCurrentBaseUrlJsCode(), [callBack](QVariant var){
             callBack(var.isValid() ? var.toUrl() : QUrl());
         });
 }
