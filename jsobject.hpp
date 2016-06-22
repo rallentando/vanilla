@@ -81,6 +81,7 @@ public slots:
     void eighthView           (){ m_TreeBank->EighthView(); }
     void ninthView            (){ m_TreeBank->NinthView(); }
     void tenthView            (){ m_TreeBank->TenthView(); }
+    void lastView             (){ m_TreeBank->LastView(); }
     void displayHistTree      (){ m_TreeBank->DisplayHistTree(); }
     void displayViewtree      (){ m_TreeBank->DisplayViewTree(); }
     void displayAccessKey     (){ m_TreeBank->DisplayAccessKey(); }
@@ -173,6 +174,7 @@ public slots:
     void eighthView            (){ m_View->TriggerAction(Page::_EighthView); }
     void ninthView             (){ m_View->TriggerAction(Page::_NinthView); }
     void tenthView             (){ m_View->TriggerAction(Page::_TenthView); }
+    void lastView              (){ m_View->TriggerAction(Page::_LastView); }
     void newViewNode           (){ m_View->TriggerAction(Page::_NewViewNode); }
     void newHistNode           (){ m_View->TriggerAction(Page::_NewHistNode); }
     void cloneViewNode         (){ m_View->TriggerAction(Page::_CloneViewNode); }

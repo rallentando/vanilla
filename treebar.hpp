@@ -47,11 +47,6 @@ public:
     static void LoadSettings();
     static void SaveSettings();
 
-    static int GetHorizontalNodeWidth();
-    static int GetVerticalNodeHeight();
-    static void SetHorizontalNodeWidth(int);
-    static void SetVerticalNodeHeight(int);
-
     static bool EnableAnimation();
     static bool EnableCloseButton();
     static bool EnableCloneButton();
@@ -63,7 +58,9 @@ public:
     static void ToggleScrollToSwitchNode();
     static void ToggleWheelClickToClose();
 
+    int GetHorizontalNodeWidth() const;
     int GetHorizontalNodeHeight() const;
+    int GetVerticalNodeHeight() const;
     int GetVerticalNodeWidth() const;
 
     int MaxWidth() const;
@@ -124,13 +121,12 @@ private:
     QSize m_OverrideSize;
     QList<LayerItem*> m_LayerList;
     int m_AutoUpdateTimerID;
+    int m_HorizontalNodeWidth;
     int m_HorizontalNodeHeight;
+    int m_VerticalNodeHeight;
     int m_VerticalNodeWidth;
     LastAction m_LastAction;
     MainWindow *m_OtherWindow;
-
-    static int m_HorizontalNodeWidth;
-    static int m_VerticalNodeHeight;
 
     static bool m_EnableAnimation;
     static bool m_EnableCloseButton;
@@ -156,6 +152,7 @@ public:
     void SetNest(int);
 
     QPropertyAnimation *GetAnimation() const;
+    bool IsLocked() const;
 
     qreal MaxScroll() const;
     qreal MinScroll() const;
@@ -298,6 +295,7 @@ public:
     Node *GetNode() const;
 
     QPropertyAnimation *GetAnimation() const;
+    bool IsLocked() const;
 
     void SetButtonState(ButtonState state);
     void SetHoveredWithItem(bool hovered);

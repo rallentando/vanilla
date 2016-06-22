@@ -281,7 +281,7 @@ void NetworkAccessManager::HandleDownload(QObject *object){
 
         if(mimeType.isValid() && !mimeType.isDefault()) filter = mimeType.filterString();
 
-        filename = ModalDialog::GetSaveFileName_(QString::null, filename, filter);
+        filename = ModalDialog::GetSaveFileName_(QString(), filename, filter);
     }
 
     if(filename.isEmpty()){
@@ -786,7 +786,7 @@ void DownloadItem::ReadyRead(){
 
             if(mimeType.isValid() && !mimeType.isDefault()) filter = mimeType.filterString();
 
-            filename = ModalDialog::GetSaveFileName_(QString::null, filename, filter);
+            filename = ModalDialog::GetSaveFileName_(QString(), filename, filter);
         }
 
         SetPathAndReady(filename);

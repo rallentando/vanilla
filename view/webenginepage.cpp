@@ -152,11 +152,11 @@ QStringList WebEnginePage::chooseFiles(FileSelectionMode mode, const QStringList
 
     if(mode == QWebEnginePage::FileSelectOpenMultiple){
 
-        files = ModalDialog::GetOpenFileNames(QString::null, suggestedFiles.first());
+        files = ModalDialog::GetOpenFileNames(QString(), suggestedFiles.first());
 
     } else if(mode == QWebEnginePage::FileSelectOpen){
 
-        files << ModalDialog::GetOpenFileName_(QString::null, suggestedFiles.first());
+        files << ModalDialog::GetOpenFileName_(QString(), suggestedFiles.first());
     }
 
     if(!files.isEmpty() && !files.first().isEmpty()){

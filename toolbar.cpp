@@ -68,6 +68,7 @@ QStringList ToolBar::m_CommandCandidates = QStringList()
     << QStringLiteral("EighthView")
     << QStringLiteral("NinthView")
     << QStringLiteral("TenthView")
+    << QStringLiteral("LastView")
     << QStringLiteral("NewViewNode")
     << QStringLiteral("NewHistNode")
     << QStringLiteral("CloneViewNode")
@@ -172,7 +173,8 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
             });
     connect(m_LineEdit, &QLineEdit::returnPressed,
             [this](){
-                if(m_View &&
+                if(!(Application::keyboardModifiers() & Qt::ShiftModifier) &&
+                   m_View &&
                    (m_LineEdit->text().startsWith("http://") ||
                     m_LineEdit->text().startsWith("https://") ||
                     m_LineEdit->text().startsWith("javascript:") ||

@@ -36,7 +36,7 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
     Initialize();
     rootContext()->setContextProperty(QStringLiteral("viewInterface"), this);
 
-    m_QmlWebEngineView = rootObject()->childItems().first();
+    m_QmlWebEngineView = rootObject();
 
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
     m_Page = new WebEnginePage(nam, this);
@@ -674,7 +674,35 @@ void QuickWebEngineView::StopAndUnselect(){
 }
 
 void QuickWebEngineView::Print(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "print_");
+#if QT_VERSION >= 0x050700
+
+    QString filename = ModalDialog::GetSaveFileName_
+        (QString(), QString(),
+         QStringLiteral("Pdf document (*.pdf);;Images (*.jpg *.jpeg *.gif *.png *.bmp *.xpm)"));
+
+    if(filename.isEmpty()) return;
+
+    if(filename.toLower().endsWith(".pdf")){
+
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "printToPdf",
+                                  Q_ARG(QString, filename));
+    } else {
+        QSize origSize = size();
+        QPointF origPos = m_QmlWebEngineView->property("scrollPosition").toPointF();
+        QSizeF contentsSize = m_QmlWebEngineView->property("contentsSize").toSizeF();
+        resize(contentsSize.toSize());
+
+        QTimer::singleShot(700, [this, filename, origSize, origPos](){
+
+        grabFramebuffer().save(filename);
+
+        resize(origSize);
+        CallWithEvaluatedJavaScriptResult
+            (SetScrollValuePointJsCode(origPos.toPoint()), [](QVariant){});
+
+        });
+    }
+#endif
 }
 
 void QuickWebEngineView::Save(){

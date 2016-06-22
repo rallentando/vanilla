@@ -2014,6 +2014,7 @@ QAction *Gadgets::Action(GadgetsAction a){
         DEFINE_ACTION(EighthView,         tr("EighthView"));
         DEFINE_ACTION(NinthView,          tr("NinthView"));
         DEFINE_ACTION(TenthView,          tr("TenthView"));
+        DEFINE_ACTION(LastView,           tr("LastView"));
         DEFINE_ACTION(NewViewNode,        tr("NewViewNode"));
         DEFINE_ACTION(NewHistNode,        tr("NewHistNode"));
         DEFINE_ACTION(CloneViewNode,      tr("CloneViewNode"));

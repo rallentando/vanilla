@@ -281,7 +281,10 @@ void AbstractNodeItem::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev){
 
 void AbstractNodeItem::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
     QGraphicsItem::hoverEnterEvent(ev);
-    SetHovered();
+    SetHovered(); // SetHovered sets GraphicsButton.
+    foreach(QGraphicsItem *item, scene()->items(ev->scenePos())){
+        if(dynamic_cast<GraphicsButton*>(item)) return;
+    }
     m_TableView->SetInPlaceNotifierContent(m_Node);
     m_TableView->SetInPlaceNotifierPosition(ev->scenePos());
 }
@@ -292,7 +295,10 @@ void AbstractNodeItem::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
 
 void AbstractNodeItem::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
     QGraphicsItem::hoverMoveEvent(ev);
-    SetHovered();
+    SetHovered(); // SetHovered sets GraphicsButton.
+    foreach(QGraphicsItem *item, scene()->items(ev->scenePos())){
+        if(dynamic_cast<GraphicsButton*>(item)) return;
+    }
     m_TableView->SetInPlaceNotifierContent(m_Node);
     m_TableView->SetInPlaceNotifierPosition(ev->scenePos());
 }

@@ -1060,7 +1060,7 @@ void TreeBank::SaveSettings(){
 
     foreach(QString button, m_MouseMap.keys()){
         if(!button.isEmpty())
-            s.setValue(QStringLiteral("application/keymap/") + button, m_MouseMap[button]);
+            s.setValue(QStringLiteral("application/mouse/") + button, m_MouseMap[button]);
     }
     Node::SaveSettings();
     View::SaveSettings();
@@ -2292,7 +2292,9 @@ QMenu *TreeBank::PageMenu(){
     menu->addSeparator();
     menu->addAction(Action(_Load));
     menu->addAction(Action(_Save));
-
+#if QT_VERSION >= 0x050700
+    menu->addAction(Action(_Print));
+#endif
     return menu;
 }
 
@@ -3118,6 +3120,17 @@ void TreeBank::TenthView(ViewNode *vn){
     NthView(9, vn);
 }
 
+void TreeBank::LastView(ViewNode *vn){
+    m_TraverseMode = ViewMode;
+    if(!vn) vn = m_CurrentViewNode;
+    if(!vn) return;
+
+    NodeList siblings = vn->GetSiblings();
+    if(!siblings.isEmpty()){
+        SetCurrent(siblings.last());
+    }
+}
+
 ViewNode *TreeBank::NewViewNode(ViewNode *vn){
     m_TraverseMode = ViewMode;
     if(!vn) vn = m_CurrentViewNode;
@@ -3230,7 +3243,7 @@ ViewNode *TreeBank::MakeLocalNode(ViewNode *older){
         QFileDialog::DontResolveSymlinks | QFileDialog::ShowDirsOnly;
 
     QString path =
-        ModalDialog::GetExistingDirectory(QString::null, QStringLiteral("."), options);
+        ModalDialog::GetExistingDirectory(QString(), QStringLiteral("."), options);
 
     if(!path.isEmpty()){
         HistNode *hist  = m_HistRoot->MakeChild();
@@ -3684,6 +3697,7 @@ QAction *TreeBank::Action(TreeBankAction a){
         DEFINE_ACTION(EighthView,       tr("EighthView"));
         DEFINE_ACTION(NinthView,        tr("NinthView"));
         DEFINE_ACTION(TenthView,        tr("TenthView"));
+        DEFINE_ACTION(LastView,         tr("LastView"));
         DEFINE_ACTION(NewViewNode,      tr("NewViewNode"));
         DEFINE_ACTION(NewHistNode,      tr("NewHistNode"));
         DEFINE_ACTION(CloneViewNode,    tr("CloneViewNode"));

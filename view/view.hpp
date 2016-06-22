@@ -669,6 +669,8 @@ protected:
 
     static inline QString FindElementsJsCode(Page::FindElementsOption option){
         QString quoted = Page::OptionToSelector(option).replace(QStringLiteral("\""), QStringLiteral("\\\""));
+        QString ignoreOutOfView = option == Page::ForAccessKey ? QStringLiteral("true") : QStringLiteral("false");
+
         return QStringLiteral(
             "(function(){\n"
             // scroll bar value is unused.
@@ -723,8 +725,9 @@ protected:
           VV"            var w = elems[i].ownerDocument.defaultView;\n"
           VV"            var r1 = { left: 0, top: 0, right: w.innerWidth, bottom: w.innerHeight};\n"
           VV"            var r2 = elems[i].getBoundingClientRect();\n"
-          VV"            if(Math.max(r1.left, r2.left) >= Math.min(r1.right,  r2.right) ||\n"
-          VV"               Math.max(r1.top,  r2.top)  >= Math.min(r1.bottom, r2.bottom)){\n"
+          VV"            if(%2 &&\n" // ignore out of view.
+          VV"               (Math.max(r1.left, r2.left) >= Math.min(r1.right,  r2.right) ||\n"
+          VV"                Math.max(r1.top,  r2.top)  >= Math.min(r1.bottom, r2.bottom))){\n"
           VV"                continue;\n"
           VV"            }\n"
           VV"        }\n"
@@ -840,7 +843,7 @@ protected:
           VV"        map[i] = data;\n"
           VV"    }\n"
           VV"    return map;\n"
-          VV"})()").arg(quoted);
+          VV"})()").arg(quoted).arg(ignoreOutOfView);
     }
 
     static inline QString HitElementJsCode(QPoint pos){

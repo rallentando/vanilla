@@ -24,6 +24,7 @@
   15.0 : gadgets' button layer.
   20.0 : gadgets' spot light layer.
   30.0 : gadgets' dragging contents layer.
+  35.0 : gadgets' button on dragging contents layer.
   40.0 : gadgets' selector layer.
   50.0 : gadgets' in place notifier layer.
   60.0 : localview's multimedia item layer.
@@ -3539,6 +3540,7 @@ QRectF CloseButton::boundingRect() const {
 void CloseButton::UnsetItem(){
     setVisible(false);
     setEnabled(false);
+    setZValue(BUTTON_LAYER);
     m_Item = 0;
     m_Node = 0;
     m_ButtonState = NotHovered;
@@ -3550,6 +3552,9 @@ void CloseButton::SetItem(Thumbnail *thumb){
     setVisible(true);
     setEnabled(true);
     SetState(NotHovered);
+    if(m_Item->isSelected())
+        setZValue(BUTTON_ON_DRAGGING_LAYER);
+    else setZValue(BUTTON_LAYER);
 }
 
 void CloseButton::SetItem(NodeTitle *title){
@@ -3558,6 +3563,9 @@ void CloseButton::SetItem(NodeTitle *title){
     setVisible(true);
     setEnabled(true);
     SetState(NotHovered);
+    if(m_Item->isSelected())
+        setZValue(BUTTON_ON_DRAGGING_LAYER);
+    else setZValue(BUTTON_LAYER);
 }
 
 void CloseButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
@@ -3596,6 +3604,7 @@ QRectF CloneButton::boundingRect() const {
 void CloneButton::UnsetItem(){
     setVisible(false);
     setEnabled(false);
+    setZValue(BUTTON_LAYER);
     m_Item = 0;
     m_Node = 0;
     m_ButtonState = NotHovered;
@@ -3607,6 +3616,9 @@ void CloneButton::SetItem(Thumbnail *thumb){
     setVisible(true);
     setEnabled(true);
     SetState(NotHovered);
+    if(m_Item->isSelected())
+        setZValue(BUTTON_ON_DRAGGING_LAYER);
+    else setZValue(BUTTON_LAYER);
 }
 
 void CloneButton::SetItem(NodeTitle *title){
@@ -3615,6 +3627,9 @@ void CloneButton::SetItem(NodeTitle *title){
     setVisible(true);
     setEnabled(true);
     SetState(NotHovered);
+    if(m_Item->isSelected())
+        setZValue(BUTTON_ON_DRAGGING_LAYER);
+    else setZValue(BUTTON_LAYER);
 }
 
 void CloneButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
@@ -3656,6 +3671,7 @@ QRectF SoundButton::boundingRect() const {
 void SoundButton::UnsetItem(){
     setVisible(false);
     setEnabled(false);
+    setZValue(BUTTON_LAYER);
     m_Item = 0;
     m_Node = 0;
     m_ButtonState = NotHovered;
@@ -3667,6 +3683,9 @@ void SoundButton::SetItem(Thumbnail *thumb){
     setVisible(true);
     setEnabled(true);
     SetState(NotHovered);
+    if(m_Item->isSelected())
+        setZValue(BUTTON_ON_DRAGGING_LAYER);
+    else setZValue(BUTTON_LAYER);
 }
 
 void SoundButton::SetItem(NodeTitle *title){
@@ -3675,6 +3694,9 @@ void SoundButton::SetItem(NodeTitle *title){
     setVisible(true);
     setEnabled(true);
     SetState(NotHovered);
+    if(m_Item->isSelected())
+        setZValue(BUTTON_ON_DRAGGING_LAYER);
+    else setZValue(BUTTON_LAYER);
 }
 
 void SoundButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){

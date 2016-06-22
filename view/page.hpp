@@ -194,6 +194,7 @@ public slots:
     void EighthView();
     void NinthView();
     void TenthView();
+    void LastView();
     void NewViewNode();
     void NewHistNode();
     void CloneViewNode();

@@ -836,6 +836,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         case Gadgets::_EighthView:
         case Gadgets::_NinthView:
         case Gadgets::_TenthView:
+        case Gadgets::_LastView:
         case Gadgets::_NewViewNode:
         case Gadgets::_NewHistNode:
         case Gadgets::_CloneViewNode:
@@ -965,6 +966,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(EighthView,         tr("EighthView"));
         DEFINE_ACTION(NinthView,          tr("NinthView"));
         DEFINE_ACTION(TenthView,          tr("TenthView"));
+        DEFINE_ACTION(LastView,           tr("LastView"));
       //DEFINE_ACTION(NewViewNode,        tr("NewViewNode"));
       //DEFINE_ACTION(NewHistNode,        tr("NewHistNode"));
       //DEFINE_ACTION(CloneViewNode,      tr("CloneViewNode"));

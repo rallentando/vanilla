@@ -801,6 +801,12 @@ void Page::TenthView(){
     View::SetSwitchingState(false);
 }
 
+void Page::LastView(){
+    View::SetSwitchingState(true);
+    GetTB()->LastView();
+    View::SetSwitchingState(false);
+}
+
 void Page::NewViewNode(){
     View::SetSwitchingState(true);
     SuitTB()->NewViewNode(m_View->GetViewNode());
@@ -1673,6 +1679,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(EighthView,            tr("EighthView"));
         DEFINE_ACTION(NinthView,             tr("NinthView"));
         DEFINE_ACTION(TenthView,             tr("TenthView"));
+        DEFINE_ACTION(LastView,              tr("LastView"));
         DEFINE_ACTION(NewViewNode,           tr("NewViewNode"));
         DEFINE_ACTION(NewHistNode,           tr("NewHistNode"));
         DEFINE_ACTION(CloneViewNode,         tr("CloneViewNode"));

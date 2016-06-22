@@ -232,6 +232,7 @@ void MainWindow::LoadSettings(){
 
         if(!stat.isEmpty())
             m_TreeBar->SetStat(stat);
+        else m_TreeBar->SetStat(stat);
 
     } else if(treebar_data.canConvert<QStringList>()){
         m_TreeBar->SetStat(treebar_data.toStringList());

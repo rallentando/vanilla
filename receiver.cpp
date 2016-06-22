@@ -171,6 +171,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     connect(this, SIGNAL(EighthView()),       parent, SLOT(EighthView()));
     connect(this, SIGNAL(NinthView()),        parent, SLOT(NinthView()));
     connect(this, SIGNAL(TenthView()),        parent, SLOT(TenthView()));
+    connect(this, SIGNAL(LastView()),         parent, SLOT(LastView()));
     connect(this, SIGNAL(NewViewNode()),      parent, SLOT(NewViewNode()));
     connect(this, SIGNAL(NewHistNode()),      parent, SLOT(NewHistNode()));
     connect(this, SIGNAL(CloneViewNode()),    parent, SLOT(CloneViewNode()));
@@ -614,6 +615,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("(?:8|[eE]igh)th(?:[vV]Iew)?"), cmd)){      emit EighthView();           return; }
     if(Application::ExactMatch(QStringLiteral("(?:9|[nN]in)th(?:[vV]Iew)?"), cmd)){       emit NinthView();            return; }
     if(Application::ExactMatch(QStringLiteral("(?:10|[tT]en)th(?:[vV]Iew)?"), cmd)){      emit TenthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("[lL]ast(?:[vV]iew)?"), cmd)){              emit LastView();             return; }
     if(Application::ExactMatch(QStringLiteral("[nN]ew(?:[vV]iew)?(?:[nN]ode)?"), cmd)){   emit NewViewNode();          return; }
     if(Application::ExactMatch(QStringLiteral("[nN]ew[hH]ist(?:[nN]ode)?"), cmd)){        emit NewHistNode();          return; }
     if(Application::ExactMatch(QStringLiteral("[cC]lone(?:[vV]iew)?(?:[nN]ode)?"), cmd)){ emit CloneViewNode();        return; }

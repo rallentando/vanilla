@@ -3,6 +3,7 @@
 
 #include "webengineview.hpp"
 
+#include <QOpenGLWidget>
 #include <QWebEngineView>
 #include <QWebEnginePage>
 #include <QWebEngineHistory>
@@ -557,7 +558,41 @@ void WebEngineView::StopAndUnselect(){
 }
 
 void WebEngineView::Print(){
-    // not yet implemented.
+#if QT_VERSION >= 0x050700
+
+    if(!page()) return;
+
+    QString filename = ModalDialog::GetSaveFileName_
+        (QString(), QString(),
+         QStringLiteral("Pdf document (*.pdf);;Images (*.jpg *.jpeg *.gif *.png *.bmp *.xpm)"));
+
+    if(filename.isEmpty()) return;
+
+    if(filename.toLower().endsWith(".pdf")){
+
+        page()->printToPdf(filename);
+
+    } else {
+        QOpenGLWidget *widget = 0;
+        foreach(QObject *obj, children()){
+            if(widget = qobject_cast<QOpenGLWidget*>(obj)) break;
+        }
+        if(!widget) return;
+
+        QSize origSize = size();
+        QPointF origPos = page()->scrollPosition();
+        resize(page()->contentsSize().toSize());
+
+        QTimer::singleShot(700, [this, widget, filename, origSize, origPos](){
+
+        widget->grabFramebuffer().save(filename);
+
+        resize(origSize);
+        page()->runJavaScript(SetScrollValuePointJsCode(origPos.toPoint()));
+
+        });
+    }
+#endif
 }
 
 void WebEngineView::Save(){

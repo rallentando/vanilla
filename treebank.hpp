@@ -311,6 +311,7 @@ public slots:
     void EighthView           (ViewNode *vn = 0);
     void NinthView            (ViewNode *vn = 0);
     void TenthView            (ViewNode *vn = 0);
+    void LastView             (ViewNode *vn = 0);
     ViewNode *NewViewNode     (ViewNode *vn = 0);
     HistNode *NewHistNode     (HistNode *hn = 0);
     ViewNode *CloneViewNode   (ViewNode *vn = 0);

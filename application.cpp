@@ -394,7 +394,7 @@ void Application::Import(TreeBank *tb){
             QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + QStringLiteral("/Favorites");
 
         QString dirname =
-            ModalDialog::GetExistingDirectory(QString::null, root, options);
+            ModalDialog::GetExistingDirectory(QString(), root, options);
 
         if(dirname.isEmpty()) return;
 
@@ -484,7 +484,7 @@ void Application::Import(TreeBank *tb){
         }
 
         QString filename =
-            ModalDialog::GetOpenFileName_(QString::null, bookmarks, QStringLiteral("Json Files (*.json)"));
+            ModalDialog::GetOpenFileName_(QString(), bookmarks, QStringLiteral("Json Files (*.json)"));
 
         if(filename.isEmpty()) return;
 
@@ -615,7 +615,7 @@ void Application::Import(TreeBank *tb){
                 QStringLiteral("/Bookmarks");
 
             fileName =
-                ModalDialog::GetOpenFileName_(QString::null, fileName,
+                ModalDialog::GetOpenFileName_(QString(), fileName,
                                               QStringLiteral("Bookmarks"));
         }
 
@@ -668,7 +668,7 @@ void Application::Import(TreeBank *tb){
     std::function<void()> importFromInternalFormat = [&](){
 
         QString filename = ModalDialog::GetOpenFileName_
-            (QString::null,
+            (QString(),
              QStringLiteral("*.xml"),
              QStringLiteral("Xml Document (*.xml)"));
 
@@ -748,7 +748,7 @@ void Application::Import(TreeBank *tb){
     std::function<void()> importFromXbel = [&](){
 
         QString filename = ModalDialog::GetOpenFileName_
-            (QString::null,
+            (QString(),
              QStringLiteral("*.xbel"),
              QStringLiteral("Xbel Files (*.xbel)"));
 
@@ -820,7 +820,7 @@ void Application::Import(TreeBank *tb){
     std::function<void()> importFromHtml = [&](){
 
         QString filename = ModalDialog::GetOpenFileName_
-            (QString::null,
+            (QString(),
              QStringLiteral("*.html"),
              QStringLiteral("Html Files (*.html)"));
 
@@ -948,7 +948,7 @@ void Application::Export(TreeBank *tb){
     std::function<void()> exportAsInternalFormat = [&](){
 
         QString filename = ModalDialog::GetSaveFileName_
-            (QString::null,
+            (QString(),
              QStringLiteral("*.xml"),
              QStringLiteral("XML Document (*.xml)"));
 
@@ -1008,7 +1008,7 @@ void Application::Export(TreeBank *tb){
     std::function<void()> exportAsXbel = [&](){
 
         QString filename = ModalDialog::GetSaveFileName_
-            (QString::null,
+            (QString(),
              QStringLiteral("*.xbel"),
              QStringLiteral("Xbel files (*.xbel)"));
 
@@ -1078,7 +1078,7 @@ void Application::Export(TreeBank *tb){
 
     std::function<void()> exportAsHtml = [&](){
         QString filename = ModalDialog::GetSaveFileName_
-            (QString::null,
+            (QString(),
              QStringLiteral("*.html"),
              QStringLiteral("Html Files (*.html)"));
 
@@ -1592,6 +1592,7 @@ QString Application::GetAuthData(QString key){
     if(m_Key.isEmpty()) result = AskMasterPassword();
     if(!result) return QString();
     QString saveKey = QString::fromLatin1(Encrypt(key.toLatin1()).toHex());
+    if(!m_PasswordTable.contains(saveKey)) return QString();
     QByteArray data = m_PasswordTable[saveKey].toByteArray();
     return QString::fromLatin1(Decrypt(data));
 }

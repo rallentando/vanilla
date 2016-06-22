@@ -370,10 +370,8 @@ void View::GoBackToInferedUrl(){
 
     CallWithFoundElements(Page::RelIsPrev, [this](SharedWebElementList prevs){
 
-    if(!prevs.isEmpty() && !prevs[0]->LinkUrl().isEmpty()){
-        GoBackTo(prevs[0]->LinkUrl());
-        return;
-    }
+    if(!prevs.isEmpty() && !prevs[0]->LinkUrl().isEmpty())
+        return GoBackTo(prevs[0]->LinkUrl());
 
     CallWithFoundElements(Page::HaveReference, [this](SharedWebElementList elements){
 
@@ -408,10 +406,9 @@ void View::GoBackToInferedUrl(){
         if(url.toString().startsWith(QStringLiteral("javascript:")))
             continue;
 
-        if(reg.match(text.toLower()).hasMatch()){
-            GoBackTo(url);
-            return;
-        }
+        if(reg.match(text.toLower()).hasMatch())
+            return GoBackTo(url);
+
         QString fragment = url.fragment();
         url.setFragment(QString());
 
@@ -462,8 +459,7 @@ void View::GoBackToInferedUrl(){
                             // restore url.
                             //url.setQuery(query);
                             url.setFragment(fragment);
-                            GoBackTo(url);
-                            return;
+                            return GoBackTo(url);
                         } else {
                             goto entry;
                         }
@@ -498,10 +494,9 @@ void View::GoBackToInferedUrl(){
         ;
     }
 
-    if(currentHighValidityElement && !currentHighValidityElement->IsNull()){
-        GoBackTo(currentHighValidityElement->LinkUrl());
-        return;
-    }
+    if(currentHighValidityElement && !currentHighValidityElement->IsNull())
+        return GoBackTo(currentHighValidityElement->LinkUrl());
+
     });});
 }
 
@@ -509,10 +504,8 @@ void View::GoForwardToInferedUrl(){
 
     CallWithFoundElements(Page::RelIsNext, [this](SharedWebElementList nexts){
 
-    if(!nexts.isEmpty() && !nexts[0]->LinkUrl().isEmpty()){
-        GoForwardTo(nexts[0]->LinkUrl());
-        return;
-    }
+    if(!nexts.isEmpty() && !nexts[0]->LinkUrl().isEmpty())
+        return GoForwardTo(nexts[0]->LinkUrl());
 
     CallWithFoundElements(Page::HaveReference, [this](SharedWebElementList elements){
 
@@ -547,10 +540,9 @@ void View::GoForwardToInferedUrl(){
         if(url.toString().startsWith(QStringLiteral("javascript:")))
             continue;
 
-        if(reg.match(text.toLower()).hasMatch()){
-            GoForwardTo(url);
-            return;
-        }
+        if(reg.match(text.toLower()).hasMatch())
+            return GoForwardTo(url);
+
         QString fragment = url.fragment();
         url.setFragment(QString());
 
@@ -601,8 +593,7 @@ void View::GoForwardToInferedUrl(){
                             // restore url.
                             //url.setQuery(query);
                             url.setFragment(fragment);
-                            GoForwardTo(url);
-                            return;
+                            return GoForwardTo(url);
                         } else {
                             goto entry;
                         }
@@ -637,10 +628,9 @@ void View::GoForwardToInferedUrl(){
         ;
     }
 
-    if(currentHighValidityElement && !currentHighValidityElement->IsNull()){
-        GoForwardTo(currentHighValidityElement->LinkUrl());
-        return;
-    }
+    if(currentHighValidityElement && !currentHighValidityElement->IsNull())
+        return GoForwardTo(currentHighValidityElement->LinkUrl());
+
     });});
 }
 

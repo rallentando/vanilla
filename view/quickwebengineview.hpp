@@ -184,8 +184,8 @@ public:
 public slots:
     QSize size() DECL_OVERRIDE { return base()->size();}
     void resize(QSize size) DECL_OVERRIDE {
-        rootObject()->setProperty("width", size.width());
-        rootObject()->setProperty("height", size.height());
+        m_QmlWebEngineView->setProperty("width", size.width());
+        m_QmlWebEngineView->setProperty("height", size.height());
         base()->setGeometry(QRect(QPoint(), size));
     }
     void show() DECL_OVERRIDE {

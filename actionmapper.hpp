@@ -48,6 +48,7 @@
     F(EighthView)                               \
     F(NinthView)                                \
     F(TenthView)                                \
+    F(LastView)                                 \
     F(NewViewNode)                              \
     F(NewHistNode)                              \
     F(CloneViewNode)                            \
