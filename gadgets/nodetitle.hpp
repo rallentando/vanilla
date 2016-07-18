@@ -14,24 +14,24 @@ public:
     NodeTitle(Node *nd, int nest, QGraphicsItem *parent = 0);
     ~NodeTitle();
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
-    QRectF boundingRect() const DECL_OVERRIDE;
+    QRectF boundingRect() const Q_DECL_OVERRIDE;
 
-    void SetNest(int) DECL_OVERRIDE;
+    void SetNest(int) Q_DECL_OVERRIDE;
 
-    bool IsPrimary() const DECL_OVERRIDE;
-    bool IsHovered() const DECL_OVERRIDE;
+    bool IsPrimary() const Q_DECL_OVERRIDE;
+    bool IsHovered() const Q_DECL_OVERRIDE;
 
-    void SetPrimary() DECL_OVERRIDE;
-    void SetHovered() DECL_OVERRIDE;
-    void SetSelectionRange() DECL_OVERRIDE;
+    void SetPrimary() Q_DECL_OVERRIDE;
+    void SetHovered() Q_DECL_OVERRIDE;
+    void SetSelectionRange() Q_DECL_OVERRIDE;
 
-    void ClearOtherSectionSelection() DECL_OVERRIDE;
-    void ApplyChildrenOrder(QPointF pos) DECL_OVERRIDE;
+    void ClearOtherSectionSelection() Q_DECL_OVERRIDE;
+    void ApplyChildrenOrder(QPointF pos) Q_DECL_OVERRIDE;
 
 protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
 };
 
 #endif //ifndef NODETITLE_HPP

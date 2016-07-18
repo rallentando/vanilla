@@ -10,7 +10,7 @@ class QMenu;
 class QTimerEvent;
 class QPaintEvent;
 
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
 class QWinTaskbarButton;
 class QWinTaskbarProgress;
 #endif
@@ -75,7 +75,7 @@ private:
     bool m_UseLinkText;
     QString m_UpperText;
     QString m_LowerText;
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
     QWinTaskbarButton *m_Button;
     QWinTaskbarProgress *m_Progress;
     void UpdateTaskbarProgress();
@@ -83,11 +83,11 @@ private:
     bool EmitScrollRequest(QPoint pos);
 
 protected:
-    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
-    void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
 };
 
 #endif //ifndef NOTIFIER_H

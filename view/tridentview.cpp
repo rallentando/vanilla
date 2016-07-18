@@ -1,6 +1,8 @@
 #include "switch.hpp"
 #include "const.hpp"
 
+#ifdef TRIDENTVIEW
+
 #include "tridentview.hpp"
 
 #include <QtWin>
@@ -146,14 +148,14 @@ public:
      /* [annotation][in] */
      _In_  IUnknown *pcmdtReserved,
      /* [annotation][in] */
-     _In_  IDispatch *pdispReserved) DECL_OVERRIDE {
+     _In_  IDispatch *pdispReserved) Q_DECL_OVERRIDE {
         Q_UNUSED(dwID); Q_UNUSED(ppt); Q_UNUSED(pcmdtReserved); Q_UNUSED(pdispReserved);
         return S_OK;
     }
 
     virtual HRESULT STDMETHODCALLTYPE GetHostInfo
     (/* [annotation][out][in] */
-     _Inout_  DOCHOSTUIINFO *pInfo) DECL_OVERRIDE {
+     _Inout_  DOCHOSTUIINFO *pInfo) Q_DECL_OVERRIDE {
 
         pInfo->cbSize        = sizeof(DOCHOSTUIINFO);
         pInfo->dwFlags       = DOCHOSTUIFLAG_NO3DBORDER;
@@ -174,37 +176,37 @@ public:
      /* [annotation][in] */
      _In_  IOleInPlaceFrame *pFrame,
      /* [annotation][in] */
-     _In_  IOleInPlaceUIWindow *pDoc) DECL_OVERRIDE {
+     _In_  IOleInPlaceUIWindow *pDoc) Q_DECL_OVERRIDE {
         Q_UNUSED(dwID); Q_UNUSED(pActiveObject); Q_UNUSED(pCommandTarget);
         Q_UNUSED(pFrame); Q_UNUSED(pDoc);
         return E_NOTIMPL;
     }
 
     virtual HRESULT STDMETHODCALLTYPE HideUI
-    (void) DECL_OVERRIDE {
+    (void) Q_DECL_OVERRIDE {
         return E_NOTIMPL;
     }
 
     virtual HRESULT STDMETHODCALLTYPE UpdateUI
-    (void) DECL_OVERRIDE {
-        m_Parent->EmitScrollChangedIfNeed();
+    (void) Q_DECL_OVERRIDE {
+        m_Parent->EmitScrollChanged();
         return E_NOTIMPL;
     }
 
     virtual HRESULT STDMETHODCALLTYPE EnableModeless
-    (/* [in] */ BOOL fEnable) DECL_OVERRIDE {
+    (/* [in] */ BOOL fEnable) Q_DECL_OVERRIDE {
         Q_UNUSED(fEnable);
         return E_NOTIMPL;
     }
 
     virtual HRESULT STDMETHODCALLTYPE OnDocWindowActivate
-    (/* [in] */ BOOL fActivate) DECL_OVERRIDE {
+    (/* [in] */ BOOL fActivate) Q_DECL_OVERRIDE {
         Q_UNUSED(fActivate);
         return E_NOTIMPL;
     }
 
     virtual HRESULT STDMETHODCALLTYPE OnFrameWindowActivate
-    (/* [in] */ BOOL fActivate) DECL_OVERRIDE {
+    (/* [in] */ BOOL fActivate) Q_DECL_OVERRIDE {
         Q_UNUSED(fActivate);
         return E_NOTIMPL;
     }
@@ -215,7 +217,7 @@ public:
      /* [annotation][in] */
      _In_  IOleInPlaceUIWindow *pUIWindow,
      /* [annotation][in] */
-     _In_  BOOL fRameWindow) DECL_OVERRIDE {
+     _In_  BOOL fRameWindow) Q_DECL_OVERRIDE {
         Q_UNUSED(prcBorder); Q_UNUSED(pUIWindow); Q_UNUSED(fRameWindow);
         return E_NOTIMPL;
     }
@@ -223,7 +225,7 @@ public:
     virtual HRESULT STDMETHODCALLTYPE TranslateAccelerator
     (/* [in] */ LPMSG lpMsg,
      /* [in] */ const GUID *pguidCmdGroup,
-     /* [in] */ DWORD nCmdID) DECL_OVERRIDE {
+     /* [in] */ DWORD nCmdID) Q_DECL_OVERRIDE {
         Q_UNUSED(lpMsg); Q_UNUSED(pguidCmdGroup); Q_UNUSED(nCmdID);
         return E_NOTIMPL;
     }
@@ -231,7 +233,7 @@ public:
     virtual HRESULT STDMETHODCALLTYPE GetOptionKeyPath
     (/* [annotation][out] */
      _Out_  LPOLESTR *pchKey,
-     /* [in] */ DWORD dw) DECL_OVERRIDE {
+     /* [in] */ DWORD dw) Q_DECL_OVERRIDE {
         Q_UNUSED(pchKey); Q_UNUSED(dw);
         return E_NOTIMPL;
     }
@@ -240,14 +242,14 @@ public:
     (/* [annotation][in] */
      _In_  IDropTarget *pDropTarget,
      /* [annotation][out] */
-     _Outptr_  IDropTarget **ppDropTarget) DECL_OVERRIDE {
+     _Outptr_  IDropTarget **ppDropTarget) Q_DECL_OVERRIDE {
         Q_UNUSED(pDropTarget); Q_UNUSED(ppDropTarget);
         return E_NOTIMPL;
     }
 
     virtual HRESULT STDMETHODCALLTYPE GetExternal
     (/* [annotation][out] */
-     _Outptr_result_maybenull_  IDispatch **ppDispatch) DECL_OVERRIDE {
+     _Outptr_result_maybenull_  IDispatch **ppDispatch) Q_DECL_OVERRIDE {
 
         *ppDispatch = 0;
         return E_NOTIMPL;
@@ -258,7 +260,7 @@ public:
      /* [annotation][in] */
      _In_  LPWSTR pchURLIn,
      /* [annotation][out] */
-     _Outptr_  LPWSTR *ppchURLOut) DECL_OVERRIDE {
+     _Outptr_  LPWSTR *ppchURLOut) Q_DECL_OVERRIDE {
         Q_UNUSED(dwTranslate); Q_UNUSED(pchURLIn); Q_UNUSED(ppchURLOut);
         return S_FALSE;
     }
@@ -267,14 +269,14 @@ public:
     (/* [annotation][in] */
      _In_  IDataObject *pDO,
      /* [annotation][out] */
-     _Outptr_result_maybenull_  IDataObject **ppDORet) DECL_OVERRIDE {
+     _Outptr_result_maybenull_  IDataObject **ppDORet) Q_DECL_OVERRIDE {
         Q_UNUSED(pDO); Q_UNUSED(ppDORet);
         return E_NOTIMPL;
     }
 
     virtual HRESULT STDMETHODCALLTYPE QueryInterface
     (/* [in] */ REFIID riid,
-     /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) DECL_OVERRIDE {
+     /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) Q_DECL_OVERRIDE {
 
         *ppvObject = 0;
 
@@ -297,7 +299,7 @@ public:
     (/* [unique][in] */ __RPC__in_opt const GUID *pguidCmdGroup,
      /* [in] */ ULONG cCmds,
      /* [out][in][size_is] */ __RPC__inout_ecount_full(cCmds) OLECMD prgCmds[],
-     /* [unique][out][in] */ __RPC__inout_opt OLECMDTEXT *pCmdText) DECL_OVERRIDE {
+     /* [unique][out][in] */ __RPC__inout_opt OLECMDTEXT *pCmdText) Q_DECL_OVERRIDE {
         Q_UNUSED(pguidCmdGroup); Q_UNUSED(cCmds); Q_UNUSED(prgCmds); Q_UNUSED(pCmdText);
         return E_NOTIMPL;
     }
@@ -307,7 +309,7 @@ public:
      /* [in] */ DWORD nCmdID,
      /* [in] */ DWORD nCmdexecopt,
      /* [unique][in] */ __RPC__in_opt VARIANT *pvaIn,
-     /* [unique][out][in] */ __RPC__inout_opt VARIANT *pvaOut) DECL_OVERRIDE {
+     /* [unique][out][in] */ __RPC__inout_opt VARIANT *pvaOut) Q_DECL_OVERRIDE {
         Q_UNUSED(pguidCmdGroup); Q_UNUSED(nCmdexecopt); Q_UNUSED(pvaIn);
 
         if(nCmdID == OLECMDID_SHOWSCRIPTERROR){
@@ -320,11 +322,11 @@ public:
         return OLECMDERR_E_NOTSUPPORTED;
     }
 
-    virtual ULONG STDMETHODCALLTYPE AddRef(void) DECL_OVERRIDE {
+    virtual ULONG STDMETHODCALLTYPE AddRef(void) Q_DECL_OVERRIDE {
         return InterlockedIncrement(&m_Ref);
     }
 
-    virtual ULONG STDMETHODCALLTYPE Release(void) DECL_OVERRIDE {
+    virtual ULONG STDMETHODCALLTYPE Release(void) Q_DECL_OVERRIDE {
         ULONG ref = InterlockedDecrement(&m_Ref);
         if(!ref) delete this;
         return ref;
@@ -451,6 +453,10 @@ void TridentView::Clear(){
 }
 
 void TridentView::SetFeatureControl(){
+    static bool checked = false;
+    if(checked) return;
+    checked = true;
+
     // register to windows registry.
     QSettings f("HKEY_CURRENT_USER\\Software\\Microsoft\\Internet Explorer\\Main\\FeatureControl",
                 QSettings::NativeFormat);
@@ -963,14 +969,14 @@ namespace {
             m_Element2 = 0;
         }
 
-        bool SetFocus() DECL_OVERRIDE {
+        bool SetFocus() Q_DECL_OVERRIDE {
             if(m_Element2){
                 m_Element2->focus();
                 return true;
             }
             return false;
         }
-        bool ClickEvent() DECL_OVERRIDE {
+        bool ClickEvent() Q_DECL_OVERRIDE {
             if(m_Element){
                 m_Element->click();
                 return true;
@@ -987,24 +993,24 @@ namespace {
             QString result = toQt(attr);
             return result;
         }
-        QString TagName() const DECL_OVERRIDE {
+        QString TagName() const Q_DECL_OVERRIDE {
             if(!m_Element) return QString();
             WinString str;
             m_Element->get_tagName(&str.data);
             QString tag = toQt(str);
             return tag;
         }
-        QString InnerText() const DECL_OVERRIDE {
+        QString InnerText() const Q_DECL_OVERRIDE {
             if(!m_Element) return QString();
             WinString str;
             m_Element->get_innerText(&str.data);
             QString text = toQt(str);
             return text;
         }
-        QUrl BaseUrl() const DECL_OVERRIDE {
+        QUrl BaseUrl() const Q_DECL_OVERRIDE {
             return m_Parent->GetBaseUrl();
         }
-        QUrl LinkUrl() const DECL_OVERRIDE {
+        QUrl LinkUrl() const Q_DECL_OVERRIDE {
             if(m_Element && m_LinkUrl.isEmpty()){
                 IHTMLElement *elem = m_Element;
                 elem->AddRef();
@@ -1028,7 +1034,7 @@ namespace {
             }
             return m_LinkUrl;
         }
-        QUrl ImageUrl() const DECL_OVERRIDE {
+        QUrl ImageUrl() const Q_DECL_OVERRIDE {
             if(m_Element && m_ImageUrl.isEmpty()){
                 IHTMLElement *elem = m_Element;
                 elem->AddRef();
@@ -1049,7 +1055,7 @@ namespace {
             }
             return m_ImageUrl;
         }
-        QString LinkHtml() const DECL_OVERRIDE {
+        QString LinkHtml() const Q_DECL_OVERRIDE {
             if(!m_Element) return QString();
             IHTMLElement *elem = m_Element;
             elem->AddRef();
@@ -1075,7 +1081,7 @@ namespace {
             }
             return str;
         }
-        QString ImageHtml() const DECL_OVERRIDE {
+        QString ImageHtml() const Q_DECL_OVERRIDE {
             if(!m_Element) return QString();
             IHTMLElement *elem = m_Element;
             elem->AddRef();
@@ -1098,12 +1104,12 @@ namespace {
             }
             return str;
         }
-        QPoint Position() const DECL_OVERRIDE {
+        QPoint Position() const Q_DECL_OVERRIDE {
             if(m_CoordinateOverridden)
                 return m_OverriddenRectangle.center();
             return Rectangle().center();
         }
-        QRect Rectangle() const DECL_OVERRIDE {
+        QRect Rectangle() const Q_DECL_OVERRIDE {
             if(m_CoordinateOverridden)
                 return m_OverriddenRectangle;
             IHTMLRect *rect;
@@ -1112,17 +1118,17 @@ namespace {
             int zoom = m_Parent->GetZoomFactor();
             return QRect(r.topLeft()*zoom/100.0, r.size()*zoom/100.0);
         }
-        void SetPosition(QPoint pos) DECL_OVERRIDE {
+        void SetPosition(QPoint pos) Q_DECL_OVERRIDE {
             int zoom = m_Parent->GetZoomFactor();
             m_CoordinateOverridden = true;
             m_OverriddenRectangle.moveCenter(pos*zoom/100.0);
         }
-        void SetRectangle(QRect rect) DECL_OVERRIDE {
+        void SetRectangle(QRect rect) Q_DECL_OVERRIDE {
             int zoom = m_Parent->GetZoomFactor();
             m_CoordinateOverridden = true;
             m_OverriddenRectangle = QRect(rect.topLeft()*zoom/100.0, rect.size()*zoom/100.0);
         }
-        QPixmap Pixmap() DECL_OVERRIDE {
+        QPixmap Pixmap() Q_DECL_OVERRIDE {
             IHTMLElementRender *render = 0;
             m_Element->QueryInterface(IID_IHTMLElementRender, (void**)&render);
             if(render){
@@ -1140,10 +1146,10 @@ namespace {
             }
             return m_Pixmap;
         }
-        bool IsNull() const DECL_OVERRIDE {
+        bool IsNull() const Q_DECL_OVERRIDE {
             return !m_Element || Rectangle().isNull() || Position().isNull();
         }
-        bool IsJsCommandElement() const DECL_OVERRIDE {
+        bool IsJsCommandElement() const Q_DECL_OVERRIDE {
             if(!m_Element) return false;
             QString onclick = Attribute(WinString(L"onclick"));
             QString href = Attribute(WinString(L"href")).toLower();
@@ -1159,7 +1165,7 @@ namespace {
                 role == QStringLiteral("radio") ||
                 role == QStringLiteral("tab");
         }
-        bool IsTextInputElement() const DECL_OVERRIDE {
+        bool IsTextInputElement() const Q_DECL_OVERRIDE {
             if(!m_Element) return false;
             QString tag = TagName().toLower();
             QString type = Attribute(WinString(L"type")).toLower();
@@ -1169,7 +1175,7 @@ namespace {
                   type == QStringLiteral("search") ||
                   type == QStringLiteral("password")));
         }
-        bool IsQueryInputElement() const DECL_OVERRIDE {
+        bool IsQueryInputElement() const Q_DECL_OVERRIDE {
             if(!m_Element) return false;
             QString tag = TagName().toLower();
             QString type = Attribute(WinString(L"type")).toLower();
@@ -1177,18 +1183,18 @@ namespace {
                 (type == QStringLiteral("text") ||
                  type == QStringLiteral("search"));
         }
-        bool IsEditableElement() const DECL_OVERRIDE {
+        bool IsEditableElement() const Q_DECL_OVERRIDE {
             return m_IsEditable
                 || IsTextInputElement()
                 || IsQueryInputElement();
         }
-        bool IsFrameElement() const DECL_OVERRIDE {
+        bool IsFrameElement() const Q_DECL_OVERRIDE {
             if(!m_Element) return false;
             QString tag = TagName().toLower();
             return tag == QStringLiteral("frame")
                 || tag == QStringLiteral("iframe");
         }
-        Action GetAction() const DECL_OVERRIDE {
+        Action GetAction() const Q_DECL_OVERRIDE {
             QString tag = TagName().toLower();
             QString type = Attribute(WinString(L"type")).toLower();
             QString onclick = Attribute(WinString(L"onclick"));
@@ -1243,7 +1249,7 @@ namespace {
             }
             return None;
         }
-        bool Equals(const WebElement &other) const DECL_OVERRIDE {
+        bool Equals(const WebElement &other) const Q_DECL_OVERRIDE {
             return m_Element == static_cast<const Element*>(&other)->m_Element;
         }
 
@@ -1624,10 +1630,6 @@ void TridentView::EmitScrollChanged(){
     emit ScrollChanged(GetScroll());
 }
 
-void TridentView::EmitScrollChangedIfNeed(){
-    EmitScrollChanged();
-}
-
 QPointF TridentView::GetScroll(){
     if(!m_HtmlDocument) return QPointF(0.5f, 0.5f);
     QPointF pos = QPointF(0.5f, 0.5f);
@@ -1747,7 +1749,7 @@ bool TridentView::RestoreScroll(){
         }
         doc->Release();
     }
-    EmitScrollChangedIfNeed();
+    EmitScrollChanged();
     return true;
 }
 
@@ -2095,7 +2097,7 @@ void TridentView::keyPressEvent(QKeyEvent *ev){
 void TridentView::keyReleaseEvent(QKeyEvent *ev){
     QAxWidget::keyReleaseEvent(ev);
     for(int i = 1; i < 6; i++){
-        QTimer::singleShot(i*200, this, &TridentView::EmitScrollChangedIfNeed);
+        QTimer::singleShot(i*200, this, &TridentView::EmitScrollChanged);
     }
 }
 
@@ -2182,7 +2184,7 @@ void TridentView::mouseReleaseEvent(QMouseEvent *ev){
 
     GestureAborted();
     QAxWidget::mouseReleaseEvent(ev);
-    EmitScrollChangedIfNeed();
+    EmitScrollChanged();
     ev->setAccepted(true);
 }
 
@@ -2289,7 +2291,7 @@ void TridentView::wheelEvent(QWheelEvent *ev){
     }
 
     for(int i = 1; i < 6; i++){
-        QTimer::singleShot(i*200, this, &TridentView::EmitScrollChangedIfNeed);
+        QTimer::singleShot(i*200, this, &TridentView::EmitScrollChanged);
     }
 }
 
@@ -2308,3 +2310,5 @@ bool TridentView::focusNextPrevChild(bool next){
         return QAxWidget::focusNextPrevChild(next);
     return false;
 }
+
+#endif //ifdef TRIDENTVIEW

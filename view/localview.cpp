@@ -1,6 +1,8 @@
 #include "const.hpp"
 #include "switch.hpp"
 
+#ifdef LOCALVIEW
+
 #include "localview.hpp"
 
 #include <QNetworkRequest>
@@ -26,10 +28,9 @@
 #include "gadgetsstyle.hpp"
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
+#include "quicknativewebview.hpp"
 #include "dialog.hpp"
-#if defined(Q_OS_WIN)
-#  include "tridentview.hpp"
-#endif
+#include "tridentview.hpp"
 
 LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
     : View(parent)
@@ -41,7 +42,7 @@ LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
     m_ParentNode = new LocalNode();
 
     class DummyLocalNode : public LocalNode{
-        bool IsDummy() const DECL_OVERRIDE { return true;}
+        bool IsDummy() const Q_DECL_OVERRIDE { return true;}
     };
 
     m_DummyLocalNode = new DummyLocalNode();
@@ -228,7 +229,7 @@ void LocalView::RenderBackground(QPainter *painter){
     if(!GetTreeBank()) return;
 
     if(GetStyle()->StyleName() != QStringLiteral("FlatStyle")
-#if defined(Q_OS_WIN)
+#ifdef TRIDENTVIEW
        && !TreeBank::TridentViewExist()
 #endif
        ){
@@ -245,14 +246,22 @@ void LocalView::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
-        if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
+        if(0);
+#ifdef WEBENGINEVIEW
+        else if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
-#if defined(Q_OS_WIN)
+#endif
+#ifdef NATIVEWEBVIEW
+        else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(GetTreeBank()->GetCurrentView()->base()))
+            view = w;
+#endif
+#ifdef TRIDENTVIEW
         else if(TridentView *w = qobject_cast<TridentView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
 #endif
+        else;
     }
 
     if(view){
@@ -1961,11 +1970,6 @@ void LocalView::EmitScrollChanged(){
     emit ScrollChanged(GetScroll());
 }
 
-void LocalView::EmitScrollChangedIfNeed(){
-    if(GetHistNode()->GetScrollY() != m_CurrentScroll)
-        emit ScrollChanged(GetScroll());
-}
-
 QPointF LocalView::GetScroll(){
     return QPointF(0.5,
                    static_cast<double>(m_CurrentScroll) /
@@ -2516,3 +2520,5 @@ void VideoItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 void VideoItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     QGraphicsVideoItem::mouseMoveEvent(ev);
 }
+
+#endif //ifdef LOCALVIEW

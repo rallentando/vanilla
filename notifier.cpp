@@ -12,7 +12,7 @@
 #include <QColor>
 #include <QMenu>
 
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
 #  include <QtWinExtras/QWinTaskbarButton>
 #  include <QtWinExtras/QWinTaskbarProgress>
 #endif
@@ -27,7 +27,7 @@ Notifier::Notifier(TreeBank *parent, bool purge)
     , m_TreeBank(parent)
     , m_HotSpot(QPoint())
     , m_Position(SouthWest)
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
     , m_Button(0)
     , m_Progress(0)
 #endif
@@ -238,7 +238,7 @@ void Notifier::SetSaveProgress(QString file, qint64 received, qint64 total){
     }
     repaint();
 
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
     UpdateTaskbarProgress();
 #endif
 }
@@ -265,12 +265,12 @@ void Notifier::SetOpenProgress(QString file, qint64 sent, qint64 total){
     }
     repaint();
 
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
     UpdateTaskbarProgress();
 #endif
 }
 
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
 void Notifier::UpdateTaskbarProgress(){
     int num = 0;
     int sum = 0;
@@ -305,7 +305,7 @@ void Notifier::UpdateTaskbarProgress(){
     if(progress == 100)
         m_Progress->setVisible(false);
 }
-#endif //if defined(Q_OS_WIN)
+#endif //if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
 
 bool Notifier::EmitScrollRequest(QPoint pos){
     if(!m_HotSpot.isNull()) return false;

@@ -81,11 +81,11 @@ public:
     void SetButtons(QStringList buttons){ m_Buttons = buttons;}
 
 protected:
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE;
-    void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
 
 signals:
     void Returned();
@@ -147,11 +147,11 @@ public:
     void SetCallBack(BoolCallBack callBack){ m_CallBack = callBack;}
 
 protected:
-    void enterEvent(QEvent *ev) DECL_OVERRIDE;
-    void leaveEvent(QEvent *ev) DECL_OVERRIDE;
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE;
-    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
-    void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
+    void enterEvent(QEvent *ev) Q_DECL_OVERRIDE;
+    void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
 
 signals:
     void Returned();
@@ -166,7 +166,7 @@ private:
     bool m_DefaultValue;
     QString m_Title;
     QString m_Caption;
-    int m_TimerID;
+    int m_TimerId;
     BoolCallBack m_CallBack;
 };
 
@@ -181,17 +181,17 @@ public:
     ~DialogLineEdit(){}
 
 protected:
-    void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QLineEdit::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
-    void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QLineEdit::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE {
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
         QLineEdit::keyPressEvent(ev);
         if(!ev->isAccepted()){
             if(ev->key() == Qt::Key_Return){
@@ -206,7 +206,7 @@ protected:
             }
         }
     }
-    void inputMethodEvent(QInputMethodEvent *ev) DECL_OVERRIDE {
+    void inputMethodEvent(QInputMethodEvent *ev) Q_DECL_OVERRIDE {
         QLineEdit::inputMethodEvent(ev);
         emit textChanged(text() + ev->preeditString());
     }
@@ -229,17 +229,17 @@ public:
     ~DialogComboBox(){}
 
 protected:
-    void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QComboBox::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
-    void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QComboBox::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE {
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
         QComboBox::keyPressEvent(ev);
         if(!ev->isAccepted()){
             if(ev->key() == Qt::Key_Return){
@@ -254,7 +254,7 @@ protected:
             }
         }
     }
-    void inputMethodEvent(QInputMethodEvent *ev) DECL_OVERRIDE {
+    void inputMethodEvent(QInputMethodEvent *ev) Q_DECL_OVERRIDE {
         QComboBox::inputMethodEvent(ev);
         emit editTextChanged(currentText() + ev->preeditString());
     }
@@ -277,17 +277,17 @@ public:
     ~DialogIntSpinBox(){}
 
 protected:
-    void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QSpinBox::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
-    void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QSpinBox::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE {
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
         QSpinBox::keyPressEvent(ev);
         if(!ev->isAccepted()){
             if(ev->key() == Qt::Key_Return){
@@ -321,17 +321,17 @@ public:
     ~DialogDoubleSpinBox(){}
 
 protected:
-    void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QDoubleSpinBox::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
-    void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QDoubleSpinBox::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE {
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
         QDoubleSpinBox::keyPressEvent(ev);
         if(!ev->isAccepted()){
             if(ev->key() == Qt::Key_Return){
@@ -365,17 +365,17 @@ public:
     ~DialogSlider(){}
 
 protected:
-    void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QSlider::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
-    void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE {
+    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
         QSlider::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE {
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
         QSlider::keyPressEvent(ev);
         if(!ev->isAccepted()){
             if(ev->key() == Qt::Key_Return){

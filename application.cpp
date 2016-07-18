@@ -46,6 +46,17 @@
 #include "localview.hpp"
 #include "dialog.hpp"
 
+#ifdef QT_NO_PROCESS
+namespace QProcess {
+    static bool startDetached(const QString &program, const QStringList &args,
+                              const QString &dir = QString(), qint64 *pid = 0){
+        Q_UNUSED(program); Q_UNUSED(args); Q_UNUSED(dir); Q_UNUSED(pid);
+        // not yet implemented.
+        return false;
+    }
+}
+#endif
+
 Application *Application::m_Instance = 0;
 int Application::m_DelayFileCount = 0;
 
@@ -72,8 +83,8 @@ bool        Application::m_EnableAutoLoad    = false;
 int         Application::m_RemoteDebuggingPort = VANILLA_REMOTE_DEBUGGING_PORT;
 int         Application::m_AutoSaveInterval  = 0;
 int         Application::m_AutoLoadInterval  = 0;
-int         Application::m_AutoSaveTimerID   = 0;
-int         Application::m_AutoLoadTimerID   = 0;
+int         Application::m_AutoSaveTimerId   = 0;
+int         Application::m_AutoLoadTimerId   = 0;
 int         Application::m_MaxBackUpGenerationCount = 0;
 double      Application::m_WheelScrollRate   = 0.0;
 QString     Application::m_DownloadDirectory = QString();
@@ -173,6 +184,7 @@ bool Application::notify(QObject *receiver, QEvent *ev){
 }
 
 void Application::SetUpInspector(){
+#ifdef WEBENGINEVIEW
     QProcess process;
 
     process.start("netstat", QStringList() << QStringLiteral("-an"));
@@ -186,6 +198,7 @@ void Application::SetUpInspector(){
     }
     qputenv("QTWEBENGINE_REMOTE_DEBUGGING",
             QStringLiteral("%1").arg(m_RemoteDebuggingPort).toLatin1());
+#endif
 }
 
 void Application::BootApplication(int &argc, char **argv, Application *instance){
@@ -240,9 +253,6 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
             installTranslator(translator);
         }
     }
-#if defined(Q_OS_WIN)
-    TridentView::SetFeatureControl();
-#endif
     LoadSettingsFile();
     LoadGlobalSettings();
     LoadIconDatabase();
@@ -935,11 +945,11 @@ void Application::Import(TreeBank *tb){
     else return;
     if(tb){
         QTimer::singleShot(0, [tb](){
-                // dialog gives focus to view(previous focused object?) later.
-                TreeBank::EmitTreeStructureChanged();
-                tb->DisplayViewTree(TreeBank::GetViewRoot());
-                tb->GetGadgets()->setFocus(Qt::OtherFocusReason);
-            });
+            // dialog gives focus to view(previous focused object?) later.
+            TreeBank::EmitTreeStructureChanged();
+            tb->DisplayViewTree(TreeBank::GetViewRoot());
+            tb->GetGadgets()->setFocus(Qt::OtherFocusReason);
+        });
     }
 }
 
@@ -2205,7 +2215,7 @@ void Application::SetCurrentWindow(int id){
     m_CurrentWindow = m_MainWindows[id];
 }
 
-int Application::WindowID(MainWindow *win){
+int Application::WindowId(MainWindow *win){
     return m_MainWindows.key(win);
 }
 
@@ -2213,7 +2223,7 @@ MainWindow *Application::Window(int id){
     return m_MainWindows[id];
 }
 
-int Application::GetCurrentWindowID(){
+int Application::GetCurrentWindowId(){
     return m_MainWindows.key(m_CurrentWindow);
 }
 
@@ -2248,13 +2258,12 @@ ModelessDialogFrame *Application::MakeTemporaryDialogFrame(){
     m_TemporaryDialogFrame = new ModelessDialogFrame();
     QDesktopWidget desktop;
     if(desktop.screenCount()){
-        QRect rect = desktop.screenGeometry(0);
-        QRect def = DEFAULT_WINDOW_RECT;
+        QRect rect = desktop.screenGeometry(desktop.primaryScreen());
 
         m_TemporaryDialogFrame->setGeometry
-            (rect.x() + (rect.width()  - def.width())  / 2,
-             rect.y() + (rect.height() - def.height()) / 2,
-             def.width(), def.height());
+            (rect.x() + rect.width()  / 6,
+             rect.y() + rect.height() / 6,
+             rect.width() * 2 / 3, rect.height() * 2 / 3);
     }
     m_TemporaryDialogFrame->show();
     return m_TemporaryDialogFrame;
@@ -2689,9 +2698,9 @@ bool Application::OpenUrlWith_Custom(QUrl url){
 }
 
 void Application::timerEvent(QTimerEvent *ev){
-    if(ev->timerId() == m_AutoSaveTimerID)
+    if(ev->timerId() == m_AutoSaveTimerId)
         QtConcurrent::run(m_AutoSaver, &AutoSaver::SaveAll);
-    else if(ev->timerId() == m_AutoLoadTimerID)
+    else if(ev->timerId() == m_AutoLoadTimerId)
         TreeBank::AutoLoad();
     else
         QApplication::timerEvent(ev);
@@ -2730,27 +2739,27 @@ void Application::CreateBackUpFiles(){
 
 void Application::StartAutoSaveTimer(){
     // do nothing if this timer is started already.
-    if(m_EnableAutoSave && !m_AutoSaveTimerID)
-        m_AutoSaveTimerID = m_Instance->startTimer(m_AutoSaveInterval);
+    if(m_EnableAutoSave && !m_AutoSaveTimerId)
+        m_AutoSaveTimerId = m_Instance->startTimer(m_AutoSaveInterval);
 }
 
 void Application::StartAutoLoadTimer(){
     // do nothing if this timer is started already.
-    if(m_EnableAutoLoad && !m_AutoLoadTimerID)
-        m_AutoLoadTimerID = m_Instance->startTimer(m_AutoLoadInterval);
+    if(m_EnableAutoLoad && !m_AutoLoadTimerId)
+        m_AutoLoadTimerId = m_Instance->startTimer(m_AutoLoadInterval);
 }
 
 void Application::StopAutoSaveTimer(){
-    if(m_AutoSaveTimerID){
-        m_Instance->killTimer(m_AutoSaveTimerID);
-        m_AutoSaveTimerID = 0;
+    if(m_AutoSaveTimerId){
+        m_Instance->killTimer(m_AutoSaveTimerId);
+        m_AutoSaveTimerId = 0;
     }
 }
 
 void Application::StopAutoLoadTimer(){
-    if(m_AutoLoadTimerID){
-        m_Instance->killTimer(m_AutoLoadTimerID);
-        m_AutoLoadTimerID = 0;
+    if(m_AutoLoadTimerId){
+        m_Instance->killTimer(m_AutoLoadTimerId);
+        m_AutoLoadTimerId = 0;
     }
 }
 

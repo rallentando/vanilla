@@ -3,11 +3,16 @@
 
 #include <QtCore>
 
-#if defined(Q_OS_MAC)
-#  define DECL_OVERRIDE
+#if defined(Q_OS_WINRT) || defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#  define NATIVEWEBVIEW
 #else
-#  define DECL_OVERRIDE override
+#  if defined(Q_OS_WIN)
+#    define TRIDENTVIEW
+#  endif
+#  define WEBENGINEVIEW
 #endif
+
+#define LOCALVIEW
 
 // for multi line QStringLiteral
 #if defined(Q_CC_MSVC)

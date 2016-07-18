@@ -18,9 +18,9 @@ public:
 
     static void Initialize();
 
-    QRectF boundingRect() const DECL_OVERRIDE;
-    QPainterPath shape() const DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    QPainterPath shape() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
     void SetIndex(int index);
     void SetBoundingPos(QPoint pos);
@@ -48,13 +48,13 @@ public:
     void UpdateMinimal();
 
 protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
 
 private:
     static QFontMetrics m_InfoMetrics;

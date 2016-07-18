@@ -60,7 +60,9 @@ WebEngineView {
     }
 
     onNewViewRequested: {
-        request.openIn(viewInterface.newView())
+        if(request.destination != WebEngineView.NewViewInBackgroundTab)
+            request.openIn(viewInterface.newViewBackground())
+        else request.openIn(viewInterface.newView())
     }
 
     onFullScreenRequested: {
@@ -76,7 +78,7 @@ WebEngineView {
         runJavaScript
         (viewInterface.setScrollRatioPointJsCode(pos),
          function(_){
-             emitScrollChangedIfNeed()
+             emitScrollChanged()
          })
     }
 
@@ -110,35 +112,12 @@ WebEngineView {
          })
     }
 
-    function emitScrollChangedIfNeed(){
+    function emitScrollChanged(){
         runJavaScript
-        (viewInterface.getScrollValuePointJsCode(),
-         function(result){
-             if(Qt.point(result[0], result[1]) ==
-                viewInterface.restoreScrollFromNode())
-                 return
-
-             runJavaScript
-             (viewInterface.getScrollRatioPointJsCode(),
-              function(pointf){
-                  scrollChanged(Qt.point(pointf[0], pointf[1]))
-              })
+        (viewInterface.getScrollRatioPointJsCode(),
+         function(pointf){
+             scrollChanged(Qt.point(pointf[0], pointf[1]))
          })
-    }
-
-    function setFocusToElement(xpath){
-        runJavaScript
-        (viewInterface.setFocusToElementJsCode(xpath))
-    }
-
-    function fireClickEvent(xpath, pos){
-        runJavaScript
-        (viewInterface.fireClickEventJsCode(xpath, pos/zoomFactor))
-    }
-
-    function setTextValue(xpath, text){
-        runJavaScript
-        (viewInterface.setTextValueJsCode(xpath, text))
     }
 
     function seekText(str, opt){
@@ -149,14 +128,22 @@ WebEngineView {
             option |= FindCaseSensitively
 
         findText(str, option)
-        emitScrollChangedIfNeed()
+        emitScrollChanged()
     }
 
-    function cut(){
-        triggerWebAction(WebEngineView.Cut)
+    function rewind(){
+        var count = navigationHistory.backItems.rowCount()
+        if(count) goBackOrForward(-count)
+    }
+    function fastForward(){
+        var count = navigationHistory.forwardItems.rowCount()
+        if(count) goBackOrForward(count)
     }
     function copy(){
         triggerWebAction(WebEngineView.Copy)
+    }
+    function cut(){
+        triggerWebAction(WebEngineView.Cut)
     }
     function paste(){
         triggerWebAction(WebEngineView.Paste)
@@ -171,8 +158,7 @@ WebEngineView {
         triggerWebAction(WebEngineView.SelectAll)
     }
     function unselect(){
-        runJavaScript("(function(){ document.activeElement.blur(); getSelection().removeAllRanges();})()",
-                      WebEngineScript.MainWorld)
+        runJavaScript("(function(){ document.activeElement.blur(); getSelection().removeAllRanges();})()")
     }
     function reloadAndBypassCache(){
         triggerWebAction(WebEngineView.ReloadAndBypassCache)

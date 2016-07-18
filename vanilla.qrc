@@ -2,6 +2,7 @@
 <qresource>
     <file>view/quickwebengineview5.6.qml</file>
     <file>view/quickwebengineview5.7.qml</file>
+    <file>view/quicknativewebview.qml</file>
     <file>resources/blank.png</file>
     <file>resources/blankw.png</file>
     <file>resources/folder.png</file>
@@ -26,6 +27,8 @@
     <file>resources/treebar/right.png</file>
     <file>resources/treebar/table.png</file>
     <file>resources/treebar/plus.png</file>
+    <file>resources/toolbar/command.png</file>
+    <file>resources/toolbar/search.png</file>
     <file>resources/menu/back.png</file>
     <file>resources/menu/forward.png</file>
     <file>resources/menu/rewind.png</file>

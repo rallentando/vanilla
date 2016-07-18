@@ -1,9 +1,16 @@
 #include "switch.hpp"
 #include "const.hpp"
 
+#ifdef WEBENGINEVIEW
+
 #include "webengineview.hpp"
 
-#include <QOpenGLWidget>
+#if QT_VERSION >= 0x050800
+#  include <QQuickWidget>
+#else
+#  include <QOpenGLWidget>
+#endif
+
 #include <QWebEngineView>
 #include <QWebEnginePage>
 #include <QWebEngineHistory>
@@ -134,8 +141,6 @@ void WebEngineView::Connect(TreeBank *tb){
 
     connect(this, SIGNAL(titleChanged(const QString&)),
             tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    //connect(this, SIGNAL(loadProgress(int)),
-    //        this, SLOT(RestoreScroll()));
     if(Notifier *notifier = tb->GetNotifier()){
         connect(this, SIGNAL(statusBarMessage(const QString&)),
                 notifier, SLOT(SetStatus(const QString&)));
@@ -171,8 +176,6 @@ void WebEngineView::Disconnect(TreeBank *tb){
 
     disconnect(this, SIGNAL(titleChanged(const QString&)),
                tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    //disconnect(this, SIGNAL(loadProgress(int)),
-    //           this, SLOT(RestoreScroll()));
     if(Notifier *notifier = tb->GetNotifier()){
         disconnect(this, SIGNAL(statusBarMessage(const QString&)),
                    notifier, SLOT(SetStatus(const QString&)));
@@ -308,11 +311,6 @@ void WebEngineView::EmitScrollChanged(){
     CallWithScroll([this](QPointF pos){ emit ScrollChanged(pos);});
 }
 
-void WebEngineView::EmitScrollChangedIfNeed(){
-    if(!page()) return;
-    EmitScrollChanged();
-}
-
 void WebEngineView::CallWithScroll(PointFCallBack callBack){
     if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank"))){
         // sometime cause crash.
@@ -354,7 +352,9 @@ void WebEngineView::SetScroll(QPointF pos){
     if(!page()) return;
     page()->runJavaScript
         (SetScrollRatioPointJsCode(pos), [this](QVariant){
+#if QT_VERSION < 0x050700
             EmitScrollChanged();
+#endif
         });
 }
 
@@ -426,7 +426,9 @@ bool WebEngineView::SeekText(const QString &str, View::FindFlags opt){
     bool ret = true; // dummy value.
     QWebEngineView::findText
         (str, flags, [this](bool){
-            EmitScrollChangedIfNeed();
+#if QT_VERSION < 0x050700
+            EmitScrollChanged();
+#endif
         });
     return ret;
 }
@@ -573,10 +575,17 @@ void WebEngineView::Print(){
         page()->printToPdf(filename);
 
     } else {
+#if QT_VERSION >= 0x050800
+        QQuickWidget *widget = 0;
+        foreach(QObject *obj, children()){
+            if(widget = qobject_cast<QQuickWidget*>(obj)) break;
+        }
+#else
         QOpenGLWidget *widget = 0;
         foreach(QObject *obj, children()){
             if(widget = qobject_cast<QOpenGLWidget*>(obj)) break;
         }
+#endif
         if(!widget) return;
 
         QSize origSize = size();
@@ -697,10 +706,9 @@ void WebEngineView::keyPressEvent(QKeyEvent *ev){
 void WebEngineView::keyReleaseEvent(QKeyEvent *ev){
     QWebEngineView::keyReleaseEvent(ev);
 
+#if QT_VERSION < 0x050700
     int k = ev->key();
-    int delay = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)
-        ? 500
-        : 100;
+
     if(k == Qt::Key_Space ||
      //k == Qt::Key_Up ||
      //k == Qt::Key_Down ||
@@ -711,8 +719,10 @@ void WebEngineView::keyReleaseEvent(QKeyEvent *ev){
        k == Qt::Key_Home ||
        k == Qt::Key_End){
 
-        QTimer::singleShot(delay, this, &WebEngineView::EmitScrollChangedIfNeed);
+        bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
+        QTimer::singleShot(animated ? 500 : 100, this, &WebEngineView::EmitScrollChanged);
     }
+#endif
 }
 
 void WebEngineView::resizeEvent(QResizeEvent *ev){
@@ -884,8 +894,8 @@ void WebEngineView::mouseReleaseEvent(QMouseEvent *ev){
         QNetworkRequest req(link);
         req.setRawHeader("Referer", url().toEncoded());
 
-        if(Application::keyboardModifiers() & Qt::ShiftModifier ||
-           Application::keyboardModifiers() & Qt::ControlModifier ||
+        if(ev->modifiers() & Qt::ShiftModifier ||
+           ev->modifiers() & Qt::ControlModifier ||
            ev->button() == Qt::MidButton){
 
             GestureAborted();
@@ -926,7 +936,9 @@ void WebEngineView::mouseReleaseEvent(QMouseEvent *ev){
 
     GestureAborted();
     QWebEngineView::mouseReleaseEvent(ev);
-    EmitScrollChangedIfNeed();
+#if QT_VERSION < 0x050700
+    EmitScrollChanged();
+#endif
     ev->setAccepted(false);
 }
 
@@ -1051,13 +1063,10 @@ void WebEngineView::wheelEvent(QWheelEvent *ev){
         ev->setAccepted(false);
     }
 
-    if(page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)){
-        for(int i = 1; i < 6; i++){
-            QTimer::singleShot(i*200, this, &WebEngineView::EmitScrollChangedIfNeed);
-        }
-    } else {
-        EmitScrollChangedIfNeed();
-    }
+#if QT_VERSION < 0x050700
+    bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
+    QTimer::singleShot(animated ? 500 : 100, this, &WebEngineView::EmitScrollChanged);
+#endif
 }
 
 void WebEngineView::focusInEvent(QFocusEvent *ev){
@@ -1226,3 +1235,4 @@ void WebEngineView::CallWithEvaluatedJavaScriptResult(const QString &code,
     page()->runJavaScript(code, callBack);
 }
 
+#endif //ifdef WEBENGINEVIEW

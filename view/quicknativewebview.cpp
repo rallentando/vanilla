@@ -1,20 +1,16 @@
 #include "switch.hpp"
 #include "const.hpp"
 
-#ifdef WEBENGINEVIEW
+#ifdef NATIVEWEBVIEW
 
-#include "quickwebengineview.hpp"
+#include "quicknativewebview.hpp"
 
 #include <QQmlContext>
 #include <QAction>
 #include <QVariant>
 #include <QDrag>
-#ifdef PASSWORD_MANAGER
-# include <QWebEngineProfile>
-#endif
 
 #include "view.hpp"
-#include "webenginepage.hpp"
 #include "treebank.hpp"
 #include "treebar.hpp"
 #include "notifier.hpp"
@@ -22,31 +18,25 @@
 #include "networkcontroller.hpp"
 #include "application.hpp"
 #include "mainwindow.hpp"
+#include "dialog.hpp"
 
 #include <memory>
 
-QMap<View*, QUrl> QuickWebEngineView::m_InspectorTable = QMap<View*, QUrl>();
-
-QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList set)
+QuickNativeWebView::QuickNativeWebView(TreeBank *parent, QString id, QStringList set)
     : View(parent, id, set)
-#if QT_VERSION >= 0x050700
-    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.7.qml")), parent)
-#else
-    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.6.qml")), parent)
-#endif
+    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quicknativewebview.qml")), parent)
 {
     Initialize();
     rootContext()->setContextProperty(QStringLiteral("viewInterface"), this);
 
-    m_QmlWebEngineView = rootObject();
+    m_QmlNativeWebView = rootObject();
 
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
-    m_Page = new WebEnginePage(nam, this);
+    m_Page = new Page(this, nam);
     ApplySpecificSettings(set);
 
     if(parent) setParent(parent);
 
-    m_Inspector = 0;
     m_PreventScrollRestoration = false;
 #ifdef PASSWORD_MANAGER
     m_PreventAuthRegistration = false;
@@ -71,112 +61,61 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
             this, SLOT(HandleFullScreen(bool)));
     connect(this, SIGNAL(downloadRequested(QObject*)),
             this, SLOT(HandleDownload(QObject*)));
-#if QT_VERSION >= 0x050700
-    connect(this, SIGNAL(contentsSizeChanged(const QSizeF&)),
-            this, SLOT(HandleContentsSizeChange(const QSizeF&)));
-    connect(this, SIGNAL(scrollPositionChanged(const QPointF&)),
-            this, SLOT(HandleScrollPositionChange(const QPointF&)));
-#endif
 
-    connect(m_QmlWebEngineView, SIGNAL(callBackResult(int, QVariant)),
+    connect(m_QmlNativeWebView, SIGNAL(callBackResult(int, QVariant)),
             this,               SIGNAL(CallBackResult(int, QVariant)));
 
-    connect(m_QmlWebEngineView, SIGNAL(viewChanged()),
+    connect(m_QmlNativeWebView, SIGNAL(viewChanged()),
             this,               SIGNAL(ViewChanged()));
-    connect(m_QmlWebEngineView, SIGNAL(scrollChanged(QPointF)),
+    connect(m_QmlNativeWebView, SIGNAL(scrollChanged(QPointF)),
             this,               SIGNAL(ScrollChanged(QPointF)));
 }
 
-QuickWebEngineView::~QuickWebEngineView(){
-    m_InspectorTable.remove(this);
-    if(m_Inspector) m_Inspector->deleteLater();
+QuickNativeWebView::~QuickNativeWebView(){
 }
 
-void QuickWebEngineView::ApplySpecificSettings(QStringList set){
+void QuickNativeWebView::ApplySpecificSettings(QStringList set){
     View::ApplySpecificSettings(set);
-
-    if(!page()) return;
-
-    SetPreference(QWebEngineSettings::AutoLoadImages,                    "AutoLoadImages");
-    SetPreference(QWebEngineSettings::JavascriptCanAccessClipboard,      "JavascriptCanAccessClipboard");
-    SetPreference(QWebEngineSettings::JavascriptCanOpenWindows,          "JavascriptCanOpenWindows");
-    SetPreference(QWebEngineSettings::JavascriptEnabled,                 "JavascriptEnabled");
-    SetPreference(QWebEngineSettings::LinksIncludedInFocusChain,         "LinksIncludedInFocusChain");
-    SetPreference(QWebEngineSettings::LocalContentCanAccessFileUrls,     "LocalContentCanAccessFileUrls");
-    SetPreference(QWebEngineSettings::LocalContentCanAccessRemoteUrls,   "LocalContentCanAccessRemoteUrls");
-    SetPreference(QWebEngineSettings::LocalStorageEnabled,               "LocalStorageEnabled");
-    SetPreference(QWebEngineSettings::PluginsEnabled,                    "PluginsEnabled");
-    SetPreference(QWebEngineSettings::SpatialNavigationEnabled,          "SpatialNavigationEnabled");
-    SetPreference(QWebEngineSettings::HyperlinkAuditingEnabled,          "HyperlinkAuditingEnabled");
-    SetPreference(QWebEngineSettings::ScrollAnimatorEnabled,             "ScrollAnimatorEnabled");
-#if QT_VERSION >= 0x050700
-    SetPreference(QWebEngineSettings::ScreenCaptureEnabled,              "ScreenCaptureEnabled");
-    SetPreference(QWebEngineSettings::WebGLEnabled,                      "WebGLEnabled");
-    SetPreference(QWebEngineSettings::Accelerated2dCanvasEnabled,        "Accelerated2dCanvasEnabled");
-    SetPreference(QWebEngineSettings::AutoLoadIconsForPage,              "AutoLoadIconsForPage");
-    SetPreference(QWebEngineSettings::TouchIconsEnabled,                 "TouchIconsEnabled");
-#endif
-    SetPreference(QWebEngineSettings::ErrorPageEnabled,                  "ErrorPageEnabled");
-    SetPreference(QWebEngineSettings::FullScreenSupportEnabled,          "FullScreenSupportEnabled");
-
-    SetFontFamily(QWebEngineSettings::StandardFont,  "StandardFont");
-    SetFontFamily(QWebEngineSettings::FixedFont,     "FixedFont");
-    SetFontFamily(QWebEngineSettings::SerifFont,     "SerifFont");
-    SetFontFamily(QWebEngineSettings::SansSerifFont, "SansSerifFont");
-    SetFontFamily(QWebEngineSettings::CursiveFont,   "CursiveFont");
-    SetFontFamily(QWebEngineSettings::FantasyFont,   "FantasyFont");
-
-    SetFontSize(QWebEngineSettings::MinimumFontSize,        "MinimumFontSize");
-    SetFontSize(QWebEngineSettings::MinimumLogicalFontSize, "MinimumLogicalFontSize");
-    SetFontSize(QWebEngineSettings::DefaultFontSize,        "DefaultFontSize");
-    SetFontSize(QWebEngineSettings::DefaultFixedFontSize,   "DefaultFixedFontSize");
-
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "setUserAgent",
-                              Q_ARG(QVariant, QVariant::fromValue(page()->userAgentForUrl(QUrl()))));
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "setAcceptLanguage",
-                              Q_ARG(QVariant, QVariant::fromValue(page()->profile()->httpAcceptLanguage())));
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "setDefaultTextEncoding",
-                              Q_ARG(QVariant, QVariant::fromValue(page()->settings()->defaultTextEncoding())));
 }
 
-QQuickWidget *QuickWebEngineView::base(){
+QQuickWidget *QuickNativeWebView::base(){
     return static_cast<QQuickWidget*>(this);
 }
 
-WebEnginePage *QuickWebEngineView::page(){
-    return static_cast<WebEnginePage*>(View::page());
+Page *QuickNativeWebView::page(){
+    return static_cast<Page*>(View::page());
 }
 
-QUrl QuickWebEngineView::url(){
-    return m_QmlWebEngineView->property("url").toUrl();
+QUrl QuickNativeWebView::url(){
+    return m_QmlNativeWebView->property("url").toUrl();
 }
 
-QString QuickWebEngineView::html(){
+QString QuickNativeWebView::html(){
     return WholeHtml();
 }
 
-TreeBank *QuickWebEngineView::parent(){
+TreeBank *QuickNativeWebView::parent(){
     return m_TreeBank;
 }
 
-void QuickWebEngineView::setUrl(const QUrl &url){
-    m_QmlWebEngineView->setProperty("url", url);
+void QuickNativeWebView::setUrl(const QUrl &url){
+    m_QmlNativeWebView->setProperty("url", url);
     emit urlChanged(url);
 }
 
-void QuickWebEngineView::setHtml(const QString &html, const QUrl &url){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "loadHtml",
+void QuickNativeWebView::setHtml(const QString &html, const QUrl &url){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "loadHtml",
                               Q_ARG(QString, html),
                               Q_ARG(QUrl,    url));
     emit urlChanged(url);
 }
 
-void QuickWebEngineView::setParent(TreeBank* t){
+void QuickNativeWebView::setParent(TreeBank* t){
     View::SetTreeBank(t);
     base()->setParent(t);
 }
 
-void QuickWebEngineView::Connect(TreeBank *tb){
+void QuickNativeWebView::Connect(TreeBank *tb){
     View::Connect(tb);
 
     if(!tb || !page()) return;
@@ -213,7 +152,7 @@ void QuickWebEngineView::Connect(TreeBank *tb){
     }
 }
 
-void QuickWebEngineView::Disconnect(TreeBank *tb){
+void QuickNativeWebView::Disconnect(TreeBank *tb){
     View::Disconnect(tb);
 
     if(!tb || !page()) return;
@@ -250,37 +189,33 @@ void QuickWebEngineView::Disconnect(TreeBank *tb){
     }
 }
 
-void QuickWebEngineView::OnSetViewNode(ViewNode*){}
+void QuickNativeWebView::OnSetViewNode(ViewNode*){}
 
-void QuickWebEngineView::OnSetHistNode(HistNode*){}
+void QuickNativeWebView::OnSetHistNode(HistNode*){}
 
-void QuickWebEngineView::OnSetThis(WeakView){}
+void QuickNativeWebView::OnSetThis(WeakView){}
 
-void QuickWebEngineView::OnSetMaster(WeakView){}
+void QuickNativeWebView::OnSetMaster(WeakView){}
 
-void QuickWebEngineView::OnSetSlave(WeakView){}
+void QuickNativeWebView::OnSetSlave(WeakView){}
 
-void QuickWebEngineView::OnSetJsObject(_View*){}
+void QuickNativeWebView::OnSetJsObject(_View*){}
 
-void QuickWebEngineView::OnSetJsObject(_Vanilla*){}
+void QuickNativeWebView::OnSetJsObject(_Vanilla*){}
 
-void QuickWebEngineView::OnLoadStarted(){
+void QuickNativeWebView::OnLoadStarted(){
     if(!GetHistNode()) return;
 
     View::OnLoadStarted();
 
     emit statusBarMessage(tr("Started loading."));
     m_PreventScrollRestoration = false;
-    AssignInspector();
-#ifdef USE_WEBCHANNEL
-    //page()->AddJsObject();
-#endif
 
     if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
 }
 
-void QuickWebEngineView::OnLoadProgress(int progress){
+void QuickNativeWebView::OnLoadProgress(int progress){
     if(!GetHistNode()) return;
     View::OnLoadProgress(progress);
     // loadProgress: 100% signal is emitted after loadFinished.
@@ -288,7 +223,7 @@ void QuickWebEngineView::OnLoadProgress(int progress){
         emit statusBarMessage(tr("Loading ... (%1 percent)").arg(progress));
 }
 
-void QuickWebEngineView::OnLoadFinished(bool ok){
+void QuickNativeWebView::OnLoadFinished(bool ok){
     if(!GetHistNode()) return;
 
     View::OnLoadFinished(ok);
@@ -302,11 +237,9 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
     emit ViewChanged();
     emit statusBarMessage(tr("Finished loading."));
 
-    AssignInspector();
-
 #ifdef PASSWORD_MANAGER
     QString data = Application::GetAuthDataWithNoDialog
-        (page()->profile()->storageName() +
+        (page()->GetNetworkAccessManager()->GetId() +
          QStringLiteral(":") + url().host());
 
     if(!data.isEmpty()){
@@ -354,31 +287,31 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
     }
 }
 
-void QuickWebEngineView::OnTitleChanged(const QString &title){
+void QuickNativeWebView::OnTitleChanged(const QString &title){
     if(!GetHistNode()) return;
     ChangeNodeTitle(title);
 }
 
-void QuickWebEngineView::OnUrlChanged(const QUrl &url){
+void QuickNativeWebView::OnUrlChanged(const QUrl &url){
     if(!GetHistNode()) return;
     ChangeNodeUrl(url);
 }
 
-void QuickWebEngineView::OnViewChanged(){
+void QuickNativeWebView::OnViewChanged(){
     if(!GetHistNode()) return;
     TreeBank::AddToUpdateBox(GetThis().lock());
 }
 
-void QuickWebEngineView::OnScrollChanged(){
+void QuickNativeWebView::OnScrollChanged(){
     if(!GetHistNode()) return;
     SaveScroll();
 }
 
-void QuickWebEngineView::EmitScrollChanged(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "emitScrollChanged");
+void QuickNativeWebView::EmitScrollChanged(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "emitScrollChanged");
 }
 
-void QuickWebEngineView::CallWithScroll(PointFCallBack callBack){
+void QuickNativeWebView::CallWithScroll(PointFCallBack callBack){
     CallWithEvaluatedJavaScriptResult
         (GetScrollRatioPointJsCode(), [callBack](QVariant var){
             if(!var.isValid()) return callBack(QPointF(0.5f, 0.5f));
@@ -387,7 +320,7 @@ void QuickWebEngineView::CallWithScroll(PointFCallBack callBack){
         });
 }
 
-void QuickWebEngineView::SetScrollBarState(){
+void QuickNativeWebView::SetScrollBarState(){
     CallWithEvaluatedJavaScriptResult
         (GetScrollBarStateJsCode(), [this](QVariant var){
             if(!var.isValid()) return;
@@ -403,106 +336,80 @@ void QuickWebEngineView::SetScrollBarState(){
         });
 }
 
-QPointF QuickWebEngineView::GetScroll(){
+QPointF QuickNativeWebView::GetScroll(){
     if(!page()) return QPointF(0.5f, 0.5f);
-    // this function does not return actual value on WebEngineView.
+    // this function does not return actual value on NativeWebView.
     return QPointF(0.5f, 0.5f);
 }
 
-void QuickWebEngineView::SetScroll(QPointF pos){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "setScroll",
+void QuickNativeWebView::SetScroll(QPointF pos){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "setScroll",
                               Q_ARG(QVariant, QVariant::fromValue(pos)));
 }
 
-bool QuickWebEngineView::SaveScroll(){
+bool QuickNativeWebView::SaveScroll(){
     if(size().isEmpty()) return false;
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "saveScroll");
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "saveScroll");
     return true;
 }
 
-bool QuickWebEngineView::RestoreScroll(){
+bool QuickNativeWebView::RestoreScroll(){
     if(size().isEmpty()) return false;
     if(m_PreventScrollRestoration) return false;
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreScroll");
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "restoreScroll");
     return true;
 }
 
-bool QuickWebEngineView::SaveZoom(){
+bool QuickNativeWebView::SaveZoom(){
     if(size().isEmpty()) return false;
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "saveZoom");
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "saveZoom");
     return true;
 }
 
-bool QuickWebEngineView::RestoreZoom(){
+bool QuickNativeWebView::RestoreZoom(){
     if(size().isEmpty()) return false;
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreZoom");
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "restoreZoom");
     return true;
 }
 
-void QuickWebEngineView::KeyEvent(QString key){
+void QuickNativeWebView::KeyEvent(QString key){
     TriggerKeyEvent(key);
 }
 
-bool QuickWebEngineView::SeekText(const QString &str, View::FindFlags opt){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "seekText",
-                              Q_ARG(QVariant, QVariant::fromValue(str)),
-                              Q_ARG(QVariant, QVariant::fromValue(static_cast<int>(opt))));
-    return true;
+bool QuickNativeWebView::SeekText(const QString &str, View::FindFlags opt){
+    //QMetaObject::invokeMethod(m_QmlNativeWebView, "seekText",
+    //                          Q_ARG(QVariant, QVariant::fromValue(str)),
+    //                          Q_ARG(QVariant, QVariant::fromValue(static_cast<int>(opt))));
+    //return true;
+
+    // not yet implemented.
+    Q_UNUSED(str); Q_UNUSED(opt);
+    return false;
 }
 
-void QuickWebEngineView::SetFocusToElement(QString xpath){
+void QuickNativeWebView::SetFocusToElement(QString xpath){
     CallWithEvaluatedJavaScriptResult(SetFocusToElementJsCode(xpath), [](QVariant){});
 }
 
-void QuickWebEngineView::FireClickEvent(QString xpath, QPoint pos){
-    qreal zoom = m_QmlWebEngineView->property("zoomFactor").toReal();
-    CallWithEvaluatedJavaScriptResult(FireClickEventJsCode(xpath, pos/zoom), [](QVariant){});
+void QuickNativeWebView::FireClickEvent(QString xpath, QPoint pos){
+    //qreal zoom = m_QmlNativeWebView->property("zoomFactor").toReal();
+    //CallWithEvaluatedJavaScriptResult(FireClickEventJsCode(xpath, pos/zoom), [](QVariant){});
+
+    // not yet implemented.
+    Q_UNUSED(xpath); Q_UNUSED(pos);
 }
 
-void QuickWebEngineView::SetTextValue(QString xpath, QString text){
+void QuickNativeWebView::SetTextValue(QString xpath, QString text){
     CallWithEvaluatedJavaScriptResult(SetTextValueJsCode(xpath, text), [](QVariant){});
 }
 
-void QuickWebEngineView::AssignInspector(){
-    if(m_InspectorTable.contains(this)) return;
-
-    QString addr = QStringLiteral("http://localhost:%1").arg(Application::RemoteDebuggingPort());
-    QNetworkRequest req(QUrl(addr + QStringLiteral("/json")));
-    DownloadItem *item = NetworkController::Download
-        (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
-         req, NetworkController::ToVariable);
-
-    if(!item) return;
-
-    item->setParent(base());
-
-    connect(item, &DownloadItem::DownloadResult, [this, addr](const QByteArray &result){
-
-            foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
-
-                QString debuggeeValue = value.toObject()["url"].toString();
-                QString debuggerValue = value.toObject()["devtoolsFrontendUrl"].toString();
-
-                if(debuggeeValue.isEmpty() || debuggerValue.isEmpty()) break;
-
-                QUrl debuggee = QUrl(debuggeeValue);
-                QUrl debugger = QUrl(addr + debuggerValue);
-
-                if(url() == debuggee && !m_InspectorTable.values().contains(debugger)){
-                    m_InspectorTable[this] = debugger;
-                    break;
-                }
-            }
-        });
-}
-
-void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
+void QuickNativeWebView::UpdateIcon(const QUrl &iconUrl){
     m_Icon = QIcon();
     if(!page()) return;
     QString host = url().host();
     QNetworkRequest req(iconUrl);
     DownloadItem *item = NetworkController::Download
-        (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
+        (page()->GetNetworkAccessManager(),
          req, NetworkController::ToVariable);
 
     if(!item) return;
@@ -519,23 +426,22 @@ void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
         });
 }
 
-void QuickWebEngineView::HandleWindowClose(){
-    page()->CloseLater();
+void QuickNativeWebView::HandleWindowClose(){
+    QTimer::singleShot(0, page(), &Page::Close);
 }
 
-void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString &msg){
+void QuickNativeWebView::HandleJavascriptConsoleMessage(int level, const QString &msg){
     // 0: InfoMessageLevel
     if(level != 0) return;
 #ifdef PASSWORD_MANAGER
     static QString reg;
     if(reg.isEmpty()) reg = QStringLiteral("submit%1,([^,]+)").arg(Application::EventKey());
 
-    if(!page()->profile()->isOffTheRecord() &&
-       !m_PreventAuthRegistration &&
+    if(!m_PreventAuthRegistration &&
        Application::ExactMatch(reg, msg)){
 
         Application::RegisterAuthData
-            (page()->profile()->storageName() +
+            (page()->GetNetworkAccessManager()->GetId() +
              QStringLiteral(":") + url().host(),
              msg.split(QStringLiteral(","))[1]);
         return;
@@ -560,16 +466,16 @@ void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString
     }
 }
 
-void QuickWebEngineView::HandleFeaturePermission(const QUrl &securityOrigin, int feature){
+void QuickNativeWebView::HandleFeaturePermission(const QUrl &securityOrigin, int feature){
     QString featureString;
     switch(feature){
-    case 0: //QQuickWebEngineView::MediaAudioCapture:
+    case 0: //QQuickNativeWebView::MediaAudioCapture:
         featureString = QStringLiteral("MediaAudioCapture");      break;
-    case 1: //QQuickWebEngineView::MediaVideoCapture:
+    case 1: //QQuickNativeWebView::MediaVideoCapture:
         featureString = QStringLiteral("MediaVideoCapture");      break;
-    case 2: //QQuickWebEngineView::MediaAudioVideoCapture:
+    case 2: //QQuickNativeWebView::MediaAudioVideoCapture:
         featureString = QStringLiteral("MediaAudioVideoCapture"); break;
-    case 3: //QQuickWebEngineView::Geolocation:
+    case 3: //QQuickNativeWebView::Geolocation:
         featureString = QStringLiteral("Geolocation");            break;
     default: return;
     }
@@ -586,12 +492,12 @@ void QuickWebEngineView::HandleFeaturePermission(const QUrl &securityOrigin, int
 
     QString text = dialog->ClickedButton();
     if(text == tr("Yes")){
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "grantFeaturePermission_",
+        QMetaObject::invokeMethod(m_QmlNativeWebView, "grantFeaturePermission_",
                                   Q_ARG(QVariant, QVariant::fromValue(securityOrigin)),
                                   Q_ARG(QVariant, QVariant::fromValue(feature)),
                                   Q_ARG(QVariant, QVariant::fromValue(true)));
     } else if(text == tr("No")){
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "grantFeaturePermission_",
+        QMetaObject::invokeMethod(m_QmlNativeWebView, "grantFeaturePermission_",
                                   Q_ARG(QVariant, QVariant::fromValue(securityOrigin)),
                                   Q_ARG(QVariant, QVariant::fromValue(feature)),
                                   Q_ARG(QVariant, QVariant::fromValue(false)));
@@ -600,32 +506,32 @@ void QuickWebEngineView::HandleFeaturePermission(const QUrl &securityOrigin, int
     }
 }
 
-void QuickWebEngineView::HandleRenderProcessTermination(int status, int code){
+void QuickNativeWebView::HandleRenderProcessTermination(int status, int code){
     QString info = tr("A page is reloaded, because that's process is terminated.\n");
     switch(status){
-    case 0: //QQuickWebEngineView::NormalTerminationStatus:
+    case 0: //QQuickNativeWebView::NormalTerminationStatus:
         info += tr("Normal termination. (code: %1)");   break;
-    case 1: //QQuickWebEngineView::AbnormalTerminationStatus:
+    case 1: //QQuickNativeWebView::AbnormalTerminationStatus:
         info += tr("Abnormal termination. (code: %1)"); break;
-    case 2: //QQuickWebEngineView::CrashedTerminationStatus:
+    case 2: //QQuickNativeWebView::CrashedTerminationStatus:
         info += tr("Crashed termination. (code: %1)");  break;
-    case 3: //QQuickWebEngineView::KilledTerminationStatus:
+    case 3: //QQuickNativeWebView::KilledTerminationStatus:
         info += tr("Killed termination. (code: %1)");   break;
     }
     ModelessDialog::Information(tr("Render process terminated."),
                                 info.arg(code), base());
-    QTimer::singleShot(0, m_QmlWebEngineView, SLOT(reload()));
+    QTimer::singleShot(0, m_QmlNativeWebView, SLOT(reload()));
 }
 
-void QuickWebEngineView::HandleFullScreen(bool on){
+void QuickNativeWebView::HandleFullScreen(bool on){
     if(TreeBank *tb = GetTreeBank()){
         tb->GetMainWindow()->SetFullScreen(on);
         SetDisplayObscured(on);
         if(!on) return;
         ModelessDialog *dialog = new ModelessDialog();
         // connect to 'Returned', because default value is true.
-        connect(this, &QuickWebEngineView::destroyed, dialog, &ModelessDialog::Returned);
-        connect(this, &QuickWebEngineView::fullScreenRequested, dialog, &ModelessDialog::Returned);
+        connect(this, &QuickNativeWebView::destroyed, dialog, &ModelessDialog::Returned);
+        connect(this, &QuickNativeWebView::fullScreenRequested, dialog, &ModelessDialog::Returned);
         dialog->SetTitle(tr("This page becomes full screen mode."));
         dialog->SetCaption(tr("Press Esc to exit."));
         dialog->SetButtons(QStringList() << tr("OK") << tr("Cancel"));
@@ -635,67 +541,55 @@ void QuickWebEngineView::HandleFullScreen(bool on){
     }
 }
 
-void QuickWebEngineView::HandleDownload(QObject *object){
-    static_cast<NetworkAccessManager*>(page()->networkAccessManager())->HandleDownload(object);
+void QuickNativeWebView::HandleDownload(QObject *object){
+    page()->GetNetworkAccessManager()->HandleDownload(object);
 }
 
-#if QT_VERSION >= 0x050700
-void QuickWebEngineView::HandleContentsSizeChange(const QSizeF &size){
-    Q_UNUSED(size);
-    RestoreScroll();
+void QuickNativeWebView::Copy(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "copy");
 }
 
-void QuickWebEngineView::HandleScrollPositionChange(const QPointF &pos){
-    Q_UNUSED(pos);
-    EmitScrollChanged();
-}
-#endif
-
-void QuickWebEngineView::Copy(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "copy");
+void QuickNativeWebView::Cut(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "cut");
 }
 
-void QuickWebEngineView::Cut(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "cut");
+void QuickNativeWebView::Paste(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "paste");
 }
 
-void QuickWebEngineView::Paste(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "paste");
+void QuickNativeWebView::Undo(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "undo");
 }
 
-void QuickWebEngineView::Undo(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "undo");
+void QuickNativeWebView::Redo(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "redo");
 }
 
-void QuickWebEngineView::Redo(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "redo");
+void QuickNativeWebView::SelectAll(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "selectAll");
 }
 
-void QuickWebEngineView::SelectAll(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "selectAll");
+void QuickNativeWebView::Unselect(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "unselect");
 }
 
-void QuickWebEngineView::Unselect(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "unselect");
+void QuickNativeWebView::Reload(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "reload");
 }
 
-void QuickWebEngineView::Reload(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "reload");
+void QuickNativeWebView::ReloadAndBypassCache(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "reloadAndBypassCache");
 }
 
-void QuickWebEngineView::ReloadAndBypassCache(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "reloadAndBypassCache");
+void QuickNativeWebView::Stop(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "stop");
 }
 
-void QuickWebEngineView::Stop(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "stop");
+void QuickNativeWebView::StopAndUnselect(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "stopAndUnselect");
 }
 
-void QuickWebEngineView::StopAndUnselect(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "stopAndUnselect");
-}
-
-void QuickWebEngineView::Print(){
+void QuickNativeWebView::Print(){
 #if QT_VERSION >= 0x050700
 
     QString filename = ModalDialog::GetSaveFileName_
@@ -706,12 +600,12 @@ void QuickWebEngineView::Print(){
 
     if(filename.toLower().endsWith(".pdf")){
 
-        QMetaObject::invokeMethod(m_QmlWebEngineView, "printToPdf",
+        QMetaObject::invokeMethod(m_QmlNativeWebView, "printToPdf",
                                   Q_ARG(QString, filename));
     } else {
         QSize origSize = size();
-        QPointF origPos = m_QmlWebEngineView->property("scrollPosition").toPointF();
-        QSizeF contentsSize = m_QmlWebEngineView->property("contentsSize").toSizeF();
+        QPointF origPos = m_QmlNativeWebView->property("scrollPosition").toPointF();
+        QSizeF contentsSize = m_QmlNativeWebView->property("contentsSize").toSizeF();
         resize(contentsSize.toSize());
 
         QTimer::singleShot(700, [this, filename, origSize, origPos](){
@@ -727,9 +621,9 @@ void QuickWebEngineView::Print(){
 #endif
 }
 
-void QuickWebEngineView::Save(){
+void QuickNativeWebView::Save(){
 #if QT_VERSION >= 0x050700
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "save");
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "save");
 #else
     if(!page()) return;
     QNetworkRequest req(url());
@@ -738,56 +632,47 @@ void QuickWebEngineView::Save(){
 #endif
 }
 
-void QuickWebEngineView::ZoomIn(){
+void QuickNativeWebView::ZoomIn(){
     float zoom = PrepareForZoomIn();
-    m_QmlWebEngineView->setProperty("zoomFactor", static_cast<qreal>(zoom));
+    m_QmlNativeWebView->setProperty("zoomFactor", static_cast<qreal>(zoom));
     emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
 }
 
-void QuickWebEngineView::ZoomOut(){
+void QuickNativeWebView::ZoomOut(){
     float zoom = PrepareForZoomOut();
-    m_QmlWebEngineView->setProperty("zoomFactor", static_cast<qreal>(zoom));
+    m_QmlNativeWebView->setProperty("zoomFactor", static_cast<qreal>(zoom));
     emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
 }
 
-void QuickWebEngineView::ExitFullScreen(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "fullScreenCancelled");
+void QuickNativeWebView::ExitFullScreen(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "fullScreenCancelled");
 }
 
-void QuickWebEngineView::InspectElement(){
-    if(!m_Inspector){
-        m_Inspector = new QWebEngineView();
-        m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
-        m_Inspector->load(m_InspectorTable[this]);
-    } else {
-        m_Inspector->reload();
-    }
-    m_Inspector->show();
-    m_Inspector->raise();
-    //if(page()) page()->InspectElement();
+void QuickNativeWebView::AddSearchEngine(QPoint pos){
+    Q_UNUSED(pos);
+    // not yet implemented.
+    //if(page()) page()->AddSearchEngine(pos);
 }
 
-void QuickWebEngineView::AddSearchEngine(QPoint pos){
-    if(page()) page()->AddSearchEngine(pos);
+void QuickNativeWebView::AddBookmarklet(QPoint pos){
+    Q_UNUSED(pos);
+    // not yet implemented.
+    //if(page()) page()->AddBookmarklet(pos);
 }
 
-void QuickWebEngineView::AddBookmarklet(QPoint pos){
-    if(page()) page()->AddBookmarklet(pos);
-}
-
-void QuickWebEngineView::hideEvent(QHideEvent *ev){
+void QuickNativeWebView::hideEvent(QHideEvent *ev){
     if(GetDisplayObscured()) ExitFullScreen();
     SaveViewState();
     QQuickWidget::hideEvent(ev);
 }
 
-void QuickWebEngineView::showEvent(QShowEvent *ev){
+void QuickNativeWebView::showEvent(QShowEvent *ev){
     m_PreventScrollRestoration = false;
     QQuickWidget::showEvent(ev);
     RestoreViewState();
 }
 
-void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
+void QuickNativeWebView::keyPressEvent(QKeyEvent *ev){
     if(!visible()) return;
 
     if(GetDisplayObscured()){
@@ -803,7 +688,7 @@ void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
        ev->key() == Qt::Key_Return){
 
         QString data = Application::GetAuthData
-            (page()->profile()->storageName() +
+            (page()->GetNetworkAccessManager()->GetId() +
              QStringLiteral(":") + url().host());
 
         if(!data.isEmpty()){
@@ -854,7 +739,7 @@ void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
     }
 }
 
-void QuickWebEngineView::keyReleaseEvent(QKeyEvent *ev){
+void QuickNativeWebView::keyReleaseEvent(QKeyEvent *ev){
     Q_UNUSED(ev);
 
     if(!visible()) return;
@@ -862,33 +747,19 @@ void QuickWebEngineView::keyReleaseEvent(QKeyEvent *ev){
     //QQuickWidget::keyReleaseEvent(ev);
 
 #if QT_VERSION < 0x050700
-    int k = ev->key();
-
-    if(k == Qt::Key_Space ||
-     //k == Qt::Key_Up ||
-     //k == Qt::Key_Down ||
-     //k == Qt::Key_Right ||
-     //k == Qt::Key_Left ||
-       k == Qt::Key_PageUp ||
-       k == Qt::Key_PageDown ||
-       k == Qt::Key_Home ||
-       k == Qt::Key_End){
-
-        bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-        QTimer::singleShot(animated ? 500 : 100, this, &WebEngineView::EmitScrollChanged);
-    }
+    EmitScrollChanged();
 #endif
 }
 
-void QuickWebEngineView::resizeEvent(QResizeEvent *ev){
+void QuickNativeWebView::resizeEvent(QResizeEvent *ev){
     QQuickWidget::resizeEvent(ev);
 }
 
-void QuickWebEngineView::contextMenuEvent(QContextMenuEvent *ev){
+void QuickNativeWebView::contextMenuEvent(QContextMenuEvent *ev){
     ev->setAccepted(true);
 }
 
-void QuickWebEngineView::mouseMoveEvent(QMouseEvent *ev){
+void QuickNativeWebView::mouseMoveEvent(QMouseEvent *ev){
     if(!m_TreeBank) return;
 
     Application::SetCurrentWindow(m_TreeBank->GetMainWindow());
@@ -943,7 +814,7 @@ void QuickWebEngineView::mouseMoveEvent(QMouseEvent *ev){
         Application::ClearTemporaryDirectory();
 
         NetworkAccessManager *nam =
-            static_cast<NetworkAccessManager*>(page()->networkAccessManager());
+            page()->GetNetworkAccessManager();
 
         QMimeData *mime = m_HadSelection
             ? CreateMimeDataFromSelection(nam)
@@ -1010,7 +881,7 @@ void QuickWebEngineView::mouseMoveEvent(QMouseEvent *ev){
     }
 }
 
-void QuickWebEngineView::mousePressEvent(QMouseEvent *ev){
+void QuickNativeWebView::mousePressEvent(QMouseEvent *ev){
     QString mouse;
 
     Application::AddModifiersToString(mouse, ev->modifiers());
@@ -1023,6 +894,7 @@ void QuickWebEngineView::mousePressEvent(QMouseEvent *ev){
         if(!str.isEmpty()){
             if(!View::TriggerAction(str, ev->pos())){
                 ev->setAccepted(false);
+                qDebug() << "Invalid mouse event: " << str;
                 return;
             }
             GestureAborted();
@@ -1036,7 +908,7 @@ void QuickWebEngineView::mousePressEvent(QMouseEvent *ev){
     ev->setAccepted(true);
 }
 
-void QuickWebEngineView::mouseReleaseEvent(QMouseEvent *ev){
+void QuickNativeWebView::mouseReleaseEvent(QMouseEvent *ev){
     emit statusBarMessage(QString());
 
     QUrl link = m_ClickedElement ? m_ClickedElement->LinkUrl() : QUrl();
@@ -1083,7 +955,8 @@ void QuickWebEngineView::mouseReleaseEvent(QMouseEvent *ev){
         } else if(!m_GestureStartedPos.isNull()){
             SharedWebElement elem = m_ClickedElement;
             GestureAborted(); // resets 'm_ClickedElement'.
-            page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos());
+            // not yet implemented.
+            //page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos());
         }
         ev->setAccepted(true);
         return;
@@ -1097,12 +970,12 @@ void QuickWebEngineView::mouseReleaseEvent(QMouseEvent *ev){
     ev->setAccepted(true);
 }
 
-void QuickWebEngineView::mouseDoubleClickEvent(QMouseEvent *ev){
+void QuickNativeWebView::mouseDoubleClickEvent(QMouseEvent *ev){
     QQuickWidget::mouseDoubleClickEvent(ev);
     ev->setAccepted(false);
 }
 
-void QuickWebEngineView::dragEnterEvent(QDragEnterEvent *ev){
+void QuickNativeWebView::dragEnterEvent(QDragEnterEvent *ev){
     m_DragStarted = true;
     ev->setDropAction(Qt::MoveAction);
     ev->acceptProposedAction();
@@ -1110,7 +983,7 @@ void QuickWebEngineView::dragEnterEvent(QDragEnterEvent *ev){
     ev->setAccepted(true);
 }
 
-void QuickWebEngineView::dragMoveEvent(QDragMoveEvent *ev){
+void QuickNativeWebView::dragMoveEvent(QDragMoveEvent *ev){
     if(m_EnableDragHackLocal && !m_GestureStartedPos.isNull()){
 
         GestureMoved(ev->pos());
@@ -1127,7 +1000,7 @@ void QuickWebEngineView::dragMoveEvent(QDragMoveEvent *ev){
     ev->setAccepted(true);
 }
 
-void QuickWebEngineView::dropEvent(QDropEvent *ev){
+void QuickNativeWebView::dropEvent(QDropEvent *ev){
     emit statusBarMessage(QString());
     QPoint pos = ev->pos();
     QList<QUrl> urls = ev->mimeData()->urls();
@@ -1185,13 +1058,13 @@ void QuickWebEngineView::dropEvent(QDropEvent *ev){
     ev->setAccepted(true);
 }
 
-void QuickWebEngineView::dragLeaveEvent(QDragLeaveEvent *ev){
+void QuickNativeWebView::dragLeaveEvent(QDragLeaveEvent *ev){
     ev->setAccepted(false);
     m_DragStarted = false;
     QQuickWidget::dragLeaveEvent(ev);
 }
 
-void QuickWebEngineView::wheelEvent(QWheelEvent *ev){
+void QuickNativeWebView::wheelEvent(QWheelEvent *ev){
     if(!visible()) return;
 
     QString wheel;
@@ -1205,7 +1078,8 @@ void QuickWebEngineView::wheelEvent(QWheelEvent *ev){
 
         QString str = m_MouseMap[wheel];
         if(!str.isEmpty()){
-            View::TriggerAction(str, ev->pos());
+            if(!View::TriggerAction(str, ev->pos()))
+                qDebug() << "Invalid mouse event: " << str;
         }
         ev->setAccepted(true);
 
@@ -1215,42 +1089,41 @@ void QuickWebEngineView::wheelEvent(QWheelEvent *ev){
         ev->setAccepted(true);
     }
 #if QT_VERSION < 0x050700
-    bool animated = m_View->page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-    QTimer::singleShot(animated ? 500 : 100, m_View, &WebEngineView::EmitScrollChanged);
+    EmitScrollChanged();
 #endif
 }
 
-void QuickWebEngineView::focusInEvent(QFocusEvent *ev){
+void QuickNativeWebView::focusInEvent(QFocusEvent *ev){
     QQuickWidget::focusInEvent(ev);
     OnFocusIn();
 }
 
-void QuickWebEngineView::focusOutEvent(QFocusEvent *ev){
+void QuickNativeWebView::focusOutEvent(QFocusEvent *ev){
     QQuickWidget::focusOutEvent(ev);
     OnFocusOut();
 }
 
-bool QuickWebEngineView::focusNextPrevChild(bool next){
+bool QuickNativeWebView::focusNextPrevChild(bool next){
     if(!m_Switching && visible())
         return QQuickWidget::focusNextPrevChild(next);
     return false;
 }
 
-void QuickWebEngineView::CallWithGotBaseUrl(UrlCallBack callBack){
+void QuickNativeWebView::CallWithGotBaseUrl(UrlCallBack callBack){
     CallWithEvaluatedJavaScriptResult
         (GetBaseUrlJsCode(), [callBack](QVariant var){
             callBack(var.isValid() ? var.toUrl() : QUrl());
         });
 }
 
-void QuickWebEngineView::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
+void QuickNativeWebView::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
     CallWithEvaluatedJavaScriptResult
         (GetCurrentBaseUrlJsCode(), [callBack](QVariant var){
             callBack(var.isValid() ? var.toUrl() : QUrl());
         });
 }
 
-void QuickWebEngineView::CallWithFoundElements(Page::FindElementsOption option,
+void QuickNativeWebView::CallWithFoundElements(Page::FindElementsOption option,
                                                WebElementListCallBack callBack){
     CallWithEvaluatedJavaScriptResult
         (FindElementsJsCode(option), [this, callBack](QVariant var){
@@ -1277,7 +1150,7 @@ void QuickWebEngineView::CallWithFoundElements(Page::FindElementsOption option,
         });
 }
 
-void QuickWebEngineView::CallWithHitElement(const QPoint &pos, WebElementCallBack callBack){
+void QuickNativeWebView::CallWithHitElement(const QPoint &pos, WebElementCallBack callBack){
     if(pos.isNull()) return callBack(SharedWebElement());
     CallWithEvaluatedJavaScriptResult
         (HitElementJsCode(pos / m_HistNode->GetZoom()), [this, callBack](QVariant var){
@@ -1288,7 +1161,7 @@ void QuickWebEngineView::CallWithHitElement(const QPoint &pos, WebElementCallBac
         });
 }
 
-void QuickWebEngineView::CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack){
+void QuickNativeWebView::CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack){
     if(pos.isNull()) return callBack(QUrl());
     CallWithEvaluatedJavaScriptResult
         (HitLinkUrlJsCode(pos / m_HistNode->GetZoom()), [callBack](QVariant var){
@@ -1296,7 +1169,7 @@ void QuickWebEngineView::CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callB
         });
 }
 
-void QuickWebEngineView::CallWithHitImageUrl(const QPoint &pos, UrlCallBack callBack){
+void QuickNativeWebView::CallWithHitImageUrl(const QPoint &pos, UrlCallBack callBack){
     if(pos.isNull()) return callBack(QUrl());
     CallWithEvaluatedJavaScriptResult
         (HitImageUrlJsCode(pos / m_HistNode->GetZoom()), [callBack](QVariant var){
@@ -1304,35 +1177,35 @@ void QuickWebEngineView::CallWithHitImageUrl(const QPoint &pos, UrlCallBack call
         });
 }
 
-void QuickWebEngineView::CallWithSelectedText(StringCallBack callBack){
+void QuickNativeWebView::CallWithSelectedText(StringCallBack callBack){
     CallWithEvaluatedJavaScriptResult
         (SelectedTextJsCode(), [callBack](QVariant var){
             callBack(var.isValid() ? var.toString() : QString());
         });
 }
 
-void QuickWebEngineView::CallWithSelectedHtml(StringCallBack callBack){
+void QuickNativeWebView::CallWithSelectedHtml(StringCallBack callBack){
     CallWithEvaluatedJavaScriptResult
         (SelectedHtmlJsCode(), [callBack](QVariant var){
             callBack(var.isValid() ? var.toString() : QString());
         });
 }
 
-void QuickWebEngineView::CallWithWholeText(StringCallBack callBack){
+void QuickNativeWebView::CallWithWholeText(StringCallBack callBack){
     CallWithEvaluatedJavaScriptResult
         (WholeTextJsCode(), [callBack](QVariant var){
             callBack(var.isValid() ? var.toString() : QString());
         });
 }
 
-void QuickWebEngineView::CallWithWholeHtml(StringCallBack callBack){
+void QuickNativeWebView::CallWithWholeHtml(StringCallBack callBack){
     CallWithEvaluatedJavaScriptResult
         (WholeHtmlJsCode(), [callBack](QVariant var){
             callBack(var.isValid() ? var.toString() : QString());
         });
 }
 
-void QuickWebEngineView::CallWithSelectionRegion(RegionCallBack callBack){
+void QuickNativeWebView::CallWithSelectionRegion(RegionCallBack callBack){
     QRect viewport = QRect(QPoint(), size());
     CallWithEvaluatedJavaScriptResult
         (SelectionRegionJsCode(), [viewport, callBack](QVariant var){
@@ -1351,22 +1224,22 @@ void QuickWebEngineView::CallWithSelectionRegion(RegionCallBack callBack){
         });
 }
 
-void QuickWebEngineView::CallWithEvaluatedJavaScriptResult(const QString &code,
+void QuickNativeWebView::CallWithEvaluatedJavaScriptResult(const QString &code,
                                                            VariantCallBack callBack){
     int requestId = m_RequestId++;
     std::shared_ptr<QMetaObject::Connection> connection =
         std::make_shared<QMetaObject::Connection>();
     *connection =
-        connect(this, &QuickWebEngineView::CallBackResult,
+        connect(this, &QuickNativeWebView::CallBackResult,
                 [this, requestId, callBack, connection](int id, QVariant result){
                     if(requestId != id) return;
                     QObject::disconnect(*connection);
                     callBack(result);
                 });
 
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "evaluateJavaScript",
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "evaluateJavaScript",
                               Q_ARG(QVariant, QVariant::fromValue(requestId)),
                               Q_ARG(QVariant, QVariant::fromValue(code)));
 }
 
-#endif //ifdef WEBENGINEVIEW
+#endif //ifdef NATIVEWEBVIEW

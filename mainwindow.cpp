@@ -29,8 +29,10 @@
 #include "dialog.hpp"
 #include "treebar.hpp"
 #include "toolbar.hpp"
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
 #  include <QtWin>
+#endif
+#ifdef TRIDENTVIEW
 #  include "tridentview.hpp"
 #endif
 
@@ -96,7 +98,7 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
     }
 
     show();
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_NoSystemBackground);
     QtWin::setCompositionEnabled(true);
@@ -170,12 +172,23 @@ void MainWindow::LoadSettings(){
 
         QRect rect = current
             ? current->geometry()
-            : DEFAULT_WINDOW_RECT;
+            : QRect();
 
-        if(pos().isNull())
-            rect.translate(20, 20);
-        else
-            rect.moveTopLeft(pos());
+        if(rect.isNull()){
+            QDesktopWidget desktop;
+            if(desktop.screenCount()){
+                rect = desktop.screenGeometry(desktop.primaryScreen());
+                rect = QRect(rect.x() + rect.width()  / 6,
+                             rect.y() + rect.height() / 6,
+                             rect.width() * 2 / 3, rect.height() * 2 / 3);
+            }
+        } else {
+
+            if(pos().isNull())
+                rect.translate(20, 20);
+            else
+                rect.moveTopLeft(pos());
+        }
 
         setGeometry(rect);
 
@@ -257,13 +270,20 @@ void MainWindow::LoadSettings(){
     // 'setGeometry' and 'restoreGeometry' are asynchronous API.
     bool contains = false;
     QDesktopWidget desktop;
-    for(int i = 0; i < desktop.screenCount(); i++){
-        if(desktop.screenGeometry(i).intersects(geometry())){
-            contains = true;
-            break;
+    if(desktop.screenCount()){
+        for(int i = 0; i < desktop.screenCount(); i++){
+            if(desktop.screenGeometry(i).intersects(geometry())){
+                contains = true;
+                break;
+            }
+        }
+        if(!contains){
+            QRect rect = desktop.screenGeometry(desktop.primaryScreen());
+            setGeometry(rect.x() + rect.width()  / 6,
+                        rect.y() + rect.height() / 6,
+                        rect.width() * 2 / 3, rect.height() * 2 / 3);
         }
     }
-    if(!contains) setGeometry(DEFAULT_WINDOW_RECT);
 
     QVariant status = s.value(QStringLiteral("mainwindow/status%1").arg(m_Index), QVariant());
 
@@ -332,12 +352,16 @@ void MainWindow::Shade(){
     setWindowOpacity(0.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            if(0);
+#ifdef WEBENGINEVIEW
+            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->hide();
-#if defined(Q_OS_WIN)
+#endif
+#ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
                 w->hide();
 #endif
+            else;
         }
     }
     AdjustAllEdgeWidgets();
@@ -352,12 +376,16 @@ void MainWindow::Unshade(){
     setWindowOpacity(1.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            if(0);
+#ifdef WEBENGINEVIEW
+            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
-#if defined(Q_OS_WIN)
+#endif
+#ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
                 w->show();
 #endif
+            else;
         }
     }
     AdjustAllEdgeWidgets();
@@ -664,12 +692,16 @@ void MainWindow::moveEvent(QMoveEvent *ev){
     QMainWindow::moveEvent(ev);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            if(0);
+#ifdef WEBENGINEVIEW
+            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->setGeometry(geometry());
-#if defined(Q_OS_WIN)
+#endif
+#ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
                 w->setGeometry(geometry());
 #endif
+            else;
         }
     }
     AdjustAllEdgeWidgets();
@@ -690,12 +722,16 @@ void MainWindow::showEvent(QShowEvent *ev){
     QMainWindow::showEvent(ev);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            if(0);
+#ifdef WEBENGINEVIEW
+            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
-#if defined(Q_OS_WIN)
+#endif
+#ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
                 w->show();
 #endif
+            else;
         }
     }
     ShowAllEdgeWidgets();
@@ -708,12 +744,16 @@ void MainWindow::showEvent(QShowEvent *ev){
 void MainWindow::hideEvent(QHideEvent *ev){
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+            if(0);
+#ifdef WEBENGINEVIEW
+            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
-#if defined(Q_OS_WIN)
+#endif
+#ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
                 w->show();
 #endif
+            else;
         }
     }
     HideAllEdgeWidgets();
@@ -737,10 +777,10 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
         case WM_SYSCOMMAND:{
             if(IsMenuBarEmpty() && (msg->wParam & 0xFFF0) == SC_MOUSEMENU){
                 QTimer::singleShot(0, [this](){
-                        QMenu *menu = GetTreeBank()->GlobalContextMenu();
-                        menu->exec(QCursor::pos());
-                        delete menu;
-                    });
+                    QMenu *menu = GetTreeBank()->GlobalContextMenu();
+                    menu->exec(QCursor::pos());
+                    delete menu;
+                });
                 return true;
             }
             break;
@@ -748,12 +788,16 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
         case WM_WINDOWPOSCHANGED:{
             if(TreeBank::PurgeView()){
                 if(SharedView view = m_TreeBank->GetCurrentView()){
-                    if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+                    if(0);
+#ifdef WEBENGINEVIEW
+                    else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                         w->raise();
-#if defined(Q_OS_WIN)
+#endif
+#ifdef TRIDENTVIEW
                     else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
                         w->raise();
 #endif
+                    else;
                 }
             }
             RaiseAllEdgeWidgets();

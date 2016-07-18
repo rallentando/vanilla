@@ -28,16 +28,19 @@ public:
     ~LineEdit();
 
 protected:
-    void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE;
-    void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE;
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE;
-    void inputMethodEvent(QInputMethodEvent *ev) DECL_OVERRIDE;
+    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE;
+    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
+    void inputMethodEvent(QInputMethodEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
 
 signals:
     void Returned();
     void Aborted();
-    void FocusIn();
-    void FocusOut();
+    void FocusIn(Qt::FocusReason);
+    void FocusOut(Qt::FocusReason);
     void SelectNextSuggest();
     void SelectPrevSuggest();
 };
@@ -91,16 +94,16 @@ private:
     int m_CurrentSuggestIndex;
 
 protected:
-    void focusInEvent(QFocusEvent *ev) DECL_OVERRIDE;
-    void focusOutEvent(QFocusEvent *ev) DECL_OVERRIDE;
-    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
-    void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
-    void hideEvent(QHideEvent *ev) DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) DECL_OVERRIDE;
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE;
+    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE;
+    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
+    void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
+    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
 
 signals:
     void FocusIn();

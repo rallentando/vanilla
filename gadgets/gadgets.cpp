@@ -12,6 +12,7 @@
 #include <QAction>
 #include <QtWidgets>
 #include <QStyle>
+#include <QNetworkRequest>
 
 #include <functional>
 
@@ -30,6 +31,7 @@
 #include "view.hpp"
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
+#include "quicknativewebview.hpp"
 
 #if defined(Q_OS_WIN)
 #  include "tridentview.hpp"
@@ -1527,7 +1529,7 @@ QMenu *Gadgets::CreateNodeMenu(){
 
 void Gadgets::RenderBackground(QPainter *painter){
     if(GetStyle()->StyleName() != QStringLiteral("FlatStyle")
-#if defined(Q_OS_WIN)
+#ifdef TRIDENTVIEW
        && !TreeBank::TridentViewExist()
 #endif
        ){
@@ -1558,14 +1560,22 @@ void Gadgets::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
-        if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
+        if(0);
+#ifdef WEBENGINEVIEW
+        else if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
-#if defined(Q_OS_WIN)
+#endif
+#ifdef NATIVEWEBVIEW
+        else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(GetTreeBank()->GetCurrentView()->base()))
+            view = w;
+#endif
+#ifdef TRIDENTVIEW
         else if(TridentView *w = qobject_cast<TridentView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
 #endif
+        else;
     }
 
     if(view){

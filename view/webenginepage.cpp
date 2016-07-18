@@ -1,6 +1,8 @@
 #include "switch.hpp"
 #include "const.hpp"
 
+#ifdef WEBENGINEVIEW
+
 #include "webenginepage.hpp"
 #include "page.hpp"
 
@@ -34,6 +36,7 @@
 #include "quickwebengineview.hpp"
 #include "application.hpp"
 #include "mainwindow.hpp"
+#include "gadgets.hpp"
 #include "networkcontroller.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
@@ -91,6 +94,12 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, QObject *parent)
             this, SLOT(HandleFullScreen(QWebEngineFullScreenRequest)));
     connect(this, SIGNAL(renderProcessTerminated(RenderProcessTerminationStatus, int)),
             this, SLOT(HandleProcessTermination(RenderProcessTerminationStatus, int)));
+#if QT_VERSION >= 0x050700
+    connect(this, SIGNAL(contentsSizeChanged(const QSizeF&)),
+            this, SLOT(HandleContentsSizeChange(const QSizeF&)));
+    connect(this, SIGNAL(scrollPositionChanged(const QPointF&)),
+            this, SLOT(HandleScrollPositionChange(const QPointF&)));
+#endif
 
     // instead of this.
     //m_View = (View *)parent;
@@ -122,11 +131,30 @@ View* WebEnginePage::GetView(){
 }
 
 WebEnginePage* WebEnginePage::createWindow(WebWindowType type){
-    Q_UNUSED(type);
-    View *view = OpenInNew(QUrl(QStringLiteral("about:blank")));
 
-    if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+    static const QUrl blank = QUrl(QStringLiteral("about:blank"));
+
+    View *view = type == QWebEnginePage::WebBrowserBackgroundTab
+        ? OpenInNewBackground(blank)
+        : OpenInNew(blank);
+
+    if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
+
+        if(type != QWebEnginePage::WebBrowserBackgroundTab){
+            // when resetting web contents adapter, lose focus.
+            QTimer::singleShot(0, w, [w](){
+                if(!w->visible()) return;
+                if(TreeBank *tb = w->GetTreeBank()){
+                    if(tb->parentWidget()->isActiveWindow() &&
+                       tb->IsCurrent(w->GetThis().lock())){
+                        Gadgets *g = tb->GetGadgets();
+                        if(g && !g->IsActive()) w->setFocus();
+                    }
+                }
+            });
+        }
         return w->page();
+    }
     return 0;
 }
 
@@ -265,7 +293,7 @@ bool WebEnginePage::certificateError(const QWebEngineCertificateError& error){
 }
 
 void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,
-                                             int lineNumber, const QString &sourceID){
+                                             int lineNumber, const QString &sourceId){
 #ifdef PASSWORD_MANAGER
     static QString reg;
     if(reg.isEmpty()) reg = QStringLiteral("submit%1,([^,]+)").arg(Application::EventKey());
@@ -284,7 +312,7 @@ void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level
         }
     }
 #endif
-    QWebEnginePage::javaScriptConsoleMessage(level, msg, lineNumber, sourceID);
+    QWebEnginePage::javaScriptConsoleMessage(level, msg, lineNumber, sourceId);
 }
 
 QNetworkAccessManager *WebEnginePage::networkAccessManager() const{
@@ -451,6 +479,18 @@ void WebEnginePage::HandleProcessTermination(RenderProcessTerminationStatus stat
                                 info.arg(code), m_View->base());
     QTimer::singleShot(0, m_Page, SLOT(Reload()));
 }
+
+#if QT_VERSION >= 0x050700
+void WebEnginePage::HandleContentsSizeChange(const QSizeF &size){
+    Q_UNUSED(size);
+    m_View->RestoreScroll();
+}
+
+void WebEnginePage::HandleScrollPositionChange(const QPointF &pos){
+    Q_UNUSED(pos);
+    m_View->EmitScrollChanged();
+}
+#endif
 
 void WebEnginePage::HandleUnsupportedContent(QNetworkReply *reply){
     Q_UNUSED(reply);
@@ -707,3 +747,4 @@ void WebEnginePage::DownloadSuggest(const QUrl& url){
     connect(item, &DownloadItem::DownloadResult, this, &WebEnginePage::SuggestResult);
 }
 
+#endif //ifdef WEBENGINEVIEW

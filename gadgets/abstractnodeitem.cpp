@@ -135,7 +135,7 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 
     if(ev->button() == Qt::RightButton){
         // for sort menu.
-        ev->setAccepted(!(Application::keyboardModifiers() & Qt::ControlModifier));
+        ev->setAccepted(!(ev->modifiers() & Qt::ControlModifier));
         return;
     }
 
@@ -145,20 +145,21 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
         return;
     }
 
-    if(Application::keyboardModifiers() & Qt::ControlModifier){
+    if(ev->modifiers() & Qt::ControlModifier){
         setSelected(!isSelected());
         if(isSelected()){
             m_TableView->AppendToSelection(m_Node);
         } else {
             m_TableView->RemoveFromSelection(m_Node);
         }
-    } else if(Application::keyboardModifiers() & Qt::ShiftModifier){
+    } else if(ev->modifiers() & Qt::ShiftModifier){
         SetSelectionRange();
     } else {
         ClearOtherSectionSelection();
         m_TableView->ClearScrollIndicatorSelection();
         QGraphicsItem::mousePressEvent(ev);
     }
+    SetHovered(); // SetHovered sets GraphicsButton.
     ev->setAccepted(true);
 }
 
@@ -200,9 +201,9 @@ void AbstractNodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 
     } else if(pos().manhattanLength() != 0){
         foreach(QGraphicsItem *item, scene()->selectedItems()){ item->setPos(QPoint(0,0));}
-    } else if(Application::keyboardModifiers() & Qt::ControlModifier){
+    } else if(ev->modifiers() & Qt::ControlModifier){
         /* do nothing.*/
-    } else if(Application::keyboardModifiers() & Qt::ShiftModifier){
+    } else if(ev->modifiers() & Qt::ShiftModifier){
         /* do nothing.*/
     } else {
         m_TableView->ThumbList_OpenNode();

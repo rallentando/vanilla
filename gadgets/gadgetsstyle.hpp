@@ -59,7 +59,7 @@ public:
     explicit GlassStyle(){}
     virtual ~GlassStyle(){}
 
-    QString StyleName() const DECL_OVERRIDE { return QStringLiteral("GlassStyle");}
+    QString StyleName() const Q_DECL_OVERRIDE { return QStringLiteral("GlassStyle");}
 
     static const QFont m_ThumbnailTitleFont;
 
@@ -81,42 +81,42 @@ public:
     static const int m_InPlaceNotifierHeight;
     static const bool m_InPlaceNotifierDrawBorder;
 
-    void ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const DECL_OVERRIDE;
-    void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const DECL_OVERRIDE;
-    void Render(Thumbnail *thumb, QPainter *painter) const DECL_OVERRIDE;
-    void Render(NodeTitle *title, QPainter *painter) const DECL_OVERRIDE;
-    void Render(SpotLight *light, QPainter *painter) const DECL_OVERRIDE;
-    void Render(InPlaceNotifier *notifier, QPainter *painter) const DECL_OVERRIDE;
-    void Render(CloseButton *button, QPainter *painter) const DECL_OVERRIDE;
-    void Render(CloneButton *button, QPainter *painter) const DECL_OVERRIDE;
+    void ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const Q_DECL_OVERRIDE;
+    void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(Thumbnail *thumb, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(NodeTitle *title, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(SpotLight *light, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(InPlaceNotifier *notifier, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(CloseButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(CloneButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
 #if QT_VERSION >= 0x050700
-    void Render(SoundButton *button, QPainter *painter) const DECL_OVERRIDE;
+    void Render(SoundButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
 #endif
-    void Render(UpDirectoryButton *button, QPainter *painter) const DECL_OVERRIDE;
-    void Render(ToggleTrashButton *button, QPainter *painter) const DECL_OVERRIDE;
-    void Render(AccessibleWebElement *awe, QPainter *painter) const DECL_OVERRIDE;
-    void OnSetNest(Thumbnail *thumb, int nest) const DECL_OVERRIDE;
-    void OnSetNest(NodeTitle *title, int nest) const DECL_OVERRIDE;
-    void OnSetPrimary(Thumbnail *thumb, bool primary) const DECL_OVERRIDE;
-    void OnSetPrimary(NodeTitle *title, bool primary) const DECL_OVERRIDE;
-    void OnSetHovered(Thumbnail *thumb, bool hovered) const DECL_OVERRIDE;
-    void OnSetHovered(NodeTitle *title, bool hovered) const DECL_OVERRIDE;
-    void OnSetState(GraphicsButton *button, GraphicsButton::ButtonState) const DECL_OVERRIDE;
-    void OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const DECL_OVERRIDE;
-    void OnReshow(QGraphicsRectItem *gri) const DECL_OVERRIDE;
-    QRectF ThumbnailAreaRect(GraphicsTableView *gtv) const DECL_OVERRIDE;
-    QRectF NodeTitleAreaRect(GraphicsTableView *gtv) const DECL_OVERRIDE;
-    QRectF ScrollBarAreaRect(GraphicsTableView *gtv) const DECL_OVERRIDE;
-    QGraphicsRectItem *CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const DECL_OVERRIDE;
+    void Render(UpDirectoryButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(ToggleTrashButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(AccessibleWebElement *awe, QPainter *painter) const Q_DECL_OVERRIDE;
+    void OnSetNest(Thumbnail *thumb, int nest) const Q_DECL_OVERRIDE;
+    void OnSetNest(NodeTitle *title, int nest) const Q_DECL_OVERRIDE;
+    void OnSetPrimary(Thumbnail *thumb, bool primary) const Q_DECL_OVERRIDE;
+    void OnSetPrimary(NodeTitle *title, bool primary) const Q_DECL_OVERRIDE;
+    void OnSetHovered(Thumbnail *thumb, bool hovered) const Q_DECL_OVERRIDE;
+    void OnSetHovered(NodeTitle *title, bool hovered) const Q_DECL_OVERRIDE;
+    void OnSetState(GraphicsButton *button, GraphicsButton::ButtonState) const Q_DECL_OVERRIDE;
+    void OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const Q_DECL_OVERRIDE;
+    void OnReshow(QGraphicsRectItem *gri) const Q_DECL_OVERRIDE;
+    QRectF ThumbnailAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
+    QRectF NodeTitleAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
+    QRectF ScrollBarAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
+    QGraphicsRectItem *CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const Q_DECL_OVERRIDE;
 
-    bool ScrollToChangeDirectory(bool value) const DECL_OVERRIDE { return value;}
-    bool RightClickToRenameNode(bool value) const DECL_OVERRIDE { return value;}
-    bool UseGraphicsItemUpdate() const DECL_OVERRIDE { return false;}
+    bool ScrollToChangeDirectory(bool value) const Q_DECL_OVERRIDE { return value;}
+    bool RightClickToRenameNode(bool value) const Q_DECL_OVERRIDE { return value;}
+    bool UseGraphicsItemUpdate() const Q_DECL_OVERRIDE { return false;}
 
-    bool NodeTitleDrawBorder() const DECL_OVERRIDE { return m_NodeTitleDrawBorder;}
-    int NodeTitleHeight(GraphicsTableView *gtv) const DECL_OVERRIDE;
-    int InPlaceNotifierWidth() const DECL_OVERRIDE { return m_InPlaceNotifierWidth;}
-    int InPlaceNotifierHeight() const DECL_OVERRIDE { return m_InPlaceNotifierHeight;}
+    bool NodeTitleDrawBorder() const Q_DECL_OVERRIDE { return m_NodeTitleDrawBorder;}
+    int NodeTitleHeight(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
+    int InPlaceNotifierWidth() const Q_DECL_OVERRIDE { return m_InPlaceNotifierWidth;}
+    int InPlaceNotifierHeight() const Q_DECL_OVERRIDE { return m_InPlaceNotifierHeight;}
 };
 
 class FlatStyle : public GadgetsStyle{
@@ -124,7 +124,7 @@ public:
     explicit FlatStyle(){}
     virtual ~FlatStyle(){}
 
-    QString StyleName() const DECL_OVERRIDE { return QStringLiteral("FlatStyle");}
+    QString StyleName() const Q_DECL_OVERRIDE { return QStringLiteral("FlatStyle");}
 
     static const QFont m_ThumbnailTitleFont;
 
@@ -137,42 +137,42 @@ public:
 
     static const bool m_ThumbnailDrawBorder;
 
-    void ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const DECL_OVERRIDE;
-    void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const DECL_OVERRIDE;
-    void Render(Thumbnail *thumb, QPainter *painter) const DECL_OVERRIDE;
-    void Render(NodeTitle *title, QPainter *painter) const DECL_OVERRIDE;
-    void Render(SpotLight *light, QPainter *painter) const DECL_OVERRIDE;
-    void Render(InPlaceNotifier *notifier, QPainter *painter) const DECL_OVERRIDE;
-    void Render(CloseButton *button, QPainter *painter) const DECL_OVERRIDE;
-    void Render(CloneButton *button, QPainter *painter) const DECL_OVERRIDE;
+    void ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const Q_DECL_OVERRIDE;
+    void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(Thumbnail *thumb, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(NodeTitle *title, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(SpotLight *light, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(InPlaceNotifier *notifier, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(CloseButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(CloneButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
 #if QT_VERSION >= 0x050700
-    void Render(SoundButton *button, QPainter *painter) const DECL_OVERRIDE;
+    void Render(SoundButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
 #endif
-    void Render(UpDirectoryButton *button, QPainter *painter) const DECL_OVERRIDE;
-    void Render(ToggleTrashButton *button, QPainter *painter) const DECL_OVERRIDE;
-    void Render(AccessibleWebElement *awe, QPainter *painter) const DECL_OVERRIDE;
-    void OnSetNest(Thumbnail *thumb, int nest) const DECL_OVERRIDE;
-    void OnSetNest(NodeTitle *title, int nest) const DECL_OVERRIDE;
-    void OnSetPrimary(Thumbnail *thumb, bool primary) const DECL_OVERRIDE;
-    void OnSetPrimary(NodeTitle *title, bool primary) const DECL_OVERRIDE;
-    void OnSetHovered(Thumbnail *thumb, bool hovered) const DECL_OVERRIDE;
-    void OnSetHovered(NodeTitle *title, bool hovered) const DECL_OVERRIDE;
-    void OnSetState(GraphicsButton *button, GraphicsButton::ButtonState) const DECL_OVERRIDE;
-    void OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const DECL_OVERRIDE;
-    void OnReshow(QGraphicsRectItem *gri) const DECL_OVERRIDE;
-    QRectF ThumbnailAreaRect(GraphicsTableView *gtv) const DECL_OVERRIDE;
-    QRectF NodeTitleAreaRect(GraphicsTableView *gtv) const DECL_OVERRIDE;
-    QRectF ScrollBarAreaRect(GraphicsTableView *gtv) const DECL_OVERRIDE;
-    QGraphicsRectItem *CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const DECL_OVERRIDE;
+    void Render(UpDirectoryButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(ToggleTrashButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
+    void Render(AccessibleWebElement *awe, QPainter *painter) const Q_DECL_OVERRIDE;
+    void OnSetNest(Thumbnail *thumb, int nest) const Q_DECL_OVERRIDE;
+    void OnSetNest(NodeTitle *title, int nest) const Q_DECL_OVERRIDE;
+    void OnSetPrimary(Thumbnail *thumb, bool primary) const Q_DECL_OVERRIDE;
+    void OnSetPrimary(NodeTitle *title, bool primary) const Q_DECL_OVERRIDE;
+    void OnSetHovered(Thumbnail *thumb, bool hovered) const Q_DECL_OVERRIDE;
+    void OnSetHovered(NodeTitle *title, bool hovered) const Q_DECL_OVERRIDE;
+    void OnSetState(GraphicsButton *button, GraphicsButton::ButtonState) const Q_DECL_OVERRIDE;
+    void OnSetElement(AccessibleWebElement *awe, SharedWebElement elem) const Q_DECL_OVERRIDE;
+    void OnReshow(QGraphicsRectItem *gri) const Q_DECL_OVERRIDE;
+    QRectF ThumbnailAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
+    QRectF NodeTitleAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
+    QRectF ScrollBarAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
+    QGraphicsRectItem *CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const Q_DECL_OVERRIDE;
 
-    bool ScrollToChangeDirectory(bool) const DECL_OVERRIDE { return false;}
-    bool RightClickToRenameNode(bool) const DECL_OVERRIDE { return false;}
-    bool UseGraphicsItemUpdate() const DECL_OVERRIDE { return true;}
+    bool ScrollToChangeDirectory(bool) const Q_DECL_OVERRIDE { return false;}
+    bool RightClickToRenameNode(bool) const Q_DECL_OVERRIDE { return false;}
+    bool UseGraphicsItemUpdate() const Q_DECL_OVERRIDE { return true;}
 
-    bool NodeTitleDrawBorder() const DECL_OVERRIDE { return false;}
-    int NodeTitleHeight(GraphicsTableView*) const DECL_OVERRIDE { return 1;} // dummy value.
-    int InPlaceNotifierWidth() const DECL_OVERRIDE { return 706;} // dummy value.
-    int InPlaceNotifierHeight() const DECL_OVERRIDE { return 154;} // dummy value.
+    bool NodeTitleDrawBorder() const Q_DECL_OVERRIDE { return false;}
+    int NodeTitleHeight(GraphicsTableView*) const Q_DECL_OVERRIDE { return 1;} // dummy value.
+    int InPlaceNotifierWidth() const Q_DECL_OVERRIDE { return 706;} // dummy value.
+    int InPlaceNotifierHeight() const Q_DECL_OVERRIDE { return 154;} // dummy value.
 };
 
 #endif //ifndef GADGETSSTYLE_HPP

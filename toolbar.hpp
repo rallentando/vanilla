@@ -13,7 +13,7 @@
 class TreeBank;
 class QLineEdit;
 class QCompleter;
-class QStringListModel;
+class QStandardItemModel;
 class QPaintEvent;
 class QResizeEvent;
 
@@ -29,8 +29,8 @@ public:
     static void LoadSettings();
     static void SaveSettings();
 
-    QSize sizeHint() const DECL_OVERRIDE;
-    QSize minimumSizeHint() const DECL_OVERRIDE;
+    QSize sizeHint() const Q_DECL_OVERRIDE;
+    QSize minimumSizeHint() const Q_DECL_OVERRIDE;
 
     void Connect(SharedView view);
     void Disconnect(SharedView view);
@@ -42,24 +42,24 @@ public slots:
     void SetFinished(bool);
 
 protected:
-    void paintEvent(QPaintEvent *ev) DECL_OVERRIDE;
-    void resizeEvent(QResizeEvent *ev) DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE;
 
-    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) DECL_OVERRIDE;
-    void hideEvent(QHideEvent *ev) DECL_OVERRIDE;
-    void enterEvent(QEvent *ev) DECL_OVERRIDE;
-    void leaveEvent(QEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
+    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
+    void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
+    void enterEvent(QEvent *ev) Q_DECL_OVERRIDE;
+    void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
 
 private:
     SharedView m_View;
     TreeBank *m_TreeBank;
     LineEdit *m_LineEdit;
     QCompleter *m_Completer;
-    QStringListModel *m_Model;
+    QStandardItemModel *m_Model;
     QAction *m_BackAction;
     QAction *m_ForwardAction;
     QAction *m_RewindAction;
@@ -68,6 +68,12 @@ private:
     QAction *m_StopAction;
 
     static QStringList m_CommandCandidates;
+    static QStringList m_InputUrlHistory;
+
+public slots:
+    void DisplaySuggest(const QByteArray&);
+signals:
+    void SuggestRequest(const QUrl&);
 };
 
 #endif //ifndef TOOLBAR_HPP

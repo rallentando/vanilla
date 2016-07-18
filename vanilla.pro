@@ -8,13 +8,21 @@ equals(QT_MAJOR_VERSION, 5) : lessThan(QT_MINOR_VERSION, 6){
 INCLUDEPATH += . view gen gadgets
 
 QT += \
-    core gui xml network opengl webchannel \
-    printsupport widgets \
+    core gui xml network opengl \
+    webchannel widgets \
     multimedia multimediawidgets \
-    webengine webenginewidgets \
-    quick quickwidgets
+    quick quickwidgets qml
 
-win32: QT += winextras axcontainer
+winrt | android | ios {
+
+    Qt += webview
+
+} else {
+
+    win32: Qt += winextras axcontainer
+
+    Qt += printsupport webengine webenginewidgets
+}
 
 win32: QMAKE_CXXFLAGS_RELEASE -= -Zc:strictStrings
 
@@ -27,6 +35,7 @@ RESOURCES += vanilla.qrc
 FORMS +=
 
 TARGET = vanilla
+TEMPLATE = app
 
 HEADERS += \
     application.hpp \
@@ -55,6 +64,8 @@ HEADERS += \
     view/webenginepage.hpp \
     view/webengineview.hpp \
     view/quickwebengineview.hpp \
+    view/quicknativewebview.hpp \
+    view/tridentview.hpp \
     gadgets/graphicstableview.hpp \
     gadgets/gadgets.hpp \
     gadgets/gadgetsstyle.hpp \
@@ -62,8 +73,6 @@ HEADERS += \
     gadgets/thumbnail.hpp \
     gadgets/nodetitle.hpp \
     gadgets/accessiblewebelement.hpp
-win32: HEADERS += \
-    view/tridentview.hpp
 
 SOURCES += \
     main.cpp \
@@ -86,6 +95,8 @@ SOURCES += \
     view/webenginepage.cpp \
     view/webengineview.cpp \
     view/quickwebengineview.cpp \
+    view/quicknativewebview.cpp \
+    view/tridentview.cpp \
     gadgets/graphicstableview.cpp \
     gadgets/gadgets.cpp \
     gadgets/gadgetsstyle.cpp \
@@ -93,8 +104,6 @@ SOURCES += \
     gadgets/thumbnail.cpp \
     gadgets/nodetitle.cpp \
     gadgets/accessiblewebelement.cpp
-win32: SOURCES += \
-    view/tridentview.cpp
 
 TRANSLATIONS += \
     translations/vanilla_en.ts \
@@ -102,7 +111,8 @@ TRANSLATIONS += \
 
 OTHER_FILES += \
     view/quickwebengineview5.6.qml \
-    view/quickwebengineview5.7.qml
+    view/quickwebengineview5.7.qml \
+    view/quicknativewebview.qml
 
 lupdate_only {
 
@@ -110,6 +120,7 @@ lupdate_only {
     SOURCES = \
         view/quickwebengineview5.6.qml \
         view/quickwebengineview5.7.qml \
+        view/quicknativewebview.qml \
         application.hpp \
         actionmapper.hpp \
         mainwindow.hpp \
@@ -136,6 +147,7 @@ lupdate_only {
         view/webenginepage.hpp \
         view/webengineview.hpp \
         view/quickwebengineview.hpp \
+        view/quicknativewebview.hpp \
         gadgets/graphicstableview.hpp \
         gadgets/gadgets.hpp \
         gadgets/gadgetsstyle.hpp \
@@ -163,6 +175,9 @@ lupdate_only {
         view/webenginepage.cpp \
         view/webengineview.cpp \
         view/quickwebengineview.cpp \
+        view/quicknativewebview.cpp \
+        view/tridentview.hpp \
+        view/tridentview.cpp \
         gadgets/graphicstableview.cpp \
         gadgets/gadgets.cpp \
         gadgets/gadgetsstyle.cpp \
@@ -170,7 +185,4 @@ lupdate_only {
         gadgets/thumbnail.cpp \
         gadgets/nodetitle.cpp \
         gadgets/accessiblewebelement.cpp
-    win32: SOURCES += \
-        view/tridentview.hpp \
-        view/tridentview.cpp
 }

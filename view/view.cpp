@@ -12,7 +12,9 @@
 #include <QSettings>
 #include <QPixmap>
 #include <QMenu>
-#include <QWebEngineProfile>
+#ifdef WEBENGINEVIEW
+#  include <QWebEngineProfile>
+#endif
 
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
@@ -124,16 +126,18 @@ const QList<float> View::m_ZoomFactorLevels = QList<float>()
     << 10.00000000000000000f
     ;
 
+#ifdef WEBENGINEVIEW
 static const QMap<QWebEngineSettings::WebAttribute, QString> m_WebEngineSwitches = QMap<QWebEngineSettings::WebAttribute, QString>()
     << qMakePair(QWebEngineSettings::AutoLoadImages,           QString::fromLatin1("[iI]mage"))
     << qMakePair(QWebEngineSettings::JavascriptEnabled,        QString::fromLatin1("[jJ](?:ava)?[sS](?:cript)?"))
     << qMakePair(QWebEngineSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugins?"))
     << qMakePair(QWebEngineSettings::SpatialNavigationEnabled, QString::fromLatin1("[sS]patial(?:[nN]avigation)?"))
     << qMakePair(QWebEngineSettings::ScrollAnimatorEnabled,    QString::fromLatin1("[sS]croll[aA]nimator"))
-#if QT_VERSION >= 0x050700
+#  if QT_VERSION >= 0x050700
     << qMakePair(QWebEngineSettings::WebGLEnabled,             QString::fromLatin1("[wW]eb[gG][lL]"))
-#endif
+#  endif
     ;
+#endif
 
 QString View::m_LinkMenu = QString();
 QString View::m_ImageMenu = QString();
@@ -883,8 +887,10 @@ void View::AddRegularMenu(QMenu *menu, SharedWebElement elem){
 void View::LoadSettings(){
     Settings &s = Application::GlobalSettings();
 
+#ifdef WEBENGINEVIEW
     // GlobalWebEngineSettings
     QWebEngineSettings *gwes = QWebEngineSettings::defaultSettings();
+#endif
 
     m_GestureMode               = s.value(QStringLiteral("webview/@GestureMode"),           4).value<int>();
     m_EnableDestinationInferrer = s.value(QStringLiteral("webview/@EnableDestinationInferrer"), false).value<bool>();
@@ -912,6 +918,7 @@ void View::LoadSettings(){
     if(operation == QStringLiteral("InNewDirectoryNewWindow")) Page::SetOpenCommandOperation(Page::InNewDirectoryNewWindow);
     if(operation == QStringLiteral("OnRootNewWindow"))         Page::SetOpenCommandOperation(Page::OnRootNewWindow);
 
+#ifdef WEBENGINEVIEW
     gwes->setAttribute(QWebEngineSettings::AutoLoadImages,                    s.value(QStringLiteral("webview/preferences/AutoLoadImages"),                    gwes->testAttribute(QWebEngineSettings::AutoLoadImages)                   ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard,      s.value(QStringLiteral("webview/preferences/JavascriptCanAccessClipboard"),      gwes->testAttribute(QWebEngineSettings::JavascriptCanAccessClipboard)     ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows,          s.value(QStringLiteral("webview/preferences/JavascriptCanOpenWindows"),        /*gwes->testAttribute(QWebEngineSettings::JavascriptCanOpenWindows)*/  true ).value<bool>());
@@ -925,13 +932,13 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::XSSAuditingEnabled,                s.value(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                gwes->testAttribute(QWebEngineSettings::XSSAuditingEnabled)               ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled,          s.value(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          gwes->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled)         ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled,             s.value(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             gwes->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)            ).value<bool>());
-#if QT_VERSION >= 0x050700
+#  if QT_VERSION >= 0x050700
     gwes->setAttribute(QWebEngineSettings::ScreenCaptureEnabled,              s.value(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              gwes->testAttribute(QWebEngineSettings::ScreenCaptureEnabled)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::WebGLEnabled,                      s.value(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                     ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::AutoLoadIconsForPage,              s.value(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::TouchIconsEnabled,                 s.value(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                ).value<bool>());
-#endif
+#  endif
     gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::FullScreenSupportEnabled,          s.value(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),        /*gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)*/  true ).value<bool>());
 
@@ -945,13 +952,14 @@ void View::LoadSettings(){
     gwes->setFontFamily(QWebEngineSettings::FixedFont,            s.value(QStringLiteral("webview/font/FixedFont"),              gwes->fontFamily(QWebEngineSettings::FixedFont)            ).value<QString>());
     gwes->setFontFamily(QWebEngineSettings::CursiveFont,          s.value(QStringLiteral("webview/font/CursiveFont"),            gwes->fontFamily(QWebEngineSettings::CursiveFont)          ).value<QString>());
     gwes->setFontFamily(QWebEngineSettings::FantasyFont,          s.value(QStringLiteral("webview/font/FantasyFont"),            gwes->fontFamily(QWebEngineSettings::FantasyFont)          ).value<QString>());
-#if QT_VERSION >= 0x050700
+#  if QT_VERSION >= 0x050700
     gwes->setFontFamily(QWebEngineSettings::PictographFont,       s.value(QStringLiteral("webview/font/PictographFont"),         gwes->fontFamily(QWebEngineSettings::PictographFont)       ).value<QString>());
-#endif
+#  endif
     gwes->setFontSize(QWebEngineSettings::MinimumFontSize,        s.value(QStringLiteral("webview/font/MinimumFontSize"),        gwes->fontSize(QWebEngineSettings::MinimumFontSize)        ).value<int>());
     gwes->setFontSize(QWebEngineSettings::MinimumLogicalFontSize, s.value(QStringLiteral("webview/font/MinimumLogicalFontSize"), gwes->fontSize(QWebEngineSettings::MinimumLogicalFontSize) ).value<int>());
     gwes->setFontSize(QWebEngineSettings::DefaultFontSize,        s.value(QStringLiteral("webview/font/DefaultFontSize"),        gwes->fontSize(QWebEngineSettings::DefaultFontSize)        ).value<int>());
     gwes->setFontSize(QWebEngineSettings::DefaultFixedFontSize,   s.value(QStringLiteral("webview/font/DefaultFixedFontSize"),   gwes->fontSize(QWebEngineSettings::DefaultFixedFontSize)   ).value<int>());
+#endif
 
     m_LinkMenu = s.value(QStringLiteral("webview/menu/LinkMenu"), QStringLiteral(
         "LinkUrl,"
@@ -1101,8 +1109,10 @@ void View::LoadSettings(){
 void View::SaveSettings(){
     Settings &s = Application::GlobalSettings();
 
+#ifdef WEBENGINEVIEW
     // GlobalWebEngineSettings
     QWebEngineSettings *gwes = QWebEngineSettings::defaultSettings();
+#endif
 
     s.setValue(QStringLiteral("webview/@GestureMode"),          m_GestureMode);
     s.setValue(QStringLiteral("webview/@EnableDestinationInferrer"), m_EnableDestinationInferrer);
@@ -1128,6 +1138,7 @@ void View::SaveSettings(){
     if(operation == Page::InNewDirectoryNewWindow) s.setValue(QStringLiteral("webview/@OpenCommandOperation"), QStringLiteral("InNewDirectoryNewWindow"));
     if(operation == Page::OnRootNewWindow)         s.setValue(QStringLiteral("webview/@OpenCommandOperation"), QStringLiteral("OnRootNewWindow"));
 
+#ifdef WEBENGINEVIEW
     s.setValue(QStringLiteral("webview/preferences/AutoLoadImages"),                    gwes->testAttribute(QWebEngineSettings::AutoLoadImages)                    );
     s.setValue(QStringLiteral("webview/preferences/JavascriptCanAccessClipboard"),      gwes->testAttribute(QWebEngineSettings::JavascriptCanAccessClipboard)      );
     s.setValue(QStringLiteral("webview/preferences/JavascriptCanOpenWindows"),          gwes->testAttribute(QWebEngineSettings::JavascriptCanOpenWindows)          );
@@ -1159,13 +1170,14 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/font/SansSerifFont"),          gwes->fontFamily(QWebEngineSettings::SansSerifFont)        );
     s.setValue(QStringLiteral("webview/font/CursiveFont"),            gwes->fontFamily(QWebEngineSettings::CursiveFont)          );
     s.setValue(QStringLiteral("webview/font/FantasyFont"),            gwes->fontFamily(QWebEngineSettings::FantasyFont)          );
-#if QT_VERSION >= 0x050700
+#  if QT_VERSION >= 0x050700
     s.setValue(QStringLiteral("webview/font/PictographFont"),         gwes->fontFamily(QWebEngineSettings::PictographFont)       );
-#endif
+#  endif
     s.setValue(QStringLiteral("webview/font/MinimumFontSize"),        gwes->fontSize(QWebEngineSettings::MinimumFontSize)        );
     s.setValue(QStringLiteral("webview/font/MinimumLogicalFontSize"), gwes->fontSize(QWebEngineSettings::MinimumLogicalFontSize) );
     s.setValue(QStringLiteral("webview/font/DefaultFontSize"),        gwes->fontSize(QWebEngineSettings::DefaultFontSize)        );
     s.setValue(QStringLiteral("webview/font/DefaultFixedFontSize"),   gwes->fontSize(QWebEngineSettings::DefaultFixedFontSize)   );
+#endif
 
     s.setValue(QStringLiteral("webview/menu/LinkMenu"),      m_LinkMenu);
     s.setValue(QStringLiteral("webview/menu/ImageMenu"),     m_ImageMenu);
@@ -1216,6 +1228,7 @@ void View::SaveSettings(){
 void View::ApplySpecificSettings(QStringList set){
     if(!page()) return;
 
+#ifdef WEBENGINEVIEW
     if(WebEnginePage *p = qobject_cast<WebEnginePage*>(page())){
         QWebEngineSettings *s = p->settings();
         QWebEngineSettings *g = QWebEngineSettings::defaultSettings();
@@ -1237,13 +1250,13 @@ void View::ApplySpecificSettings(QStringList set){
         s->setAttribute(QWebEngineSettings::XSSAuditingEnabled, g->testAttribute(QWebEngineSettings::XSSAuditingEnabled));
         s->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled, g->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled));
         s->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, g->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled));
-#if QT_VERSION >= 0x050700
+#  if QT_VERSION >= 0x050700
         s->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, g->testAttribute(QWebEngineSettings::ScreenCaptureEnabled));
         s->setAttribute(QWebEngineSettings::WebGLEnabled, g->testAttribute(QWebEngineSettings::WebGLEnabled));
         s->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, g->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled));
         s->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, g->testAttribute(QWebEngineSettings::AutoLoadIconsForPage));
         s->setAttribute(QWebEngineSettings::TouchIconsEnabled, g->testAttribute(QWebEngineSettings::TouchIconsEnabled));
-#endif
+#  endif
         s->setAttribute(QWebEngineSettings::ErrorPageEnabled, g->testAttribute(QWebEngineSettings::ErrorPageEnabled));
         s->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, g->testAttribute(QWebEngineSettings::FullScreenSupportEnabled));
 
@@ -1253,9 +1266,9 @@ void View::ApplySpecificSettings(QStringList set){
         s->setFontFamily(QWebEngineSettings::SansSerifFont, g->fontFamily(QWebEngineSettings::SansSerifFont));
         s->setFontFamily(QWebEngineSettings::CursiveFont, g->fontFamily(QWebEngineSettings::CursiveFont));
         s->setFontFamily(QWebEngineSettings::FantasyFont, g->fontFamily(QWebEngineSettings::FantasyFont));
-#if QT_VERSION >= 0x050700
+#  if QT_VERSION >= 0x050700
         s->setFontFamily(QWebEngineSettings::PictographFont, g->fontFamily(QWebEngineSettings::PictographFont));
-#endif
+#  endif
 
         s->setFontSize(QWebEngineSettings::MinimumFontSize, g->fontSize(QWebEngineSettings::MinimumFontSize));
         s->setFontSize(QWebEngineSettings::MinimumLogicalFontSize, g->fontSize(QWebEngineSettings::MinimumLogicalFontSize));
@@ -1274,6 +1287,7 @@ void View::ApplySpecificSettings(QStringList set){
                             g->testAttribute(attr));
         }
     }
+#endif
 
     if     (set.indexOf(QRegularExpression(QStringLiteral( "\\A[lL](?:oad)?[hH](?:ack)?\\Z"))) != -1) m_EnableLoadHackLocal = true;
     else if(set.indexOf(QRegularExpression(QStringLiteral("\\A![lL](?:oad)?[hH](?:ack)?\\Z"))) != -1) m_EnableLoadHackLocal = false;
@@ -1526,12 +1540,16 @@ void View::Load(const QNetworkRequest &req){
             else
                 TriggerNativeLoadAction(QNetworkRequest(QUrl(QStringLiteral("about:blank"))));
         } else if(str.startsWith(QStringLiteral("view-source:"))){
+#ifdef WEBENGINEVIEW
             if(qobject_cast<WebEngineView*>(base()) ||
                qobject_cast<QuickWebEngineView*>(base())){
                 TriggerNativeLoadAction(newreq.url());
             } else {
                 SetSource(QUrl::fromEncoded(str.toLatin1()));
             }
+#else
+            SetSource(QUrl::fromEncoded(str.toLatin1()));
+#endif
         } else {
             TriggerNativeLoadAction(newreq);
         }

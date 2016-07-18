@@ -170,8 +170,8 @@ public:
 
     virtual QMenu *CreateNodeMenu(){ return 0;}
     virtual void RenderBackground(QPainter *painter);
-    virtual QRectF boundingRect() const DECL_OVERRIDE;
-    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *item = 0, QWidget *widget = 0) DECL_OVERRIDE;
+    virtual QRectF boundingRect() const Q_DECL_OVERRIDE;
+    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *item = 0, QWidget *widget = 0) Q_DECL_OVERRIDE;
     QRectF ThumbnailAreaRect();
     QRectF NodeTitleAreaRect();
     QRectF ScrollBarAreaRect();
@@ -250,22 +250,22 @@ signals:
     void titleChanged(const QString&);
 
 protected:
-    virtual void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
-    virtual void dropEvent             (QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
-    virtual void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
-    virtual void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
-    virtual void mousePressEvent       (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    virtual void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    virtual void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    virtual void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    virtual void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    virtual void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    virtual void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    virtual void contextMenuEvent      (QGraphicsSceneContextMenuEvent *ev) DECL_OVERRIDE;
-    virtual void wheelEvent            (QGraphicsSceneWheelEvent *ev) DECL_OVERRIDE;
-    virtual void focusInEvent          (QFocusEvent *ev) DECL_OVERRIDE;
-    virtual void focusOutEvent         (QFocusEvent *ev) DECL_OVERRIDE;
-    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
+    virtual void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
+    virtual void dropEvent             (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
+    virtual void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
+    virtual void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
+    virtual void mousePressEvent       (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    virtual void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    virtual void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    virtual void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    virtual void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    virtual void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    virtual void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    virtual void contextMenuEvent      (QGraphicsSceneContextMenuEvent *ev) Q_DECL_OVERRIDE;
+    virtual void wheelEvent            (QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
+    virtual void focusInEvent          (QFocusEvent *ev) Q_DECL_OVERRIDE;
+    virtual void focusOutEvent         (QFocusEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
 
 public slots:
     virtual bool ThumbList_Refresh();
@@ -357,7 +357,7 @@ private:
     QMap<Node*, NodeTitle*> m_NodeTitleCache;
 
     // for auto update.
-    int m_AutoUpdateTimerID;
+    int m_AutoUpdateTimerId;
 
     // for empty directory.
     ViewNode *m_DummyViewNode;
@@ -532,9 +532,9 @@ public:
     SpotLight(GraphicsTableView::SpotLightType type, QGraphicsItem *parent = 0);
     ~SpotLight();
 
-    QRectF boundingRect() const DECL_OVERRIDE;
-    QPainterPath shape() const DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    QPainterPath shape() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
 private:
     GraphicsTableView::SpotLightType m_Type;
@@ -551,23 +551,23 @@ public:
     ScrollIndicator(QGraphicsItem *parent = 0);
     ~ScrollIndicator();
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
 private:
     GraphicsTableView *m_TableView;
 
 protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
-    void dragEnterEvent    (QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
-    void dropEvent         (QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
-    void dragMoveEvent     (QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
-    void dragLeaveEvent    (QGraphicsSceneDragDropEvent *ev) DECL_OVERRIDE;
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
+    void dragEnterEvent    (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
+    void dropEvent         (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
+    void dragMoveEvent     (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
+    void dragLeaveEvent    (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
 };
 
 class InPlaceNotifier : public QGraphicsRectItem {
@@ -576,20 +576,20 @@ public:
     InPlaceNotifier(QGraphicsItem *parent = 0);
     ~InPlaceNotifier();
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
     Node *GetNode() const { return m_Node;}
     void SetNode(Node *nd);
 
 protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) DECL_OVERRIDE;
-    void wheelEvent        (QGraphicsSceneWheelEvent *ev) DECL_OVERRIDE;
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
+    void wheelEvent        (QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
 
 private:
     GraphicsTableView *m_TableView;
@@ -612,12 +612,12 @@ public:
     void SetState(ButtonState state);
 
 protected:
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
-    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
-    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
 
 protected:
     GraphicsTableView *m_TableView;
@@ -635,11 +635,11 @@ public:
     void SetItem(Thumbnail *thumb);
     void SetItem(NodeTitle *title);
 
-    QRectF boundingRect() const DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
 
 private:
     Node *m_Node;
@@ -655,11 +655,11 @@ public:
     void SetItem(Thumbnail *thumb);
     void SetItem(NodeTitle *title);
 
-    QRectF boundingRect() const DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
 
 private:
     Node *m_Node;
@@ -678,11 +678,11 @@ public:
     void SetItem(Thumbnail *thumb);
     void SetItem(NodeTitle *title);
 
-    QRectF boundingRect() const DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
 
 private:
     Node *m_Node;
@@ -695,11 +695,11 @@ public:
     UpDirectoryButton(QGraphicsItem *parent = 0);
     ~UpDirectoryButton();
 
-    QRectF boundingRect() const DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
 };
 
 class ToggleTrashButton : public GraphicsButton {
@@ -708,11 +708,11 @@ public:
     ToggleTrashButton(QGraphicsItem *parent = 0);
     ~ToggleTrashButton();
 
-    QRectF boundingRect() const DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) DECL_OVERRIDE;
+    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(GraphicsTableView::SortFlags);

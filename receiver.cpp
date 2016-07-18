@@ -40,13 +40,13 @@ LineEdit::~LineEdit(){}
 
 void LineEdit::focusInEvent(QFocusEvent *ev){
     QLineEdit::focusInEvent(ev);
-    emit FocusIn();
+    emit FocusIn(ev->reason());
     ev->setAccepted(true);
 }
 
 void LineEdit::focusOutEvent(QFocusEvent *ev){
     QLineEdit::focusOutEvent(ev);
-    emit FocusOut();
+    emit FocusOut(ev->reason());
     ev->setAccepted(true);
 }
 
@@ -79,6 +79,19 @@ void LineEdit::keyPressEvent(QKeyEvent *ev){
 void LineEdit::inputMethodEvent(QInputMethodEvent *ev){
     QLineEdit::inputMethodEvent(ev);
     emit textChanged(text() + ev->preeditString());
+}
+
+void LineEdit::mousePressEvent(QMouseEvent *ev){
+    if(selectedText() == text()) deselect();
+    QLineEdit::mousePressEvent(ev);
+}
+
+void LineEdit::mouseReleaseEvent(QMouseEvent *ev){
+    QLineEdit::mouseReleaseEvent(ev);
+}
+
+void LineEdit::mouseMoveEvent(QMouseEvent *ev){
+    QLineEdit::mouseMoveEvent(ev);
 }
 
 Receiver::Receiver(TreeBank *parent, bool purge)
@@ -431,11 +444,11 @@ void Receiver::SetString(QString str){
         repaint();
     }
     if(m_Mode == Query && Application::EnableGoogleSuggest()){
-        QUrl base = QUrl(QStringLiteral("https://www.google.co.jp/complete/search"));
+        QUrl base = QUrl(tr("https://www.google.com/complete/search"));
         QUrlQuery param;
         param.addQueryItem(QStringLiteral("q"), m_LineString);
         param.addQueryItem(QStringLiteral("output"), QStringLiteral("toolbar"));
-        param.addQueryItem(QStringLiteral("hl"), QStringLiteral("ja"));
+        param.addQueryItem(QStringLiteral("hl"), tr("en"));
         base.setQuery(param);
         emit SuggestRequest(base);
     }
@@ -605,16 +618,16 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[pP]rev(?:ious)?(?:[vV]iew)?"), cmd)){     emit PrevView();             return; }
     if(Application::ExactMatch(QStringLiteral("[bB]ury(?:[vV]iew)?"), cmd)){              emit BuryView();             return; }
     if(Application::ExactMatch(QStringLiteral("[dD]ig(?:[vV]iew)?"), cmd)){               emit DigView();              return; }
-    if(Application::ExactMatch(QStringLiteral("(?:1|[fF]ir)st(?:[vV]Iew)?"), cmd)){       emit FirstView();            return; }
-    if(Application::ExactMatch(QStringLiteral("(?:2|[sS]eco)nd(?:[vV]Iew)?"), cmd)){      emit SecondView();           return; }
-    if(Application::ExactMatch(QStringLiteral("(?:3|[tT]hi)rd(?:[vV]Iew)?"), cmd)){       emit ThirdView();            return; }
-    if(Application::ExactMatch(QStringLiteral("(?:4|[fF]our)th(?:[vV]Iew)?"), cmd)){      emit FourthView();           return; }
-    if(Application::ExactMatch(QStringLiteral("(?:5|[fF]if)th(?:[vV]Iew)?"), cmd)){       emit FifthView();            return; }
-    if(Application::ExactMatch(QStringLiteral("(?:6|[sS]ix)th(?:[vV]Iew)?"), cmd)){       emit SixthView();            return; }
-    if(Application::ExactMatch(QStringLiteral("(?:7|[sS]even)th(?:[vV]Iew)?"), cmd)){     emit SeventhView();          return; }
-    if(Application::ExactMatch(QStringLiteral("(?:8|[eE]igh)th(?:[vV]Iew)?"), cmd)){      emit EighthView();           return; }
-    if(Application::ExactMatch(QStringLiteral("(?:9|[nN]in)th(?:[vV]Iew)?"), cmd)){       emit NinthView();            return; }
-    if(Application::ExactMatch(QStringLiteral("(?:10|[tT]en)th(?:[vV]Iew)?"), cmd)){      emit TenthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:1|[fF]ir)st(?:[vV]iew)?"), cmd)){       emit FirstView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:2|[sS]eco)nd(?:[vV]iew)?"), cmd)){      emit SecondView();           return; }
+    if(Application::ExactMatch(QStringLiteral("(?:3|[tT]hi)rd(?:[vV]iew)?"), cmd)){       emit ThirdView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:4|[fF]our)th(?:[vV]iew)?"), cmd)){      emit FourthView();           return; }
+    if(Application::ExactMatch(QStringLiteral("(?:5|[fF]if)th(?:[vV]iew)?"), cmd)){       emit FifthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:6|[sS]ix)th(?:[vV]iew)?"), cmd)){       emit SixthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:7|[sS]even)th(?:[vV]iew)?"), cmd)){     emit SeventhView();          return; }
+    if(Application::ExactMatch(QStringLiteral("(?:8|[eE]igh)th(?:[vV]iew)?"), cmd)){      emit EighthView();           return; }
+    if(Application::ExactMatch(QStringLiteral("(?:9|[nN]in)th(?:[vV]iew)?"), cmd)){       emit NinthView();            return; }
+    if(Application::ExactMatch(QStringLiteral("(?:10|[tT]en)th(?:[vV]iew)?"), cmd)){      emit TenthView();            return; }
     if(Application::ExactMatch(QStringLiteral("[lL]ast(?:[vV]iew)?"), cmd)){              emit LastView();             return; }
     if(Application::ExactMatch(QStringLiteral("[nN]ew(?:[vV]iew)?(?:[nN]ode)?"), cmd)){   emit NewViewNode();          return; }
     if(Application::ExactMatch(QStringLiteral("[nN]ew[hH]ist(?:[nN]ode)?"), cmd)){        emit NewHistNode();          return; }
@@ -1064,6 +1077,9 @@ void Receiver::mouseMoveEvent(QMouseEvent *ev){
 }
 
 void Receiver::DisplaySuggest(const QByteArray &ba){
+
+    if(!m_LineEdit->hasFocus()) return;
+
     if(m_LineString.isEmpty()){
         SetSuggest(QStringList());
         return;

@@ -8,6 +8,7 @@
 #include <QPropertyAnimation>
 #include <QtWidgets>
 
+#include "dialog.hpp"
 #include "application.hpp"
 #include "treebank.hpp"
 #include "mainwindow.hpp"
@@ -61,14 +62,14 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
     setZValue(MAIN_CONTENTS_LAYER);
 
     class DummyViewNode : public ViewNode{
-        bool IsDummy() const DECL_OVERRIDE { return true;}
+        bool IsDummy() const Q_DECL_OVERRIDE { return true;}
     };
 
     class DummyHistNode : public HistNode{
-        bool IsDummy() const DECL_OVERRIDE { return true;}
+        bool IsDummy() const Q_DECL_OVERRIDE { return true;}
     };
 
-    m_AutoUpdateTimerID = 0;
+    m_AutoUpdateTimerId = 0;
 
     m_DummyViewNode = new DummyViewNode();
     m_DummyHistNode = new DummyHistNode();
@@ -201,21 +202,21 @@ void GraphicsTableView::Deactivate(){
 }
 
 void GraphicsTableView::StartAutoUpdateTimer(){
-    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
-    m_AutoUpdateTimerID = startTimer(200);
+    if(m_AutoUpdateTimerId) killTimer(m_AutoUpdateTimerId);
+    m_AutoUpdateTimerId = startTimer(200);
     connect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer);
 }
 
 void GraphicsTableView::StopAutoUpdateTimer(){
     disconnect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer);
-    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
-    m_AutoUpdateTimerID = 0;
+    if(m_AutoUpdateTimerId) killTimer(m_AutoUpdateTimerId);
+    m_AutoUpdateTimerId = 0;
 }
 
 void GraphicsTableView::RestartAutoUpdateTimer(){
-    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
-    if(scene()) m_AutoUpdateTimerID = startTimer(scene()->hasFocus() ? 200 : 1000);
-    else m_AutoUpdateTimerID = 0;
+    if(m_AutoUpdateTimerId) killTimer(m_AutoUpdateTimerId);
+    if(scene()) m_AutoUpdateTimerId = startTimer(scene()->hasFocus() ? 200 : 1000);
+    else m_AutoUpdateTimerId = 0;
 }
 
 void GraphicsTableView::SetCurrent(Node *nd){
@@ -1524,12 +1525,12 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         }
 
         if(collidings.isEmpty() &&
-           (Application::keyboardModifiers() & Qt::ControlModifier ||
-            Application::keyboardModifiers() & Qt::ShiftModifier)){
+           (ev->modifiers() & Qt::ControlModifier ||
+            ev->modifiers() & Qt::ShiftModifier)){
 
             ThumbList_UpDirectory();
 
-        } else if(Application::keyboardModifiers() & Qt::ControlModifier){
+        } else if(ev->modifiers() & Qt::ControlModifier){
             foreach(QGraphicsItem *item, collidings){
                 if(item->parentItem() != this) continue;
                 if(Thumbnail *thumb = dynamic_cast<Thumbnail*>(item)){
@@ -1585,7 +1586,7 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     } else if(ev->button() == Qt::RightButton){
         QMenu *menu = 0;
 
-        if(Application::keyboardModifiers() & Qt::ControlModifier)
+        if(ev->modifiers() & Qt::ControlModifier)
             menu = CreateSortMenu();
         else
             menu = CreateNodeMenu();
@@ -1698,7 +1699,7 @@ void GraphicsTableView::timerEvent(QTimerEvent *ev){
     QGraphicsObject::timerEvent(ev);
     if(!scene() || !isVisible()) return;
     if(m_TreeBank && m_TreeBank->parentWidget()->isActiveWindow() &&
-       m_AutoUpdateTimerID && ev->timerId() == m_AutoUpdateTimerID){
+       m_AutoUpdateTimerId && ev->timerId() == m_AutoUpdateTimerId){
         Update();
     }
 }

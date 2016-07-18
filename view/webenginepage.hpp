@@ -3,6 +3,8 @@
 
 #include "switch.hpp"
 
+#ifdef WEBENGINEVIEW
+
 #include <QWebEnginePage>
 #include <QWebEngineSettings>
 #include <QWebEngineFullScreenRequest>
@@ -35,26 +37,26 @@ public:
     WebEnginePage(NetworkAccessManager *nam, QObject *parent = 0);
     ~WebEnginePage();
     View* GetView();
-    WebEnginePage* createWindow(WebWindowType type) DECL_OVERRIDE;
-    void triggerAction(WebAction action, bool checked = false) DECL_OVERRIDE;
+    WebEnginePage* createWindow(WebWindowType type) Q_DECL_OVERRIDE;
+    void triggerAction(WebAction action, bool checked = false) Q_DECL_OVERRIDE;
 
-    bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) DECL_OVERRIDE;
+    bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) Q_DECL_OVERRIDE;
     QStringList chooseFiles(FileSelectionMode mode, const QStringList &oldFiles,
-                            const QStringList &acceptedMimeTypes) DECL_OVERRIDE;
-    bool certificateError(const QWebEngineCertificateError& error) DECL_OVERRIDE;
+                            const QStringList &acceptedMimeTypes) Q_DECL_OVERRIDE;
+    bool certificateError(const QWebEngineCertificateError& error) Q_DECL_OVERRIDE;
 
-    void javaScriptAlert(const QUrl &securityOrigin, const QString &msg) DECL_OVERRIDE {
+    void javaScriptAlert(const QUrl &securityOrigin, const QString &msg) Q_DECL_OVERRIDE {
         //QWebEnginePage::javaScriptAlert(securityOrigin, msg);
         Q_UNUSED(securityOrigin);
         ModalDialog::Information(QStringLiteral("Javascript Alert"), msg);
     }
-    bool javaScriptConfirm(const QUrl &securityOrigin, const QString &msg) DECL_OVERRIDE {
+    bool javaScriptConfirm(const QUrl &securityOrigin, const QString &msg) Q_DECL_OVERRIDE {
         //return QWebEnginePage::javaScriptConfirm(securityOrigin, msg);
         Q_UNUSED(securityOrigin);
         return ModalDialog::Question(QStringLiteral("Javascript Confirm"), msg);
     }
     bool javaScriptPrompt(const QUrl &securityOrigin, const QString &msg,
-                          const QString &defaultValue, QString *result) DECL_OVERRIDE {
+                          const QString &defaultValue, QString *result) Q_DECL_OVERRIDE {
         //return QWebEnginePage::javaScriptPrompt(securityOrigin, msg, defaultValue, result);
         Q_UNUSED(securityOrigin);
         bool ok = true;
@@ -62,7 +64,7 @@ public:
         return ok;
     }
     void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,
-                                  int lineNumber, const QString &sourceID) DECL_OVERRIDE;
+                                  int lineNumber, const QString &sourceId) Q_DECL_OVERRIDE;
 
     QNetworkAccessManager *networkAccessManager() const;
     void setNetworkAccessManager(QNetworkAccessManager *nam);
@@ -95,6 +97,10 @@ public slots:
     void HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&);
     void HandleFullScreen(QWebEngineFullScreenRequest request);
     void HandleProcessTermination(RenderProcessTerminationStatus status, int code);
+#if QT_VERSION >= 0x050700
+    void HandleContentsSizeChange(const QSizeF &size);
+    void HandleScrollPositionChange(const QPointF &pos);
+#endif
 
     void HandleUnsupportedContent(QNetworkReply *reply);
 
@@ -104,6 +110,10 @@ public slots:
     View *OpenInNew(QList<QUrl> urls){ return m_Page->OpenInNew(urls);}
     View *OpenInNew(QString query){ return m_Page->OpenInNew(query);}
     View *OpenInNew(QString key, QString query){ return m_Page->OpenInNew(key, query);}
+    View *OpenInNewBackground(QUrl url){ return m_Page->OpenInNewViewNodeBackground(url);}
+    View *OpenInNewBackground(QList<QUrl> urls){ return m_Page->OpenInNewViewNodeBackground(urls);}
+    View *OpenInNewBackground(QString query){ return m_Page->OpenInNewViewNodeBackground(query);}
+    View *OpenInNewBackground(QString key, QString query){ return m_Page->OpenInNewViewNodeBackground(key, query);}
 
     void SetSource(const QUrl &url){ m_Page->SetSource(url);}
     void SetSource(const QByteArray &html){ m_Page->SetSource(html);}
@@ -121,8 +131,6 @@ signals:
     void linkHovered(const QString&, const QString&, const QString&);
     void ViewChanged();
     void ScrollChanged(QPointF);
-    void ButtonCleared();
-    void RenderFinished();
 
 public slots:
     void DownloadSuggest(const QUrl&);
@@ -135,4 +143,5 @@ private:
     QNetworkAccessManager *m_NetworkAccessManager;
 };
 
+#endif //ifdef WEBENGINEVIEW
 #endif //ifndef WEBENGINEPAGE_HPP

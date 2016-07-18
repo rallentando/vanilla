@@ -98,10 +98,10 @@ namespace {
             : QGraphicsView(scene, parent)
         {
         }
-        QSize sizeHint() const DECL_OVERRIDE {
+        QSize sizeHint() const Q_DECL_OVERRIDE {
             return QGraphicsView::sizeHint();
         }
-        QSize minimumSizeHint() const DECL_OVERRIDE {
+        QSize minimumSizeHint() const Q_DECL_OVERRIDE {
             return QSize(0, 0);
         }
     };
@@ -113,7 +113,7 @@ namespace {
         {
         }
     protected:
-        void paintEvent(QPaintEvent *ev) DECL_OVERRIDE {
+        void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE {
             Q_UNUSED(ev);
             QPainter painter(this);
             static const QBrush b = QBrush(QColor(240, 240, 240, 1));
@@ -121,7 +121,7 @@ namespace {
             painter.setBrush(b);
             painter.drawRect(-1, -1, width()+1, height()+1);
         }
-        void enterEvent(QEvent *ev) DECL_OVERRIDE {
+        void enterEvent(QEvent *ev) Q_DECL_OVERRIDE {
             QWidget::enterEvent(ev);
             TreeBar *bar = static_cast<TreeBar*>(parentWidget());
             switch(bar->orientation()){
@@ -129,11 +129,11 @@ namespace {
             case Qt::Vertical:   setCursor(Qt::SizeHorCursor); break;
             }
         }
-        void leaveEvent(QEvent *ev) DECL_OVERRIDE {
+        void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE {
             QWidget::leaveEvent(ev);
             setCursor(Qt::ArrowCursor);
         }
-        void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE {
+        void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE {
             QWidget::mouseMoveEvent(ev);
 
             TreeBar *bar = static_cast<TreeBar*>(parentWidget());
@@ -161,13 +161,13 @@ namespace {
             bar->resize(width, height);
             bar->Adjust();
         }
-        void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE {
+        void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE {
             QWidget::mousePressEvent(ev);
         }
-        void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE {
+        void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE {
             QWidget::mouseReleaseEvent(ev);
         }
-        void mouseDoubleClickEvent(QMouseEvent *ev) DECL_OVERRIDE {
+        void mouseDoubleClickEvent(QMouseEvent *ev) Q_DECL_OVERRIDE {
             QWidget::mouseDoubleClickEvent(ev);
 
             TreeBar *bar = static_cast<TreeBar*>(parentWidget());
@@ -217,31 +217,31 @@ namespace {
         }
 
     protected:
-        virtual void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        virtual void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             Q_UNUSED(ev);
             SetButtonState(Pressed);
         }
-        virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             if(boundingRect().contains(ev->pos()))
                 SetButtonState(Hovered);
             else SetButtonState(NotHovered);
         }
-        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             QGraphicsItem::mouseMoveEvent(ev);
             SetButtonState(Hovered);
         }
-        virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             QGraphicsItem::mouseDoubleClickEvent(ev);
         }
-        virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
+        virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE {
             QGraphicsItem::hoverEnterEvent(ev);
             SetButtonState(Hovered);
         }
-        virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
+        virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE {
             QGraphicsItem::hoverLeaveEvent(ev);
             SetButtonState(NotHovered);
         }
-        virtual void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
+        virtual void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE {
             QGraphicsItem::hoverMoveEvent(ev);
             SetButtonState(Hovered);
         }
@@ -256,7 +256,7 @@ namespace {
             : GraphicsButton(tb, bar, parent)
         {
         }
-        QRectF boundingRect() const DECL_OVERRIDE {
+        QRectF boundingRect() const Q_DECL_OVERRIDE {
             QRectF rect = scene()->sceneRect();
             switch(m_TreeBar->orientation()){
             case Qt::Horizontal: rect.setWidth(17);  break;
@@ -265,7 +265,7 @@ namespace {
             return rect;
         }
 
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
 
             painter->save();
@@ -314,10 +314,10 @@ namespace {
         }
 
     protected:
-        void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mousePressEvent(ev);
         }
-        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
 
             if(ev->button() == Qt::LeftButton){
@@ -342,7 +342,7 @@ namespace {
             : GraphicsButton(tb, bar, parent)
         {
         }
-        QRectF boundingRect() const DECL_OVERRIDE {
+        QRectF boundingRect() const Q_DECL_OVERRIDE {
             QRectF rect = parentItem()->boundingRect();
             switch(m_TreeBar->orientation()){
             case Qt::Horizontal: rect.setLeft(rect.right() - 17); break;
@@ -351,7 +351,7 @@ namespace {
             return rect;
         }
 
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
 
             if(Application::EnableTransparentBar()){
@@ -395,10 +395,10 @@ namespace {
                  plus, QRect(QPoint(), plus.size()));
         }
     protected:
-        void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mousePressEvent(ev);
         }
-        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
 
             if(ev->button() == Qt::LeftButton){
@@ -488,14 +488,14 @@ namespace {
             : ScrollButton(tb, bar, parent)
         {
         }
-        QRectF boundingRect() const DECL_OVERRIDE {
+        QRectF boundingRect() const Q_DECL_OVERRIDE {
             QRectF rect = parentItem()->boundingRect();
             rect.setLeft(17);
             rect.setWidth(15);
             return rect;
         }
 
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             painter->setPen(Qt::NoPen);
@@ -516,11 +516,11 @@ namespace {
                  left, QRect(QPoint(), left.size()));
         }
     protected:
-        void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mousePressEvent(ev);
             Layer()->StartScrollUpTimer();
         }
-        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
             Layer()->AutoScrollStopOrScroll(-m_TreeBar->GetHorizontalNodeWidth());
         }
@@ -532,14 +532,14 @@ namespace {
             : ScrollButton(tb, bar, parent)
         {
         }
-        QRectF boundingRect() const DECL_OVERRIDE {
+        QRectF boundingRect() const Q_DECL_OVERRIDE {
             QRectF rect = parentItem()->boundingRect();
             rect.setLeft(rect.right() - 15 - 17);
             rect.setWidth(15);
             return rect;
         }
 
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             painter->setPen(Qt::NoPen);
@@ -560,11 +560,11 @@ namespace {
                  right, QRect(QPoint(), right.size()));
         }
     protected:
-        void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mousePressEvent(ev);
             Layer()->StartScrollDownTimer();
         }
-        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
             Layer()->AutoScrollStopOrScroll(m_TreeBar->GetHorizontalNodeWidth());
         }
@@ -576,14 +576,14 @@ namespace {
             : ScrollButton(tb, bar, parent)
         {
         }
-        QRectF boundingRect() const DECL_OVERRIDE {
+        QRectF boundingRect() const Q_DECL_OVERRIDE {
             QRectF rect = parentItem()->boundingRect();
             rect.setTop(17);
             rect.setHeight(15);
             return rect;
         }
 
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             painter->setPen(Qt::NoPen);
@@ -604,11 +604,11 @@ namespace {
                  up, QRect(QPoint(), up.size()));
         }
     protected:
-        void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mousePressEvent(ev);
             Layer()->StartScrollUpTimer();
         }
-        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
             Layer()->AutoScrollStopOrScroll(-m_TreeBar->GetVerticalNodeHeight() * 3.0);
         }
@@ -620,14 +620,14 @@ namespace {
             : ScrollButton(tb, bar, parent)
         {
         }
-        QRectF boundingRect() const DECL_OVERRIDE {
+        QRectF boundingRect() const Q_DECL_OVERRIDE {
             QRectF rect = parentItem()->boundingRect();
             rect.setTop(rect.bottom() - 15 - 17);
             rect.setHeight(15);
             return rect;
         }
 
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             painter->setPen(Qt::NoPen);
@@ -648,11 +648,11 @@ namespace {
                  down, QRect(QPoint(), down.size()));
         }
     protected:
-        void mousePressEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mousePressEvent(ev);
             Layer()->StartScrollDownTimer();
         }
-        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mouseReleaseEvent(ev);
             Layer()->AutoScrollStopOrScroll(m_TreeBar->GetVerticalNodeHeight() * 3.0);
         }
@@ -666,7 +666,7 @@ namespace {
             setZValue(FRINGE_BUTTON_LAYER);
         }
 
-        QRectF boundingRect() const DECL_OVERRIDE {
+        QRectF boundingRect() const Q_DECL_OVERRIDE {
             const LayerItem *layer = static_cast<LayerItem*>(parentItem());
             const qreal cur = layer->GetScroll();
             const qreal min = layer->MinScroll();
@@ -701,7 +701,7 @@ namespace {
             return rect;
         }
 
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
             QRectF rect = boundingRect();
             if(!rect.isValid()) return;
@@ -719,7 +719,7 @@ namespace {
             painter->drawRect(rect);
         }
     protected:
-        void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) DECL_OVERRIDE {
+        void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE {
             GraphicsButton::mouseMoveEvent(ev);
             LayerItem *layer = static_cast<LayerItem*>(parentItem());
             const qreal min = layer->MinScroll();
@@ -739,7 +739,7 @@ namespace {
             layer->SetScroll(min + (max - min) * rate);
             layer->ResetTargetScroll();
         }
-        void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) DECL_OVERRIDE {
+        void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE {
             QRectF rect = boundingRect();
             GraphicsButton::hoverLeaveEvent(ev);
             scene()->update(rect);
@@ -784,7 +784,7 @@ namespace {
             return m_Where;
         }
 
-        QRectF boundingRect() const DECL_OVERRIDE {
+        QRectF boundingRect() const Q_DECL_OVERRIDE {
             if(!m_Target || m_Where == NoWhere) return QRectF();
             QRectF rect = m_Target->boundingRect();
             switch(m_TreeBar->orientation()){
@@ -801,7 +801,7 @@ namespace {
             }
             return rect;
         }
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) DECL_OVERRIDE {
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option); Q_UNUSED(widget);
             if(!m_Target) return;
             static const QBrush brush(QColor(0, 0, 0, 48));
@@ -828,7 +828,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     m_ResizeGrip = new ResizeGrip(this);
     m_OverrideSize = QSize();
     m_LayerList = QList<LayerItem*>();
-    m_AutoUpdateTimerID = 0;
+    m_AutoUpdateTimerId = 0;
     m_HorizontalNodeWidth = 0;
     m_HorizontalNodeHeight = 0;
     m_VerticalNodeHeight = 0;
@@ -1635,21 +1635,21 @@ void TreeBar::OnCurrentChanged(Node *nd){
 }
 
 void TreeBar::StartAutoUpdateTimer(){
-    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
-    m_AutoUpdateTimerID = startTimer(200);
+    if(m_AutoUpdateTimerId) killTimer(m_AutoUpdateTimerId);
+    m_AutoUpdateTimerId = startTimer(200);
     connect(m_Scene, &QGraphicsScene::changed, this, &TreeBar::RestartAutoUpdateTimer);
 }
 
 void TreeBar::StopAutoUpdateTimer(){
     disconnect(m_Scene, &QGraphicsScene::changed, this, &TreeBar::RestartAutoUpdateTimer);
-    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
-    m_AutoUpdateTimerID = 0;
+    if(m_AutoUpdateTimerId) killTimer(m_AutoUpdateTimerId);
+    m_AutoUpdateTimerId = 0;
 }
 
 void TreeBar::RestartAutoUpdateTimer(){
-    if(m_AutoUpdateTimerID) killTimer(m_AutoUpdateTimerID);
-    if(m_View->scene()) m_AutoUpdateTimerID = startTimer(m_Scene->hasFocus() ? 200 : 1000);
-    else m_AutoUpdateTimerID = 0;
+    if(m_AutoUpdateTimerId) killTimer(m_AutoUpdateTimerId);
+    if(m_View->scene()) m_AutoUpdateTimerId = startTimer(m_Scene->hasFocus() ? 200 : 1000);
+    else m_AutoUpdateTimerId = 0;
 }
 
 void TreeBar::paintEvent(QPaintEvent *ev){
@@ -1699,7 +1699,7 @@ void TreeBar::timerEvent(QTimerEvent *ev){
     QToolBar::timerEvent(ev);
     if(!isVisible()) return;
     if(parentWidget()->isActiveWindow() &&
-       m_AutoUpdateTimerID && ev->timerId() == m_AutoUpdateTimerID){
+       m_AutoUpdateTimerId && ev->timerId() == m_AutoUpdateTimerId){
         m_Scene->update();
     }
 }
@@ -1757,8 +1757,8 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     m_Node = nd;
     m_FocusedNode = 0;
     m_Nest = 0;
-    m_ScrollUpTimerID = 0;
-    m_ScrollDownTimerID = 0;
+    m_ScrollUpTimerId = 0;
+    m_ScrollDownTimerId = 0;
     m_CurrentScroll = 0.0;
     m_TargetScroll = 0.0;
     m_NodeItems = QList<NodeItem*>();
@@ -1785,7 +1785,7 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
             this, &LayerItem::ResetTargetScroll);
 
     class DummyNode : public ViewNode{
-        bool IsDummy() const DECL_OVERRIDE { return true;}
+        bool IsDummy() const Q_DECL_OVERRIDE { return true;}
     };
 
     m_DummyNode = new DummyNode();
@@ -1995,28 +1995,28 @@ void LayerItem::AutoScrollStopOrScroll(qreal delta){
 }
 
 void LayerItem::StartScrollDownTimer(){
-    if(!m_ScrollDownTimerID){
-        m_ScrollDownTimerID = startTimer(200);
+    if(!m_ScrollDownTimerId){
+        m_ScrollDownTimerId = startTimer(200);
     }
 }
 
 void LayerItem::StartScrollUpTimer(){
-    if(!m_ScrollUpTimerID){
-        m_ScrollUpTimerID = startTimer(200);
+    if(!m_ScrollUpTimerId){
+        m_ScrollUpTimerId = startTimer(200);
     }
 }
 
 void LayerItem::StopScrollDownTimer(){
-    if(m_ScrollDownTimerID){
-        killTimer(m_ScrollDownTimerID);
-        m_ScrollDownTimerID = 0;
+    if(m_ScrollDownTimerId){
+        killTimer(m_ScrollDownTimerId);
+        m_ScrollDownTimerId = 0;
     }
 }
 
 void LayerItem::StopScrollUpTimer(){
-    if(m_ScrollUpTimerID){
-        killTimer(m_ScrollUpTimerID);
-        m_ScrollUpTimerID = 0;
+    if(m_ScrollUpTimerId){
+        killTimer(m_ScrollUpTimerId);
+        m_ScrollUpTimerId = 0;
     }
 }
 
@@ -2523,14 +2523,14 @@ void LayerItem::DisplayTrashTree(){
 
 void LayerItem::timerEvent(QTimerEvent *ev){
     QGraphicsObject::timerEvent(ev);
-    if(ev->timerId() == m_ScrollDownTimerID){
-        killTimer(m_ScrollDownTimerID);
-        m_ScrollDownTimerID = 0;
+    if(ev->timerId() == m_ScrollDownTimerId){
+        killTimer(m_ScrollDownTimerId);
+        m_ScrollDownTimerId = 0;
         AutoScrollDown();
     }
-    if(ev->timerId() == m_ScrollUpTimerID){
-        killTimer(m_ScrollUpTimerID);
-        m_ScrollUpTimerID = 0;
+    if(ev->timerId() == m_ScrollUpTimerId){
+        killTimer(m_ScrollUpTimerId);
+        m_ScrollUpTimerId = 0;
         AutoScrollUp();
     }
 }
@@ -2577,46 +2577,64 @@ void LayerItem::dropEvent(QGraphicsSceneDragDropEvent *ev){
 
 void LayerItem::dragMoveEvent(QGraphicsSceneDragDropEvent *ev){
     InsertPosition *position = static_cast<InsertPosition*>(m_InsertPosition);
+    NodeItem *node = 0;
     foreach(QGraphicsItem *item, scene()->items(ev->scenePos())){
-        if(NodeItem *node = dynamic_cast<NodeItem*>(item)){
-            InsertPosition::Where where = InsertPosition::NoWhere;
-            switch(m_TreeBar->orientation()){
-            case Qt::Horizontal:
-
-                if(ev->scenePos().x() < node->boundingRect().center().x())
-                    where = InsertPosition::LeftOfTarget;
-                else where = InsertPosition::RightOfTarget;
-
-                if(ev->scenePos().x() < scene()->sceneRect().left() + FRINGE_BUTTON_SIZE)
-                    AutoScrollUp();
-                else if(ev->scenePos().x() > scene()->sceneRect().right() - FRINGE_BUTTON_SIZE)
-                    AutoScrollDown();
-                else
-                    AutoScrollStop();
-                break;
-
-            case Qt::Vertical:
-
-                if(ev->scenePos().y() < node->boundingRect().center().y())
-                    where = InsertPosition::LeftOfTarget;
-                else where = InsertPosition::RightOfTarget;
-
-                if(ev->scenePos().y() < scene()->sceneRect().top() + FRINGE_BUTTON_SIZE)
-                    AutoScrollUp();
-                else if(ev->scenePos().y() > scene()->sceneRect().bottom() - FRINGE_BUTTON_SIZE)
-                    AutoScrollDown();
-                else
-                    AutoScrollStop();
-                break;
-            }
-            position->SetTarget(node, where);
-            ev->setAccepted(true);
-            QGraphicsObject::dragMoveEvent(ev);
-            return;
+        if(node = dynamic_cast<NodeItem*>(item)) break;
+    }
+    if(!node && !m_NodeItems.isEmpty()){
+        switch(m_TreeBar->orientation()){
+        case Qt::Horizontal:
+            if(ev->scenePos().x() < m_NodeItems.first()->boundingRect().center().x())
+                node = m_NodeItems.first();
+            else if(ev->scenePos().x() > m_NodeItems.last()->boundingRect().center().x())
+                node = m_NodeItems.last();
+            break;
+        case Qt::Vertical:
+            if(ev->scenePos().y() < m_NodeItems.first()->boundingRect().center().y())
+                node = m_NodeItems.first();
+            else if(ev->scenePos().y() > m_NodeItems.last()->boundingRect().center().y())
+                node = m_NodeItems.last();
+            break;
         }
     }
-    position->SetTarget(0);
-    QGraphicsObject::dragMoveEvent(ev);
+    if(node){
+        InsertPosition::Where where = InsertPosition::NoWhere;
+        switch(m_TreeBar->orientation()){
+        case Qt::Horizontal:
+
+            if(ev->scenePos().x() < node->boundingRect().center().x())
+                where = InsertPosition::LeftOfTarget;
+            else where = InsertPosition::RightOfTarget;
+
+            if(ev->scenePos().x() < scene()->sceneRect().left() + FRINGE_BUTTON_SIZE)
+                AutoScrollUp();
+            else if(ev->scenePos().x() > scene()->sceneRect().right() - FRINGE_BUTTON_SIZE)
+                AutoScrollDown();
+            else
+                AutoScrollStop();
+            break;
+
+        case Qt::Vertical:
+
+            if(ev->scenePos().y() < node->boundingRect().center().y())
+                where = InsertPosition::LeftOfTarget;
+            else where = InsertPosition::RightOfTarget;
+
+            if(ev->scenePos().y() < scene()->sceneRect().top() + FRINGE_BUTTON_SIZE)
+                AutoScrollUp();
+            else if(ev->scenePos().y() > scene()->sceneRect().bottom() - FRINGE_BUTTON_SIZE)
+                AutoScrollDown();
+            else
+                AutoScrollStop();
+            break;
+        }
+        position->SetTarget(node, where);
+        QGraphicsObject::dragMoveEvent(ev);
+        ev->setAccepted(true);
+    } else {
+        position->SetTarget(0);
+        QGraphicsObject::dragMoveEvent(ev);
+    }
 }
 
 void LayerItem::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
@@ -2701,7 +2719,7 @@ NodeItem::NodeItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent)
     m_Nest = 0;
     m_IsFocused = static_cast<LayerItem*>(parent)->GetNode() == nd;
     m_IsHovered = false;
-    m_HoveredTimerID = 0;
+    m_HoveredTimerId = 0;
     m_ButtonState = NotHovered;
     m_TargetPosition = QPoint();
     m_Animation = new QPropertyAnimation(this, "rect");
@@ -3140,10 +3158,10 @@ void NodeItem::SetHoveredWithItem(bool hovered){
     if(m_Node->IsDirectory() && m_IsHovered != hovered){
         m_IsHovered = hovered;
         if(m_IsHovered){
-            m_HoveredTimerID = startTimer(500);
+            m_HoveredTimerId = startTimer(500);
         } else {
-            killTimer(m_HoveredTimerID);
-            m_HoveredTimerID = 0;
+            killTimer(m_HoveredTimerId);
+            m_HoveredTimerId = 0;
         }
         update();
     }
@@ -3391,10 +3409,10 @@ QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value){
 }
 
 void NodeItem::timerEvent(QTimerEvent *ev){
-    if(ev->timerId() == m_HoveredTimerID){
+    if(ev->timerId() == m_HoveredTimerId){
 
-        killTimer(m_HoveredTimerID);
-        m_HoveredTimerID = 0;
+        killTimer(m_HoveredTimerId);
+        m_HoveredTimerId = 0;
 
         UnfoldDirectory();
     }
@@ -3426,6 +3444,7 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
             m_Rect.moveTop(m_Rect.top() - static_cast<int>(Layer()->GetScroll()));
             break;
         }
+        if(ev->modifiers() & Qt::ControlModifier) setSelected(true);
     }
     QGraphicsObject::mousePressEvent(ev);
 }
@@ -3515,6 +3534,8 @@ void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
 #endif
 
     QGraphicsObject::mouseMoveEvent(ev);
+
+    if(!(ev->buttons() & Qt::LeftButton)) return;
 
     if(this != Layer()->GetFocusedNode())
         Layer()->SetFocusedNode(this);

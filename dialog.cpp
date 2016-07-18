@@ -446,7 +446,7 @@ ModelessDialog::ModelessDialog()
     , m_DefaultValue(false)
     , m_Title(QString(tr("Cancel")))
     , m_Caption(QString())
-    , m_TimerID(0)
+    , m_TimerId(0)
     , m_CallBack([](bool){})
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
@@ -585,7 +585,7 @@ void ModelessDialog::keyPressEvent(QKeyEvent *ev){
 
 void ModelessDialog::timerEvent(QTimerEvent *ev){
     QWidget::timerEvent(ev);
-    if(ev->timerId() == m_TimerID){
+    if(ev->timerId() == m_TimerId){
         if(m_DefaultValue)
             emit Returned();
         else
@@ -608,16 +608,16 @@ void ModelessDialog::paintEvent(QPaintEvent *ev){
 }
 
 void ModelessDialog::StartTimer(){
-    if(m_TimerID){
-        killTimer(m_TimerID);
+    if(m_TimerId){
+        killTimer(m_TimerId);
     }
-    m_TimerID = startTimer(AUTOCANCEL_DISTANCE);
+    m_TimerId = startTimer(AUTOCANCEL_DISTANCE);
 }
 
 void ModelessDialog::StopTimer(){
-    if(m_TimerID){
-        killTimer(m_TimerID);
-        m_TimerID = 0;
+    if(m_TimerId){
+        killTimer(m_TimerId);
+        m_TimerId = 0;
     }
 }
 

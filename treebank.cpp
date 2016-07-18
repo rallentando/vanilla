@@ -29,6 +29,8 @@
 #include "view.hpp"
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
+#include "quicknativewebview.hpp"
+#include "tridentview.hpp"
 #include "webenginepage.hpp"
 #include "gadgets.hpp"
 #include "mainwindow.hpp"
@@ -37,10 +39,6 @@
 #include "localview.hpp"
 #include "jsobject.hpp"
 #include "dialog.hpp"
-
-#if defined(Q_OS_WIN)
-#  include "tridentview.hpp"
-#endif
 
 /*
 
@@ -176,9 +174,9 @@ static void SetPartner(QUrl url, ViewNode *vn, HistNode *hn, SharedView view = 0
 static void SetPartner(QUrl url, HistNode *hn, ViewNode *vn, SharedView view = 0);
 
 // for renaming directory
-static QString GetNetworkSpaceID(ViewNode*);
-static QString GetNetworkSpaceID(HistNode*);
-static QString GetNetworkSpaceID(SharedView);
+static QString GetNetworkSpaceId(ViewNode*);
+static QString GetNetworkSpaceId(HistNode*);
+static QString GetNetworkSpaceId(SharedView);
 static QStringList GetNodeSettings(ViewNode*);
 static QStringList GetNodeSettings(HistNode*);
 static QStringList GetNodeSettings(SharedView);
@@ -360,7 +358,7 @@ void TreeBank::ReconfigureDirectory(ViewNode *vn, QString before, QString after)
     // reset network access manager and
     // apply view specific settings.
 
-    QString parentid = GetNetworkSpaceID(vn->GetParent()->ToViewNode());
+    QString parentid = GetNetworkSpaceId(vn->GetParent()->ToViewNode());
     QString befname = before.split(QStringLiteral(";")).first();
     QString aftname = after .split(QStringLiteral(";")).first();
     QStringList befset = before.split(QStringLiteral(";")).mid(1);
@@ -386,16 +384,16 @@ void TreeBank::ApplySpecificSettings(ViewNode *vn, ViewNode *dir){
 
     ApplySpecificSettings
         (vn,
-         NetworkController::GetNetworkAccessManager(GetNetworkSpaceID(vn),
+         NetworkController::GetNetworkAccessManager(GetNetworkSpaceId(vn),
                             GetNodeSettings(vn)),
          GetNodeSettings(vn),
-         GetNetworkSpaceID(vn),
-         GetNetworkSpaceID(dir));
+         GetNetworkSpaceId(vn),
+         GetNetworkSpaceId(dir));
 }
 
 void TreeBank::ApplySpecificSettings(ViewNode *vn, NetworkAccessManager *nam, QStringList set,
                                      QString id, QString parentid){
-    if(GetNetworkSpaceID(vn) == id || GetNetworkSpaceID(vn) == parentid){
+    if(GetNetworkSpaceId(vn) == id || GetNetworkSpaceId(vn) == parentid){
         if(vn->GetPartner()){
             ApplySpecificSettings(GetRoot(vn->GetPartner())->ToHistNode(), nam, set);
         }
@@ -415,7 +413,7 @@ void TreeBank::ApplySpecificSettings(HistNode *hn, NetworkAccessManager *nam, QS
 }
 
 // for renaming directory
-static QString GetNetworkSpaceID(ViewNode* vn){
+static QString GetNetworkSpaceId(ViewNode* vn){
     QString title;
     forever{
         title = vn->GetTitle();
@@ -431,12 +429,12 @@ static QString GetNetworkSpaceID(ViewNode* vn){
     }
 }
 
-static QString GetNetworkSpaceID(HistNode* hn){
-    return GetNetworkSpaceID(hn->GetPartner()->ToViewNode());
+static QString GetNetworkSpaceId(HistNode* hn){
+    return GetNetworkSpaceId(hn->GetPartner()->ToViewNode());
 }
 
-static QString GetNetworkSpaceID(SharedView view){
-    return GetNetworkSpaceID(view->GetViewNode());
+static QString GetNetworkSpaceId(SharedView view){
+    return GetNetworkSpaceId(view->GetViewNode());
 }
 
 static QStringList GetNodeSettings(ViewNode* vn){
@@ -1292,7 +1290,7 @@ void TreeBank::ReleaseAllView(){
     m_ViewUpdateBox.clear();
 
     foreach(SharedView view, m_AllViews){
-#if defined(Q_OS_WIN)
+#ifdef TRIDENTVIEW
         if(TridentView *w = qobject_cast<TridentView*>(view->base()))
             w->Clear();
 #endif
@@ -1675,7 +1673,7 @@ void TreeBank::NthView(int n, ViewNode *vn){
         SetCurrent(siblings[n]);
 }
 
-#if defined(Q_OS_WIN)
+#if defined(TRIDENTVIEW)
 bool TreeBank::TridentViewExist(){
     static bool exists = false;
     if(exists) return true;
@@ -3841,7 +3839,7 @@ bool TreeBank::TriggerKeyEvent(QString str){
 }
 
 void TreeBank::DeleteView(View *view){
-#if defined(Q_OS_WIN)
+#ifdef TRIDENTVIEW
     if(TridentView *w = qobject_cast<TridentView*>(view->base()))
         w->Clear();
 #endif
@@ -3852,13 +3850,19 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
     MainWindow *win = Application::GetCurrentWindow();
     TreeBank *tb = win ? win->GetTreeBank() : 0;
     QStringList set = GetNodeSettings(vn);
-    QString id = GetNetworkSpaceID(vn);
+    QString id = GetNetworkSpaceId(vn);
 
     // for predicate.
     QUrl url = req.url();
     QString urlstr = url.toString();
 
     SharedView view = SharedView();
+
+#ifdef TRIDENTVIEW
+    if(set.indexOf(QRegularExpression(QStringLiteral("\\A[tT](?:rident)?(?:[vV](?:iew)?)?\\Z"))) != -1){
+        TridentView::SetFeatureControl();
+    }
+#endif
 
     if(urlstr.startsWith(QStringLiteral("file:///")) &&
        (QFileInfo(url.toLocalFile()).isDir() ||
@@ -3868,6 +3872,7 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
 
     } else {
         view = SharedView(
+#ifdef WEBENGINEVIEW
             set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new WebEngineView(tb, id, set) :
             set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
@@ -3878,13 +3883,28 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
               new WebEngineView(tb, id, set) :
             set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new QuickWebEngineView(tb, id, set) :
-            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[lL](?:ocal)?"                  VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new LocalView(tb, id, set) :
-#if defined(Q_OS_WIN)
+#endif
+#ifdef NATIVEWEBVIEW
+            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[nN](?:ative)?" VV"[wW](?:eb)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+              new QuickNativeWebView(tb, id, set) :
+            set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[nN](?:ative)?" VV"[wW](?:eb)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+              new QuickNativeWebView(tb, id, set) :
+#endif
+#ifdef TRIDENTVIEW
             set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[tT](?:rident)?"                VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
               new TridentView(tb, id, set) :
 #endif
+            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[lL](?:ocal)?"                  VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+              new LocalView(tb, id, set) :
+#if defined(WEBENGINEVIEW)
             static_cast<View*>(new WebEngineView(tb, id, set))
+#elif defined(TRIDENTVIEW)
+            static_cast<View*>(new TridentView(tb, id, set))
+#elif defined(NATIVEWEBVIEW)
+            static_cast<View*>(new QuickNativeWebView(tb, id, set))
+#else
+            static_cast<View*>(0)
+#endif
             , &DeleteView);
     }
 

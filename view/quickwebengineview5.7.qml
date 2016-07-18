@@ -60,12 +60,22 @@ WebEngineView {
     }
 
     onNewViewRequested: {
-        request.openIn(viewInterface.newView())
+        if(request.destination != WebEngineView.NewViewInBackgroundTab)
+            request.openIn(viewInterface.newViewBackground())
+        else request.openIn(viewInterface.newView())
     }
 
     onFullScreenRequested: {
         viewInterface.fullScreenRequested(request.toggleOn)
         request.accept()
+    }
+
+    onContentsSizeChanged: {
+        viewInterface.contentsSizeChanged(size)
+    }
+
+    onScrollPositionChanged: {
+        viewInterface.scrollPositionChanged(position)
     }
 
     profile.onDownloadRequested: {
@@ -75,10 +85,7 @@ WebEngineView {
     function setScroll(pos){
         runJavaScript
         (viewInterface.setScrollRatioPointJsCode(pos),
-         WebEngineScript.MainWorld,
-         function(_){
-             emitScrollChangedIfNeed()
-         })
+         WebEngineScript.MainWorld)
     }
 
     function saveScroll(){
@@ -114,40 +121,13 @@ WebEngineView {
          })
     }
 
-    function emitScrollChangedIfNeed(){
+    function emitScrollChanged(){
         runJavaScript
-        (viewInterface.getScrollValuePointJsCode(),
+        (viewInterface.getScrollRatioPointJsCode(),
          WebEngineScript.MainWorld,
-         function(result){
-             if(Qt.point(result[0], result[1]) ==
-                viewInterface.restoreScrollFromNode())
-                 return
-
-             runJavaScript
-             (viewInterface.getScrollRatioPointJsCode(),
-              WebEngineScript.MainWorld,
-              function(pointf){
-                  scrollChanged(Qt.point(pointf[0], pointf[1]))
-              })
+         function(pointf){
+             scrollChanged(Qt.point(pointf[0], pointf[1]))
          })
-    }
-
-    function setFocusToElement(xpath){
-        runJavaScript
-        (viewInterface.setFocusToElementJsCode(xpath),
-         WebEngineScript.MainWorld)
-    }
-
-    function fireClickEvent(xpath, pos){
-        runJavaScript
-        (viewInterface.fireClickEventJsCode(xpath, pos/zoomFactor),
-         WebEngineScript.MainWorld)
-    }
-
-    function setTextValue(xpath, text){
-        runJavaScript
-        (viewInterface.setTextValueJsCode(xpath, text),
-         WebEngineScript.MainWorld)
     }
 
     function seekText(str, opt){
@@ -158,14 +138,21 @@ WebEngineView {
             option |= FindCaseSensitively
 
         findText(str, option)
-        emitScrollChangedIfNeed()
     }
 
-    function cut(){
-        triggerWebAction(WebEngineView.Cut)
+    function rewind(){
+        var count = navigationHistory.backItems.rowCount()
+        if(count) goBackOrForward(-count)
+    }
+    function fastForward(){
+        var count = navigationHistory.forwardItems.rowCount()
+        if(count) goBackOrForward(count)
     }
     function copy(){
         triggerWebAction(WebEngineView.Copy)
+    }
+    function cut(){
+        triggerWebAction(WebEngineView.Cut)
     }
     function paste(){
         triggerWebAction(WebEngineView.Paste)

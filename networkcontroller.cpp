@@ -22,11 +22,13 @@
 #include <QAbstractButton>
 #include <QRegularExpression>
 #include <QMimeDatabase>
-#include <QWebEngineProfile>
-#include <QWebEngineDownloadItem>
-#if defined(USE_WEBCHANNEL) || defined(PASSWORD_MANAGER)
-#  include <QWebEngineScript>
-#  include <QWebEngineScriptCollection>
+#ifdef WEBENGINEVIEW
+#  include <QWebEngineProfile>
+#  include <QWebEngineDownloadItem>
+#  if defined(USE_WEBCHANNEL) || defined(PASSWORD_MANAGER)
+#    include <QWebEngineScript>
+#    include <QWebEngineScriptCollection>
+#  endif
 #endif
 
 #if defined(Q_OS_WIN)
@@ -67,14 +69,18 @@ NetworkAccessManager::NetworkAccessManager(QString id)
     , m_Id(id)
     , m_UserAgent(QString())
     , m_SslProtocol(QSsl::UnknownProtocol)
+#ifdef WEBENGINEVIEW
     , m_Profile(new QWebEngineProfile(id))
+#endif
 {
+#ifdef WEBENGINEVIEW
     if(Application::SaveSessionCookie())
         m_Profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
     else
         m_Profile->setPersistentCookiesPolicy(QWebEngineProfile::AllowPersistentCookies);
 
     m_Profile->setHttpAcceptLanguage(Application::GetAcceptLanguage());
+#endif
 
 #if defined(USE_WEBCHANNEL) || defined(PASSWORD_MANAGER)
     static QString source;
@@ -129,6 +135,7 @@ NetworkAccessManager::NetworkAccessManager(QString id)
            VV"%1\n"
            VV"})()").arg(inner);
     }
+#  ifdef WEBENGINEVIEW
     QWebEngineScript script;
     script.setName(QStringLiteral("vscript"));
     script.setInjectionPoint(QWebEngineScript::DocumentReady);
@@ -136,18 +143,25 @@ NetworkAccessManager::NetworkAccessManager(QString id)
     script.setRunsOnSubFrames(true);
     script.setSourceCode(source);
     m_Profile->scripts()->insert(script);
+#  endif
 #endif
 
+#ifdef WEBENGINEVIEW
     connect(m_Profile, &QWebEngineProfile::downloadRequested,
             this, &NetworkAccessManager::HandleDownload);
+#endif
     connect(this, &NetworkAccessManager::authenticationRequired,
             this, &NetworkAccessManager::HandleAuthentication);
+#ifndef QT_NO_NETWORKPROXY
     connect(this, &NetworkAccessManager::proxyAuthenticationRequired,
             this, &NetworkAccessManager::HandleProxyAuthentication);
+#endif
 }
 
 NetworkAccessManager::~NetworkAccessManager(){
+#ifdef WEBENGINEVIEW
     m_Profile->deleteLater();
+#endif
 }
 
 void NetworkAccessManager::HandleError(QNetworkReply::NetworkError code){
@@ -232,15 +246,17 @@ void NetworkAccessManager::HandleAuthentication(QNetworkReply *reply,
     ModalDialog::Authentication(authenticator);
 }
 
+#ifndef QT_NO_NETWORKPROXY
 void NetworkAccessManager::HandleProxyAuthentication(const QNetworkProxy &proxy,
                                                      QAuthenticator *authenticator){
     Q_UNUSED(proxy);
 
     ModalDialog::Authentication(authenticator);
 }
+#endif
 
 void NetworkAccessManager::HandleDownload(QObject *object){
-
+#ifdef WEBENGINEVIEW
     static QSet<QObject*> set;
     if(set.contains(object)) return;
     set << object;
@@ -304,6 +320,9 @@ void NetworkAccessManager::HandleDownload(QObject *object){
     QStringList path = filename.split(QStringLiteral("/"));
     path.removeLast();
     Application::SetDownloadDirectory(path.join(QStringLiteral("/")) + QStringLiteral("/"));
+#else
+    Q_UNUSED(object);
+#endif
 }
 
 QNetworkReply* NetworkAccessManager::createRequest(Operation op,
@@ -336,6 +355,10 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op,
         }
     }
     return rep;
+}
+
+QString NetworkAccessManager::GetId(){
+    return m_Id;
 }
 
 void NetworkAccessManager::SetNetworkCookieJar(NetworkCookieJar *ncj){
@@ -438,7 +461,9 @@ void NetworkAccessManager::SetUserAgent(QString ua){
 
     m_UserAgent = ua;
 
+#ifdef WEBENGINEVIEW
     m_Profile->setHttpUserAgent(ua);
+#endif
 }
 
 QString NetworkAccessManager::GetUserAgent() const {
@@ -462,6 +487,7 @@ QString NetworkAccessManager::GetUserAgent() const {
 // type: default, socks, http, httpcaching, ftpcaching
 
 void NetworkAccessManager::SetProxy(QString proxySet){
+#ifndef QT_NO_NETWORKPROXY
     QStringList set = proxySet.split(QStringLiteral(" "));
     set.takeFirst();
     if(set.length() < 1) return;
@@ -525,6 +551,9 @@ void NetworkAccessManager::SetProxy(QString proxySet){
         proxy.setPort(port);
         setProxy(proxy);
     }
+#else
+    Q_UNUSED(proxySet);
+#endif
 }
 
 void NetworkAccessManager::SetSslProtocol(QString sslSet){
@@ -552,16 +581,20 @@ void NetworkAccessManager::SetSslProtocol(QString sslSet){
 }
 
 void NetworkAccessManager::SetOffTheRecord(QString offTheRecordSet){
+#ifdef WEBENGINEVIEW
     if       (!m_Profile->isOffTheRecord() && Application::ExactMatch(QStringLiteral( "(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"), offTheRecordSet)){
         m_Profile->deleteLater(); m_Profile = new QWebEngineProfile();
     } else if( m_Profile->isOffTheRecord() && Application::ExactMatch(QStringLiteral("!(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"), offTheRecordSet)){
         m_Profile->deleteLater(); m_Profile = new QWebEngineProfile(m_Id);
     }
+#endif
 }
 
+#ifdef WEBENGINEVIEW
 QWebEngineProfile *NetworkAccessManager::GetProfile() const {
     return m_Profile;
 }
+#endif
 
 // DownloadItem
 ////////////////////////////////////////////////////////////////
@@ -599,6 +632,7 @@ DownloadItem::DownloadItem(QNetworkReply *reply, QString defaultfilename)
 DownloadItem::DownloadItem(QObject *object)
     : QObject(0)
 {
+#ifdef WEBENGINEVIEW
     m_DefaultFileName = QString();
     m_DownloadItem = object;
     m_DownloadReply = 0;
@@ -621,6 +655,9 @@ DownloadItem::DownloadItem(QObject *object)
     m_GettingPath = true;
     m_BAOut = QByteArray();
     m_FinishedFlag = false;
+#else
+    Q_UNUSED(object);
+#endif
 }
 
 DownloadItem::~DownloadItem(){
@@ -728,6 +765,7 @@ QString DownloadItem::CreateDefaultFromReplyOrRequest(){
     return Application::GetDownloadDirectory() + filename;
 }
 
+#ifdef WEBENGINEVIEW
 void DownloadItem::StateChanged(){
     if(!m_DownloadItem) return;
     int state = m_DownloadItem->property("state").toInt();
@@ -740,6 +778,7 @@ void DownloadItem::ReceivedBytesChanged(){
     DownloadProgress(m_DownloadItem->property("receivedBytes").toLongLong(),
                      m_DownloadItem->property("totalBytes").toLongLong());
 }
+#endif
 
 void DownloadItem::ReadyRead(){
     if(m_GettingPath) return;
@@ -862,11 +901,13 @@ void DownloadItem::DownloadProgress(qint64 received, qint64 total){
         finished = m_DownloadReply->isFinished();
 
     if(!finished && m_DownloadItem){
+#ifdef WEBENGINEVIEW
         if(QWebEngineDownloadItem *item = qobject_cast<QWebEngineDownloadItem*>(m_DownloadItem))
             finished = item->isFinished();
         else
             // 2 : QQuickWebEngineDownloadItem::DownloadCompleted
             finished = m_DownloadItem->property("state").toInt() == 2;
+#endif
     }
 
     if(finished){
@@ -1094,7 +1135,9 @@ NetworkAccessManager* NetworkController::CopyNetworkAccessManager(QString bef, Q
     NetworkAccessManager *bnam = GetNetworkAccessManager(bef);
     InitializeNetworkAccessManager(aft, bnam->GetNetworkCookieJar()->GetAllCookies());
     NetworkAccessManager *nam = m_NetworkAccessManagerTable[aft];
+#ifndef QT_NO_NETWORKPROXY
     nam->setProxy(bnam->proxy());
+#endif
     SetUserAgent(nam, set);
     SetProxy(nam, set);
     SetSslProtocol(nam, set);

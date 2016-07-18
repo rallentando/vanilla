@@ -12,7 +12,9 @@
 #include <QFile>
 #include <QStringList> // default argument
 
+#ifdef WEBENGINEVIEW
 class QWebEngineProfile;
+#endif
 
 // NetworkCookieJar
 ////////////////////////////////////////////////////////////////
@@ -36,7 +38,8 @@ class NetworkAccessManager : public QNetworkAccessManager{
 public:
     NetworkAccessManager(QString id);
     ~NetworkAccessManager();
-    QNetworkReply* createRequest(Operation op, const QNetworkRequest &req, QIODevice *out = 0) DECL_OVERRIDE;
+    QNetworkReply* createRequest(Operation op, const QNetworkRequest &req, QIODevice *out = 0) Q_DECL_OVERRIDE;
+    QString GetId();
     void SetNetworkCookieJar(NetworkCookieJar *);
     NetworkCookieJar *GetNetworkCookieJar() const;
     void SetUserAgent(QString ua);
@@ -44,7 +47,9 @@ public:
     void SetProxy(QString proxySet);
     void SetSslProtocol(QString sslSet);
     void SetOffTheRecord(QString offTheRecordSet);
+#ifdef WEBENGINEVIEW
     QWebEngineProfile *GetProfile() const;
+#endif
 
 private slots:
     void HandleError(QNetworkReply::NetworkError code);
@@ -52,8 +57,10 @@ private slots:
 
     void HandleAuthentication(QNetworkReply *reply,
                               QAuthenticator *authenticator);
+#ifndef QT_NO_NETWORKPROXY
     void HandleProxyAuthentication(const QNetworkProxy &proxy,
                                    QAuthenticator *authenticator);
+#endif
 public slots:
     void HandleDownload(QObject *download);
 
@@ -61,7 +68,9 @@ private:
     QString m_Id;
     QString m_UserAgent;
     QSsl::SslProtocol m_SslProtocol;
+#ifdef WEBENGINEVIEW
     QWebEngineProfile *m_Profile;
+#endif
 };
 
 // DownloadItem
@@ -98,9 +107,11 @@ private:
     bool       m_FinishedFlag;
 
 private slots:
+#ifdef WEBENGINEVIEW
     // for QuickWebEngineView.
     void StateChanged();
     void ReceivedBytesChanged();
+#endif
 
     void ReadyRead();
     void Finished();

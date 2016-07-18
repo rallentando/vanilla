@@ -12,9 +12,7 @@
 #include "view.hpp"
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
-#if defined(Q_OS_WIN)
-#  include "tridentview.hpp"
-#endif
+#include "tridentview.hpp"
 #include "webenginepage.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
@@ -141,19 +139,18 @@ Page::Page(QObject *parent, NetworkAccessManager *nam)
             parent, SIGNAL(ViewChanged()));
     connect(this,   SIGNAL(ScrollChanged(QPointF)),
             parent, SIGNAL(ScrollChanged(QPointF)));
-    connect(this,   SIGNAL(ButtonCleared()),
-            parent, SIGNAL(ButtonCleared()));
-    connect(this,   SIGNAL(RenderFinished()),
-            parent, SIGNAL(RenderFinished()));
 }
 
 Page::~Page(){}
 
 NetworkAccessManager *Page::GetNetworkAccessManager(){
     NetworkAccessManager *nam;
+#ifdef WEBENGINEVIEW
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page()))
         nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
-    else nam = m_NetworkAccessManager;
+    else
+#endif
+        nam = m_NetworkAccessManager;
     return nam;
 }
 
@@ -360,17 +357,17 @@ Bookmarklet Page::GetBookmarklet(QString key){
 
 void Page::RegisterDefaultSearchEngines(){
     SearchEngine google;
-    google << QStringLiteral("https://www.google.co.jp/search?c&q=%1&ie=UTF-8&oe=UTF-8") << QStringLiteral("UTF-8") << QStringLiteral("true");
+    google << tr("https://www.google.com/search?c&q=%1&ie=UTF-8&oe=UTF-8") << QStringLiteral("UTF-8") << QStringLiteral("true");
     SearchEngine yahoo;
-    yahoo << QStringLiteral("http://search.yahoo.co.jp/search?ei=UTF-8&p=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    yahoo << tr("http://search.yahoo.com/search?ei=UTF-8&p=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine bing;
-    bing << QStringLiteral("https://www.bing.com/search?q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    bing << tr("https://www.bing.com/search?q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine amazon;
-    amazon << QStringLiteral("https://amazon.co.jp/s/?field-keywords=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    amazon << tr("https://amazon.com/s/?field-keywords=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine wiki;
-    wiki << QStringLiteral("https://ja.wikipedia.org/w/index.php?search=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    wiki << tr("https://en.wikipedia.org/w/index.php?search=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine ifl;
-    ifl << QStringLiteral("https://www.google.co.jp/search?btnI=I%27m+Feeling+Lucky&ie=UTF-8&oe=UTF-8&q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    ifl << tr("https://www.google.com/search?btnI=I%27m+Feeling+Lucky&ie=UTF-8&oe=UTF-8&q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
 
     m_SearchEngineMap[QStringLiteral("google")] = google;
     m_SearchEngineMap[QStringLiteral("yahoo")] = yahoo;
@@ -935,10 +932,13 @@ void Page::ViewSource(){
     QUrl newUrl = QUrl::fromEncoded("view-source:" + m_View->url().toEncoded());
     SharedView newView = SharedView();
 
+#ifdef WEBENGINEVIEW
     if(qobject_cast<WebEngineView*>(m_View->base()) ||
        qobject_cast<QuickWebEngineView*>(m_View->base())){
         newView = SuitTB()->OpenInNewViewNode(newUrl, Activate()||ShiftMod(), m_View->GetViewNode());
-    } else {
+    } else
+#endif
+    {
         newView = SuitTB()->OpenInNewViewNode(QUrl(), Activate()||ShiftMod(), m_View->GetViewNode());
         HistNode *h = newView->GetHistNode();
         h->SetUrl(newUrl);
@@ -975,10 +975,12 @@ void Page::AddSearchEngine(){
         if(action->data().canConvert<SharedWebElement>()){
             if(SharedWebElement e = action->data().value<SharedWebElement>()){
                 if(!e->IsNull()){
+#ifdef WEBENGINEVIEW
                     if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
                         // QWebEngineView's zoomFactor uses devicePixelRatio.
                         m_View->AddSearchEngine(e->Position() / w->zoomFactor());
                     else
+#endif
                         m_View->AddSearchEngine(e->Position());
                 }
             }
@@ -993,10 +995,12 @@ void Page::AddBookmarklet(){
         if(action->data().canConvert<SharedWebElement>()){
             if(SharedWebElement e = action->data().value<SharedWebElement>()){
                 if(!e->IsNull()){
+#ifdef WEBENGINEVIEW
                     if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
                         // QWebEngineView's zoomFactor uses devicePixelRatio.
                         m_View->AddBookmarklet(e->Position() / w->zoomFactor());
                     else
+#endif
                         m_View->AddBookmarklet(e->Position());
                 }
             }
@@ -1081,10 +1085,12 @@ void Page::ClickElement(){
 
                     if(e->ClickEvent()) return;
 
+#ifdef WEBENGINEVIEW
                     if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
                         // QWebEngineView's zoomFactor uses devicePixelRatio.
                         pos = e->Position() / w->zoomFactor();
                     else
+#endif
                         pos = e->Position();
                 }
             }
@@ -1111,10 +1117,12 @@ void Page::FocusElement(){
 
                     e->SetFocus();
 
+#ifdef WEBENGINEVIEW
                     if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
                         // QWebEngineView's zoomFactor uses devicePixelRatio.
                         pos = e->Position() / w->zoomFactor();
                     else
+#endif
                         pos = e->Position();
                 }
             }

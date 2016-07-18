@@ -1,11 +1,10 @@
-#ifndef QUICKWEBENGINEVIEW_HPP
-#define QUICKWEBENGINEVIEW_HPP
+#ifndef QUICKNATIVEWEBVIEW_HPP
+#define QUICKNATIVEWEBVIEW_HPP
 
 #include "switch.hpp"
 
-#ifdef WEBENGINEVIEW
+#ifdef NATIVEWEBVIEW
 
-#include "webenginepage.hpp"
 #include "view.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
@@ -18,19 +17,18 @@
 #include <QNetworkRequest>
 #include <QQmlEngine>
 #include <QQuickWidget>
-#include <QWebEngineView>
 
-class QuickWebEngineView : public QQuickWidget, public View{
+class QuickNativeWebView : public QQuickWidget, public View{
     Q_OBJECT
 
 public:
-    QuickWebEngineView(TreeBank *parent = 0, QString id = QString(), QStringList set = QStringList());
-    ~QuickWebEngineView();
+    QuickNativeWebView(TreeBank *parent = 0, QString id = QString(), QStringList set = QStringList());
+    ~QuickNativeWebView();
 
     void ApplySpecificSettings(QStringList set) Q_DECL_OVERRIDE;
 
     QQuickWidget *base() Q_DECL_OVERRIDE;
-    WebEnginePage *page() Q_DECL_OVERRIDE;
+    Page *page() Q_DECL_OVERRIDE;
 
     QUrl url() Q_DECL_OVERRIDE;
     QString html() Q_DECL_OVERRIDE;
@@ -43,26 +41,16 @@ public:
     void Disconnect(TreeBank *tb) Q_DECL_OVERRIDE;
 
     bool ForbidToOverlap() Q_DECL_OVERRIDE {
-        return false;
+        // rendering issue.
+        return true;
     }
 
     bool CanGoBack() Q_DECL_OVERRIDE {
-        return m_QmlWebEngineView->property("canGoBack").toBool();
+        return m_QmlNativeWebView->property("canGoBack").toBool();
     }
     bool CanGoForward() Q_DECL_OVERRIDE {
-        return m_QmlWebEngineView->property("canGoForward").toBool();
+        return m_QmlNativeWebView->property("canGoForward").toBool();
     }
-#if QT_VERSION >= 0x050700
-    bool RecentlyAudible() Q_DECL_OVERRIDE {
-        return m_QmlWebEngineView->property("recentlyAudible").toBool();
-    }
-    bool IsAudioMuted() Q_DECL_OVERRIDE {
-        return m_QmlWebEngineView->property("audioMuted").toBool();
-    }
-    void SetAudioMuted(bool muted) Q_DECL_OVERRIDE {
-        m_QmlWebEngineView->setProperty("audioMuted", muted);
-    }
-#endif
 
     bool IsRenderable() Q_DECL_OVERRIDE {
         return status() == QQuickWidget::Ready && (visible() || !m_GrabedDisplayData.isNull());
@@ -95,27 +83,27 @@ public:
         if(page()) page()->SetSource(html);
     }
     QString GetTitle() Q_DECL_OVERRIDE {
-        return m_QmlWebEngineView->property("title").toString();
+        return m_QmlNativeWebView->property("title").toString();
     }
     QIcon GetIcon() Q_DECL_OVERRIDE {
         return m_Icon;
     }
 
     void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) Q_DECL_OVERRIDE {
-        if(page()) page()->TriggerAction(a, data);
+        Action(a, data)->trigger();
     }
     QAction *Action(Page::CustomAction a, QVariant data = QVariant()) Q_DECL_OVERRIDE {
         return page() ? page()->Action(a, data) : 0;
     }
 
-    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE { m_QmlWebEngineView->setProperty("url", url);}
+    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE { m_QmlNativeWebView->setProperty("url", url);}
     void TriggerNativeLoadAction(const QNetworkRequest &req,
                                  QNetworkAccessManager::Operation = QNetworkAccessManager::GetOperation,
-                                 const QByteArray & = QByteArray()) Q_DECL_OVERRIDE { m_QmlWebEngineView->setProperty("url", req.url());}
-    void TriggerNativeGoBackAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goBack");}
-    void TriggerNativeGoForwardAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goForward");}
-    void TriggerNativeRewindAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "rewind");}
-    void TriggerNativeFastForwardAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "fastForward");}
+                                 const QByteArray & = QByteArray()) Q_DECL_OVERRIDE { m_QmlNativeWebView->setProperty("url", req.url());}
+    void TriggerNativeGoBackAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlNativeWebView, "goBack");}
+    void TriggerNativeGoForwardAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlNativeWebView, "goForward");}
+    void TriggerNativeRewindAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlNativeWebView, "rewind");}
+    void TriggerNativeFastForwardAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlNativeWebView, "fastForward");}
 
     void UpKeyEvent() Q_DECL_OVERRIDE {
         CallWithEvaluatedJavaScriptResult
@@ -188,8 +176,8 @@ public:
 public slots:
     QSize size() Q_DECL_OVERRIDE { return base()->size();}
     void resize(QSize size) Q_DECL_OVERRIDE {
-        m_QmlWebEngineView->setProperty("width", size.width());
-        m_QmlWebEngineView->setProperty("height", size.height());
+        m_QmlNativeWebView->setProperty("width", size.width());
+        m_QmlNativeWebView->setProperty("height", size.height());
         base()->setGeometry(QRect(QPoint(), size));
     }
     void show() Q_DECL_OVERRIDE {
@@ -230,7 +218,7 @@ public slots:
     bool visible() Q_DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {
         base()->setFocus(reason);
-        m_QmlWebEngineView->setProperty("focus", true);
+        m_QmlNativeWebView->setProperty("focus", true);
     }
 
     void Load()                           Q_DECL_OVERRIDE { View::Load();}
@@ -239,11 +227,7 @@ public slots:
     void Load(const QNetworkRequest &req) Q_DECL_OVERRIDE { View::Load(req);}
 
     void OnBeforeStartingDisplayGadgets() Q_DECL_OVERRIDE {}
-    void OnAfterFinishingDisplayGadgets() Q_DECL_OVERRIDE {
-#if defined(Q_OS_WIN)
-        if(TreeBank::TridentViewExist()) show(); // for force update.
-#endif
-    }
+    void OnAfterFinishingDisplayGadgets() Q_DECL_OVERRIDE {}
 
     void OnSetViewNode(ViewNode*) Q_DECL_OVERRIDE;
     void OnSetHistNode(HistNode*) Q_DECL_OVERRIDE;
@@ -277,7 +261,6 @@ public slots:
     void SetFocusToElement(QString xpath);
     void FireClickEvent(QString xpath, QPoint pos);
     void SetTextValue(QString xpath, QString text);
-    void AssignInspector();
     void UpdateIcon(const QUrl &iconUrl);
 
     void HandleWindowClose();
@@ -286,10 +269,6 @@ public slots:
     void HandleRenderProcessTermination(int, int);
     void HandleFullScreen(bool);
     void HandleDownload(QObject*);
-#if QT_VERSION >= 0x050700
-    void HandleContentsSizeChange(const QSizeF &size);
-    void HandleScrollPositionChange(const QPointF &pos);
-#endif
 
     void Copy() Q_DECL_OVERRIDE;
     void Cut() Q_DECL_OVERRIDE;
@@ -308,7 +287,6 @@ public slots:
     void ZoomOut() Q_DECL_OVERRIDE;
 
     void ExitFullScreen() Q_DECL_OVERRIDE;
-    void InspectElement() Q_DECL_OVERRIDE;
     void AddSearchEngine(QPoint pos) Q_DECL_OVERRIDE;
     void AddBookmarklet(QPoint pos) Q_DECL_OVERRIDE;
 
@@ -326,16 +304,9 @@ public slots:
     QQuickItem *newView(){
         View *view = this;
         if(page()) view = page()->OpenInNew(QUrl(QStringLiteral("about:blank")));
-        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
-            return v->m_QmlWebEngineView;
-        return m_QmlWebEngineView;
-    }
-    QQuickItem *newViewBackground(){
-        View *view = this;
-        if(page()) view = page()->OpenInNewBackground(QUrl(QStringLiteral("about:blank")));
-        if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
-            return v->m_QmlWebEngineView;
-        return m_QmlWebEngineView;
+        if(QuickNativeWebView *v = qobject_cast<QuickNativeWebView*>(view->base()))
+            return v->m_QmlNativeWebView;
+        return m_QmlNativeWebView;
     }
 
     // save to or restore from 'm_HistNode'.
@@ -379,10 +350,6 @@ signals:
     void renderProcessTerminated(int, int);
     void fullScreenRequested(bool);
     void downloadRequested(QObject*);
-#if QT_VERSION >= 0x050700
-    void contentsSizeChanged(const QSizeF &size);
-    void scrollPositionChanged(const QPointF &pos);
-#endif
 
 protected:
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
@@ -406,11 +373,9 @@ protected:
     bool focusNextPrevChild(bool next) Q_DECL_OVERRIDE;
 
 private:
-    QQuickItem *m_QmlWebEngineView;
+    QQuickItem *m_QmlNativeWebView;
     QIcon m_Icon;
     QImage m_GrabedDisplayData;
-    static QMap<View*, QUrl> m_InspectorTable;
-    QWebEngineView *m_Inspector;
     bool m_PreventScrollRestoration;
 #ifdef PASSWORD_MANAGER
     bool m_PreventAuthRegistration;
@@ -419,28 +384,7 @@ private:
     QMap<Page::CustomAction, QAction*> m_ActionTable;
 
     int m_RequestId;
-
-    inline void SetPreference(QWebEngineSettings::WebAttribute item, const char *text){
-        QMetaObject::invokeMethod
-            (m_QmlWebEngineView, "setPreference",
-             Q_ARG(QVariant, QVariant::fromValue(QString(QLatin1String(text)))),
-             Q_ARG(QVariant, QVariant::fromValue(page()->settings()->testAttribute(item))));
-    }
-
-    inline void SetFontFamily(QWebEngineSettings::FontFamily item, const char *text){
-        QMetaObject::invokeMethod
-            (m_QmlWebEngineView, "setFontFamily",
-             Q_ARG(QVariant, QVariant::fromValue(QString::fromUtf8(text))),
-             Q_ARG(QVariant, QVariant::fromValue(page()->settings()->fontFamily(item))));
-    }
-
-    inline void SetFontSize(QWebEngineSettings::FontSize item, const char *text){
-        QMetaObject::invokeMethod
-            (m_QmlWebEngineView, "setFontSize",
-             Q_ARG(QVariant, QVariant::fromValue(QString::fromUtf8(text))),
-             Q_ARG(QVariant, QVariant::fromValue(page()->settings()->fontSize(item))));
-    }
 };
 
-#endif //ifdef WEBENGINEVIEW
-#endif //ifndef QUICKWEBENGINEVIEW_HPP
+#endif //ifdef NATIVEWEBVIEW
+#endif //ifndef QUICKNATIVEWEBVIEW_HPP

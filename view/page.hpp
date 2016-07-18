@@ -416,8 +416,6 @@ signals:
 
     void ViewChanged();
     void ScrollChanged(QPointF);
-    void ButtonCleared();
-    void RenderFinished();
 
 public:
     QAction *Action(CustomAction a, QVariant data = QVariant());

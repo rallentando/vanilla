@@ -49,7 +49,7 @@ void AutoSaver::SaveAll(){
     // save window settings.
     TRY{
         SaveWindowSettings();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -57,7 +57,7 @@ void AutoSaver::SaveAll(){
     // save treebar settings.
     TRY{
         TreeBar::SaveSettings();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -65,7 +65,7 @@ void AutoSaver::SaveAll(){
     // save toolbar settings.
     TRY{
         ToolBar::SaveSettings();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -73,7 +73,7 @@ void AutoSaver::SaveAll(){
     // save treebank settings.
     TRY{
         TreeBank::SaveSettings();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -81,7 +81,7 @@ void AutoSaver::SaveAll(){
     // save global settings.
     TRY{
         Application::SaveGlobalSettings();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -89,7 +89,7 @@ void AutoSaver::SaveAll(){
     // save settings file.
     TRY{
         Application::SaveSettingsFile();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -98,7 +98,7 @@ void AutoSaver::SaveAll(){
     // save all tree.
     TRY{
         TreeBank::SaveTree();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -106,7 +106,7 @@ void AutoSaver::SaveAll(){
     // save icon database.
     TRY{
         Application::SaveIconDatabase();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -115,7 +115,7 @@ void AutoSaver::SaveAll(){
     // save password settings.
     TRY{
         Application::SavePasswordSettings();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }
@@ -124,7 +124,7 @@ void AutoSaver::SaveAll(){
     // save all cookies.
     TRY{
         NetworkController::SaveAllCookies();
-    } CATCH{
+    } CATCH {
         emit Failed();
         return;
     }

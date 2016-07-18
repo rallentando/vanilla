@@ -180,7 +180,7 @@ public:
 
     // for gadgets.
 public:
-#if defined(Q_OS_WIN)
+#ifdef TRIDENTVIEW
     // TridentView(s) (have) existed.
     static bool TridentViewExist();
 #endif
@@ -234,18 +234,18 @@ public:
 
 protected:
     // events
-    void resizeEvent(QResizeEvent *ev) DECL_OVERRIDE;
-    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
-    void wheelEvent(QWheelEvent *ev) DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void dragEnterEvent(QDragEnterEvent *ev) DECL_OVERRIDE;
-    void dragMoveEvent(QDragMoveEvent *ev) DECL_OVERRIDE;
-    void dragLeaveEvent(QDragLeaveEvent *ev) DECL_OVERRIDE;
-    void dropEvent(QDropEvent *ev) DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) DECL_OVERRIDE;
-    void contextMenuEvent(QContextMenuEvent *ev) DECL_OVERRIDE;
-    void keyPressEvent(QKeyEvent *ev) DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
+    void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void dragEnterEvent(QDragEnterEvent *ev) Q_DECL_OVERRIDE;
+    void dragMoveEvent(QDragMoveEvent *ev) Q_DECL_OVERRIDE;
+    void dragLeaveEvent(QDragLeaveEvent *ev) Q_DECL_OVERRIDE;
+    void dropEvent(QDropEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void contextMenuEvent(QContextMenuEvent *ev) Q_DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
 
 public slots:
     void OpenInNewIfNeed(QUrl);

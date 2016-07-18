@@ -3,6 +3,7 @@
 
 #include "gadgetsstyle.hpp"
 
+#include <QStyle>
 #include <QPainter>
 #include <QGraphicsScene>
 #include <QCursor>

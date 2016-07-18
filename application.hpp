@@ -52,7 +52,7 @@ public:
     Application(int &argc, char **argv);
     ~Application();
 
-    bool notify(QObject *receiver, QEvent *ev) DECL_OVERRIDE;
+    bool notify(QObject *receiver, QEvent *ev) Q_DECL_OVERRIDE;
 
     static void SetUpInspector();
     static void BootApplication(int &argc, char **argv, Application *instance);
@@ -217,9 +217,9 @@ public:
     static void SetCurrentWindow(MainWindow *win);
     static void SetCurrentWindow(int id);
 
-    static int WindowID(MainWindow *win);
+    static int WindowId(MainWindow *win);
     static MainWindow *Window(int id);
-    static int GetCurrentWindowID();
+    static int GetCurrentWindowId();
     static MainWindow *GetCurrentWindow();
     static QWidget *CurrentWidget();
 
@@ -260,10 +260,10 @@ public:
 #endif
 
 protected:
-    void timerEvent(QTimerEvent *ev) DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
 private:
-    static int m_AutoSaveTimerID;
-    static int m_AutoLoadTimerID;
+    static int m_AutoSaveTimerId;
+    static int m_AutoLoadTimerId;
     static void CreateBackUpFiles();
 public:
     static void StartAutoSaveTimer();
