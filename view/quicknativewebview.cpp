@@ -243,8 +243,7 @@ void QuickNativeWebView::OnLoadFinished(bool ok){
          QStringLiteral(":") + url().host());
 
     if(!data.isEmpty()){
-        CallWithEvaluatedJavaScriptResult(DecorateFormFieldJsCode(data),
-                                          [](QVariant){});
+        CallWithEvaluatedJavaScriptResult(DecorateFormFieldJsCode(data), [](QVariant){});
     }
 
     CallWithEvaluatedJavaScriptResult(QStringLiteral(
@@ -278,8 +277,7 @@ void QuickNativeWebView::OnLoadFinished(bool ok){
     static const QList<QEvent::Type> types =
         QList<QEvent::Type>() << QEvent::KeyPress << QEvent::KeyRelease;
 
-    CallWithEvaluatedJavaScriptResult(InstallEventFilterJsCode(types),
-                                      [](QVariant){});
+    CallWithEvaluatedJavaScriptResult(InstallEventFilterJsCode(types), [](QVariant){});
 
     if(visible() && m_TreeBank &&
        m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
@@ -417,13 +415,13 @@ void QuickNativeWebView::UpdateIcon(const QUrl &iconUrl){
     item->setParent(base());
 
     connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
-            QPixmap pixmap;
-            if(pixmap.loadFromData(result)){
-                QIcon icon = QIcon(pixmap);
-                Application::RegisterIcon(host, icon);
-                if(url().host() == host) m_Icon = icon;
-            }
-        });
+        QPixmap pixmap;
+        if(pixmap.loadFromData(result)){
+            QIcon icon = QIcon(pixmap);
+            Application::RegisterIcon(host, icon);
+            if(url().host() == host) m_Icon = icon;
+        }
+    });
 }
 
 void QuickNativeWebView::HandleWindowClose(){

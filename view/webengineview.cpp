@@ -74,6 +74,8 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
         if(parent) setParent(parent);
     }
     setMouseTracking(true);
+    setAcceptDrops(true);
+
     m_Inspector = 0;
     m_PreventScrollRestoration = false;
 #ifdef PASSWORD_MANAGER
@@ -87,8 +89,6 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
     connect(this, SIGNAL(iconUrlChanged(const QUrl&)),
             this, SLOT(UpdateIcon(const QUrl&)));
 #endif
-
-    setAcceptDrops(true);
 }
 
 WebEngineView::~WebEngineView(){
@@ -424,12 +424,11 @@ bool WebEngineView::SeekText(const QString &str, View::FindFlags opt){
     if(opt & CaseSensitively) flags |= QWebEnginePage::FindCaseSensitively;
 
     bool ret = true; // dummy value.
-    QWebEngineView::findText
-        (str, flags, [this](bool){
+    QWebEngineView::findText(str, flags, [this](bool){
 #if QT_VERSION < 0x050700
-            EmitScrollChanged();
+        EmitScrollChanged();
 #endif
-        });
+    });
     return ret;
 }
 
@@ -460,22 +459,22 @@ void WebEngineView::AssignInspector(){
 
     connect(item, &DownloadItem::DownloadResult, [this, addr](const QByteArray &result){
 
-            foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
+        foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
 
-                QString debuggeeValue = value.toObject()["url"].toString();
-                QString debuggerValue = value.toObject()["devtoolsFrontendUrl"].toString();
+            QString debuggeeValue = value.toObject()["url"].toString();
+            QString debuggerValue = value.toObject()["devtoolsFrontendUrl"].toString();
 
-                if(debuggeeValue.isEmpty() || debuggerValue.isEmpty()) break;
+            if(debuggeeValue.isEmpty() || debuggerValue.isEmpty()) break;
 
-                QUrl debuggee = QUrl(debuggeeValue);
-                QUrl debugger = QUrl(addr + debuggerValue);
+            QUrl debuggee = QUrl(debuggeeValue);
+            QUrl debugger = QUrl(addr + debuggerValue);
 
-                if(url() == debuggee && !m_InspectorTable.values().contains(debugger)){
-                    m_InspectorTable[this] = debugger;
-                    break;
-                }
+            if(url() == debuggee && !m_InspectorTable.values().contains(debugger)){
+                m_InspectorTable[this] = debugger;
+                break;
             }
-        });
+        }
+    });
 }
 
 #if QT_VERSION >= 0x050700
@@ -497,13 +496,13 @@ void WebEngineView::UpdateIcon(const QUrl &iconUrl){
     item->setParent(base());
 
     connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
-            QPixmap pixmap;
-            if(pixmap.loadFromData(result)){
-                QIcon icon = QIcon(pixmap);
-                Application::RegisterIcon(host, icon);
-                if(url().host() == host) m_Icon = icon;
-            }
-        });
+        QPixmap pixmap;
+        if(pixmap.loadFromData(result)){
+            QIcon icon = QIcon(pixmap);
+            Application::RegisterIcon(host, icon);
+            if(url().host() == host) m_Icon = icon;
+        }
+    });
 }
 #endif
 
@@ -532,15 +531,21 @@ void WebEngineView::SelectAll(){
 }
 
 void WebEngineView::Unselect(){
+    if(page()){
 #if QT_VERSION >= 0x050700
-    if(page()) page()->triggerAction(QWebEnginePage::Unselect);
+        page()->triggerAction(QWebEnginePage::Unselect);
+        page()->runJavaScript(QStringLiteral(
+            "(function(){\n"
+          VV"    document.activeElement.blur();\n"
+          VV"}());"));
 #else
-    EvaluateJavaScript(QStringLiteral(
-                           "(function(){\n"
-                           VV"    document.activeElement.blur();\n"
-                           VV"    getSelection().removeAllRanges();\n"
-                           VV"}());"));
+        page()->runJavaScript(QStringLiteral(
+            "(function(){\n"
+          VV"    document.activeElement.blur();\n"
+          VV"    getSelection().removeAllRanges();\n"
+          VV"}());"));
 #endif
+    }
 }
 
 void WebEngineView::Reload(){

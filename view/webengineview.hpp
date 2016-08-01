@@ -264,12 +264,12 @@ public slots:
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
         // set only notifier.
         CallWithScroll([this](QPointF pos){
-                if(m_TreeBank){
-                    if(Notifier *notifier = m_TreeBank->GetNotifier()){
-                        notifier->SetScroll(pos);
-                    }
+            if(m_TreeBank){
+                if(Notifier *notifier = m_TreeBank->GetNotifier()){
+                    notifier->SetScroll(pos);
                 }
-            });
+            }
+        });
     }
     void hide()    Q_DECL_OVERRIDE { base()->hide();}
     void raise()   Q_DECL_OVERRIDE { base()->raise();}
@@ -277,7 +277,7 @@ public slots:
     void repaint() Q_DECL_OVERRIDE { base()->repaint();}
     bool visible() Q_DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {
-        base()->setFocus(reason);
+        QTimer::singleShot(0, this, [this, reason](){ base()->setFocus(reason);});
     }
 
     void Load()                           Q_DECL_OVERRIDE { View::Load();}
@@ -355,7 +355,7 @@ public slots:
     void AddBookmarklet(QPoint pos)  Q_DECL_OVERRIDE;
 
 signals:
-#if QT_VERSION >= 0x050700
+#if QT_VERSION < 0x050700
     void iconChanged(const QIcon&);
 #endif
     void statusBarMessage(const QString&);

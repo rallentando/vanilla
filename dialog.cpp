@@ -121,10 +121,10 @@ bool ModalDialog::Execute(QWidget *focusWidget){
 
         QPushButton *toggleDetail = new QPushButton(tr("Show Details"));
         connect(toggleDetail, &QPushButton::clicked, [textEdit](){
-                if(!textEdit->isVisible()){
-                    textEdit->show();
-                }
-            });
+            if(!textEdit->isVisible()){
+                textEdit->show();
+            }
+        });
         hlayout->addWidget(toggleDetail);
     }
 
@@ -522,18 +522,18 @@ void ModelessDialog::Execute(){
     ModelessDialogFrame::RegisterDialog(this);
 
     connect(this, &ModelessDialog::Returned, [this](){
-            ModelessDialogFrame::DeregisterDialog(this);
-            m_CallBack(true);
-            disconnect();
-            deleteLater();
-        });
+        ModelessDialogFrame::DeregisterDialog(this);
+        m_CallBack(true);
+        disconnect();
+        deleteLater();
+    });
 
     connect(this, &ModelessDialog::Aborted, [this](){
-            ModelessDialogFrame::DeregisterDialog(this);
-            m_CallBack(false);
-            disconnect();
-            deleteLater();
-        });
+        ModelessDialogFrame::DeregisterDialog(this);
+        m_CallBack(false);
+        disconnect();
+        deleteLater();
+    });
 
     StartTimer();
 }

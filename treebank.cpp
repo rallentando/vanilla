@@ -1405,8 +1405,8 @@ bool TreeBank::DeleteNode(NodeList list){
 
             NodeList list = prevparent->GetChildren();
             qSort(list.begin(), list.end(), [](Node *n1, Node *n2){
-                    return n1->GetLastAccessDate() > n2->GetLastAccessDate();
-                });
+                return n1->GetLastAccessDate() > n2->GetLastAccessDate();
+            });
             foreach(Node *nd, list){
                 if(!nd->IsDirectory())
                     if(SetCurrent(nd))
@@ -1651,7 +1651,11 @@ bool TreeBank::SetCurrent(Node *nd){
     if(m_Receiver) m_Receiver->raise();
 
     if(m_Gadgets && !m_Gadgets->IsActive())
-        m_CurrentView->setFocus(Qt::OtherFocusReason);
+        QTimer::singleShot(0, this, [this](){
+            if(!parentWidget()->isActiveWindow())
+                parentWidget()->activateWindow();
+            m_CurrentView->setFocus(Qt::OtherFocusReason);
+        });
 
     AddToUpdateBox(m_CurrentView);
 

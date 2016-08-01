@@ -11,6 +11,9 @@ static void EmitErrorMessage(){
 }
 
 static int _main(int argc, char **argv){
+#if defined(Q_OS_WIN) // for TridentView.
+    QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, true);
+#endif
 #ifdef USE_ANGLE
     QCoreApplication::setAttribute(Qt::AA_UseOpenGLES, true);
     QCoreApplication::setAttribute(Qt::AA_UseSoftwareOpenGL, false);

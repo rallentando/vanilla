@@ -310,8 +310,7 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
          QStringLiteral(":") + url().host());
 
     if(!data.isEmpty()){
-        CallWithEvaluatedJavaScriptResult(DecorateFormFieldJsCode(data),
-                                          [](QVariant){});
+        CallWithEvaluatedJavaScriptResult(DecorateFormFieldJsCode(data), [](QVariant){});
     }
 
     CallWithEvaluatedJavaScriptResult(QStringLiteral(
@@ -345,8 +344,7 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
     static const QList<QEvent::Type> types =
         QList<QEvent::Type>() << QEvent::KeyPress << QEvent::KeyRelease;
 
-    CallWithEvaluatedJavaScriptResult(InstallEventFilterJsCode(types),
-                                      [](QVariant){});
+    CallWithEvaluatedJavaScriptResult(InstallEventFilterJsCode(types), [](QVariant){});
 
     if(visible() && m_TreeBank &&
        m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
@@ -478,22 +476,22 @@ void QuickWebEngineView::AssignInspector(){
 
     connect(item, &DownloadItem::DownloadResult, [this, addr](const QByteArray &result){
 
-            foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
+        foreach(QJsonValue value, QJsonDocument::fromJson(result).array()){
 
-                QString debuggeeValue = value.toObject()["url"].toString();
-                QString debuggerValue = value.toObject()["devtoolsFrontendUrl"].toString();
+            QString debuggeeValue = value.toObject()["url"].toString();
+            QString debuggerValue = value.toObject()["devtoolsFrontendUrl"].toString();
 
-                if(debuggeeValue.isEmpty() || debuggerValue.isEmpty()) break;
+            if(debuggeeValue.isEmpty() || debuggerValue.isEmpty()) break;
 
-                QUrl debuggee = QUrl(debuggeeValue);
-                QUrl debugger = QUrl(addr + debuggerValue);
+            QUrl debuggee = QUrl(debuggeeValue);
+            QUrl debugger = QUrl(addr + debuggerValue);
 
-                if(url() == debuggee && !m_InspectorTable.values().contains(debugger)){
-                    m_InspectorTable[this] = debugger;
-                    break;
-                }
+            if(url() == debuggee && !m_InspectorTable.values().contains(debugger)){
+                m_InspectorTable[this] = debugger;
+                break;
             }
-        });
+        }
+    });
 }
 
 void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
@@ -510,13 +508,13 @@ void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
     item->setParent(base());
 
     connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
-            QPixmap pixmap;
-            if(pixmap.loadFromData(result)){
-                QIcon icon = QIcon(pixmap);
-                Application::RegisterIcon(host, icon);
-                if(url().host() == host) m_Icon = icon;
-            }
-        });
+        QPixmap pixmap;
+        if(pixmap.loadFromData(result)){
+            QIcon icon = QIcon(pixmap);
+            Application::RegisterIcon(host, icon);
+            if(url().host() == host) m_Icon = icon;
+        }
+    });
 }
 
 void QuickWebEngineView::HandleWindowClose(){
@@ -875,7 +873,7 @@ void QuickWebEngineView::keyReleaseEvent(QKeyEvent *ev){
        k == Qt::Key_End){
 
         bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-        QTimer::singleShot(animated ? 500 : 100, this, &WebEngineView::EmitScrollChanged);
+        QTimer::singleShot(animated ? 500 : 100, this, &QuickWebEngineView::EmitScrollChanged);
     }
 #endif
 }
@@ -1215,8 +1213,8 @@ void QuickWebEngineView::wheelEvent(QWheelEvent *ev){
         ev->setAccepted(true);
     }
 #if QT_VERSION < 0x050700
-    bool animated = m_View->page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-    QTimer::singleShot(animated ? 500 : 100, m_View, &WebEngineView::EmitScrollChanged);
+    bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
+    QTimer::singleShot(animated ? 500 : 100, this, &QuickWebEngineView::EmitScrollChanged);
 #endif
 }
 

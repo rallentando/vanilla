@@ -32,10 +32,7 @@
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "quicknativewebview.hpp"
-
-#if defined(Q_OS_WIN)
-#  include "tridentview.hpp"
-#endif
+#include "tridentview.hpp"
 
 #ifdef USE_LIGHTNODE
 #  include "lightnode.hpp"

@@ -298,14 +298,14 @@ public:
 
     virtual QUrl GetBaseUrl(){
         return WaitForResult<QUrl>([&](UrlCallBack callBack){
-                CallWithGotBaseUrl(callBack);});
+            CallWithGotBaseUrl(callBack);});
     }
     virtual void CallWithGotBaseUrl(UrlCallBack callBack){
         callBack(GetBaseUrl());
     }
     virtual QUrl GetCurrentBaseUrl(){
         return WaitForResult<QUrl>([&](UrlCallBack callBack){
-                CallWithGotCurrentBaseUrl(callBack);});
+            CallWithGotCurrentBaseUrl(callBack);});
     }
     virtual void CallWithGotCurrentBaseUrl(UrlCallBack callBack){
         callBack(GetCurrentBaseUrl());
@@ -313,14 +313,14 @@ public:
 
     virtual SharedWebElementList FindElements(Page::FindElementsOption option){
         return WaitForResult<SharedWebElementList>([&](WebElementListCallBack callBack){
-                CallWithFoundElements(option, callBack);});
+            CallWithFoundElements(option, callBack);});
     }
     virtual void CallWithFoundElements(Page::FindElementsOption option, WebElementListCallBack callBack){
         callBack(FindElements(option));
     }
     virtual SharedWebElement HitElement(const QPoint &pos){
         return WaitForResult<SharedWebElement>([&](WebElementCallBack callBack){
-                CallWithHitElement(pos, callBack);});
+            CallWithHitElement(pos, callBack);});
     }
     virtual void CallWithHitElement(const QPoint &pos, WebElementCallBack callBack){
         callBack(HitElement(pos));
@@ -328,14 +328,14 @@ public:
 
     virtual QUrl HitLinkUrl(const QPoint &pos){
         return WaitForResult<QUrl>([&](UrlCallBack callBack){
-                CallWithHitLinkUrl(pos, callBack);});
+            CallWithHitLinkUrl(pos, callBack);});
     }
     virtual void CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack){
         callBack(HitLinkUrl(pos));
     }
     virtual QUrl HitImageUrl(const QPoint &pos){
         return WaitForResult<QUrl>([&](UrlCallBack callBack){
-                CallWithHitImageUrl(pos, callBack);});
+            CallWithHitImageUrl(pos, callBack);});
     }
     virtual void CallWithHitImageUrl(const QPoint &pos, UrlCallBack callBack){
         callBack(HitImageUrl(pos));
@@ -343,14 +343,14 @@ public:
 
     virtual QString SelectedText(){
         return WaitForResult<QString>([&](StringCallBack callBack){
-                CallWithSelectedText(callBack);});
+            CallWithSelectedText(callBack);});
     }
     virtual void CallWithSelectedText(StringCallBack callBack){
         callBack(SelectedText());
     }
     virtual QString SelectedHtml(){
         return WaitForResult<QString>([&](StringCallBack callBack){
-                CallWithSelectedHtml(callBack);});
+            CallWithSelectedHtml(callBack);});
     }
     virtual void CallWithSelectedHtml(StringCallBack callBack){
         callBack(SelectedHtml());
@@ -358,14 +358,14 @@ public:
 
     virtual QString WholeText(){
         return WaitForResult<QString>([&](StringCallBack callBack){
-                CallWithWholeText(callBack);});
+            CallWithWholeText(callBack);});
     }
     virtual void CallWithWholeText(StringCallBack callBack){
         callBack(WholeText());
     }
     virtual QString WholeHtml(){
         return WaitForResult<QString>([&](StringCallBack callBack){
-                CallWithWholeHtml(callBack);});
+            CallWithWholeHtml(callBack);});
     }
     virtual void CallWithWholeHtml(StringCallBack callBack){
         callBack(WholeHtml());
@@ -373,7 +373,7 @@ public:
 
     virtual QRegion SelectionRegion(){
         return WaitForResult<QRegion>([&](RegionCallBack callBack){
-                CallWithSelectionRegion(callBack);});
+            CallWithSelectionRegion(callBack);});
     }
     virtual void CallWithSelectionRegion(RegionCallBack callBack){
         callBack(SelectionRegion());
@@ -381,7 +381,7 @@ public:
 
     virtual QVariant EvaluateJavaScript(const QString &source){
         return WaitForResult<QVariant>([&](VariantCallBack callBack){
-                CallWithEvaluatedJavaScriptResult(source, callBack);});
+            CallWithEvaluatedJavaScriptResult(source, callBack);});
     }
     virtual void CallWithEvaluatedJavaScriptResult(const QString &source, VariantCallBack callBack){
         callBack(EvaluateJavaScript(source));
@@ -1339,21 +1339,22 @@ private:
     // when calling method using 'WaitForResult' from '~Event',
     // 'callBack' is not called in that event and to crash,
     // because of 'callBack' is called after that event finished.
-    template <class T> T WaitForResult(std::function<void(std::function<void(T)>)> callBack){
+    template <class T>
+    T WaitForResult(std::function<void(std::function<void(T)>)> callBack){
+        T result;
         QTimer timer;
         QEventLoop loop;
-        T result;
         bool called = false;
 
         timer.setSingleShot(true);
-        QObject::connect(base(), SIGNAL(destroyed()), &loop, SLOT(quit()));
-        QObject::connect(&timer, SIGNAL(timeout()),   &loop, SLOT(quit()));
+        QObject::connect(base(), &QObject::destroyed, &loop, &QEventLoop::quit);
+        QObject::connect(&timer, &QTimer::timeout,    &loop, &QEventLoop::quit);
 
         callBack([&](T t){
-                result = t;
-                called = true;
-                loop.quit();
-            });
+            result = t;
+            called = true;
+            loop.quit();
+        });
         if(!called){
             timer.start(10000);
             loop.exec();

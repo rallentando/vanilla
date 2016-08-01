@@ -83,7 +83,6 @@ private:
     } m_Mode;
 
     void InitializeDisplay(Mode mode);
-    QString WaitForStringInput();
 
     TreeBank *m_TreeBank;
 

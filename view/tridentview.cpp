@@ -355,9 +355,7 @@ TridentView::TridentView(TreeBank *parent, QString id, QStringList set)
     } else {
         if(parent) setParent(parent);
     }
-
     setMouseTracking(true);
-
     setAcceptDrops(true);
 
     setControl("{8856F961-340A-11D0-A96B-00C04FD705A2}");
@@ -1595,12 +1593,10 @@ void TridentView::OnLoadFinished(bool ok){
 
     RestoreViewState();
     emit ViewChanged();
-    if(visible()){
-        setFocus();
-        if(m_TreeBank &&
-           m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
-            UpdateThumbnail();
-        }
+
+    if(visible() && m_TreeBank &&
+       m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
+        UpdateThumbnail();
     }
 }
 
@@ -1835,10 +1831,10 @@ void TridentView::SelectAll(){
 
 void TridentView::Unselect(){
     EvaluateJavaScript(QStringLiteral(
-                           "(function(){\n"
-                           VV"    document.activeElement.blur();\n"
-                           VV"    getSelection().removeAllRanges();\n"
-                           VV"}());"));
+        "(function(){\n"
+      VV"    document.activeElement.blur();\n"
+      VV"    getSelection().removeAllRanges();\n"
+      VV"}());"));
 }
 
 void TridentView::Reload(){
@@ -2030,13 +2026,13 @@ void TridentView::UpdateIcon(const QUrl &iconUrl){
     item->setParent(base());
 
     connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
-            QPixmap pixmap;
-            if(pixmap.loadFromData(result)){
-                QIcon icon = QIcon(pixmap);
-                Application::RegisterIcon(host, icon);
-                if(url().host() == host) m_Icon = icon;
-            }
-        });
+        QPixmap pixmap;
+        if(pixmap.loadFromData(result)){
+            QIcon icon = QIcon(pixmap);
+            Application::RegisterIcon(host, icon);
+            if(url().host() == host) m_Icon = icon;
+        }
+    });
 }
 
 void TridentView::hideEvent(QHideEvent *ev){
@@ -2096,8 +2092,20 @@ void TridentView::keyPressEvent(QKeyEvent *ev){
 
 void TridentView::keyReleaseEvent(QKeyEvent *ev){
     QAxWidget::keyReleaseEvent(ev);
-    for(int i = 1; i < 6; i++){
-        QTimer::singleShot(i*200, this, &TridentView::EmitScrollChanged);
+
+    int k = ev->key();
+
+    if(k == Qt::Key_Space ||
+     //k == Qt::Key_Up ||
+     //k == Qt::Key_Down ||
+     //k == Qt::Key_Right ||
+     //k == Qt::Key_Left ||
+       k == Qt::Key_PageUp ||
+       k == Qt::Key_PageDown ||
+       k == Qt::Key_Home ||
+       k == Qt::Key_End){
+
+        QTimer::singleShot(500, this, &TridentView::EmitScrollChanged);
     }
 }
 
@@ -2290,9 +2298,7 @@ void TridentView::wheelEvent(QWheelEvent *ev){
         delete new_ev;
     }
 
-    for(int i = 1; i < 6; i++){
-        QTimer::singleShot(i*200, this, &TridentView::EmitScrollChanged);
-    }
+    QTimer::singleShot(500, this, &TridentView::EmitScrollChanged);
 }
 
 void TridentView::focusInEvent(QFocusEvent *ev){

@@ -26,14 +26,14 @@
 #include "gadgets.hpp"
 #include "graphicstableview.hpp"
 #include "webengineview.hpp"
+#include "quickwebengineview.hpp"
+#include "quicknativewebview.hpp"
+#include "tridentview.hpp"
 #include "dialog.hpp"
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
 #  include <QtWin>
-#endif
-#ifdef TRIDENTVIEW
-#  include "tridentview.hpp"
 #endif
 
 MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
@@ -85,6 +85,14 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
         AdjustAllEdgeWidgets();
         connect(Application::GetInstance(), &Application::focusChanged,
                 this, &MainWindow::UpdateAllEdgeWidgets);
+
+        show();
+
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
+        setAttribute(Qt::WA_NoSystemBackground);
+        QtWin::setCompositionEnabled(true);
+        QtWin::enableBlurBehindWindow(windowHandle());
+#endif
     } else {
         m_TitleBar        = 0;
         m_NorthWidget     = 0;
@@ -95,16 +103,14 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
         m_NorthEastWidget = 0;
         m_SouthWestWidget = 0;
         m_SouthEastWidget = 0;
-    }
 
-    show();
+        show();
+
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
-    setAttribute(Qt::WA_TranslucentBackground);
-    setAttribute(Qt::WA_NoSystemBackground);
-    QtWin::setCompositionEnabled(true);
-    QtWin::enableBlurBehindWindow(windowHandle());
-    QtWin::extendFrameIntoClientArea(this, QMargins(-1, -1, -1, -1));
+        setAttribute(Qt::WA_TranslucentBackground);
+        QtWin::extendFrameIntoClientArea(this, QMargins(-1, -1, -1, -1));
 #endif
+    }
 }
 
 MainWindow::~MainWindow(){
@@ -356,6 +362,12 @@ void MainWindow::Shade(){
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->hide();
+            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                w->hide();
+#endif
+#ifdef NATIVEWEBVIEW
+            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
+                w->hide();
 #endif
 #ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
@@ -379,6 +391,12 @@ void MainWindow::Unshade(){
             if(0);
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+                w->show();
+            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                w->show();
+#endif
+#ifdef NATIVEWEBVIEW
+            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
                 w->show();
 #endif
 #ifdef TRIDENTVIEW
@@ -696,6 +714,12 @@ void MainWindow::moveEvent(QMoveEvent *ev){
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->setGeometry(geometry());
+            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                w->setGeometry(geometry());
+#endif
+#ifdef NATIVEWEBVIEW
+            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
+                w->setGeometry(geometry());
 #endif
 #ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
@@ -726,6 +750,12 @@ void MainWindow::showEvent(QShowEvent *ev){
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
+            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                w->show();
+#endif
+#ifdef NATIVEWEBVIEW
+            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
+                w->show();
 #endif
 #ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
@@ -747,6 +777,12 @@ void MainWindow::hideEvent(QHideEvent *ev){
             if(0);
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+                w->show();
+            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                w->show();
+#endif
+#ifdef NATIVEWEBVIEW
+            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
                 w->show();
 #endif
 #ifdef TRIDENTVIEW
@@ -791,6 +827,12 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
                     if(0);
 #ifdef WEBENGINEVIEW
                     else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
+                        w->raise();
+                    else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                        w->raise();
+#endif
+#ifdef NATIVEWEBVIEW
+                    else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
                         w->raise();
 #endif
 #ifdef TRIDENTVIEW

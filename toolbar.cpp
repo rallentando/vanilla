@@ -190,7 +190,7 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
                          text.startsWith(QStringLiteral("about:"))))
                     QTimer::singleShot(0, m_LineEdit, &QLineEdit::selectAll);
             });
-    connect(m_LineEdit, &QLineEdit::returnPressed,
+    connect(m_LineEdit, &LineEdit::Returned,
             [this](){
                 QString text = m_LineEdit->text();
                 if(!(Application::keyboardModifiers() & Qt::ShiftModifier) &&
@@ -211,6 +211,17 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
                        text != QStringLiteral("Seek [text]"))
 
                         receiver->ReceiveCommand(m_LineEdit->text());
+                }
+            });
+    connect(m_LineEdit, &LineEdit::Aborted,
+            [this](){
+                clearFocus();
+                m_Completer->popup()->hide();
+                if(m_View){
+                    m_View->setFocus();
+                    SetUrl(m_View->url());
+                } else {
+                    SetUrl(QUrl());
                 }
             });
     connect(m_LineEdit, &QLineEdit::textChanged,

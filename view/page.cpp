@@ -965,8 +965,8 @@ void Page::OpenBookmarklet(){
 void Page::SearchWith(){
     if(QAction *action = qobject_cast<QAction*>(sender())){
         m_View->CallWithSelectedText([this, action](QString text){
-                OpenInNew(action->text(), text);
-            });
+            OpenInNew(action->text(), text);
+        });
     }
 }
 
@@ -1029,11 +1029,10 @@ void Page::CopyPageAsLink(){
 }
 
 void Page::CopySelectedHtml(){
-    m_View->CallWithSelectedHtml
-        ([](QString html){
-            if(!html.isEmpty())
-                Application::clipboard()->setText(html);
-        });
+    m_View->CallWithSelectedHtml([](QString html){
+        if(!html.isEmpty())
+            Application::clipboard()->setText(html);
+    });
 }
 
 void Page::OpenWithIE(){
@@ -1130,24 +1129,23 @@ void Page::FocusElement(){
         if(pos.isNull()){
             pos = action->data().toPoint();
         }
-        m_View->CallWithHitElement
-            (pos, [this](SharedWebElement e){
-                if(e && !e->IsNull()){
+        m_View->CallWithHitElement(pos, [this](SharedWebElement e){
+            if(e && !e->IsNull()){
 
-                    e->SetFocus();
+                e->SetFocus();
 
-                    // 'hack-ish' solution...
-                    QKeyEvent tabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
-                    QKeyEvent tabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::NoModifier);
-                    QKeyEvent backTabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::ShiftModifier);
-                    QKeyEvent backTabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::ShiftModifier);
+                // 'hack-ish' solution...
+                QKeyEvent tabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
+                QKeyEvent tabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::NoModifier);
+                QKeyEvent backTabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::ShiftModifier);
+                QKeyEvent backTabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::ShiftModifier);
 
-                    m_View->KeyPressEvent(&tabPress);
-                    m_View->KeyReleaseEvent(&tabRelease);
-                    m_View->KeyPressEvent(&backTabPress);
-                    m_View->KeyReleaseEvent(&backTabRelease);
-                }
-            });
+                m_View->KeyPressEvent(&tabPress);
+                m_View->KeyReleaseEvent(&tabRelease);
+                m_View->KeyPressEvent(&backTabPress);
+                m_View->KeyReleaseEvent(&backTabRelease);
+            }
+        });
     }
 }
 
@@ -1180,8 +1178,7 @@ void Page::HoverElement(){
             }                                                           \
         } else {                                                        \
             m_View->CallWithHitElement                                  \
-                (action->data().toPoint(),                              \
-                 [this](SharedWebElement e){                            \
+                (action->data().toPoint(), [this](SharedWebElement e){  \
                     if(e && !e->IsNull()){ BLOCK;}                      \
                 });                                                     \
         }                                                               \

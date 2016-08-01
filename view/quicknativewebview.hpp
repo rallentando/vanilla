@@ -199,12 +199,12 @@ public slots:
         // set only notifier.
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
         CallWithScroll([this](QPointF pos){
-                if(m_TreeBank){
-                    if(Notifier *notifier = m_TreeBank->GetNotifier()){
-                        notifier->SetScroll(pos);
-                    }
+            if(m_TreeBank){
+                if(Notifier *notifier = m_TreeBank->GetNotifier()){
+                    notifier->SetScroll(pos);
                 }
-            });
+            }
+        });
     }
     void hide()    Q_DECL_OVERRIDE { base()->hide();}
     void raise()   Q_DECL_OVERRIDE { base()->raise();}
@@ -217,8 +217,7 @@ public slots:
     }
     bool visible() Q_DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {
-        base()->setFocus(reason);
-        m_QmlNativeWebView->setProperty("focus", true);
+        QTimer::singleShot(0, this, [this, reason](){ base()->setFocus(reason);});
     }
 
     void Load()                           Q_DECL_OVERRIDE { View::Load();}

@@ -1205,11 +1205,10 @@ void Application::Quit(){
     // can't release QuickWebView...
     TreeBank::ReleaseAllView();
 
-    connect(m_AutoSaver, &AutoSaver::Finished,
-            [](){
-                Application::GetInstance()->disconnect();
-                QTimer::singleShot(0, Application::GetInstance(), &Application::quit);
-            });
+    connect(m_AutoSaver, &AutoSaver::Finished, [](){
+        Application::GetInstance()->disconnect();
+        QTimer::singleShot(0, Application::GetInstance(), &Application::quit);
+    });
     if(!m_AutoSaver->IsSaving()) m_AutoSaver->SaveAll();
 }
 
@@ -2189,7 +2188,9 @@ void Application::RemoveWindow(MainWindow *win){
             m_CurrentWindow = 0;
         }
     }
-    if(m_CurrentWindow) m_CurrentWindow->SetFocus();
+    // do not call SetFocus, when dragging tab.
+    if(m_CurrentWindow && !(mouseButtons() & Qt::LeftButton))
+        m_CurrentWindow->SetFocus();
 }
 
 void Application::RemoveWindow(int id){
@@ -2204,7 +2205,9 @@ void Application::RemoveWindow(int id){
             m_CurrentWindow = 0;
         }
     }
-    if(m_CurrentWindow) m_CurrentWindow->SetFocus();
+    // do not call SetFocus, when dragging tab.
+    if(m_CurrentWindow && !(mouseButtons() & Qt::LeftButton))
+        m_CurrentWindow->SetFocus();
 }
 
 void Application::SetCurrentWindow(MainWindow *win){

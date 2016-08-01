@@ -178,6 +178,18 @@ public slots:
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
         if(HistNode *hn = GetHistNode()) hn->SetLastAccessDateToCurrent();
+
+        // view become to stop updating, when only call show method.
+        // e.g. in coming back after making other view.
+        MainWindow *win = Application::GetCurrentWindow();
+        QSize s =
+            m_TreeBank ? m_TreeBank->size() :
+            win ? win->GetTreeBank()->size() :
+            !size().isEmpty() ? size() :
+            DEFAULT_WINDOW_SIZE;
+        resize(QSize(s.width(), s.height()+1));
+        resize(s);
+
         // set only notifier.
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
         m_TreeBank->GetNotifier()->SetScroll(GetScroll());
@@ -188,7 +200,7 @@ public slots:
     void repaint() Q_DECL_OVERRIDE { base()->repaint();}
     bool visible() Q_DECL_OVERRIDE { return base()->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {
-        base()->setFocus(reason);
+        QTimer::singleShot(0, this, [this, reason](){ base()->setFocus(reason);});
     }
 
     void Load()                           Q_DECL_OVERRIDE { View::Load();}

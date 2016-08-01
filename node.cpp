@@ -350,10 +350,10 @@ QUrl HistNode::GetUrl(){
 QImage HistNode::GetImage(){
     if(m_Image.isNull() && !m_ImageFileName.isEmpty()){
         QtConcurrent::run([this](){
-                // QImage is shared implicitly.
-                QImage image = QImage(Application::ThumbnailDirectory() + m_ImageFileName);
-                if(m_Image.isNull()) m_Image = image;
-            });
+            // QImage is shared implicitly.
+            QImage image = QImage(Application::ThumbnailDirectory() + m_ImageFileName);
+            if(m_Image.isNull()) m_Image = image;
+        });
         return QImage();
     }
     if(m_Image.isNull()) m_ImageFileName = QString();

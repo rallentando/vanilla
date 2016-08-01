@@ -85,7 +85,8 @@ bool TreeBar::m_WheelClickToClose  = false;
 
 namespace {
 
-    template <class T> bool Cramp(T &value, const T min, const T max){
+    template <class T>
+    bool Cramp(T &value, const T min, const T max){
         if(max < min) return false;
         if(value > max) value = max;
         if(value < min) value = min;
@@ -1095,11 +1096,10 @@ void TreeBar::AddTreeBarMenu(QMenu *menu){
         slider->setMinimum(TREEBAR_HORIZONTAL_NODE_MINIMUM_WIDTH);
         slider->setMaximum(TREEBAR_HORIZONTAL_NODE_MAXIMUM_WIDTH);
         slider->setValue(GetHorizontalNodeWidth());
-        connect(slider, &QSlider::valueChanged,
-                [this](int i){
-                    m_HorizontalNodeWidth = i;
-                    CollectNodes();
-                });
+        connect(slider, &QSlider::valueChanged, [this](int i){
+            m_HorizontalNodeWidth = i;
+            CollectNodes();
+        });
         break;
     }
     case Qt::Vertical:{
@@ -1107,11 +1107,10 @@ void TreeBar::AddTreeBarMenu(QMenu *menu){
         slider->setMinimum(TREEBAR_VERTICAL_NODE_MINIMUM_HEIGHT);
         slider->setMaximum(TREEBAR_VERTICAL_NODE_MAXIMUM_HEIGHT);
         slider->setValue(GetVerticalNodeHeight());
-        connect(slider, &QSlider::valueChanged,
-                [this](int i){
-                    m_VerticalNodeHeight = i;
-                    CollectNodes();
-                });
+        connect(slider, &QSlider::valueChanged, [this](int i){
+            m_VerticalNodeHeight = i;
+            CollectNodes();
+        });
         break;
     }
     }
@@ -3576,8 +3575,8 @@ void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
                 TreeBank *tb = view->GetTreeBank();
                 NodeList list = m_Node->GetSiblings();
                 qSort(list.begin(), list.end(), [](Node *n1, Node *n2){
-                        return n1->GetLastAccessDate() > n2->GetLastAccessDate();
-                    });
+                    return n1->GetLastAccessDate() > n2->GetLastAccessDate();
+                });
                 tb->blockSignals(true);
                 foreach(Node *nd, list){
                     if(nd != m_Node && !nd->IsDirectory())

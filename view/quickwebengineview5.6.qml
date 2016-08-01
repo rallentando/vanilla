@@ -60,7 +60,7 @@ WebEngineView {
     }
 
     onNewViewRequested: {
-        if(request.destination != WebEngineView.NewViewInBackgroundTab)
+        if(request.destination == WebEngineView.NewViewInBackgroundTab)
             request.openIn(viewInterface.newViewBackground())
         else request.openIn(viewInterface.newView())
     }

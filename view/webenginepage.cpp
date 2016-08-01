@@ -134,28 +134,18 @@ WebEnginePage* WebEnginePage::createWindow(WebWindowType type){
 
     static const QUrl blank = QUrl(QStringLiteral("about:blank"));
 
+#if QT_VERSION >= 0x050700
     View *view = type == QWebEnginePage::WebBrowserBackgroundTab
         ? OpenInNewBackground(blank)
         : OpenInNew(blank);
+#else
+    View *view = OpenInNew(blank);
+#endif
 
     if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
-
-        if(type != QWebEnginePage::WebBrowserBackgroundTab){
-            // when resetting web contents adapter, lose focus.
-            QTimer::singleShot(0, w, [w](){
-                if(!w->visible()) return;
-                if(TreeBank *tb = w->GetTreeBank()){
-                    if(tb->parentWidget()->isActiveWindow() &&
-                       tb->IsCurrent(w->GetThis().lock())){
-                        Gadgets *g = tb->GetGadgets();
-                        if(g && !g->IsActive()) w->setFocus();
-                    }
-                }
-            });
-        }
         return w->page();
     }
-    return 0;
+    return this;
 }
 
 void WebEnginePage::triggerAction(WebAction action, bool checked){

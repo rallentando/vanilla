@@ -1444,26 +1444,24 @@ QAction *View::Action(QString str, QVariant data){
     if(Page::GetBookmarkletMap().contains(str)){
         action = new QAction(base());
         action->setText(str);
-        base()->connect(action, &QAction::triggered,
-                        [this, str, action](){
-                            Load(Page::GetBookmarklet(str).first());
-                            action->deleteLater();
-                        });
+        base()->connect(action, &QAction::triggered, [this, str, action](){
+            Load(Page::GetBookmarklet(str).first());
+            action->deleteLater();
+        });
     } else if(Page::GetSearchEngineMap().contains(str)){
         QUrl url = QUrl::fromEncoded(Page::GetSearchEngine(str).first().toLatin1());
         action = new QAction(base());
         action->setText(str);
         action->setIcon(Application::GetIcon(url.host()));
-        base()->connect(action, &QAction::triggered,
-            [this, str, action](){
-                CallWithSelectedText([this, str, action](QString text){
-                    if(!text.isEmpty())
-                        QMetaObject::invokeMethod(page(), "OpenInNew",
-                                                  Q_ARG(QString, str),
-                                                  Q_ARG(QString, text));
-                    action->deleteLater();
-                });
+        base()->connect(action, &QAction::triggered, [this, str, action](){
+            CallWithSelectedText([this, str, action](QString text){
+                if(!text.isEmpty())
+                    QMetaObject::invokeMethod(page(), "OpenInNew",
+                                              Q_ARG(QString, str),
+                                              Q_ARG(QString, text));
+                action->deleteLater();
             });
+        });
     }
     return action;
 }
@@ -1598,17 +1596,17 @@ void View::GestureStarted(QPoint pos){
     SetScrollBarState();
     CallWithHitElement(pos, [this](SharedWebElement elem){ m_ClickedElement = elem;});
     CallWithSelectedText([pos, this](QString text){
-            if(m_HadSelection = !text.isEmpty()){
-                m_SelectedText = text;
-                CallWithSelectedHtml([this](QString html){ m_SelectedHtml = html;});
-                CallWithGotCurrentBaseUrl([this](QUrl base){ m_CurrentBaseUrl = base;});
-                CallWithSelectionRegion([this, pos](QRegion region){
-                        if(region.contains(pos))
-                            m_SelectionRegion = region;
-                        else m_HadSelection = false;
-                    });
-            }
-        });
+        if(m_HadSelection = !text.isEmpty()){
+            m_SelectedText = text;
+            CallWithSelectedHtml([this](QString html){ m_SelectedHtml = html;});
+            CallWithGotCurrentBaseUrl([this](QUrl base){ m_CurrentBaseUrl = base;});
+            CallWithSelectionRegion([this, pos](QRegion region){
+                if(region.contains(pos))
+                    m_SelectionRegion = region;
+                else m_HadSelection = false;
+            });
+        }
+    });
 }
 
 void View::GestureMoved(QPoint pos){

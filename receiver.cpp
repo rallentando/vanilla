@@ -343,41 +343,6 @@ void Receiver::InitializeDisplay(Mode mode){
     m_LineEdit->setFocus(Qt::OtherFocusReason);
 }
 
-QString Receiver::WaitForStringInput(){
-    QEventLoop loop;
-    QString result;
-
-    QMetaObject::Connection signalCon;
-    QMetaObject::Connection returnCon;
-    QMetaObject::Connection abortCon;
-
-    signalCon =
-        connect(m_LineEdit, SIGNAL(FocusOut()),
-                m_LineEdit, SIGNAL(Aborted()));
-
-    returnCon =
-        connect(m_LineEdit, &LineEdit::Returned, [&](){
-                disconnect(signalCon);
-                disconnect(returnCon);
-                disconnect(abortCon);
-                result = m_LineEdit->text();
-                loop.quit();
-            });
-
-    abortCon =
-        connect(m_LineEdit, &LineEdit::Aborted, [&](){
-                disconnect(signalCon);
-                disconnect(returnCon);
-                disconnect(abortCon);
-                result = QString();
-                loop.quit();
-            });
-
-    loop.exec();
-
-    return result;
-}
-
 void Receiver::OpenTextSeeker(View*){
     InitializeDisplay(Search);
 }
@@ -1001,10 +966,9 @@ void Receiver::paintEvent(QPaintEvent *ev){
 void Receiver::hideEvent(QHideEvent *ev){
     MainWindow *win = m_TreeBank->GetMainWindow();
 
-    if(IsPurged())
-        QTimer::singleShot(0, win, &MainWindow::SetFocus);
-    else win->SetFocus();
-
+    QTimer::singleShot(0, win, [win](){
+        if(win->isActiveWindow()) win->SetFocus();
+    });
     QWidget::hideEvent(ev);
 }
 

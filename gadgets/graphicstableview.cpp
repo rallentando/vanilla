@@ -2764,86 +2764,86 @@ bool GraphicsTableView::ThumbList_ZoomOut(){
 bool GraphicsTableView::ThumbList_MoveToUpperItem(){
     return MoveTo(false, [this](int cur, int len){
 
-            int col = m_CurrentThumbnailColumnCount;
-            int index = cur - col;
-            int base = (len / col * col) + cur;
+        int col = m_CurrentThumbnailColumnCount;
+        int index = cur - col;
+        int base = (len / col * col) + cur;
 
-            if     (cur == -1)  return len - 1;
-            else if(index >= 0) return index;
-            else if((len % col) <= cur) return base - col;
-            else                return base;
-        });
+        if     (cur == -1)  return len - 1;
+        else if(index >= 0) return index;
+        else if((len % col) <= cur) return base - col;
+        else                return base;
+    });
 }
 
 bool GraphicsTableView::ThumbList_MoveToLowerItem(){
     return MoveTo(false, [this](int cur, int len){
 
-            int col = m_CurrentThumbnailColumnCount;
-            int index = cur + col;
+        int col = m_CurrentThumbnailColumnCount;
+        int index = cur + col;
 
-            if     (cur == -1)    return 0;
-            else if(index >= len) return cur % col;
-            else                  return index;
-        });
+        if     (cur == -1)    return 0;
+        else if(index >= len) return cur % col;
+        else                  return index;
+    });
 }
 
 bool GraphicsTableView::ThumbList_MoveToRightItem(){
     return MoveTo(false, [this](int cur, int len){
 
-            int index = cur + 1;
+        int index = cur + 1;
 
-            if(index >= len) return 0;
-            else             return index;
-        });
+        if(index >= len) return 0;
+        else             return index;
+    });
 }
 
 bool GraphicsTableView::ThumbList_MoveToLeftItem(){
     return MoveTo(false, [this](int cur, int len){
 
-            int index = cur - 1;
+        int index = cur - 1;
 
-            if(index < 0) return len - 1;
-            else          return index;
-        });
+        if(index < 0) return len - 1;
+        else          return index;
+    });
 }
 
 bool GraphicsTableView::ThumbList_MoveToPrevPage(){
     return MoveTo(true, [this](int cur, int len){
-            Q_UNUSED(len);
+        Q_UNUSED(len);
 
-            int col = m_CurrentThumbnailColumnCount;
-            int line = m_CurrentThumbnailLineCount;
-            int index = cur - col * line;
+        int col = m_CurrentThumbnailColumnCount;
+        int line = m_CurrentThumbnailLineCount;
+        int index = cur - col * line;
 
-            if(index < 0) return 0;
-            else          return index;
-        });
+        if(index < 0) return 0;
+        else          return index;
+    });
 }
 
 bool GraphicsTableView::ThumbList_MoveToNextPage(){
     return MoveTo(true, [this](int cur, int len){
 
-            int col = m_CurrentThumbnailColumnCount;
-            int line = m_CurrentThumbnailLineCount;
-            int index = cur + col * line;
+        int col = m_CurrentThumbnailColumnCount;
+        int line = m_CurrentThumbnailLineCount;
+        int index = cur + col * line;
 
-            if(index >= len) return len - 1;
-            else             return index;
-        });
+        if(index >= len) return len - 1;
+        else             return index;
+    });
 }
 
 bool GraphicsTableView::ThumbList_MoveToFirstItem(){
     return MoveTo(false, [this](int cur, int len){
-            Q_UNUSED(cur); Q_UNUSED(len);
-            return 0;
-        });
+        Q_UNUSED(cur); Q_UNUSED(len);
+        return 0;
+    });
 }
 
 bool GraphicsTableView::ThumbList_MoveToLastItem(){
     return MoveTo(false, [this](int cur, int len){
-            Q_UNUSED(cur);
-            return len - 1;
-        });
+        Q_UNUSED(cur);
+        return len - 1;
+    });
 }
 
 bool GraphicsTableView::ThumbList_SelectToUpperItem(){
@@ -2948,89 +2948,89 @@ bool GraphicsTableView::ThumbList_ClearSelection(){
 bool GraphicsTableView::ThumbList_TransferToUpper(){
     return TransferTo(false, false, [this](Thumbnail *neighbor, int cur, int len){
 
-            int col = m_CurrentThumbnailColumnCount;
-            int index = neighbor ? cur - col : -1;
-            int base = neighbor ? (len / col * col) + cur : -1;
+        int col = m_CurrentThumbnailColumnCount;
+        int index = neighbor ? cur - col : -1;
+        int base = neighbor ? (len / col * col) + cur : -1;
 
-            if     (!neighbor)   return len / col * col;
-            else if(cur == -1)   return len;
-            else if(index >= 0)  return index + 1;
-            else if(index == -1) return 0;
-            else if((len % col) <= cur) return base - col + 1;
-            else                 return base + 1;
-        });
+        if     (!neighbor)   return len / col * col;
+        else if(cur == -1)   return len;
+        else if(index >= 0)  return index + 1;
+        else if(index == -1) return 0;
+        else if((len % col) <= cur) return base - col + 1;
+        else                 return base + 1;
+    });
 }
 
 bool GraphicsTableView::ThumbList_TransferToLower(){
     return TransferTo(true, false, [this](Thumbnail *neighbor, int cur, int len){
 
-            int col = m_CurrentThumbnailColumnCount;
-            int index = neighbor ? cur + col : -1;
+        int col = m_CurrentThumbnailColumnCount;
+        int index = neighbor ? cur + col : -1;
 
-            if     (!neighbor)    return len % col;
-            else if(cur == -1)    return 0;
-            else if(index == len) return index;
-            else if(index >= len) return cur % col;
-            else                  return index;
-        });
+        if     (!neighbor)    return len % col;
+        else if(cur == -1)    return 0;
+        else if(index == len) return index;
+        else if(index >= len) return cur % col;
+        else                  return index;
+    });
 }
 
 bool GraphicsTableView::ThumbList_TransferToRight(){
     return TransferTo(true, false, [this](Thumbnail *neighbor, int cur, int len){
-            Q_UNUSED(len);
+        Q_UNUSED(len);
 
-            if(!neighbor) return 0;
-            else          return cur + 1;
-        });
+        if(!neighbor) return 0;
+        else          return cur + 1;
+    });
 }
 
 bool GraphicsTableView::ThumbList_TransferToLeft(){
     return TransferTo(false, false, [this](Thumbnail *neighbor, int cur, int len){
 
-            if(!neighbor) return len;
-            else          return cur;
-        });
+        if(!neighbor) return len;
+        else          return cur;
+    });
 }
 
 bool GraphicsTableView::ThumbList_TransferToPrevPage(){
     return TransferTo(false, true, [this](Thumbnail *neighbor, int cur, int len){
-            Q_UNUSED(len);
+        Q_UNUSED(len);
 
-            int col = m_CurrentThumbnailColumnCount;
-            int line = m_CurrentThumbnailLineCount;
-            int index = neighbor ? cur - col * line : -1;
+        int col = m_CurrentThumbnailColumnCount;
+        int line = m_CurrentThumbnailLineCount;
+        int index = neighbor ? cur - col * line : -1;
 
-            if     (!neighbor) return 0;
-            else if(index < 0) return 0;
-            else               return index + 1;
-        });
+        if     (!neighbor) return 0;
+        else if(index < 0) return 0;
+        else               return index + 1;
+    });
 }
 
 bool GraphicsTableView::ThumbList_TransferToNextPage(){
     return TransferTo(true, true, [this](Thumbnail *neighbor, int cur, int len){
 
-            int col = m_CurrentThumbnailColumnCount;
-            int line = m_CurrentThumbnailLineCount;
-            int index = neighbor ? cur + col * line : -1;
+        int col = m_CurrentThumbnailColumnCount;
+        int line = m_CurrentThumbnailLineCount;
+        int index = neighbor ? cur + col * line : -1;
 
-            if     (!neighbor)   return len;
-            else if(index > len) return len;
-            else                 return index;
-        });
+        if     (!neighbor)   return len;
+        else if(index > len) return len;
+        else                 return index;
+    });
 }
 
 bool GraphicsTableView::ThumbList_TransferToFirst(){
     return TransferTo(false, false, [this](Thumbnail *neighbor, int cur, int len){
-            Q_UNUSED(neighbor); Q_UNUSED(cur); Q_UNUSED(len);
-            return 0;
-        });
+        Q_UNUSED(neighbor); Q_UNUSED(cur); Q_UNUSED(len);
+        return 0;
+    });
 }
 
 bool GraphicsTableView::ThumbList_TransferToLast(){
     return TransferTo(true, false, [this](Thumbnail *neighbor, int cur, int len){
-            Q_UNUSED(neighbor); Q_UNUSED(cur); Q_UNUSED(len);
-            return len;
-        });
+        Q_UNUSED(neighbor); Q_UNUSED(cur); Q_UNUSED(len);
+        return len;
+    });
 }
 
 bool GraphicsTableView::ThumbList_TransferToUpDirectory(){
