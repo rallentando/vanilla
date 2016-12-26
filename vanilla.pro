@@ -5,26 +5,32 @@ equals(QT_MAJOR_VERSION, 5) : lessThan(QT_MINOR_VERSION, 6){
     error(please use Qt 5.6 or newer.)
 }
 
-INCLUDEPATH += . view gen gadgets
-
 QT += \
-    core gui xml network opengl \
+    xml network opengl \
     webchannel widgets \
     multimedia multimediawidgets \
     quick quickwidgets qml
 
 winrt | android | ios {
 
-    Qt += webview
+    QT += webview
 
 } else {
 
-    win32: Qt += winextras axcontainer
+    QT += printsupport webenginecore \
+       webengine webenginewidgets
 
-    Qt += printsupport webengine webenginewidgets
+    win32: QT += winextras axcontainer
 }
 
-win32: QMAKE_CXXFLAGS_RELEASE -= -Zc:strictStrings
+INCLUDEPATH += . view gadgets
+
+win32 {
+    QMAKE_CXXFLAGS_RELEASE -= -Zc:strictStrings
+    QMAKE_CXXFLAGS -= -Zc:strictStrings
+    QMAKE_CFLAGS_RELEASE -= -Zc:strictStrings
+    QMAKE_CFLAGS -= -Zc:strictStrings
+}
 
 CONFIG += qt
 
@@ -112,6 +118,7 @@ TRANSLATIONS += \
 OTHER_FILES += \
     view/quickwebengineview5.6.qml \
     view/quickwebengineview5.7.qml \
+    view/quickwebengineview5.8.qml \
     view/quicknativewebview.qml
 
 lupdate_only {
@@ -120,6 +127,7 @@ lupdate_only {
     SOURCES = \
         view/quickwebengineview5.6.qml \
         view/quickwebengineview5.7.qml \
+        view/quickwebengineview5.8.qml \
         view/quicknativewebview.qml \
         application.hpp \
         actionmapper.hpp \

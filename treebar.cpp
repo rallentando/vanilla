@@ -3059,6 +3059,8 @@ QRectF NodeItem::CloneButtonRect() const {
 
 #if QT_VERSION >= 0x050700
 QRectF NodeItem::SoundButtonRect() const {
+    View *view = m_Node->GetView();
+    if(!view || (!view->IsAudioMuted() && !view->RecentlyAudible())) return QRectF();
     QRectF rect = QRectF(boundingRect().bottomRight() + QPointF(-18, -19), QSizeF(14, 14));
     if(m_IsHovered){
         if(TreeBar::EnableCloseButton()) rect.moveLeft(rect.left() - 18);
@@ -3585,6 +3587,7 @@ void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
                 tb->blockSignals(false);
             }
             win = m_TreeBar->MakeWindow(ev->screenPos());
+            scene()->update();
             win->GetTreeBank()->SetCurrent(m_Node);
         }
         if(win){
@@ -3705,9 +3708,9 @@ QMenu *NodeItem::NodeMenu(){
         QGridLayout *layout = new QGridLayout();
         static const QList<QStringList> list =
             QList<QStringList>()
-            << (QStringList() << tr("Use name as profile ID.") << QStringLiteral(";[iI][dD]") << QStringLiteral(";ID"))
+            << (QStringList() << tr("Use name as profile ID.") << QStringLiteral(";[iI][dD](?:entif(?:y|ier|ication))?") << QStringLiteral(";ID"))
             << (QStringList() << tr("Private mode.") << QStringLiteral(";(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)") << QStringLiteral(";Private"))
-            << (QStringList() << tr("Disable auto load.") << QStringLiteral(";!?[nN](?:o)?[lL](?:oad)?") << QStringLiteral(";NoLoad") << QStringLiteral(";!NoLoad"))
+            << (QStringList() << tr("Disable auto load.") << QStringLiteral(";!?[nN](?:o)?(?:[aA](?:uto)?)?[lL](?:oad)?") << QStringLiteral(";NoAutoLoad") << QStringLiteral(";!NoAutoLoad"))
             << (QStringList() << tr("Enable drag gestuer.") << QStringLiteral(";!?[dD](?:rag)?[gG](?:esture)?") << QStringLiteral(";DragGesture") << QStringLiteral(";!DragGesture"))
             << (QStringList() << tr("Auto load images.") << QStringLiteral(";!?[iI]mage") << QStringLiteral(";Image") << QStringLiteral(";!Image"))
             << (QStringList() << tr("Enable javascript.") << QStringLiteral(";!?[jJ](?:ava)?[sS](?:cript)?") << QStringLiteral(";Javascript") << QStringLiteral(";!Javascript"))

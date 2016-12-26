@@ -6,11 +6,14 @@ SYSTEM_DIR="C:/Windows/System32"
 
 for drive in C D E F G
 do
-    if   [ -e   $drive:/Qt/Qt5.7.0/5.7/msvc2013 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.7.0/5.7/msvc2013
+    if   [ -e   $drive:/Qt/Qt5.7.0/5.7/msvc2015 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.7.0/5.7/msvc2015
         break
-    elif [ -e   $drive:/Qt/Qt5.7.0/5.7/msvc2013_64 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.7.0/5.7/msvc2013_64
+    elif [ -e   $drive:/Qt/Qt5.7.0/5.7/msvc2015_64 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.7.0/5.7/msvc2015_64
+        break
+    elif [ -e   $drive:/Qt/Qt5.7.0-x64/5.7/msvc2015_64 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.7.0-x64/5.7/msvc2015_64
         break
     fi
 done

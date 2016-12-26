@@ -6,14 +6,14 @@ SYSTEM_DIR="C:/Windows/System32"
 
 for drive in C D E F G
 do
-    if   [ -e   $drive:/Qt/Qt5.6.1/5.6/msvc2013 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.6.1/5.6/msvc2013
+    if   [ -e   $drive:/Qt/Qt5.8.0/5.8/msvc2015 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.8.0/5.8/msvc2015
         break
-    elif [ -e   $drive:/Qt/Qt5.6.1/5.6/msvc2013_64 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.6.1/5.6/msvc2013_64
+    elif [ -e   $drive:/Qt/Qt5.8.0/5.8/msvc2015_64 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.8.0/5.8/msvc2015_64
         break
-    elif [ -e   $drive:/Qt/Qt5.6.1-x64/5.6/msvc2013_64 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.6.1-x64/5.6/msvc2013_64
+    elif [ -e   $drive:/Qt/Qt5.8.0-x64/5.8/msvc2015_64 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.8.0-x64/5.8/msvc2015_64
         break
     fi
 done
@@ -61,10 +61,12 @@ mkdir -p $TARGET_DIR/QtQuick/Window.2/
 mkdir -p $TARGET_DIR/QtQuick.2/
 mkdir -p $TARGET_DIR/QtWebEngine/
 mkdir -p $TARGET_DIR/QtWebEngine/experimental/
-mkdir -p $TARGET_DIR/QtWebEngine/UIDelegates/
+#mkdir -p $TARGET_DIR/QtWebEngine/UIDelegates/
+mkdir -p $TARGET_DIR/QtWebEngine/Controls1Delegates/
+mkdir -p $TARGET_DIR/QtWebEngine/Controls2Delegates/
 
-cp $OPENSSL_DIR/ssleay32.dll $TARGET_DIR/
-cp $OPENSSL_DIR/libeay32.dll $TARGET_DIR/
+#cp $OPENSSL_DIR/ssleay32.dll $TARGET_DIR/
+#cp $OPENSSL_DIR/libeay32.dll $TARGET_DIR/
 
 cp $SYSTEM_DIR/msvcr120.dll $TARGET_DIR/
 cp $SYSTEM_DIR/msvcp120.dll $TARGET_DIR/
@@ -92,9 +94,9 @@ cp $QT5_DIR/bin/Qt5Widgets.dll           $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WinExtras.dll         $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Xml.dll               $TARGET_DIR/
 cp $QT5_DIR/bin/d3dcompiler_47.dll       $TARGET_DIR/
-cp $QT5_DIR/bin/icudt54.dll              $TARGET_DIR/
-cp $QT5_DIR/bin/icuin54.dll              $TARGET_DIR/
-cp $QT5_DIR/bin/icuuc54.dll              $TARGET_DIR/
+#cp $QT5_DIR/bin/icudt54.dll              $TARGET_DIR/
+#cp $QT5_DIR/bin/icuin54.dll              $TARGET_DIR/
+#cp $QT5_DIR/bin/icuuc54.dll              $TARGET_DIR/
 cp $QT5_DIR/bin/libEGL.dll               $TARGET_DIR/
 cp $QT5_DIR/bin/libGLESv2.dll            $TARGET_DIR/
 cp $QT5_DIR/bin/opengl32sw.dll           $TARGET_DIR/
@@ -107,7 +109,7 @@ cp $QT5_DIR/plugins/bearer/qnativewifibearer.dll           $TARGET_DIR/bearer/
 
 cp $QT5_DIR/plugins/iconengines/qsvgicon.dll               $TARGET_DIR/iconengines/
 
-cp $QT5_DIR/plugins/imageformats/qdds.dll                  $TARGET_DIR/imageformats/
+#cp $QT5_DIR/plugins/imageformats/qdds.dll                  $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qgif.dll                  $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qicns.dll                 $TARGET_DIR/imageformats/
 cp $QT5_DIR/plugins/imageformats/qico.dll                  $TARGET_DIR/imageformats/
@@ -149,7 +151,7 @@ cp $QT5_DIR/plugins/sensors/qtsensors_generic.dll          $TARGET_DIR/sensors/
 
 cp $QT5_DIR/plugins/sqldrivers/qsqlite.dll                 $TARGET_DIR/sqldrivers/
 cp $QT5_DIR/plugins/sqldrivers/qsqlmysql.dll               $TARGET_DIR/sqldrivers/
-#cp $QT5_DIR/plugins/sqldrivers/qsqlodbc.dll                $TARGET_DIR/sqldrivers/
+cp $QT5_DIR/plugins/sqldrivers/qsqlodbc.dll                $TARGET_DIR/sqldrivers/
 cp $QT5_DIR/plugins/sqldrivers/qsqlpsql.dll                $TARGET_DIR/sqldrivers/
 
 cp $QT5_DIR/qml/QtQuick/Controls/qtquickcontrolsplugin.dll            $TARGET_DIR/QtQuick/Controls/
@@ -174,15 +176,21 @@ cp $QT5_DIR/qml/QtQuick.2/qmldir                                      $TARGET_DI
 
 cp $QT5_DIR/qml/QtWebEngine/qtwebengineplugin.dll                          $TARGET_DIR/QtWebEngine/
 cp $QT5_DIR/qml/QtWebEngine/qmldir                                         $TARGET_DIR/QtWebEngine/
-cp $QT5_DIR/qml/QtWebEngine/experimental/qtwebengineexperimentalplugin.dll $TARGET_DIR/QtWebEngine/experimental/
-cp $QT5_DIR/qml/QtWebEngine/experimental/qmldir                            $TARGET_DIR/QtWebEngine/experimental/
-cp $QT5_DIR/qml/QtWebEngine/UIDelegates/*.qml                              $TARGET_DIR/QtWebEngine/UIDelegates/
-cp $QT5_DIR/qml/QtWebEngine/UIDelegates/qmldir                             $TARGET_DIR/QtWebEngine/UIDelegates/
+#cp $QT5_DIR/qml/QtWebEngine/experimental/qtwebengineexperimentalplugin.dll $TARGET_DIR/QtWebEngine/experimental/
+#cp $QT5_DIR/qml/QtWebEngine/experimental/qmldir                            $TARGET_DIR/QtWebEngine/experimental/
+#cp $QT5_DIR/qml/QtWebEngine/UIDelegates/*.qml                              $TARGET_DIR/QtWebEngine/UIDelegates/
+#cp $QT5_DIR/qml/QtWebEngine/UIDelegates/qmldir                             $TARGET_DIR/QtWebEngine/UIDelegates/
+cp $QT5_DIR/qml/QtWebEngine/Controls1Delegates/*.qml                       $TARGET_DIR/QtWebEngine/Controls1Delegates/
+cp $QT5_DIR/qml/QtWebEngine/Controls1Delegates/qmldir                      $TARGET_DIR/QtWebEngine/Controls1Delegates/
+cp $QT5_DIR/qml/QtWebEngine/Controls2Delegates/*.qml                       $TARGET_DIR/QtWebEngine/Controls2Delegates/
+cp $QT5_DIR/qml/QtWebEngine/Controls2Delegates/*.png                       $TARGET_DIR/QtWebEngine/Controls2Delegates/
+cp $QT5_DIR/qml/QtWebEngine/Controls2Delegates/qmldir                      $TARGET_DIR/QtWebEngine/Controls2Delegates/
 
 cp $QT5_DIR/translations/qt_*.qm     $TARGET_DIR/translations/
 cp $QT5_DIR/translations/qtbase_*.qm $TARGET_DIR/translations/
 
 cp $QT5_DIR/resources/icudtl.dat $TARGET_DIR/resources/
+cp $QT5_DIR/resources/qtwebengine_devtools_resources.pak $TARGET_DIR/resources/
 cp $QT5_DIR/resources/qtwebengine_resources.pak $TARGET_DIR/resources/
 cp $QT5_DIR/resources/qtwebengine_resources_100p.pak $TARGET_DIR/resources/
 cp $QT5_DIR/resources/qtwebengine_resources_200p.pak $TARGET_DIR/resources/

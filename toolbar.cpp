@@ -164,6 +164,7 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
     addWidget(m_LineEdit);
     setObjectName(QStringLiteral("ToolBar"));
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    setAllowedAreas(Qt::TopToolBarArea | Qt::BottomToolBarArea);
     setIconSize(QSize(16, 16));
 
     if(Application::EnableTransparentBar()){

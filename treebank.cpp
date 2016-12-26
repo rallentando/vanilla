@@ -44,11 +44,11 @@
 
   Directory specific settings.
 
-  "[iI][dD]" :
+  "[iI][dD](?:entif(?:y|ier|ication))?" :
   use directory name as networkaccessmanager/profile ID.
 
 
-  "[nN](?:o)?[lL](?:oad)?" :
+  "[nN](?:o)?(?:[aA](?:uto)?)?[lL](?:oad)?" :
   disable auto loading.
 
 
@@ -62,8 +62,9 @@
   "[qQ](?:uick)?"    "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?"
                      "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?"
   "[qQ](?:uick)?"    "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?"
+                     "[nN](?:ative)?" "[wW](?:ev)?" "(?:[vV](?:iew)?)?"
+  "[qQ](?:uick)?"    "[nN](?:ative)?" "[wW](?:ev)?" "(?:[vV](?:iew)?)?"
   "[lL](?:ocal)?"                                   "(?:[vV](?:iew)?)?"
-  "[fF](?:tp)?"                                     "(?:[vV](?:iew)?)?"
   "[tT](?:rident)?"                                 "(?:[vV](?:iew)?)?"
   :
   set object type.
@@ -363,8 +364,8 @@ void TreeBank::ReconfigureDirectory(ViewNode *vn, QString before, QString after)
     QString aftname = after .split(QStringLiteral(";")).first();
     QStringList befset = before.split(QStringLiteral(";")).mid(1);
     QStringList aftset = after .split(QStringLiteral(";")).mid(1);
-    bool bef = befset.indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD]\\Z"))) != -1;
-    bool aft = aftset.indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD]\\Z"))) != -1;
+    bool bef = befset.indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD](?:entif(?:y|ier|ication))?\\Z"))) != -1;
+    bool aft = aftset.indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD](?:entif(?:y|ier|ication))?\\Z"))) != -1;
 
     NetworkAccessManager *nam = bef ?
         (aft ? NetworkController::MoveNetworkAccessManager(befname, aftname, aftset) :
@@ -419,7 +420,7 @@ static QString GetNetworkSpaceId(ViewNode* vn){
         title = vn->GetTitle();
         if(vn == TreeBank::GetViewRoot() || vn == TreeBank::GetTrashRoot() ||
            (vn->IsDirectory() && !title.isEmpty() &&
-            title.split(QStringLiteral(";")).indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD]\\Z"))) != -1)){
+            title.split(QStringLiteral(";")).indexOf(QRegularExpression(QStringLiteral("\\A[iI][dD](?:entif(?:y|ier|ication))?\\Z"))) != -1)){
 
             return title.split(QStringLiteral(";")).first();
 
@@ -2130,7 +2131,7 @@ static SharedView LoadWithNoLink(ViewNode *vn){
 static SharedView AutoLoadWithLink(QNetworkRequest req, HistNode *hn, ViewNode *vn){
     QUrl u = req.url();
     SharedView view = SharedView();
-    if(GetNodeSettings(vn).indexOf(QRegularExpression(QStringLiteral("\\A[nN](?:o)?[lL](?:oad)?\\Z"))) == -1)
+    if(GetNodeSettings(vn).indexOf(QRegularExpression(QStringLiteral("\\A[nN](?:o)?(?:[aA](?:uto)?)?[lL](?:oad)?\\Z"))) == -1)
         view = TreeBank::CreateView(req, hn, vn);
     SetPartner(u, hn, vn, view);
     SetPartner(u, vn, hn, view);
@@ -2159,7 +2160,7 @@ static SharedView AutoLoadWithLink(ViewNode *vn){
 static SharedView AutoLoadWithNoLink(QNetworkRequest req, HistNode *hn, ViewNode *vn){
     QUrl u = req.url();
     SharedView view = SharedView();
-    if(GetNodeSettings(vn).indexOf(QRegularExpression(QStringLiteral("\\A[nN](?:o)?[lL](?:oad)?\\Z"))) == -1)
+    if(GetNodeSettings(vn).indexOf(QRegularExpression(QStringLiteral("\\A[nN](?:o)?(?:[aA](?:uto)?)?[lL](?:oad)?\\Z"))) == -1)
         view = TreeBank::CreateView(req, hn, vn);
     SetPartner(u, hn, vn, view);
     if(view){

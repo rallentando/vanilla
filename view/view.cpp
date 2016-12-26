@@ -939,6 +939,11 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::AutoLoadIconsForPage,              s.value(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::TouchIconsEnabled,                 s.value(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                ).value<bool>());
 #  endif
+#  if QT_VERSION >= 0x050800
+    gwes->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled,          s.value(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled)         ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::PrintElementBackgrounds,           s.value(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)          ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::AllowRunningInsecureContent,       s.value(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gwes->testAttribute(QWebEngineSettings::AllowRunningInsecureContent)      ).value<bool>());
+#  endif
     gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::FullScreenSupportEnabled,          s.value(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),        /*gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)*/  true ).value<bool>());
 
@@ -1159,6 +1164,11 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)              );
     s.setValue(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                 );
 #  endif
+#  if QT_VERSION >= 0x050800
+    s.setValue(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled)          );
+    s.setValue(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)           );
+    s.setValue(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gwes->testAttribute(QWebEngineSettings::AllowRunningInsecureContent)       );
+#  endif
     s.setValue(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                  );
     s.setValue(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),          gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)          );
 
@@ -1256,6 +1266,11 @@ void View::ApplySpecificSettings(QStringList set){
         s->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, g->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled));
         s->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, g->testAttribute(QWebEngineSettings::AutoLoadIconsForPage));
         s->setAttribute(QWebEngineSettings::TouchIconsEnabled, g->testAttribute(QWebEngineSettings::TouchIconsEnabled));
+#  endif
+#  if QT_VERSION >= 0x050800
+        s->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled, g->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled));
+        s->setAttribute(QWebEngineSettings::PrintElementBackgrounds, g->testAttribute(QWebEngineSettings::PrintElementBackgrounds));
+        s->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, g->testAttribute(QWebEngineSettings::AllowRunningInsecureContent));
 #  endif
         s->setAttribute(QWebEngineSettings::ErrorPageEnabled, g->testAttribute(QWebEngineSettings::ErrorPageEnabled));
         s->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, g->testAttribute(QWebEngineSettings::FullScreenSupportEnabled));

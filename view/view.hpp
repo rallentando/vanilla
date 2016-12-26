@@ -1166,10 +1166,10 @@ protected:
         QString quoted = QString(data).replace(QStringLiteral("\""), QStringLiteral("\\\""));
         return QStringLiteral(
             "(function(){\n"
-          VV"    var submitted = false;\n"
           VV"    var data = \"%1\".split(\"&\");\n"
           VV"    var forms = document.querySelectorAll(\"form\");\n"
           VV"    for(var i = 0; i < forms.length; i++){\n"
+          VV"        var inserted = false;\n"
           VV"        var form = forms[i];\n"
           VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
           VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
@@ -1180,14 +1180,14 @@ protected:
           VV"            var val  = decodeURIComponent(pair[1]);\n"
           VV"            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
           VV"            if(!field) continue;\n"
-          VV"            submitted = true;\n"
+          VV"            inserted = true;\n"
           VV"            field.value = val;\n"
           VV"        }\n"
-          VV"        if(!submitted) continut;\n"
+          VV"        if(!inserted) continue;\n"
           VV"        if(submit.click){\n"
           VV"            submit.click();\n"
           VV"        } else if(typeof submit == \"function\"){\n"
-          VV"            submit();\n"
+          VV"            form.submit();\n"
           VV"        }\n"
           VV"    }\n"
           VV"})()").arg(quoted);
@@ -1339,6 +1339,7 @@ private:
     // when calling method using 'WaitForResult' from '~Event',
     // 'callBack' is not called in that event and to crash,
     // because of 'callBack' is called after that event finished.
+    // this issue is fixed at least Qt5.7 or newer.
     template <class T>
     T WaitForResult(std::function<void(std::function<void(T)>)> callBack){
         T result;

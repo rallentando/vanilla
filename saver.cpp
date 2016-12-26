@@ -19,6 +19,7 @@ AutoSaver::AutoSaver()
 AutoSaver::~AutoSaver(){}
 
 void AutoSaver::AutoSaveStart(){
+    if(m_IsSaving) return;
     m_IsSaving = true;
     m_Time.start();
     emit Started();

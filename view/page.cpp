@@ -1130,21 +1130,20 @@ void Page::FocusElement(){
             pos = action->data().toPoint();
         }
         m_View->CallWithHitElement(pos, [this](SharedWebElement e){
-            if(e && !e->IsNull()){
+            if(!e || e->IsNull()) return;
 
-                e->SetFocus();
+            e->SetFocus();
 
-                // 'hack-ish' solution...
-                QKeyEvent tabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
-                QKeyEvent tabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::NoModifier);
-                QKeyEvent backTabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::ShiftModifier);
-                QKeyEvent backTabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::ShiftModifier);
+            // 'hack-ish' solution...
+            QKeyEvent tabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
+            QKeyEvent tabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::NoModifier);
+            QKeyEvent backTabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::ShiftModifier);
+            QKeyEvent backTabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::ShiftModifier);
 
-                m_View->KeyPressEvent(&tabPress);
-                m_View->KeyReleaseEvent(&tabRelease);
-                m_View->KeyPressEvent(&backTabPress);
-                m_View->KeyReleaseEvent(&backTabRelease);
-            }
+            m_View->KeyPressEvent(&tabPress);
+            m_View->KeyReleaseEvent(&tabRelease);
+            m_View->KeyPressEvent(&backTabPress);
+            m_View->KeyReleaseEvent(&backTabRelease);
         });
     }
 }

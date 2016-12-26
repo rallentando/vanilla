@@ -581,15 +581,9 @@ void WebEngineView::Print(){
 
     } else {
 #if QT_VERSION >= 0x050800
-        QQuickWidget *widget = 0;
-        foreach(QObject *obj, children()){
-            if(widget = qobject_cast<QQuickWidget*>(obj)) break;
-        }
+        QQuickWidget *widget = findChild<QQuickWidget*>();
 #else
-        QOpenGLWidget *widget = 0;
-        foreach(QObject *obj, children()){
-            if(widget = qobject_cast<QOpenGLWidget*>(obj)) break;
-        }
+        QOpenGLWidget *widget = findChild<QOpenGLWidget*>();
 #endif
         if(!widget) return;
 

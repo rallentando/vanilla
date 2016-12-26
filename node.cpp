@@ -312,7 +312,7 @@ HistNode *HistNode::Clone(HistNode *parent, ViewNode *partner){
     HistNode *clone = parent->MakeChild();
     // Node's member.
     clone->m_Type = m_Type;
-    clone->m_Folded = m_Folded;
+    clone->m_Folded.store(m_Folded.load());
     clone->m_Title = m_Title;
     clone->m_Partner = partner;
     // set or replace partner.
@@ -332,8 +332,8 @@ HistNode *HistNode::Clone(HistNode *parent, ViewNode *partner){
         QFile::copy(Application::HistoryDirectory() + m_HistoryFileName,
                     Application::HistoryDirectory() + clone->m_HistoryFileName);
     }
-    clone->m_ScrollX = m_ScrollX;
-    clone->m_ScrollY = m_ScrollY;
+    clone->m_ScrollX.store(m_ScrollX.load());
+    clone->m_ScrollY.store(m_ScrollY.load());
     clone->m_Zoom.store(m_Zoom.load());
     // Node::m_Children, Node::m_Primary
     foreach(Node *child, children){
@@ -752,7 +752,7 @@ ViewNode *ViewNode::Clone(ViewNode *parent){
     ViewNode *clone = m_Parent == parent ? MakeSibling() : parent->MakeChild();
     // Node's member.
     clone->m_Type = m_Type;
-    clone->m_Folded = m_Folded;
+    clone->m_Folded.store(m_Folded.load());
     clone->m_Title = m_Title;
 
     // HistNode::Clone sets ViewNode::m_Partner automatically.

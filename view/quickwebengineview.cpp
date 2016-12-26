@@ -29,7 +29,9 @@ QMap<View*, QUrl> QuickWebEngineView::m_InspectorTable = QMap<View*, QUrl>();
 
 QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList set)
     : View(parent, id, set)
-#if QT_VERSION >= 0x050700
+#if QT_VERSION >= 0x050800
+    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.8.qml")), parent)
+#elif QT_VERSION >= 0x050700
     , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.7.qml")), parent)
 #else
     , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.6.qml")), parent)

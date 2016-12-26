@@ -15,7 +15,7 @@
 #define LOCALVIEW
 
 // for multi line QStringLiteral
-#if defined(Q_CC_MSVC)
+#if defined(Q_CC_MSVC) && Q_CC_MSVC < 1900
 #  define VV L
 #else
 #  define VV ""
