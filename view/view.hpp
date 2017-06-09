@@ -179,8 +179,9 @@ public:
     QMenu *OpenWithOtherBrowserMenu();
     QMenu *OpenLinkWithOtherBrowserMenu(QVariant data);
     QMenu *OpenImageWithOtherBrowserMenu(QVariant data);
+    QMenu *OpenMediaWithOtherBrowserMenu(QVariant data);
 
-    void AddContextMenu(QMenu *menu, SharedWebElement elem);
+    void AddContextMenu(QMenu *menu, SharedWebElement elem, bool isMedia = false);
     void AddRegularMenu(QMenu *menu, SharedWebElement elem);
 
     bool GetDisplayObscured(){ return m_DisplayObscured;}
@@ -201,6 +202,8 @@ public:
 
     static QString GetLinkMenu(){ return m_LinkMenu;}
     static QString GetImageMenu(){ return m_ImageMenu;}
+    static QString GetMediaMenu(){ return m_MediaMenu;}
+    static QString GetTextMenu(){ return m_TextMenu;}
     static QString GetSelectionMenu(){ return m_SelectionMenu;}
     static QString GetRegularMenu(){ return m_RegularMenu;}
 
@@ -247,6 +250,11 @@ public:
     virtual void Save(){}
     virtual void ZoomIn(){}
     virtual void ZoomOut(){}
+
+    virtual void ToggleMediaControls(){}
+    virtual void ToggleMediaLoop(){}
+    virtual void ToggleMediaPlayPause(){}
+    virtual void ToggleMediaMute(){}
 
     virtual void ExitFullScreen(){}
     virtual void InspectElement(){}
@@ -535,6 +543,7 @@ protected:
         return lis;
     }
 
+public:
     static inline QString GetBaseUrlJsCode(){
         return QStringLiteral(
             "(function(){\n"
@@ -547,7 +556,7 @@ protected:
           VV"        baseUrl = location.href;\n"
           VV"    }\n"
           VV"    return baseUrl;\n"
-          VV"})()");
+          VV"})();");
     }
 
     static inline QString GetCurrentBaseUrlJsCode(){
@@ -571,7 +580,7 @@ protected:
           VV"        baseUrl = doc.location.href;\n"
           VV"    }\n"
           VV"    return baseUrl;\n"
-          VV"})()");
+          VV"})();");
     }
 
     static inline QString SetFocusToElementJsCode(const QString &xpath){
@@ -592,7 +601,7 @@ protected:
           VV"        catch(e){ break;}\n"
           VV"    }\n"
           VV"    elem.focus();\n"
-          VV"})()").arg(quoted);
+          VV"})();").arg(quoted);
     }
 
     static inline QString FireClickEventJsCode(const QString &xpath, const QPoint &pos){
@@ -615,14 +624,14 @@ protected:
           VV"    var event = doc.createEvent(\"mouseEvents\");\n"
           VV"    event.initMouseEvent(\"click\", true, true, doc.defaultView, 0, 0, 0, %2, %3);\n"
           VV"    elem.dispatchEvent(event);\n"
-          VV"})()").arg(quoted).arg(pos.x()).arg(pos.y());
+          VV"})();").arg(quoted).arg(pos.x()).arg(pos.y());
     }
 
     // return value is js array. and it'll be callbacked.
     static inline QString GetScrollValuePointJsCode(){
         return QStringLiteral(
             "document.body && \n"
-          VV"[document.body.scrollLeft, document.body.scrollTop]");
+          VV"[document.body.scrollLeft, document.body.scrollTop];");
     }
 
     static inline QString SetScrollValuePointJsCode(const QPoint &pos){
@@ -652,7 +661,7 @@ protected:
           VV"               document.documentElement.clientHeight;\n"
           VV"    return [hmax <= 0 ? 0.5 : hval / hmax,\n"
           VV"            vmax <= 0 ? 0.5 : vval / vmax];\n"
-          VV"})()");
+          VV"})();");
     }
 
     static inline QString SetScrollRatioPointJsCode(const QPointF &pos){
@@ -669,6 +678,13 @@ protected:
     static inline QString FindElementsJsCode(Page::FindElementsOption option){
         QString quoted = Page::OptionToSelector(option).replace(QStringLiteral("\""), QStringLiteral("\\\""));
         QString ignoreOutOfView = option == Page::ForAccessKey ? QStringLiteral("true") : QStringLiteral("false");
+#if defined(Q_OS_WIN)
+        QString fix = QStringLiteral("devicePixelRatio");
+#elif defined(Q_OS_MAC)
+        QString fix = QStringLiteral("(document.body.clientWidth / innerWidth)");
+#else
+        QString fix = QStringLiteral("1");
+#endif
 
         return QStringLiteral(
             "(function(){\n"
@@ -706,19 +722,19 @@ protected:
           VV"            win = win.parent;\n"
           VV"        }\n"
           VV"        var rect = elems[i].getBoundingClientRect();\n"
-          VV"        data.x = (rect.left + offsetX) * devicePixelRatio;\n"
-          VV"        data.y = (rect.top  + offsetY) * devicePixelRatio;\n"
-          VV"        data.width  = rect.width  * devicePixelRatio;\n"
-          VV"        data.height = rect.height * devicePixelRatio;\n"
+          VV"        data.x = (rect.left + offsetX) * %3;\n"
+          VV"        data.y = (rect.top  + offsetY) * %3;\n"
+          VV"        data.width  = rect.width  * %3;\n"
+          VV"        data.height = rect.height * %3;\n"
           VV"        data.region = {};\n"
           VV"        if(data.width && data.height){\n"
           VV"            var rects = elems[i].getClientRects();\n"
           VV"            for(var j = 0; j < rects.length; j++){\n"
           VV"                data.region[j] = {};\n"
-          VV"                data.region[j].x = (rects[j].left + offsetX) * devicePixelRatio;\n"
-          VV"                data.region[j].y = (rects[j].top  + offsetY) * devicePixelRatio;\n"
-          VV"                data.region[j].width  = rects[j].width  * devicePixelRatio;\n"
-          VV"                data.region[j].height = rects[j].height * devicePixelRatio;\n"
+          VV"                data.region[j].x = (rects[j].left + offsetX) * %3;\n"
+          VV"                data.region[j].y = (rects[j].top  + offsetY) * %3;\n"
+          VV"                data.region[j].width  = rects[j].width  * %3;\n"
+          VV"                data.region[j].height = rects[j].height * %3;\n"
           VV"            }\n"
         //VV"            var r1 = elems[i].ownerDocument.documentElement.getBoundingClientRect();\n"
           VV"            var w = elems[i].ownerDocument.defaultView;\n"
@@ -842,10 +858,17 @@ protected:
           VV"        map[i] = data;\n"
           VV"    }\n"
           VV"    return map;\n"
-          VV"})()").arg(quoted).arg(ignoreOutOfView);
+          VV"})();").arg(quoted).arg(ignoreOutOfView).arg(fix);
     }
 
     static inline QString HitElementJsCode(QPoint pos){
+#if defined(Q_OS_WIN)
+        QString fix = QStringLiteral("devicePixelRatio");
+#elif defined(Q_OS_MAC)
+        QString fix = QStringLiteral("(document.body.clientWidth / innerWidth)");
+#else
+        QString fix = QStringLiteral("1");
+#endif
         return QStringLiteral(
             "(function(){\n"
             // scroll bar value is unused.
@@ -907,18 +930,18 @@ protected:
           VV"        win = win.parent;\n"
           VV"    }\n"
           VV"    var rect = elem.getBoundingClientRect();\n"
-          VV"    data.x = (rect.left + offsetX) * devicePixelRatio;\n"
-          VV"    data.y = (rect.top  + offsetY) * devicePixelRatio;\n"
-          VV"    data.width = rect.width   * devicePixelRatio;\n"
-          VV"    data.height = rect.height * devicePixelRatio;\n"
+          VV"    data.x = (rect.left + offsetX) * %3;\n"
+          VV"    data.y = (rect.top  + offsetY) * %3;\n"
+          VV"    data.width = rect.width   * %3;\n"
+          VV"    data.height = rect.height * %3;\n"
           VV"    data.region = {};\n"
           VV"    var rects = elem.getClientRects();\n"
           VV"    for(var i = 0; i < rects.length; i++){\n"
           VV"        data.region[i] = {};\n"
-          VV"        data.region[i].x = (rects[i].left + offsetX) * devicePixelRatio;\n"
-          VV"        data.region[i].y = (rects[i].top  + offsetY) * devicePixelRatio;\n"
-          VV"        data.region[i].width  = rects[i].width  * devicePixelRatio;\n"
-          VV"        data.region[i].height = rects[i].height * devicePixelRatio;\n"
+          VV"        data.region[i].x = (rects[i].left + offsetX) * %3;\n"
+          VV"        data.region[i].y = (rects[i].top  + offsetY) * %3;\n"
+          VV"        data.region[i].width  = rects[i].width  * %3;\n"
+          VV"        data.region[i].height = rects[i].height * %3;\n"
           VV"    }\n"
           VV"    data.isJsCommand = \n"
           VV"        (elem.onclick ||\n"
@@ -1023,7 +1046,7 @@ protected:
           VV"    }\n"
           VV"    data.xPath = \"//\" + xpath.toLowerCase();\n"
           VV"    return data;\n"
-          VV"})()").arg(pos.x()).arg(pos.y());
+          VV"})();").arg(pos.x()).arg(pos.y()).arg(fix);
     }
 
     static inline QString HitLinkUrlJsCode(QPoint pos){
@@ -1047,7 +1070,7 @@ protected:
           VV"        elem = elem.parentNode;\n"
           VV"    }\n"
           VV"    return \"\";\n"
-          VV"})()").arg(pos.x()).arg(pos.y());
+          VV"})();").arg(pos.x()).arg(pos.y());
     }
 
     static inline QString HitImageUrlJsCode(QPoint pos){
@@ -1071,11 +1094,11 @@ protected:
           VV"        elem = elem.parentNode;\n"
           VV"    }\n"
           VV"    return \"\";\n"
-          VV"})()").arg(pos.x()).arg(pos.y());
+          VV"})();").arg(pos.x()).arg(pos.y());
     }
 
     static inline QString SelectedTextJsCode(){
-        return QStringLiteral("getSelection().toString()");
+        return QStringLiteral("getSelection().toString();");
     }
 
     static inline QString SelectedHtmlJsCode(){
@@ -1086,18 +1109,25 @@ protected:
           VV"    if(!selection.rangeCount) return \"\";\n"
           VV"    div.appendChild(selection.getRangeAt(0).cloneContents());\n"
           VV"    return div.innerHTML;\n"
-          VV"})()");
+          VV"})();");
     }
 
     static inline QString WholeTextJsCode(){
-        return QStringLiteral("document.documentElement.innerText");
+        return QStringLiteral("document.documentElement.innerText;");
     }
 
     static inline QString WholeHtmlJsCode(){
-        return QStringLiteral("document.documentElement.outerHTML");
+        return QStringLiteral("document.documentElement.outerHTML;");
     }
 
     static inline QString SelectionRegionJsCode(){
+#if defined(Q_OS_WIN)
+        QString fix = QStringLiteral("devicePixelRatio");
+#elif defined(Q_OS_MAC)
+        QString fix = QStringLiteral("(document.body.clientWidth / innerWidth)");
+#else
+        QString fix = QStringLiteral("1");
+#endif
         return QStringLiteral(
             "(function(){\n"
           VV"    var map = {};\n"
@@ -1106,13 +1136,13 @@ protected:
           VV"    var rects = selection.getRangeAt(0).getClientRects();\n"
           VV"    for(var i = 0; i < rects.length; i++){\n"
           VV"        map[i] = {};\n"
-          VV"        map[i].x = rects[i].left * devicePixelRatio;\n"
-          VV"        map[i].y = rects[i].top  * devicePixelRatio;\n"
-          VV"        map[i].width  = rects[i].width  * devicePixelRatio;\n"
-          VV"        map[i].height = rects[i].height * devicePixelRatio;\n"
+          VV"        map[i].x = rects[i].left * %1;\n"
+          VV"        map[i].y = rects[i].top  * %1;\n"
+          VV"        map[i].width  = rects[i].width  * %1;\n"
+          VV"        map[i].height = rects[i].height * %1;\n"
           VV"    }\n"
           VV"    return map;\n"
-          VV"})()");
+          VV"})();").arg(fix);
     }
 
     static inline QString SetTextValueJsCode(const QString &xpath, const QString &text){
@@ -1135,7 +1165,36 @@ protected:
           VV"    }\n"
           VV"    elem.setAttribute(\"value\", \"%2\");\n"
           VV"    elem.focus();\n"
-          VV"})()").arg(quotedXpath).arg(quotedText);
+          VV"})();").arg(quotedXpath).arg(quotedText);
+    }
+
+    static inline QString InstallSubmitEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    var forms = document.querySelectorAll(\"form\");\n"
+          VV"    for(var i = 0; i < forms.length; i++){\n"
+          VV"        var form = forms[i];\n"
+          VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
+          VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+          VV"        if(!submit || !password) continue;\n"
+          VV"        form.addEventListener(\"submit\", function(e){\n"
+          VV"            var data = \"\";\n"
+          VV"            var inputs = e.target.querySelectorAll(\"input,textarea\");\n"
+          VV"            for(var j = 0; j < inputs.length; j++){\n"
+          VV"                var field = inputs[j];\n"
+          VV"                var type = (field.type || \"hidden\").toLowerCase();\n"
+          VV"                var name = field.name;\n"
+          VV"                var val = field.value;\n"
+          VV"                if(!name || type == \"hidden\" || type == \"submit\"){\n"
+          VV"                    continue;\n"
+          VV"                }\n"
+          VV"                if(data) data = data + \"&\";\n"
+          VV"                data = data + encodeURIComponent(name) + \"=\" + encodeURIComponent(val);\n"
+          VV"            }\n"
+          VV"            console.info(\"submit%1,\" + data);\n"
+          VV"        }, false);\n"
+          VV"    }\n"
+          VV"})();").arg(Application::EventKey());
     }
 
     static inline QString DecorateFormFieldJsCode(const QString &data){
@@ -1159,7 +1218,7 @@ protected:
           VV"            field.style.border = \"1px\";\n"
           VV"        }\n"
           VV"    }\n"
-          VV"})()").arg(quoted);
+          VV"})();").arg(quoted);
     }
 
     static inline QString SubmitFormDataJsCode(const QString &data){
@@ -1190,7 +1249,7 @@ protected:
           VV"            form.submit();\n"
           VV"        }\n"
           VV"    }\n"
-          VV"})()").arg(quoted);
+          VV"})();").arg(quoted);
     }
 
     static inline QString InstallEventFilterJsCode(const QList<QEvent::Type> &types){
@@ -1324,7 +1383,7 @@ protected:
               VV"        }\n"
               VV"        catch(e){}\n"
               VV"    }\n"
-              VV"})()").arg(inner.arg(Application::EventKey()));
+              VV"})();").arg(inner.arg(Application::EventKey()));
     }
 
 private:
@@ -1409,6 +1468,8 @@ protected:
 
     static QString m_LinkMenu;
     static QString m_ImageMenu;
+    static QString m_MediaMenu;
+    static QString m_TextMenu;
     static QString m_SelectionMenu;
     static QString m_RegularMenu;
 

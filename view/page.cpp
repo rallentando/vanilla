@@ -595,7 +595,9 @@ void Page::AboutQt(){
 void Page::Quit(){
     if(m_View->GetDisplayObscured())
         m_View->ExitFullScreen();
-    Application::Quit();
+    QTimer::singleShot(0, [](){
+        Application::Quit();
+    });
 }
 
 void Page::ToggleNotifier(){
@@ -695,9 +697,12 @@ void Page::UpDirectory(){
 void Page::Close(){
     if(m_View->GetDisplayObscured())
         m_View->ExitFullScreen();
-    View::SetSwitchingState(true);
-    GetTB()->Close();
-    View::SetSwitchingState(false);
+    TreeBank *tb = GetTB();
+    QTimer::singleShot(0, [tb](){
+        View::SetSwitchingState(true);
+        tb->Close();
+        View::SetSwitchingState(false);
+    });
 }
 
 void Page::Restore(){
@@ -709,9 +714,12 @@ void Page::Restore(){
 void Page::Recreate(){
     if(m_View->GetDisplayObscured())
         m_View->ExitFullScreen();
-    View::SetSwitchingState(true);
-    GetTB()->Recreate();
-    View::SetSwitchingState(false);
+    TreeBank *tb = GetTB();
+    QTimer::singleShot(0, [tb](){
+        View::SetSwitchingState(true);
+        tb->Recreate();
+        View::SetSwitchingState(false);
+    });
 }
 
 void Page::NextView(){
@@ -1308,7 +1316,83 @@ void Page::OpenImageWithCustom(){
     ELEMENT_ACTION(Application::OpenUrlWith_Custom(e->ImageUrl()));
 }
 
+void Page::LoadMedia(){
+    ELEMENT_ACTION(m_View->Load(e->ImageUrl()));
+}
+
+void Page::OpenMedia(){
+    ELEMENT_ACTION(OpenInNew(e->ImageUrl()));
+}
+
+void Page::DownloadMedia(){
+    ELEMENT_ACTION(Download(e->ImageUrl(), e->BaseUrl()));
+}
+
+void Page::ToggleMediaControls(){
+    m_View->ToggleMediaControls();
+}
+
+void Page::ToggleMediaLoop(){
+    m_View->ToggleMediaLoop();
+}
+
+void Page::ToggleMediaPlayPause(){
+    m_View->ToggleMediaPlayPause();
+}
+
+void Page::ToggleMediaMute(){
+    m_View->ToggleMediaMute();
+}
+
+void Page::CopyMediaUrl(){
+    ELEMENT_ACTION(Application::clipboard()->setText(e->ImageUrl().toString()));
+}
+
+void Page::CopyMediaHtml(){
+    ELEMENT_ACTION(Application::clipboard()->setText(e->ImageHtml()));
+}
+
+void Page::OpenMediaWithIE(){
+    ELEMENT_ACTION(Application::OpenUrlWith_IE(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithEdge(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Edge(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithFF(){
+    ELEMENT_ACTION(Application::OpenUrlWith_FF(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithOpera(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Opera(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithOPR(){
+    ELEMENT_ACTION(Application::OpenUrlWith_OPR(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithSafari(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Safari(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithChrome(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Chrome(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithSleipnir(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Sleipnir(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithVivaldi(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Vivaldi(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithCustom(){
+    ELEMENT_ACTION(Application::OpenUrlWith_Custom(e->ImageUrl()));
+}
 #undef ELEMENT_ACTION
+
 
 void Page::OpenInNewHistNode                 (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewHistNode  (reqs, Activate()||ShiftMod(), m_View->GetHistNode());});}
 void Page::OpenInNewViewNode                 (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
@@ -1359,6 +1443,31 @@ void Page::OpenImageInNewHistNodeNewWindow   (){ ImageReq(qobject_cast<QAction*>
 void Page::OpenImageInNewViewNodeNewWindow   (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
 void Page::OpenImageInNewDirectoryNewWindow  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
 void Page::OpenImageOnRootNewWindow          (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenOnSuitableNode (reqs,          true                                );});}
+
+void Page::OpenMediaInNewHistNode            (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewHistNode  (reqs, Activate()||ShiftMod(), m_View->GetHistNode());});}
+void Page::OpenMediaInNewViewNode            (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectory           (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenMediaOnRoot                   (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs, Activate()||ShiftMod()                       );});}
+
+void Page::OpenMediaInNewHistNodeForeground  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewHistNode  (reqs,          true         , m_View->GetHistNode());});}
+void Page::OpenMediaInNewViewNodeForeground  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectoryForeground (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenMediaOnRootForeground         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs,          true                                );});}
+
+void Page::OpenMediaInNewHistNodeBackground  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewHistNode  (reqs,             ShiftMod(), m_View->GetHistNode());});}
+void Page::OpenMediaInNewViewNodeBackground  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs,             ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectoryBackground (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs,             ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenMediaOnRootBackground         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs,             ShiftMod()                       );});}
+
+void Page::OpenMediaInNewHistNodeThisWindow  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewHistNode  (reqs, Activate()            , m_View->GetHistNode());});}
+void Page::OpenMediaInNewViewNodeThisWindow  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewViewNode  (reqs, Activate()            , m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectoryThisWindow (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewDirectory (reqs, Activate()            , m_View->GetViewNode());});}
+void Page::OpenMediaOnRootThisWindow         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenOnSuitableNode (reqs, Activate()                                   );});}
+
+void Page::OpenMediaInNewHistNodeNewWindow   (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewHistNode  (reqs,          true         , m_View->GetHistNode());});}
+void Page::OpenMediaInNewViewNodeNewWindow   (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectoryNewWindow  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenMediaOnRootNewWindow          (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenOnSuitableNode (reqs,          true                                );});}
 
 View *Page::OpenInNewViewNode            (QUrl url)                   { return GetTB()->OpenInNewViewNode  (url,                        true,  m_View->GetViewNode()).get();}
 View *Page::OpenInNewHistNode            (QUrl url)                   { return GetTB()->OpenInNewHistNode  (url,                        true,  m_View->GetHistNode()).get();}
@@ -1588,6 +1697,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
         case _ToggleToolBar:
             webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible());
             break;
+        default: break;
         }
         return webaction;
     }
@@ -1603,6 +1713,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case _FastForward: webaction->setIcon(QIcon(":/resources/menu/fastforward.png")); break;
     case _Reload:      webaction->setIcon(QIcon(":/resources/menu/reload.png"));      webaction->setEnabled(!m_View->IsLoading()); break;
     case _Stop:        webaction->setIcon(QIcon(":/resources/menu/stop.png"));        webaction->setEnabled(m_View->IsLoading()); break;
+    default: break;
     }
 
     switch(a){
@@ -1782,6 +1893,26 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(OpenImageWithVivaldi,  tr("OpenImageWithVivaldi"));
         DEFINE_ACTION(OpenImageWithCustom,   tr("OpenImageWithCustom"));
 
+        DEFINE_ACTION(LoadMedia,             tr("LoadMedia"));
+        DEFINE_ACTION(OpenMedia,             tr("OpenMedia"));
+        DEFINE_ACTION(DownloadMedia,         tr("DownloadMedia"));
+        DEFINE_ACTION(ToggleMediaControls,   tr("ToggleMediaControls"));
+        DEFINE_ACTION(ToggleMediaLoop,       tr("ToggleMediaLoop"));
+        DEFINE_ACTION(ToggleMediaPlayPause,  tr("ToggleMediaPlayPause"));
+        DEFINE_ACTION(ToggleMediaMute,       tr("ToggleMediaMute"));
+        DEFINE_ACTION(CopyMediaUrl,          tr("CopyMediaUrl"));
+        DEFINE_ACTION(CopyMediaHtml,         tr("CopyMediaHtml"));
+        DEFINE_ACTION(OpenMediaWithIE,       tr("OpenMediaWithIE"));
+        DEFINE_ACTION(OpenMediaWithEdge,     tr("OpenMediaWithEdge"));
+        DEFINE_ACTION(OpenMediaWithFF,       tr("OpenMediaWithFF"));
+        DEFINE_ACTION(OpenMediaWithOpera,    tr("OpenMediaWithOpera"));
+        DEFINE_ACTION(OpenMediaWithOPR,      tr("OpenMediaWithOPR"));
+        DEFINE_ACTION(OpenMediaWithSafari,   tr("OpenMediaWithSafari"));
+        DEFINE_ACTION(OpenMediaWithChrome,   tr("OpenMediaWithChrome"));
+        DEFINE_ACTION(OpenMediaWithSleipnir, tr("OpenMediaWithSleipnir"));
+        DEFINE_ACTION(OpenMediaWithVivaldi,  tr("OpenMediaWithVivaldi"));
+        DEFINE_ACTION(OpenMediaWithCustom,   tr("OpenMediaWithCustom"));
+
         // link opner(follow modifier).
         DEFINE_ACTION(OpenInNewViewNode,                 tr("OpenInNewViewNode"));
         DEFINE_ACTION(OpenInNewHistNode,                 tr("OpenInNewHistNode"));
@@ -1834,6 +1965,32 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(OpenImageInNewDirectoryNewWindow,  tr("OpenImageInNewDirectoryNewWindow"));
         DEFINE_ACTION(OpenImageOnRootNewWindow,          tr("OpenImageOnRootNewWindow"));
 
+        // media opner(follow modifier).
+        DEFINE_ACTION(OpenMediaInNewViewNode,            tr("OpenMediaInNewViewNode"));
+        DEFINE_ACTION(OpenMediaInNewHistNode,            tr("OpenMediaInNewHistNode"));
+        DEFINE_ACTION(OpenMediaInNewDirectory,           tr("OpenMediaInNewDirectory"));
+        DEFINE_ACTION(OpenMediaOnRoot,                   tr("OpenMediaOnRoot"));
+        // media opner(foreground).
+        DEFINE_ACTION(OpenMediaInNewViewNodeForeground,  tr("OpenMediaInNewViewNodeForeground"));
+        DEFINE_ACTION(OpenMediaInNewHistNodeForeground,  tr("OpenMediaInNewHistNodeForeground"));
+        DEFINE_ACTION(OpenMediaInNewDirectoryForeground, tr("OpenMediaInNewDirectoryForeground"));
+        DEFINE_ACTION(OpenMediaOnRootForeground,         tr("OpenMediaOnRootForeground"));
+        // media opner(background).
+        DEFINE_ACTION(OpenMediaInNewViewNodeBackground,  tr("OpenMediaInNewViewNodeBackground"));
+        DEFINE_ACTION(OpenMediaInNewHistNodeBackground,  tr("OpenMediaInNewHistNodeBackground"));
+        DEFINE_ACTION(OpenMediaInNewDirectoryBackground, tr("OpenMediaInNewDirectoryBackground"));
+        DEFINE_ACTION(OpenMediaOnRootBackground,         tr("OpenMediaOnRootBackground"));
+        // media opner(same window).
+        DEFINE_ACTION(OpenMediaInNewViewNodeThisWindow,  tr("OpenMediaInNewViewNodeThisWindow"));
+        DEFINE_ACTION(OpenMediaInNewHistNodeThisWindow,  tr("OpenMediaInNewHistNodeThisWindow"));
+        DEFINE_ACTION(OpenMediaInNewDirectoryThisWindow, tr("OpenMediaInNewDirectoryThisWindow"));
+        DEFINE_ACTION(OpenMediaOnRootThisWindow,         tr("OpenMediaOnRootThisWindow"));
+        // media opner(new window).
+        DEFINE_ACTION(OpenMediaInNewViewNodeNewWindow,   tr("OpenMediaInNewViewNodeNewWindow"));
+        DEFINE_ACTION(OpenMediaInNewHistNodeNewWindow,   tr("OpenMediaInNewHistNodeNewWindow"));
+        DEFINE_ACTION(OpenMediaInNewDirectoryNewWindow,  tr("OpenMediaInNewDirectoryNewWindow"));
+        DEFINE_ACTION(OpenMediaOnRootNewWindow,          tr("OpenMediaOnRootNewWindow"));
+
         // auto focus (solid link) opner.
         DEFINE_ACTION(OpenAllUrl,    tr("OpenAllUrl"));
         DEFINE_ACTION(OpenAllImage,  tr("OpenAllImage"));
@@ -1880,46 +2037,55 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case _OpenWithIE:
     case _OpenLinkWithIE:
     case _OpenImageWithIE:
+    case _OpenMediaWithIE:
         webaction->setIcon(Application::BrowserIcon_IE());
         break;
     case _OpenWithEdge:
     case _OpenLinkWithEdge:
     case _OpenImageWithEdge:
+    case _OpenMediaWithEdge:
         webaction->setIcon(Application::BrowserIcon_Edge());
         break;
     case _OpenWithFF:
     case _OpenLinkWithFF:
     case _OpenImageWithFF:
+    case _OpenMediaWithFF:
         webaction->setIcon(Application::BrowserIcon_FF());
         break;
     case _OpenWithOpera:
     case _OpenLinkWithOpera:
     case _OpenImageWithOpera:
+    case _OpenMediaWithOpera:
         webaction->setIcon(Application::BrowserIcon_Opera());
         break;
     case _OpenWithOPR:
     case _OpenLinkWithOPR:
     case _OpenImageWithOPR:
+    case _OpenMediaWithOPR:
         webaction->setIcon(Application::BrowserIcon_OPR());
         break;
     case _OpenWithSafari:
     case _OpenLinkWithSafari:
     case _OpenImageWithSafari:
+    case _OpenMediaWithSafari:
         webaction->setIcon(Application::BrowserIcon_Safari());
         break;
     case _OpenWithChrome:
     case _OpenLinkWithChrome:
     case _OpenImageWithChrome:
+    case _OpenMediaWithChrome:
         webaction->setIcon(Application::BrowserIcon_Chrome());
         break;
     case _OpenWithSleipnir:
     case _OpenLinkWithSleipnir:
     case _OpenImageWithSleipnir:
+    case _OpenMediaWithSleipnir:
         webaction->setIcon(Application::BrowserIcon_Sleipnir());
         break;
     case _OpenWithVivaldi:
     case _OpenLinkWithVivaldi:
     case _OpenImageWithVivaldi:
+    case _OpenMediaWithVivaldi:
         webaction->setIcon(Application::BrowserIcon_Vivaldi());
         break;
     case _OpenWithCustom:
@@ -1934,6 +2100,10 @@ QAction *Page::Action(CustomAction a, QVariant data){
         webaction->setIcon(Application::BrowserIcon_Custom());
         webaction->setText(tr("OpenImageWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;
+    case _OpenMediaWithCustom:
+        webaction->setIcon(Application::BrowserIcon_Custom());
+        webaction->setText(tr("OpenMediaWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
+        break;
     case _NewViewNode:
     case _NewHistNode:
     case _CloneViewNode:
@@ -1946,6 +2116,10 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case _OpenImageInNewViewNode:
     case _OpenImageInNewDirectory:
     case _OpenImageOnRoot:
+    case _OpenMediaInNewHistNode:
+    case _OpenMediaInNewViewNode:
+    case _OpenMediaInNewDirectory:
+    case _OpenMediaOnRoot:
     case _ViewSource:
     case _OpenAllUrl:
     case _OpenAllImage:
@@ -1973,6 +2147,14 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case _OpenImageInNewViewNodeBackground:
     case _OpenImageInNewDirectoryBackground:
     case _OpenImageOnRootBackground:
+    case _OpenMediaInNewHistNodeForeground:
+    case _OpenMediaInNewViewNodeForeground:
+    case _OpenMediaInNewDirectoryForeground:
+    case _OpenMediaOnRootForeground:
+    case _OpenMediaInNewHistNodeBackground:
+    case _OpenMediaInNewViewNodeBackground:
+    case _OpenMediaInNewDirectoryBackground:
+    case _OpenMediaOnRootBackground:
         webaction->setToolTip(webaction->toolTip() +
                               tr("\n Shift+Click: InNewWindow"));
         break;
@@ -1984,11 +2166,16 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case _OpenImageInNewViewNodeThisWindow:
     case _OpenImageInNewDirectoryThisWindow:
     case _OpenImageOnRootThisWindow:
+    case _OpenMediaInNewHistNodeThisWindow:
+    case _OpenMediaInNewViewNodeThisWindow:
+    case _OpenMediaInNewDirectoryThisWindow:
+    case _OpenMediaOnRootThisWindow:
         webaction->setToolTip(webaction->toolTip() +
                               (View::ActivateNewViewDefault()
                                ? tr("\n Ctrl+Click: InBackground")
                                : tr("\n Ctrl+Click: InForeground")));
         break;
+    default: break;
     }
     return webaction;
 }

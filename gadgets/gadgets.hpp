@@ -266,8 +266,8 @@ protected:
     void CollectAccessibleWebElement(View *view);
 
 public slots:
-    void OnTitleChanged(const QString&);
-    void OnUrlChanged(const QUrl&);
+    void OnTitleChanged(const QString&) Q_DECL_OVERRIDE;
+    void OnUrlChanged(const QUrl&) Q_DECL_OVERRIDE;
 
 protected:
     void keyPressEvent         (QKeyEvent *ev) Q_DECL_OVERRIDE;

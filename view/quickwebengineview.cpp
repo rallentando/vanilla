@@ -30,11 +30,9 @@ QMap<View*, QUrl> QuickWebEngineView::m_InspectorTable = QMap<View*, QUrl>();
 QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList set)
     : View(parent, id, set)
 #if QT_VERSION >= 0x050800
-    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.8.qml")), parent)
-#elif QT_VERSION >= 0x050700
-    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.7.qml")), parent)
+    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.9.qml")), parent)
 #else
-    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.6.qml")), parent)
+    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.7.qml")), parent)
 #endif
 {
     Initialize();
@@ -73,12 +71,10 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
             this, SLOT(HandleFullScreen(bool)));
     connect(this, SIGNAL(downloadRequested(QObject*)),
             this, SLOT(HandleDownload(QObject*)));
-#if QT_VERSION >= 0x050700
     connect(this, SIGNAL(contentsSizeChanged(const QSizeF&)),
             this, SLOT(HandleContentsSizeChange(const QSizeF&)));
     connect(this, SIGNAL(scrollPositionChanged(const QPointF&)),
             this, SLOT(HandleScrollPositionChange(const QPointF&)));
-#endif
 
     connect(m_QmlWebEngineView, SIGNAL(callBackResult(int, QVariant)),
             this,               SIGNAL(CallBackResult(int, QVariant)));
@@ -111,15 +107,21 @@ void QuickWebEngineView::ApplySpecificSettings(QStringList set){
     SetPreference(QWebEngineSettings::SpatialNavigationEnabled,          "SpatialNavigationEnabled");
     SetPreference(QWebEngineSettings::HyperlinkAuditingEnabled,          "HyperlinkAuditingEnabled");
     SetPreference(QWebEngineSettings::ScrollAnimatorEnabled,             "ScrollAnimatorEnabled");
-#if QT_VERSION >= 0x050700
     SetPreference(QWebEngineSettings::ScreenCaptureEnabled,              "ScreenCaptureEnabled");
     SetPreference(QWebEngineSettings::WebGLEnabled,                      "WebGLEnabled");
     SetPreference(QWebEngineSettings::Accelerated2dCanvasEnabled,        "Accelerated2dCanvasEnabled");
     SetPreference(QWebEngineSettings::AutoLoadIconsForPage,              "AutoLoadIconsForPage");
     SetPreference(QWebEngineSettings::TouchIconsEnabled,                 "TouchIconsEnabled");
-#endif
     SetPreference(QWebEngineSettings::ErrorPageEnabled,                  "ErrorPageEnabled");
     SetPreference(QWebEngineSettings::FullScreenSupportEnabled,          "FullScreenSupportEnabled");
+#  if QT_VERSION >= 0x050800
+    SetPreference(QWebEngineSettings::FocusOnNavigationEnabled,          "FocusOnNavigationEnabled");
+    SetPreference(QWebEngineSettings::PrintElementBackgrounds,           "PrintElementBackgrounds");
+    SetPreference(QWebEngineSettings::AllowRunningInsecureContent,       "AllowRunningInsecureContent");
+#  endif
+#  if QT_VERSION >= 0x050900
+    SetPreference(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, "AllowGeolocationOnInsecureOrigins");
+#  endif
 
     SetFontFamily(QWebEngineSettings::StandardFont,  "StandardFont");
     SetFontFamily(QWebEngineSettings::FixedFont,     "FixedFont");
@@ -278,7 +280,7 @@ void QuickWebEngineView::OnLoadStarted(){
     //page()->AddJsObject();
 #endif
 
-    if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
+    if(m_Icon.isNull() && url() != BLANK_URL)
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
 }
 
@@ -311,42 +313,9 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
         (page()->profile()->storageName() +
          QStringLiteral(":") + url().host());
 
-    if(!data.isEmpty()){
+    if(!data.isEmpty())
         CallWithEvaluatedJavaScriptResult(DecorateFormFieldJsCode(data), [](QVariant){});
-    }
-
-    CallWithEvaluatedJavaScriptResult(QStringLiteral(
-        "(function(){\n"
-      VV"    var forms = document.querySelectorAll(\"form\");\n"
-      VV"    for(var i = 0; i < forms.length; i++){\n"
-      VV"        var form = forms[i];\n"
-      VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
-      VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
-      VV"        if(!submit || !password) continue;\n"
-      VV"        form.addEventListener(\"submit\", function(e){\n"
-      VV"            var data = \"\";\n"
-      VV"            var inputs = e.target.querySelectorAll(\"input,textarea\");\n"
-      VV"            for(var j = 0; j < inputs.length; j++){\n"
-      VV"                var field = inputs[j];\n"
-      VV"                var type = (field.type || \"hidden\").toLowerCase();\n"
-      VV"                var name = field.name;\n"
-      VV"                var val = field.value;\n"
-      VV"                if(!name || type == \"hidden\" || type == \"submit\"){\n"
-      VV"                    continue;\n"
-      VV"                }\n"
-      VV"                if(data) data = data + \"&\";\n"
-      VV"                data = data + encodeURIComponent(name) + \"=\" + encodeURIComponent(val);\n"
-      VV"            }\n"
-      VV"            console.info(\"submit%1,\" + data);\n"
-      VV"        }, false);\n"
-      VV"    }\n"
-      VV"})()").arg(Application::EventKey()), [](QVariant){});
 #endif //ifdef PASSWORD_MANAGER
-
-    static const QList<QEvent::Type> types =
-        QList<QEvent::Type>() << QEvent::KeyPress << QEvent::KeyRelease;
-
-    CallWithEvaluatedJavaScriptResult(InstallEventFilterJsCode(types), [](QVariant){});
 
     if(visible() && m_TreeBank &&
        m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
@@ -520,7 +489,7 @@ void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
 }
 
 void QuickWebEngineView::HandleWindowClose(){
-    page()->CloseLater();
+    TriggerAction(Page::_Close);
 }
 
 void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString &msg){
@@ -547,14 +516,22 @@ void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
         if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        KeyPressEvent(&QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers));
+        QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+#if QT_VERSION < 0x050900
+        KeyPressEvent(&ke);
+#else
+        if(!Application::IsOnlyModifier(&ke)) TriggerKeyEvent(&ke);
+#endif
     } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
         if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        KeyReleaseEvent(&QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers));
+#if QT_VERSION < 0x050900
+        QKeyEvent ke = QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+        KeyReleaseEvent(&ke);
+#endif
     } else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventKey()), msg)){
         m_PreventScrollRestoration = true;
     }
@@ -639,7 +616,6 @@ void QuickWebEngineView::HandleDownload(QObject *object){
     static_cast<NetworkAccessManager*>(page()->networkAccessManager())->HandleDownload(object);
 }
 
-#if QT_VERSION >= 0x050700
 void QuickWebEngineView::HandleContentsSizeChange(const QSizeF &size){
     Q_UNUSED(size);
     RestoreScroll();
@@ -649,7 +625,6 @@ void QuickWebEngineView::HandleScrollPositionChange(const QPointF &pos){
     Q_UNUSED(pos);
     EmitScrollChanged();
 }
-#endif
 
 void QuickWebEngineView::Copy(){
     QMetaObject::invokeMethod(m_QmlWebEngineView, "copy");
@@ -696,7 +671,6 @@ void QuickWebEngineView::StopAndUnselect(){
 }
 
 void QuickWebEngineView::Print(){
-#if QT_VERSION >= 0x050700
 
     QString filename = ModalDialog::GetSaveFileName_
         (QString(), QString(),
@@ -724,18 +698,10 @@ void QuickWebEngineView::Print(){
 
         });
     }
-#endif
 }
 
 void QuickWebEngineView::Save(){
-#if QT_VERSION >= 0x050700
     QMetaObject::invokeMethod(m_QmlWebEngineView, "save");
-#else
-    if(!page()) return;
-    QNetworkRequest req(url());
-    req.setRawHeader("Referer", url().toEncoded());
-    page()->Download(req);
-#endif
 }
 
 void QuickWebEngineView::ZoomIn(){
@@ -748,6 +714,22 @@ void QuickWebEngineView::ZoomOut(){
     float zoom = PrepareForZoomOut();
     m_QmlWebEngineView->setProperty("zoomFactor", static_cast<qreal>(zoom));
     emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void QuickWebEngineView::ToggleMediaControls(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaControls");
+}
+
+void QuickWebEngineView::ToggleMediaLoop(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaLoop");
+}
+
+void QuickWebEngineView::ToggleMediaPlayPause(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaPlayPause");
+}
+
+void QuickWebEngineView::ToggleMediaMute(){
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaMute");
 }
 
 void QuickWebEngineView::ExitFullScreen(){
@@ -845,9 +827,15 @@ void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
         return;
     }
 
-    //QQuickWidget::keyPressEvent(ev);
+#if QT_VERSION >= 0x050900
+    QQuickWidget::keyPressEvent(ev);
+    return;
+#endif
 
-    if(/*!ev->isAccepted() &&*/
+    if(
+#if QT_VERSION >= 0x050900
+       !ev->isAccepted() &&
+#endif
        !Application::IsOnlyModifier(ev)){
 
         ev->setAccepted(TriggerKeyEvent(ev));
@@ -859,24 +847,9 @@ void QuickWebEngineView::keyReleaseEvent(QKeyEvent *ev){
 
     if(!visible()) return;
 
-    //QQuickWidget::keyReleaseEvent(ev);
-
-#if QT_VERSION < 0x050700
-    int k = ev->key();
-
-    if(k == Qt::Key_Space ||
-     //k == Qt::Key_Up ||
-     //k == Qt::Key_Down ||
-     //k == Qt::Key_Right ||
-     //k == Qt::Key_Left ||
-       k == Qt::Key_PageUp ||
-       k == Qt::Key_PageDown ||
-       k == Qt::Key_Home ||
-       k == Qt::Key_End){
-
-        bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-        QTimer::singleShot(animated ? 500 : 100, this, &QuickWebEngineView::EmitScrollChanged);
-    }
+#if QT_VERSION >= 0x050900
+    QQuickWidget::keyReleaseEvent(ev);
+    return;
 #endif
 }
 
@@ -1091,9 +1064,6 @@ void QuickWebEngineView::mouseReleaseEvent(QMouseEvent *ev){
 
     GestureAborted();
     QQuickWidget::mouseReleaseEvent(ev);
-#if QT_VERSION < 0x050700
-    EmitScrollChanged();
-#endif
     ev->setAccepted(true);
 }
 
@@ -1214,10 +1184,6 @@ void QuickWebEngineView::wheelEvent(QWheelEvent *ev){
         QQuickWidget::wheelEvent(ev);
         ev->setAccepted(true);
     }
-#if QT_VERSION < 0x050700
-    bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-    QTimer::singleShot(animated ? 500 : 100, this, &QuickWebEngineView::EmitScrollChanged);
-#endif
 }
 
 void QuickWebEngineView::focusInEvent(QFocusEvent *ev){

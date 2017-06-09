@@ -27,7 +27,7 @@ namespace{
     }
 };
 
-const QFont GlassStyle::m_ThumbnailTitleFont = QFont(DEFAULT_FONT, 10);
+const QFont GlassStyle::m_ThumbnailTitleFont = THUMBNAIL_TITLE_FONT;
 
 const int GlassStyle::m_ThumbnailPaddingX = 2;
 const int GlassStyle::m_ThumbnailPaddingY = 2;
@@ -40,7 +40,7 @@ const int GlassStyle::m_ThumbnailAreaWidthPercentage =
 
 const bool GlassStyle::m_ThumbnailDrawBorder = false;
 
-const QFont GlassStyle::m_NodeTitleFont = QFont(DEFAULT_FONT, 13);
+const QFont GlassStyle::m_NodeTitleFont = NODETITLE_TITLE_FONT;
 
 const int GlassStyle::m_NodeTitleHeight = 20;
 const bool GlassStyle::m_NodeTitleDrawBorder = false;
@@ -204,7 +204,7 @@ void GlassStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         static const QPen p = QPen(QColor(255, 255, 255, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.height() / 7.5));
+        painter->setFont(QFont(DEFAULT_FONT.family(), image_rect.height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter,
                           isDir
@@ -404,7 +404,7 @@ void GlassStyle::Render(SpotLight *light, QPainter *painter) const {
     const QRectF rect = QRectF(bound.topLeft(), bound.size());
 
     QImage image(size, QImage::Format_ARGB32);
-#ifdef QT_DEBUG
+#if defined(QT_DEBUG) || !defined(Q_OS_WIN)
     image.fill(0);
 #endif
 
@@ -513,7 +513,7 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
         static const QPen p = QPen(QColor(255, 255, 255, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.height() / 7.5));
+        painter->setFont(QFont(DEFAULT_FONT.family(), image_rect.height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->drawText(image_rect, Qt::AlignCenter,
                           isDir
@@ -590,7 +590,6 @@ void GlassStyle::Render(CloneButton *button, QPainter *painter) const {
     painter->restore();
 }
 
-#if QT_VERSION >= 0x050700
 void GlassStyle::Render(SoundButton *button, QPainter *painter) const {
     if(!button->GetNode()) return;
 
@@ -631,7 +630,6 @@ void GlassStyle::Render(SoundButton *button, QPainter *painter) const {
 
     painter->restore();
 }
-#endif //if QT_VERSION >= 0x050700
 
 void GlassStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->save();
@@ -864,7 +862,7 @@ int GlassStyle::NodeTitleHeight(GraphicsTableView *gtv) const {
     return gtv->ScaleByDevice(m_NodeTitleHeight);
 }
 
-const QFont FlatStyle::m_ThumbnailTitleFont = QFont(DEFAULT_FONT, 10);
+const QFont FlatStyle::m_ThumbnailTitleFont = THUMBNAIL_TITLE_FONT;
 
 const int FlatStyle::m_ThumbnailPaddingX = 15;
 const int FlatStyle::m_ThumbnailPaddingY = 15;
@@ -1008,7 +1006,7 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         static const QPen p = QPen(QColor(100, 100, 100, 255));
         painter->setPen(p);
         painter->setBrush(Qt::NoBrush);
-        painter->setFont(QFont(DEFAULT_FONT, image_rect.height() / 7.5));
+        painter->setFont(QFont(DEFAULT_FONT.family(), image_rect.height() / 7.5));
         painter->setRenderHint(QPainter::Antialiasing, true);
         QRectF image_rect_ = image_rect;
         image_rect_.setBottom(title_rect.center().y());
@@ -1130,7 +1128,6 @@ void FlatStyle::Render(CloneButton *button, QPainter *painter) const {
     painter->restore();
 }
 
-#if QT_VERSION >= 0x050700
 void FlatStyle::Render(SoundButton *button, QPainter *painter) const {
     if(!button->GetNode()) return;
 
@@ -1168,7 +1165,6 @@ void FlatStyle::Render(SoundButton *button, QPainter *painter) const {
 
     painter->restore();
 }
-#endif //if QT_VERSION >= 0x050700
 
 void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
     painter->save();

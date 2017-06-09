@@ -285,6 +285,11 @@ public slots:
     void ZoomIn() Q_DECL_OVERRIDE;
     void ZoomOut() Q_DECL_OVERRIDE;
 
+    void ToggleMediaControls() Q_DECL_OVERRIDE;
+    void ToggleMediaLoop() Q_DECL_OVERRIDE;
+    void ToggleMediaPlayPause() Q_DECL_OVERRIDE;
+    void ToggleMediaMute() Q_DECL_OVERRIDE;
+
     void ExitFullScreen() Q_DECL_OVERRIDE;
     void AddSearchEngine(QPoint pos) Q_DECL_OVERRIDE;
     void AddBookmarklet(QPoint pos) Q_DECL_OVERRIDE;
@@ -302,7 +307,7 @@ public slots:
 
     QQuickItem *newView(){
         View *view = this;
-        if(page()) view = page()->OpenInNew(QUrl(QStringLiteral("about:blank")));
+        if(page()) view = page()->OpenInNew(BLANK_URL);
         if(QuickNativeWebView *v = qobject_cast<QuickNativeWebView*>(view->base()))
             return v->m_QmlNativeWebView;
         return m_QmlNativeWebView;

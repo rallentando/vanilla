@@ -127,24 +127,25 @@ const QList<float> View::m_ZoomFactorLevels = QList<float>()
     ;
 
 #ifdef WEBENGINEVIEW
-static const QMap<QWebEngineSettings::WebAttribute, QString> m_WebEngineSwitches = QMap<QWebEngineSettings::WebAttribute, QString>()
-    << qMakePair(QWebEngineSettings::AutoLoadImages,           QString::fromLatin1("[iI]mage"))
-    << qMakePair(QWebEngineSettings::JavascriptEnabled,        QString::fromLatin1("[jJ](?:ava)?[sS](?:cript)?"))
-    << qMakePair(QWebEngineSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugins?"))
-    << qMakePair(QWebEngineSettings::SpatialNavigationEnabled, QString::fromLatin1("[sS]patial(?:[nN]avigation)?"))
-    << qMakePair(QWebEngineSettings::ScrollAnimatorEnabled,    QString::fromLatin1("[sS]croll[aA]nimator"))
-#  if QT_VERSION >= 0x050700
-    << qMakePair(QWebEngineSettings::WebGLEnabled,             QString::fromLatin1("[wW]eb[gG][lL]"))
-#  endif
-    ;
+static const QMap<QWebEngineSettings::WebAttribute, QString> m_WebEngineSwitches = {
+    { QWebEngineSettings::AutoLoadImages,           QString::fromLatin1("[iI]mage") },
+    { QWebEngineSettings::JavascriptEnabled,        QString::fromLatin1("[jJ](?:ava)?[sS](?:cript)?") },
+    { QWebEngineSettings::PluginsEnabled,           QString::fromLatin1("[pP]lugins?") },
+    { QWebEngineSettings::SpatialNavigationEnabled, QString::fromLatin1("[sS]patial(?:[nN]avigation)?") },
+    { QWebEngineSettings::ScrollAnimatorEnabled,    QString::fromLatin1("[sS]croll[aA]nimator") },
+    { QWebEngineSettings::WebGLEnabled,             QString::fromLatin1("[wW]eb[gG][lL]") },
+};
 #endif
 
 QString View::m_LinkMenu = QString();
 QString View::m_ImageMenu = QString();
+QString View::m_MediaMenu = QString();
+QString View::m_TextMenu = QString();
 QString View::m_SelectionMenu = QString();
 QString View::m_RegularMenu = QString();
 
 View::View(TreeBank *parent, QString id, QStringList set){
+    Q_UNUSED(id); Q_UNUSED(set);
     m_TreeBank = parent;
     m_This = WeakView();
     m_Master = WeakView();
@@ -804,15 +805,49 @@ QMenu *View::OpenImageWithOtherBrowserMenu(QVariant data){
     return menu;
 }
 
-void View::AddContextMenu(QMenu *menu, SharedWebElement elem){
+QMenu *View::OpenMediaWithOtherBrowserMenu(QVariant data){
+    QMenu *menu = new QMenu(QObject::tr("OpenMediaWithOtherBrowser"));
+    if(!Application::BrowserPath_IE().isEmpty())       menu->addAction(Action(Page::_OpenMediaWithIE, data));
+    if(!Application::BrowserPath_Edge().isEmpty())     menu->addAction(Action(Page::_OpenMediaWithEdge, data));
+    if(!Application::BrowserPath_FF().isEmpty())       menu->addAction(Action(Page::_OpenMediaWithFF, data));
+    if(!Application::BrowserPath_Opera().isEmpty())    menu->addAction(Action(Page::_OpenMediaWithOpera, data));
+    if(!Application::BrowserPath_OPR().isEmpty())      menu->addAction(Action(Page::_OpenMediaWithOPR, data));
+    if(!Application::BrowserPath_Safari().isEmpty())   menu->addAction(Action(Page::_OpenMediaWithSafari, data));
+    if(!Application::BrowserPath_Chrome().isEmpty())   menu->addAction(Action(Page::_OpenMediaWithChrome, data));
+    if(!Application::BrowserPath_Sleipnir().isEmpty()) menu->addAction(Action(Page::_OpenMediaWithSleipnir, data));
+    if(!Application::BrowserPath_Vivaldi().isEmpty())  menu->addAction(Action(Page::_OpenMediaWithVivaldi, data));
+    if(!Application::BrowserPath_Custom().isEmpty())   menu->addAction(Action(Page::_OpenMediaWithCustom, data));
+    return menu;
+}
+
+void View::AddContextMenu(QMenu *menu, SharedWebElement elem, bool isMedia){
     QVariant data = QVariant::fromValue(elem);
 
     QUrl linkUrl  = elem ? elem->LinkUrl()  : QUrl();
     QUrl imageUrl = elem ? elem->ImageUrl() : QUrl();
+    bool editable = elem ? elem->IsEditableElement() : false;
 
     static const int max_filename_length_at_contextmenu = 25;
     const QString comma = QStringLiteral(",");
     const QString slash = QStringLiteral("/");
+    const QString quest = QStringLiteral("?");
+
+    if(linkUrl.isEmpty() && imageUrl.isEmpty() && SelectedText().isEmpty()){
+
+        if(CanGoBack())    menu->addAction(Action(Page::_Back));
+        if(CanGoForward()) menu->addAction(Action(Page::_Forward));
+
+        if(!EnableDestinationInferrer()){
+            if(CanGoBack())
+                menu->addAction(Action(Page::_Rewind));
+            menu->addAction(Action(Page::_FastForward));
+        }
+
+        if(IsLoading())
+            menu->addAction(Action(Page::_Stop));
+        else
+            menu->addAction(Action(Page::_Reload));
+    }
 
     if(!linkUrl.isEmpty()){
         if(!menu->isEmpty()) menu->addSeparator();
@@ -838,20 +873,38 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem){
         QString name = QString();
         while(name.isEmpty() && !list.isEmpty())
             name = list.takeLast();
+        list = name.split(quest);
+        name = QString();
+        while(name.isEmpty() && !list.isEmpty())
+            name = list.takeFirst();
+
         if(name.length() > max_filename_length_at_contextmenu)
             name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
 
-        foreach(QString str, View::GetImageMenu().split(comma)){
+        foreach(QString str, isMedia ? View::GetMediaMenu().split(comma) : View::GetImageMenu().split(comma)){
             if     (str == QStringLiteral("Separator")) menu->addSeparator();
             else if(str == QStringLiteral("ImageUrl"))  menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
+            else if(str == QStringLiteral("MediaUrl"))  menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
             else if(str == QStringLiteral("OpenImageWithOtherBrowser"))
                 menu->addMenu(OpenImageWithOtherBrowserMenu(data));
+            else if(str == QStringLiteral("OpenMediaWithOtherBrowser"))
+                menu->addMenu(OpenMediaWithOtherBrowserMenu(data));
+            else menu->addAction(Action(str, data));
+        }
+    }
+
+    if(editable){
+        if(!menu->isEmpty()) menu->addSeparator();
+
+        foreach(QString str, View::GetTextMenu().split(comma)){
+            if(str == QStringLiteral("Separator")) menu->addSeparator();
             else menu->addAction(Action(str, data));
         }
     }
 
     if(!SelectedText().isEmpty()){
-        if(!menu->isEmpty()) menu->addSeparator();
+        if(!menu->isEmpty() && !editable)
+            menu->addSeparator();
 
         foreach(QString str, View::GetSelectionMenu().split(comma)){
             if     (str == QStringLiteral("Separator"))  menu->addSeparator();
@@ -932,17 +985,18 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::XSSAuditingEnabled,                s.value(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                gwes->testAttribute(QWebEngineSettings::XSSAuditingEnabled)               ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled,          s.value(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          gwes->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled)         ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled,             s.value(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             gwes->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)            ).value<bool>());
-#  if QT_VERSION >= 0x050700
     gwes->setAttribute(QWebEngineSettings::ScreenCaptureEnabled,              s.value(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              gwes->testAttribute(QWebEngineSettings::ScreenCaptureEnabled)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::WebGLEnabled,                      s.value(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                     ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::AutoLoadIconsForPage,              s.value(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::TouchIconsEnabled,                 s.value(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                ).value<bool>());
-#  endif
 #  if QT_VERSION >= 0x050800
     gwes->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled,          s.value(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled)         ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::PrintElementBackgrounds,           s.value(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)          ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::AllowRunningInsecureContent,       s.value(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gwes->testAttribute(QWebEngineSettings::AllowRunningInsecureContent)      ).value<bool>());
+#  endif
+#  if QT_VERSION >= 0x050900
+    gwes->setAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, s.value(QStringLiteral("webview/preferences/AllowGeolocationOnInsecureOrigins"), gwes->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins)).value<bool>());
 #  endif
     gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::FullScreenSupportEnabled,          s.value(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),        /*gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)*/  true ).value<bool>());
@@ -957,9 +1011,7 @@ void View::LoadSettings(){
     gwes->setFontFamily(QWebEngineSettings::FixedFont,            s.value(QStringLiteral("webview/font/FixedFont"),              gwes->fontFamily(QWebEngineSettings::FixedFont)            ).value<QString>());
     gwes->setFontFamily(QWebEngineSettings::CursiveFont,          s.value(QStringLiteral("webview/font/CursiveFont"),            gwes->fontFamily(QWebEngineSettings::CursiveFont)          ).value<QString>());
     gwes->setFontFamily(QWebEngineSettings::FantasyFont,          s.value(QStringLiteral("webview/font/FantasyFont"),            gwes->fontFamily(QWebEngineSettings::FantasyFont)          ).value<QString>());
-#  if QT_VERSION >= 0x050700
     gwes->setFontFamily(QWebEngineSettings::PictographFont,       s.value(QStringLiteral("webview/font/PictographFont"),         gwes->fontFamily(QWebEngineSettings::PictographFont)       ).value<QString>());
-#  endif
     gwes->setFontSize(QWebEngineSettings::MinimumFontSize,        s.value(QStringLiteral("webview/font/MinimumFontSize"),        gwes->fontSize(QWebEngineSettings::MinimumFontSize)        ).value<int>());
     gwes->setFontSize(QWebEngineSettings::MinimumLogicalFontSize, s.value(QStringLiteral("webview/font/MinimumLogicalFontSize"), gwes->fontSize(QWebEngineSettings::MinimumLogicalFontSize) ).value<int>());
     gwes->setFontSize(QWebEngineSettings::DefaultFontSize,        s.value(QStringLiteral("webview/font/DefaultFontSize"),        gwes->fontSize(QWebEngineSettings::DefaultFontSize)        ).value<int>());
@@ -992,6 +1044,29 @@ void View::LoadSettings(){
       VV"CopyImageUrl,"
       VV"CopyImageHtml,"
       VV"OpenImageWithOtherBrowser")).value<QString>();
+
+    m_MediaMenu = s.value(QStringLiteral("webview/menu/MediaMenu"), QStringLiteral(
+        "MediaUrl,"
+      VV"ToggleMediaPlayPause,"
+      VV"ToggleMediaMute,"
+      VV"ToggleMediaLoop,"
+      VV"OpenMediaInNewViewNode,"
+      VV"OpenMediaInNewHistNode,"
+      VV"OpenMediaInNewDirectory,"
+      VV"OpenMediaOnRoot,"
+      VV"Separator,"
+      VV"OpenMedia,"
+      VV"DownloadMedia,"
+      VV"CopyMediaUrl,"
+      VV"CopyMediaHtml,"
+      VV"OpenMediaWithOtherBrowser")).value<QString>();
+
+    m_TextMenu = s.value(QStringLiteral("webview/menu/TextMenu"), QStringLiteral(
+        "Undo,"
+      VV"Redo,"
+      VV"SelectAll,"
+      VV"Paste,"
+      VV"Cut")).value<QString>();
 
     m_SelectionMenu = s.value(QStringLiteral("webview/menu/SelectionMenu"), QStringLiteral(
         "Copy,"
@@ -1157,17 +1232,18 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                gwes->testAttribute(QWebEngineSettings::XSSAuditingEnabled)                );
     s.setValue(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          gwes->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled)          );
     s.setValue(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             gwes->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)             );
-#  if QT_VERSION >= 0x050700
     s.setValue(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              gwes->testAttribute(QWebEngineSettings::ScreenCaptureEnabled)              );
     s.setValue(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                      );
     s.setValue(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)        );
     s.setValue(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)              );
     s.setValue(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                 );
-#  endif
 #  if QT_VERSION >= 0x050800
     s.setValue(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled)          );
     s.setValue(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)           );
     s.setValue(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gwes->testAttribute(QWebEngineSettings::AllowRunningInsecureContent)       );
+#  endif
+#  if QT_VERSION >= 0x050900
+    s.setValue(QStringLiteral("webview/preferences/AllowGeolocationOnInsecureOrigins"), gwes->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins) );
 #  endif
     s.setValue(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                  );
     s.setValue(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),          gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)          );
@@ -1180,9 +1256,7 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/font/SansSerifFont"),          gwes->fontFamily(QWebEngineSettings::SansSerifFont)        );
     s.setValue(QStringLiteral("webview/font/CursiveFont"),            gwes->fontFamily(QWebEngineSettings::CursiveFont)          );
     s.setValue(QStringLiteral("webview/font/FantasyFont"),            gwes->fontFamily(QWebEngineSettings::FantasyFont)          );
-#  if QT_VERSION >= 0x050700
     s.setValue(QStringLiteral("webview/font/PictographFont"),         gwes->fontFamily(QWebEngineSettings::PictographFont)       );
-#  endif
     s.setValue(QStringLiteral("webview/font/MinimumFontSize"),        gwes->fontSize(QWebEngineSettings::MinimumFontSize)        );
     s.setValue(QStringLiteral("webview/font/MinimumLogicalFontSize"), gwes->fontSize(QWebEngineSettings::MinimumLogicalFontSize) );
     s.setValue(QStringLiteral("webview/font/DefaultFontSize"),        gwes->fontSize(QWebEngineSettings::DefaultFontSize)        );
@@ -1191,6 +1265,8 @@ void View::SaveSettings(){
 
     s.setValue(QStringLiteral("webview/menu/LinkMenu"),      m_LinkMenu);
     s.setValue(QStringLiteral("webview/menu/ImageMenu"),     m_ImageMenu);
+    s.setValue(QStringLiteral("webview/menu/MediaMenu"),     m_MediaMenu);
+    s.setValue(QStringLiteral("webview/menu/TextMenu"),      m_TextMenu);
     s.setValue(QStringLiteral("webview/menu/SelectionMenu"), m_SelectionMenu);
     s.setValue(QStringLiteral("webview/menu/RegularMenu"),   m_RegularMenu);
 
@@ -1260,17 +1336,18 @@ void View::ApplySpecificSettings(QStringList set){
         s->setAttribute(QWebEngineSettings::XSSAuditingEnabled, g->testAttribute(QWebEngineSettings::XSSAuditingEnabled));
         s->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled, g->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled));
         s->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, g->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled));
-#  if QT_VERSION >= 0x050700
         s->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, g->testAttribute(QWebEngineSettings::ScreenCaptureEnabled));
         s->setAttribute(QWebEngineSettings::WebGLEnabled, g->testAttribute(QWebEngineSettings::WebGLEnabled));
         s->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, g->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled));
         s->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, g->testAttribute(QWebEngineSettings::AutoLoadIconsForPage));
         s->setAttribute(QWebEngineSettings::TouchIconsEnabled, g->testAttribute(QWebEngineSettings::TouchIconsEnabled));
-#  endif
 #  if QT_VERSION >= 0x050800
         s->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled, g->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled));
         s->setAttribute(QWebEngineSettings::PrintElementBackgrounds, g->testAttribute(QWebEngineSettings::PrintElementBackgrounds));
         s->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, g->testAttribute(QWebEngineSettings::AllowRunningInsecureContent));
+#  endif
+#  if QT_VERSION >= 0x050900
+        s->setAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, g->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins));
 #  endif
         s->setAttribute(QWebEngineSettings::ErrorPageEnabled, g->testAttribute(QWebEngineSettings::ErrorPageEnabled));
         s->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, g->testAttribute(QWebEngineSettings::FullScreenSupportEnabled));
@@ -1281,9 +1358,7 @@ void View::ApplySpecificSettings(QStringList set){
         s->setFontFamily(QWebEngineSettings::SansSerifFont, g->fontFamily(QWebEngineSettings::SansSerifFont));
         s->setFontFamily(QWebEngineSettings::CursiveFont, g->fontFamily(QWebEngineSettings::CursiveFont));
         s->setFontFamily(QWebEngineSettings::FantasyFont, g->fontFamily(QWebEngineSettings::FantasyFont));
-#  if QT_VERSION >= 0x050700
         s->setFontFamily(QWebEngineSettings::PictographFont, g->fontFamily(QWebEngineSettings::PictographFont));
-#  endif
 
         s->setFontSize(QWebEngineSettings::MinimumFontSize, g->fontSize(QWebEngineSettings::MinimumFontSize));
         s->setFontSize(QWebEngineSettings::MinimumLogicalFontSize, g->fontSize(QWebEngineSettings::MinimumLogicalFontSize));
@@ -1549,9 +1624,9 @@ void View::Load(const QNetworkRequest &req){
 
         if(str.startsWith(QStringLiteral("about:"))){
             if(str == QStringLiteral("about:blank"))
-                setUrl(QUrl(QStringLiteral("about:blank")));
+                setUrl(BLANK_URL);
             else
-                TriggerNativeLoadAction(QNetworkRequest(QUrl(QStringLiteral("about:blank"))));
+                TriggerNativeLoadAction(QNetworkRequest(BLANK_URL));
         } else if(str.startsWith(QStringLiteral("view-source:"))){
 #ifdef WEBENGINEVIEW
             if(qobject_cast<WebEngineView*>(base()) ||
@@ -1704,6 +1779,7 @@ void View::GestureFinished(QPoint pos, Qt::MouseButton button){
             }
         }
     }
+
     m_Gesture.clear();
     m_GestureStartedPos = QPoint();
     m_BeforeGesturePos  = QPoint();

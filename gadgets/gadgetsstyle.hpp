@@ -24,9 +24,7 @@ public:
     virtual void Render(InPlaceNotifier *notifier, QPainter *painter) const = 0;
     virtual void Render(CloseButton *button, QPainter *painter) const = 0;
     virtual void Render(CloneButton *button, QPainter *painter) const = 0;
-#if QT_VERSION >= 0x050700
     virtual void Render(SoundButton *button, QPainter *painter) const = 0;
-#endif
     virtual void Render(UpDirectoryButton *button, QPainter *painter) const = 0;
     virtual void Render(ToggleTrashButton *button, QPainter *painter) const = 0;
     virtual void Render(AccessibleWebElement *awe, QPainter *painter) const = 0;
@@ -89,9 +87,7 @@ public:
     void Render(InPlaceNotifier *notifier, QPainter *painter) const Q_DECL_OVERRIDE;
     void Render(CloseButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
     void Render(CloneButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
-#if QT_VERSION >= 0x050700
     void Render(SoundButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
-#endif
     void Render(UpDirectoryButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
     void Render(ToggleTrashButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
     void Render(AccessibleWebElement *awe, QPainter *painter) const Q_DECL_OVERRIDE;
@@ -145,9 +141,7 @@ public:
     void Render(InPlaceNotifier *notifier, QPainter *painter) const Q_DECL_OVERRIDE;
     void Render(CloseButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
     void Render(CloneButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
-#if QT_VERSION >= 0x050700
     void Render(SoundButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
-#endif
     void Render(UpDirectoryButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
     void Render(ToggleTrashButton *button, QPainter *painter) const Q_DECL_OVERRIDE;
     void Render(AccessibleWebElement *awe, QPainter *painter) const Q_DECL_OVERRIDE;

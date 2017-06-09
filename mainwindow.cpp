@@ -90,6 +90,7 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
 
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
         setAttribute(Qt::WA_NoSystemBackground);
+        setAttribute(Qt::WA_TranslucentBackground);
         QtWin::setCompositionEnabled(true);
         QtWin::enableBlurBehindWindow(windowHandle());
 #endif
@@ -205,7 +206,7 @@ void MainWindow::LoadSettings(){
     if(notifier_data.isNull()){
 
         bool notifierEnabled = current
-            ? current->GetTreeBank()->GetNotifier()
+            ? static_cast<bool>(current->GetTreeBank()->GetNotifier())
             : true;
 
         if(notifierEnabled != static_cast<bool>(GetTreeBank()->GetNotifier()))
@@ -219,7 +220,7 @@ void MainWindow::LoadSettings(){
     if(receiver_data.isNull()){
 
         bool receiverEnabled = current
-            ? current->GetTreeBank()->GetReceiver()
+            ? static_cast<bool>(current->GetTreeBank()->GetReceiver())
             : true;
 
         if(receiverEnabled != static_cast<bool>(GetTreeBank()->GetReceiver()))
@@ -869,8 +870,8 @@ namespace{
 }
 
 TitleBar::TitleBar(MainWindow *mainwindow)
-    : m_MainWindow(mainwindow)
-    , QWidget(0)
+    : QWidget(0)
+    , m_MainWindow(mainwindow)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -1073,8 +1074,8 @@ QRect TitleBar::CloseAreaRect() const {
 }
 
 MainWindowEdgeWidget::MainWindowEdgeWidget(MainWindow *mainwindow)
-    : m_MainWindow(mainwindow)
-    , QWidget(0)
+    : QWidget(0)
+    , m_MainWindow(mainwindow)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -1086,8 +1087,6 @@ void MainWindowEdgeWidget::paintEvent(QPaintEvent *ev){
     painter.setPen(tpen);
     painter.setBrush(tbrush);
     painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-    //painter.setPen(QColor(0,0,0,255));
-    //painter.drawLine(QPoint(0,9), QPoint(width(),9));
     ev->setAccepted(true);
 }
 

@@ -42,6 +42,7 @@
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "dialog.hpp"
+#include "view.hpp"
 
 // NetworkCookieJar
 ////////////////////////////////////////////////////////////////
@@ -82,7 +83,7 @@ NetworkAccessManager::NetworkAccessManager(QString id)
     m_Profile->setHttpAcceptLanguage(Application::GetAcceptLanguage());
 #endif
 
-#if defined(USE_WEBCHANNEL) || defined(PASSWORD_MANAGER)
+#if defined(USE_WEBCHANNEL) || defined(PASSWORD_MANAGER) || QT_VERSION >= 0x050900
     static QString source;
     if(source.isEmpty()){
         QString inner;
@@ -104,31 +105,12 @@ NetworkAccessManager::NetworkAccessManager(QString id)
            VV"});\n");
 #  endif
 #  ifdef PASSWORD_MANAGER
-        inner += QStringLiteral
-            ("\n"
-           VV"var forms = document.querySelectorAll(\"form\");\n"
-           VV"for(var i = 0; i < forms.length; i++){\n"
-           VV"    var form = forms[i];\n"
-           VV"    var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
-           VV"    var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
-           VV"    if(!submit || !password) continue;\n"
-           VV"    form.addEventListener(\"submit\", function(e){\n"
-           VV"        var data = \"\";\n"
-           VV"        var inputs = e.target.querySelectorAll(\"input,textarea\");\n"
-           VV"        for(var j = 0; j < inputs.length; j++){\n"
-           VV"            var field = inputs[j];\n"
-           VV"            var type = (field.type || \"hidden\").toLowerCase();\n"
-           VV"            var name = field.name;\n"
-           VV"            var val = field.value;\n"
-           VV"            if(!name || type == \"hidden\" || type == \"submit\"){\n"
-           VV"                continue;\n"
-           VV"            }\n"
-           VV"            if(data) data = data + \"&\";\n"
-           VV"            data = data + encodeURIComponent(name) + \"=\" + encodeURIComponent(val);\n"
-           VV"        }\n"
-           VV"        console.info(\"submit%1,\" + data);\n"
-           VV"    }, false);\n"
-           VV"}\n").arg(Application::EventKey());
+        inner += View::InstallSubmitEventJsCode();
+#  endif
+#  if defined WEBENGINEVIEW && QT_VERSION >= 0x050900
+        static const QList<QEvent::Type> types =
+            QList<QEvent::Type>() << QEvent::KeyPress << QEvent::KeyRelease;
+        inner += View::InstallEventFilterJsCode(types);
 #  endif
         source = QStringLiteral
             ("(function(){\n"
@@ -137,7 +119,6 @@ NetworkAccessManager::NetworkAccessManager(QString id)
     }
 #  ifdef WEBENGINEVIEW
     QWebEngineScript script;
-    script.setName(QStringLiteral("vscript"));
     script.setInjectionPoint(QWebEngineScript::DocumentReady);
     script.setWorldId(QWebEngineScript::MainWorld);
     script.setRunsOnSubFrames(true);
@@ -423,14 +404,16 @@ void NetworkAccessManager::SetUserAgent(QString ua){
 #  endif
 #elif defined(Q_OS_MAC)
     switch(QSysInfo::MacintoshVersion){
-    case QSysInfo::MV_10_6:  system = QStringLiteral("Intel MacOS X 10.6");  break;
-    case QSysInfo::MV_10_7:  system = QStringLiteral("Intel MacOS X 10.7");  break;
-    case QSysInfo::MV_10_8:  system = QStringLiteral("Intel MacOS X 10.8");  break;
-    case QSysInfo::MV_10_9:  system = QStringLiteral("Intel MacOS X 10.9");  break;
-    case QSysInfo::MV_10_10: system = QStringLiteral("Intel MacOS X 10.10"); break;
-    case QSysInfo::MV_10_11: system = QStringLiteral("Intel MacOS X 10.11"); break;
-    default:                 system = QStringLiteral("MacOS X");
+    case QSysInfo::MV_10_6:  system = QStringLiteral("Intel Mac OS X 10_6");  break;
+    case QSysInfo::MV_10_7:  system = QStringLiteral("Intel Mac OS X 10_7");  break;
+    case QSysInfo::MV_10_8:  system = QStringLiteral("Intel Mac OS X 10_8");  break;
+    case QSysInfo::MV_10_9:  system = QStringLiteral("Intel Mac OS X 10_9");  break;
+    case QSysInfo::MV_10_10: system = QStringLiteral("Intel Mac OS X 10_10"); break;
+    case QSysInfo::MV_10_11: system = QStringLiteral("Intel Mac OS X 10_11"); break;
+    case QSysInfo::MV_10_12: system = QStringLiteral("Intel Mac OS X 10_12"); break;
+    default:                 system = QStringLiteral("Mac OS X");
     }
+    system = QStringLiteral("Macintosh; ") + system;
 #else
     system = QStringLiteral("Linux/Unix");
 #endif
@@ -440,7 +423,12 @@ void NetworkAccessManager::SetUserAgent(QString ua){
     if(ua.isEmpty()) return;
     else if(Application::ExactMatch(QStringLiteral("[iI](?:nternet)?[eE](?:xplorer)?"), ua)){ ua = Application::UserAgent_IE();}
     else if(Application::ExactMatch(QStringLiteral("[eE]dge"), ua))         { ua = Application::UserAgent_Edge();}
-    else if(Application::ExactMatch(QStringLiteral("[fF](?:ire)?[fF](?:ox)?"), ua)){ ua = Application::UserAgent_FF();}
+    else if(Application::ExactMatch(QStringLiteral("[fF](?:ire)?[fF](?:ox)?"), ua)){
+        ua = Application::UserAgent_FF();
+#ifdef Q_OS_MAC
+        system.replace(QStringLiteral("_"), QStringLiteral("."));
+#endif
+    }
     else if(Application::ExactMatch(QStringLiteral("[oO]pera"), ua))        { ua = Application::UserAgent_Opera();}
     else if(Application::ExactMatch(QStringLiteral("[oO][pP][rR]"), ua))    { ua = Application::UserAgent_OPR();}
     else if(Application::ExactMatch(QStringLiteral("[sS]afari"), ua))       { ua = Application::UserAgent_Safari();}
@@ -1018,14 +1006,14 @@ NetworkController::NetworkController()
     Application::ClearTemporaryDirectory();
     QMap<QString, NetworkAccessManager*> nams = m_NetworkAccessManagerTable;
     if(!nams.isEmpty()){
-        Download(nams.first(), QUrl(QStringLiteral("about:blank")), QUrl(), NetworkController::TemporaryDirectory);
+        Download(nams.first(), BLANK_URL, EMPTY_URL, NetworkController::TemporaryDirectory);
     }
 }
 
 NetworkController::~NetworkController(){}
 
 DownloadItem *NetworkController::Download(NetworkAccessManager *nam,
-                                          QUrl &url, QUrl &referer,
+                                          const QUrl &url, const QUrl &referer,
                                           DownloadType type){
     QNetworkRequest req(url);
     req.setRawHeader("Referer", referer.toEncoded());

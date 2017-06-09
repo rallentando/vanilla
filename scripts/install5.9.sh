@@ -6,14 +6,17 @@ SYSTEM_DIR="C:/Windows/System32"
 
 for drive in C D E F G
 do
-    if   [ -e   $drive:/Qt/Qt5.8.0/5.8/msvc2015 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.8.0/5.8/msvc2015
+    if   [ -e   $drive:/Qt/Qt5.9.0/5.9/msvc2015 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.9.0/5.9/msvc2015
         break
-    elif [ -e   $drive:/Qt/Qt5.8.0/5.8/msvc2015_64 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.8.0/5.8/msvc2015_64
+    elif [ -e   $drive:/Qt/Qt5.9.0/5.9/msvc2015_64 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.9.0/5.9/msvc2015_64
         break
-    elif [ -e   $drive:/Qt/Qt5.8.0-x64/5.8/msvc2015_64 ]; then
-        QT5_DIR=$drive:/Qt/Qt5.8.0-x64/5.8/msvc2015_64
+    elif [ -e   $drive:/Qt/Qt5.9.0-x64/5.9/msvc2015_64 ]; then
+        QT5_DIR=$drive:/Qt/Qt5.9.0-x64/5.9/msvc2015_64
+        break
+    elif [ -e   $drive:/Qt/5.9/msvc2015_64 ]; then
+        QT5_DIR=$drive:/Qt/5.9/msvc2015_64
         break
     fi
 done
@@ -82,6 +85,7 @@ cp $QT5_DIR/bin/Qt5PrintSupport.dll      $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Positioning.dll       $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Qml.dll               $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Quick.dll             $TARGET_DIR/
+cp $QT5_DIR/bin/Qt5QuickControls2.dll    $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5QuickWidgets.dll      $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Sensors.dll           $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Sql.dll               $TARGET_DIR/
@@ -90,6 +94,7 @@ cp $QT5_DIR/bin/Qt5WebChannel.dll        $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WebEngine.dll         $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WebEngineCore.dll     $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WebEngineWidgets.dll  $TARGET_DIR/
+cp $QT5_DIR/bin/Qt5WebView.dll           $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Widgets.dll           $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5WinExtras.dll         $TARGET_DIR/
 cp $QT5_DIR/bin/Qt5Xml.dll               $TARGET_DIR/
@@ -97,8 +102,8 @@ cp $QT5_DIR/bin/d3dcompiler_47.dll       $TARGET_DIR/
 #cp $QT5_DIR/bin/icudt54.dll              $TARGET_DIR/
 #cp $QT5_DIR/bin/icuin54.dll              $TARGET_DIR/
 #cp $QT5_DIR/bin/icuuc54.dll              $TARGET_DIR/
-cp $QT5_DIR/bin/libEGL.dll               $TARGET_DIR/
-cp $QT5_DIR/bin/libGLESv2.dll            $TARGET_DIR/
+#cp $QT5_DIR/bin/libEGL.dll               $TARGET_DIR/
+#cp $QT5_DIR/bin/libGLESv2.dll            $TARGET_DIR/
 cp $QT5_DIR/bin/opengl32sw.dll           $TARGET_DIR/
 cp $QT5_DIR/bin/QtWebEngineProcess.exe   $TARGET_DIR/
 

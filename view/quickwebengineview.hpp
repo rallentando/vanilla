@@ -52,7 +52,6 @@ public:
     bool CanGoForward() Q_DECL_OVERRIDE {
         return m_QmlWebEngineView->property("canGoForward").toBool();
     }
-#if QT_VERSION >= 0x050700
     bool RecentlyAudible() Q_DECL_OVERRIDE {
         return m_QmlWebEngineView->property("recentlyAudible").toBool();
     }
@@ -62,7 +61,6 @@ public:
     void SetAudioMuted(bool muted) Q_DECL_OVERRIDE {
         m_QmlWebEngineView->setProperty("audioMuted", muted);
     }
-#endif
 
     bool IsRenderable() Q_DECL_OVERRIDE {
         return status() == QQuickWidget::Ready && (visible() || !m_GrabedDisplayData.isNull());
@@ -285,10 +283,8 @@ public slots:
     void HandleRenderProcessTermination(int, int);
     void HandleFullScreen(bool);
     void HandleDownload(QObject*);
-#if QT_VERSION >= 0x050700
     void HandleContentsSizeChange(const QSizeF &size);
     void HandleScrollPositionChange(const QPointF &pos);
-#endif
 
     void Copy() Q_DECL_OVERRIDE;
     void Cut() Q_DECL_OVERRIDE;
@@ -305,6 +301,11 @@ public slots:
     void Save() Q_DECL_OVERRIDE;
     void ZoomIn() Q_DECL_OVERRIDE;
     void ZoomOut() Q_DECL_OVERRIDE;
+
+    void ToggleMediaControls() Q_DECL_OVERRIDE;
+    void ToggleMediaLoop() Q_DECL_OVERRIDE;
+    void ToggleMediaPlayPause() Q_DECL_OVERRIDE;
+    void ToggleMediaMute() Q_DECL_OVERRIDE;
 
     void ExitFullScreen() Q_DECL_OVERRIDE;
     void InspectElement() Q_DECL_OVERRIDE;
@@ -324,14 +325,14 @@ public slots:
 
     QQuickItem *newView(){
         View *view = this;
-        if(page()) view = page()->OpenInNew(QUrl(QStringLiteral("about:blank")));
+        if(page()) view = page()->OpenInNew(BLANK_URL);
         if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
             return v->m_QmlWebEngineView;
         return m_QmlWebEngineView;
     }
     QQuickItem *newViewBackground(){
         View *view = this;
-        if(page()) view = page()->OpenInNewBackground(QUrl(QStringLiteral("about:blank")));
+        if(page()) view = page()->OpenInNewBackground(BLANK_URL);
         if(QuickWebEngineView *v = qobject_cast<QuickWebEngineView*>(view->base()))
             return v->m_QmlWebEngineView;
         return m_QmlWebEngineView;
@@ -357,6 +358,26 @@ public slots:
         return GetHistNode()->GetZoom();
     }
 
+    // default user script with event filter.
+    QString defaultScript(){
+        static QString source;
+        if(source.isEmpty()){
+            QString inner;
+#ifdef PASSWORD_MANAGER
+            inner += View::InstallSubmitEventJsCode();
+#endif
+            static const QList<QEvent::Type> types =
+                QList<QEvent::Type>() << QEvent::KeyPress << QEvent::KeyRelease;
+            inner += View::InstallEventFilterJsCode(types);
+
+            source = QStringLiteral
+                ("(function(){\n"
+               VV"%1\n"
+               VV"})()").arg(inner);
+        }
+        return source;
+    }
+
 signals:
     void CallBackResult(int, QVariant);
     void ViewChanged();
@@ -378,10 +399,8 @@ signals:
     void renderProcessTerminated(int, int);
     void fullScreenRequested(bool);
     void downloadRequested(QObject*);
-#if QT_VERSION >= 0x050700
     void contentsSizeChanged(const QSizeF &size);
     void scrollPositionChanged(const QPointF &pos);
-#endif
 
 protected:
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;

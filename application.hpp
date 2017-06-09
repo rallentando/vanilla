@@ -105,7 +105,6 @@ public:
     static bool EnableAutoSave();
     static bool EnableAutoLoad();
     static int RemoteDebuggingPort();
-    static double WheelScrollRate();
 private:
     static QSettings::Format XMLFormat;
     static Settings m_GlobalSettings;
@@ -122,7 +121,6 @@ private:
     static int m_RemoteDebuggingPort;
     static int m_AutoSaveInterval;
     static int m_AutoLoadInterval;
-    static double m_WheelScrollRate;
 
 
     // uploading path and downloading path.
@@ -535,12 +533,13 @@ public:
     }
 
     static inline void AddModifiersToString(QString &str, Qt::KeyboardModifiers modifiers){
-        static const QMap<Qt::KeyboardModifier, QString> table = QMap<Qt::KeyboardModifier, QString>()
-            << qMakePair(Qt::ControlModifier, QStringLiteral("Ctrl"))
-            << qMakePair(Qt::AltModifier,     QStringLiteral("Alt"))
-            << qMakePair(Qt::MetaModifier,    QStringLiteral("Meta"))
-            << qMakePair(Qt::ShiftModifier,   QStringLiteral("Shift"))
-            << qMakePair(Qt::KeypadModifier,  QStringLiteral("Keypad"));
+        static const QMap<Qt::KeyboardModifier, QString> table = {
+            { Qt::ControlModifier, QStringLiteral("Ctrl") },
+            { Qt::AltModifier,     QStringLiteral("Alt") },
+            { Qt::MetaModifier,    QStringLiteral("Meta") },
+            { Qt::ShiftModifier,   QStringLiteral("Shift") },
+            { Qt::KeypadModifier,  QStringLiteral("Keypad") },
+        };
         foreach(Qt::KeyboardModifier modifier, table.keys()){
             if(modifiers & modifier){
                 if(str.isEmpty()) str += table[modifier];
@@ -579,38 +578,40 @@ public:
         case Qt::ExtraButton22: str += pre + QStringLiteral("ExtraButton22"); break;
         case Qt::ExtraButton23: str += pre + QStringLiteral("ExtraButton23"); break;
         case Qt::ExtraButton24: str += pre + QStringLiteral("ExtraButton24"); break;
+        default: break;
         }
     }
 
     static inline void AddMouseButtonsToString(QString &str, Qt::MouseButtons buttons){
-        static const QMap<Qt::MouseButton, QString> table = QMap<Qt::MouseButton, QString>()
-            << qMakePair(Qt::LeftButton,    QStringLiteral("LeftButton"))
-            << qMakePair(Qt::RightButton,   QStringLiteral("RightButton"))
-            << qMakePair(Qt::MidButton,     QStringLiteral("MidButton"))
-            << qMakePair(Qt::ExtraButton1,  QStringLiteral("ExtraButton1"))
-            << qMakePair(Qt::ExtraButton2,  QStringLiteral("ExtraButton2"))
-            << qMakePair(Qt::ExtraButton3,  QStringLiteral("ExtraButton3"))
-            << qMakePair(Qt::ExtraButton4,  QStringLiteral("ExtraButton4"))
-            << qMakePair(Qt::ExtraButton5,  QStringLiteral("ExtraButton5"))
-            << qMakePair(Qt::ExtraButton6,  QStringLiteral("ExtraButton6"))
-            << qMakePair(Qt::ExtraButton7,  QStringLiteral("ExtraButton7"))
-            << qMakePair(Qt::ExtraButton8,  QStringLiteral("ExtraButton8"))
-            << qMakePair(Qt::ExtraButton9,  QStringLiteral("ExtraButton9"))
-            << qMakePair(Qt::ExtraButton10, QStringLiteral("ExtraButton10"))
-            << qMakePair(Qt::ExtraButton11, QStringLiteral("ExtraButton11"))
-            << qMakePair(Qt::ExtraButton12, QStringLiteral("ExtraButton12"))
-            << qMakePair(Qt::ExtraButton13, QStringLiteral("ExtraButton13"))
-            << qMakePair(Qt::ExtraButton14, QStringLiteral("ExtraButton14"))
-            << qMakePair(Qt::ExtraButton15, QStringLiteral("ExtraButton15"))
-            << qMakePair(Qt::ExtraButton16, QStringLiteral("ExtraButton16"))
-            << qMakePair(Qt::ExtraButton17, QStringLiteral("ExtraButton17"))
-            << qMakePair(Qt::ExtraButton18, QStringLiteral("ExtraButton18"))
-            << qMakePair(Qt::ExtraButton19, QStringLiteral("ExtraButton19"))
-            << qMakePair(Qt::ExtraButton20, QStringLiteral("ExtraButton20"))
-            << qMakePair(Qt::ExtraButton21, QStringLiteral("ExtraButton21"))
-            << qMakePair(Qt::ExtraButton22, QStringLiteral("ExtraButton22"))
-            << qMakePair(Qt::ExtraButton23, QStringLiteral("ExtraButton23"))
-            << qMakePair(Qt::ExtraButton24, QStringLiteral("ExtraButton24"));
+        static const QMap<Qt::MouseButton, QString> table = {
+            { Qt::LeftButton,    QStringLiteral("LeftButton") },
+            { Qt::RightButton,   QStringLiteral("RightButton") },
+            { Qt::MidButton,     QStringLiteral("MidButton") },
+            { Qt::ExtraButton1,  QStringLiteral("ExtraButton1") },
+            { Qt::ExtraButton2,  QStringLiteral("ExtraButton2") },
+            { Qt::ExtraButton3,  QStringLiteral("ExtraButton3") },
+            { Qt::ExtraButton4,  QStringLiteral("ExtraButton4") },
+            { Qt::ExtraButton5,  QStringLiteral("ExtraButton5") },
+            { Qt::ExtraButton6,  QStringLiteral("ExtraButton6") },
+            { Qt::ExtraButton7,  QStringLiteral("ExtraButton7") },
+            { Qt::ExtraButton8,  QStringLiteral("ExtraButton8") },
+            { Qt::ExtraButton9,  QStringLiteral("ExtraButton9") },
+            { Qt::ExtraButton10, QStringLiteral("ExtraButton10") },
+            { Qt::ExtraButton11, QStringLiteral("ExtraButton11") },
+            { Qt::ExtraButton12, QStringLiteral("ExtraButton12") },
+            { Qt::ExtraButton13, QStringLiteral("ExtraButton13") },
+            { Qt::ExtraButton14, QStringLiteral("ExtraButton14") },
+            { Qt::ExtraButton15, QStringLiteral("ExtraButton15") },
+            { Qt::ExtraButton16, QStringLiteral("ExtraButton16") },
+            { Qt::ExtraButton17, QStringLiteral("ExtraButton17") },
+            { Qt::ExtraButton18, QStringLiteral("ExtraButton18") },
+            { Qt::ExtraButton19, QStringLiteral("ExtraButton19") },
+            { Qt::ExtraButton20, QStringLiteral("ExtraButton20") },
+            { Qt::ExtraButton21, QStringLiteral("ExtraButton21") },
+            { Qt::ExtraButton22, QStringLiteral("ExtraButton22") },
+            { Qt::ExtraButton23, QStringLiteral("ExtraButton23") },
+            { Qt::ExtraButton24, QStringLiteral("ExtraButton24") },
+        };
         foreach(Qt::MouseButton button, table.keys()){
             if(buttons & button){
                 if(str.isEmpty()) str += table[button];

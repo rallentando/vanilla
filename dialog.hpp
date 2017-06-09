@@ -15,6 +15,8 @@
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 
+#include <float.h>
+
 #include "callback.hpp"
 
 // ModalDialog

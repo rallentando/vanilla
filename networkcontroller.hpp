@@ -2,6 +2,7 @@
 #define NETCONTROL_HPP
 
 #include "switch.hpp"
+#include "const.hpp"
 
 #include <QNetworkAccessManager>
 #include <QNetworkCookieJar>
@@ -168,8 +169,8 @@ public:
         ToVariable
     };
 
-    static DownloadItem* Download(NetworkAccessManager *nam, QUrl &url,
-                                  QUrl &referer = QUrl(),
+    static DownloadItem* Download(NetworkAccessManager *nam, const QUrl &url,
+                                  const QUrl &referer = EMPTY_URL,
                                   DownloadType type = SelectedDirectory);
     static DownloadItem* Download(NetworkAccessManager *nam,
                                   const QNetworkRequest &request,

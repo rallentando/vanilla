@@ -699,8 +699,10 @@ void TreeBank::LoadTree(){
         }
 
         QDomNodeList children = doc.documentElement().childNodes();
+        QDomElement de;
         for(uint i = 0; i < static_cast<uint>(children.length()); i++){
-            CollectViewDom(children.item(i).toElement(), root);
+            de = children.item(i).toElement();
+            CollectViewDom(de, root);
         }
 
         if(root == m_ViewRoot)
@@ -736,12 +738,14 @@ static void CollectViewDom(QDomElement &elem, ViewNode *parent){
         vn->SetLastAccessDate(QDateTime::fromString(lastAccess, NODE_DATETIME_FORMAT));
 
     if(elem.attribute(QStringLiteral("holdview"), QStringLiteral("false")) == QStringLiteral("true")){
-        CollectHistDom(elem.firstChildElement(), TreeBank::GetHistRoot(), vn);
+        QDomElement de = elem.firstChildElement();
+        CollectHistDom(de, TreeBank::GetHistRoot(), vn);
     } else {
         QDomNodeList children = elem.childNodes();
-
+        QDomElement de;
         for(uint i = 0; i < static_cast<uint>(children.length()); i++){
-            CollectViewDom(children.item(i).toElement(), vn);
+            de = children.item(i).toElement();
+            CollectViewDom(de, vn);
         }
     }
 }
@@ -803,8 +807,10 @@ static void CollectHistDom(QDomElement &elem, HistNode *parent, ViewNode *partne
     }
 
     QDomNodeList children = elem.childNodes();
+    QDomElement de;
     for(uint i = 0; i < static_cast<uint>(children.length()); i++){
-        CollectHistDom(children.item(i).toElement(), hn, partner);
+        de = children.item(i).toElement();
+        CollectHistDom(de, hn, partner);
     }
 }
 
@@ -2295,9 +2301,7 @@ QMenu *TreeBank::PageMenu(){
     menu->addSeparator();
     menu->addAction(Action(_Load));
     menu->addAction(Action(_Save));
-#if QT_VERSION >= 0x050700
     menu->addAction(Action(_Print));
-#endif
     return menu;
 }
 
@@ -2378,14 +2382,7 @@ void TreeBank::timerEvent(QTimerEvent *ev){
 }
 
 void TreeBank::wheelEvent(QWheelEvent *ev){
-    QWheelEvent *new_ev = new QWheelEvent(ev->pos(),
-                                          ev->delta()*Application::WheelScrollRate(),
-                                          ev->buttons(),
-                                          ev->modifiers(),
-                                          ev->orientation());
-    QWidget::wheelEvent(new_ev);
-    ev->setAccepted(true);
-    delete new_ev;
+    QWidget::wheelEvent(ev);
 }
 
 void TreeBank::mouseMoveEvent(QMouseEvent *ev){
@@ -3603,6 +3600,7 @@ QAction *TreeBank::Action(TreeBankAction a){
         case _ToggleToolBar:
             action->setChecked(GetMainWindow()->GetToolBar()->isVisible());
             break;
+        default: break;
         }
         return action;
     }
@@ -3620,6 +3618,7 @@ QAction *TreeBank::Action(TreeBankAction a){
     case _FastForward: action->setIcon(QIcon(":/resources/menu/fastforward.png")); break;
     case _Reload:      action->setIcon(QIcon(":/resources/menu/reload.png"));      break;
     case _Stop:        action->setIcon(QIcon(":/resources/menu/stop.png"));        break;
+    default: break;
     }
 
     switch(a){
@@ -3821,6 +3820,7 @@ QAction *TreeBank::Action(TreeBankAction a){
         action->setIcon(Application::BrowserIcon_Custom());
         action->setText(tr("OpenWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;
+    default: break;
     }
     return action;
 }

@@ -1,8 +1,8 @@
 lessThan(QT_MAJOR_VERSION, 5){
-    error(please use Qt 5.6 or newer.)
+    error(please use Qt 5.7 or newer.)
 }
-equals(QT_MAJOR_VERSION, 5) : lessThan(QT_MINOR_VERSION, 6){
-    error(please use Qt 5.6 or newer.)
+equals(QT_MAJOR_VERSION, 5) : lessThan(QT_MINOR_VERSION, 7){
+    error(please use Qt 5.7 or newer.)
 }
 
 QT += \
@@ -36,8 +36,15 @@ CONFIG += qt
 
 PROJECTNAME = vanilla
 
-RC_FILE = vanilla.rc
 RESOURCES += vanilla.qrc
+
+win32 {
+    RC_FILE = vanilla.rc
+}
+mac {
+    ICON = vanilla.icns
+}
+
 FORMS +=
 
 TARGET = vanilla
@@ -116,18 +123,16 @@ TRANSLATIONS += \
     translations/vanilla_ja.ts
 
 OTHER_FILES += \
-    view/quickwebengineview5.6.qml \
     view/quickwebengineview5.7.qml \
-    view/quickwebengineview5.8.qml \
+    view/quickwebengineview5.9.qml \
     view/quicknativewebview.qml
 
 lupdate_only {
 
     ## lupdate cannot capture 'tr()' for translations.
     SOURCES = \
-        view/quickwebengineview5.6.qml \
         view/quickwebengineview5.7.qml \
-        view/quickwebengineview5.8.qml \
+        view/quickwebengineview5.9.qml \
         view/quicknativewebview.qml \
         application.hpp \
         actionmapper.hpp \
@@ -193,4 +198,9 @@ lupdate_only {
         gadgets/thumbnail.cpp \
         gadgets/nodetitle.cpp \
         gadgets/accessiblewebelement.cpp
+}
+
+mac {
+    OBJECTIVE_SOURCES += mainwindowsettings.mm
+    LIBS += -framework AppKit
 }

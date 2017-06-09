@@ -300,7 +300,7 @@ HistNode *HistNode::New(){
     if(m_Booting) return 0;
     HistNode *hn = MakeChild();
     hn->m_Partner = m_Partner;
-    hn->m_Url = QUrl(QStringLiteral("about:blank"));
+    hn->m_Url = BLANK_URL;
     return hn;
 }
 
@@ -742,7 +742,7 @@ ViewNode *ViewNode::New(){
     HistNode *hn = TreeBank::GetHistRoot()->MakeChild();
     vn->m_Partner = hn;
     hn->m_Partner = vn;
-    hn->m_Url = QUrl(QStringLiteral("about:blank"));
+    hn->m_Url = BLANK_URL;
     return vn;
 }
 

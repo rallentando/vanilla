@@ -26,24 +26,6 @@
 
 namespace {
 
-    inline QPoint ToPoint(QPoint p){
-        return p;
-    }
-
-    inline QSize ToSize(QSize s){
-        return s;
-    }
-
-    template <class T>
-    QPoint LocalPos(T *t){
-        return t->pos();
-    }
-
-    template <class T>
-    QPoint GlobalPos(T *t){
-        return t->globalPos();
-    }
-
     class WinVariant : public VARIANT{
     public:
         WinVariant(){
@@ -351,7 +333,7 @@ TridentView::TridentView(TreeBank *parent, QString id, QStringList set)
     ApplySpecificSettings(set);
 
     if(TreeBank::PurgeView()){
-        setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+        setWindowFlags(Qt::FramelessWindowHint);
     } else {
         if(parent) setParent(parent);
     }
@@ -1578,7 +1560,7 @@ void TridentView::OnSetJsObject(_Vanilla*){}
 void TridentView::OnLoadStarted(){
     // needless to emit statusBarMessage because Trident send message by default.
     View::OnLoadStarted();
-    if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
+    if(m_Icon.isNull() && url() != BLANK_URL)
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
 }
 
@@ -1777,27 +1759,6 @@ void TridentView::DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPo
 
     QMenu *menu = new QMenu(parent);
     menu->setToolTipsVisible(true);
-
-    QUrl linkUrl  = elem ? elem->LinkUrl()  : QUrl();
-    QUrl imageUrl = elem ? elem->ImageUrl() : QUrl();
-
-    if(linkUrl.isEmpty() && imageUrl.isEmpty() && SelectedText().isEmpty()){
-        if(CanGoBack())
-            menu->addAction(Action(Page::_Back));
-        if(CanGoForward())
-            menu->addAction(Action(Page::_Forward));
-
-        if(!View::EnableDestinationInferrer()){
-            if(CanGoBack())
-                menu->addAction(Action(Page::_Rewind));
-            menu->addAction(Action(Page::_FastForward));
-        }
-
-        if(IsLoading())
-            menu->addAction(Action(Page::_Stop));
-        else
-            menu->addAction(Action(Page::_Reload));
-    }
 
     AddContextMenu(menu, elem);
     AddRegularMenu(menu, elem);
@@ -2131,7 +2092,7 @@ void TridentView::mouseMoveEvent(QMouseEvent *ev){
     if(ev->buttons() & Qt::RightButton &&
        !m_GestureStartedPos.isNull()){
 
-        GestureMoved(LocalPos(ev));
+        GestureMoved(ev->pos());
         QString gesture = GestureToString(m_Gesture);
         QString action =
             !m_RightGestureMap.contains(gesture)
@@ -2156,7 +2117,7 @@ void TridentView::mousePressEvent(QMouseEvent *ev){
 
         QString str = m_MouseMap[mouse];
         if(!str.isEmpty()){
-            if(!View::TriggerAction(str, LocalPos(ev))){
+            if(!View::TriggerAction(str, ev->pos())){
                 ev->setAccepted(false);
                 qDebug() << "Invalid mouse event: " << str;
                 return;
@@ -2167,7 +2128,7 @@ void TridentView::mousePressEvent(QMouseEvent *ev){
         }
     }
 
-    GestureStarted(LocalPos(ev));
+    GestureStarted(ev->pos());
     QAxWidget::mousePressEvent(ev);
     ev->setAccepted(true);
 }
@@ -2178,13 +2139,13 @@ void TridentView::mouseReleaseEvent(QMouseEvent *ev){
     if(ev->button() == Qt::RightButton){
 
         if(!m_Gesture.isEmpty()){
-            QPoint pos = LocalPos(ev);
+            QPoint pos = ev->pos();
             Qt::MouseButton button = ev->button();
             QTimer::singleShot(0, [this, pos, button](){ GestureFinished(pos, button);});
         } else if(!m_GestureStartedPos.isNull()){
             SharedWebElement elem = m_ClickedElement;
             GestureAborted(); // resets 'm_ClickedElement'.
-            DisplayContextMenu(m_TreeBank, elem, GlobalPos(ev));
+            DisplayContextMenu(m_TreeBank, elem, ev->globalPos());
         }
         ev->setAccepted(true);
         return;
@@ -2212,7 +2173,7 @@ void TridentView::dragEnterEvent(QDragEnterEvent *ev){
 void TridentView::dragMoveEvent(QDragMoveEvent *ev){
     if(m_EnableDragHackLocal && !m_GestureStartedPos.isNull()){
 
-        GestureMoved(LocalPos(ev));
+        GestureMoved(ev->pos());
         QString gesture = GestureToString(m_Gesture);
         QString action =
             !m_LeftGestureMap.contains(gesture)
@@ -2228,7 +2189,7 @@ void TridentView::dragMoveEvent(QDragMoveEvent *ev){
 
 void TridentView::dropEvent(QDropEvent *ev){
     emit statusBarMessage(QString());
-    QPoint pos = LocalPos(ev);
+    QPoint pos = ev->pos();
     QList<QUrl> urls = ev->mimeData()->urls();
     QObject *source = ev->source();
     SharedWebElement elem = HitElement(pos);
@@ -2282,20 +2243,14 @@ void TridentView::wheelEvent(QWheelEvent *ev){
 
         QString str = m_MouseMap[wheel];
         if(!str.isEmpty()){
-            if(!View::TriggerAction(str, LocalPos(ev)))
+            if(!View::TriggerAction(str, ev->pos()))
                 qDebug() << "Invalid mouse event: " << str;
         }
         ev->setAccepted(true);
 
     } else {
-        QWheelEvent *new_ev = new QWheelEvent(ev->pos(),
-                                              ev->delta()*Application::WheelScrollRate(),
-                                              ev->buttons(),
-                                              ev->modifiers(),
-                                              ev->orientation());
-        QAxWidget::wheelEvent(new_ev);
+        QAxWidget::wheelEvent(ev);
         ev->setAccepted(true);
-        delete new_ev;
     }
 
     QTimer::singleShot(500, this, &TridentView::EmitScrollChanged);

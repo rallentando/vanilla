@@ -1924,6 +1924,7 @@ QAction *Gadgets::Action(GadgetsAction a){
         case _ToggleToolBar:
             action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
             break;
+        default: break;
         }
         return action;
     }
@@ -1941,6 +1942,7 @@ QAction *Gadgets::Action(GadgetsAction a){
   //case _FastForward: action->setIcon(QIcon(":/resources/menu/fastforward.png")); braek;
   //case _Reload:      action->setIcon(QIcon(":/resources/menu/reload.png"));      break;
   //case _Stop:        action->setIcon(QIcon(":/resources/menu/stop.png"));        break;
+    default: break;
     }
 
     switch(a){
@@ -2197,6 +2199,7 @@ QAction *Gadgets::Action(GadgetsAction a){
         action->setIcon(Application::BrowserIcon_Custom());
         action->setText(tr("OpenNodeWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;
+    default: break;
     }
     return action;
 }
@@ -2325,6 +2328,7 @@ void Gadgets::AccessKey_OpenElement(int index){
         case OpenInNewHistNodeNewWindow:   master->TriggerAction(Page::_OpenInNewHistNodeNewWindow, var); break;
         case OpenInNewDirectoryNewWindow:  master->TriggerAction(Page::_OpenInNewDirectoryNewWindow, var); break;
         case OpenOnRootNewWindow:          master->TriggerAction(Page::_OpenOnRootNewWindow, var); break;
+        default: break;
         }
     }
 }

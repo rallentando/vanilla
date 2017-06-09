@@ -28,9 +28,7 @@ class ScrollIndicator;
 class InPlaceNotifier;
 class CloseButton;
 class CloneButton;
-#if QT_VERSION >= 0x050700
 class SoundButton;
-#endif
 class UpDirectoryButton;
 class ToggleTrashButton;
 
@@ -92,7 +90,9 @@ public:
         return m_CurrentThumbnailZoomFactor;
     }
     template <class T> T ScaleByDevice(T t) const {
-        return m_TreeBank ? t * m_TreeBank->logicalDpiY() / 96 : t;
+        if(m_TreeBank && m_TreeBank->logicalDpiY() > 72)
+            return  t * m_TreeBank->logicalDpiY() / 96;
+        return t;
     }
 
     virtual void SetNodeCollectionType(NodeCollectionType){}
@@ -426,9 +426,7 @@ protected:
     // close, clone button.
     CloseButton *m_CloseButton;
     CloneButton *m_CloneButton;
-#if QT_VERSION >= 0x050700
     SoundButton *m_SoundButton;
-#endif
 
     // up directory button.
     UpDirectoryButton *m_UpDirectoryButton;
@@ -665,7 +663,6 @@ private:
     Node *m_Node;
 };
 
-#if QT_VERSION >= 0x050700
 class SoundButton : public GraphicsButton {
 
 public:
@@ -687,7 +684,6 @@ protected:
 private:
     Node *m_Node;
 };
-#endif //if QT_VERSION >= 0x050700
 
 class UpDirectoryButton : public GraphicsButton {
 

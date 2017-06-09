@@ -211,7 +211,7 @@ void QuickNativeWebView::OnLoadStarted(){
     emit statusBarMessage(tr("Started loading."));
     m_PreventScrollRestoration = false;
 
-    if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
+    if(m_Icon.isNull() && url() != BLANK_URL)
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
 }
 
@@ -242,36 +242,10 @@ void QuickNativeWebView::OnLoadFinished(bool ok){
         (page()->GetNetworkAccessManager()->GetId() +
          QStringLiteral(":") + url().host());
 
-    if(!data.isEmpty()){
+    if(!data.isEmpty())
         CallWithEvaluatedJavaScriptResult(DecorateFormFieldJsCode(data), [](QVariant){});
-    }
 
-    CallWithEvaluatedJavaScriptResult(QStringLiteral(
-        "(function(){\n"
-      VV"    var forms = document.querySelectorAll(\"form\");\n"
-      VV"    for(var i = 0; i < forms.length; i++){\n"
-      VV"        var form = forms[i];\n"
-      VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
-      VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
-      VV"        if(!submit || !password) continue;\n"
-      VV"        form.addEventListener(\"submit\", function(e){\n"
-      VV"            var data = \"\";\n"
-      VV"            var inputs = e.target.querySelectorAll(\"input,textarea\");\n"
-      VV"            for(var j = 0; j < inputs.length; j++){\n"
-      VV"                var field = inputs[j];\n"
-      VV"                var type = (field.type || \"hidden\").toLowerCase();\n"
-      VV"                var name = field.name;\n"
-      VV"                var val = field.value;\n"
-      VV"                if(!name || type == \"hidden\" || type == \"submit\"){\n"
-      VV"                    continue;\n"
-      VV"                }\n"
-      VV"                if(data) data = data + \"&\";\n"
-      VV"                data = data + encodeURIComponent(name) + \"=\" + encodeURIComponent(val);\n"
-      VV"            }\n"
-      VV"            console.info(\"submit%1,\" + data);\n"
-      VV"        }, false);\n"
-      VV"    }\n"
-      VV"})()").arg(Application::EventKey()), [](QVariant){});
+    CallWithEvaluatedJavaScriptResult(RegisterSubmitEventJsCode(), [](QVariant){});
 #endif //ifdef PASSWORD_MANAGER
 
     static const QList<QEvent::Type> types =
@@ -588,7 +562,6 @@ void QuickNativeWebView::StopAndUnselect(){
 }
 
 void QuickNativeWebView::Print(){
-#if QT_VERSION >= 0x050700
 
     QString filename = ModalDialog::GetSaveFileName_
         (QString(), QString(),
@@ -616,18 +589,13 @@ void QuickNativeWebView::Print(){
 
         });
     }
-#endif
 }
 
 void QuickNativeWebView::Save(){
-#if QT_VERSION >= 0x050700
-    QMetaObject::invokeMethod(m_QmlNativeWebView, "save");
-#else
     if(!page()) return;
     QNetworkRequest req(url());
     req.setRawHeader("Referer", url().toEncoded());
     page()->Download(req);
-#endif
 }
 
 void QuickNativeWebView::ZoomIn(){
@@ -640,6 +608,26 @@ void QuickNativeWebView::ZoomOut(){
     float zoom = PrepareForZoomOut();
     m_QmlNativeWebView->setProperty("zoomFactor", static_cast<qreal>(zoom));
     emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void QuickNativeWebView::ToggleMediaControls(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "toggleMediaControls");
+}
+
+void QuickNativeWebView::ToggleMediaLoop(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "toggleMediaLoop");
+}
+
+void QuickNativeWebView::ToggleMediaPlayPause(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "toggleMediaPlayPause");
+}
+
+void QuickNativeWebView::ToggleMediaMute(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "toggleMediaMute");
+}
+
+void QuickNativeWebView::ExitFullScreen(){
+    QMetaObject::invokeMethod(m_QmlNativeWebView, "fullScreenCancelled");
 }
 
 void QuickNativeWebView::ExitFullScreen(){
@@ -743,10 +731,6 @@ void QuickNativeWebView::keyReleaseEvent(QKeyEvent *ev){
     if(!visible()) return;
 
     //QQuickWidget::keyReleaseEvent(ev);
-
-#if QT_VERSION < 0x050700
-    EmitScrollChanged();
-#endif
 }
 
 void QuickNativeWebView::resizeEvent(QResizeEvent *ev){
@@ -962,9 +946,6 @@ void QuickNativeWebView::mouseReleaseEvent(QMouseEvent *ev){
 
     GestureAborted();
     QQuickWidget::mouseReleaseEvent(ev);
-#if QT_VERSION < 0x050700
-    EmitScrollChanged();
-#endif
     ev->setAccepted(true);
 }
 
@@ -1086,9 +1067,6 @@ void QuickNativeWebView::wheelEvent(QWheelEvent *ev){
         QQuickWidget::wheelEvent(ev);
         ev->setAccepted(true);
     }
-#if QT_VERSION < 0x050700
-    EmitScrollChanged();
-#endif
 }
 
 void QuickNativeWebView::focusInEvent(QFocusEvent *ev){

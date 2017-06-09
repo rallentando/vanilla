@@ -10,6 +10,10 @@ static void EmitErrorMessage(){
     qFatal("Error <unknown>");
 }
 
+#if defined(Q_OS_MAC)
+extern void disableWindowTabbing();
+#endif
+
 static int _main(int argc, char **argv){
 #if defined(Q_OS_WIN) // for TridentView.
     QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, true);
@@ -18,6 +22,9 @@ static int _main(int argc, char **argv){
     QCoreApplication::setAttribute(Qt::AA_UseOpenGLES, true);
     QCoreApplication::setAttribute(Qt::AA_UseSoftwareOpenGL, false);
     QCoreApplication::setAttribute(Qt::AA_UseDesktopOpenGL, false);
+#endif
+#if defined(Q_OS_MAC)
+    disableWindowTabbing();
 #endif
     Application a(argc, argv);
     Application::BootApplication(argc, argv, &a);

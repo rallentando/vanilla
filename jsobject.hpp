@@ -267,6 +267,26 @@ public slots:
     void openImageWithVivaldi  (){ m_View->TriggerAction(Page::_OpenImageWithVivaldi); }
     void openImageWithCustom   (){ m_View->TriggerAction(Page::_OpenImageWithCustom); }
 
+    void loadMedia             (){ m_View->TriggerAction(Page::_LoadMedia);}
+    void openMedia             (){ m_View->TriggerAction(Page::_OpenMedia); }
+    void downloadMedia         (){ m_View->TriggerAction(Page::_DownloadMedia); }
+    void toggleMediaControls   (){ m_View->TriggerAction(Page::_ToggleMediaControls); }
+    void toggleMediaLoop       (){ m_View->TriggerAction(Page::_ToggleMediaLoop); }
+    void toggleMediaPlayPause  (){ m_View->TriggerAction(Page::_ToggleMediaPlayPause); }
+    void toggleMediaMute       (){ m_View->TriggerAction(Page::_ToggleMediaMute); }
+    void copyMediaUrl          (){ m_View->TriggerAction(Page::_CopyMediaUrl); }
+    void copyMediaHtml         (){ m_View->TriggerAction(Page::_CopyMediaHtml); }
+    void openMediaWithIE       (){ m_View->TriggerAction(Page::_OpenMediaWithIE); }
+    void openMediaWithEdge     (){ m_View->TriggerAction(Page::_OpenMediaWithEdge); }
+    void openMediaWithFF       (){ m_View->TriggerAction(Page::_OpenMediaWithFF); }
+    void openMediaWithOpera    (){ m_View->TriggerAction(Page::_OpenMediaWithOpera); }
+    void openMediaWithOPR      (){ m_View->TriggerAction(Page::_OpenMediaWithOPR); }
+    void openMediaWithSafari   (){ m_View->TriggerAction(Page::_OpenMediaWithSafari); }
+    void openMediaWithChrome   (){ m_View->TriggerAction(Page::_OpenMediaWithChrome); }
+    void openMediaWithSleipnir (){ m_View->TriggerAction(Page::_OpenMediaWithSleipnir); }
+    void openMediaWithVivaldi  (){ m_View->TriggerAction(Page::_OpenMediaWithVivaldi); }
+    void openMediaWithCustom   (){ m_View->TriggerAction(Page::_OpenMediaWithCustom); }
+
     void openInNewViewNode                 (){ m_View->TriggerAction(Page::_OpenInNewViewNode); }
     void openInNewHistNode                 (){ m_View->TriggerAction(Page::_OpenInNewHistNode); }
     void openInNewDirectory                (){ m_View->TriggerAction(Page::_OpenInNewDirectory); }
@@ -316,6 +336,31 @@ public slots:
     void openImageInNewHistNodeNewWindow   (){ m_View->TriggerAction(Page::_OpenImageInNewHistNodeNewWindow); }
     void openImageInNewDirectoryNewWindow  (){ m_View->TriggerAction(Page::_OpenImageInNewDirectoryNewWindow); }
     void openImageOnRootNewWindow          (){ m_View->TriggerAction(Page::_OpenImageOnRootNewWindow); }
+
+    void openMediaInNewViewNode            (){ m_View->TriggerAction(Page::_OpenMediaInNewViewNode); }
+    void openMediaInNewHistNode            (){ m_View->TriggerAction(Page::_OpenMediaInNewHistNode); }
+    void openMediaInNewDirectory           (){ m_View->TriggerAction(Page::_OpenMediaInNewDirectory); }
+    void openMediaOnRoot                   (){ m_View->TriggerAction(Page::_OpenMediaOnRoot); }
+
+    void openMediaInNewViewNodeForeground  (){ m_View->TriggerAction(Page::_OpenMediaInNewViewNodeForeground); }
+    void openMediaInNewHistNodeForeground  (){ m_View->TriggerAction(Page::_OpenMediaInNewHistNodeForeground); }
+    void openMediaInNewDirectoryForeground (){ m_View->TriggerAction(Page::_OpenMediaInNewDirectoryForeground); }
+    void openMediaOnRootForeground         (){ m_View->TriggerAction(Page::_OpenMediaOnRootForeground); }
+
+    void openMediaInNewViewNodeBackground  (){ m_View->TriggerAction(Page::_OpenMediaInNewViewNodeBackground); }
+    void openMediaInNewHistNodeBackground  (){ m_View->TriggerAction(Page::_OpenMediaInNewHistNodeBackground); }
+    void openMediaInNewDirectoryBackground (){ m_View->TriggerAction(Page::_OpenMediaInNewDirectoryBackground); }
+    void openMediaOnRootBackground         (){ m_View->TriggerAction(Page::_OpenMediaOnRootBackground); }
+
+    void openMediaInNewViewNodeThisWindow  (){ m_View->TriggerAction(Page::_OpenMediaInNewViewNodeThisWindow); }
+    void openMediaInNewHistNodeThisWindow  (){ m_View->TriggerAction(Page::_OpenMediaInNewHistNodeThisWindow); }
+    void openMediaInNewDirectoryThisWindow (){ m_View->TriggerAction(Page::_OpenMediaInNewDirectoryThisWindow); }
+    void openMediaOnRootThisWindow         (){ m_View->TriggerAction(Page::_OpenMediaOnRootThisWindow); }
+
+    void openMediaInNewViewNodeNewWindow   (){ m_View->TriggerAction(Page::_OpenMediaInNewViewNodeNewWindow); }
+    void openMediaInNewHistNodeNewWindow   (){ m_View->TriggerAction(Page::_OpenMediaInNewHistNodeNewWindow); }
+    void openMediaInNewDirectoryNewWindow  (){ m_View->TriggerAction(Page::_OpenMediaInNewDirectoryNewWindow); }
+    void openMediaOnRootNewWindow          (){ m_View->TriggerAction(Page::_OpenMediaOnRootNewWindow); }
 
     void openAllUrl    (){ m_View->TriggerAction(Page::_OpenAllUrl); }
     void openAllImage  (){ m_View->TriggerAction(Page::_OpenAllImage); }

@@ -27,6 +27,7 @@
 #include <QMenu>
 #include <QCursor>
 #include <QUrlQuery>
+#include <QWebEngineContextMenuData>
 
 #include <functional>
 #include <memory>
@@ -60,10 +61,8 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, QObject *parent)
             parent, SIGNAL(titleChanged(const QString&)));
     connect(this,   SIGNAL(statusBarMessage2(const QString&, const QString&)),
             parent, SIGNAL(statusBarMessage2(const QString&, const QString&)));
-#if QT_VERSION >= 0x050700
     connect(this,   SIGNAL(iconChanged(const QIcon&)),
             parent, SIGNAL(iconChanged(const QIcon&)));
-#endif
 
     // needless, because it's connected yet.
     //connect(this,   SIGNAL(loadStarted()),
@@ -79,9 +78,6 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, QObject *parent)
     //connect(this,   SIGNAL(selectionChanged()),
     //        parent, SIGNAL(selectionChanged()));
 
-    connect(this, SIGNAL(windowCloseRequested()),
-            this, SLOT(CloseLater()));
-
     connect(this, SIGNAL(linkHovered(const QString&)),
             this, SLOT(OnLinkHovered(const QString&)));
     connect(this, SIGNAL(featurePermissionRequested(const QUrl&, QWebEnginePage::Feature)),
@@ -94,12 +90,10 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, QObject *parent)
             this, SLOT(HandleFullScreen(QWebEngineFullScreenRequest)));
     connect(this, SIGNAL(renderProcessTerminated(RenderProcessTerminationStatus, int)),
             this, SLOT(HandleProcessTermination(RenderProcessTerminationStatus, int)));
-#if QT_VERSION >= 0x050700
     connect(this, SIGNAL(contentsSizeChanged(const QSizeF&)),
             this, SLOT(HandleContentsSizeChange(const QSizeF&)));
     connect(this, SIGNAL(scrollPositionChanged(const QPointF&)),
             this, SLOT(HandleScrollPositionChange(const QPointF&)));
-#endif
 
     // instead of this.
     //m_View = (View *)parent;
@@ -113,6 +107,8 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, QObject *parent)
 
     m_Page = new Page(this);
     m_Page->SetView(m_View);
+
+    connect(this, SIGNAL(windowCloseRequested()), m_Page, SLOT(Close()));
 
 #ifdef USE_WEBCHANNEL
     AddJsObject();
@@ -132,15 +128,11 @@ View* WebEnginePage::GetView(){
 
 WebEnginePage* WebEnginePage::createWindow(WebWindowType type){
 
-    static const QUrl blank = QUrl(QStringLiteral("about:blank"));
+    static const QUrl blank = BLANK_URL;
 
-#if QT_VERSION >= 0x050700
     View *view = type == QWebEnginePage::WebBrowserBackgroundTab
         ? OpenInNewBackground(blank)
         : OpenInNew(blank);
-#else
-    View *view = OpenInNew(blank);
-#endif
 
     if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base())){
         return w->page();
@@ -278,6 +270,7 @@ bool WebEnginePage::certificateError(const QWebEngineCertificateError& error){
             break;
         }
     }
+    default: break;
     }
     return QWebEnginePage::certificateError(error);
 }
@@ -302,6 +295,25 @@ void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level
         }
     }
 #endif
+#if QT_VERSION >= 0x050900
+    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+        QStringList args = msg.split(QStringLiteral(","));
+        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
+        if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
+        if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
+        if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
+        QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+        m_View->KeyPressEvent(&ke);
+    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+        QStringList args = msg.split(QStringLiteral(","));
+        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
+        if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
+        if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
+        if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
+        QKeyEvent ke = QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+        m_View->KeyReleaseEvent(&ke);
+    }
+#endif
     QWebEnginePage::javaScriptConsoleMessage(level, msg, lineNumber, sourceId);
 }
 
@@ -324,29 +336,10 @@ void WebEnginePage::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
     QMenu *menu = new QMenu(parent);
     menu->setToolTipsVisible(true);
 
-    QUrl linkUrl  = elem ? elem->LinkUrl()  : QUrl();
-    QUrl imageUrl = elem ? elem->ImageUrl() : QUrl();
+    bool isMedia = contextMenuData().isValid()
+        && contextMenuData().mediaType() != QWebEngineContextMenuData::MediaTypeImage;
 
-    // 'selectedText' only work for WebEngineView.
-    if(linkUrl.isEmpty() && imageUrl.isEmpty() && selectedText().isEmpty()){
-        if(m_View->CanGoBack())
-            menu->addAction(Action(Page::_Back));
-        if(m_View->CanGoForward())
-            menu->addAction(Action(Page::_Forward));
-
-        if(!View::EnableDestinationInferrer()){
-            if(m_View->CanGoBack())
-                menu->addAction(Action(Page::_Rewind));
-            menu->addAction(Action(Page::_FastForward));
-        }
-
-        if(m_View->IsLoading())
-            menu->addAction(Action(Page::_Stop));
-        else
-            menu->addAction(Action(Page::_Reload));
-    }
-
-    m_View->AddContextMenu(menu, elem);
+    m_View->AddContextMenu(menu, elem, isMedia);
 
     menu->addSeparator();
     menu->addAction(Action(Page::_InspectElement));
@@ -470,7 +463,6 @@ void WebEnginePage::HandleProcessTermination(RenderProcessTerminationStatus stat
     QTimer::singleShot(0, m_Page, SLOT(Reload()));
 }
 
-#if QT_VERSION >= 0x050700
 void WebEnginePage::HandleContentsSizeChange(const QSizeF &size){
     Q_UNUSED(size);
     m_View->RestoreScroll();
@@ -480,7 +472,6 @@ void WebEnginePage::HandleScrollPositionChange(const QPointF &pos){
     Q_UNUSED(pos);
     m_View->EmitScrollChanged();
 }
-#endif
 
 void WebEnginePage::HandleUnsupportedContent(QNetworkReply *reply){
     Q_UNUSED(reply);
@@ -491,13 +482,8 @@ void WebEnginePage::AddJsObject(){
 
     QWebChannel *channel = webChannel();
 
-#  if QT_VERSION >= 0x050700
     setWebChannel(new QWebChannel(this));
     if(channel) delete channel;
-#  else
-    //if(QWebChannel *old = webChannel()) delete old;
-    if(!channel) setWebChannel(new QWebChannel(this));
-#  endif
 
 #  ifdef USE_WEBCHANNEL
     if(m_View && m_View->GetJsObject()){
@@ -723,10 +709,6 @@ void WebEnginePage::AddBookmarklet(QPoint pos){
 
     Page::RegisterBookmarklet(tag, result);
     });
-}
-
-void WebEnginePage::CloseLater(){
-    QTimer::singleShot(0, m_Page, &Page::Close);
 }
 
 void WebEnginePage::DownloadSuggest(const QUrl& url){

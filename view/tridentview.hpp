@@ -140,16 +140,7 @@ public:
     void MouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseReleaseEvent(ev);}
     void MouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseMoveEvent(ev);}
     void MouseDoubleClickEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseDoubleClickEvent(ev);}
-    void WheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE {
-        QWheelEvent *newev = new QWheelEvent(ev->pos(),
-                                             ev->delta()/Application::WheelScrollRate(),
-                                             ev->buttons(),
-                                             ev->modifiers(),
-                                             ev->orientation());
-        wheelEvent(newev);
-        ev->setAccepted(true);
-        delete newev;
-    }
+    void WheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE { wheelEvent(ev);}
 
     QUrl GetBaseUrl() Q_DECL_OVERRIDE;
     QUrl GetCurrentBaseUrl() Q_DECL_OVERRIDE;

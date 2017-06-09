@@ -12,7 +12,6 @@
 #include <QUrl>
 #include <QDir>
 #include <QStandardPaths>
-#include <QSharedMemory>
 #include <QOpenGLContext>
 #include <QDesktopWidget>
 #include <QAuthenticator>
@@ -29,6 +28,7 @@
 #include <time.h>
 
 #if defined(Q_OS_WIN)
+#  include <QSharedMemory>
 #  include <windows.h>
 #  include "tridentview.hpp"
 #endif
@@ -60,6 +60,7 @@ namespace QProcess {
 Application *Application::m_Instance = 0;
 int Application::m_DelayFileCount = 0;
 
+static QIcon GetBrowserIcon(QString path);
 static bool ReadXMLFile(QIODevice &device, QSettings::SettingsMap &map);
 static bool WriteXMLFile(QIODevice &device, const QSettings::SettingsMap &map);
 
@@ -86,7 +87,6 @@ int         Application::m_AutoLoadInterval  = 0;
 int         Application::m_AutoSaveTimerId   = 0;
 int         Application::m_AutoLoadTimerId   = 0;
 int         Application::m_MaxBackUpGenerationCount = 0;
-double      Application::m_WheelScrollRate   = 0.0;
 QString     Application::m_DownloadDirectory = QString();
 QString     Application::m_UploadDirectory   = QString();
 QStringList Application::m_ChosenFiles       = QStringList();
@@ -225,12 +225,14 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         return;
     }
 
+#if defined(Q_OS_WIN)
     // corner-cutting prohibition of multiple launch.
     static QSharedMemory mem(SharedMemoryKey());
     if(!mem.create(1)){
         QTimer::singleShot(100, instance, &Application::quit);
         return;
     }
+#endif
 
     m_Instance = instance;
     // need?
@@ -349,11 +351,11 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
   QStandardPaths::GenericDataLocation   : "/Users/<user-name>/Library/Application Support"
   QStandardPaths::RuntimeLocation       : "/Users/<user-name>/Library/Application Support"
   QStandardPaths::ConfigLocation        : "/Users/<user-name>/Library/Preferences"
-  QStandardPaths::GenericConfigLocation : "~/Library/Preferences"
+  QStandardPaths::GenericConfigLocation : "/Users/<user-name>/Library/Preferences"
   QStandardPaths::DownloadLocation      : "/Users/<user-name>/Documents"
   QStandardPaths::GenericCacheLocation  : "/Users/<user-name>/Library/Caches"
-  QStandardPaths::AppDataLocation       : "~/Library/Application Support/<organization-name>/<application-name>"
-  QStandardPaths::AppLocalDataLocation  : "~/Library/Application Support/<organization-name>/<application-name>"
+  QStandardPaths::AppDataLocation       : "/Users/<user-name>/Library/Application Support/<organization-name>/<application-name>"
+  QStandardPaths::AppLocalDataLocation  : "/Users/<user-name>/Library/Application Support/<organization-name>/<application-name>"
 
   standardPaths on Linux:
 
@@ -1226,7 +1228,6 @@ void Application::SaveGlobalSettings(){
     s.setValue(QStringLiteral("application/@EnableAutoLoad"),           m_EnableAutoLoad);
     s.setValue(QStringLiteral("application/@AutoSaveInterval"),         m_AutoSaveInterval);
     s.setValue(QStringLiteral("application/@AutoLoadInterval"),         m_AutoLoadInterval);
-    s.setValue(QStringLiteral("application/@WheelScrollRate"),          m_WheelScrollRate);
     s.setValue(QStringLiteral("application/@MaxBackUpGenerationCount"), m_MaxBackUpGenerationCount);
     s.setValue(QStringLiteral("application/@FileSaveDirectory"),        m_DownloadDirectory);
     s.setValue(QStringLiteral("application/@FileOpenDirectory"),        m_UploadDirectory);
@@ -1294,7 +1295,6 @@ void Application::LoadGlobalSettings(){
     m_AutoSaveInterval         = s.value(QStringLiteral("application/@AutoSaveInterval"), 300000).value<int>();
     m_AutoLoadInterval         = s.value(QStringLiteral("application/@AutoLoadInterval"), 1000).value<int>();
     m_MaxBackUpGenerationCount = s.value(QStringLiteral("application/@MaxBackUpGenerationCount"), 5).value<int>();
-    m_WheelScrollRate          = s.value(QStringLiteral("application/@WheelScrollRate"), 1.0).value<double>();
     m_DownloadDirectory        = s.value(QStringLiteral("application/@FileSaveDirectory"), QString()).value<QString>();
     m_UploadDirectory          = s.value(QStringLiteral("application/@FileOpenDirectory"), QString()).value<QString>();
     m_SaveSessionCookie        = s.value(QStringLiteral("application/@SaveSessionCookie"), false).value<bool>();
@@ -1637,10 +1637,6 @@ int Application::RemoteDebuggingPort(){
     return m_RemoteDebuggingPort;
 }
 
-double Application::WheelScrollRate(){
-    return m_WheelScrollRate;
-}
-
 bool Application::EnableGoogleSuggest(){
     return m_EnableGoogleSuggest;
 }
@@ -1883,14 +1879,19 @@ QStringList Application::BackUpFileFilters(){
 
 QString Application::BaseDirectory(){
     static bool checked = false;
-    static QString dir = applicationDirPath() + QStringLiteral("/");
+    static QString dir;
     if(checked) return dir;
+
 #if defined(Q_OS_WIN)
+    dir = applicationDirPath() + QStringLiteral("/");
     // %SystemRoot% or %ProgramFiles% (UAC protected directory.)
     if(dir.startsWith(QStringLiteral("C:/Windows/")) || // <= have never seen the person who put application here but...
        dir.startsWith(QStringLiteral("C:/Program Files/")) ||
-       dir.startsWith(QStringLiteral("C:/Program Files (x86)/")))
-        dir = QStandardPaths::writableLocation(QStandardPaths::DataLocation)+QStringLiteral("/");
+       dir.startsWith(QStringLiteral("C:/Program Files (x86)/"))){
+        dir = QStandardPaths::writableLocation(QStandardPaths::DataLocation) + QStringLiteral("/");
+    }
+#else
+    dir = QStandardPaths::writableLocation(QStandardPaths::DataLocation) + QStringLiteral("/");
 #endif
     checked = true;
     return dir;
@@ -2082,7 +2083,7 @@ Application::MasterPasswordPolicy Application::GetMasterPasswordPolicy(){
 }
 
 void Application::AskMasterPasswordPolicyIfNeed(){
-    if(m_MasterPasswordPolicy == Undefined_){
+    if(m_MasterPasswordPolicy == Undefined__){
         QStringList policies;
         policies << tr("NeverAsk")
                  << tr("AskForEachLogin");
@@ -2509,6 +2510,8 @@ QString Application::BrowserPath_Sleipnir(){
 #elif defined(Q_OS_MAC)
     path = QStringLiteral("/Applications/Sleipnir.app/Contents/MacOS/Sleipnir");
     if(QFile::exists(path)) return path;
+    path = QStringLiteral("/Applications/SleipnirSE.app/Contents/MacOS/SleipnirSE");
+    if(QFile::exists(path)) return path;
 #else
     path = QStringLiteral("/usr/bin/sleipnir");
     if(QFile::exists(path)) return path;
@@ -2550,103 +2553,82 @@ QString Application::BrowserPath_Custom(){
     return QString();
 }
 
+static QIcon GetBrowserIcon(QString path){
+#if defined(Q_OS_MAC)
+    path.replace(QRegularExpression(QStringLiteral("/Contents/MacOS/.*\\Z")), QStringLiteral(""));
+#endif
+    QIcon icon = QFileIconProvider().icon(QFileInfo(path));
+    icon = QIcon(icon.pixmap(icon.availableSizes().first()));
+    return icon;
+}
+
 QIcon Application::BrowserIcon_IE(){
-    if(BrowserPath_IE().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_IE()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_IE().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_IE());
     return icon;
 }
 
 QIcon Application::BrowserIcon_Edge(){
-    if(BrowserPath_Edge().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_Edge()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_Edge().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_Edge());
     return icon;
 }
 
 QIcon Application::BrowserIcon_FF(){
-    if(BrowserPath_FF().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_FF()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_FF().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_FF());
     return icon;
 }
 
 QIcon Application::BrowserIcon_Opera(){
-    if(BrowserPath_Opera().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_Opera()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_Opera().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_Opera());
     return icon;
 }
 
 QIcon Application::BrowserIcon_OPR(){
-    if(BrowserPath_OPR().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_OPR()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_OPR().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_OPR());
     return icon;
 }
 
 QIcon Application::BrowserIcon_Safari(){
-    if(BrowserPath_Safari().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_Safari()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_Safari().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_Safari());
     return icon;
 }
 
 QIcon Application::BrowserIcon_Chrome(){
-    if(BrowserPath_Chrome().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_Chrome()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_Chrome().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_Chrome());
     return icon;
 }
 
 QIcon Application::BrowserIcon_Sleipnir(){
-    if(BrowserPath_Sleipnir().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_Sleipnir()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_Sleipnir().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_Sleipnir());
     return icon;
 }
 
 QIcon Application::BrowserIcon_Vivaldi(){
-    if(BrowserPath_Vivaldi().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_Vivaldi()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_Vivaldi().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_Vivaldi());
     return icon;
 }
 
 QIcon Application::BrowserIcon_Custom(){
-    if(BrowserPath_Custom().isEmpty()) return QIcon();
     static QIcon icon;
-    if(icon.isNull()){
-        icon = QFileIconProvider().icon(QFileInfo(BrowserPath_Custom()));
-        icon = QIcon(icon.pixmap(icon.availableSizes().first()));
-    }
+    if(!BrowserPath_Custom().isEmpty() && icon.isNull())
+        icon = GetBrowserIcon(BrowserPath_Custom());
     return icon;
 }
 

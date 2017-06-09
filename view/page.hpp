@@ -287,6 +287,26 @@ public slots:
     void OpenImageWithVivaldi();
     void OpenImageWithCustom();
 
+    void LoadMedia();
+    void OpenMedia();
+    void DownloadMedia();
+    void ToggleMediaControls();
+    void ToggleMediaLoop();
+    void ToggleMediaPlayPause();
+    void ToggleMediaMute();
+    void CopyMediaUrl();
+    void CopyMediaHtml();
+    void OpenMediaWithIE();
+    void OpenMediaWithEdge();
+    void OpenMediaWithFF();
+    void OpenMediaWithOpera();
+    void OpenMediaWithOPR();
+    void OpenMediaWithSafari();
+    void OpenMediaWithChrome();
+    void OpenMediaWithSleipnir();
+    void OpenMediaWithVivaldi();
+    void OpenMediaWithCustom();
+
     void OpenInNewViewNode();
     void OpenInNewHistNode();
     void OpenInNewDirectory();
@@ -336,6 +356,31 @@ public slots:
     void OpenImageInNewHistNodeNewWindow();
     void OpenImageInNewDirectoryNewWindow();
     void OpenImageOnRootNewWindow();
+
+    void OpenMediaInNewViewNode();
+    void OpenMediaInNewHistNode();
+    void OpenMediaInNewDirectory();
+    void OpenMediaOnRoot();
+
+    void OpenMediaInNewViewNodeForeground();
+    void OpenMediaInNewHistNodeForeground();
+    void OpenMediaInNewDirectoryForeground();
+    void OpenMediaOnRootForeground();
+
+    void OpenMediaInNewViewNodeBackground();
+    void OpenMediaInNewHistNodeBackground();
+    void OpenMediaInNewDirectoryBackground();
+    void OpenMediaOnRootBackground();
+
+    void OpenMediaInNewViewNodeThisWindow();
+    void OpenMediaInNewHistNodeThisWindow();
+    void OpenMediaInNewDirectoryThisWindow();
+    void OpenMediaOnRootThisWindow();
+
+    void OpenMediaInNewViewNodeNewWindow();
+    void OpenMediaInNewHistNodeNewWindow();
+    void OpenMediaInNewDirectoryNewWindow();
+    void OpenMediaOnRootNewWindow();
 
     View *OpenInNewViewNode(QUrl);
     View *OpenInNewHistNode(QUrl);

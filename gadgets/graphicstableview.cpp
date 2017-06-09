@@ -85,9 +85,7 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
         m_EnableCloseButton ? new CloseButton(this) : 0;
     m_CloneButton =
         m_EnableCloneButton ? new CloneButton(this) : 0;
-#if QT_VERSION >= 0x050700
     m_SoundButton = new SoundButton(this);
-#endif
 
     m_ScrollIndicator = new ScrollIndicator(this);
     m_UpDirectoryButton = new UpDirectoryButton(this);
@@ -860,18 +858,14 @@ void GraphicsTableView::SetHoveredItem(int index){
 void GraphicsTableView::SetHoveredItem(Thumbnail *thumb){
     if(m_CloseButton) m_CloseButton->SetItem(thumb);
     if(m_CloneButton) m_CloneButton->SetItem(thumb);
-#if QT_VERSION >= 0x050700
     if(m_SoundButton) m_SoundButton->SetItem(thumb);
-#endif
     SetHoveredItem(m_DisplayThumbnails.indexOf(thumb));
 }
 
 void GraphicsTableView::SetHoveredItem(NodeTitle *title){
     if(m_CloseButton) m_CloseButton->SetItem(title);
     if(m_CloneButton) m_CloneButton->SetItem(title);
-#if QT_VERSION >= 0x050700
     if(m_SoundButton) m_SoundButton->SetItem(title);
-#endif
     SetHoveredItem(m_DisplayNodeTitles.indexOf(title));
 }
 
@@ -1051,6 +1045,7 @@ void GraphicsTableView::ResizeNotify(QSize size){
 }
 
 void GraphicsTableView::Resize(QSizeF size){
+    if(!scene()) return;
     scene()->setSceneRect(0.0, 0.0, size.width(), size.height());
     m_Size = size;
     if(IsDisplayingNode()){
@@ -2120,7 +2115,7 @@ bool GraphicsTableView::ThumbList_MakeDirectoryWithSameDomainNode(){
     QMap<QString, NodeList> groups;
 
     foreach(Node *nd, m_CurrentNode->GetSiblings()){
-        // QUrl(QStringLiteral("about:blank")) and invalid url has empty host,
+        // BLANK_URL and invalid url has empty host,
         // so empty title directory will be made.
         if(!nd->IsDirectory()) groups[nd->GetUrl().host()] << nd;
     }
@@ -2353,6 +2348,7 @@ bool GraphicsTableView::ThumbList_ToggleTrash(){
         return true;
     }
     case AccessKey: break;
+    default: break;
     }
     return false;
 }
@@ -2503,6 +2499,7 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
         }
         break;
     }
+    default: break;
     }
 
     ThumbList_RefreshNoScroll();
@@ -3645,7 +3642,6 @@ void CloneButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     ev->setAccepted(true);
 }
 
-#if QT_VERSION >= 0x050700
 SoundButton::SoundButton(QGraphicsItem *parent)
     : GraphicsButton(parent)
 {
@@ -3716,7 +3712,6 @@ void SoundButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     }
     ev->setAccepted(true);
 }
-#endif //if QT_VERSION >= 0x050700
 
 UpDirectoryButton::UpDirectoryButton(QGraphicsItem *parent)
     : GraphicsButton(parent)

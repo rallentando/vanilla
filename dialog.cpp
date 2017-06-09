@@ -31,7 +31,7 @@ ModalDialog::ModalDialog()
     , m_InputWidget(0)
     , m_HotSpot(QPoint())
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+    setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_ShowModal);
     setAttribute(Qt::WA_TranslucentBackground);
 }
@@ -339,6 +339,8 @@ void ModalDialog::Authentication(QAuthenticator *authenticator){
     if(dialog->Execute(userNameEdit)){
         authenticator->setUser(userNameEdit->text());
         authenticator->setPassword(passwordEdit->text());
+    } else {
+        *authenticator = QAuthenticator();
     }
 }
 
@@ -449,7 +451,7 @@ ModelessDialog::ModelessDialog()
     , m_TimerId(0)
     , m_CallBack([](bool){})
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+    setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
 }
 

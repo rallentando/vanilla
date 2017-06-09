@@ -895,6 +895,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
   //case Gadgets::_FastForward: action->setIcon(QIcon(":/resources/menu/fastforward.png")); braek;
   //case Gadgets::_Reload:      action->setIcon(QIcon(":/resources/menu/reload.png"));      break;
   //case Gadgets::_Stop:        action->setIcon(QIcon(":/resources/menu/stop.png"));        break;
+    default: break;
     }
 
     switch(a){
@@ -1086,6 +1087,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(SwitchNodeCollectionTypeReverse, tr("SwitchNodeCollectionTypeReverse"));
 
 #undef  DEFINE_ACTION
+    default: break;
     }
     switch(a){
 
@@ -1151,6 +1153,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         action->setIcon(Application::BrowserIcon_Custom());
         action->setText(tr("OpenNodeWith%1").arg(Application::BrowserPath_Custom().split("/").last().replace(".exe", "")));
         break;
+    default: break;
     }
     return action;
 }

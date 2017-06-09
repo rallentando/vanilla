@@ -12,6 +12,8 @@
 
 #include "view.hpp"
 
+#include <float.h>
+
 #include <QToolBar>
 #include <QGraphicsObject>
 
@@ -84,6 +86,12 @@ public:
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
 
     QList<LayerItem*> &GetLayerList(){ return m_LayerList;}
+
+    template <class T> T ScaleByDevice(T t) const {
+        if(logicalDpiY() > 72)
+            return  t * logicalDpiY() / 96;
+        return t;
+    }
 
     void AddTreeBarMenu(QMenu *menu);
     QMenu *TreeBarMenu();
@@ -260,24 +268,18 @@ public:
         ClosePressed,
         CloneHovered,
         ClonePressed,
-#if QT_VERSION >= 0x050700
         SoundHovered,
         SoundPressed,
-#endif
     } m_ButtonState;
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE;
     QRectF boundingRect() const Q_DECL_OVERRIDE;
     QRectF CloseButtonRect() const;
     QRectF CloneButtonRect() const;
-#if QT_VERSION >= 0x050700
     QRectF SoundButtonRect() const;
-#endif
     QRect CloseIconRect() const;
     QRect CloneIconRect() const;
-#if QT_VERSION >= 0x050700
     QRect SoundIconRect() const;
-#endif
 
     int GetNest() const;
     void SetNest(int);

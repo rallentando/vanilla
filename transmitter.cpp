@@ -30,10 +30,12 @@ void Transmitter::SendCommand(QString command){
     QByteArray block;
     QDataStream out(&block, QIODevice::WriteOnly);
 
-#if QT_VERSION >= 0x050700
-    out.setVersion(QDataStream::Qt_5_7);
+#if QT_VERSION >= 0x050900
+    out.setVersion(QDataStream::Qt_5_9);
+#elif QT_VERSION >= 0x050800
+    out.setVersion(QDataStream::Qt_5_8);
 #else
-    out.setVersion(QDataStream::Qt_5_6);
+    out.setVersion(QDataStream::Qt_5_7);
 #endif
 
     out << QString(command);

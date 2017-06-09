@@ -97,10 +97,8 @@ public slots:
     void HandleProxyAuthentication(const QUrl&, QAuthenticator*, const QString&);
     void HandleFullScreen(QWebEngineFullScreenRequest request);
     void HandleProcessTermination(RenderProcessTerminationStatus status, int code);
-#if QT_VERSION >= 0x050700
     void HandleContentsSizeChange(const QSizeF &size);
     void HandleScrollPositionChange(const QPointF &pos);
-#endif
 
     void HandleUnsupportedContent(QNetworkReply *reply);
 
@@ -122,8 +120,6 @@ public slots:
     void InspectElement();
     void AddSearchEngine(QPoint);
     void AddBookmarklet(QPoint);
-
-    void CloseLater();
 
 signals:
     void statusBarMessage(const QString&);

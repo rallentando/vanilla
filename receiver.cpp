@@ -98,7 +98,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     : QWidget(purge ? 0 : parent)
 {
     if(purge){
-        setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+        setWindowFlags(Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground);
     }
 
@@ -252,7 +252,7 @@ bool Receiver::IsPurged() const {
 void Receiver::Purge(){
     bool v = isVisible();
     setParent(0);
-    setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+    setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     if(v) show();
     else hide();
@@ -386,10 +386,12 @@ void Receiver::ForeignCommandReceived(){
 
     QDataStream in(clientConnection);
 
-#if QT_VERSION >= 0x050700
-    in.setVersion(QDataStream::Qt_5_7);
+#if QT_VERSION >= 0x050900
+    in.setVersion(QDataStream::Qt_5_9);
+#elif QT_VERSION >= 0x050800
+    in.setVersion(QDataStream::Qt_5_8);
 #else
-    in.setVersion(QDataStream::Qt_5_6);
+    in.setVersion(QDataStream::Qt_5_7);
 #endif
 
     if(clientConnection->bytesAvailable() < static_cast<int>(sizeof(quint16))){
@@ -678,6 +680,26 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){                       emit TriggerElementAction(Page::_OpenImageWithVivaldi);              return; }
     if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){                        emit TriggerElementAction(Page::_OpenImageWithCustom);               return; }
 
+    if(Application::ExactMatch(QStringLiteral("[lL]oad[mM]edia"), cmd)){                                                  emit TriggerElementAction(Page::_LoadMedia);                         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia"), cmd)){                                                  emit TriggerElementAction(Page::_OpenMedia);                         return; }
+    if(Application::ExactMatch(QStringLiteral("[dD]ownload[mM]edia"), cmd)){                                              emit TriggerElementAction(Page::_DownloadMedia);                     return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]oggle[mM]edia[cC]ontrols"), cmd)){                                     emit TriggerElementAction(Page::_ToggleMediaControls);               return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]oggle[mM]edia[lL]oop"), cmd)){                                         emit TriggerElementAction(Page::_ToggleMediaLoop);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]oggle[mM]edia[pP]lay[pP]ause"), cmd)){                                 emit TriggerElementAction(Page::_ToggleMediaPlayPause);              return; }
+    if(Application::ExactMatch(QStringLiteral("[tT]oggle[mM]edia[mM]ute"), cmd)){                                         emit TriggerElementAction(Page::_ToggleMediaMute);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[mM]edia[uU]rl"), cmd)){                                            emit TriggerElementAction(Page::_CopyMediaUrl);                      return; }
+    if(Application::ExactMatch(QStringLiteral("[cC]opy[mM]edia[hH]tml"), cmd)){                                           emit TriggerElementAction(Page::_CopyMediaHtml);                     return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){ emit TriggerElementAction(Page::_OpenMediaWithIE);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[eE]dge"), cmd)){                          emit TriggerElementAction(Page::_OpenMediaWithEdge);                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){          emit TriggerElementAction(Page::_OpenMediaWithFF);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[oO]pera"), cmd)){                         emit TriggerElementAction(Page::_OpenMediaWithOpera);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){                     emit TriggerElementAction(Page::_OpenMediaWithOPR);                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[sS]afari"), cmd)){                        emit TriggerElementAction(Page::_OpenMediaWithSafari);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){                        emit TriggerElementAction(Page::_OpenMediaWithChrome);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){                      emit TriggerElementAction(Page::_OpenMediaWithSleipnir);             return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){                       emit TriggerElementAction(Page::_OpenMediaWithVivaldi);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){                        emit TriggerElementAction(Page::_OpenMediaWithCustom);               return; }
+
     if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode"), cmd)){                 emit TriggerElementAction(Page::_OpenInNewViewNode);                 return; }
     if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode"), cmd)){                 emit TriggerElementAction(Page::_OpenInNewHistNode);                 return; }
     if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[dD]irectory"), cmd)){                   emit TriggerElementAction(Page::_OpenInNewDirectory);                return; }
@@ -718,6 +740,26 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[hH]ist[nN]ode[nN]ew[wW]indow"), cmd)){      emit TriggerElementAction(Page::_OpenImageInNewHistNodeNewWindow);   return; }
     if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[iI]n[nN]ew[dD]irectory[nN]ew[wW]indow"), cmd)){        emit TriggerElementAction(Page::_OpenImageInNewDirectoryNewWindow);  return; }
     if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage[oO]n[rR]oot[nN]ew[wW]indow"), cmd)){                   emit TriggerElementAction(Page::_OpenImageOnRootNewWindow);          return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[vV]iew[nN]ode"), cmd)){                     emit TriggerElementAction(Page::_OpenMediaInNewViewNode);            return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[hH]ist[nN]ode"), cmd)){                     emit TriggerElementAction(Page::_OpenMediaInNewHistNode);            return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[dD]irectory"), cmd)){                       emit TriggerElementAction(Page::_OpenMediaInNewDirectory);           return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[oO]n[rR]oot"), cmd)){                                  emit TriggerElementAction(Page::_OpenMediaOnRoot);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[vV]iew[nN]ode[fF]oreground"), cmd)){        emit TriggerElementAction(Page::_OpenMediaInNewViewNodeForeground);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[hH]ist[nN]ode[fF]oreground"), cmd)){        emit TriggerElementAction(Page::_OpenMediaInNewHistNodeForeground);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[dD]irectory[fF]oreground"), cmd)){          emit TriggerElementAction(Page::_OpenMediaInNewDirectoryForeground); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[oO]n[rR]oot[fF]oreground"), cmd)){                     emit TriggerElementAction(Page::_OpenMediaOnRootForeground);         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[vV]iew[nN]ode[bB]ackground"), cmd)){        emit TriggerElementAction(Page::_OpenMediaInNewViewNodeBackground);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[hH]ist[nN]ode[bB]ackground"), cmd)){        emit TriggerElementAction(Page::_OpenMediaInNewHistNodeBackground);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[dD]irectory[bB]ackground"), cmd)){          emit TriggerElementAction(Page::_OpenMediaInNewDirectoryBackground); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[oO]n[rR]oot[bB]ackground"), cmd)){                     emit TriggerElementAction(Page::_OpenMediaOnRootBackground);         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[vV]iew[nN]ode[tT]his[wW]indow"), cmd)){     emit TriggerElementAction(Page::_OpenMediaInNewViewNodeThisWindow);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[hH]ist[nN]ode[tT]his[wW]indow"), cmd)){     emit TriggerElementAction(Page::_OpenMediaInNewHistNodeThisWindow);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[dD]irectory[tT]his[wW]indow"), cmd)){       emit TriggerElementAction(Page::_OpenMediaInNewDirectoryThisWindow); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[oO]n[rR]oot[tT]his[wW]indow"), cmd)){                  emit TriggerElementAction(Page::_OpenMediaOnRootThisWindow);         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[vV]iew[nN]ode[nN]ew[wW]indow"), cmd)){      emit TriggerElementAction(Page::_OpenMediaInNewViewNodeNewWindow);   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[hH]ist[nN]ode[nN]ew[wW]indow"), cmd)){      emit TriggerElementAction(Page::_OpenMediaInNewHistNodeNewWindow);   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[iI]n[nN]ew[dD]irectory[nN]ew[wW]indow"), cmd)){        emit TriggerElementAction(Page::_OpenMediaInNewDirectoryNewWindow);  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia[oO]n[rR]oot[nN]ew[wW]indow"), cmd)){                   emit TriggerElementAction(Page::_OpenMediaOnRootNewWindow);          return; }
 
     if(Application::ExactMatch(QStringLiteral("[dD]eactivate"), cmd)){                                         emit Deactivate();                      return; }
     if(Application::ExactMatch(QStringLiteral("[rR]efresh"), cmd)){                                            emit Refresh();                         return; }
@@ -796,7 +838,7 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[sS]witch[nN]ode[cC]ollection[tT]ype[rR]everse"), cmd)){        emit SwitchNodeCollectionTypeReverse(); return; }
 
     if(Application::ExactMatch(QStringLiteral("[rR]econf(?:ig(?:ure)?)?"), cmd)){                              emit Reconfigure();                     return; }
-    if(Application::ExactMatch(QStringLiteral("[bB]lank"), cmd)){                                              emit OpenUrl(QUrl(QStringLiteral("about:blank"))); return; }
+    if(Application::ExactMatch(QStringLiteral("[bB]lank"), cmd)){                                              emit OpenUrl(BLANK_URL);                return; }
 
     if(list.isEmpty() && Page::GetBookmarkletMap().contains(cmd)){
 
@@ -814,7 +856,7 @@ void Receiver::ReceiveCommand(QString cmd){
     } else if(Application::ExactMatch(QStringLiteral("[lL]oad"), cmd)){
 
         QString args = list.join(QStringLiteral(" "));
-        if(args == QStringLiteral("blank")) emit OpenUrl(QUrl(QStringLiteral("about:blank")));
+        if(args == QStringLiteral("blank")) emit OpenUrl(BLANK_URL);
         else                emit OpenUrl(QUrl(args));
 
     } else if(Application::ExactMatch(QStringLiteral("[qQ]uery"), cmd)){

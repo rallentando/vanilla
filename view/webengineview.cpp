@@ -14,6 +14,7 @@
 #include <QWebEngineView>
 #include <QWebEnginePage>
 #include <QWebEngineHistory>
+#include <QWebEngineContextMenuData>
 #include <QNetworkRequest>
 #include <QDir>
 #include <QDrag>
@@ -36,32 +37,16 @@
 #include "application.hpp"
 #include "mainwindow.hpp"
 
-namespace {
-    inline QPoint ToPoint(QPoint p){
-        return p;
-    }
-
-    inline QSize ToSize(QSize s){
-        return s;
-    }
-
-    template <class T>
-    QPoint LocalPos(T *t){
-        return t->pos();
-    }
-
-    template <class T>
-    QPoint GlobalPos(T *t){
-        return t->globalPos();
-    }
-}
-
 QMap<View*, QUrl> WebEngineView::m_InspectorTable = QMap<View*, QUrl>();
 
 WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
     : View(parent, id, set)
     , QWebEngineView(TreeBank::PurgeView() ? 0 : static_cast<QWidget*>(parent))
 {
+#if QT_VERSION >= 0x050900
+    SetUpEventFilterInstaller();
+#endif
+
     Initialize();
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
     m_Page = new WebEnginePage(nam, this);
@@ -69,26 +54,21 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
     setPage(page());
 
     if(TreeBank::PurgeView()){
-        setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+        setWindowFlags(Qt::FramelessWindowHint);
     } else {
         if(parent) setParent(parent);
     }
     setMouseTracking(true);
     setAcceptDrops(true);
+    setAttribute(Qt::WA_AcceptTouchEvents);
 
     m_Inspector = 0;
     m_PreventScrollRestoration = false;
 #ifdef PASSWORD_MANAGER
     m_PreventAuthRegistration = false;
 #endif
-#if QT_VERSION >= 0x050700
     connect(this, SIGNAL(iconChanged(const QIcon&)),
             this, SLOT(OnIconChanged(const QIcon&)));
-#else
-    m_Icon = QIcon();
-    connect(this, SIGNAL(iconUrlChanged(const QUrl&)),
-            this, SLOT(UpdateIcon(const QUrl&)));
-#endif
 }
 
 WebEngineView::~WebEngineView(){
@@ -96,6 +76,36 @@ WebEngineView::~WebEngineView(){
     m_InspectorTable.remove(this);
     if(m_Inspector) m_Inspector->deleteLater();
 }
+
+#if QT_VERSION >= 0x050900
+void WebEngineView::SetUpEventFilterInstaller(){
+    static bool checked = false;
+    if(checked) return;
+    checked = true;
+
+    connect(Application::GetInstance(), &Application::focusChanged, [](QWidget*, QWidget* widget){
+
+        if(widget && widget->parentWidget() &&
+           0 == strcmp(widget->metaObject()->className(),
+                       "QtWebEngineCore::RenderWidgetHostViewQtDelegateWidget")){
+
+            if(WebEngineView *wev = qobject_cast<WebEngineView*>(widget->parentWidget())){
+
+                bool haveEventEater = false;
+
+                foreach(QObject *obj, widget->children()){
+                    if(0 == strcmp(obj->metaObject()->className(), "EventEater")){
+                        haveEventEater = true;
+                        break;
+                    }
+                }
+                if(!haveEventEater)
+                    widget->installEventFilter(new EventEater(wev, widget));
+            }
+        }
+    });
+}
+#endif
 
 QWebEngineView *WebEngineView::base(){
     return static_cast<QWebEngineView*>(this);
@@ -232,11 +242,6 @@ void WebEngineView::OnLoadStarted(){
     emit statusBarMessage(tr("Started loading."));
     m_PreventScrollRestoration = false;
     AssignInspector();
-
-#if QT_VERSION < 0x050700
-    if(m_Icon.isNull() && url() != QUrl(QStringLiteral("about:blank")))
-        UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
-#endif
 }
 
 void WebEngineView::OnLoadProgress(int progress){
@@ -274,9 +279,8 @@ void WebEngineView::OnLoadFinished(bool ok){
         (page()->profile()->storageName() +
          QStringLiteral(":") + url().host());
 
-    if(!data.isEmpty()){
+    if(!data.isEmpty())
         page()->runJavaScript(DecorateFormFieldJsCode(data));
-    }
 #endif //ifdef PASSWORD_MANAGER
 
     if(visible() && m_TreeBank &&
@@ -312,7 +316,7 @@ void WebEngineView::EmitScrollChanged(){
 }
 
 void WebEngineView::CallWithScroll(PointFCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank"))){
+    if(!page() || url().isEmpty() || url() == BLANK_URL){
         // sometime cause crash.
         //callBack(QPointF(0.5f, 0.5f));
         return;
@@ -350,12 +354,7 @@ QPointF WebEngineView::GetScroll(){
 
 void WebEngineView::SetScroll(QPointF pos){
     if(!page()) return;
-    page()->runJavaScript
-        (SetScrollRatioPointJsCode(pos), [this](QVariant){
-#if QT_VERSION < 0x050700
-            EmitScrollChanged();
-#endif
-        });
+    page()->runJavaScript(SetScrollRatioPointJsCode(pos), [](QVariant){});
 }
 
 bool WebEngineView::SaveScroll(){
@@ -405,8 +404,20 @@ bool WebEngineView::SaveHistory(){
 
 bool WebEngineView::RestoreHistory(){
     if(!GetHistNode()) return false;
+
     QByteArray ba = GetHistNode()->GetHistoryData();
     if(!ba.isEmpty()){
+
+        // source view cant be loaded from history stream...
+        HistNode *hn = GetHistNode();
+        if(hn->GetTitle().startsWith(QStringLiteral("view-source:"))){
+            if(QStringLiteral("http://") + hn->GetTitle().mid(12) == hn->GetUrl().toString())
+                Load(QStringLiteral("view-source:http://") + hn->GetTitle().mid(12));
+            else if(hn->GetTitle().mid(12) == hn->GetUrl().toString())
+                Load(hn->GetTitle());
+            return true;
+        }
+
         QDataStream stream(&ba, QIODevice::ReadOnly);
         stream >> (*history());
         return history()->count() > 0;
@@ -424,11 +435,7 @@ bool WebEngineView::SeekText(const QString &str, View::FindFlags opt){
     if(opt & CaseSensitively) flags |= QWebEnginePage::FindCaseSensitively;
 
     bool ret = true; // dummy value.
-    QWebEngineView::findText(str, flags, [this](bool){
-#if QT_VERSION < 0x050700
-        EmitScrollChanged();
-#endif
-    });
+    QWebEngineView::findText(str, flags, [](bool){});
     return ret;
 }
 
@@ -477,34 +484,9 @@ void WebEngineView::AssignInspector(){
     });
 }
 
-#if QT_VERSION >= 0x050700
 void WebEngineView::OnIconChanged(const QIcon &icon){
     Application::RegisterIcon(url().host(), icon);
 }
-#else
-void WebEngineView::UpdateIcon(const QUrl &iconUrl){
-    m_Icon = QIcon();
-    if(!page()) return;
-    QString host = url().host();
-    QNetworkRequest req(iconUrl);
-    DownloadItem *item = NetworkController::Download
-        (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
-         req, NetworkController::ToVariable);
-
-    if(!item) return;
-
-    item->setParent(base());
-
-    connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
-        QPixmap pixmap;
-        if(pixmap.loadFromData(result)){
-            QIcon icon = QIcon(pixmap);
-            Application::RegisterIcon(host, icon);
-            if(url().host() == host) m_Icon = icon;
-        }
-    });
-}
-#endif
 
 void WebEngineView::Copy(){
     if(page()) page()->triggerAction(QWebEnginePage::Copy);
@@ -532,19 +514,11 @@ void WebEngineView::SelectAll(){
 
 void WebEngineView::Unselect(){
     if(page()){
-#if QT_VERSION >= 0x050700
         page()->triggerAction(QWebEnginePage::Unselect);
         page()->runJavaScript(QStringLiteral(
             "(function(){\n"
           VV"    document.activeElement.blur();\n"
           VV"}());"));
-#else
-        page()->runJavaScript(QStringLiteral(
-            "(function(){\n"
-          VV"    document.activeElement.blur();\n"
-          VV"    getSelection().removeAllRanges();\n"
-          VV"}());"));
-#endif
     }
 }
 
@@ -565,8 +539,6 @@ void WebEngineView::StopAndUnselect(){
 }
 
 void WebEngineView::Print(){
-#if QT_VERSION >= 0x050700
-
     if(!page()) return;
 
     QString filename = ModalDialog::GetSaveFileName_
@@ -600,13 +572,10 @@ void WebEngineView::Print(){
 
         });
     }
-#endif
 }
 
 void WebEngineView::Save(){
-#if QT_VERSION >= 0x050700
     if(page()) page()->triggerAction(QWebEnginePage::SavePage);
-#endif
 }
 
 void WebEngineView::ZoomIn(){
@@ -619,6 +588,26 @@ void WebEngineView::ZoomOut(){
     float zoom = PrepareForZoomOut();
     setZoomFactor(static_cast<qreal>(zoom));
     emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
+}
+
+void WebEngineView::ToggleMediaControls(){
+    if(page() && page()->contextMenuData().isValid())
+        page()->triggerAction(QWebEnginePage::ToggleMediaControls);
+}
+
+void WebEngineView::ToggleMediaLoop(){
+    if(page() && page()->contextMenuData().isValid())
+         page()->triggerAction(QWebEnginePage::ToggleMediaLoop);
+}
+
+void WebEngineView::ToggleMediaPlayPause(){
+    if(page() && page()->contextMenuData().isValid())
+        page()->triggerAction(QWebEnginePage::ToggleMediaPlayPause);
+}
+
+void WebEngineView::ToggleMediaMute(){
+    if(page() && page()->contextMenuData().isValid())
+        page()->triggerAction(QWebEnginePage::ToggleMediaMute);
 }
 
 void WebEngineView::ExitFullScreen(){
@@ -668,6 +657,37 @@ void WebEngineView::showEvent(QShowEvent *ev){
 }
 
 void WebEngineView::keyPressEvent(QKeyEvent *ev){
+#if QT_VERSION >= 0x050900
+    if(GetDisplayObscured()){
+        if(ev->key() == Qt::Key_Escape || ev->key() == Qt::Key_F11){
+            ExitFullScreen();
+            ev->setAccepted(true);
+            return;
+        }
+    }
+
+#  ifdef PASSWORD_MANAGER
+    if(ev->modifiers() & Qt::ControlModifier &&
+       ev->key() == Qt::Key_Return){
+
+        QString data = Application::GetAuthData
+            (page()->profile()->storageName() +
+             QStringLiteral(":") + url().host());
+
+        if(!data.isEmpty()){
+            m_PreventAuthRegistration = true;
+            page()->runJavaScript
+                (SubmitFormDataJsCode(data),
+                 [this](QVariant){
+                    m_PreventAuthRegistration = false;
+                });
+            ev->setAccepted(true);
+            return;
+        }
+    }
+#  endif //ifdef PASSWORD_MANAGER
+#endif //if QT_VERSION >= 0x050900
+
     // all key events are ignored, if input method is activated.
     // so input method specific keys are accepted.
 
@@ -693,9 +713,14 @@ void WebEngineView::keyPressEvent(QKeyEvent *ev){
         m_PreventScrollRestoration = true;
     }
 
+#if QT_VERSION < 0x050900
     QWebEngineView::keyPressEvent(ev);
+#endif
 
-    if(!ev->isAccepted() &&
+    if(
+#if QT_VERSION < 0x050900
+       !ev->isAccepted() &&
+#endif
        !Application::IsOnlyModifier(ev)){
 
         ev->setAccepted(TriggerKeyEvent(ev));
@@ -704,24 +729,6 @@ void WebEngineView::keyPressEvent(QKeyEvent *ev){
 
 void WebEngineView::keyReleaseEvent(QKeyEvent *ev){
     QWebEngineView::keyReleaseEvent(ev);
-
-#if QT_VERSION < 0x050700
-    int k = ev->key();
-
-    if(k == Qt::Key_Space ||
-     //k == Qt::Key_Up ||
-     //k == Qt::Key_Down ||
-     //k == Qt::Key_Right ||
-     //k == Qt::Key_Left ||
-       k == Qt::Key_PageUp ||
-       k == Qt::Key_PageDown ||
-       k == Qt::Key_Home ||
-       k == Qt::Key_End){
-
-        bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-        QTimer::singleShot(animated ? 500 : 100, this, &WebEngineView::EmitScrollChanged);
-    }
-#endif
 }
 
 void WebEngineView::resizeEvent(QResizeEvent *ev){
@@ -729,6 +736,9 @@ void WebEngineView::resizeEvent(QResizeEvent *ev){
 }
 
 void WebEngineView::contextMenuEvent(QContextMenuEvent *ev){
+    SharedWebElement elem = m_ClickedElement;
+    GestureAborted(); // resets 'm_ClickedElement'.
+    page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos());
     ev->setAccepted(true);
 }
 
@@ -745,7 +755,7 @@ void WebEngineView::mouseMoveEvent(QMouseEvent *ev){
     if(ev->buttons() & Qt::RightButton &&
        !m_GestureStartedPos.isNull()){
 
-        GestureMoved(LocalPos(ev));
+        GestureMoved(ev->pos());
         QString gesture = GestureToString(m_Gesture);
         QString action =
             !m_RightGestureMap.contains(gesture)
@@ -775,7 +785,7 @@ void WebEngineView::mouseMoveEvent(QMouseEvent *ev){
         !m_ClickedElement->IsNull() &&
         !m_ClickedElement->IsEditableElement())){
 
-        if(QLineF(LocalPos(ev), m_GestureStartedPos).length() < 2){
+        if(QLineF(ev->pos(), m_GestureStartedPos).length() < 2){
             // gesture not aborted.
             QWebEngineView::mouseMoveEvent(ev);
             ev->setAccepted(false);
@@ -810,7 +820,7 @@ void WebEngineView::mouseMoveEvent(QMouseEvent *ev){
         QRect rect = m_HadSelection
             ? m_SelectionRegion.boundingRect()
             : m_ClickedElement->Rectangle().intersected(QRect(QPoint(), size()));
-        QPoint pos = LocalPos(ev) - rect.topLeft();
+        QPoint pos = ev->pos() - rect.topLeft();
 
         if(pixmap.width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
            pixmap.height() > MAX_DRAGGING_PIXMAP_HEIGHT){
@@ -835,7 +845,7 @@ void WebEngineView::mouseMoveEvent(QMouseEvent *ev){
                 mime->setImageData(element.toImage());
         }
         if(m_EnableDragHackLocal){
-            GestureMoved(LocalPos(ev));
+            GestureMoved(ev->pos());
         } else {
             GestureAborted();
         }
@@ -865,7 +875,7 @@ void WebEngineView::mousePressEvent(QMouseEvent *ev){
 
         QString str = m_MouseMap[mouse];
         if(!str.isEmpty()){
-            if(!View::TriggerAction(str, LocalPos(ev))){
+            if(!View::TriggerAction(str, ev->pos())){
                 ev->setAccepted(false);
                 return;
             }
@@ -875,7 +885,7 @@ void WebEngineView::mousePressEvent(QMouseEvent *ev){
         }
     }
 
-    GestureStarted(LocalPos(ev));
+    GestureStarted(ev->pos());
     QWebEngineView::mousePressEvent(ev);
     ev->setAccepted(false);
 }
@@ -923,21 +933,25 @@ void WebEngineView::mouseReleaseEvent(QMouseEvent *ev){
     if(ev->button() == Qt::RightButton){
 
         if(!m_Gesture.isEmpty()){
-            GestureFinished(LocalPos(ev), ev->button());
+            GestureFinished(ev->pos(), ev->button());
         } else if(!m_GestureStartedPos.isNull()){
-            SharedWebElement elem = m_ClickedElement;
-            GestureAborted(); // resets 'm_ClickedElement'.
-            page()->DisplayContextMenu(m_TreeBank, elem, LocalPos(ev), GlobalPos(ev));
+            // transfer event to contextMenuEvent.
+            ev->setAccepted(false);
+            return;
         }
         ev->setAccepted(true);
         return;
     }
 
-    GestureAborted();
-    QWebEngineView::mouseReleaseEvent(ev);
-#if QT_VERSION < 0x050700
-    EmitScrollChanged();
+#if QT_VERSION >= 0x050900
+    // since Qt5.9, mouseReleaseEvent is called when dropping.
+    if(ev->button() == Qt::LeftButton && !m_Gesture.isEmpty())
+        ; // do nothing.
+    else
 #endif
+        GestureAborted();
+
+    QWebEngineView::mouseReleaseEvent(ev);
     ev->setAccepted(false);
 }
 
@@ -957,7 +971,7 @@ void WebEngineView::dragEnterEvent(QDragEnterEvent *ev){
 void WebEngineView::dragMoveEvent(QDragMoveEvent *ev){
     if(m_EnableDragHackLocal && !m_GestureStartedPos.isNull()){
 
-        GestureMoved(LocalPos(ev));
+        GestureMoved(ev->pos());
         QString gesture = GestureToString(m_Gesture);
         QString action =
             !m_LeftGestureMap.contains(gesture)
@@ -973,7 +987,7 @@ void WebEngineView::dragMoveEvent(QDragMoveEvent *ev){
 
 void WebEngineView::dropEvent(QDropEvent *ev){
     emit statusBarMessage(QString());
-    QPoint pos = LocalPos(ev);
+    QPoint pos = ev->pos();
     QList<QUrl> urls = ev->mimeData()->urls();
     QObject *source = ev->source();
     QWidget *widget = this;
@@ -1026,6 +1040,7 @@ void WebEngineView::dropEvent(QDropEvent *ev){
         ; // do nothing.
     else
         QWebEngineView::dropEvent(ev);
+
     ev->setAccepted(true);
 }
 
@@ -1038,34 +1053,8 @@ void WebEngineView::dragLeaveEvent(QDragLeaveEvent *ev){
 void WebEngineView::wheelEvent(QWheelEvent *ev){
     // wheel event is called twice on Qt5.7.
     // senders are EventEater and QWebEngineView.
-#if QT_VERSION < 0x050700
-    QString wheel;
-    bool up = ev->delta() > 0;
-
-    Application::AddModifiersToString(wheel, ev->modifiers());
-    Application::AddMouseButtonsToString(wheel, ev->buttons());
-    Application::AddWheelDirectionToString(wheel, up);
-
-    if(m_MouseMap.contains(wheel)){
-
-        QString str = m_MouseMap[wheel];
-        if(!str.isEmpty()){
-            GestureAborted();
-            View::TriggerAction(str, LocalPos(ev));
-        }
-        ev->setAccepted(true);
-
-    } else
-#endif
-    {
-        m_PreventScrollRestoration = true;
-        ev->setAccepted(false);
-    }
-
-#if QT_VERSION < 0x050700
-    bool animated = page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-    QTimer::singleShot(animated ? 500 : 100, this, &WebEngineView::EmitScrollChanged);
-#endif
+    m_PreventScrollRestoration = true;
+    ev->setAccepted(false);
 }
 
 void WebEngineView::focusInEvent(QFocusEvent *ev){
@@ -1102,7 +1091,7 @@ bool WebEngineView::nativeEvent(const QByteArray &eventType, void *message, long
 #endif
 
 void WebEngineView::CallWithGotBaseUrl(UrlCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+    if(!page() || url().isEmpty() || url() == BLANK_URL)
         return callBack(QUrl());
 
     page()->runJavaScript
@@ -1112,7 +1101,7 @@ void WebEngineView::CallWithGotBaseUrl(UrlCallBack callBack){
 }
 
 void WebEngineView::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+    if(!page() || url().isEmpty() || url() == BLANK_URL)
         return callBack(QUrl());
 
     page()->runJavaScript
@@ -1123,7 +1112,7 @@ void WebEngineView::CallWithGotCurrentBaseUrl(UrlCallBack callBack){
 
 void WebEngineView::CallWithFoundElements(Page::FindElementsOption option,
                                           WebElementListCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+    if(!page() || url().isEmpty() || url() == BLANK_URL)
         return callBack(SharedWebElementList());
 
     page()->runJavaScript
@@ -1152,7 +1141,7 @@ void WebEngineView::CallWithFoundElements(Page::FindElementsOption option,
 }
 
 void WebEngineView::CallWithHitElement(const QPoint &pos, WebElementCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull())
+    if(!page() || url().isEmpty() || url() == BLANK_URL || pos.isNull())
         return callBack(SharedWebElement());
 
     page()->runJavaScript
@@ -1165,7 +1154,7 @@ void WebEngineView::CallWithHitElement(const QPoint &pos, WebElementCallBack cal
 }
 
 void WebEngineView::CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull())
+    if(!page() || url().isEmpty() || url() == BLANK_URL || pos.isNull())
         return callBack(QUrl());
 
     page()->runJavaScript
@@ -1175,7 +1164,7 @@ void WebEngineView::CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack){
 }
 
 void WebEngineView::CallWithHitImageUrl(const QPoint &pos, UrlCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")) || pos.isNull())
+    if(!page() || url().isEmpty() || url() == BLANK_URL || pos.isNull())
         return callBack(QUrl());
 
     page()->runJavaScript
@@ -1189,7 +1178,7 @@ void WebEngineView::CallWithSelectedText(StringCallBack callBack){
 }
 
 void WebEngineView::CallWithSelectedHtml(StringCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+    if(!page() || url().isEmpty() || url() == BLANK_URL)
         return callBack(QString());
 
     page()->runJavaScript
@@ -1228,7 +1217,7 @@ void WebEngineView::CallWithSelectionRegion(RegionCallBack callBack){
 
 void WebEngineView::CallWithEvaluatedJavaScriptResult(const QString &code,
                                                       VariantCallBack callBack){
-    if(!page() || url().isEmpty() || url() == QUrl(QStringLiteral("about:blank")))
+    if(!page() || url().isEmpty() || url() == BLANK_URL)
         return callBack(QVariant());
 
     page()->runJavaScript(code, callBack);

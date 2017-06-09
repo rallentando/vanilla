@@ -136,6 +136,25 @@
     F(OpenImageWithSleipnir)                    \
     F(OpenImageWithVivaldi)                     \
     F(OpenImageWithCustom)                      \
+    F(LoadMedia)                                \
+    F(OpenMedia)                                \
+    F(DownloadMedia)                            \
+    F(ToggleMediaControls)                      \
+    F(ToggleMediaLoop)                          \
+    F(ToggleMediaPlayPause)                     \
+    F(ToggleMediaMute)                          \
+    F(CopyMediaUrl)                             \
+    F(CopyMediaHtml)                            \
+    F(OpenMediaWithIE)                          \
+    F(OpenMediaWithEdge)                        \
+    F(OpenMediaWithFF)                          \
+    F(OpenMediaWithOpera)                       \
+    F(OpenMediaWithOPR)                         \
+    F(OpenMediaWithSafari)                      \
+    F(OpenMediaWithChrome)                      \
+    F(OpenMediaWithSleipnir)                    \
+    F(OpenMediaWithVivaldi)                     \
+    F(OpenMediaWithCustom)                      \
     F(OpenInNewViewNode)                        \
     F(OpenInNewHistNode)                        \
     F(OpenInNewDirectory)                       \
@@ -176,6 +195,26 @@
     F(OpenImageInNewHistNodeNewWindow)          \
     F(OpenImageInNewDirectoryNewWindow)         \
     F(OpenImageOnRootNewWindow)                 \
+    F(OpenMediaInNewViewNode)                   \
+    F(OpenMediaInNewHistNode)                   \
+    F(OpenMediaInNewDirectory)                  \
+    F(OpenMediaOnRoot)                          \
+    F(OpenMediaInNewViewNodeForeground)         \
+    F(OpenMediaInNewHistNodeForeground)         \
+    F(OpenMediaInNewDirectoryForeground)        \
+    F(OpenMediaOnRootForeground)                \
+    F(OpenMediaInNewViewNodeBackground)         \
+    F(OpenMediaInNewHistNodeBackground)         \
+    F(OpenMediaInNewDirectoryBackground)        \
+    F(OpenMediaOnRootBackground)                \
+    F(OpenMediaInNewViewNodeThisWindow)         \
+    F(OpenMediaInNewHistNodeThisWindow)         \
+    F(OpenMediaInNewDirectoryThisWindow)        \
+    F(OpenMediaOnRootThisWindow)                \
+    F(OpenMediaInNewViewNodeNewWindow)          \
+    F(OpenMediaInNewHistNodeNewWindow)          \
+    F(OpenMediaInNewDirectoryNewWindow)         \
+    F(OpenMediaOnRootNewWindow)                 \
     F(OpenAllUrl)                               \
     F(OpenAllImage)                             \
     F(OpenTextAsUrl)                            \

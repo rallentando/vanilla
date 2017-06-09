@@ -159,6 +159,7 @@ public:
         case Page::_Forward:     return Action(Gadgets::_DownDirectory);
         case Page::_NewViewNode: return Action(Gadgets::_NewNode);
         case Page::_NewHistNode: return Action(Gadgets::_NewNode);
+        default: break;
         }
         return Action(Gadgets::StringToAction(Page::ActionToString(a)));
     }

@@ -1,13 +1,27 @@
-import QtQuick 2.8
+import QtQuick 2.9
 import QtQuick.Dialogs 1.2
-import QtQuick.Controls 1.4
-import QtQuick.Window 2.2
-import QtWebEngine 1.4
+import QtQuick.Controls 1.5
+import QtQuick.Window 2.3
+import QtWebEngine 1.5
 
 WebEngineView {
     signal viewChanged()
     signal scrollChanged(point pos)
     signal callBackResult(int id, variant result)
+
+    WebEngineScript {
+        id: defaultScript
+        injectionPoint: WebEngineScript.DocumentReady
+        worldId: WebEngineScript.MainWorld
+        runOnSubframes: true
+    }
+
+    onNavigationRequested: {
+        if(userScripts.length == 0){
+            defaultScript.sourceCode = viewInterface.defaultScript()
+            userScripts = [defaultScript]
+        }
+    }
 
     onLoadingChanged: {
         var status = loadRequest.status
@@ -182,6 +196,18 @@ WebEngineView {
     function save(){
         triggerWebAction(WebEngineView.SavePage)
     }
+    function toggleMediaControls(){
+        triggerWebAction(WebEngineView.ToggleMediaControls)
+    }
+    function toggleMediaLoop(){
+        triggerWebAction(WebEngineView.ToggleMediaLoop)
+    }
+    function toggleMediaPlayPause(){
+        triggerWebAction(WebEngineView.ToggleMediaPlayPause)
+    }
+    function toggleMediaMute(){
+        triggerWebAction(WebEngineView.ToggleMediaMute)
+    }
 
     function grantFeaturePermission_(securityOrigin, feature, granted){
         grantFeaturePermission(securityOrigin, feature, granted);
@@ -218,10 +244,12 @@ WebEngineView {
         else if(item == "Accelerated2dCanvasEnabled")      settings.accelerated2dCanvasEnabled = value
         else if(item == "AutoLoadIconsForPage")            settings.autoLoadIconsForPage = value
         else if(item == "TouchIconsEnabled")               settings.touchIconsEnabled = value
-
+        // since Qt5.8
         else if(item == "FocusOnNavigationEnabled")        settings.focusOnNavigationEnabled = value
         else if(item == "PrintElementBackgrounds")         settings.printElementBackgrounds = value
         else if(item == "AllowRunningInsecureContent")     settings.allowRunningInsecureContent = value
+        // since Qt5.9
+        else if(item == "AllowGeolocationOnInsecureOrigins") settings.allowGeolocationOnInsecureOrigins = value
 
         else if(item == "ErrorPageEnabled")                settings.errorPageEnabled = value
         else if(item == "FullScreenSupportEnabled")        settings.fullScreenSupportEnabled = value

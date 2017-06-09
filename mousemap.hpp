@@ -1,7 +1,28 @@
 #ifndef MOUSEMAP_HPP
 #define MOUSEMAP_HPP
 
-#define TREEBANK_MOUSEMAP                                               \
+#ifdef Q_OS_MAC
+#  define TREEBANK_MOUSEMAP                                             \
+    m_MouseMap[QStringLiteral("ExtraButton1")] = QStringLiteral("Back"); \
+    m_MouseMap[QStringLiteral("ExtraButton2")] = QStringLiteral("Forward"); \
+    m_MouseMap[QStringLiteral("RightButton+LeftButton")] = QStringLiteral("Back"); \
+    m_MouseMap[QStringLiteral("LeftButton+RightButton")] = QStringLiteral("Forward"); \
+    m_MouseMap[QStringLiteral("Ctrl+WheelUp")] = QStringLiteral("ZoomIn"); \
+    m_MouseMap[QStringLiteral("Ctrl+WheelDown")] = QStringLiteral("ZoomOut"); \
+    m_MouseMap[QStringLiteral("Shift+WheelUp")] = QStringLiteral("Forward"); \
+    m_MouseMap[QStringLiteral("Shift+WheelDown")] = QStringLiteral("Back");
+
+#  define WEBVIEW_MOUSEMAP                                              \
+    m_MouseMap[QStringLiteral("ExtraButton1")] = QStringLiteral("Back"); \
+    m_MouseMap[QStringLiteral("ExtraButton2")] = QStringLiteral("Forward"); \
+    m_MouseMap[QStringLiteral("RightButton+LeftButton")] = QStringLiteral("Back"); \
+    m_MouseMap[QStringLiteral("LeftButton+RightButton")] = QStringLiteral("Forward"); \
+    m_MouseMap[QStringLiteral("Ctrl+WheelUp")] = QStringLiteral("ZoomIn"); \
+    m_MouseMap[QStringLiteral("Ctrl+WheelDown")] = QStringLiteral("ZoomOut"); \
+    m_MouseMap[QStringLiteral("Shift+WheelUp")] = QStringLiteral("Forward"); \
+    m_MouseMap[QStringLiteral("Shift+WheelDown")] = QStringLiteral("Back");
+#else //ifdef Q_OS_MAC
+#  define TREEBANK_MOUSEMAP                                             \
     m_MouseMap[QStringLiteral("ExtraButton1")] = QStringLiteral("Back"); \
     m_MouseMap[QStringLiteral("ExtraButton2")] = QStringLiteral("Forward"); \
     m_MouseMap[QStringLiteral("RightButton+LeftButton")] = QStringLiteral("Back"); \
@@ -13,7 +34,7 @@
     m_MouseMap[QStringLiteral("RightButton+WheelUp")] = QStringLiteral("PrevView"); \
     m_MouseMap[QStringLiteral("RightButton+WheelDown")] = QStringLiteral("NextView");
 
-#define WEBVIEW_MOUSEMAP                                                \
+#  define WEBVIEW_MOUSEMAP                                              \
     m_MouseMap[QStringLiteral("ExtraButton1")] = QStringLiteral("Back"); \
     m_MouseMap[QStringLiteral("ExtraButton2")] = QStringLiteral("Forward"); \
     m_MouseMap[QStringLiteral("RightButton+LeftButton")] = QStringLiteral("Back"); \
@@ -24,6 +45,7 @@
     m_MouseMap[QStringLiteral("Shift+WheelDown")] = QStringLiteral("Back"); \
     m_MouseMap[QStringLiteral("RightButton+WheelUp")] = QStringLiteral("PrevView"); \
     m_MouseMap[QStringLiteral("RightButton+WheelDown")] = QStringLiteral("NextView");
+#endif //ifdef Q_OS_MAC
 
 #define THUMBLIST_MOUSEMAP                                              \
     m_MouseMap[QStringLiteral("ExtraButton1")] = QStringLiteral("UpDirectory"); \

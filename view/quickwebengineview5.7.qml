@@ -9,6 +9,20 @@ WebEngineView {
     signal scrollChanged(point pos)
     signal callBackResult(int id, variant result)
 
+    WebEngineScript {
+        id: defaultScript
+        injectionPoint: WebEngineScript.DocumentReady
+        worldId: WebEngineScript.MainWorld
+        runOnSubframes: true
+    }
+
+    onNavigationRequested: {
+        if(userScripts.length == 0){
+            defaultScript.sourceCode = viewInterface.defaultScript()
+            userScripts = [defaultScript]
+        }
+    }
+
     onLoadingChanged: {
         var status = loadRequest.status
 
@@ -181,6 +195,18 @@ WebEngineView {
     }
     function save(){
         triggerWebAction(WebEngineView.SavePage)
+    }
+    function toggleMediaControls(){
+        triggerWebAction(WebEngineView.ToggleMediaControls)
+    }
+    function toggleMediaLoop(){
+        triggerWebAction(WebEngineView.ToggleMediaLoop)
+    }
+    function toggleMediaPlayPause(){
+        triggerWebAction(WebEngineView.ToggleMediaPlayPause)
+    }
+    function toggleMediaMute(){
+        triggerWebAction(WebEngineView.ToggleMediaMute)
     }
 
     function grantFeaturePermission_(securityOrigin, feature, granted){

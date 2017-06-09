@@ -32,6 +32,10 @@ public:
     WebEngineView(TreeBank *parent = 0, QString id = "", QStringList set = QStringList());
     ~WebEngineView();
 
+#if QT_VERSION >= 0x050900
+    static void SetUpEventFilterInstaller();
+#endif
+
     QWebEngineView *base() Q_DECL_OVERRIDE;
     WebEnginePage *page() Q_DECL_OVERRIDE;
 
@@ -46,8 +50,12 @@ public:
     void Disconnect(TreeBank *tb) Q_DECL_OVERRIDE;
 
     bool ForbidToOverlap() Q_DECL_OVERRIDE {
+#if defined(Q_OS_WIN)
         // performance issue.
         return true;
+#else
+        return false;
+#endif
     }
 
     bool CanGoBack() Q_DECL_OVERRIDE {
@@ -56,7 +64,6 @@ public:
     bool CanGoForward() Q_DECL_OVERRIDE {
         return page() ? page()->history()->canGoForward() : false;
     }
-#if QT_VERSION >= 0x050700
     bool RecentlyAudible() Q_DECL_OVERRIDE {
         return page() ? page()->recentlyAudible() : false;
     }
@@ -66,7 +73,6 @@ public:
     void SetAudioMuted(bool muted) Q_DECL_OVERRIDE {
         if(page()) page()->setAudioMuted(muted);
     }
-#endif
 
     bool IsRenderable() Q_DECL_OVERRIDE {
         return page() != 0 && (visible() || !m_GrabedDisplayData.isNull());
@@ -125,11 +131,7 @@ public:
         return title();
     }
     QIcon GetIcon() Q_DECL_OVERRIDE {
-#if QT_VERSION >= 0x050700
         return page() ? page()->icon() : QIcon();
-#else
-        return m_Icon;
-#endif
     }
 
     void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) Q_DECL_OVERRIDE {
@@ -208,16 +210,7 @@ public:
     void MouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseReleaseEvent(ev);}
     void MouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseMoveEvent(ev);}
     void MouseDoubleClickEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseDoubleClickEvent(ev);}
-    void WheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE {
-        QWheelEvent *newev = new QWheelEvent(ev->pos(),
-                                             ev->delta()/Application::WheelScrollRate(),
-                                             ev->buttons(),
-                                             ev->modifiers(),
-                                             ev->orientation());
-        wheelEvent(newev);
-        ev->setAccepted(true);
-        delete newev;
-    }
+    void WheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE { wheelEvent(ev);}
 
     void CallWithGotBaseUrl(UrlCallBack callBack) Q_DECL_OVERRIDE;
     void CallWithGotCurrentBaseUrl(UrlCallBack callBack) Q_DECL_OVERRIDE;
@@ -327,11 +320,7 @@ public slots:
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
     void AssignInspector();
-#if QT_VERSION >= 0x050700
     void OnIconChanged(const QIcon &icon);
-#else
-    void UpdateIcon(const QUrl &iconUrl);
-#endif
 
     void Copy() Q_DECL_OVERRIDE;
     void Cut() Q_DECL_OVERRIDE;
@@ -349,15 +338,17 @@ public slots:
     void ZoomIn() Q_DECL_OVERRIDE;
     void ZoomOut() Q_DECL_OVERRIDE;
 
+    void ToggleMediaControls() Q_DECL_OVERRIDE;
+    void ToggleMediaLoop() Q_DECL_OVERRIDE;
+    void ToggleMediaPlayPause() Q_DECL_OVERRIDE;
+    void ToggleMediaMute() Q_DECL_OVERRIDE;
+
     void ExitFullScreen() Q_DECL_OVERRIDE;
     void InspectElement() Q_DECL_OVERRIDE;
     void AddSearchEngine(QPoint pos) Q_DECL_OVERRIDE;
     void AddBookmarklet(QPoint pos)  Q_DECL_OVERRIDE;
 
 signals:
-#if QT_VERSION < 0x050700
-    void iconChanged(const QIcon&);
-#endif
     void statusBarMessage(const QString&);
     void statusBarMessage2(const QString&, const QString&);
     void ViewChanged();
@@ -388,9 +379,6 @@ protected:
 #endif
 
 private:
-#if QT_VERSION < 0x050700
-    QIcon m_Icon;
-#endif
     QImage m_GrabedDisplayData;
     static QMap<View*, QUrl> m_InspectorTable;
     QWebEngineView *m_Inspector;
@@ -480,24 +468,6 @@ protected:
             return false;
         }
         case QEvent::KeyRelease:{
-#if QT_VERSION < 0x050700
-            QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
-            int k = ke->key();
-
-            if(k == Qt::Key_Space ||
-             //k == Qt::Key_Up ||
-             //k == Qt::Key_Down ||
-             //k == Qt::Key_Right ||
-             //k == Qt::Key_Left ||
-               k == Qt::Key_PageUp ||
-               k == Qt::Key_PageDown ||
-               k == Qt::Key_Home ||
-               k == Qt::Key_End){
-
-                bool animated = m_View->page()->settings()->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled);
-                QTimer::singleShot(animated ? 500 : 100, m_View, &WebEngineView::EmitScrollChanged);
-            }
-#endif
             return false;
         }
         case QEvent::MouseMove:
@@ -525,12 +495,13 @@ protected:
             case QEvent::MouseButtonDblClick:
                 m_View->mouseDoubleClickEvent(&me_);
                 return me_.isAccepted();
+            default: break;
             }
             break;
         }
         case QEvent::Wheel:{
             QWheelEvent *we = static_cast<QWheelEvent*>(ev);
-#if QT_VERSION >= 0x050700
+
             QString wheel;
             bool up = we->delta() > 0;
             Application::AddModifiersToString(wheel, we->modifiers());
@@ -545,7 +516,6 @@ protected:
                 }
                 return true;
             }
-#endif
             QWheelEvent we_ =
                 QWheelEvent(MapToView(widget, we->pos()),
                             we->delta(),
@@ -555,6 +525,7 @@ protected:
             m_View->wheelEvent(&we_);
             return we_.isAccepted();
         }
+        default: break;
         }
         return QObject::eventFilter(obj, ev);
     }
