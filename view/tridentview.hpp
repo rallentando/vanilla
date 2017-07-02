@@ -236,7 +236,7 @@ public slots:
         return false;
     }
     void UpdateIcon(const QUrl &iconUrl);
-    void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint globalPos);
+    void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint localPos, QPoint globalPos);
 
     void Copy() Q_DECL_OVERRIDE;
     void Cut() Q_DECL_OVERRIDE;

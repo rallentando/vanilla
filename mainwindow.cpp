@@ -52,7 +52,8 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
     m_ToolBar = new ToolBar(m_TreeBank, this);
     addToolBar(m_ToolBar);
 
-    if(m_DialogFrame = Application::GetTemporaryDialogFrame()){
+    m_DialogFrame = Application::GetTemporaryDialogFrame();
+    if(m_DialogFrame){
         Application::SetTemporaryDialogFrame(0);
     } else {
         m_DialogFrame = new ModelessDialogFrame();
@@ -272,7 +273,7 @@ void MainWindow::LoadSettings(){
             CreateMenuBar();
     }
 
-    QTimer::singleShot(0, [this, s](){
+    QTimer::singleShot(0, this, [this, s](){
 
     // 'setGeometry' and 'restoreGeometry' are asynchronous API.
     bool contains = false;
@@ -813,7 +814,7 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
         switch(msg->message){
         case WM_SYSCOMMAND:{
             if(IsMenuBarEmpty() && (msg->wParam & 0xFFF0) == SC_MOUSEMENU){
-                QTimer::singleShot(0, [this](){
+                QTimer::singleShot(0, this, [this](){
                     QMenu *menu = GetTreeBank()->GlobalContextMenu();
                     menu->exec(QCursor::pos());
                     delete menu;

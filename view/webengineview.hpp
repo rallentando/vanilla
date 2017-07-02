@@ -355,6 +355,7 @@ signals:
     void ScrollChanged(QPointF);
 
 protected:
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
     void childEvent(QChildEvent *ev) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
@@ -382,6 +383,7 @@ private:
     QImage m_GrabedDisplayData;
     static QMap<View*, QUrl> m_InspectorTable;
     QWebEngineView *m_Inspector;
+    int m_ScrollSignalTimer;
     bool m_PreventScrollRestoration;
 #ifdef PASSWORD_MANAGER
     bool m_PreventAuthRegistration;
@@ -423,7 +425,11 @@ protected:
             }
 
 #ifdef PASSWORD_MANAGER
-            if(ke->modifiers() & Qt::ControlModifier &&
+            if((ke->modifiers() & Qt::ControlModifier
+#    if defined(Q_OS_MAC)
+                || ke->modifiers() & Qt::MetaModifier
+#    endif
+                ) &&
                ke->key() == Qt::Key_Return){
 
                 QString data = Application::GetAuthData
@@ -502,28 +508,26 @@ protected:
         case QEvent::Wheel:{
             QWheelEvent *we = static_cast<QWheelEvent*>(ev);
 
-            QString wheel;
-            bool up = we->delta() > 0;
-            Application::AddModifiersToString(wheel, we->modifiers());
-            Application::AddMouseButtonsToString(wheel, we->buttons());
-            Application::AddWheelDirectionToString(wheel, up);
-            if(m_View->m_MouseMap.contains(wheel)){
-                QString str = m_View->m_MouseMap[wheel];
-                if(!str.isEmpty()){
-                    m_View->GestureAborted();
-                    m_View->View::TriggerAction
-                        (str, MapToView(widget, we->pos()));
+            if(we->source() != Qt::MouseEventSynthesizedBySystem){
+                QString wheel;
+                bool up = we->delta() > 0;
+
+                Application::AddModifiersToString(wheel, we->modifiers());
+                Application::AddMouseButtonsToString(wheel, we->buttons());
+                Application::AddWheelDirectionToString(wheel, up);
+
+                if(m_View->m_MouseMap.contains(wheel)){
+
+                    QString str = m_View->m_MouseMap[wheel];
+                    if(!str.isEmpty()){
+                        m_View->GestureAborted();
+                        m_View->View::TriggerAction(str, MapToView(widget, we->pos()));
+                    }
+                    return true;
                 }
-                return true;
             }
-            QWheelEvent we_ =
-                QWheelEvent(MapToView(widget, we->pos()),
-                            we->delta(),
-                            we->buttons(),
-                            we->modifiers(),
-                            we->orientation());
-            m_View->wheelEvent(&we_);
-            return we_.isAccepted();
+            m_View->wheelEvent(we);
+            return we->isAccepted();
         }
         default: break;
         }

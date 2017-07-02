@@ -86,10 +86,10 @@ public:
     void SetSource(const QUrl &url) Q_DECL_OVERRIDE {
         if(page()) page()->SetSource(url);
     }
-    void SetSource(const QByteArray &html){
+    void SetSource(const QByteArray &html) Q_DECL_OVERRIDE {
         if(page()) page()->SetSource(html);
     }
-    void SetSource(const QString &html){
+    void SetSource(const QString &html) Q_DECL_OVERRIDE {
         if(page()) page()->SetSource(html);
     }
     QString GetTitle() Q_DECL_OVERRIDE {
@@ -146,13 +146,11 @@ public:
              [this](QVariant){ EmitScrollChanged();});
     }
     void HomeKeyEvent() Q_DECL_OVERRIDE {
-        qDebug() << "home";
         CallWithEvaluatedJavaScriptResult
             (QStringLiteral("(function(){ document.body.scrollTop=0;})()"),
              [this](QVariant){ EmitScrollChanged();});
     }
     void EndKeyEvent() Q_DECL_OVERRIDE {
-        qDebug() << "end";
         CallWithEvaluatedJavaScriptResult
             (QStringLiteral("(function(){\n"
                           VV"    document.body.scrollTop = \n"
@@ -282,6 +280,7 @@ public slots:
     void HandleFeaturePermission(const QUrl&, int);
     void HandleRenderProcessTermination(int, int);
     void HandleFullScreen(bool);
+    void HandleContextMenu(QObject*, bool);
     void HandleDownload(QObject*);
     void HandleContentsSizeChange(const QSizeF &size);
     void HandleScrollPositionChange(const QPointF &pos);
@@ -398,11 +397,13 @@ signals:
     void featurePermissionRequested(const QUrl&, int);
     void renderProcessTerminated(int, int);
     void fullScreenRequested(bool);
+    void contextMenuRequested(QObject*, bool);
     void downloadRequested(QObject*);
     void contentsSizeChanged(const QSizeF &size);
     void scrollPositionChanged(const QPointF &pos);
 
 protected:
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
     void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
@@ -429,6 +430,7 @@ private:
     QImage m_GrabedDisplayData;
     static QMap<View*, QUrl> m_InspectorTable;
     QWebEngineView *m_Inspector;
+    int m_ScrollSignalTimer;
     bool m_PreventScrollRestoration;
 #ifdef PASSWORD_MANAGER
     bool m_PreventAuthRegistration;

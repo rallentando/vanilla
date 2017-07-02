@@ -8,7 +8,6 @@
 #include "webengineview.hpp"
 
 #include <QPainter>
-#include <QGraphicsView>
 #include <QGraphicsScene>
 #include <QGraphicsObject>
 #include <QPropertyAnimation>
@@ -92,20 +91,6 @@ namespace {
         if(value < min) value = min;
         return true;
     }
-
-    class GraphicsView : public QGraphicsView {
-    public:
-        GraphicsView(QGraphicsScene *scene, QWidget *parent = 0)
-            : QGraphicsView(scene, parent)
-        {
-        }
-        QSize sizeHint() const Q_DECL_OVERRIDE {
-            return QGraphicsView::sizeHint();
-        }
-        QSize minimumSizeHint() const Q_DECL_OVERRIDE {
-            return QSize(0, 0);
-        }
-    };
 
     class ResizeGrip : public QWidget {
     public:
@@ -836,7 +821,8 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     m_VerticalNodeHeight = 0;
     m_VerticalNodeWidth = 0;
     m_LastAction = None;
-    m_OtherWindow = 0;
+    m_TabWindow = 0;
+    m_HotSpot = QPoint();
 
     addWidget(m_View);
     setObjectName(QStringLiteral("TreeBar"));
@@ -920,6 +906,16 @@ void TreeBar::ToggleWheelClickToClose(){
     m_WheelClickToClose = !m_WheelClickToClose;
 }
 
+void TreeBar::SetHorizontalNodeWidth(int width){
+    m_HorizontalNodeWidth = width;
+    CollectNodes();
+}
+
+void TreeBar::SetVerticalNodeHeight(int height){
+    m_VerticalNodeHeight = height;
+    CollectNodes();
+}
+
 int TreeBar::GetHorizontalNodeWidth() const {
     return m_HorizontalNodeWidth;
 }
@@ -987,26 +983,65 @@ QStringList TreeBar::GetStat() const {
         << QStringLiteral("%1").arg(m_VerticalNodeWidth);
 }
 
-MainWindow *TreeBar::GetWindow(){
-    return m_OtherWindow;
+void TreeBar::ShowTabWindow(const QPoint &cursorPos, Node *node){
+    QPoint pos = parentWidget()->pos();
+    m_HotSpot = cursorPos - pos;
+    if(m_TabWindow){
+        m_TabWindow->move(pos);
+        m_TabWindow->show();
+    } else {
+        m_TabWindow = Application::NewWindow(0, pos);
+
+        if(!node->IsDirectory()){
+            View *view = node->GetView();
+            if(view && view->visible()){
+                TreeBank *tb = view->GetTreeBank();
+                NodeList list = node->GetSiblings();
+                qSort(list.begin(), list.end(), [](Node *n1, Node *n2){
+                    return n1->GetLastAccessDate() > n2->GetLastAccessDate();
+                });
+                tb->blockSignals(true);
+                foreach(Node *nd, list){
+                    if(nd != node && !nd->IsDirectory())
+                        if(tb->SetCurrent(nd)) break;
+                }
+                tb->blockSignals(false);
+            }
+            m_Scene->update();
+            m_TabWindow->GetTreeBank()->SetCurrent(node);
+        }
+    }
+    foreach(LayerItem *layer, GetLayerList()){
+        layer->AutoScrollStop();
+    }
 }
 
-void TreeBar::SetWindow(MainWindow *win){
-    m_OtherWindow = win;
+void TreeBar::MoveTabWindow(const QPoint &cursorPos){
+    if(m_TabWindow) m_TabWindow->move(cursorPos - m_HotSpot);
 }
 
-MainWindow *TreeBar::MakeWindow(QPoint pos){
-    return m_OtherWindow = Application::NewWindow(0, pos);
+void TreeBar::CloseTabWindow(){
+    if(m_TabWindow){
+        if(m_TabWindow->isVisible()){
+            m_TabWindow = 0;
+        } else {
+            MainWindow *win = static_cast<MainWindow*>(parentWidget());
+            Application::CloseWindow(m_TabWindow);
+            Application::SetCurrentWindow(win);
+            m_TabWindow = 0;
+            win->raise();
+            win->activateWindow();
+            setFocus();
+        }
+    }
 }
 
-void TreeBar::CloseWindow(){
-    MainWindow *win = static_cast<MainWindow*>(parentWidget());
-    Application::CloseWindow(m_OtherWindow);
-    Application::SetCurrentWindow(win);
-    m_OtherWindow = 0;
-    win->raise();
-    win->activateWindow();
-    setFocus();
+void TreeBar::HideTabWindow(){
+    if(m_TabWindow) m_TabWindow->hide();
+}
+
+bool TreeBar::TabWindowVisible(){
+    return m_TabWindow && m_TabWindow->isVisible();
 }
 
 void TreeBar::Adjust(){
@@ -1893,7 +1928,8 @@ void LayerItem::SetScroll(qreal scroll){
 }
 
 void LayerItem::Scroll(qreal delta){
-    if(TreeBar::EnableAnimation()){
+    if(TreeBar::EnableAnimation()
+       && m_TreeBar->GetView()->MouseEventSource() != Qt::MouseEventSynthesizedBySystem){
 
         qreal orig = m_TargetScroll;
         m_TargetScroll += delta;
@@ -1916,6 +1952,7 @@ void LayerItem::Scroll(qreal delta){
         m_Animation->start();
         m_Animation->setCurrentTime(16);
     } else {
+        m_Animation->stop();
         SetScroll(m_CurrentScroll + delta);
         ResetTargetScroll();
     }
@@ -2545,25 +2582,13 @@ void LayerItem::dropEvent(QGraphicsSceneDragDropEvent *ev){
     if(NodeItem *item = position->GetTarget()){
         if(item->boundingRect().intersects(scene()->sceneRect())){
             if(const QMimeData *mime = ev->mimeData()){
-                QList<QUrl> urls;
-                QObject *source = ev->source();
+                QList<QUrl> urls = Page::MimeDataToUrls(mime, ev->source());
                 Node *nd = item->GetNode();
                 ViewNode *parent = nd->GetParent()->ToViewNode();
                 int index = nd->Index();
 
                 if(position->GetWhere() == InsertPosition::RightOfTarget){
                     index++;
-                }
-                if(!mime->urls().isEmpty()){
-                    if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source))
-                        foreach(QUrl u, mime->urls()){ if(!u.isLocalFile()) urls << u;}
-                    else urls = mime->urls();
-                }
-                if(urls.isEmpty() && !mime->html().isEmpty()){
-                    urls = Page::ExtractUrlFromHtml(mime->html(), QUrl(), Page::HaveReference);
-                }
-                if(urls.isEmpty() && !mime->text().isEmpty()){
-                    urls = Page::DirtyStringToUrlList(mime->text());
                 }
                 if(!urls.isEmpty()){
                     m_TreeBank->OpenOnSuitableNode(urls, true, parent, index);
@@ -2580,7 +2605,8 @@ void LayerItem::dragMoveEvent(QGraphicsSceneDragDropEvent *ev){
     InsertPosition *position = static_cast<InsertPosition*>(m_InsertPosition);
     NodeItem *node = 0;
     foreach(QGraphicsItem *item, scene()->items(ev->scenePos())){
-        if(node = dynamic_cast<NodeItem*>(item)) break;
+        node = dynamic_cast<NodeItem*>(item);
+        if(node) break;
     }
     if(!node && !m_NodeItems.isEmpty()){
         switch(m_TreeBar->orientation()){
@@ -2683,17 +2709,52 @@ void LayerItem::wheelEvent(QGraphicsSceneWheelEvent *ev){
 
     bool up = ev->delta() > 0;
 
-    if(TreeBar::ScrollToSwitchNode()){
-        NodeList siblings = m_Node->GetSiblings();
-        int index = siblings.indexOf(m_Node);
-        if(up){
-            if(index >= 1)
-                m_TreeBank->SetCurrent(siblings[index-1]);
-        } else {
-            if(index < siblings.length()-1)
-                m_TreeBank->SetCurrent(siblings[index+1]);
+    if(m_TreeBar->GetView()->MouseEventSource() != Qt::MouseEventSynthesizedBySystem){
+
+        if(ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+           || ev->modifiers() & Qt::MetaModifier
+#endif
+           ){
+            switch(m_TreeBar->orientation()){
+            case Qt::Horizontal:{
+                int width = m_TreeBar->GetHorizontalNodeWidth();
+                if(up) width += 5;
+                else   width -= 5;
+                Cramp(width,
+                      TREEBAR_HORIZONTAL_NODE_MINIMUM_WIDTH,
+                      TREEBAR_HORIZONTAL_NODE_MAXIMUM_WIDTH);
+                m_TreeBar->SetHorizontalNodeWidth(width);
+                break;
+            }
+            case Qt::Vertical:{
+                int height = m_TreeBar->GetVerticalNodeHeight();
+                if(up) height += 5;
+                else   height -= 5;
+                Cramp(height,
+                      TREEBAR_VERTICAL_NODE_MINIMUM_HEIGHT,
+                      TREEBAR_VERTICAL_NODE_MAXIMUM_HEIGHT);
+                m_TreeBar->SetVerticalNodeHeight(height);
+                break;
+            }
+            }
+            return;
+
+        } else if(TreeBar::ScrollToSwitchNode()){
+            NodeList siblings = m_Node->GetSiblings();
+            int index = siblings.indexOf(m_Node);
+            if(up){
+                if(index >= 1)
+                    m_TreeBank->SetCurrent(siblings[index-1]);
+            } else {
+                if(index < siblings.length()-1)
+                    m_TreeBank->SetCurrent(siblings[index+1]);
+            }
+            return;
         }
-    } else if(!TreeBar::EnableAnimation()){
+    }
+
+    if(!TreeBar::EnableAnimation()){
 
         switch(m_TreeBar->orientation()){
         case Qt::Horizontal:
@@ -2764,7 +2825,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     QRectF realRect = bound.translated(pos());
 
     if(!scene() || !realRect.intersects(scene()->sceneRect()) ||
-       (isSelected() && m_TreeBar->GetWindow())) return;
+       (isSelected() && m_TreeBar->TabWindowVisible())) return;
 
     painter->save();
 
@@ -3431,14 +3492,19 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
             m_Rect.moveTop(m_Rect.top() - static_cast<int>(Layer()->GetScroll()));
             break;
         }
-        if(ev->modifiers() & Qt::ControlModifier) setSelected(true);
+        if(ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+           || ev->modifiers() & Qt::MetaModifier
+#endif
+           )
+            setSelected(true);
     }
     QGraphicsObject::mousePressEvent(ev);
 }
 
 void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
-    bool windowCreated = m_TreeBar->GetWindow();
-    m_TreeBar->SetWindow(0);
+    bool windowCreated = m_TreeBar->TabWindowVisible();
+    m_TreeBar->CloseTabWindow();
 
     if(ev->button() == Qt::LeftButton){
 
@@ -3531,7 +3597,8 @@ void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     LayerItem *newLayer = 0;
 
     foreach(QGraphicsItem *item, scene()->items(ev->scenePos())){
-        if(newLayer = dynamic_cast<LayerItem*>(item)) break;
+        newLayer = dynamic_cast<LayerItem*>(item);
+        if(newLayer) break;
     }
     if(!newLayer){
         switch(m_TreeBar->orientation()){
@@ -3555,35 +3622,13 @@ void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     }
 
     if(scene()->sceneRect().contains(ev->scenePos())){
-        if(m_TreeBar->GetWindow()) m_TreeBar->CloseWindow();
+        m_TreeBar->HideTabWindow();
+    } else if(m_TreeBar->TabWindowVisible()){
+        m_TreeBar->MoveTabWindow(ev->scenePos().toPoint());
+        return;
     } else {
-        MainWindow *win = m_TreeBar->GetWindow();
-        if(!win && !m_Node->IsDirectory()){
-            View *view = m_Node->GetView();
-            if(view && view->visible()){
-                TreeBank *tb = view->GetTreeBank();
-                NodeList list = m_Node->GetSiblings();
-                qSort(list.begin(), list.end(), [](Node *n1, Node *n2){
-                    return n1->GetLastAccessDate() > n2->GetLastAccessDate();
-                });
-                tb->blockSignals(true);
-                foreach(Node *nd, list){
-                    if(nd != m_Node && !nd->IsDirectory())
-                        if(tb->SetCurrent(nd)) break;
-                }
-                tb->blockSignals(false);
-            }
-            win = m_TreeBar->MakeWindow(ev->screenPos());
-            scene()->update();
-            win->GetTreeBank()->SetCurrent(m_Node);
-        }
-        if(win){
-            foreach(LayerItem *layer, m_TreeBar->GetLayerList()){
-                layer->AutoScrollStop();
-            }
-            win->move(ev->screenPos());
-            return;
-        }
+        m_TreeBar->ShowTabWindow(ev->scenePos().toPoint(), m_Node);
+        return;
     }
 
     switch(m_TreeBar->orientation()){

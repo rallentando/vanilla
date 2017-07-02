@@ -258,14 +258,14 @@ QUrl Page::StringToUrl(QString str, QUrl baseUrl){
         return QUrl(str);
 }
 
-QList<QUrl> Page::ExtractUrlFromHtml(QString html, QUrl baseUrl, FindElementsOption option){
+QList<QUrl> Page::ExtractUrlsFromHtml(QString html, QUrl baseUrl, FindElementsOption option){
     QList<QUrl> list;
     int pos = 0;
     QRegularExpression reg;
     if(option == HaveSource)
-        reg = QRegularExpression(QStringLiteral("src=(\"?)([^<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
+        reg = QRegularExpression(QStringLiteral("src=(\"?)([^<>\\{\\}\\(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
     if(option == HaveReference)
-        reg = QRegularExpression(QStringLiteral("href=(\"?)([^<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
+        reg = QRegularExpression(QStringLiteral("href=(\"?)([^<>\\{\\}\\(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
     if(reg.isValid()){
         QRegularExpressionMatch match;
         while((match = reg.match(html, pos)).hasMatch()){
@@ -276,10 +276,10 @@ QList<QUrl> Page::ExtractUrlFromHtml(QString html, QUrl baseUrl, FindElementsOpt
     return list.toSet().toList();
 }
 
-QList<QUrl> Page::ExtractUrlFromText(QString text, QUrl baseUrl){
+QList<QUrl> Page::ExtractUrlsFromText(QString text, QUrl baseUrl){
     QList<QUrl> list;
     // '(', ')' are usable in url, but it's thought to be undesirable...
-    QStringList strs = text.split(QRegularExpression(QStringLiteral("[<>\\{\\}(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+")));
+    QStringList strs = text.split(QRegularExpression(QStringLiteral("[<>\\{\\}\\(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+")));
     foreach(QString str, strs){
         str = str.trimmed();
         if(str.startsWith(QStringLiteral("/")) || str.startsWith(QStringLiteral("./")) || str.startsWith(QStringLiteral("../"))) ; // do nothing.
@@ -328,10 +328,26 @@ QList<QUrl> Page::ExtractUrlFromText(QString text, QUrl baseUrl){
     return list.toSet().toList();
 }
 
-QList<QUrl> Page::DirtyStringToUrlList(QString str){
-    QList<QUrl> urls = ExtractUrlFromText(str);
+QList<QUrl> Page::DirtyStringToUrls(QString str){
+    QList<QUrl> urls = ExtractUrlsFromText(str);
     if(!urls.isEmpty()) return urls;
     urls << CreateQueryUrl(str);
+    return urls;
+}
+
+QList<QUrl> Page::MimeDataToUrls(const QMimeData *mime, QObject *source){
+    QList<QUrl> urls;
+    if(!mime->urls().isEmpty()){
+        if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source))
+            foreach(QUrl u, mime->urls()){ if(!u.isLocalFile()) urls << u;}
+        else urls = mime->urls();
+    }
+    if(urls.isEmpty() && !mime->html().isEmpty()){
+        urls = ExtractUrlsFromHtml(mime->html(), QUrl(), Page::HaveReference);
+    }
+    if(urls.isEmpty() && !mime->text().isEmpty()){
+        urls = DirtyStringToUrls(mime->text());
+    }
     return urls;
 }
 
@@ -363,7 +379,7 @@ void Page::RegisterDefaultSearchEngines(){
     SearchEngine bing;
     bing << tr("https://www.bing.com/search?q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine amazon;
-    amazon << tr("https://amazon.com/s/?field-keywords=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    amazon << tr("https://www.amazon.com/s/?field-keywords=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine wiki;
     wiki << tr("https://en.wikipedia.org/w/index.php?search=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine ifl;
@@ -416,14 +432,17 @@ bool Page::ShiftMod(){
 }
 
 bool Page::CtrlMod(){
-    return Application::keyboardModifiers() & Qt::ControlModifier;
+    return Application::keyboardModifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+        || Application::keyboardModifiers() & Qt::MetaModifier
+#endif
+        ;
 }
 
 bool Page::Activate(){
     if(View::ActivateNewViewDefault())
         return !CtrlMod();
-    else
-        return CtrlMod();
+    else return CtrlMod();
 }
 
 void Page::Download(const QNetworkRequest &req,
@@ -458,7 +477,7 @@ void Page::Download(const QUrl &target,
 void Page::Download(const QString &url,
                     const QString &file){
 
-    Download(DirtyStringToUrlList(url).first(),
+    Download(DirtyStringToUrls(url).first(),
              m_View->url(), file);
 }
 
@@ -1533,7 +1552,7 @@ void Page::OpenAllUrl(){
     m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
     m_View->CallWithSelectedHtml([this, base](QString html){
 
-    QList<QUrl> urls = ExtractUrlFromHtml(html, base, HaveReference);
+    QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveReference);
 
     UrlCountCheck(urls.length(), [this, urls](bool result){
 
@@ -1553,7 +1572,7 @@ void Page::OpenAllImage(){
     m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
     m_View->CallWithSelectedHtml([this, base](QString html){
 
-    QList<QUrl> urls = ExtractUrlFromHtml(html, base, HaveSource);
+    QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveSource);
 
     UrlCountCheck(urls.length(), [this, urls](bool result){
 
@@ -1573,7 +1592,7 @@ void Page::OpenTextAsUrl(){
     m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
     m_View->CallWithSelectedText([this, base](QString text){
 
-    QList<QUrl> urls = ExtractUrlFromText(text, base);
+    QList<QUrl> urls = ExtractUrlsFromText(text, base);
 
     UrlCountCheck(urls.length(), [this, urls](bool result){
 
@@ -1592,7 +1611,7 @@ void Page::SaveAllUrl(){
     m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
     m_View->CallWithSelectedHtml([this, base](QString html){
 
-    QList<QUrl> urls = ExtractUrlFromHtml(html, base, HaveReference);
+    QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveReference);
 
     if(urls.isEmpty()) return;
     QString directory =
@@ -1613,7 +1632,7 @@ void Page::SaveAllImage(){
     m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
     m_View->CallWithSelectedHtml([this, base](QString html){
 
-    QList<QUrl> urls = ExtractUrlFromHtml(html, base, HaveSource);
+    QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveSource);
 
     if(urls.isEmpty()) return;
     QString directory =
@@ -1634,7 +1653,7 @@ void Page::SaveTextAsUrl(){
     m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
     m_View->CallWithSelectedText([this, base](QString text){
 
-    QList<QUrl> urls = ExtractUrlFromText(text, base);
+    QList<QUrl> urls = ExtractUrlsFromText(text, base);
 
     if(urls.isEmpty()) return;
     QString directory =
@@ -2177,7 +2196,49 @@ QAction *Page::Action(CustomAction a, QVariant data){
         break;
     default: break;
     }
+
+    if(data.canConvert<SharedWebElement>()){
+        if(SharedWebElement e = data.value<SharedWebElement>()){
+            switch(a){
+            case _ToggleMediaLoop:
+                webaction->setCheckable(true);
+                webaction->setChecked(e->IsLooped());
+                break;
+            case _ToggleMediaPlayPause:
+                webaction->setCheckable(true);
+                webaction->setChecked(e->IsPaused());
+                break;
+            case _ToggleMediaMute:
+                webaction->setCheckable(true);
+                webaction->setChecked(e->IsMuted());
+                break;
+            default: break;
+            }
+        }
+    }
     return webaction;
+}
+
+void Page::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
+                              QPoint localPos, QPoint globalPos, MediaType type){
+
+    QMenu *menu = new QMenu(parent);
+    menu->setToolTipsVisible(true);
+
+    m_View->AddContextMenu(menu, elem, type);
+
+    menu->addSeparator();
+    menu->addAction(Action(Page::_InspectElement));
+
+    if(elem && !elem->IsNull() && elem->IsQueryInputElement()){
+        if(!menu->isEmpty()) menu->addSeparator();
+        menu->addAction(Action(Page::_AddSearchEngine, localPos));
+    }
+
+    m_View->AddRegularMenu(menu, elem);
+
+    menu->exec(globalPos);
+    delete menu;
 }
 
 void Page::DownloadSuggest(const QUrl& url){
@@ -2242,7 +2303,7 @@ void Page::LinkReq(QAction *action,
 
     if(!html.isEmpty()){
         QList<QNetworkRequest> reqs;
-        QList<QUrl> urls = ExtractUrlFromHtml(html, base, HaveReference);
+        QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveReference);
 
         if(!urls.isEmpty()){
             foreach(QUrl u, urls){
@@ -2263,7 +2324,7 @@ void Page::LinkReq(QAction *action,
 
     if(!text.isEmpty()){
         QList<QNetworkRequest> reqs;
-        QList<QUrl> urls = ExtractUrlFromText(text, base);
+        QList<QUrl> urls = ExtractUrlsFromText(text, base);
 
         if(!urls.isEmpty()){
             foreach(QUrl u, urls){
@@ -2323,7 +2384,7 @@ void Page::ImageReq(QAction *action,
 
     if(!html.isEmpty()){
         QList<QNetworkRequest> reqs;
-        QList<QUrl> urls = ExtractUrlFromHtml(html, base, HaveSource);
+        QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveSource);
 
         if(!urls.isEmpty()){
             foreach(QUrl u, urls){

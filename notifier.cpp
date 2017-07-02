@@ -24,9 +24,9 @@
 
 Notifier::Notifier(TreeBank *parent, bool purge)
     : QWidget(purge ? 0 : parent)
+    , m_Position(SouthWest)
     , m_TreeBank(parent)
     , m_HotSpot(QPoint())
-    , m_Position(SouthWest)
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
     , m_Button(0)
     , m_Progress(0)
@@ -217,6 +217,7 @@ void Notifier::SetScroll(QPointF pos){
 }
 
 void Notifier::SetSaveProgress(QString file, qint64 received, qint64 total){
+    Q_UNUSED(file);
     DownloadItem *item = qobject_cast<DownloadItem*>(sender());
     if(!item) return;
 
@@ -244,6 +245,7 @@ void Notifier::SetSaveProgress(QString file, qint64 received, qint64 total){
 }
 
 void Notifier::SetOpenProgress(QString file, qint64 sent, qint64 total){
+    Q_UNUSED(file);
     UploadItem *item = qobject_cast<UploadItem*>(sender());
     if(!item) return;
 
@@ -339,11 +341,6 @@ void Notifier::paintEvent(QPaintEvent *ev){
     const QList<DownloadItem*> dkeys = m_DownloadItemTable.keys();
     const QList<UploadItem*> ukeys = m_UploadItemTable.keys();
     const int offset = (dlen + ulen) * TRANSFER_ITEM_HEIGHT;
-
-    static const QColor white255 = QColor(255, 255, 255, 255);
-    static const QColor white200 = QColor(255, 255, 255, 200);
-    static const QColor white128 = QColor(255, 255, 255, 128);
-    static const QColor white100 = QColor(255, 255, 255, 100);
 
     QPainter painter(this);
     painter.setFont(NOTIFIER_FONT);

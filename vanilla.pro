@@ -73,6 +73,7 @@ HEADERS += \
     dialog.hpp \
     view/view.hpp \
     view/page.hpp \
+    view/webelement.hpp \
     view/localview.hpp \
     view/webenginepage.hpp \
     view/webengineview.hpp \
@@ -104,6 +105,7 @@ SOURCES += \
     dialog.cpp \
     view/view.cpp \
     view/page.cpp \
+    view/webelement.cpp \
     view/localview.cpp \
     view/webenginepage.cpp \
     view/webengineview.cpp \
@@ -156,6 +158,7 @@ lupdate_only {
         dialog.hpp \
         view/view.hpp \
         view/page.hpp \
+        view/webelement.hpp \
         view/localview.hpp \
         view/webenginepage.hpp \
         view/webengineview.hpp \
@@ -184,6 +187,7 @@ lupdate_only {
         dialog.cpp \
         view/view.cpp \
         view/page.cpp \
+        view/webelement.cpp \
         view/localview.cpp \
         view/webenginepage.cpp \
         view/webengineview.cpp \
@@ -201,6 +205,7 @@ lupdate_only {
 }
 
 mac {
+    QMAKE_MAC_SDK = macosx
     OBJECTIVE_SOURCES += mainwindowsettings.mm
     LIBS += -framework AppKit
 }

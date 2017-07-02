@@ -29,6 +29,8 @@
 #    include <QWebEngineScript>
 #    include <QWebEngineScriptCollection>
 #  endif
+#  include "webengineview.hpp"
+#  include "quickwebengineview.hpp"
 #endif
 
 #if defined(Q_OS_WIN)
@@ -217,6 +219,7 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
             break;
         }
     }
+    default: break;
     }
 }
 
@@ -253,10 +256,16 @@ void NetworkAccessManager::HandleDownload(QObject *object){
     QString mime;
     QUrl url;
     if(orig_item){
+        if(WebEngineView *w = qobject_cast<WebEngineView*>(Application::CurrentWidget())){
+            if(TreeBank *tb = w->GetTreeBank()) tb->GoBackOrCloseForDownload(w);
+        }
         filename = orig_item->path();
         mime = orig_item->mimeType();
         url = orig_item->url();
     } else {
+        if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(Application::CurrentWidget())){
+            if(TreeBank *tb = w->GetTreeBank()) tb->GoBackOrCloseForDownload(w);
+        }
         filename = object->property("path").toString();
         mime = object->property("mimeType").toString();
         url = object->property("url").toUrl();
@@ -686,6 +695,8 @@ void DownloadItem::SetPathAndReady(QString path){
     }
 
     SetPath(path);
+
+    if(m_Path == DISABLE_FILENAME) return;
 
     m_FileOut.setFileName(m_Path);
     m_FileOut.open(QIODevice::WriteOnly);

@@ -136,13 +136,11 @@ public:
              [this](QVariant){ EmitScrollChanged();});
     }
     void HomeKeyEvent() Q_DECL_OVERRIDE {
-        qDebug() << "home";
         CallWithEvaluatedJavaScriptResult
             (QStringLiteral("(function(){ document.body.scrollTop=0;})()"),
              [this](QVariant){ EmitScrollChanged();});
     }
     void EndKeyEvent() Q_DECL_OVERRIDE {
-        qDebug() << "end";
         CallWithEvaluatedJavaScriptResult
             (QStringLiteral("(function(){\n"
                           VV"    document.body.scrollTop = \n"
@@ -356,6 +354,7 @@ signals:
     void downloadRequested(QObject*);
 
 protected:
+    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
     void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
@@ -380,6 +379,7 @@ private:
     QQuickItem *m_QmlNativeWebView;
     QIcon m_Icon;
     QImage m_GrabedDisplayData;
+    int m_ScrollSignalTimer;
     bool m_PreventScrollRestoration;
 #ifdef PASSWORD_MANAGER
     bool m_PreventAuthRegistration;

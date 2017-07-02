@@ -187,13 +187,16 @@ void Application::SetUpInspector(){
 #ifdef WEBENGINEVIEW
     QProcess process;
 
+#if defined(Q_OS_MAC)
+    process.start("lsof", QStringList() << QStringLiteral("-nP") << QStringLiteral("-iTCP") << QStringLiteral("-sTCP:LISTEN"));
+#else
     process.start("netstat", QStringList() << QStringLiteral("-an"));
+#endif
     process.waitForFinished(-1);
 
     QString result = process.readAllStandardOutput();
 
-    while(result.contains(QStringLiteral("127.0.0.1:%1 ")
-                          .arg(m_RemoteDebuggingPort))){
+    while(result.contains(QStringLiteral("127.0.0.1:%1 ").arg(m_RemoteDebuggingPort))){
         m_RemoteDebuggingPort++;
     }
     qputenv("QTWEBENGINE_REMOTE_DEBUGGING",

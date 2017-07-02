@@ -27,7 +27,6 @@
 #include <QMenu>
 #include <QCursor>
 #include <QUrlQuery>
-#include <QWebEngineContextMenuData>
 
 #include <functional>
 #include <memory>
@@ -296,20 +295,22 @@ void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level
     }
 #endif
 #if QT_VERSION >= 0x050900
-    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
         if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
+        if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
         m_View->KeyPressEvent(&ke);
-    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
         if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
+        if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
         m_View->KeyReleaseEvent(&ke);
     }
@@ -331,28 +332,8 @@ QString WebEnginePage::userAgentForUrl(const QUrl &url) const{
 }
 
 void WebEnginePage::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
-                                       QPoint localPos, QPoint globalPos){
-
-    QMenu *menu = new QMenu(parent);
-    menu->setToolTipsVisible(true);
-
-    bool isMedia = contextMenuData().isValid()
-        && contextMenuData().mediaType() != QWebEngineContextMenuData::MediaTypeImage;
-
-    m_View->AddContextMenu(menu, elem, isMedia);
-
-    menu->addSeparator();
-    menu->addAction(Action(Page::_InspectElement));
-
-    if(elem && !elem->IsNull() && elem->IsQueryInputElement()){
-        if(!menu->isEmpty()) menu->addSeparator();
-        menu->addAction(Action(Page::_AddSearchEngine, localPos));
-    }
-
-    m_View->AddRegularMenu(menu, elem);
-
-    menu->exec(globalPos);
-    delete menu;
+                                       QPoint localPos, QPoint globalPos, Page::MediaType type){
+    m_Page->DisplayContextMenu(parent, elem, localPos, globalPos, type);
 }
 
 void WebEnginePage::TriggerAction(Page::CustomAction action, QVariant data){

@@ -401,7 +401,8 @@ void ToolBar::timerEvent(QTimerEvent *ev){
 void ToolBar::showEvent(QShowEvent *ev){
     QToolBar::showEvent(ev);
 
-    if(m_View = m_TreeBank->GetCurrentView()){
+    m_View = m_TreeBank->GetCurrentView();
+    if(m_View){
 
         Connect(m_View);
         m_BackAction->setEnabled(m_View->CanGoBack());

@@ -1520,12 +1520,19 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         }
 
         if(collidings.isEmpty() &&
-           (ev->modifiers() & Qt::ControlModifier ||
-            ev->modifiers() & Qt::ShiftModifier)){
+           (ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+            || ev->modifiers() & Qt::MetaModifier
+#endif
+            || ev->modifiers() & Qt::ShiftModifier)){
 
             ThumbList_UpDirectory();
 
-        } else if(ev->modifiers() & Qt::ControlModifier){
+        } else if(ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+                  || ev->modifiers() & Qt::MetaModifier
+#endif
+                  ){
             foreach(QGraphicsItem *item, collidings){
                 if(item->parentItem() != this) continue;
                 if(Thumbnail *thumb = dynamic_cast<Thumbnail*>(item)){
@@ -1581,7 +1588,11 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     } else if(ev->button() == Qt::RightButton){
         QMenu *menu = 0;
 
-        if(ev->modifiers() & Qt::ControlModifier)
+        if(ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+           || ev->modifiers() & Qt::MetaModifier
+#endif
+           )
             menu = CreateSortMenu();
         else
             menu = CreateNodeMenu();
@@ -1664,7 +1675,8 @@ void GraphicsTableView::wheelEvent(QGraphicsSceneWheelEvent *ev){
     bool up = ev->delta() > 0;
     bool ignoreStatusBarMessage = true;
 
-    if(ScrollToChangeDirectory() &&
+    if(m_TreeBank->GetView()->MouseEventSource() != Qt::MouseEventSynthesizedBySystem &&
+       ScrollToChangeDirectory() &&
        ThumbnailAreaRect().contains(ev->pos())){
 
         // don't want to overwrite statusBarMessage in this event.
@@ -2408,9 +2420,8 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
 
             Thumbnail *thumb = 0;
             foreach(QGraphicsItem *item, scene()->selectedItems()){
-                if(thumb = dynamic_cast<Thumbnail*>(item)){
-                    break;
-                }
+                thumb = dynamic_cast<Thumbnail*>(item);
+                if(thumb) break;
             }
             if(!thumb) break;
 
@@ -2469,9 +2480,8 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
 
             NodeTitle *title = 0;
             foreach(QGraphicsItem *item, scene()->selectedItems()){
-                if(title = dynamic_cast<NodeTitle*>(item)){
-                    break;
-                }
+                title = dynamic_cast<NodeTitle*>(item);
+                if(title) break;
             }
             if(!title) break;
 
@@ -2532,7 +2542,8 @@ void GraphicsTableView::Scroll(qreal delta){
 
     ClearScrollIndicatorSelection();
 
-    if(m_EnableAnimation){
+    if(m_EnableAnimation
+       && m_TreeBank->GetView()->MouseEventSource() != Qt::MouseEventSynthesizedBySystem){
 
         qreal orig = m_TargetScroll;
         m_TargetScroll += delta;
@@ -2556,6 +2567,7 @@ void GraphicsTableView::Scroll(qreal delta){
         m_ScrollAnimation->start();
         m_ScrollAnimation->setCurrentTime(16);
     } else {
+        m_ScrollAnimation->stop();
         SetScroll(m_CurrentScroll + delta);
         ResetTargetScroll();
     }

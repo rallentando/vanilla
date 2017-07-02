@@ -23,8 +23,8 @@
 #include <memory>
 
 QuickNativeWebView::QuickNativeWebView(TreeBank *parent, QString id, QStringList set)
-    : View(parent, id, set)
-    , QQuickWidget(QUrl(QStringLiteral("qrc:/view/quicknativewebview.qml")), parent)
+    : QQuickWidget(QUrl(QStringLiteral("qrc:/view/quicknativewebview.qml")), parent)
+    , View(parent, id, set)
 {
     Initialize();
     rootContext()->setContextProperty(QStringLiteral("viewInterface"), this);
@@ -33,6 +33,7 @@ QuickNativeWebView::QuickNativeWebView(TreeBank *parent, QString id, QStringList
 
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
     m_Page = new Page(this, nam);
+    page()->SetView(this);
     ApplySpecificSettings(set);
 
     if(parent) setParent(parent);
@@ -245,7 +246,7 @@ void QuickNativeWebView::OnLoadFinished(bool ok){
     if(!data.isEmpty())
         CallWithEvaluatedJavaScriptResult(DecorateFormFieldJsCode(data), [](QVariant){});
 
-    CallWithEvaluatedJavaScriptResult(RegisterSubmitEventJsCode(), [](QVariant){});
+    CallWithEvaluatedJavaScriptResult(InstallSubmitEventJsCode(), [](QVariant){});
 #endif //ifdef PASSWORD_MANAGER
 
     static const QList<QEvent::Type> types =
@@ -280,7 +281,8 @@ void QuickNativeWebView::OnScrollChanged(){
 }
 
 void QuickNativeWebView::EmitScrollChanged(){
-    QMetaObject::invokeMethod(m_QmlNativeWebView, "emitScrollChanged");
+    if(!m_ScrollSignalTimer)
+        m_ScrollSignalTimer = startTimer(200);
 }
 
 void QuickNativeWebView::CallWithScroll(PointFCallBack callBack){
@@ -419,20 +421,24 @@ void QuickNativeWebView::HandleJavascriptConsoleMessage(int level, const QString
         return;
     }
 #endif //ifdef PASSWORD_MANAGER
-    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
         if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        KeyPressEvent(&QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers));
-    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+        if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
+        QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+        KeyPressEvent(&ke);
+    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
         if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        KeyReleaseEvent(&QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers));
+        if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
+        QKeyEvent ke = QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+        KeyReleaseEvent(&ke);
     } else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventKey()), msg)){
         m_PreventScrollRestoration = true;
     }
@@ -579,7 +585,7 @@ void QuickNativeWebView::Print(){
         QSizeF contentsSize = m_QmlNativeWebView->property("contentsSize").toSizeF();
         resize(contentsSize.toSize());
 
-        QTimer::singleShot(700, [this, filename, origSize, origPos](){
+        QTimer::singleShot(700, this, [this, filename, origSize, origPos](){
 
         grabFramebuffer().save(filename);
 
@@ -630,10 +636,6 @@ void QuickNativeWebView::ExitFullScreen(){
     QMetaObject::invokeMethod(m_QmlNativeWebView, "fullScreenCancelled");
 }
 
-void QuickNativeWebView::ExitFullScreen(){
-    QMetaObject::invokeMethod(m_QmlNativeWebView, "fullScreenCancelled");
-}
-
 void QuickNativeWebView::AddSearchEngine(QPoint pos){
     Q_UNUSED(pos);
     // not yet implemented.
@@ -644,6 +646,15 @@ void QuickNativeWebView::AddBookmarklet(QPoint pos){
     Q_UNUSED(pos);
     // not yet implemented.
     //if(page()) page()->AddBookmarklet(pos);
+}
+
+void QuickNativeWebView::timerEvent(QTimerEvent *ev){
+    QQuickWidget::timerEvent(ev);
+    if(ev->timerId() == m_ScrollSignalTimer){
+        QMetaObject::invokeMethod(m_QmlNativeWebView, "emitScrollChanged");
+        killTimer(m_ScrollSignalTimer);
+        m_ScrollSignalTimer = 0;
+    }
 }
 
 void QuickNativeWebView::hideEvent(QHideEvent *ev){
@@ -876,7 +887,6 @@ void QuickNativeWebView::mousePressEvent(QMouseEvent *ev){
         if(!str.isEmpty()){
             if(!View::TriggerAction(str, ev->pos())){
                 ev->setAccepted(false);
-                qDebug() << "Invalid mouse event: " << str;
                 return;
             }
             GestureAborted();
@@ -936,9 +946,8 @@ void QuickNativeWebView::mouseReleaseEvent(QMouseEvent *ev){
             GestureFinished(ev->pos(), ev->button());
         } else if(!m_GestureStartedPos.isNull()){
             SharedWebElement elem = m_ClickedElement;
-            GestureAborted(); // resets 'm_ClickedElement'.
-            // not yet implemented.
-            //page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos());
+            page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos());
+            GestureAborted();
         }
         ev->setAccepted(true);
         return;
@@ -981,17 +990,16 @@ void QuickNativeWebView::dragMoveEvent(QDragMoveEvent *ev){
 
 void QuickNativeWebView::dropEvent(QDropEvent *ev){
     emit statusBarMessage(QString());
-    QPoint pos = ev->pos();
-    QList<QUrl> urls = ev->mimeData()->urls();
-    QObject *source = ev->source();
-    QWidget *widget = this;
     bool isLocal = false;
-    QString text;
+    QPoint pos = ev->pos();
+    QObject *source = ev->source();
+    QString text = ev->mimeData()->text();
+    QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
 
     foreach(QUrl u, urls){ if(u.isLocalFile()) isLocal = true;}
 
-    if(!ev->mimeData()->text().isEmpty()){
-        text = ev->mimeData()->text().replace(QStringLiteral("\""), QStringLiteral("\\\""));
+    if(!text.isEmpty()){
+        text.replace(QStringLiteral("\""), QStringLiteral("\\\""));
     } else if(!urls.isEmpty()){
         foreach(QUrl u, urls){
             if(text.isEmpty()) text = u.toString();
@@ -999,7 +1007,7 @@ void QuickNativeWebView::dropEvent(QDropEvent *ev){
         }
     }
 
-    CallWithHitElement(pos, [this, pos, urls, text, source, widget](SharedWebElement elem){
+    CallWithHitElement(pos, [this, pos, source, text, urls](SharedWebElement elem){
 
     if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
 
@@ -1008,29 +1016,21 @@ void QuickNativeWebView::dropEvent(QDropEvent *ev){
         return;
     }
 
-    if(!m_Gesture.isEmpty() && source == widget){
+    if(!m_Gesture.isEmpty() && source == this){
         GestureFinished(pos, Qt::LeftButton);
         return;
     }
 
     GestureAborted();
 
-    if(urls.isEmpty() || source == widget){
-        // do nothing.
-    } else if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source)){
-        QList<QUrl> filtered;
-        foreach(QUrl u, urls){ if(!u.isLocalFile()) filtered << u;}
-        m_TreeBank->OpenInNewViewNode(filtered, true, GetViewNode());
-        return;
-    } else {
-        // foreign drag.
+    if(!urls.isEmpty() && source != this){
         m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
     }
 
     });
 
     if(isLocal ||
-       (DragToStartDownload() && !urls.isEmpty() && source == widget))
+       (DragToStartDownload() && !urls.isEmpty() && source == this))
         ; // do nothing.
     else
         QQuickWidget::dropEvent(ev);
@@ -1046,27 +1046,27 @@ void QuickNativeWebView::dragLeaveEvent(QDragLeaveEvent *ev){
 void QuickNativeWebView::wheelEvent(QWheelEvent *ev){
     if(!visible()) return;
 
-    QString wheel;
-    bool up = ev->delta() > 0;
+    if(ev->source() != Qt::MouseEventSynthesizedBySystem){
+        QString wheel;
+        bool up = ev->delta() > 0;
 
-    Application::AddModifiersToString(wheel, ev->modifiers());
-    Application::AddMouseButtonsToString(wheel, ev->buttons());
-    Application::AddWheelDirectionToString(wheel, up);
+        Application::AddModifiersToString(wheel, ev->modifiers());
+        Application::AddMouseButtonsToString(wheel, ev->buttons());
+        Application::AddWheelDirectionToString(wheel, up);
 
-    if(m_MouseMap.contains(wheel)){
+        if(m_MouseMap.contains(wheel)){
 
-        QString str = m_MouseMap[wheel];
-        if(!str.isEmpty()){
-            if(!View::TriggerAction(str, ev->pos()))
-                qDebug() << "Invalid mouse event: " << str;
+            QString str = m_MouseMap[wheel];
+            if(!str.isEmpty()){
+                View::TriggerAction(str, ev->pos());
+            }
+            ev->setAccepted(true);
+            return;
         }
-        ev->setAccepted(true);
-
-    } else {
-        m_PreventScrollRestoration = true;
-        QQuickWidget::wheelEvent(ev);
-        ev->setAccepted(true);
     }
+    m_PreventScrollRestoration = true;
+    QQuickWidget::wheelEvent(ev);
+    ev->setAccepted(true);
 }
 
 void QuickNativeWebView::focusInEvent(QFocusEvent *ev){

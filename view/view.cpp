@@ -12,6 +12,9 @@
 #include <QSettings>
 #include <QPixmap>
 #include <QMenu>
+#include <QWidgetAction>
+#include <QHBoxLayout>
+#include <QLabel>
 #ifdef WEBENGINEVIEW
 #  include <QWebEngineProfile>
 #endif
@@ -644,9 +647,9 @@ QMimeData *View::CreateMimeDataFromSelection(NetworkAccessManager *nam){
 
     QMimeData *mime = new QMimeData;
 
-    QList<QUrl>        urls = Page::ExtractUrlFromHtml(m_SelectedHtml, m_CurrentBaseUrl, Page::HaveReference);
-    if(urls.isEmpty()) urls = Page::ExtractUrlFromText(m_SelectedText, m_CurrentBaseUrl);
-    if(urls.isEmpty()) urls = Page::ExtractUrlFromHtml(m_SelectedHtml, m_CurrentBaseUrl, Page::HaveSource);
+    QList<QUrl>        urls = Page::ExtractUrlsFromHtml(m_SelectedHtml, m_CurrentBaseUrl, Page::HaveReference);
+    if(urls.isEmpty()) urls = Page::ExtractUrlsFromText(m_SelectedText, m_CurrentBaseUrl);
+    if(urls.isEmpty()) urls = Page::ExtractUrlsFromHtml(m_SelectedHtml, m_CurrentBaseUrl, Page::HaveSource);
 
     mime->setText(m_SelectedText);
     mime->setHtml(m_SelectedHtml);
@@ -820,7 +823,7 @@ QMenu *View::OpenMediaWithOtherBrowserMenu(QVariant data){
     return menu;
 }
 
-void View::AddContextMenu(QMenu *menu, SharedWebElement elem, bool isMedia){
+void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type){
     QVariant data = QVariant::fromValue(elem);
 
     QUrl linkUrl  = elem ? elem->LinkUrl()  : QUrl();
@@ -832,7 +835,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, bool isMedia){
     const QString slash = QStringLiteral("/");
     const QString quest = QStringLiteral("?");
 
-    if(linkUrl.isEmpty() && imageUrl.isEmpty() && SelectedText().isEmpty()){
+    if(linkUrl.isEmpty() && imageUrl.isEmpty() && m_SelectedText.isEmpty()){
 
         if(CanGoBack())    menu->addAction(Action(Page::_Back));
         if(CanGoForward()) menu->addAction(Action(Page::_Forward));
@@ -857,10 +860,22 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, bool isMedia){
             name = list.takeLast();
         if(name.length() > max_filename_length_at_contextmenu)
             name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
+        name = QStringLiteral("(") + name + QStringLiteral(")");
 
         foreach(QString str, View::GetLinkMenu().split(comma)){
-            if     (str == QStringLiteral("Separator")) menu->addSeparator();
-            else if(str == QStringLiteral("LinkUrl"))   menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
+            if(str == QStringLiteral("LinkUrl")){
+                QWidgetAction *action = new QWidgetAction(menu);
+                QWidget *widget = new QWidget(menu);
+                QHBoxLayout *layout = new QHBoxLayout();
+                QLabel *label = new QLabel(name);
+                label->setAlignment(Qt::AlignLeft);
+                layout->setContentsMargins(15, 3, 15, 3);
+                layout->addWidget(label);
+                widget->setLayout(layout);
+                action->setDefaultWidget(widget);
+                menu->addAction(action);
+            }
+            else if(str == QStringLiteral("Separator")) menu->addSeparator();
             else if(str == QStringLiteral("OpenLinkWithOtherBrowser"))
                 menu->addMenu(OpenLinkWithOtherBrowserMenu(data));
             else menu->addAction(Action(str, data));
@@ -877,14 +892,24 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, bool isMedia){
         name = QString();
         while(name.isEmpty() && !list.isEmpty())
             name = list.takeFirst();
-
         if(name.length() > max_filename_length_at_contextmenu)
             name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
+        name = QStringLiteral("(") + name + QStringLiteral(")");
 
-        foreach(QString str, isMedia ? View::GetMediaMenu().split(comma) : View::GetImageMenu().split(comma)){
-            if     (str == QStringLiteral("Separator")) menu->addSeparator();
-            else if(str == QStringLiteral("ImageUrl"))  menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
-            else if(str == QStringLiteral("MediaUrl"))  menu->addAction(QStringLiteral("(") + name + QStringLiteral(")"));
+        foreach(QString str, type == Page::MediaTypePlayable ? View::GetMediaMenu().split(comma) : View::GetImageMenu().split(comma)){
+            if(str == QStringLiteral("ImageUrl") || str == QStringLiteral("MediaUrl")){
+                QWidgetAction *action = new QWidgetAction(menu);
+                QWidget *widget = new QWidget(menu);
+                QHBoxLayout *layout = new QHBoxLayout();
+                QLabel *label = new QLabel(name);
+                label->setAlignment(Qt::AlignLeft);
+                layout->setContentsMargins(15, 3, 15, 3);
+                layout->addWidget(label);
+                widget->setLayout(layout);
+                action->setDefaultWidget(widget);
+                menu->addAction(action);
+            }
+            else if(str == QStringLiteral("Separator")) menu->addSeparator();
             else if(str == QStringLiteral("OpenImageWithOtherBrowser"))
                 menu->addMenu(OpenImageWithOtherBrowserMenu(data));
             else if(str == QStringLiteral("OpenMediaWithOtherBrowser"))
@@ -902,7 +927,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, bool isMedia){
         }
     }
 
-    if(!SelectedText().isEmpty()){
+    if(!m_SelectedText.isEmpty()){
         if(!menu->isEmpty() && !editable)
             menu->addSeparator();
 
@@ -1020,11 +1045,6 @@ void View::LoadSettings(){
 
     m_LinkMenu = s.value(QStringLiteral("webview/menu/LinkMenu"), QStringLiteral(
         "LinkUrl,"
-      VV"OpenInNewViewNode,"
-      VV"OpenInNewHistNode,"
-      VV"OpenInNewDirectory,"
-      VV"OpenOnRoot,"
-      VV"Separator,"
       VV"OpenLink,"
       VV"DownloadLink,"
       VV"CopyLinkUrl,"
@@ -1033,11 +1053,6 @@ void View::LoadSettings(){
 
     m_ImageMenu = s.value(QStringLiteral("webview/menu/ImageMenu"), QStringLiteral(
         "ImageUrl,"
-      VV"OpenImageInNewViewNode,"
-      VV"OpenImageInNewHistNode,"
-      VV"OpenImageInNewDirectory,"
-      VV"OpenImageOnRoot,"
-      VV"Separator,"
       VV"OpenImage,"
       VV"DownloadImage,"
       VV"CopyImage,"
@@ -1050,10 +1065,6 @@ void View::LoadSettings(){
       VV"ToggleMediaPlayPause,"
       VV"ToggleMediaMute,"
       VV"ToggleMediaLoop,"
-      VV"OpenMediaInNewViewNode,"
-      VV"OpenMediaInNewHistNode,"
-      VV"OpenMediaInNewDirectory,"
-      VV"OpenMediaOnRoot,"
       VV"Separator,"
       VV"OpenMedia,"
       VV"DownloadMedia,"
@@ -1085,9 +1096,7 @@ void View::LoadSettings(){
       VV"BookmarkletMenu,"
       VV"Separator,"
       VV"NewViewNode,"
-      VV"NewHistNode,"
       VV"CloneViewNode,"
-      VV"CloneHistNode,"
       VV"CopyUrl,"
       VV"CopyPageAsLink,"
       VV"OpenWithOtherBrowser,"
@@ -1510,7 +1519,6 @@ height |  |         |  | height
 }
 
 bool View::TriggerAction(QString str, QVariant data){
-    qDebug() << str;
     if(Page::IsValidAction(str))
         TriggerAction(Page::StringToAction(str), data);
     else if(Page::GetBookmarkletMap().contains(str))
@@ -1686,7 +1694,8 @@ void View::GestureStarted(QPoint pos){
     SetScrollBarState();
     CallWithHitElement(pos, [this](SharedWebElement elem){ m_ClickedElement = elem;});
     CallWithSelectedText([pos, this](QString text){
-        if(m_HadSelection = !text.isEmpty()){
+        m_HadSelection = !text.isEmpty();
+        if(m_HadSelection){
             m_SelectedText = text;
             CallWithSelectedHtml([this](QString html){ m_SelectedHtml = html;});
             CallWithGotCurrentBaseUrl([this](QUrl base){ m_CurrentBaseUrl = base;});
@@ -1872,190 +1881,4 @@ float View::PrepareForZoomOut(){
     }
     hn->SetZoom(zoom);
     return zoom;
-}
-
-JsWebElement::JsWebElement()
-    : WebElement()
-{
-    m_Provider     = 0;
-    m_TagName      = QString();
-    m_InnerText    = QString();
-    m_BaseUrl      = QUrl();
-    m_LinkUrl      = QUrl();
-    m_ImageUrl     = QUrl();
-    m_LinkHtml     = QString();
-    m_ImageHtml    = QString();
-    m_Rectangle    = QRect();
-    m_IsEditable   = false;
-    m_IsJsCommand  = false;
-    m_IsTextInput  = false;
-    m_IsQueryInput = false;
-    m_IsFrame      = false;
-    m_XPath        = QString();
-    m_Action       = QStringLiteral("None");
-}
-
-JsWebElement::JsWebElement(View *provider, QVariant var)
-    : WebElement()
-{
-    QVariantMap map = var.toMap();
-    m_Provider  = provider;
-    m_TagName   = map[QStringLiteral("tagName")].toString();
-    m_InnerText = map[QStringLiteral("innerText")].toString();
-    m_BaseUrl   = Page::StringToUrl(map[QStringLiteral("baseUrl")].toString());
-    m_LinkUrl   = Page::StringToUrl(map[QStringLiteral("linkUrl")].toString(), m_BaseUrl);
-    m_ImageUrl  = Page::StringToUrl(map[QStringLiteral("imageUrl")].toString(), m_BaseUrl);
-    m_LinkHtml  = map[QStringLiteral("linkHtml")].toString();
-    m_ImageHtml = map[QStringLiteral("imageHtml")].toString();
-    m_Rectangle = QRect(map[QStringLiteral("x")].toInt(),     map[QStringLiteral("y")].toInt(),
-                        map[QStringLiteral("width")].toInt(), map[QStringLiteral("height")].toInt());
-    m_IsEditable   = map[QStringLiteral("isEditable")].toBool();
-    m_IsJsCommand  = map[QStringLiteral("isJsCommand")].toBool();
-    m_IsTextInput  = map[QStringLiteral("isTextInput")].toBool();
-    m_IsQueryInput = map[QStringLiteral("isQueryInput")].toBool();
-    m_IsFrame      = map[QStringLiteral("isFrame")].toBool();
-    m_XPath        = map[QStringLiteral("xPath")].toString();
-    m_Action       = map[QStringLiteral("action")].toString();
-
-    m_Region = QRegion();
-    QVariantMap regionMap = map[QStringLiteral("region")].toMap();
-    QRect viewport = QRect(QPoint(), m_Provider->size());
-    foreach(QString key, regionMap.keys()){
-        QVariantMap m = regionMap[key].toMap();
-        m_Region |= QRect(m["x"].toInt(),
-                          m["y"].toInt(),
-                          m["width"].toInt(),
-                          m["height"].toInt()).intersected(viewport);
-    }
-}
-
-JsWebElement::~JsWebElement(){
-}
-
-bool JsWebElement::SetFocus(){
-    if(m_Provider){
-        QMetaObject::invokeMethod(m_Provider->base(), "SetFocusToElement",
-                                  Q_ARG(QString, m_XPath));
-        return true;
-    }
-    return false;
-}
-
-bool JsWebElement::ClickEvent(){
-    if(m_Provider){
-        QMetaObject::invokeMethod(m_Provider->base(), "FireClickEvent",
-                                  Q_ARG(QString, m_XPath),
-                                  Q_ARG(QPoint, Position()));
-        return true;
-    }
-    return false;
-}
-
-QString JsWebElement::TagName() const {
-    return m_TagName;
-}
-
-QString JsWebElement::InnerText() const {
-    return m_InnerText;
-}
-
-QUrl JsWebElement::BaseUrl() const {
-    return m_BaseUrl;
-}
-
-QUrl JsWebElement::LinkUrl() const {
-    return m_LinkUrl;
-}
-
-QUrl JsWebElement::ImageUrl() const {
-    return m_ImageUrl;
-}
-
-QString JsWebElement::LinkHtml() const {
-    if(!m_LinkHtml.isEmpty()) return m_LinkHtml;
-    return QStringLiteral("<a href=\"") + m_LinkUrl.toString() + QStringLiteral("\"></a>");
-}
-
-QString JsWebElement::ImageHtml() const {
-    if(!m_ImageHtml.isEmpty()) return m_ImageHtml;
-    return QStringLiteral("<img src=\"") + m_ImageUrl.toString() + QStringLiteral("\">");
-}
-
-QPoint JsWebElement::Position() const {
-    return m_Rectangle.center();
-}
-
-QRect JsWebElement::Rectangle() const {
-    return m_Rectangle;
-}
-
-QRegion JsWebElement::Region() const {
-    return m_Region;
-}
-
-void JsWebElement::SetPosition(QPoint pos){
-    m_Rectangle.moveCenter(pos);
-}
-
-void JsWebElement::SetRectangle(QRect rect){
-    m_Rectangle = rect;
-}
-
-void JsWebElement::SetText(QString text){
-    if(m_Provider){
-        QMetaObject::invokeMethod(m_Provider->base(), "SetTextValue",
-                                  Q_ARG(QString, m_XPath),
-                                  Q_ARG(QString, text));
-    }
-}
-
-QPixmap JsWebElement::Pixmap(){
-    if(!m_Provider || IsNull()) return QPixmap();
-    QPixmap pixmap(m_Provider->size());
-    QPainter painter(&pixmap);
-    QRect r;
-    if(!Region().isNull()){
-        m_Provider->Render(&painter, Region());
-        r = Region().boundingRect();
-    } else if(!Rectangle().isNull()){
-        m_Provider->Render(&painter, Rectangle());
-        r = Rectangle();
-    }
-    painter.end();
-    return pixmap.copy(r);
-}
-
-bool JsWebElement::IsNull() const {
-    return Position().isNull() || Rectangle().isNull();
-}
-
-bool JsWebElement::IsEditableElement() const {
-    return m_IsEditable;
-}
-
-bool JsWebElement::IsJsCommandElement() const {
-    return m_IsJsCommand;
-}
-
-bool JsWebElement::IsTextInputElement() const {
-    return m_IsTextInput;
-}
-
-bool JsWebElement::IsQueryInputElement() const {
-    return m_IsQueryInput;
-}
-
-bool JsWebElement::IsFrameElement() const {
-    return m_IsFrame;
-}
-
-WebElement::Action JsWebElement::GetAction() const {
-    if(m_Action == QStringLiteral("Focus")) return Focus;
-    if(m_Action == QStringLiteral("Click")) return Click;
-    if(m_Action == QStringLiteral("Hover")) return Hover;
-    return None;
-}
-
-bool JsWebElement::Equals(const WebElement &other) const {
-    return m_XPath == static_cast<const JsWebElement*>(&other)->m_XPath;
 }

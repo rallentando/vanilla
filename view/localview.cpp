@@ -33,8 +33,8 @@
 #include "tridentview.hpp"
 
 LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
-    : View(parent)
-    , GraphicsTableView(parent)
+    : GraphicsTableView(parent)
+    , View(parent)
 {
     Initialize();
     setZValue(COVERING_VIEW_CONTENTS_LAYER);
@@ -2196,7 +2196,6 @@ void LocalView::contextMenuEvent(QGraphicsSceneContextMenuEvent *ev){
 void LocalView::wheelEvent(QGraphicsSceneWheelEvent *ev){
     if(!IsDisplayingNode()) return;
 
-    QString wheel;
     bool up = ev->delta() > 0;
     bool ignoreStatusBarMessage = true;
 
@@ -2209,39 +2208,47 @@ void LocalView::wheelEvent(QGraphicsSceneWheelEvent *ev){
         return;
     }
 
-    Application::AddModifiersToString(wheel, ev->modifiers());
-    Application::AddMouseButtonsToString(wheel, ev->buttons());
-    Application::AddWheelDirectionToString(wheel, up);
+    if(GetTreeBank()->GetView()->MouseEventSource() != Qt::MouseEventSynthesizedBySystem){
+        QString wheel;
 
-    if(Gadgets::GetMouseMap().contains(wheel)){
+        Application::AddModifiersToString(wheel, ev->modifiers());
+        Application::AddMouseButtonsToString(wheel, ev->buttons());
+        Application::AddWheelDirectionToString(wheel, up);
 
-        QString str = Gadgets::GetMouseMap()[wheel];
-        if(!str.isEmpty()){
+        if(Gadgets::GetMouseMap().contains(wheel)){
 
-            GestureAborted();
+            QString str = Gadgets::GetMouseMap()[wheel];
+            if(!str.isEmpty()){
+
+                GestureAborted();
+
+                // don't want to overwrite statusBarMessage in this event.
+                // because these method may update statusBarMessage.
+                if(!TriggerAction(str, ev->pos().toPoint())){
+                    ev->setAccepted(false);
+                    return;
+                }
+            }
+            UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);
+            ev->setAccepted(true);
+            return;
+
+        } else if(ScrollToChangeDirectory() &&
+                  ThumbnailAreaRect().contains(ev->pos())){
 
             // don't want to overwrite statusBarMessage in this event.
-            // because these method may update statusBarMessage.
-            if(!TriggerAction(str, ev->pos().toPoint())){
-                ev->setAccepted(false);
-                return;
-            }
+            // because these method updates statusBarMessage.
+            if(up) ThumbList_UpDirectory();
+            else   ThumbList_DownDirectory();
+
+            UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);
+            ev->setAccepted(true);
+            return;
         }
-
-    } else if(ScrollToChangeDirectory() &&
-              ThumbnailAreaRect().contains(ev->pos())){
-
-        // don't want to overwrite statusBarMessage in this event.
-        // because these method updates statusBarMessage.
-        if(up) ThumbList_UpDirectory();
-        else   ThumbList_DownDirectory();
-
-    } else {
-
-        ignoreStatusBarMessage = false;
-        if(up) ThumbList_ScrollUp();
-        else   ThumbList_ScrollDown();
     }
+    ignoreStatusBarMessage = false;
+    if(up) ThumbList_ScrollUp();
+    else   ThumbList_ScrollDown();
 
     UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);
     ev->setAccepted(true);
@@ -2413,7 +2420,11 @@ void VideoItem::keyPressEvent(QKeyEvent *ev){
 
         } else if(ev->key() == Qt::Key_Left &&
                   ev->modifiers() & Qt::ShiftModifier &&
-                  ev->modifiers() & Qt::ControlModifier){
+                  (ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+                   || ev->modifiers() & Qt::MetaModifier
+#endif
+                   )){
 
             emit statusBarMessage(tr("10 minutes back"));
             SetPositionRelative(-600000);
@@ -2421,7 +2432,11 @@ void VideoItem::keyPressEvent(QKeyEvent *ev){
 
         } else if(ev->key() == Qt::Key_Right &&
                   ev->modifiers() & Qt::ShiftModifier &&
-                  ev->modifiers() & Qt::ControlModifier){
+                  (ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+                   || ev->modifiers() & Qt::MetaModifier
+#endif
+                   )){
 
             emit statusBarMessage(tr("10 minutes forward"));
             SetPositionRelative(600000);
@@ -2442,14 +2457,22 @@ void VideoItem::keyPressEvent(QKeyEvent *ev){
             ev->setAccepted(true);
 
         } else if(ev->key() == Qt::Key_Left &&
-                  ev->modifiers() == Qt::ControlModifier){
+                  (ev->modifiers() == Qt::ControlModifier
+#if defined(Q_OS_MAC)
+                   || ev->modifiers() == Qt::MetaModifier
+#endif
+                   )){
 
             emit statusBarMessage(tr("1 minute back"));
             SetPositionRelative(-60000);
             ev->setAccepted(true);
 
         } else if(ev->key() == Qt::Key_Right &&
-                  ev->modifiers() == Qt::ControlModifier){
+                  (ev->modifiers() == Qt::ControlModifier
+#if defined(Q_OS_MAC)
+                   || ev->modifiers() == Qt::MetaModifier
+#endif
+                   )){
 
             emit statusBarMessage(tr("1 minute forward"));
             SetPositionRelative(60000);

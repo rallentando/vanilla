@@ -43,6 +43,25 @@ public:
     TreeBank(QWidget *parent = 0);
     ~TreeBank();
 
+    class GraphicsView : public QGraphicsView {
+    public:
+        GraphicsView(QGraphicsScene *scene, QWidget *parent = 0)
+            : QGraphicsView(scene, parent)
+            , m_MouseEventSource(Qt::MouseEventNotSynthesized)
+        {
+        }
+        void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE {
+            m_MouseEventSource = ev->source();
+            QGraphicsView::wheelEvent(ev);
+            m_MouseEventSource = Qt::MouseEventNotSynthesized;
+        }
+        Qt::MouseEventSource MouseEventSource() const {
+            return m_MouseEventSource;
+        }
+    private:
+        Qt::MouseEventSource m_MouseEventSource;
+    };
+
     static void Initialize();
 
     static inline HistNode *GetHistRoot() { return m_HistRoot;}
@@ -60,7 +79,7 @@ public:
     inline _Vanilla *GetJsObject() const { return m_JsObject;}
     inline Gadgets  *GetGadgets()  const { return m_Gadgets;}
     inline QGraphicsScene *GetScene() const { return m_Scene;}
-    inline QGraphicsView *GetView() const { return m_View;}
+    inline GraphicsView *GetView() const { return m_View;}
 
     inline SharedView GetCurrentView()     const { return m_CurrentView;}
     inline ViewNode *GetCurrentViewNode()  const { return m_CurrentViewNode;}
@@ -177,6 +196,8 @@ public:
     bool SetCurrent(SharedView view);
 
     void NthView(int n, ViewNode *vn = 0);
+
+    void GoBackOrCloseForDownload(View *view);
 
     // for gadgets.
 public:
@@ -389,7 +410,7 @@ public:
 
 private:
     QGraphicsScene *m_Scene;
-    QGraphicsView *m_View;
+    GraphicsView *m_View;
     Notifier *m_Notifier;
     Receiver *m_Receiver;
     Gadgets  *m_Gadgets;

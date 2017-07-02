@@ -57,6 +57,13 @@ WebEngineView {
         viewInterface.iconUrlChanged(icon)
     }
 
+    onContextMenuRequested: {
+        request.accepted = true
+        var isMedia = (request.mediaType == ContextMenuRequest.MediaTypeVideo ||
+                       request.mediaType == ContextMenuRequest.MediaTypeAudio)
+        viewInterface.contextMenuRequested(request, isMedia)
+    }
+
     onWindowCloseRequested: {
         viewInterface.windowCloseRequested()
     }

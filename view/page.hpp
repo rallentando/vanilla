@@ -10,6 +10,7 @@
 
 #include "actionmapper.hpp"
 #include "callback.hpp"
+#include "webelement.hpp"
 
 class QUrl;
 class QString;
@@ -78,12 +79,19 @@ public:
         RelIsPrev,
     };
 
+    enum MediaType {
+        MediaTypeNone,
+        MediaTypeImage,
+        MediaTypePlayable,
+    };
+
     static QUrl        CreateQueryUrl(QString, QString key = QString());
     static QUrl        UpDirectoryUrl(QUrl);
     static QUrl        StringToUrl   (QString str,  QUrl baseUrl = QUrl());
-    static QList<QUrl> ExtractUrlFromText(QString text, QUrl baseUrl = QUrl());
-    static QList<QUrl> ExtractUrlFromHtml(QString html, QUrl baseUrl, FindElementsOption option);
-    static QList<QUrl> DirtyStringToUrlList(QString str);
+    static QList<QUrl> ExtractUrlsFromText(QString text, QUrl baseUrl = QUrl());
+    static QList<QUrl> ExtractUrlsFromHtml(QString html, QUrl baseUrl, FindElementsOption option);
+    static QList<QUrl> DirtyStringToUrls(QString str);
+    static QList<QUrl> MimeDataToUrls(const QMimeData *mime, QObject *source);
 
     static QString OptionToSelector(FindElementsOption option){
         QString selector;
@@ -464,6 +472,7 @@ signals:
 
 public:
     QAction *Action(CustomAction a, QVariant data = QVariant());
+    void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint localPos, QPoint globalPos, MediaType type = MediaTypeNone);
 
 public slots:
     void DownloadSuggest(const QUrl&);

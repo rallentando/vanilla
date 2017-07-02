@@ -135,7 +135,11 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 
     if(ev->button() == Qt::RightButton){
         // for sort menu.
-        ev->setAccepted(!(ev->modifiers() & Qt::ControlModifier));
+        ev->setAccepted(!(ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+                          || ev->modifiers() & Qt::MetaModifier
+#endif
+                          ));
         return;
     }
 
@@ -145,7 +149,11 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
         return;
     }
 
-    if(ev->modifiers() & Qt::ControlModifier){
+    if(ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+       || ev->modifiers() & Qt::MetaModifier
+#endif
+       ){
         setSelected(!isSelected());
         if(isSelected()){
             m_TableView->AppendToSelection(m_Node);
@@ -201,7 +209,11 @@ void AbstractNodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 
     } else if(pos().manhattanLength() != 0){
         foreach(QGraphicsItem *item, scene()->selectedItems()){ item->setPos(QPoint(0,0));}
-    } else if(ev->modifiers() & Qt::ControlModifier){
+    } else if(ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+              || ev->modifiers() & Qt::MetaModifier
+#endif
+              ){
         /* do nothing.*/
     } else if(ev->modifiers() & Qt::ShiftModifier){
         /* do nothing.*/

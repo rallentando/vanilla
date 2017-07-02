@@ -22,6 +22,7 @@
 ModalDialog::ModalDialog()
     : QWidget(0)
     , m_Type(None)
+    , m_HotSpot(QPoint())
     , m_Buttons(QStringList())
     , m_ClickedButton(QString())
     , m_Title(QString())
@@ -29,7 +30,6 @@ ModalDialog::ModalDialog()
     , m_InformativeText(QString())
     , m_DetailedText(QString())
     , m_InputWidget(0)
-    , m_HotSpot(QPoint())
 {
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_ShowModal);

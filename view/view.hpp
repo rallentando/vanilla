@@ -14,6 +14,7 @@
 #include "callback.hpp"
 #include "application.hpp"
 #include "page.hpp"
+#include "webelement.hpp"
 
 class QKeySequence;
 class QMimeData;
@@ -26,85 +27,6 @@ typedef std::shared_ptr<View> SharedView;
 typedef std::weak_ptr<View>   WeakView;
 typedef QList<std::shared_ptr<View>> SharedViewList;
 typedef QList<std::weak_ptr<View>>   WeakViewList;
-
-/*
-
-  contenteditable=true: focus
-  textarea: focus
-  object: focus
-  embed: focus
-  frame: focus
-  iframe: focus
-  input type=text: focsu
-  input type=search: focus
-  input type=password: focus
-
-  onclick: click
-  href=javascript: click
-  button: click
-  select: click
-  label: click
-  role=button: click
-  role=link: click
-  role=menu: click
-  role=checkbox: click
-  role=radio: click
-  role=tab: click
-  input type=checkbox: clcik
-  input type=radio: click
-  input type=file: click
-  input type=submit: click
-  input type=reset: click
-  input type=button: clcik
-
-  href=*: menu
-
- */
-
-class WebElement{
-public:
-    explicit WebElement(){
-    }
-    virtual ~WebElement(){
-    }
-    enum Action {
-        Click,
-        Focus,
-        Hover,
-        None,
-    };
-    virtual bool SetFocus(){ return false;}
-    virtual bool ClickEvent(){ return false;}
-    virtual QString TagName() const { return QString();}
-    virtual QString InnerText() const { return QString();}
-    virtual QUrl BaseUrl() const { return QUrl();}
-    virtual QUrl LinkUrl() const { return QUrl();}
-    virtual QUrl ImageUrl() const { return QUrl();}
-    virtual QString LinkHtml() const { return QString();}
-    virtual QString ImageHtml() const { return QString();}
-    virtual QPoint Position() const { return QPoint();}
-    virtual QRect Rectangle() const { return QRect();}
-    virtual QRegion Region() const { return QRegion();}
-    virtual void SetPosition(QPoint){}
-    virtual void SetRectangle(QRect){}
-    virtual void SetText(QString){}
-    virtual QPixmap Pixmap(){ return QPixmap();}
-    virtual bool IsNull() const { return true;}
-    virtual bool IsEditableElement() const { return false;}
-    virtual bool IsJsCommandElement() const { return false;}
-    virtual bool IsTextInputElement() const { return false;}
-    virtual bool IsQueryInputElement() const { return false;}
-    virtual bool IsFrameElement() const { return false;}
-    virtual Action GetAction() const { return None;}
-    virtual bool Equals(const WebElement&) const { return false;}
-};
-
-typedef std::shared_ptr<WebElement> SharedWebElement;
-typedef QList<std::shared_ptr<WebElement>> SharedWebElementList;
-typedef std::function<void(SharedWebElement)> WebElementCallBack;
-typedef std::function<void(SharedWebElementList)> WebElementListCallBack;
-
-Q_DECLARE_METATYPE(SharedWebElement);
 
 class View{
 
@@ -181,7 +103,7 @@ public:
     QMenu *OpenImageWithOtherBrowserMenu(QVariant data);
     QMenu *OpenMediaWithOtherBrowserMenu(QVariant data);
 
-    void AddContextMenu(QMenu *menu, SharedWebElement elem, bool isMedia = false);
+    void AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type = Page::MediaTypeNone);
     void AddRegularMenu(QMenu *menu, SharedWebElement elem);
 
     bool GetDisplayObscured(){ return m_DisplayObscured;}
@@ -778,6 +700,9 @@ public:
           VV"        data.isFrame = \n"
           VV"            (elems[i].tagName == \"FRAME\" ||\n"
           VV"             elems[i].tagName == \"IFRAME\") ? true : false;\n"
+          VV"        data.isLooped = elems[i].loop;\n"
+          VV"        data.isPaused = elems[i].paused;\n"
+          VV"        data.isMuted = elems[i].muted;\n"
           VV"        data.action = \n"
           VV"            (elems[i].href &&\n"
           VV"             elems[i].href.lastIndexOf &&\n"
@@ -975,6 +900,9 @@ public:
           VV"    data.isFrame = \n"
           VV"        (elem.tagName == \"FRAME\" ||\n"
           VV"         elem.tagName == \"IFRAME\") ? true : false;\n"
+          VV"    data.isLooped = elem.loop;\n"
+          VV"    data.isPaused = elem.paused;\n"
+          VV"    data.isMuted = elem.muted;\n"
           VV"    data.action = \n"
           VV"        (elem.href &&\n"
           VV"         elem.href.lastIndexOf &&\n"
@@ -1172,14 +1100,22 @@ public:
         return QStringLiteral(
             "(function(){\n"
           VV"    var forms = document.querySelectorAll(\"form\");\n"
+          VV"    var allInputs = Array.from(document.querySelectorAll(\"input,textarea\"));\n"
           VV"    for(var i = 0; i < forms.length; i++){\n"
           VV"        var form = forms[i];\n"
           VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
           VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+          VV"        if(!submit || !password){\n"
+          VV"            var inputs = allInputs.filter(function(e){ return e.form == form;});\n"
+          VV"            if(!submit) submit = inputs.find(function(e){ return e.type == \"submit\";});\n"
+          VV"            if(!password) password = inputs.find(function(e){ return e.type == \"password\";});\n"
+          VV"        };\n"
           VV"        if(!submit || !password) continue;\n"
           VV"        form.addEventListener(\"submit\", function(e){\n"
           VV"            var data = \"\";\n"
-          VV"            var inputs = e.target.querySelectorAll(\"input,textarea\");\n"
+          VV"            var inputs = Array.from(e.target.querySelectorAll(\"input,textarea\"));\n"
+          VV"            inputs = inputs.concat(allInputs.filter(function(el){ return el.form == e.target;}));\n"
+          VV"            inputs = inputs.filter(function(v, i, s){ return s.indexOf(v) == i;});\n"
           VV"            for(var j = 0; j < inputs.length; j++){\n"
           VV"                var field = inputs[j];\n"
           VV"                var type = (field.type || \"hidden\").toLowerCase();\n"
@@ -1203,16 +1139,23 @@ public:
             "(function(){\n"
           VV"    var data = \"%1\".split(\"&\");\n"
           VV"    var forms = document.querySelectorAll(\"form\");\n"
+          VV"    var allInputs = Array.from(document.querySelectorAll(\"input,textarea\"));\n"
           VV"    for(var i = 0; i < forms.length; i++){\n"
           VV"        var form = forms[i];\n"
           VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
           VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+          VV"        if(!submit || !password){\n"
+          VV"            var inputs = allInputs.filter(function(e){ return e.form == form;});\n"
+          VV"            if(!submit) submit = inputs.find(function(e){ return e.type == \"submit\";});\n"
+          VV"            if(!password) password = inputs.find(function(e){ return e.type == \"password\";});\n"
+          VV"        };\n"
           VV"        if(!submit || !password) continue;\n"
           VV"        for(var j = 0; j < data.length; j++){\n"
           VV"            var pair = data[j].split(\"=\");\n"
           VV"            var name = decodeURIComponent(pair[0]);\n"
           VV"            var val  = decodeURIComponent(pair[1]);\n"
           VV"            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
+          VV"            if(!field) field = document.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
           VV"            if(!field) continue;\n"
           VV"            field.style.boxShadow = \"inset 0 0 2px 2px #eca\";\n"
           VV"            field.style.border = \"1px\";\n"
@@ -1227,17 +1170,24 @@ public:
             "(function(){\n"
           VV"    var data = \"%1\".split(\"&\");\n"
           VV"    var forms = document.querySelectorAll(\"form\");\n"
+          VV"    var allInputs = Array.from(document.querySelectorAll(\"input,textarea\"));\n"
           VV"    for(var i = 0; i < forms.length; i++){\n"
           VV"        var inserted = false;\n"
           VV"        var form = forms[i];\n"
           VV"        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
           VV"        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
+          VV"        if(!submit || !password){\n"
+          VV"            var inputs = allInputs.filter(function(e){ return e.form == form;});\n"
+          VV"            if(!submit) submit = inputs.find(function(e){ return e.type == \"submit\";});\n"
+          VV"            if(!password) password = inputs.find(function(e){ return e.type == \"password\";});\n"
+          VV"        };\n"
           VV"        if(!submit || !password) continue;\n"
           VV"        for(var j = 0; j < data.length; j++){\n"
           VV"            var pair = data[j].split(\"=\");\n"
           VV"            var name = decodeURIComponent(pair[0]);\n"
           VV"            var val  = decodeURIComponent(pair[1]);\n"
           VV"            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
+          VV"            if(!field) field = document.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
           VV"            if(!field) continue;\n"
           VV"            inserted = true;\n"
           VV"            field.value = val;\n"
@@ -1264,13 +1214,13 @@ public:
               VV"        prevent = false;\n"
               VV"        console.info(\"keyPressEvent%1,\" + \n"
               VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
-              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
-              VV"    } else if(!e.altKey && !e.ctrlKey &&\n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString() + \",\" + e.metaKey.toString());\n"
+              VV"    } else if(!e.altKey && !e.ctrlKey && !e.metaKey &&\n"
               VV"       32 <= e.keyCode && e.keyCode <= 40){\n"
               VV"        prevent = false;\n"
             /*VV"        console.info(\"keyPressEvent%1,\" + \n"
               VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
-              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"*/
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString() + \",\" + e.metaKey.toString());\n"*/
                 //       on press key for scroll, only prevent scroll restoration.
               VV"        console.info(\"preventScrollRestoration%1\");\n"
               VV"    } else if(elem.isContentEditable ||\n"
@@ -1280,7 +1230,7 @@ public:
               VV"              elem.tagName == \"TEXTAREA\" ||\n"
               VV"              elem.tagName == \"FRAME\" ||\n"
               VV"              elem.tagName == \"IFRAME\"){\n"
-              VV"        if(e.ctrlKey || e.altKey){\n"
+              VV"        if(e.ctrlKey || e.altKey || e.metaKey){\n"
               VV"            prevent = true;\n"
               VV"        }\n"
               VV"    } else {\n"
@@ -1289,7 +1239,7 @@ public:
               VV"    if(prevent){\n"
               VV"        console.info(\"keyPressEvent%1,\" + \n"
               VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
-              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString() + \",\" + e.metaKey.toString());\n"
               VV"        e.preventDefault();\n"
               VV"    }\n"
               VV"}, false);\n");
@@ -1304,13 +1254,13 @@ public:
               VV"        prevent = false;\n"
               VV"        console.info(\"keyReleaseEvent%1,\" + \n"
               VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
-              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
-              VV"    } else if(!e.altKey && !e.ctrlKey &&\n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString() + \",\" + e.metaKey.toString());\n"
+              VV"    } else if(!e.altKey && !e.ctrlKey && !e.metaKey &&\n"
               VV"       32 <= e.keyCode && e.keyCode <= 40){\n"
               VV"        prevent = false;\n"
               VV"        console.info(\"keyReleaseEvent%1,\" + \n"
               VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
-              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString() + \",\" + e.metaKey.toString());\n"
               VV"    } else if(elem.isContentEditable ||\n"
               VV"              elem.tagName == \"BUTTON\" ||\n"
               VV"              elem.tagName == \"SELECT\" ||\n"
@@ -1318,7 +1268,7 @@ public:
               VV"              elem.tagName == \"TEXTAREA\" ||\n"
               VV"              elem.tagName == \"FRAME\" ||\n"
               VV"              elem.tagName == \"IFRAME\"){\n"
-              VV"        if(e.ctrlKey || e.altKey){\n"
+              VV"        if(e.ctrlKey || e.altKey || e.metaKey){\n"
               VV"            prevent = true;\n"
               VV"        }\n"
               VV"    } else {\n"
@@ -1327,7 +1277,7 @@ public:
               VV"    if(prevent){\n"
               VV"        console.info(\"keyReleaseEvent%1,\" + \n"
               VV"                     e.keyCode.toString() + \",\" + e.shiftKey.toString() + \",\" + \n"
-              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString());\n"
+              VV"                     e.ctrlKey.toString() + \",\" + e.altKey.toString() + \",\" + e.metaKey.toString());\n"
               VV"        e.preventDefault();\n"
               VV"    }\n"
               VV"}, false);\n");
@@ -1340,7 +1290,7 @@ public:
               VV"                 e.button.toString() + \",\" + \n"
               VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
               VV"                 e.shiftKey.toString() + \",\" + e.ctrlKey.toString() + \",\" + \n"
-              VV"                 e.altKey.toString());\n"
+              VV"                 e.altKey.toString() + \",\" + e.metaKey.toString());\n"
               VV"}, false);\n");
 
         if(types.contains(QEvent::MouseButtonPress))
@@ -1351,7 +1301,7 @@ public:
               VV"                 e.button.toString() + \",\" + \n"
               VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
               VV"                 e.shiftKey.toString() + \",\" + e.ctrlKey.toString() + \",\" + \n"
-              VV"                 e.altKey.toString());\n"
+              VV"                 e.altKey.toString() + \",\" + e.metaKey.toString());\n"
               VV"}, false);\n");
 
         if(types.contains(QEvent::MouseButtonRelease))
@@ -1362,7 +1312,7 @@ public:
               VV"                 e.button.toString() + \",\" + \n"
               VV"                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
               VV"                 e.shiftKey.toString() + \",\" + e.ctrlKey.toString() + \",\" + \n"
-              VV"                 e.altKey.toString());\n"
+              VV"                 e.altKey.toString() + \",\" + e.metaKey.toString());\n"
               VV"}, false);\n");
 
         if(types.contains(QEvent::Wheel))
@@ -1487,56 +1437,5 @@ protected:
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(View::FindFlags);
-
-class JsWebElement : public WebElement{
-public:
-    explicit JsWebElement();
-    explicit JsWebElement(View *provider, QVariant var);
-    virtual ~JsWebElement();
-
-    virtual bool SetFocus() Q_DECL_OVERRIDE;
-    virtual bool ClickEvent() Q_DECL_OVERRIDE;
-    virtual QString TagName() const Q_DECL_OVERRIDE;
-    virtual QString InnerText() const Q_DECL_OVERRIDE;
-    virtual QUrl BaseUrl() const Q_DECL_OVERRIDE;
-    virtual QUrl LinkUrl() const Q_DECL_OVERRIDE;
-    virtual QUrl ImageUrl() const Q_DECL_OVERRIDE;
-    virtual QString LinkHtml() const Q_DECL_OVERRIDE;
-    virtual QString ImageHtml() const Q_DECL_OVERRIDE;
-    virtual QPoint Position() const Q_DECL_OVERRIDE;
-    virtual QRect Rectangle() const Q_DECL_OVERRIDE;
-    virtual QRegion Region() const Q_DECL_OVERRIDE;
-    virtual void SetPosition(QPoint) Q_DECL_OVERRIDE;
-    virtual void SetRectangle(QRect) Q_DECL_OVERRIDE;
-    virtual void SetText(QString) Q_DECL_OVERRIDE;
-    virtual QPixmap Pixmap() Q_DECL_OVERRIDE;
-    virtual bool IsNull() const Q_DECL_OVERRIDE;
-    virtual bool IsEditableElement() const Q_DECL_OVERRIDE;
-    virtual bool IsJsCommandElement() const Q_DECL_OVERRIDE;
-    virtual bool IsTextInputElement() const Q_DECL_OVERRIDE;
-    virtual bool IsQueryInputElement() const Q_DECL_OVERRIDE;
-    virtual bool IsFrameElement() const Q_DECL_OVERRIDE;
-    virtual Action GetAction() const Q_DECL_OVERRIDE;
-    virtual bool Equals(const WebElement&) const Q_DECL_OVERRIDE;
-
-protected:
-    View *m_Provider;
-    QString m_TagName;
-    QString m_InnerText;
-    QUrl m_BaseUrl;
-    QUrl m_LinkUrl;
-    QUrl m_ImageUrl;
-    QString m_LinkHtml;
-    QString m_ImageHtml;
-    QRect m_Rectangle;
-    QRegion m_Region;
-    bool m_IsJsCommand;
-    bool m_IsTextInput;
-    bool m_IsQueryInput;
-    bool m_IsEditable;
-    bool m_IsFrame;
-    QString m_XPath;
-    QString m_Action;
-};
 
 #endif //ifndef VIEW_HPP

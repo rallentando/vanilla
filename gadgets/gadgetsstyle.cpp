@@ -277,7 +277,8 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
 
     painter->setRenderHint(QPainter::Antialiasing, false);
 
-    if(m_NodeTitleDrawBorder) port = port.intersected(bound);
+    if(m_NodeTitleDrawBorder)
+        painter->setClipRect(bound.intersected(port));
 
     View *view = nd->GetView();
     bool isDir = nd->IsDirectory();
@@ -318,7 +319,6 @@ void GlassStyle::Render(NodeTitle *title, QPainter *painter) const {
     QRectF title_rect = bound;
     title_rect.setTop(bound.top() + 1);
     title_rect.setLeft(bound.left() + title->GetNest() * 20 + 5);
-    title_rect.intersected(port);
 
     {
         QIcon icon;
@@ -677,6 +677,7 @@ void GlassStyle::Render(ToggleTrashButton *button, QPainter *painter) const {
             break;
         }
         case GraphicsTableView::AccessKey: break;
+        default: break;
         }
     }
 
@@ -1203,6 +1204,7 @@ void FlatStyle::Render(ToggleTrashButton *button, QPainter *painter) const {
         break;
     }
     case GraphicsTableView::AccessKey: break;
+    default: break;
     }
 
     painter->restore();

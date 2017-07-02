@@ -40,8 +40,8 @@
 QMap<View*, QUrl> WebEngineView::m_InspectorTable = QMap<View*, QUrl>();
 
 WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
-    : View(parent, id, set)
-    , QWebEngineView(TreeBank::PurgeView() ? 0 : static_cast<QWidget*>(parent))
+    : QWebEngineView(TreeBank::PurgeView() ? 0 : static_cast<QWidget*>(parent))
+    , View(parent, id, set)
 {
 #if QT_VERSION >= 0x050900
     SetUpEventFilterInstaller();
@@ -64,6 +64,7 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
 
     m_Inspector = 0;
     m_PreventScrollRestoration = false;
+    m_ScrollSignalTimer = 0;
 #ifdef PASSWORD_MANAGER
     m_PreventAuthRegistration = false;
 #endif
@@ -312,7 +313,8 @@ void WebEngineView::OnScrollChanged(){
 
 void WebEngineView::EmitScrollChanged(){
     if(!page()) return;
-    CallWithScroll([this](QPointF pos){ emit ScrollChanged(pos);});
+    if(!m_ScrollSignalTimer)
+        m_ScrollSignalTimer = startTimer(200);
 }
 
 void WebEngineView::CallWithScroll(PointFCallBack callBack){
@@ -563,7 +565,7 @@ void WebEngineView::Print(){
         QPointF origPos = page()->scrollPosition();
         resize(page()->contentsSize().toSize());
 
-        QTimer::singleShot(700, [this, widget, filename, origSize, origPos](){
+        QTimer::singleShot(700, this, [this, widget, filename, origSize, origPos](){
 
         widget->grabFramebuffer().save(filename);
 
@@ -635,6 +637,15 @@ void WebEngineView::AddBookmarklet(QPoint pos){
     if(page()) page()->AddBookmarklet(pos);
 }
 
+void WebEngineView::timerEvent(QTimerEvent *ev){
+    QWebEngineView::timerEvent(ev);
+    if(ev->timerId() == m_ScrollSignalTimer){
+        CallWithScroll([this](QPointF pos){ emit ScrollChanged(pos);});
+        killTimer(m_ScrollSignalTimer);
+        m_ScrollSignalTimer = 0;
+    }
+}
+
 void WebEngineView::childEvent(QChildEvent *ev){
     QWebEngineView::childEvent(ev);
     if(ev->added() &&
@@ -667,7 +678,11 @@ void WebEngineView::keyPressEvent(QKeyEvent *ev){
     }
 
 #  ifdef PASSWORD_MANAGER
-    if(ev->modifiers() & Qt::ControlModifier &&
+    if((ev->modifiers() & Qt::ControlModifier
+#    if defined(Q_OS_MAC)
+        || ev->modifiers() & Qt::MetaModifier
+#    endif
+        ) &&
        ev->key() == Qt::Key_Return){
 
         QString data = Application::GetAuthData
@@ -737,8 +752,23 @@ void WebEngineView::resizeEvent(QResizeEvent *ev){
 
 void WebEngineView::contextMenuEvent(QContextMenuEvent *ev){
     SharedWebElement elem = m_ClickedElement;
-    GestureAborted(); // resets 'm_ClickedElement'.
-    page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos());
+    Page::MediaType type = Page::MediaTypeNone;
+    QWebEngineContextMenuData data = page()->contextMenuData();
+    if(data.isValid()){
+        if(data.mediaType() == QWebEngineContextMenuData::MediaTypeVideo ||
+           data.mediaType() == QWebEngineContextMenuData::MediaTypeAudio)
+            type = Page::MediaTypePlayable;
+        else if(data.mediaType() == QWebEngineContextMenuData::MediaTypeImage)
+            type = Page::MediaTypeImage;
+        if(!elem){
+            std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
+            *e = JsWebElement(this, data.position(), data.linkUrl(), data.mediaUrl(), data.isContentEditable());
+            elem = e;
+        }
+        m_SelectedText = data.selectedText();
+    }
+    page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos(), type);
+    GestureAborted();
     ev->setAccepted(true);
 }
 
@@ -903,9 +933,12 @@ void WebEngineView::mouseReleaseEvent(QMouseEvent *ev){
         QNetworkRequest req(link);
         req.setRawHeader("Referer", url().toEncoded());
 
-        if(ev->modifiers() & Qt::ShiftModifier ||
-           ev->modifiers() & Qt::ControlModifier ||
-           ev->button() == Qt::MidButton){
+        if(ev->modifiers() & Qt::ShiftModifier
+           || ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+           || ev->modifiers() & Qt::MetaModifier
+#endif
+           || ev->button() == Qt::MidButton){
 
             GestureAborted();
             m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
@@ -987,17 +1020,16 @@ void WebEngineView::dragMoveEvent(QDragMoveEvent *ev){
 
 void WebEngineView::dropEvent(QDropEvent *ev){
     emit statusBarMessage(QString());
-    QPoint pos = ev->pos();
-    QList<QUrl> urls = ev->mimeData()->urls();
-    QObject *source = ev->source();
-    QWidget *widget = this;
     bool isLocal = false;
-    QString text;
+    QPoint pos = ev->pos();
+    QObject *source = ev->source();
+    QString text = ev->mimeData()->text();
+    QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
 
     foreach(QUrl u, urls){ if(u.isLocalFile()) isLocal = true;}
 
-    if(!ev->mimeData()->text().isEmpty()){
-        text = ev->mimeData()->text().replace(QStringLiteral("\""), QStringLiteral("\\\""));
+    if(!text.isEmpty()){
+        text.replace(QStringLiteral("\""), QStringLiteral("\\\""));
     } else if(!urls.isEmpty()){
         foreach(QUrl u, urls){
             if(text.isEmpty()) text = u.toString();
@@ -1005,7 +1037,7 @@ void WebEngineView::dropEvent(QDropEvent *ev){
         }
     }
 
-    CallWithHitElement(pos, [this, pos, urls, text, source, widget](SharedWebElement elem){
+    CallWithHitElement(pos, [this, pos, source, text, urls](SharedWebElement elem){
 
     if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
 
@@ -1014,32 +1046,28 @@ void WebEngineView::dropEvent(QDropEvent *ev){
         return;
     }
 
-    if(!m_Gesture.isEmpty() && source == widget){
+    if(!m_Gesture.isEmpty() && source == this){
         GestureFinished(pos, Qt::LeftButton);
         return;
     }
 
     GestureAborted();
 
-    if(urls.isEmpty() || source == widget){
-        // do nothing.
-    } else if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source)){
-        QList<QUrl> filtered;
-        foreach(QUrl u, urls){ if(!u.isLocalFile()) filtered << u;}
-        m_TreeBank->OpenInNewViewNode(filtered, true, GetViewNode());
-        return;
-    } else {
-        // foreign drag.
+    if(!urls.isEmpty() && source != this){
         m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
     }
 
     });
 
+#if defined(Q_OS_MAC)
+    // do nothing.
+#else
     if(isLocal ||
-       (DragToStartDownload() && !urls.isEmpty() && source == widget))
+       (DragToStartDownload() && !urls.isEmpty() && source == this))
         ; // do nothing.
     else
         QWebEngineView::dropEvent(ev);
+#endif
 
     ev->setAccepted(true);
 }

@@ -1755,15 +1755,11 @@ bool TridentView::RestoreHistory(){
     return false;
 }
 
-void TridentView::DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint globalPos){
-
-    QMenu *menu = new QMenu(parent);
-    menu->setToolTipsVisible(true);
-
-    AddContextMenu(menu, elem);
-    AddRegularMenu(menu, elem);
-    menu->exec(globalPos);
-    delete menu;
+void TridentView::DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint localPos, QPoint globalPos){
+    Page::MediaType type = Page::MediaTypeNone;
+    if(elem && !elem->ImageUrl().isEmpty())
+        type = Page::MediaTypeImage;
+    page()->DisplayContextMenu(parent, elem, localPos, globalPos, type);
 }
 
 void TridentView::Copy(){
@@ -2119,7 +2115,6 @@ void TridentView::mousePressEvent(QMouseEvent *ev){
         if(!str.isEmpty()){
             if(!View::TriggerAction(str, ev->pos())){
                 ev->setAccepted(false);
-                qDebug() << "Invalid mouse event: " << str;
                 return;
             }
             GestureAborted();
@@ -2141,11 +2136,11 @@ void TridentView::mouseReleaseEvent(QMouseEvent *ev){
         if(!m_Gesture.isEmpty()){
             QPoint pos = ev->pos();
             Qt::MouseButton button = ev->button();
-            QTimer::singleShot(0, [this, pos, button](){ GestureFinished(pos, button);});
+            QTimer::singleShot(0, this, [this, pos, button](){ GestureFinished(pos, button);});
         } else if(!m_GestureStartedPos.isNull()){
             SharedWebElement elem = m_ClickedElement;
-            GestureAborted(); // resets 'm_ClickedElement'.
-            DisplayContextMenu(m_TreeBank, elem, ev->globalPos());
+            DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos());
+            GestureAborted();
         }
         ev->setAccepted(true);
         return;
@@ -2190,10 +2185,19 @@ void TridentView::dragMoveEvent(QDragMoveEvent *ev){
 void TridentView::dropEvent(QDropEvent *ev){
     emit statusBarMessage(QString());
     QPoint pos = ev->pos();
-    QList<QUrl> urls = ev->mimeData()->urls();
     QObject *source = ev->source();
+    QString text = ev->mimeData()->text();
+    QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
     SharedWebElement elem = HitElement(pos);
-    QWidget *widget = this;
+
+    if(!text.isEmpty()){
+        text.replace(QStringLiteral("\""), QStringLiteral("\\\""));
+    } else if(!urls.isEmpty()){
+        foreach(QUrl u, urls){
+            if(text.isEmpty()) text = u.toString();
+            else text += QStringLiteral("\n") + u.toString();
+        }
+    }
 
     if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
 
@@ -2203,7 +2207,7 @@ void TridentView::dropEvent(QDropEvent *ev){
         return;
     }
 
-    if(!m_Gesture.isEmpty() && source == widget){
+    if(!m_Gesture.isEmpty() && source == this){
         QTimer::singleShot(0, [this, pos](){ GestureFinished(pos, Qt::LeftButton);});
         ev->setAccepted(true);
         return;
@@ -2211,17 +2215,10 @@ void TridentView::dropEvent(QDropEvent *ev){
 
     GestureAborted();
 
-    if(urls.isEmpty() || source == widget){
-        // do nothing.
-    } else if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source)){
-        QList<QUrl> filtered;
-        foreach(QUrl u, urls){ if(!u.isLocalFile()) filtered << u;}
-        m_TreeBank->OpenInNewViewNode(filtered, true, GetViewNode());
-        return;
-    } else {
-        // foreign drag.
-        m_TreeBank->OpenInNewViewNode(ev->mimeData()->urls(), true, GetViewNode());
+    if(!urls.isEmpty() && source != this){
+        m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
     }
+
     ev->setAccepted(true);
 }
 
@@ -2232,28 +2229,28 @@ void TridentView::dragLeaveEvent(QDragLeaveEvent *ev){
 }
 
 void TridentView::wheelEvent(QWheelEvent *ev){
-    QString wheel;
-    bool up = ev->delta() > 0;
+    if(ev->source() != Qt::MouseEventSynthesizedBySystem){
+        QString wheel;
+        bool up = ev->delta() > 0;
 
-    Application::AddModifiersToString(wheel, ev->modifiers());
-    Application::AddMouseButtonsToString(wheel, ev->buttons());
-    Application::AddWheelDirectionToString(wheel, up);
+        Application::AddModifiersToString(wheel, ev->modifiers());
+        Application::AddMouseButtonsToString(wheel, ev->buttons());
+        Application::AddWheelDirectionToString(wheel, up);
 
-    if(m_MouseMap.contains(wheel)){
+        if(m_MouseMap.contains(wheel)){
 
-        QString str = m_MouseMap[wheel];
-        if(!str.isEmpty()){
-            if(!View::TriggerAction(str, ev->pos()))
-                qDebug() << "Invalid mouse event: " << str;
+            QString str = m_MouseMap[wheel];
+            if(!str.isEmpty()){
+                View::TriggerAction(str, ev->pos());
+            }
+            QTimer::singleShot(500, this, &TridentView::EmitScrollChanged);
+            ev->setAccepted(true);
+            return;
         }
-        ev->setAccepted(true);
-
-    } else {
-        QAxWidget::wheelEvent(ev);
-        ev->setAccepted(true);
     }
-
+    QAxWidget::wheelEvent(ev);
     QTimer::singleShot(500, this, &TridentView::EmitScrollChanged);
+    ev->setAccepted(true);
 }
 
 void TridentView::focusInEvent(QFocusEvent *ev){

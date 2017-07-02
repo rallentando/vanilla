@@ -473,9 +473,9 @@ void Receiver::SuitableAction(){
         break;
     }
     case UrlEdit:
-        emit OpenUrl(Page::DirtyStringToUrlList(m_LineString == QStringLiteral("blank")
-                                                ? QStringLiteral("about:blank")
-                                                : m_LineString));
+        emit OpenUrl(Page::DirtyStringToUrls(m_LineString == QStringLiteral("blank")
+                                             ? QStringLiteral("about:blank")
+                                             : m_LineString));
         break;
     case Search:
         if(m_TreeBank->IsDisplayingTableView()){
@@ -848,16 +848,18 @@ void Receiver::ReceiveCommand(QString cmd){
 
         QStringList args;
         foreach(QString arg, list){
-            if(arg == QStringLiteral("blank")) args << QStringLiteral("about:blank");
-            else               args << arg;
+            if(arg == QStringLiteral("blank"))
+                args << QStringLiteral("about:blank");
+            else args << arg;
         }
-        emit OpenUrl(Page::DirtyStringToUrlList(args.join(QStringLiteral(" "))));
+        emit OpenUrl(Page::DirtyStringToUrls(args.join(QStringLiteral(" "))));
 
     } else if(Application::ExactMatch(QStringLiteral("[lL]oad"), cmd)){
 
         QString args = list.join(QStringLiteral(" "));
-        if(args == QStringLiteral("blank")) emit OpenUrl(BLANK_URL);
-        else                emit OpenUrl(QUrl(args));
+        if(args == QStringLiteral("blank"))
+            emit OpenUrl(BLANK_URL);
+        else emit OpenUrl(QUrl(args));
 
     } else if(Application::ExactMatch(QStringLiteral("[qQ]uery"), cmd)){
 
@@ -909,7 +911,7 @@ void Receiver::ReceiveCommand(QString cmd){
                 args << QStringLiteral("about:blank");
             else args << arg;
         }
-        emit OpenUrl(Page::DirtyStringToUrlList(args.join(QStringLiteral(" "))));
+        emit OpenUrl(Page::DirtyStringToUrls(args.join(QStringLiteral(" "))));
     }
 }
 

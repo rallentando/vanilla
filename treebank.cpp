@@ -150,23 +150,22 @@ QMap<QString, QString> TreeBank::m_MouseMap = QMap<QString, QString>();
 
 static void CollectViewDom(QDomElement &elem, ViewNode *parent);
 static void CollectHistDom(QDomElement &elem, HistNode *parent, ViewNode *partner);
+#ifndef FAST_SAVER
 static void CollectViewNode(ViewNode *nd, QDomElement &elem);
 static void CollectHistNode(HistNode *nd, QDomElement &elem);
+#else
 static void CollectViewNodeFlat(ViewNode *nd, QTextStream &out);
 static void CollectHistNodeFlat(HistNode *nd, QTextStream &out);
+#endif
 
 static SharedView LoadWithLink(QNetworkRequest req, HistNode *hn, ViewNode *vn);
 static SharedView LoadWithLink(HistNode *hn);
 static SharedView LoadWithLink(ViewNode *vn);
 static SharedView LoadWithNoLink(QNetworkRequest req, HistNode *hn, ViewNode *vn);
-static SharedView LoadWithNoLink(HistNode *hn);
-static SharedView LoadWithNoLink(ViewNode *vn);
 static SharedView AutoLoadWithLink(QNetworkRequest req, HistNode *hn, ViewNode *vn);
-static SharedView AutoLoadWithLink(HistNode *hn);
 static SharedView AutoLoadWithLink(ViewNode *vn);
 static SharedView AutoLoadWithNoLink(QNetworkRequest req, HistNode *hn, ViewNode *vn);
 static SharedView AutoLoadWithNoLink(HistNode *hn);
-static SharedView AutoLoadWithNoLink(ViewNode *vn);
 static void LinkNode(QNetworkRequest req, HistNode *hn, ViewNode *vn);
 static void LinkNode(HistNode* hn);
 static void SetHistProp(QNetworkRequest req, HistNode *hn, ViewNode *vn);
@@ -176,20 +175,16 @@ static void SetPartner(QUrl url, HistNode *hn, ViewNode *vn, SharedView view = 0
 
 // for renaming directory
 static QString GetNetworkSpaceId(ViewNode*);
-static QString GetNetworkSpaceId(HistNode*);
-static QString GetNetworkSpaceId(SharedView);
 static QStringList GetNodeSettings(ViewNode*);
-static QStringList GetNodeSettings(HistNode*);
-static QStringList GetNodeSettings(SharedView);
 
 TreeBank::TreeBank(QWidget *parent)
     : QWidget(parent)
     , m_Scene(new QGraphicsScene(this))
-    , m_View(new QGraphicsView(m_Scene, this))
-    , m_JsObject(new _Vanilla(this))
+    , m_View(new GraphicsView(m_Scene, this))
       // if m_PurgeView is true, Notifier and Receiver should be purged.
     , m_Notifier(new Notifier(this, m_PurgeNotifier || m_PurgeView))
     , m_Receiver(new Receiver(this, m_PurgeReceiver || m_PurgeView))
+    , m_JsObject(new _Vanilla(this))
 {
     m_Gadgets_ = SharedView(new Gadgets(this), &DeleteView);
     m_Gadgets_->SetThis(WeakView(m_Gadgets_));
@@ -430,14 +425,6 @@ static QString GetNetworkSpaceId(ViewNode* vn){
     }
 }
 
-static QString GetNetworkSpaceId(HistNode* hn){
-    return GetNetworkSpaceId(hn->GetPartner()->ToViewNode());
-}
-
-static QString GetNetworkSpaceId(SharedView view){
-    return GetNetworkSpaceId(view->GetViewNode());
-}
-
 static QStringList GetNodeSettings(ViewNode* vn){
     if(!vn) return QStringList();
     QString title;
@@ -452,14 +439,6 @@ static QStringList GetNodeSettings(ViewNode* vn){
         }
         vn = vn->GetParent()->ToViewNode();
     }
-}
-
-static QStringList GetNodeSettings(HistNode* hn){
-    return GetNodeSettings(hn->GetPartner()->ToViewNode());
-}
-
-static QStringList GetNodeSettings(SharedView view){
-    return GetNodeSettings(view->GetViewNode());
 }
 
 void TreeBank::DoUpdate(){
@@ -851,11 +830,11 @@ void TreeBank::SaveTree(){
 #else //ifdef FAST_SAVER
         QDomDocument doc;
         doc.appendChild(doc.createProcessingInstruction("xml", "version=\"1.0\" encoding=\"UTF-8\""));
-        QDomElement root = doc.createElement(QStringLiteral("viewnode"));
-        root.setAttribute(QStringLiteral("root"), QStringLiteral("true"));
-        doc.appendChild(root);
+        QDomElement elem = doc.createElement(QStringLiteral("viewnode"));
+        elem.setAttribute(QStringLiteral("root"), QStringLiteral("true"));
+        doc.appendChild(elem);
         foreach(Node *child, root->GetChildren()){
-            CollectViewNode(child->ToViewNode(), root);
+            CollectViewNode(child->ToViewNode(), elem);
         }
         if(file.open(QIODevice::WriteOnly)){
             QTextStream out(&file);
@@ -872,6 +851,7 @@ void TreeBank::SaveTree(){
     QFile::rename(secondaryb, secondary);
 }
 
+#ifndef FAST_SAVER
 static void CollectViewNode(ViewNode *nd, QDomElement &elem){
     QDomElement child = elem.ownerDocument().createElement(QStringLiteral("viewnode"));
     child.setAttribute(QStringLiteral("primary"),    nd->IsPrimaryOfParent() ? QStringLiteral("true") : QStringLiteral("false"));
@@ -924,7 +904,7 @@ static void CollectHistNode(HistNode *nd, QDomElement &elem){
         CollectHistNode(childnode->ToHistNode(), child);
     }
 }
-
+#else
 static void CollectViewNodeFlat(ViewNode *nd, QTextStream &out){
     out << "<viewnode"
         " primary=\""    << (nd->IsPrimaryOfParent() ? "true" : "false")           << "\""
@@ -978,6 +958,7 @@ static void CollectHistNodeFlat(HistNode *nd, QTextStream &out){
     }
     out << "</histnode>\n";
 }
+#endif
 
 void TreeBank::LoadSettings(){
     Settings &s = Application::GlobalSettings();
@@ -1684,6 +1665,32 @@ void TreeBank::NthView(int n, ViewNode *vn){
         SetCurrent(siblings[n]);
 }
 
+void TreeBank::GoBackOrCloseForDownload(View *view){
+    view->CallWithWholeHtml([this, view](const QString &html){
+
+        if(html.isEmpty() || html == EMPTY_FRAME_HTML ||
+           (html.length() < 1000 && html.endsWith(QStringLiteral("</head></html>")))){
+
+            HistNode *hist = view->GetHistNode();
+
+            if(hist->IsRoot() && hist->HasNoChildren()){
+
+                if(view->CanGoBack() && !view->CanGoForward()){
+
+                    view->TriggerNativeGoBackAction();
+
+                } else if(!view->CanGoBack() && !view->CanGoForward()){
+
+                    view->TriggerAction(Page::_Close);
+                }
+            } else if(Node *nd = hist->Prev()){
+
+                SetCurrent(nd);
+            }
+        }
+    });
+}
+
 #if defined(TRIDENTVIEW)
 bool TreeBank::TridentViewExist(){
     static bool exists = false;
@@ -2120,20 +2127,6 @@ static SharedView LoadWithNoLink(QNetworkRequest req, HistNode *hn, ViewNode *vn
     return view;
 }
 
-static SharedView LoadWithNoLink(HistNode *hn){
-    if(hn->GetPartner())
-        return LoadWithNoLink(QNetworkRequest(hn->GetUrl()),
-                              hn, hn->GetPartner()->ToViewNode());
-    return 0;
-}
-
-static SharedView LoadWithNoLink(ViewNode *vn){
-    if(vn->GetPartner())
-        return LoadWithNoLink(QNetworkRequest(vn->GetUrl()),
-                              vn->GetPartner()->ToHistNode(), vn);
-    return 0;
-}
-
 static SharedView AutoLoadWithLink(QNetworkRequest req, HistNode *hn, ViewNode *vn){
     QUrl u = req.url();
     SharedView view = SharedView();
@@ -2147,13 +2140,6 @@ static SharedView AutoLoadWithLink(QNetworkRequest req, HistNode *hn, ViewNode *
         view->hide();
     }
     return view;
-}
-
-static SharedView AutoLoadWithLink(HistNode *hn){
-    if(hn->GetPartner())
-        return AutoLoadWithLink(QNetworkRequest(hn->GetUrl()),
-                                hn, hn->GetPartner()->ToViewNode());
-    return 0;
 }
 
 static SharedView AutoLoadWithLink(ViewNode *vn){
@@ -2181,13 +2167,6 @@ static SharedView AutoLoadWithNoLink(HistNode *hn){
     if(hn->GetPartner())
         return AutoLoadWithNoLink(QNetworkRequest(hn->GetUrl()),
                                   hn, hn->GetPartner()->ToViewNode());
-    return 0;
-}
-
-static SharedView AutoLoadWithNoLink(ViewNode *vn){
-    if(vn->GetPartner())
-        return AutoLoadWithNoLink(QNetworkRequest(vn->GetUrl()),
-                                  vn->GetPartner()->ToHistNode(), vn);
     return 0;
 }
 

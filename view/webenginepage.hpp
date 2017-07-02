@@ -71,7 +71,8 @@ public:
     QString userAgentForUrl(const QUrl &url) const;
 
     void DisplayContextMenu(QWidget *parent, SharedWebElement elem,
-                            QPoint localPos, QPoint globalPos);
+                            QPoint localPos, QPoint globalPos,
+                            Page::MediaType type = Page::MediaTypeNone);
 
     void TriggerAction(Page::CustomAction, QVariant = QVariant());
     QAction *Action(Page::CustomAction, QVariant = QVariant());

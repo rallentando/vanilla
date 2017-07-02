@@ -52,8 +52,8 @@ QMap<QKeySequence, QString> Gadgets::m_AccessKeyKeyMap = QMap<QKeySequence, QStr
 QMap<QString, QString> Gadgets::m_MouseMap = QMap<QString, QString>();
 
 Gadgets::Gadgets(TreeBank *parent)
-    : View(parent)
-    , GraphicsTableView(parent)
+    : GraphicsTableView(parent)
+    , View(parent)
 {
     m_ActionTable = QMap<GadgetsAction, QAction*>();
 
@@ -1461,7 +1461,7 @@ bool Gadgets::IsCurrentBlock(const AccessibleWebElement *elem) const {
 QMenu *Gadgets::CreateNodeMenu(){
     if(!IsDisplayingNode()) return 0;
 
-    QMenu *menu = new QMenu(View::m_TreeBank);
+    QMenu *menu = new QMenu(GetTreeBank());
     menu->setToolTipsVisible(true);
 
     menu->addAction(Action(_Deactivate));
@@ -1705,7 +1705,11 @@ void Gadgets::keyPressEvent(QKeyEvent *ev){
             AccessKey_NthBlock(KeyToIndex(ev->key()));
 
         } else if(m_AccessKeySelectBlockMethod == CtrledChar &&
-                  ev->modifiers() & Qt::ControlModifier){
+                  (ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+                   || ev->modifiers() & Qt::MetaModifier
+#endif
+                   )){
 
             m_CurrentAccessKeyBlockIndex = 0; // KeyToIndex uses this value.
             AccessKey_NthBlock(KeyToIndex(ev->key()));
@@ -1807,39 +1811,47 @@ void Gadgets::contextMenuEvent(QGraphicsSceneContextMenuEvent *ev){
 void Gadgets::wheelEvent(QGraphicsSceneWheelEvent *ev){
     if(!IsDisplayingNode()) return;
 
-    QString wheel;
     bool up = ev->delta() > 0;
     bool ignoreStatusBarMessage = true;
 
-    Application::AddModifiersToString(wheel, ev->modifiers());
-    Application::AddMouseButtonsToString(wheel, ev->buttons());
-    Application::AddWheelDirectionToString(wheel, up);
+    if(GetTreeBank()->GetView()->MouseEventSource() != Qt::MouseEventSynthesizedBySystem){
+        QString wheel;
 
-    if(m_MouseMap.contains(wheel)){
+        Application::AddModifiersToString(wheel, ev->modifiers());
+        Application::AddMouseButtonsToString(wheel, ev->buttons());
+        Application::AddWheelDirectionToString(wheel, up);
 
-        QString str = m_MouseMap[wheel];
-        if(!str.isEmpty()){
+        if(m_MouseMap.contains(wheel)){
+
+            QString str = m_MouseMap[wheel];
+            if(!str.isEmpty()){
+
+                // don't want to overwrite statusBarMessage in this event.
+                // because these method may update statusBarMessage.
+                if(!TriggerAction(str)){
+                    ev->setAccepted(false);
+                    return;
+                }
+            }
+            UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);
+            ev->setAccepted(true);
+            return;
+
+        } else if(ScrollToChangeDirectory() &&
+                  ThumbnailAreaRect().contains(ev->pos())){
 
             // don't want to overwrite statusBarMessage in this event.
-            // because these method may update statusBarMessage.
-            if(!TriggerAction(str)){
-                ev->setAccepted(false);
-                return;
-            }
+            // because these method updates statusBarMessage.
+            if(up) ThumbList_UpDirectory();
+            else   ThumbList_DownDirectory();
+
+            UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);
+            ev->setAccepted(true);
+            return;
         }
-    } else if(ScrollToChangeDirectory() &&
-              ThumbnailAreaRect().contains(ev->pos())){
-
-        // don't want to overwrite statusBarMessage in this event.
-        // because these method updates statusBarMessage.
-        if(up) ThumbList_UpDirectory();
-        else   ThumbList_DownDirectory();
-
-    } else {
-
-        ignoreStatusBarMessage = false;
-        Scroll(-ev->delta() * m_CurrentThumbnailColumnCount / 120.0);
     }
+    ignoreStatusBarMessage = false;
+    Scroll(-ev->delta() * m_CurrentThumbnailColumnCount / 120.0);
 
     UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);
     ev->setAccepted(true);
@@ -2213,23 +2225,23 @@ void Gadgets::KeyReleaseEvent(QKeyEvent *ev){
 }
 
 void Gadgets::MousePressEvent(QMouseEvent *ev){
-    View::m_TreeBank->MousePressEvent(ev);
+    GetTreeBank()->MousePressEvent(ev);
 }
 
 void Gadgets::MouseReleaseEvent(QMouseEvent *ev){
-    View::m_TreeBank->MouseReleaseEvent(ev);
+    GetTreeBank()->MouseReleaseEvent(ev);
 }
 
 void Gadgets::MouseMoveEvent(QMouseEvent *ev){
-    View::m_TreeBank->MouseMoveEvent(ev);
+    GetTreeBank()->MouseMoveEvent(ev);
 }
 
 void Gadgets::MouseDoubleClickEvent(QMouseEvent *ev){
-    View::m_TreeBank->MouseDoubleClickEvent(ev);
+    GetTreeBank()->MouseDoubleClickEvent(ev);
 }
 
 void Gadgets::WheelEvent(QWheelEvent *ev){
-    View::m_TreeBank->WheelEvent(ev);
+    GetTreeBank()->WheelEvent(ev);
 }
 
 void Gadgets::AccessKey_TriggerElementAction(Page::CustomAction action){

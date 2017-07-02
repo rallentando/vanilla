@@ -290,7 +290,9 @@ protected:
 
 private:
     bool TriggerAction(QString str, QVariant data = QVariant()) Q_DECL_OVERRIDE;
+    using View::TriggerAction;
     void TriggerAction(GadgetsAction a);
+    using View::Action;
     QAction *Action(GadgetsAction a);
 
 public:

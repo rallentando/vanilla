@@ -15,6 +15,7 @@
 #include <float.h>
 
 #include <QToolBar>
+#include <QGraphicsView>
 #include <QGraphicsObject>
 
 class Node;
@@ -23,7 +24,6 @@ class NodeItem;
 class LayerItem;
 class QPaintEvent;
 class QResizeEvent;
-class QGraphicsView;
 class QGraphicsScene;
 class QGraphicsLineItem;
 class QPropertyAnimation;
@@ -44,6 +44,31 @@ public:
         CurrentChanged,
     };
 
+    class GraphicsView : public QGraphicsView {
+    public:
+        GraphicsView(QGraphicsScene *scene, QWidget *parent = 0)
+            : QGraphicsView(scene, parent)
+            , m_MouseEventSource(Qt::MouseEventNotSynthesized)
+        {
+        }
+        void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE {
+            m_MouseEventSource = ev->source();
+            QGraphicsView::wheelEvent(ev);
+            m_MouseEventSource = Qt::MouseEventNotSynthesized;
+        }
+        QSize sizeHint() const Q_DECL_OVERRIDE {
+            return QGraphicsView::sizeHint();
+        }
+        QSize minimumSizeHint() const Q_DECL_OVERRIDE {
+            return QSize(0, 0);
+        }
+        Qt::MouseEventSource MouseEventSource() const {
+            return m_MouseEventSource;
+        }
+    private:
+        Qt::MouseEventSource m_MouseEventSource;
+    };
+
     static void Initialize();
 
     static void LoadSettings();
@@ -60,6 +85,9 @@ public:
     static void ToggleScrollToSwitchNode();
     static void ToggleWheelClickToClose();
 
+    void SetHorizontalNodeWidth(int width);
+    void SetVerticalNodeHeight(int height);
+
     int GetHorizontalNodeWidth() const;
     int GetHorizontalNodeHeight() const;
     int GetVerticalNodeHeight() const;
@@ -73,10 +101,11 @@ public:
     void SetStat(QStringList);
     QStringList GetStat() const;
 
-    MainWindow *GetWindow();
-    void SetWindow(MainWindow *win);
-    MainWindow *MakeWindow(QPoint pos);
-    void CloseWindow();
+    void ShowTabWindow(const QPoint &cursorPos, Node *node);
+    void MoveTabWindow(const QPoint &cursorPos);
+    void CloseTabWindow();
+    void HideTabWindow();
+    bool TabWindowVisible();
 
     void Adjust();
 
@@ -84,6 +113,8 @@ public:
 
     QSize sizeHint() const Q_DECL_OVERRIDE;
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
+
+    GraphicsView *GetView(){ return m_View;}
 
     QList<LayerItem*> &GetLayerList(){ return m_LayerList;}
 
@@ -123,7 +154,7 @@ protected:
 
 private:
     TreeBank *m_TreeBank;
-    QGraphicsView *m_View;
+    GraphicsView *m_View;
     QGraphicsScene *m_Scene;
     QWidget *m_ResizeGrip;
     QSize m_OverrideSize;
@@ -134,7 +165,8 @@ private:
     int m_VerticalNodeHeight;
     int m_VerticalNodeWidth;
     LastAction m_LastAction;
-    MainWindow *m_OtherWindow;
+    MainWindow *m_TabWindow;
+    QPoint m_HotSpot;
 
     static bool m_EnableAnimation;
     static bool m_EnableCloseButton;
