@@ -2,6 +2,7 @@
 <qresource>
     <file>view/quickwebengineview5.7.qml</file>
     <file>view/quickwebengineview5.9.qml</file>
+    <file>view/quickwebkitview.qml</file>
     <file>view/quicknativewebview.qml</file>
     <file>resources/blank.png</file>
     <file>resources/blankw.png</file>

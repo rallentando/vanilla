@@ -23,6 +23,12 @@
 #include <QRegularExpression>
 #include <QtConcurrent/QtConcurrent>
 
+#ifdef WEBKITVIEW
+#  include <QWebPage>
+#  include <QWebFrame>
+#  include <QWebElement>
+#endif
+
 #include <functional>
 #include <stdlib.h>
 #include <time.h>
@@ -845,6 +851,66 @@ void Application::Import(TreeBank *tb){
 
         QByteArray data = file.readAll();
         file.close();
+#ifdef WEBKITVIEW
+        QWebPage page;
+        page.mainFrame()->setHtml(QString::fromUtf8(data));
+
+        std::function<void(QWebElement elem, ViewNode *parent)> collectDom;
+
+        collectDom = [&](QWebElement elem, ViewNode *parent){
+            QWebElement first = elem.firstChild();
+
+            if(first.tagName().toLower() == QStringLiteral("a")){
+                ViewNode *vn = parent->MakeChild(INT_MAX);
+                HistNode *hn = TreeBank::GetHistRoot()->MakeChild();
+
+                QString title = first.toPlainText();
+                QString href = first.attribute(QStringLiteral("HREF"), QString());
+                QString added = first.attribute(QStringLiteral("ADD_DATE"), QString());
+                QString visited = first.attribute(QStringLiteral("LAST_VISIT"), QString());
+                QString modified = first.attribute(QStringLiteral("LAST_MODIFIED"), QString());
+
+                hn->SetTitle(title);
+                vn->SetTitle(title);
+                hn->SetUrl(QUrl::fromEncoded(href.toLatin1()));
+                hn->SetCreateDate(added.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(added.toUInt()));
+                vn->SetCreateDate(added.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(added.toUInt()));
+                hn->SetLastAccessDate(visited.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(visited.toUInt()));
+                vn->SetLastAccessDate(visited.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(visited.toUInt()));
+                hn->SetLastUpdateDate(modified.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(modified.toUInt()));
+                vn->SetLastUpdateDate(modified.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(modified.toUInt()));
+
+                hn->SetPartner(vn);
+                vn->SetPartner(hn);
+            } else if(first.tagName().toLower() == QStringLiteral("h3")){
+                ViewNode *vn = parent->MakeChild(INT_MAX);
+
+                QString title = first.toPlainText();
+                QString added = first.attribute(QStringLiteral("ADD_DATE"), QString());
+                QString visited = first.attribute(QStringLiteral("LAST_VISIT"), QString());
+                QString modified = first.attribute(QStringLiteral("LAST_MODIFIED"), QString());
+                QString folded = first.attribute(QStringLiteral("FOLDED"), QStringLiteral("true"));
+
+                vn->SetTitle(first.toPlainText());
+                vn->SetCreateDate(added.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(added.toUInt()));
+                vn->SetLastAccessDate(visited.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(visited.toUInt()));
+                vn->SetLastUpdateDate(modified.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromTime_t(modified.toUInt()));
+                vn->SetFolded(folded == QStringLiteral("true") ? true : false);
+
+                QWebElement child = elem.findFirst(QStringLiteral("dt"));
+                while(!child.isNull()){
+                    collectDom(child, vn);
+                    child = child.nextSibling();
+                }
+            }
+        };
+
+        QWebElement child = page.mainFrame()->findFirstElement(QStringLiteral("dt"));
+        while(!child.isNull()){
+            collectDom(child, TreeBank::GetViewRoot());
+            child = child.nextSibling();
+        }
+#else
         QString source = QString::fromUtf8(data);
         ViewNode *vn = TreeBank::GetViewRoot();
         QRegularExpression tagrx("<(/?)([a-zA-Z0-9]+)([^<>]*)>([^<>]*)");
@@ -919,6 +985,7 @@ void Application::Import(TreeBank *tb){
                 vn = vn->GetParent()->ToViewNode();
             }
         }
+#endif //ifdef WEBKITVIEW
     };
 
     QStringList list;
@@ -1102,6 +1169,117 @@ void Application::Export(TreeBank *tb){
         utc.setTimeSpec(Qt::LocalTime);
         int utcOffset = utc.secsTo(local);
 
+#ifdef WEBKITVIEW
+        std::function<void(ViewNode *vn, QWebElement elem)> collectNode;
+
+        collectNode = [&](ViewNode *vn, QWebElement elem){
+            elem.appendInside(QStringLiteral("<DT>"));
+            QWebElement DT = elem.lastChild();
+
+            if(vn->GetPartner()){
+                HistNode *hn = vn->GetPartner()->ToHistNode();
+
+                DT.appendInside(QStringLiteral("<A>"));
+                QWebElement A = DT.firstChild();
+
+                A.setAttribute(QStringLiteral("HREF"), hn->GetUrl().toString());
+                QDateTime added    = hn->GetCreateDate();
+                QDateTime visited  = hn->GetLastAccessDate();
+                QDateTime modified = hn->GetLastUpdateDate();
+                added.setUtcOffset(utcOffset);
+                visited.setUtcOffset(utcOffset);
+                modified.setUtcOffset(utcOffset);
+                A.setAttribute(QStringLiteral("ADD_DATE"),      QStringLiteral("%1").arg(added.toTime_t()));
+                A.setAttribute(QStringLiteral("LAST_VISIT"),    QStringLiteral("%1").arg(visited.toTime_t()));
+                A.setAttribute(QStringLiteral("LAST_MODIFIED"), QStringLiteral("%1").arg(modified.toTime_t()));
+
+                if(vn->GetTitle().isEmpty())
+                    A.setPlainText(QStringLiteral("NoTitle"));
+                else
+                    A.setPlainText(vn->GetTitle());
+            } else {
+                DT.appendInside(QStringLiteral("<H3>"));
+                DT.appendInside(QStringLiteral("<DL>"));
+                DT.appendInside(QStringLiteral("<p>"));
+                QWebElement H3 = DT.firstChild();
+                QWebElement DL = H3.nextSibling();
+
+                QDateTime added = vn->GetCreateDate();
+                QDateTime visited = vn->GetLastAccessDate();
+                QDateTime modified = vn->GetLastUpdateDate();
+                added.setUtcOffset(utcOffset);
+                visited.setUtcOffset(utcOffset);
+                modified.setUtcOffset(utcOffset);
+                QString folded = vn->GetFolded() ? QStringLiteral("true") : QStringLiteral("false");
+                H3.setAttribute(QStringLiteral("ADD_DATE"),      QStringLiteral("%1").arg(added.toTime_t()));
+                H3.setAttribute(QStringLiteral("LAST_VISIT"),    QStringLiteral("%1").arg(visited.toTime_t()));
+                H3.setAttribute(QStringLiteral("LAST_MODIFIED"), QStringLiteral("%1").arg(modified.toTime_t()));
+                H3.setAttribute(QStringLiteral("FOLDED"), folded);
+
+                if(vn->GetTitle().isEmpty())
+                    H3.setPlainText(QStringLiteral("NoTitle"));
+                else
+                    H3.setPlainText(vn->GetTitle());
+
+                DL.appendInside(QStringLiteral("<p>"));
+                QWebElement p = DL.firstChild();
+
+                foreach(Node *childnode, vn->GetChildren()){
+                    collectNode(childnode->ToViewNode(), p);
+                }
+            }
+        };
+
+        QWebPage page;
+        QWebElement doc = page.mainFrame()->documentElement();
+        doc.appendInside(QStringLiteral("<DL>"));
+        QWebElement DL = doc.lastChild();
+        doc.appendInside(QStringLiteral("<p>"));
+        DL.appendInside(QStringLiteral("<p>"));
+        foreach(Node *childnode, TreeBank::GetViewRoot()->GetChildren()){
+            collectNode(childnode->ToViewNode(), DL.firstChild());
+        }
+
+        QFile file(filename);
+        if(file.open(QIODevice::WriteOnly)){
+            QTextStream out(&file);
+            out.setCodec("UTF-8");
+            out <<
+                "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n"
+                "<!-- This is an automatically generated file.\n"
+                "     It will be read and overwritten.\n"
+                "     DO NOT EDIT! -->\n"
+                "<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n"
+                "<TITLE>Bookmarks</TITLE>\n"
+                "<H1>Bookmarks</H1>\n";
+            QString body = page.mainFrame()->toHtml();
+            body.replace(QStringLiteral("<html><head></head><body></body>"), QString());
+            body.replace(QStringLiteral("</html>"), QString());
+            body.replace(QStringLiteral("</p>"), QString());
+            body.replace(QStringLiteral("</dt>"), QString());
+            body.replace(QStringLiteral("<dt>"), QStringLiteral("\n<DT>"));
+            body.replace(QStringLiteral("<dl>"), QStringLiteral("\n<DL>"));
+            body.replace(QStringLiteral("</dl>"), QStringLiteral("\n</DL>"));
+            body.replace(QStringLiteral("<h1>"), QStringLiteral("<H1>"));
+            body.replace(QStringLiteral("<h1 "), QStringLiteral("<H1 "));
+            body.replace(QStringLiteral("</h1>"), QStringLiteral("</H1>"));
+            body.replace(QStringLiteral("<h2>"), QStringLiteral("<H2>"));
+            body.replace(QStringLiteral("<h2 "), QStringLiteral("<H2 "));
+            body.replace(QStringLiteral("</h2>"), QStringLiteral("</H2>"));
+            body.replace(QStringLiteral("<h3>"), QStringLiteral("<H3>"));
+            body.replace(QStringLiteral("<h3 "), QStringLiteral("<H3 "));
+            body.replace(QStringLiteral("</h3>"), QStringLiteral("</H3>"));
+            body.replace(QStringLiteral("<a "), QStringLiteral("<A "));
+            body.replace(QStringLiteral("</a>"), QStringLiteral("</A>"));
+            body.replace(QStringLiteral(" href="), QStringLiteral(" HREF="));
+            body.replace(QStringLiteral(" add_date="), QStringLiteral(" ADD_DATE="));
+            body.replace(QStringLiteral(" last_visit="), QStringLiteral(" LAST_VISIT="));
+            body.replace(QStringLiteral(" last_modified="), QStringLiteral(" LAST_MODIFIED="));
+            body.replace(QStringLiteral(" folded="), QStringLiteral(" FOLDED="));
+            out << body;
+        }
+        file.close();
+#else
         std::function<void(ViewNode *vn, int nest, QTextStream &out)> collectNode;
 
         collectNode = [&](ViewNode *vn, int nest, QTextStream &out){
@@ -1170,6 +1348,7 @@ void Application::Export(TreeBank *tb){
             out << QStringLiteral("</DL><p>\n");
         }
         file.close();
+#endif //ifdef WEBKITVIEW
     };
 
     bool ok = true;
@@ -1206,8 +1385,10 @@ void Application::Quit(){
     foreach(MainWindow *win, m_MainWindows.values()){
         win->hide();
     }
+#ifdef LocalView
     LocalView::ClearCache();
-    // can't release QuickWebView...
+#endif
+    // can't release QuickWebKitView...
     TreeBank::ReleaseAllView();
 
     connect(m_AutoSaver, &AutoSaver::Finished, [](){

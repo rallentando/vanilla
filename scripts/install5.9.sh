@@ -18,6 +18,9 @@ do
     elif [ -e   $drive:/Qt/5.9/msvc2015_64 ]; then
         QT5_DIR=$drive:/Qt/5.9/msvc2015_64
         break
+    elif [ -e   $drive:/Qt/5.9.1/msvc2015_64 ]; then
+        QT5_DIR=$drive:/Qt/5.9.1/msvc2015_64
+        break
     fi
 done
 
@@ -207,4 +210,54 @@ cp scripts/edge.bat $TARGET_DIR/
 
 cp LICENSE $TARGET_DIR/
 
-cp qt.conf $TARGET_DIR/
+#cp qt.conf $TARGET_DIR/
+
+if [ -e $QT5_DIR/bin/Qt5WebKit.dll ]; then
+    mkdir -p $TARGET_DIR/scenegraph/
+    mkdir -p $TARGET_DIR/QtGraphicalEffects/
+    mkdir -p $TARGET_DIR/QtGraphicalEffects/private/
+    mkdir -p $TARGET_DIR/QtQml/
+    mkdir -p $TARGET_DIR/QtQml/Models.2/
+    mkdir -p $TARGET_DIR/QtWebKit/
+    mkdir -p $TARGET_DIR/QtWebKit/experimental/
+
+    #cp $OPENSSL_DIR/ssleay32.dll $TARGET_DIR/
+    #cp $OPENSSL_DIR/libeay32.dll $TARGET_DIR/
+
+    cp $QT5_DIR/bin/Qt5SerialPort.dll        $TARGET_DIR/
+    cp $QT5_DIR/bin/Qt5WebKit.dll            $TARGET_DIR/
+    cp $QT5_DIR/bin/Qt5WebKitWidgets.dll     $TARGET_DIR/
+
+    cp $QT5_DIR/bin/icudt57.dll              $TARGET_DIR/
+    cp $QT5_DIR/bin/icuin57.dll              $TARGET_DIR/
+    cp $QT5_DIR/bin/icuuc57.dll              $TARGET_DIR/
+    cp $QT5_DIR/bin/libEGL.dll               $TARGET_DIR/
+    cp $QT5_DIR/bin/libGLESv2.dll            $TARGET_DIR/
+    cp $QT5_DIR/bin/libxml2.dll              $TARGET_DIR/
+    cp $QT5_DIR/bin/libxslt.dll              $TARGET_DIR/
+
+    cp $QT5_DIR/bin/QtWebDatabaseProcess.exe $TARGET_DIR/
+    cp $QT5_DIR/bin/QtWebNetworkProcess.exe  $TARGET_DIR/
+    cp $QT5_DIR/bin/QtWebProcess.exe         $TARGET_DIR/
+
+    cp $QT5_DIR/plugins/scenegraph/qsgd3d12backend.dll $TARGET_DIR/scenegraph/
+
+    cp $QT5_DIR/qml/QtGraphicalEffects/qtgraphicaleffectsplugin.dll $TARGET_DIR/QtGraphicalEffects/
+    cp $QT5_DIR/qml/QtGraphicalEffects/*.qml $TARGET_DIR/QtGraphicalEffects/
+    cp $QT5_DIR/qml/QtGraphicalEffects/*.qmlc $TARGET_DIR/QtGraphicalEffects/
+    cp $QT5_DIR/qml/QtGraphicalEffects/qmldir $TARGET_DIR/QtGraphicalEffects/
+
+    cp $QT5_DIR/qml/QtGraphicalEffects/private/qtgraphicaleffectsprivate.dll $TARGET_DIR/QtGraphicalEffects/private/
+    cp $QT5_DIR/qml/QtGraphicalEffects/private/*.qml $TARGET_DIR/QtGraphicalEffects/private/
+    cp $QT5_DIR/qml/QtGraphicalEffects/private/*.qmlc $TARGET_DIR/QtGraphicalEffects/private/
+    cp $QT5_DIR/qml/QtGraphicalEffects/private/qmldir $TARGET_DIR/QtGraphicalEffects/private/
+
+    cp $QT5_DIR/qml/QtQml/Models.2/qmldir $TARGET_DIR/QtQml/Models.2/
+    cp $QT5_DIR/qml/QtQml/Models.2/modelsplugin.dll $TARGET_DIR/QtQml/Models.2/
+
+    cp $QT5_DIR/qml/QtWebKit/qmlwebkitplugin.dll $TARGET_DIR/QtWebKit/
+    cp $QT5_DIR/qml/QtWebKit/qmldir $TARGET_DIR/QtWebKit/
+
+    cp $QT5_DIR/qml/QtWebKit/experimental/qmlwebkitexperimentalplugin.dll $TARGET_DIR/QtWebKit/experimental/
+    cp $QT5_DIR/qml/QtWebKit/experimental/qmldir $TARGET_DIR/QtWebKit/experimental/
+fi

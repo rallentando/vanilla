@@ -3,6 +3,12 @@
 
 #include "page.hpp"
 
+#ifdef WEBKITVIEW
+#  include <QWebPage>
+#  include <QWebFrame>
+#  include <QWebElement>
+#endif
+
 #include <QClipboard>
 #include <QList>
 #include <QSet>
@@ -12,7 +18,12 @@
 #include "view.hpp"
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
-#include "tridentview.hpp"
+#if defined(Q_OS_WIN)
+#  include "tridentview.hpp"
+#endif
+#ifdef WEBKITVIEW
+#  include "webkitpage.hpp"
+#endif
 #include "webenginepage.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
@@ -144,13 +155,17 @@ Page::Page(QObject *parent, NetworkAccessManager *nam)
 Page::~Page(){}
 
 NetworkAccessManager *Page::GetNetworkAccessManager(){
-    NetworkAccessManager *nam;
+    NetworkAccessManager *nam = 0;
 #ifdef WEBENGINEVIEW
     if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page()))
         nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
-    else
 #endif
-        nam = m_NetworkAccessManager;
+#ifdef WEBKITVIEW
+    if(WebKitPage *page = qobject_cast<WebKitPage*>(m_View->page()))
+        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
+#endif
+    if(!nam) nam = m_NetworkAccessManager;
+
     return nam;
 }
 
@@ -259,6 +274,24 @@ QUrl Page::StringToUrl(QString str, QUrl baseUrl){
 }
 
 QList<QUrl> Page::ExtractUrlsFromHtml(QString html, QUrl baseUrl, FindElementsOption option){
+#ifdef WEBKITVIEW
+    QString selector;
+    QString attribute;
+    if(option == HaveSource){
+        selector = HAVE_SOURCE_CSS_SELECTOR;
+        attribute = "src";
+    } else if(option == HaveReference){
+        selector = HAVE_REFERENCE_CSS_SELECTOR;
+        attribute = "href";
+    }
+    QWebPage page;
+    page.mainFrame()->setHtml(html, baseUrl);
+    QList<QUrl> list;
+    foreach(QWebElement elem, page.mainFrame()->findAllElements(selector)){
+        list << StringToUrl(elem.attribute(attribute), baseUrl);
+    }
+    return list.toSet().toList();
+#else
     QList<QUrl> list;
     int pos = 0;
     QRegularExpression reg;
@@ -274,6 +307,7 @@ QList<QUrl> Page::ExtractUrlsFromHtml(QString html, QUrl baseUrl, FindElementsOp
         }
     }
     return list.toSet().toList();
+#endif //ifdef WEBKITVIEW
 }
 
 QList<QUrl> Page::ExtractUrlsFromText(QString text, QUrl baseUrl){

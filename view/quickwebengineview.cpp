@@ -48,6 +48,7 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
     if(parent) setParent(parent);
 
     m_Inspector = 0;
+    m_ScrollSignalTimer = 0;
     m_PreventScrollRestoration = false;
 #ifdef PASSWORD_MANAGER
     m_PreventAuthRegistration = false;
@@ -190,8 +191,6 @@ void QuickWebEngineView::Connect(TreeBank *tb){
 
     connect(this, SIGNAL(titleChanged(const QString&)),
             tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    //connect(this, SIGNAL(loadProgress(int)),
-    //        this, SLOT(RestoreScroll()));
     if(Notifier *notifier = tb->GetNotifier()){
         connect(this, SIGNAL(statusBarMessage(const QString&)),
                 notifier, SLOT(SetStatus(const QString&)));
@@ -227,8 +226,6 @@ void QuickWebEngineView::Disconnect(TreeBank *tb){
 
     disconnect(this, SIGNAL(titleChanged(const QString&)),
                tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    //disconnect(this, SIGNAL(loadProgress(int)),
-    //           this, SLOT(RestoreScroll()));
     if(Notifier *notifier = tb->GetNotifier()){
         disconnect(this, SIGNAL(statusBarMessage(const QString&)),
                    notifier, SLOT(SetStatus(const QString&)));
@@ -279,9 +276,6 @@ void QuickWebEngineView::OnLoadStarted(){
     emit statusBarMessage(tr("Started loading."));
     m_PreventScrollRestoration = false;
     AssignInspector();
-#ifdef USE_WEBCHANNEL
-    //page()->AddJsObject();
-#endif
 
     if(m_Icon.isNull() && url() != BLANK_URL)
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
@@ -1062,9 +1056,12 @@ void QuickWebEngineView::mouseReleaseEvent(QMouseEvent *ev){
         QNetworkRequest req(link);
         req.setRawHeader("Referer", url().toEncoded());
 
-        if(ev->modifiers() & Qt::ShiftModifier ||
-           ev->modifiers() & Qt::ControlModifier ||
-           ev->button() == Qt::MidButton){
+        if(ev->modifiers() & Qt::ShiftModifier
+           || ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+           || ev->modifiers() & Qt::MetaModifier
+#endif
+           || ev->button() == Qt::MidButton){
 
             GestureAborted();
             m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());

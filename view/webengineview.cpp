@@ -409,7 +409,6 @@ bool WebEngineView::RestoreHistory(){
 
     QByteArray ba = GetHistNode()->GetHistoryData();
     if(!ba.isEmpty()){
-
         // source view cant be loaded from history stream...
         HistNode *hn = GetHistNode();
         if(hn->GetTitle().startsWith(QStringLiteral("view-source:"))){
@@ -419,7 +418,6 @@ bool WebEngineView::RestoreHistory(){
                 Load(hn->GetTitle());
             return true;
         }
-
         QDataStream stream(&ba, QIODevice::ReadOnly);
         stream >> (*history());
         return history()->count() > 0;

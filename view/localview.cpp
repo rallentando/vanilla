@@ -26,6 +26,10 @@
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "gadgetsstyle.hpp"
+#ifdef WEBKITVIEW
+#  include "webkitview.hpp"
+#  include "quickwebkitview.hpp"
+#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "quicknativewebview.hpp"
@@ -246,11 +250,20 @@ void LocalView::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
+
+
+
         if(0);
 #ifdef WEBENGINEVIEW
         else if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
         else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
+            view = w;
+#endif
+#ifdef WEBKITVIEW
+        else if(WebKitView *w = qobject_cast<WebKitView*>(GetTreeBank()->GetCurrentView()->base()))
+            view = w;
+        else if(QuickWebKitView *w = qobject_cast<QuickWebKitView*>(GetTreeBank()->GetCurrentView()->base()))
             view = w;
 #endif
 #ifdef NATIVEWEBVIEW

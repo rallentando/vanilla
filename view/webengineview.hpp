@@ -50,12 +50,7 @@ public:
     void Disconnect(TreeBank *tb) Q_DECL_OVERRIDE;
 
     bool ForbidToOverlap() Q_DECL_OVERRIDE {
-#if defined(Q_OS_WIN)
-        // performance issue.
-        return true;
-#else
         return false;
-#endif
     }
 
     bool CanGoBack() Q_DECL_OVERRIDE {

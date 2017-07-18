@@ -27,6 +27,12 @@
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "view.hpp"
+#ifdef WEBKITVIEW
+#  include "webkitview.hpp"
+#  include "graphicswebkitview.hpp"
+#  include "quickwebkitview.hpp"
+#  include "webkitpage.hpp"
+#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "quicknativewebview.hpp"
@@ -61,7 +67,12 @@
   "[gG](?:raphics)?" "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?"
   "[qQ](?:uick)?"    "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?"
                      "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?"
+  "[gG](?:raphics)?" "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?"
   "[qQ](?:uick)?"    "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?"
+                     "[wW](?:eb)?" "[kK](?:it)?"    "(?:[vV](?:iew)?)?"
+  "[gG](?:raphics)?" "[wW](?:eb)?" "[kK](?:it)?"    "(?:[vV](?:iew)?)?"
+  "[qQ](?:uick)?"    "[wW](?:eb)?" "[kK](?:it)?"    "(?:[vV](?:iew)?)?"
+
                      "[nN](?:ative)?" "[wW](?:ev)?" "(?:[vV](?:iew)?)?"
   "[qQ](?:uick)?"    "[nN](?:ative)?" "[wW](?:ev)?" "(?:[vV](?:iew)?)?"
   "[lL](?:ocal)?"                                   "(?:[vV](?:iew)?)?"
@@ -590,9 +601,12 @@ bool TreeBank::IsTrash(Node* nd){
 }
 
 bool TreeBank::IsDisplayingTableView(){
-    return (m_Gadgets && m_Gadgets->IsActive()) ||
-        (m_CurrentView &&
-         qobject_cast<LocalView*>(m_CurrentView->base()));
+    return (m_Gadgets && m_Gadgets->IsActive())
+#ifdef LocalView
+        || (m_CurrentView &&
+            qobject_cast<LocalView*>(m_CurrentView->base()))
+#endif
+        ;
 }
 
 bool TreeBank::IsCurrent(Node* nd){
@@ -1571,6 +1585,7 @@ bool TreeBank::SetCurrent(Node *nd){
         GetMainWindow()->SetWindowTitle(m_CurrentView->url().toString());
     }
 
+#ifdef LocalView
     if(SharedView v = m_CurrentView->GetSlave().lock()){
         // why cannot catch lovalview object?
         if(qobject_cast<LocalView*>(v->base())){
@@ -1580,6 +1595,7 @@ bool TreeBank::SetCurrent(Node *nd){
             m_CurrentView->SetSlave(WeakView());
         }
     }
+#endif
     if(prev && (prev != m_CurrentView)){
         if(SharedView v = prev->GetMaster().lock()){
             v->lower();
@@ -1604,6 +1620,29 @@ bool TreeBank::SetCurrent(Node *nd){
     if(m_Notifier) m_Notifier->ResizeNotify(size());
     if(m_Receiver) m_Receiver->ResizeNotify(size());
 
+    //                                high
+    // QuickWeb(Engine|Kit)View        ^
+    // Web(Engine|Kit)View             |
+    // Gadgets                   order of layer
+    // LocalView                       |
+    // GraphicsWebKitView              V
+    //                                low
+
+#ifdef WEBKITVIEW
+    if(qobject_cast<GraphicsWebKitView*>(m_CurrentView->base())){
+
+        m_CurrentView->show();
+        DoUpdate();
+        if(prev && prev != m_CurrentView){
+            prev->lower();
+            prev->hide();
+        }
+        m_View->raise();
+        m_CurrentView->raise();
+
+    } else
+#endif
+#ifdef LocalView
     if(qobject_cast<LocalView*>(m_CurrentView->base())){
 
         m_CurrentView->show();
@@ -1615,7 +1654,9 @@ bool TreeBank::SetCurrent(Node *nd){
         m_View->raise();
         m_CurrentView->raise();
 
-    } else { // WebEngineView or QuickWebEngineView.
+    } else
+#endif
+    { // Web(Engine|Kit)View or QuickWeb(Engine|Kit)View.
 
         if(m_Gadgets && m_Gadgets->IsActive()){
             /* do nothing. */
@@ -1685,7 +1726,7 @@ void TreeBank::GoBackOrCloseForDownload(View *view){
                 }
             } else if(Node *nd = hist->Prev()){
 
-                SetCurrent(nd);
+                DeleteNode(nd);
             }
         }
     });
@@ -3848,49 +3889,59 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
     }
 #endif
 
-    if(urlstr.startsWith(QStringLiteral("file:///")) &&
-       (QFileInfo(url.toLocalFile()).isDir() ||
-        LocalView::IsSupported(url))){
-
-        view = SharedView(new LocalView(tb, id, set), &DeleteView);
-
-    } else {
-        view = SharedView(
+    view = SharedView(
+#ifdef LocalView
+        (urlstr.startsWith(QStringLiteral("file:///")) && (QFileInfo(url.toLocalFile()).isDir() || LocalView::IsSupported(url))) ?
+          new LocalView(tb, id, set) :
+#endif
 #ifdef WEBENGINEVIEW
-            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new WebEngineView(tb, id, set) :
-            set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new WebEngineView(tb, id, set) :
-            set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new QuickWebEngineView(tb, id, set) :
-            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new WebEngineView(tb, id, set) :
-            set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new QuickWebEngineView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new WebEngineView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new WebEngineView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new QuickWebEngineView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new WebEngineView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new WebEngineView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?" VV"[eE](?:ngine)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new QuickWebEngineView(tb, id, set) :
+#endif
+#ifdef WEBKITVIEW
+        set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?" VV"[kK](?:it)?"    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new WebKitView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?" VV"[kK](?:it)?"    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new GraphicsWebKitView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?" VV"[kK](?:it)?"    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new QuickWebKitView(tb, id, set) :
 #endif
 #ifdef NATIVEWEBVIEW
-            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[nN](?:ative)?" VV"[wW](?:eb)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new QuickNativeWebView(tb, id, set) :
-            set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[nN](?:ative)?" VV"[wW](?:eb)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new QuickNativeWebView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[nN](?:ative)?" VV"[wW](?:eb)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new QuickNativeWebView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[nN](?:ative)?" VV"[wW](?:eb)?" VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new QuickNativeWebView(tb, id, set) :
 #endif
 #ifdef TRIDENTVIEW
-            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[tT](?:rident)?"                VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new TridentView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[tT](?:rident)?"                VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new TridentView(tb, id, set) :
 #endif
-            set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[lL](?:ocal)?"                  VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
-              new LocalView(tb, id, set) :
+#ifdef LocalView
+        set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[lL](?:ocal)?"                  VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new LocalView(tb, id, set) :
+#endif
 #if defined(WEBENGINEVIEW)
-            static_cast<View*>(new WebEngineView(tb, id, set))
+        static_cast<View*>(new WebEngineView(tb, id, set))
+#elif defined(WEBKITVIEW)
+        static_cast<View*>(new WebKitView(tb, id, set))
 #elif defined(TRIDENTVIEW)
-            static_cast<View*>(new TridentView(tb, id, set))
+        static_cast<View*>(new TridentView(tb, id, set))
 #elif defined(NATIVEWEBVIEW)
-            static_cast<View*>(new QuickNativeWebView(tb, id, set))
+        static_cast<View*>(new QuickNativeWebView(tb, id, set))
 #else
-            static_cast<View*>(0)
+        static_cast<View*>(0)
 #endif
-            , &DeleteView);
-    }
+        , &DeleteView);
 
     if(hn->GetTitle().isEmpty()){
         QString title = req.url().toString();

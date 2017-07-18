@@ -327,6 +327,24 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op,
         newreq.setSslConfiguration(sslConfig);
     }
 
+#if 0 //def PASSWORD_MANAGER
+    if(out && op == QNetworkAccessManager::PostOperation){
+        QByteArray referer = req.rawHeader("Referer");
+        QString key = m_Id + QStringLiteral(":") + QUrl::fromEncoded(referer).host();
+
+        if(Application::GetAuthData(key).isEmpty()){
+            QByteArray data = out->readAll();
+            out->reset();
+
+            BoolCallBack callBack = [key, data](bool ok){
+                if(ok) Application::RegisterAuthData(key, data);
+            };
+            ModelessDialog::Question(tr("An authentication has been executed."),
+                                     tr("Save this password?"), callBack);
+        }
+    }
+#endif
+
     QNetworkReply *rep = QNetworkAccessManager::createRequest(op, newreq, out);
 
     // QNetworkReply::error is overloaded.

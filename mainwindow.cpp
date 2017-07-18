@@ -25,6 +25,10 @@
 #include "receiver.hpp"
 #include "gadgets.hpp"
 #include "graphicstableview.hpp"
+#ifdef WEBKITVIEW
+#  include "webkitview.hpp"
+#  include "quickwebkitview.hpp"
+#endif
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "quicknativewebview.hpp"
@@ -198,7 +202,14 @@ void MainWindow::LoadSettings(){
                 rect.moveTopLeft(pos());
         }
 
+#if defined(Q_OS_WIN)
+        if(pos().isNull())
+            setGeometry(rect);
+        else
+            resize(rect.size());
+#else
         setGeometry(rect);
+#endif
 
     } else if(geometry_data.canConvert<QRect>()){
         setGeometry(geometry_data.toRect());
@@ -360,11 +371,19 @@ void MainWindow::Shade(){
     setWindowOpacity(0.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
+
+
             if(0);
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->hide();
             else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                w->hide();
+#endif
+#ifdef WEBKITVIEW
+            else if(WebKitView *w = qobject_cast<WebKitView*>(view->base()))
+                w->hide();
+            else if(QuickWebKitView *w = qobject_cast<QuickWebKitView*>(view->base()))
                 w->hide();
 #endif
 #ifdef NATIVEWEBVIEW
@@ -390,11 +409,18 @@ void MainWindow::Unshade(){
     setWindowOpacity(1.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
+
             if(0);
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
             else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                w->show();
+#endif
+#ifdef WEBKITVIEW
+            else if(WebKitView *w = qobject_cast<WebKitView*>(view->base()))
+                w->show();
+            else if(QuickWebKitView *w = qobject_cast<QuickWebKitView*>(view->base()))
                 w->show();
 #endif
 #ifdef NATIVEWEBVIEW
@@ -719,6 +745,12 @@ void MainWindow::moveEvent(QMoveEvent *ev){
             else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
                 w->setGeometry(geometry());
 #endif
+#ifdef WEBKITVIEW
+            else if(WebKitView *w = qobject_cast<WebKitView*>(view->base()))
+                w->setGeometry(geometry());
+            else if(QuickWebKitView *w = qobject_cast<QuickWebKitView*>(view->base()))
+                w->setGeometry(geometry());
+#endif
 #ifdef NATIVEWEBVIEW
             else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
                 w->setGeometry(geometry());
@@ -755,6 +787,12 @@ void MainWindow::showEvent(QShowEvent *ev){
             else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
                 w->show();
 #endif
+#ifdef WEBKITVIEW
+            else if(WebKitView *w = qobject_cast<WebKitView*>(view->base()))
+                w->show();
+            else if(QuickWebKitView *w = qobject_cast<QuickWebKitView*>(view->base()))
+                w->show();
+#endif
 #ifdef NATIVEWEBVIEW
             else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
                 w->show();
@@ -781,6 +819,12 @@ void MainWindow::hideEvent(QHideEvent *ev){
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                 w->show();
             else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                w->show();
+#endif
+#ifdef WEBKITVIEW
+            else if(WebKitView *w = qobject_cast<WebKitView*>(view->base()))
+                w->show();
+            else if(QuickWebKitView *w = qobject_cast<QuickWebKitView*>(view->base()))
                 w->show();
 #endif
 #ifdef NATIVEWEBVIEW
@@ -824,6 +868,7 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
             break;
         }
         case WM_WINDOWPOSCHANGED:{
+            if(!m_TreeBar->TabWindowVisible()) raise();
             if(TreeBank::PurgeView()){
                 if(SharedView view = m_TreeBank->GetCurrentView()){
                     if(0);
@@ -831,6 +876,12 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
                     else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
                         w->raise();
                     else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
+                        w->raise();
+#endif
+#ifdef WEBKITVIEW
+                    else if(WebKitView *w = qobject_cast<WebKitView*>(view->base()))
+                        w->raise();
+                    else if(QuickWebKitView *w = qobject_cast<QuickWebKitView*>(view->base()))
                         w->raise();
 #endif
 #ifdef NATIVEWEBVIEW

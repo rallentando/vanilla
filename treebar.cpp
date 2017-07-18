@@ -992,24 +992,22 @@ void TreeBar::ShowTabWindow(const QPoint &cursorPos, Node *node){
     } else {
         m_TabWindow = Application::NewWindow(0, pos);
 
-        if(!node->IsDirectory()){
-            View *view = node->GetView();
-            if(view && view->visible()){
-                TreeBank *tb = view->GetTreeBank();
-                NodeList list = node->GetSiblings();
-                qSort(list.begin(), list.end(), [](Node *n1, Node *n2){
-                    return n1->GetLastAccessDate() > n2->GetLastAccessDate();
-                });
-                tb->blockSignals(true);
-                foreach(Node *nd, list){
-                    if(nd != node && !nd->IsDirectory())
-                        if(tb->SetCurrent(nd)) break;
-                }
-                tb->blockSignals(false);
+        View *view = node->GetView();
+        if(view && view->visible()){
+            TreeBank *tb = view->GetTreeBank();
+            NodeList list = node->GetSiblings();
+            qSort(list.begin(), list.end(), [](Node *n1, Node *n2){
+                return n1->GetLastAccessDate() > n2->GetLastAccessDate();
+            });
+            tb->blockSignals(true);
+            foreach(Node *nd, list){
+                if(nd != node && !nd->IsDirectory())
+                    if(tb->SetCurrent(nd)) break;
             }
-            m_Scene->update();
-            m_TabWindow->GetTreeBank()->SetCurrent(node);
+            tb->blockSignals(false);
         }
+        m_Scene->update();
+        m_TabWindow->GetTreeBank()->SetCurrent(node);
     }
     foreach(LayerItem *layer, GetLayerList()){
         layer->AutoScrollStop();
@@ -2897,10 +2895,9 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         if(!image_rect.isValid()){
             // nothing to do.
         } else if(!image.isNull()){
-            const int defaultWitdh = m_TreeBar->GetHorizontalNodeWidth() - 6;
             QRectF source = QRectF(0, 0,
-                                   image.width() * image_rect.width()  / defaultWitdh,
-                                   image.width() * image_rect.height() / defaultWitdh);
+                                   image.width(),
+                                   image.width() * image_rect.height() / image_rect.width());
             painter->drawImage(image_rect, image, source);
         } else {
             static const QBrush db = QBrush(QColor(200, 255, 200, 255));
@@ -2994,9 +2991,11 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
                           : (m_IsFocused ?  nb : nb));
         painter->setPen(Qt::NoPen);
         QRectF rect = bound;
-        switch(m_TreeBar->orientation()){
-        case Qt::Horizontal: rect.setBottom(rect.bottom() + 1); break;
-        case Qt::Vertical:   rect.setRight(rect.right() + 1);   break;
+        if(!Application::EnableTransparentBar()){
+            switch(m_TreeBar->orientation()){
+            case Qt::Horizontal: rect.setBottom(rect.bottom() + 1); break;
+            case Qt::Vertical:   rect.setRight(rect.right() + 1);   break;
+            }
         }
         painter->drawRect(rect);
     }
@@ -3621,14 +3620,16 @@ void NodeItem::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
         Layer()->TransferNodeItem(this, newLayer);
     }
 
-    if(scene()->sceneRect().contains(ev->scenePos())){
-        m_TreeBar->HideTabWindow();
-    } else if(m_TreeBar->TabWindowVisible()){
-        m_TreeBar->MoveTabWindow(ev->scenePos().toPoint());
-        return;
-    } else {
-        m_TreeBar->ShowTabWindow(ev->scenePos().toPoint(), m_Node);
-        return;
+    if(!m_Node->IsDirectory()){
+        if(scene()->sceneRect().contains(ev->scenePos())){
+            m_TreeBar->HideTabWindow();
+        } else if(m_TreeBar->TabWindowVisible()){
+            m_TreeBar->MoveTabWindow(ev->scenePos().toPoint());
+            return;
+        } else {
+            m_TreeBar->ShowTabWindow(ev->scenePos().toPoint(), m_Node);
+            return;
+        }
     }
 
     switch(m_TreeBar->orientation()){

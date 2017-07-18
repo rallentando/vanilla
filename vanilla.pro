@@ -11,17 +11,32 @@ QT += \
     multimedia multimediawidgets \
     quick quickwidgets qml
 
+exists($(QTDIR)/lib/*Qt*PrintSupport*) {
+    QT += printsupport
+}
+
+exists($(QTDIR)/lib/*Qt*WebEngine*) {
+    DEFINES += WEBENGINEVIEW
+    QT += webenginecore webengine webenginewidgets
+}
+
+exists($(QTDIR)/lib/*Qt*WebKit*) {
+    DEFINES += WEBKITVIEW
+    QT += webkit webkitwidgets
+}
+
 winrt | android | ios {
 
+    DEFINES += NATIVEWEBVIEW
     QT += webview
 
-} else {
+} else:win32 {
 
-    QT += printsupport webenginecore \
-       webengine webenginewidgets
-
-    win32: QT += winextras axcontainer
+    DEFINES += TRIDENTVIEW
+    QT += winextras axcontainer
 }
+
+DEFINES += LOCALVIEW
 
 INCLUDEPATH += . view gadgets
 
@@ -78,6 +93,10 @@ HEADERS += \
     view/webenginepage.hpp \
     view/webengineview.hpp \
     view/quickwebengineview.hpp \
+    view/webkitpage.hpp \
+    view/webkitview.hpp \
+    view/graphicswebkitview.hpp \
+    view/quickwebkitview.hpp \
     view/quicknativewebview.hpp \
     view/tridentview.hpp \
     gadgets/graphicstableview.hpp \
@@ -110,6 +129,10 @@ SOURCES += \
     view/webenginepage.cpp \
     view/webengineview.cpp \
     view/quickwebengineview.cpp \
+    view/webkitpage.cpp \
+    view/webkitview.cpp \
+    view/graphicswebkitview.cpp \
+    view/quickwebkitview.cpp \
     view/quicknativewebview.cpp \
     view/tridentview.cpp \
     gadgets/graphicstableview.cpp \
@@ -127,6 +150,7 @@ TRANSLATIONS += \
 OTHER_FILES += \
     view/quickwebengineview5.7.qml \
     view/quickwebengineview5.9.qml \
+    view/quickwebkitview.qml \
     view/quicknativewebview.qml
 
 lupdate_only {
@@ -135,6 +159,7 @@ lupdate_only {
     SOURCES = \
         view/quickwebengineview5.7.qml \
         view/quickwebengineview5.9.qml \
+        view/quickwebkitview.qml \
         view/quicknativewebview.qml \
         application.hpp \
         actionmapper.hpp \
@@ -163,6 +188,10 @@ lupdate_only {
         view/webenginepage.hpp \
         view/webengineview.hpp \
         view/quickwebengineview.hpp \
+        view/webkitpage.hpp \
+        view/webkitview.hpp \
+        view/graphicswebkitview.hpp \
+        view/quickwebkitview.hpp \
         view/quicknativewebview.hpp \
         gadgets/graphicstableview.hpp \
         gadgets/gadgets.hpp \
@@ -192,6 +221,10 @@ lupdate_only {
         view/webenginepage.cpp \
         view/webengineview.cpp \
         view/quickwebengineview.cpp \
+        view/webkitpage.cpp \
+        view/webkitview.cpp \
+        view/graphicswebkitview.cpp \
+        view/quickwebkitview.cpp \
         view/quicknativewebview.cpp \
         view/tridentview.hpp \
         view/tridentview.cpp \
