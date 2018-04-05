@@ -43,18 +43,38 @@ static const QString NODE_DATETIME_FORMAT = QStringLiteral("yyyyMMddhhmmss");
 // user agent
 static const QString DEFAULT_USER_AGENT_IE        = QStringLiteral("Mozilla/5.0 (%SYSTEM%; Trident/7.0; rv:11.0) like Gecko");
 static const QString DEFAULT_USER_AGENT_EDGE      = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14393");
-static const QString DEFAULT_USER_AGENT_FIREFOX   = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:54.0) Gecko/20100101 Firefox/54.0");
+static const QString DEFAULT_USER_AGENT_FIREFOX   = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:59.0) Gecko/20100101 Firefox/59.0");
 static const QString DEFAULT_USER_AGENT_OPERA     = QStringLiteral("Opera/9.80 (%SYSTEM%) Presto/2.12.388 Version/12.18");
-static const QString DEFAULT_USER_AGENT_OPR       = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.86 Safari/537.36 OPR/46.0.2597.32");
-static const QString DEFAULT_USER_AGENT_SAFARI    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/534.57.2 (KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
-static const QString DEFAULT_USER_AGENT_CHROME    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36");
-static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.86 Safari/537.36 Sleipnir/4.5.8");
-static const QString DEFAULT_USER_AGENT_VIVALDI   = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.112 Safari/537.36 Vivaldi/1.92.890.4");
+static const QString DEFAULT_USER_AGENT_OPR       = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36 OPR/52.0.2871.40");
+static const QString DEFAULT_USER_AGENT_SAFARI    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6");
+static const QString DEFAULT_USER_AGENT_CHROME    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36");
+#if defined(Q_OS_MAC)
+static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/13604.5.6 Sleipnir/4.5.9020");
+#else
+static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Sleipnir/4.5.11");
+#endif
+static const QString DEFAULT_USER_AGENT_VIVALDI   = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.183 Safari/537.36 Vivaldi/1.96.1137.3");
 static const QString DEFAULT_USER_AGENT_NETSCAPE  = QStringLiteral("Mozilla/5.0 (Windows; U; %SYSTEM%; en-US; rv:1.7.2) Gecko/20040804 Netscape/7.2 (ax)");
 static const QString DEFAULT_USER_AGENT_SEAMONKEY = QStringLiteral("Mozilla/5.0 (Windows; U; %SYSTEM%; rv:10.0.1) Gecko/20100101 Firefox/10.0.1 SeaMonkey/2.7.1");
-static const QString DEFAULT_USER_AGENT_GECKO     = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:14.0) Gecko/20100101");
 static const QString DEFAULT_USER_AGENT_ICAB      = QStringLiteral("Mozilla/5.0 (compatible; iCab 3.0.3; Macintosh; U; PPC Mac OS X)");
 static const QString DEFAULT_USER_AGENT_CAMINO    = QStringLiteral("Mozilla/5.0 (Macintosh; U; PPC Mac OS X 10.4; en; rv:1.9.2.24) Gecko/20111114 Camino/2.1 (like Firefox/3.6.24)");
+static const QString DEFAULT_USER_AGENT_GECKO     = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:14.0) Gecko/20100101");
+
+static const QString IE_RE        = QStringLiteral("[iI](?:nternet)?[eE](?:xplorer)?");
+static const QString EDGE_RE      = QStringLiteral("[eE]dge");
+static const QString FIREFOX_RE   = QStringLiteral("[fF](?:ire)?[fF](?:ox)?");
+static const QString OPERA_RE     = QStringLiteral("[oO]pera");
+static const QString OPR_RE       = QStringLiteral("[oO][pP][rR]");
+static const QString SAFARI_RE    = QStringLiteral("[sS]afari");
+static const QString CHROME_RE    = QStringLiteral("[cC]hrome");
+static const QString SLEIPNIR_RE  = QStringLiteral("[sS]leipnir");
+static const QString VIVALDI_RE   = QStringLiteral("[vV]ivaldi");
+static const QString NETSCAPE_RE  = QStringLiteral("[nN]et[sS]cape");
+static const QString SEAMONKEY_RE = QStringLiteral("[sS]ea[mM]onkey");
+static const QString ICAB_RE      = QStringLiteral("[iI][cC]ab");
+static const QString CAMINO_RE    = QStringLiteral("[cC]amino");
+static const QString GECKO_RE     = QStringLiteral("[gG]ecko");
+static const QString CUSTOM_RE    = QStringLiteral("[cC]ustom");
 
 // treebar
 #if defined(Q_OS_WIN)

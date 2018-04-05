@@ -335,9 +335,9 @@ public:
     virtual void SetLastUpdateDate(QDateTime){}
     virtual void SetLastAccessDate(QDateTime){}
 
-    void SetCreateDateToCurrent();
-    void SetLastUpdateDateToCurrent();
-    void SetLastAccessDateToCurrent();
+    virtual void SetCreateDateToCurrent(){}
+    virtual void SetLastUpdateDateToCurrent(){}
+    virtual void SetLastAccessDateToCurrent(){}
 };
 
 /*
@@ -410,6 +410,10 @@ public:
     void SetCreateDate(QDateTime) Q_DECL_OVERRIDE;
     void SetLastUpdateDate(QDateTime) Q_DECL_OVERRIDE;
     void SetLastAccessDate(QDateTime) Q_DECL_OVERRIDE;
+
+    void SetCreateDateToCurrent() Q_DECL_OVERRIDE;
+    void SetLastUpdateDateToCurrent() Q_DECL_OVERRIDE;
+    void SetLastAccessDateToCurrent() Q_DECL_OVERRIDE;
 
     void SetImage(const QImage &i);
     void SetScrollX(int x);
@@ -493,6 +497,10 @@ public:
     void SetCreateDate(QDateTime) Q_DECL_OVERRIDE;
     void SetLastUpdateDate(QDateTime) Q_DECL_OVERRIDE;
     void SetLastAccessDate(QDateTime) Q_DECL_OVERRIDE;
+
+    void SetCreateDateToCurrent() Q_DECL_OVERRIDE;
+    void SetLastUpdateDateToCurrent() Q_DECL_OVERRIDE;
+    void SetLastAccessDateToCurrent() Q_DECL_OVERRIDE;
 
     friend class HistNode;
 };

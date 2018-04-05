@@ -54,7 +54,9 @@ public:
 
     bool notify(QObject *receiver, QEvent *ev) Q_DECL_OVERRIDE;
 
+#if 1 //QT_VERSION < 0x050B00
     static void SetUpInspector();
+#endif
     static void BootApplication(int &argc, char **argv, Application *instance);
     static void Import(TreeBank *tb);
     static void Export(TreeBank *tb);
@@ -188,6 +190,7 @@ public:
     static QString LocalServerName();
     static QString SharedMemoryKey();
     static int EventKey();
+    static QString ProductVersion();
 private:
     static bool m_SaveSessionCookie;
     static QString m_AcceptLanguage;
@@ -278,6 +281,22 @@ signals:
     // user agent.
 
 public:
+    static bool IsIE(QString ua);
+    static bool IsEdge(QString ua);
+    static bool IsFF(QString ua);
+    static bool IsOpera(QString ua);
+    static bool IsOPR(QString ua);
+    static bool IsSafari(QString ua);
+    static bool IsChrome(QString ua);
+    static bool IsSleipnir(QString ua);
+    static bool IsVivaldi(QString ua);
+    static bool IsNetScape(QString ua);
+    static bool IsSeaMonkey(QString ua);
+    static bool IsiCab(QString ua);
+    static bool IsCamino(QString ua);
+    static bool IsGecko(QString ua);
+    static bool IsCustom(QString ua);
+
     static QString UserAgent_IE();
     static QString UserAgent_Edge();
     static QString UserAgent_FF();
@@ -388,8 +407,8 @@ public:
 
         if(modifiers & Qt::ShiftModifier)   assign += Qt::SHIFT;
         if(modifiers & Qt::ControlModifier) assign += Qt::CTRL;
-        if(modifiers & Qt::AltModifier)     assign += Qt::ALT;
         if(modifiers & Qt::MetaModifier)    assign += Qt::META;
+        if(modifiers & Qt::AltModifier)     assign += Qt::ALT;
 
         return QKeySequence(assign);
     }
@@ -398,24 +417,50 @@ public:
         return QKeySequence(str);
     }
 
-    static inline bool HasAnyModifier(QKeyEvent *ev){
-        return
-            // ignore ShiftModifier.
-            ev->modifiers() & Qt::ControlModifier ||
-            ev->modifiers() & Qt::MetaModifier ||
-            ev->modifiers() & Qt::AltModifier;
+    template <class Event>
+    static bool HasShiftModifier(Event* ev){
+        return ev->modifiers() & Qt::ShiftModifier;
     }
 
-    static inline bool HasNoModifier(QKeyEvent *ev){
+    template <class Event>
+    static bool HasCtrlModifier(Event* ev){
+        return ev->modifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+            || ev->modifiers() & Qt::MetaModifier
+#endif
+            ;
+    }
+
+    template <class Event>
+    static bool HasMetaModifier(Event* ev){
+        return ev->modifiers() & Qt::MetaModifier;
+    }
+
+    template <class Event>
+    static bool HasAltModifier(Event* ev){
+        return ev->modifiers() & Qt::AltModifier;
+    }
+
+    template <class Event>
+    static bool HasAnyModifier(Event *ev){
+        return
+            // ignore ShiftModifier.
+            HasCtrlModifier(ev) ||
+            HasMetaModifier(ev) ||
+            HasAltModifier(ev);
+    }
+
+    template <class Event>
+    static bool HasNoModifier(Event *ev){
         return ev->modifiers() == Qt::NoModifier;
     }
 
     static inline bool IsOnlyModifier(QKeyEvent *ev){
         return
-            ev->key() == Qt::Key_Control ||
             ev->key() == Qt::Key_Shift ||
-            ev->key() == Qt::Key_Alt ||
-            ev->key() == Qt::Key_Meta;
+            ev->key() == Qt::Key_Control ||
+            ev->key() == Qt::Key_Meta ||
+            ev->key() == Qt::Key_Alt;
     }
 
     static inline bool IsFunctionKey(QKeyEvent *ev){
@@ -534,10 +579,10 @@ public:
 
     static inline void AddModifiersToString(QString &str, Qt::KeyboardModifiers modifiers){
         static const QMap<Qt::KeyboardModifier, QString> table = {
-            { Qt::ControlModifier, QStringLiteral("Ctrl") },
-            { Qt::AltModifier,     QStringLiteral("Alt") },
-            { Qt::MetaModifier,    QStringLiteral("Meta") },
             { Qt::ShiftModifier,   QStringLiteral("Shift") },
+            { Qt::ControlModifier, QStringLiteral("Ctrl") },
+            { Qt::MetaModifier,    QStringLiteral("Meta") },
+            { Qt::AltModifier,     QStringLiteral("Alt") },
             { Qt::KeypadModifier,  QStringLiteral("Keypad") },
         };
         foreach(Qt::KeyboardModifier modifier, table.keys()){

@@ -333,16 +333,20 @@ QList<QUrl> Page::ExtractUrlsFromText(QString text, QUrl baseUrl){
         else if(str.contains(QRegularExpression(QStringLiteral(    "^.*ttps?://")))) str = QStringLiteral("h"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(    "ttps?://"))));
         else if(str.contains(QRegularExpression(QStringLiteral(     "^.*tps?://")))) str = QStringLiteral("ht"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "tps?://"))));
         else if(str.contains(QRegularExpression(QStringLiteral(      "^.*ps?://")))) str = QStringLiteral("htt"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "ps?://"))));
-        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*s?://")))) str = QStringLiteral("http"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "s?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*s://")))) str = QStringLiteral("http"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "s://"))));
         else if(str.contains(QRegularExpression(QStringLiteral(       "^.*file:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "file:"))));
         else if(str.contains(QRegularExpression(QStringLiteral(        "^.*ile:")))) str = QStringLiteral("f"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "ile:"))));
         else if(str.contains(QRegularExpression(QStringLiteral(         "^.*le:")))) str = QStringLiteral("fi"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "le:"))));
-        else if(str.contains(QRegularExpression(QStringLiteral(          "^.*e:")))) str = QStringLiteral("fil"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(          "e:"))));
         else if(str.contains(QRegularExpression(QStringLiteral(      "^.*about:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "about:"))));
         else if(str.contains(QRegularExpression(QStringLiteral(       "^.*bout:")))) str = QStringLiteral("a"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "bout:"))));
         else if(str.contains(QRegularExpression(QStringLiteral(        "^.*out:")))) str = QStringLiteral("ab"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "out:"))));
         else if(str.contains(QRegularExpression(QStringLiteral(         "^.*ut:")))) str = QStringLiteral("abo"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "ut:"))));
         else if(str.contains(QRegularExpression(QStringLiteral(          "^.*t:")))) str = QStringLiteral("abou"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(          "t:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(     "^.*chrome:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "chrome:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*hrome:")))) str = QStringLiteral("c"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "hrome:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*rome:")))) str = QStringLiteral("ch"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "rome:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*ome:")))) str = QStringLiteral("chr"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "ome:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(         "^.*me:")))) str = QStringLiteral("chro"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "me:"))));
         else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral(".\\.[a-z]+(?::[0-9]+)?$"))))
             str = QStringLiteral("http://") + str;
         else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral("(?:[1-9]|[1-9][0-9]|[1-2][0-9][0-9])(?:\\.(?:[1-9]|[1-9][0-9]|[1-2][0-9][0-9])){3}(?::[0-9]+)?$"))))
@@ -1733,39 +1737,39 @@ QAction *Page::Action(CustomAction a, QVariant data){
     }
 
     webaction->setData(data);
+
+    switch(a){
+    case _Back:    webaction->setEnabled(m_View->CanGoBack()); break;
+    case _Forward: webaction->setEnabled(m_View->CanGoForward()); break;
+    case _Rewind:  webaction->setEnabled(m_View->CanGoBack()); break;
+    case _Reload:  webaction->setEnabled(!m_View->IsLoading()); break;
+    case _Stop:    webaction->setEnabled(m_View->IsLoading()); break;
+    default: break;
+    }
+
     if(!create){
         switch(a){
-        case _ToggleNotifier:
-            webaction->setChecked(GetTB()->GetNotifier());
-            break;
-        case _ToggleReceiver:
-            webaction->setChecked(GetTB()->GetReceiver());
-            break;
-        case _ToggleMenuBar:
-            webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty());
-            break;
-        case _ToggleTreeBar:
-            webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible());
-            break;
-        case _ToggleToolBar:
-            webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible());
-            break;
+        case _ToggleNotifier: webaction->setChecked(GetTB()->GetNotifier()); break;
+        case _ToggleReceiver: webaction->setChecked(GetTB()->GetReceiver()); break;
+        case _ToggleMenuBar:  webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty()); break;
+        case _ToggleTreeBar:  webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible()); break;
+        case _ToggleToolBar:  webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible()); break;
         default: break;
         }
         return webaction;
     }
 
     switch(a){
-    case _Up:          webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case _Down:        webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case _Right:       webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case _Left:        webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
-    case _Back:        webaction->setIcon(QIcon(":/resources/menu/back.png"));        webaction->setEnabled(m_View->CanGoBack()); break;
-    case _Forward:     webaction->setIcon(QIcon(":/resources/menu/forward.png"));     webaction->setEnabled(m_View->CanGoForward()); break;
-    case _Rewind:      webaction->setIcon(QIcon(":/resources/menu/rewind.png"));      webaction->setEnabled(m_View->CanGoBack()); break;
+    case _Up:          webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));    break;
+    case _Down:        webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));  break;
+    case _Right:       webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight)); break;
+    case _Left:        webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));  break;
+    case _Back:        webaction->setIcon(QIcon(":/resources/menu/back.png"));        break;
+    case _Forward:     webaction->setIcon(QIcon(":/resources/menu/forward.png"));     break;
+    case _Rewind:      webaction->setIcon(QIcon(":/resources/menu/rewind.png"));      break;
     case _FastForward: webaction->setIcon(QIcon(":/resources/menu/fastforward.png")); break;
-    case _Reload:      webaction->setIcon(QIcon(":/resources/menu/reload.png"));      webaction->setEnabled(!m_View->IsLoading()); break;
-    case _Stop:        webaction->setIcon(QIcon(":/resources/menu/stop.png"));        webaction->setEnabled(m_View->IsLoading()); break;
+    case _Reload:      webaction->setIcon(QIcon(":/resources/menu/reload.png"));      break;
+    case _Stop:        webaction->setIcon(QIcon(":/resources/menu/stop.png"));        break;
     default: break;
     }
 

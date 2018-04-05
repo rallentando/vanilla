@@ -1,7 +1,6 @@
 import QtQuick 2.9
 import QtQuick.Dialogs 1.2
 import QtQuick.Controls 1.5
-import QtQuick.Window 2.3
 import QtWebEngine 1.5
 
 WebEngineView {
@@ -80,6 +79,7 @@ WebEngineView {
         viewInterface.renderProcessTerminated(terminationStatus, exitCode)
     }
 
+    // FIXME: application will crash when Page A opens Page B, and close Page A.
     onNewViewRequested: {
         if(request.destination == WebEngineView.NewViewInBackgroundTab)
             request.openIn(viewInterface.newViewBackground())
@@ -251,7 +251,6 @@ WebEngineView {
         else if(item == "Accelerated2dCanvasEnabled")      settings.accelerated2dCanvasEnabled = value
         else if(item == "AutoLoadIconsForPage")            settings.autoLoadIconsForPage = value
         else if(item == "TouchIconsEnabled")               settings.touchIconsEnabled = value
-        // since Qt5.8
         else if(item == "FocusOnNavigationEnabled")        settings.focusOnNavigationEnabled = value
         else if(item == "PrintElementBackgrounds")         settings.printElementBackgrounds = value
         else if(item == "AllowRunningInsecureContent")     settings.allowRunningInsecureContent = value

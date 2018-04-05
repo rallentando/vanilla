@@ -1282,6 +1282,8 @@ void TreeBank::StripSubTree(Node *nd){
 }
 
 void TreeBank::ReleaseView(SharedView view){
+    if(view->GetDisplayObscured())
+        view->ExitFullScreen();
     RemoveFromAllViews(view);
     RemoveFromUpdateBox(view);
 }
@@ -1449,10 +1451,11 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
                            dir->ChildrenLength() : n,
                          nd);
 
-        if(nd->IsViewNode())
+        bool isTrash = IsTrash(nd);
+
+        if(nd->IsViewNode() && !isTrash)
             ApplySpecificSettings(nd->ToViewNode(), dir->ToViewNode());
 
-        bool isTrash = IsTrash(nd);
         if(wasTrash && !isTrash) EmitNodeCreated(NodeList() << nd);
         if(!wasTrash && isTrash) EmitNodeDeleted(NodeList() << nd);
     }
@@ -2875,7 +2878,8 @@ void TreeBank::UpDirectory(HistNode *hist){
 void TreeBank::Close(ViewNode *vn){
     m_TraverseMode = Neutral;
     if(!vn) vn = m_CurrentViewNode;
-    if(vn) DeleteNode(vn);
+    if(!vn) return;
+    DeleteNode(vn);
 }
 
 void TreeBank::Restore(ViewNode *vn, ViewNode *dir){
@@ -3605,21 +3609,11 @@ QAction *TreeBank::Action(TreeBankAction a){
     QAction *action = m_ActionTable[a];
     if(action){
         switch(a){
-        case _ToggleNotifier:
-            action->setChecked(m_Notifier);
-            break;
-        case _ToggleReceiver:
-            action->setChecked(m_Receiver);
-            break;
-        case _ToggleMenuBar:
-            action->setChecked(!GetMainWindow()->IsMenuBarEmpty());
-            break;
-        case _ToggleTreeBar:
-            action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
-            break;
-        case _ToggleToolBar:
-            action->setChecked(GetMainWindow()->GetToolBar()->isVisible());
-            break;
+        case _ToggleNotifier: action->setChecked(m_Notifier); break;
+        case _ToggleReceiver: action->setChecked(m_Receiver); break;
+        case _ToggleMenuBar:  action->setChecked(!GetMainWindow()->IsMenuBarEmpty()); break;
+        case _ToggleTreeBar:  action->setChecked(GetMainWindow()->GetTreeBar()->isVisible()); break;
+        case _ToggleToolBar:  action->setChecked(GetMainWindow()->GetToolBar()->isVisible()); break;
         default: break;
         }
         return action;
@@ -3628,10 +3622,10 @@ QAction *TreeBank::Action(TreeBankAction a){
     m_ActionTable[a] = action = new QAction(this);
 
     switch(a){
-    case _Up:          action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));       break;
-    case _Down:        action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));     break;
-    case _Right:       action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight));    break;
-    case _Left:        action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));     break;
+    case _Up:          action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));    break;
+    case _Down:        action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));  break;
+    case _Right:       action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight)); break;
+    case _Left:        action->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));  break;
     case _Back:        action->setIcon(QIcon(":/resources/menu/back.png"));        break;
     case _Forward:     action->setIcon(QIcon(":/resources/menu/forward.png"));     break;
     case _Rewind:      action->setIcon(QIcon(":/resources/menu/rewind.png"));      break;
@@ -3909,6 +3903,12 @@ SharedView TreeBank::CreateView(QNetworkRequest req, HistNode *hn, ViewNode *vn)
           new QuickWebEngineView(tb, id, set) :
 #endif
 #ifdef WEBKITVIEW
+        set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new WebKitView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new GraphicsWebKitView(tb, id, set) :
+        set.indexOf(QRegularExpression(QStringLiteral("\\A[qQ](?:uick)?"    VV"[wW](?:eb)?"                    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
+          new QuickWebKitView(tb, id, set) :
         set.indexOf(QRegularExpression(QStringLiteral("\\A"                 VV"[wW](?:eb)?" VV"[kK](?:it)?"    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?
           new WebKitView(tb, id, set) :
         set.indexOf(QRegularExpression(QStringLiteral("\\A[gG](?:raphics)?" VV"[wW](?:eb)?" VV"[kK](?:it)?"    VV"(?:[vV](?:iew)?)?\\Z"))) != -1 ?

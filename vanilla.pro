@@ -1,8 +1,8 @@
 lessThan(QT_MAJOR_VERSION, 5){
-    error(please use Qt 5.7 or newer.)
+    error(please use Qt 5.9 or newer.)
 }
-equals(QT_MAJOR_VERSION, 5) : lessThan(QT_MINOR_VERSION, 7){
-    error(please use Qt 5.7 or newer.)
+equals(QT_MAJOR_VERSION, 5) : lessThan(QT_MINOR_VERSION, 9){
+    error(please use Qt 5.9 or newer.)
 }
 
 QT += \
@@ -148,8 +148,9 @@ TRANSLATIONS += \
     translations/vanilla_ja.ts
 
 OTHER_FILES += \
-    view/quickwebengineview5.7.qml \
     view/quickwebengineview5.9.qml \
+    view/quickwebengineview5.10.qml \
+    view/quickwebengineview5.11.qml \
     view/quickwebkitview.qml \
     view/quicknativewebview.qml
 
@@ -157,8 +158,9 @@ lupdate_only {
 
     ## lupdate cannot capture 'tr()' for translations.
     SOURCES = \
-        view/quickwebengineview5.7.qml \
         view/quickwebengineview5.9.qml \
+        view/quickwebengineview5.10.qml \
+        view/quickwebengineview5.11.qml \
         view/quickwebkitview.qml \
         view/quicknativewebview.qml \
         application.hpp \
@@ -239,6 +241,8 @@ lupdate_only {
 
 mac {
     QMAKE_MAC_SDK = macosx
-    OBJECTIVE_SOURCES += mainwindowsettings.mm
     LIBS += -framework AppKit
+
+    OBJECTIVE_SOURCES += \
+        mainwindowsettings.mm
 }

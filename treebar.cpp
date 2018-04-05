@@ -492,7 +492,7 @@ namespace {
             }
             SetFGBrush(painter, QPointF(rect.left(), 0), QPointF(rect.right(), 0));
             rect.setTop(rect.top() + m_TreeBar->GetHorizontalNodeHeight() / 2 - 6);
-            rect.setBottom(rect.bottom() - m_TreeBar->GetHorizontalNodeHeight() / 2 + 4);
+            rect.setHeight(13);
             painter->drawRect(rect);
 
             static QPixmap left = QPixmap(":/resources/treebar/left.png");
@@ -536,7 +536,7 @@ namespace {
             }
             SetFGBrush(painter, QPointF(rect.right(), 0), QPoint(rect.left(), 0));
             rect.setTop(rect.top() + m_TreeBar->GetHorizontalNodeHeight() / 2 - 6);
-            rect.setBottom(rect.bottom() - m_TreeBar->GetHorizontalNodeHeight() / 2 + 4);
+            rect.setHeight(13);
             painter->drawRect(rect);
 
             static QPixmap right = QPixmap(":/resources/treebar/right.png");
@@ -580,7 +580,7 @@ namespace {
             }
             SetFGBrush(painter, QPointF(0, rect.top()), QPointF(0, rect.bottom()));
             rect.setLeft(rect.left() + m_TreeBar->GetVerticalNodeWidth() / 2 - 6);
-            rect.setRight(rect.right() - m_TreeBar->GetVerticalNodeWidth() / 2 + 4);
+            rect.setWidth(13);
             painter->drawRect(rect);
 
             static QPixmap up = QPixmap(":/resources/treebar/up.png");
@@ -624,7 +624,7 @@ namespace {
             }
             SetFGBrush(painter, QPointF(0, rect.bottom()), QPointF(0, rect.top()));
             rect.setLeft(rect.left() + m_TreeBar->GetVerticalNodeWidth() / 2 - 6);
-            rect.setRight(rect.right() - m_TreeBar->GetVerticalNodeWidth() / 2 + 4);
+            rect.setWidth(13);
             painter->drawRect(rect);
 
             static QPixmap down = QPixmap(":/resources/treebar/down.png");
@@ -1398,21 +1398,22 @@ void TreeBar::OnNodeCreated(NodeList &nds){
             } else if(upper){
                 if(upper->IsDirectory()){
                     int nest = 0;
+
                     foreach(NodeItem *item, items){
-                        if(item->GetNode() == upper){
-                            nest = item->GetNest();
-                        }
+                        if(nest && !item->GetNode()->IsDescendantOf(upper)) break;
                         i++;
+                        if(item->GetNode() == upper) nest = item->GetNest();
                     }
+
                     collectNode(nd, nest);
+
                 } else {
                     foreach(NodeItem *item, items){
+                        i++;
                         if(item->GetNode() == upper){
-                            i++;
                             collectNode(nd, item->GetNest());
                             break;
                         }
-                        i++;
                     }
                 }
             } else {
@@ -2709,11 +2710,7 @@ void LayerItem::wheelEvent(QGraphicsSceneWheelEvent *ev){
 
     if(m_TreeBar->GetView()->MouseEventSource() != Qt::MouseEventSynthesizedBySystem){
 
-        if(ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-           || ev->modifiers() & Qt::MetaModifier
-#endif
-           ){
+        if(Application::HasCtrlModifier(ev)){
             switch(m_TreeBar->orientation()){
             case Qt::Horizontal:{
                 int width = m_TreeBar->GetHorizontalNodeWidth();
@@ -2851,8 +2848,10 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     if(view){
         muted = view->IsAudioMuted();
         audible = view->RecentlyAudible();
+        /*
         if(muted || audible)
             title_rect.setRight(title_rect.right() - 18);
+        */
     }
 
     {   // base.
@@ -3011,7 +3010,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
                               m_ButtonState == ClosePressed ? p : c);
             painter->setPen(Qt::NoPen);
             painter->setRenderHint(QPainter::Antialiasing, true);
-            painter->drawRoundedRect(bound.intersected(CloseButtonRect()), 2, 2);
+            painter->drawRoundedRect(bound.intersected(CloseButtonRect()), 3, 3);
             painter->setRenderHint(QPainter::Antialiasing, false);
         }
         painter->drawPixmap(bound.intersected(CloseIconRect()),
@@ -3029,7 +3028,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
                               m_ButtonState == ClonePressed ? p : c);
             painter->setPen(Qt::NoPen);
             painter->setRenderHint(QPainter::Antialiasing, true);
-            painter->drawRoundedRect(bound.intersected(CloneButtonRect()), 2, 2);
+            painter->drawRoundedRect(bound.intersected(CloneButtonRect()), 3, 3);
             painter->setRenderHint(QPainter::Antialiasing, false);
         }
         painter->drawPixmap(bound.intersected(CloneIconRect()),
@@ -3045,7 +3044,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
                               m_ButtonState == SoundPressed ? p : c);
             painter->setPen(Qt::NoPen);
             painter->setRenderHint(QPainter::Antialiasing, true);
-            painter->drawRoundedRect(bound.intersected(SoundButtonRect()), 2, 2);
+            painter->drawRoundedRect(bound.intersected(SoundButtonRect()), 3, 3);
             painter->setRenderHint(QPainter::Antialiasing, false);
         }
         if(muted){
@@ -3105,13 +3104,13 @@ QRectF NodeItem::boundingRect() const {
 
 QRectF NodeItem::CloseButtonRect() const {
     if(!TreeBar::EnableCloseButton()) return QRectF();
-    QRectF rect = QRectF(boundingRect().bottomRight() + QPointF(-18, -19), QSizeF(14, 14));
+    QRectF rect = QRectF(boundingRect().bottomRight() + QPointF(-19, -20), QSizeF(16, 16));
     return rect;
 }
 
 QRectF NodeItem::CloneButtonRect() const {
     if(!TreeBar::EnableCloneButton()) return QRectF();
-    QRectF rect = QRectF(boundingRect().bottomRight() + QPointF(-18, -19), QSizeF(14, 14));
+    QRectF rect = QRectF(boundingRect().bottomRight() + QPointF(-19, -20), QSizeF(16, 16));
     if(TreeBar::EnableCloseButton()) rect.moveLeft(rect.left() - 18);
     return rect;
 }
@@ -3119,7 +3118,7 @@ QRectF NodeItem::CloneButtonRect() const {
 QRectF NodeItem::SoundButtonRect() const {
     View *view = m_Node->GetView();
     if(!view || (!view->IsAudioMuted() && !view->RecentlyAudible())) return QRectF();
-    QRectF rect = QRectF(boundingRect().bottomLeft() + QPointF(5, -19), QSizeF(14, 14));
+    QRectF rect = QRectF(boundingRect().bottomLeft() + QPointF(4, -20), QSizeF(16, 16));
 
     return rect;
 }
@@ -3491,11 +3490,7 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
             m_Rect.moveTop(m_Rect.top() - static_cast<int>(Layer()->GetScroll()));
             break;
         }
-        if(ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-           || ev->modifiers() & Qt::MetaModifier
-#endif
-           )
+        if(Application::HasCtrlModifier(ev))
             setSelected(true);
     }
     QGraphicsObject::mousePressEvent(ev);

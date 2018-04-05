@@ -5,11 +5,7 @@
 
 #include "webengineview.hpp"
 
-#if QT_VERSION >= 0x050800
-#  include <QQuickWidget>
-#else
-#  include <QOpenGLWidget>
-#endif
+#include <QQuickWidget>
 
 #include <QWebEngineView>
 #include <QWebEnginePage>
@@ -37,7 +33,9 @@
 #include "application.hpp"
 #include "mainwindow.hpp"
 
+#if QT_VERSION < 0x050B00
 QMap<View*, QUrl> WebEngineView::m_InspectorTable = QMap<View*, QUrl>();
+#endif
 
 WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
     : QWebEngineView(TreeBank::PurgeView() ? 0 : static_cast<QWidget*>(parent))
@@ -74,7 +72,9 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
 
 WebEngineView::~WebEngineView(){
     setPage(0);
+#if QT_VERSION < 0x050B00
     m_InspectorTable.remove(this);
+#endif
     if(m_Inspector) m_Inspector->deleteLater();
 }
 
@@ -234,15 +234,12 @@ void WebEngineView::OnLoadStarted(){
 
     View::OnLoadStarted();
 
-    if(history()->count()){
-        QUrl historyUrl = history()->currentItem().url();
-        if(!historyUrl.isEmpty() && historyUrl != url()){
-            emit urlChanged(historyUrl);
-        }
-    }
     emit statusBarMessage(tr("Started loading."));
     m_PreventScrollRestoration = false;
+
+#if QT_VERSION < 0x050B00
     AssignInspector();
+#endif
 }
 
 void WebEngineView::OnLoadProgress(int progress){
@@ -260,8 +257,10 @@ void WebEngineView::OnLoadFinished(bool ok){
 
     if(history()->count()){
         QUrl historyUrl = history()->currentItem().url();
-        if(!historyUrl.isEmpty() && historyUrl != url()){
+        if(!historyUrl.isEmpty()){
             emit urlChanged(historyUrl);
+        } else if(!url().isEmpty()){
+            emit urlChanged(url());
         }
     }
     if(!ok){
@@ -273,7 +272,9 @@ void WebEngineView::OnLoadFinished(bool ok){
     emit ViewChanged();
     emit statusBarMessage(tr("Finished loading."));
 
+#if QT_VERSION < 0x050B00
     AssignInspector();
+#endif
 
 #ifdef PASSWORD_MANAGER
     QString data = Application::GetAuthDataWithNoDialog
@@ -451,6 +452,7 @@ void WebEngineView::SetTextValue(QString xpath, QString text){
     page()->runJavaScript(SetTextValueJsCode(xpath, text));
 }
 
+#if QT_VERSION < 0x050B00
 void WebEngineView::AssignInspector(){
     if(m_InspectorTable.contains(this)) return;
 
@@ -483,6 +485,7 @@ void WebEngineView::AssignInspector(){
         }
     });
 }
+#endif
 
 void WebEngineView::OnIconChanged(const QIcon &icon){
     Application::RegisterIcon(url().host(), icon);
@@ -547,16 +550,14 @@ void WebEngineView::Print(){
 
     if(filename.isEmpty()) return;
 
-    if(filename.toLower().endsWith(".pdf")){
+    if(filename.toLower().endsWith(QStringLiteral(".pdf"))){
 
         page()->printToPdf(filename);
 
     } else {
-#if QT_VERSION >= 0x050800
+
         QQuickWidget *widget = findChild<QQuickWidget*>();
-#else
-        QOpenGLWidget *widget = findChild<QOpenGLWidget*>();
-#endif
+
         if(!widget) return;
 
         QSize origSize = size();
@@ -615,10 +616,15 @@ void WebEngineView::ExitFullScreen(){
 }
 
 void WebEngineView::InspectElement(){
+    if(!page()) return;
     if(!m_Inspector){
         m_Inspector = new QWebEngineView();
         m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
+#if QT_VERSION < 0x050B00
         m_Inspector->load(m_InspectorTable[this]);
+#else
+        page()->setDevToolsPage(m_Inspector->page());
+#endif
     } else {
         m_Inspector->reload();
     }
@@ -676,12 +682,7 @@ void WebEngineView::keyPressEvent(QKeyEvent *ev){
     }
 
 #  ifdef PASSWORD_MANAGER
-    if((ev->modifiers() & Qt::ControlModifier
-#    if defined(Q_OS_MAC)
-        || ev->modifiers() & Qt::MetaModifier
-#    endif
-        ) &&
-       ev->key() == Qt::Key_Return){
+    if(Application::HasCtrlModifier(ev) && ev->key() == Qt::Key_Return){
 
         QString data = Application::GetAuthData
             (page()->profile()->storageName() +
@@ -931,12 +932,9 @@ void WebEngineView::mouseReleaseEvent(QMouseEvent *ev){
         QNetworkRequest req(link);
         req.setRawHeader("Referer", url().toEncoded());
 
-        if(ev->modifiers() & Qt::ShiftModifier
-           || ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-           || ev->modifiers() & Qt::MetaModifier
-#endif
-           || ev->button() == Qt::MidButton){
+        if(Application::HasShiftModifier(ev) ||
+           Application::HasCtrlModifier(ev) ||
+           ev->button() == Qt::MidButton){
 
             GestureAborted();
             m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
@@ -1077,7 +1075,7 @@ void WebEngineView::dragLeaveEvent(QDragLeaveEvent *ev){
 }
 
 void WebEngineView::wheelEvent(QWheelEvent *ev){
-    // wheel event is called twice on Qt5.7.
+    // wheel event is called twice on Qt5.7 or newer.
     // senders are EventEater and QWebEngineView.
     m_PreventScrollRestoration = true;
     ev->setAccepted(false);

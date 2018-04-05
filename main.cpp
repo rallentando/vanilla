@@ -15,6 +15,10 @@ extern void disableWindowTabbing();
 #endif
 
 static int _main(int argc, char **argv){
+
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+
 #if defined(Q_OS_WIN) // for TridentView.
     QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, true);
 #endif

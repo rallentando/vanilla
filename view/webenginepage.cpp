@@ -364,6 +364,12 @@ void WebEnginePage::HandleFeaturePermission(const QUrl &securityOrigin,
         featureString = QStringLiteral("MediaAudioVideoCapture"); break;
     case QWebEnginePage::MouseLock:
         featureString = QStringLiteral("MouseLock");              break;
+#if QT_VERSION >= 0x050A00
+    case QWebEnginePage::DesktopVideoCapture:
+        featureString = QStringLiteral("DesktopVideoCapture");    break;
+    case QWebEnginePage::DesktopAudioVideoCapture:
+        featureString = QStringLiteral("DesktopAudioVideoCapture"); break;
+#endif
     default: return;
     }
 
@@ -559,7 +565,7 @@ VV"   result[4] = engines;\n"
 VV"   result[5] = tag;\n"
 VV"   return result;\n"
 VV"})()").arg(pos.x()).arg(pos.y()),
-[this, pos, base](QVariant var){
+[base](QVariant var){
 
     if(!var.isValid()) return;
     QVariantList list = var.toMap().values();
@@ -617,7 +623,7 @@ VV"})()").arg(pos.x()).arg(pos.y()),
 }
 
 void WebEnginePage::AddBookmarklet(QPoint pos){
-    m_View->CallWithHitElement(pos, [this, pos](SharedWebElement elem){
+    m_View->CallWithHitElement(pos, [this](SharedWebElement elem){
 
     QUrl link  = elem ? elem->LinkUrl()  : QUrl();
     QUrl image = elem ? elem->ImageUrl() : QUrl();

@@ -1,13 +1,26 @@
-import QtQuick 2.5
-import QtQuick.Dialogs 1.2
-import QtQuick.Controls 1.4
-import QtQuick.Window 2.2
-import QtWebEngine 1.2
+import QtQuick 2.10
+import QtQuick.Dialogs 1.3
+import QtQuick.Controls 1.6
+import QtWebEngine 1.6
 
 WebEngineView {
     signal viewChanged()
     signal scrollChanged(point pos)
     signal callBackResult(int id, variant result)
+
+    WebEngineScript {
+        id: defaultScript
+        injectionPoint: WebEngineScript.DocumentReady
+        worldId: WebEngineScript.MainWorld
+        runOnSubframes: true
+    }
+
+    onNavigationRequested: {
+        if(userScripts.length == 0){
+            defaultScript.sourceCode = viewInterface.defaultScript()
+            userScripts = [defaultScript]
+        }
+    }
 
     onLoadingChanged: {
         var status = loadRequest.status
@@ -43,6 +56,13 @@ WebEngineView {
         viewInterface.iconUrlChanged(icon)
     }
 
+    onContextMenuRequested: {
+        request.accepted = true
+        var isMedia = (request.mediaType == ContextMenuRequest.MediaTypeVideo ||
+                       request.mediaType == ContextMenuRequest.MediaTypeAudio)
+        viewInterface.contextMenuRequested(request, isMedia)
+    }
+
     onWindowCloseRequested: {
         viewInterface.windowCloseRequested()
     }
@@ -59,6 +79,7 @@ WebEngineView {
         viewInterface.renderProcessTerminated(terminationStatus, exitCode)
     }
 
+    // FIXME: application will crash when Page A opens Page B, and close Page A.
     onNewViewRequested: {
         if(request.destination == WebEngineView.NewViewInBackgroundTab)
             request.openIn(viewInterface.newViewBackground())
@@ -70,6 +91,14 @@ WebEngineView {
         request.accept()
     }
 
+    onContentsSizeChanged: {
+        viewInterface.contentsSizeChanged(size)
+    }
+
+    onScrollPositionChanged: {
+        viewInterface.scrollPositionChanged(position)
+    }
+
     profile.onDownloadRequested: {
         viewInterface.downloadRequested(download)
     }
@@ -77,14 +106,13 @@ WebEngineView {
     function setScroll(pos){
         runJavaScript
         (viewInterface.setScrollRatioPointJsCode(pos),
-         function(_){
-             emitScrollChanged()
-         })
+         WebEngineScript.MainWorld)
     }
 
     function saveScroll(){
         runJavaScript
         (viewInterface.getScrollValuePointJsCode(),
+         WebEngineScript.MainWorld,
          function(result){
              viewInterface.saveScrollToNode(Qt.point(result[0], result[1]))
          })
@@ -93,7 +121,8 @@ WebEngineView {
     function restoreScroll(){
         var pos = viewInterface.restoreScrollFromNode()
         runJavaScript
-        (viewInterface.setScrollValuePointJsCode(pos))
+        (viewInterface.setScrollValuePointJsCode(pos),
+         WebEngineScript.MainWorld)
     }
 
     function saveZoom(){
@@ -107,6 +136,7 @@ WebEngineView {
     function evaluateJavaScript(id, code){
         runJavaScript
         (code,
+         WebEngineScript.MainWorld,
          function(result){
              callBackResult(id, result)
          })
@@ -115,6 +145,7 @@ WebEngineView {
     function emitScrollChanged(){
         runJavaScript
         (viewInterface.getScrollRatioPointJsCode(),
+         WebEngineScript.MainWorld,
          function(pointf){
              scrollChanged(Qt.point(pointf[0], pointf[1]))
          })
@@ -128,7 +159,6 @@ WebEngineView {
             option |= FindCaseSensitively
 
         findText(str, option)
-        emitScrollChanged()
     }
 
     function rewind(){
@@ -158,7 +188,8 @@ WebEngineView {
         triggerWebAction(WebEngineView.SelectAll)
     }
     function unselect(){
-        runJavaScript("(function(){ document.activeElement.blur(); getSelection().removeAllRanges();})()")
+        runJavaScript("(function(){ document.activeElement.blur(); getSelection().removeAllRanges();})()",
+                      WebEngineScript.MainWorld)
     }
     function reloadAndBypassCache(){
         triggerWebAction(WebEngineView.ReloadAndBypassCache)
@@ -168,6 +199,21 @@ WebEngineView {
     }
     function print_(){
         // not yet implemented.
+    }
+    function save(){
+        triggerWebAction(WebEngineView.SavePage)
+    }
+    function toggleMediaControls(){
+        triggerWebAction(WebEngineView.ToggleMediaControls)
+    }
+    function toggleMediaLoop(){
+        triggerWebAction(WebEngineView.ToggleMediaLoop)
+    }
+    function toggleMediaPlayPause(){
+        triggerWebAction(WebEngineView.ToggleMediaPlayPause)
+    }
+    function toggleMediaMute(){
+        triggerWebAction(WebEngineView.ToggleMediaMute)
     }
 
     function grantFeaturePermission_(securityOrigin, feature, granted){
@@ -198,6 +244,21 @@ WebEngineView {
         else if(item == "PluginsEnabled")                  settings.pluginsEnabled = value
         else if(item == "SpatialNavigationEnabled")        settings.spatialNavigationEnabled = value
         else if(item == "HyperlinkAuditingEnabled")        settings.hyperlinkAuditingEnabled = value
+      //else if(item == "ScrollAnimatorEnabled")           settings.scrollAnimatorEnabled = value
+
+        else if(item == "ScreenCaptureEnabled")            settings.screenCaptureEnabled = value
+        else if(item == "WebGLEnabled")                    settings.webGLEnabled = value
+        else if(item == "Accelerated2dCanvasEnabled")      settings.accelerated2dCanvasEnabled = value
+        else if(item == "AutoLoadIconsForPage")            settings.autoLoadIconsForPage = value
+        else if(item == "TouchIconsEnabled")               settings.touchIconsEnabled = value
+        else if(item == "FocusOnNavigationEnabled")        settings.focusOnNavigationEnabled = value
+        else if(item == "PrintElementBackgrounds")         settings.printElementBackgrounds = value
+        else if(item == "AllowRunningInsecureContent")     settings.allowRunningInsecureContent = value
+        // since Qt5.9
+        else if(item == "AllowGeolocationOnInsecureOrigins") settings.allowGeolocationOnInsecureOrigins = value
+        // since Qt5.10
+        else if(item == "AllowWindowActivationFromJavaScript") settings.allowWindowActivationFromJavaScript = value
+        else if(item == "ShowScrollBars")                  settings.showScrollBars = value
 
         else if(item == "ErrorPageEnabled")                settings.errorPageEnabled = value
         else if(item == "FullScreenSupportEnabled")        settings.fullScreenSupportEnabled = value

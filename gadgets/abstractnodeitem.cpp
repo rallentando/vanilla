@@ -135,11 +135,7 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 
     if(ev->button() == Qt::RightButton){
         // for sort menu.
-        ev->setAccepted(!(ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-                          || ev->modifiers() & Qt::MetaModifier
-#endif
-                          ));
+        ev->setAccepted(!Application::HasCtrlModifier(ev));
         return;
     }
 
@@ -149,18 +145,14 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
         return;
     }
 
-    if(ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-       || ev->modifiers() & Qt::MetaModifier
-#endif
-       ){
+    if(Application::HasCtrlModifier(ev)){
         setSelected(!isSelected());
         if(isSelected()){
             m_TableView->AppendToSelection(m_Node);
         } else {
             m_TableView->RemoveFromSelection(m_Node);
         }
-    } else if(ev->modifiers() & Qt::ShiftModifier){
+    } else if(Application::HasShiftModifier(ev)){
         SetSelectionRange();
     } else {
         ClearOtherSectionSelection();
@@ -209,13 +201,9 @@ void AbstractNodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 
     } else if(pos().manhattanLength() != 0){
         foreach(QGraphicsItem *item, scene()->selectedItems()){ item->setPos(QPoint(0,0));}
-    } else if(ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-              || ev->modifiers() & Qt::MetaModifier
-#endif
-              ){
+    } else if(Application::HasCtrlModifier(ev)){
         /* do nothing.*/
-    } else if(ev->modifiers() & Qt::ShiftModifier){
+    } else if(Application::HasShiftModifier(ev)){
         /* do nothing.*/
     } else {
         m_TableView->ThumbList_OpenNode();

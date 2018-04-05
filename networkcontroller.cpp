@@ -430,16 +430,24 @@ void NetworkAccessManager::SetUserAgent(QString ua){
 #  else
 #  endif
 #elif defined(Q_OS_MAC)
-    switch(QSysInfo::MacintoshVersion){
-    case QSysInfo::MV_10_6:  system = QStringLiteral("Intel Mac OS X 10_6");  break;
-    case QSysInfo::MV_10_7:  system = QStringLiteral("Intel Mac OS X 10_7");  break;
-    case QSysInfo::MV_10_8:  system = QStringLiteral("Intel Mac OS X 10_8");  break;
-    case QSysInfo::MV_10_9:  system = QStringLiteral("Intel Mac OS X 10_9");  break;
-    case QSysInfo::MV_10_10: system = QStringLiteral("Intel Mac OS X 10_10"); break;
-    case QSysInfo::MV_10_11: system = QStringLiteral("Intel Mac OS X 10_11"); break;
-    case QSysInfo::MV_10_12: system = QStringLiteral("Intel Mac OS X 10_12"); break;
-    default:                 system = QStringLiteral("Mac OS X");
+    if(Application::ProductVersion().isEmpty() && QSysInfo::productVersion().isEmpty()){
+        system = QStringLiteral("Mac OS X");
+    } else if(Application::IsFF(ua)){
+        // xx.xx
+        if(!QSysInfo::productVersion().isEmpty()){
+            system = QStringLiteral("Intel Mac OS X ") + QSysInfo::productVersion();
+        } else if(!Application::ProductVersion().isEmpty()){
+            system = QStringLiteral("Intel Mac OS X ") + Application::ProductVersion();
+        }
+    } else {
+        // xx_xx_x
+        if(!Application::ProductVersion().isEmpty()){
+            system = QStringLiteral("Intel Mac OS X ") + Application::ProductVersion().replace(".", "_");
+        } else if(!QSysInfo::productVersion().isEmpty()){
+            system = QStringLiteral("Intel Mac OS X ") + QSysInfo::productVersion().replace(".", "_");
+        }
     }
+
     system = QStringLiteral("Macintosh; ") + system;
 #else
     system = QStringLiteral("Linux/Unix");
@@ -448,26 +456,21 @@ void NetworkAccessManager::SetUserAgent(QString ua){
     QString location = QLocale::system().name().replace(QStringLiteral("_"), QStringLiteral("-"));
 
     if(ua.isEmpty()) return;
-    else if(Application::ExactMatch(QStringLiteral("[iI](?:nternet)?[eE](?:xplorer)?"), ua)){ ua = Application::UserAgent_IE();}
-    else if(Application::ExactMatch(QStringLiteral("[eE]dge"), ua))         { ua = Application::UserAgent_Edge();}
-    else if(Application::ExactMatch(QStringLiteral("[fF](?:ire)?[fF](?:ox)?"), ua)){
-        ua = Application::UserAgent_FF();
-#ifdef Q_OS_MAC
-        system.replace(QStringLiteral("_"), QStringLiteral("."));
-#endif
-    }
-    else if(Application::ExactMatch(QStringLiteral("[oO]pera"), ua))        { ua = Application::UserAgent_Opera();}
-    else if(Application::ExactMatch(QStringLiteral("[oO][pP][rR]"), ua))    { ua = Application::UserAgent_OPR();}
-    else if(Application::ExactMatch(QStringLiteral("[sS]afari"), ua))       { ua = Application::UserAgent_Safari();}
-    else if(Application::ExactMatch(QStringLiteral("[cC]hrome"), ua))       { ua = Application::UserAgent_Chrome();}
-    else if(Application::ExactMatch(QStringLiteral("[sS]leipnir"), ua))     { ua = Application::UserAgent_Sleipnir();}
-    else if(Application::ExactMatch(QStringLiteral("[vV]ivaldi"), ua))      { ua = Application::UserAgent_Vivaldi();}
-    else if(Application::ExactMatch(QStringLiteral("[nN]et[sS]cape"), ua))  { ua = Application::UserAgent_NetScape();}
-    else if(Application::ExactMatch(QStringLiteral("[sS]ea[mM]onkey"), ua)) { ua = Application::UserAgent_SeaMonkey();}
-    else if(Application::ExactMatch(QStringLiteral("[gG]ecko"), ua))        { ua = Application::UserAgent_Gecko();}
-    else if(Application::ExactMatch(QStringLiteral("[iI][cC]ab"), ua))      { ua = Application::UserAgent_iCab();}
-    else if(Application::ExactMatch(QStringLiteral("[cC]amino"), ua))       { ua = Application::UserAgent_Camino();}
-    else if(Application::ExactMatch(QStringLiteral("[cC]ustom"), ua))       { ua = Application::UserAgent_Custom();}
+    else if(Application::IsIE(ua))        { ua = Application::UserAgent_IE();}
+    else if(Application::IsEdge(ua))      { ua = Application::UserAgent_Edge();}
+    else if(Application::IsFF(ua))        { ua = Application::UserAgent_FF();}
+    else if(Application::IsOpera(ua))     { ua = Application::UserAgent_Opera();}
+    else if(Application::IsOPR(ua))       { ua = Application::UserAgent_OPR();}
+    else if(Application::IsSafari(ua))    { ua = Application::UserAgent_Safari();}
+    else if(Application::IsChrome(ua))    { ua = Application::UserAgent_Chrome();}
+    else if(Application::IsSleipnir(ua))  { ua = Application::UserAgent_Sleipnir();}
+    else if(Application::IsVivaldi(ua))   { ua = Application::UserAgent_Vivaldi();}
+    else if(Application::IsNetScape(ua))  { ua = Application::UserAgent_NetScape();}
+    else if(Application::IsSeaMonkey(ua)) { ua = Application::UserAgent_SeaMonkey();}
+    else if(Application::IsiCab(ua))      { ua = Application::UserAgent_iCab();}
+    else if(Application::IsCamino(ua))    { ua = Application::UserAgent_Camino();}
+    else if(Application::IsGecko(ua))     { ua = Application::UserAgent_Gecko();}
+    else if(Application::IsCustom(ua))    { ua = Application::UserAgent_Custom();}
 
     ua = ua.replace(QStringLiteral("%SYSTEM%"), system).replace(QStringLiteral("%LOCATION%"), location);
 
@@ -656,6 +659,10 @@ DownloadItem::DownloadItem(QObject *object)
                 this, &DownloadItem::Finished);
         connect(item, &QWebEngineDownloadItem::downloadProgress,
                 this, &DownloadItem::DownloadProgress);
+#  if QT_VERSION >= 0x050A00
+        connect(item, &QWebEngineDownloadItem::stateChanged,
+                this, &DownloadItem::StateChanged);
+#  endif
         m_RemoteUrl = item->url();
         m_Path = item->path();
     } else {
@@ -785,9 +792,42 @@ QString DownloadItem::CreateDefaultFromReplyOrRequest(){
 #ifdef WEBENGINEVIEW
 void DownloadItem::StateChanged(){
     if(!m_DownloadItem) return;
+#  if QT_VERSION < 0x050A00
     int state = m_DownloadItem->property("state").toInt();
     // 2 : QQuickWebEngineDownloadItem::DownloadCompleted
     if(state == 2) Finished();
+#  else
+    if(QWebEngineDownloadItem *item = qobject_cast<QWebEngineDownloadItem*>(m_DownloadItem)){
+
+        QWebEngineDownloadItem::DownloadState state = item->state();
+        QWebEngineDownloadItem::DownloadInterruptReason reason = item->interruptReason();
+
+        if(state == QWebEngineDownloadItem::DownloadInterrupted &&
+           // network failure or server failure.
+           40 > reason && reason >= 20){
+
+            ModelessDialog::Information(QString("resumed."), QString("download failure, and resumed."));
+
+            item->resume();
+        }
+    } else {
+        int state = m_DownloadItem->property("state").toInt();
+        int reason = m_DownloadItem->property("interruptReason").toInt();
+        // 2 : QQuickWebEngineDownloadItem::DownloadCompleted
+        if(state == 2){
+            Finished();
+        } else if(
+            // 4 : QQuickWebEngineDownloadItem::DownloadInterrupted
+            state == 4 &&
+            // network failure or server failure.
+            40 > reason && reason >= 20){
+
+            ModelessDialog::Information(QString("resumed."), QString("download failure, and resumed."));
+
+            QMetaObject::invokeMethod(m_DownloadItem, "resume");
+        }
+    }
+#  endif
 }
 
 void DownloadItem::ReceivedBytesChanged(){

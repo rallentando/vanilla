@@ -54,6 +54,17 @@ public:
     bool CanGoForward() Q_DECL_OVERRIDE {
         return page() ? page()->history()->canGoForward() : false;
     }
+    bool RecentlyAudible() Q_DECL_OVERRIDE {
+        return page() ? page()->recentlyAudible() : false;
+    }
+    bool IsAudioMuted() Q_DECL_OVERRIDE {
+        // no API.
+        return false;
+    }
+    void SetAudioMuted(bool) Q_DECL_OVERRIDE {
+        // no API, toggle instead.
+        if(page()) page()->triggerAction(QWebPage::ToggleMediaMute);
+    }
 
     bool IsRenderable() Q_DECL_OVERRIDE {
         return page() != 0;
@@ -95,11 +106,14 @@ public:
     }
 
     void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE {
+        emit urlChanged(url);
         load(url);
     }
     void TriggerNativeLoadAction(const QNetworkRequest &req,
                                  QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
                                  const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE {
+        Q_UNUSED(operation); Q_UNUSED(body);
+        emit urlChanged(req.url());
         load(req, operation, body);
     }
     void TriggerNativeGoBackAction() Q_DECL_OVERRIDE {
@@ -271,6 +285,12 @@ public slots:
     void ZoomIn() Q_DECL_OVERRIDE;
     void ZoomOut() Q_DECL_OVERRIDE;
 
+    void ToggleMediaControls() Q_DECL_OVERRIDE;
+    void ToggleMediaLoop() Q_DECL_OVERRIDE;
+    void ToggleMediaPlayPause() Q_DECL_OVERRIDE;
+    void ToggleMediaMute() Q_DECL_OVERRIDE;
+
+    void ExitFullScreen() Q_DECL_OVERRIDE;
     void InspectElement() Q_DECL_OVERRIDE;
     void AddSearchEngine(QPoint pos) Q_DECL_OVERRIDE;
     void AddBookmarklet(QPoint pos) Q_DECL_OVERRIDE;

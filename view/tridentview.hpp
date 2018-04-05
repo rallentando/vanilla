@@ -99,6 +99,7 @@ public:
         return page() ? page()->Action(a, data) : 0;
     }
     void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE {
+        emit urlChanged(url);
         m_Url = url;
         dynamicCall("Navigate(const QString&)",
                     QString::fromLatin1(QUrl::toPercentEncoding(m_Url.toString(), ":;/?=,+@#$%&")));
@@ -107,6 +108,7 @@ public:
                                  QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
                                  const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE {
         Q_UNUSED(operation); Q_UNUSED(body);
+        emit urlChanged(req.url());
         m_Url = req.url();
         QByteArray header;
         foreach(QByteArray name, req.rawHeaderList()){
@@ -158,9 +160,8 @@ public:
 public slots:
     QSize size() Q_DECL_OVERRIDE { return base()->size();}
     void resize(QSize size) Q_DECL_OVERRIDE {
-        if(TreeBank::PurgeView()){
-            MainWindow *win = m_TreeBank ? m_TreeBank->GetMainWindow() : 0;
-            base()->setGeometry(win ? win->geometry() : QRect(QPoint(), size));
+        if(TreeBank::PurgeView() && m_TreeBank){
+            base()->setGeometry(QRect(m_TreeBank->mapToGlobal(QPoint()), size));
         } else {
             base()->setGeometry(QRect(QPoint(), size));
         }

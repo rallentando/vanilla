@@ -183,12 +183,6 @@ void GraphicsWebKitView::OnLoadStarted(){
 
     View::OnLoadStarted();
 
-    if(history()->count()){
-        QUrl historyUrl = history()->currentItem().url();
-        if(!historyUrl.isEmpty() && historyUrl != url()){
-            emit urlChanged(historyUrl);
-        }
-    }
     emit statusBarMessage(tr("Started loading."));
 }
 
@@ -205,8 +199,10 @@ void GraphicsWebKitView::OnLoadFinished(bool ok){
 
     if(history()->count()){
         QUrl historyUrl = history()->currentItem().url();
-        if(!historyUrl.isEmpty() && historyUrl != url()){
+        if(!historyUrl.isEmpty()){
             emit urlChanged(historyUrl);
+        } else if(!url().isEmpty()){
+            emit urlChanged(url());
         }
     }
     if(!ok){
@@ -489,6 +485,36 @@ void GraphicsWebKitView::ZoomOut(){
     emit statusBarMessage(tr("Zoom factor changed to %1 percent").arg(zoom*100.0));
 }
 
+void GraphicsWebKitView::ToggleMediaControls(){
+    if(page())
+        page()->triggerAction(QWebPage::ToggleMediaControls);
+}
+
+void GraphicsWebKitView::ToggleMediaLoop(){
+    if(page())
+         page()->triggerAction(QWebPage::ToggleMediaLoop);
+}
+
+void GraphicsWebKitView::ToggleMediaPlayPause(){
+    if(page())
+        page()->triggerAction(QWebPage::ToggleMediaPlayPause);
+}
+
+void GraphicsWebKitView::ToggleMediaMute(){
+    if(page())
+        page()->triggerAction(QWebPage::ToggleMediaMute);
+}
+
+void GraphicsWebKitView::ExitFullScreen(){
+    if(page()){
+        // this doesn't work...
+        //page()->triggerAction(QWebEnginePage::ToggleVideoFullscreen);
+        if(TreeBank *tb = GetTreeBank())
+            tb->GetMainWindow()->SetFullScreen(false);
+        SetDisplayObscured(false);
+    }
+}
+
 void GraphicsWebKitView::InspectElement(){
     if(page()) page()->InspectElement();
 }
@@ -502,6 +528,7 @@ void GraphicsWebKitView::AddBookmarklet(QPoint pos){
 }
 
 void GraphicsWebKitView::hideEvent(QHideEvent *ev){
+    if(GetDisplayObscured()) ExitFullScreen();
     SaveViewState();
     QGraphicsWebView::hideEvent(ev);
 }
@@ -512,13 +539,16 @@ void GraphicsWebKitView::showEvent(QShowEvent *ev){
 }
 
 void GraphicsWebKitView::keyPressEvent(QKeyEvent *ev){
+
+    if(GetDisplayObscured()){
+        if(ev->key() == Qt::Key_Escape || ev->key() == Qt::Key_F11){
+            ExitFullScreen();
+            ev->setAccepted(true);
+            return;
+        }
+    }
 #ifdef PASSWORD_MANAGER
-    if((ev->modifiers() & Qt::ControlModifier
-#  if defined(Q_OS_MAC)
-        || ev->modifiers() & Qt::MetaModifier
-#  endif
-        ) &&
-       ev->key() == Qt::Key_Return){
+    if(Application::HasCtrlModifier(ev) && ev->key() == Qt::Key_Return){
 
         NetworkAccessManager *nam =
             static_cast<NetworkAccessManager*>(page()->networkAccessManager());
@@ -569,7 +599,7 @@ void GraphicsWebKitView::keyPressEvent(QKeyEvent *ev){
         if(NavigationBySpaceKey() &&
            ev->key() == Qt::Key_Space){
 
-            if(ev->modifiers() & Qt::ShiftModifier){
+            if(Application::HasShiftModifier(ev)){
                 m_TreeBank->Back(GetHistNode());
             } else {
                 m_TreeBank->Forward(GetHistNode());
@@ -781,12 +811,9 @@ void GraphicsWebKitView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         QNetworkRequest req(link);
         req.setRawHeader("Referer", url().toEncoded());
 
-        if(ev->modifiers() & Qt::ShiftModifier
-           || ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-           || ev->modifiers() & Qt::MetaModifier
-#endif
-           || ev->button() == Qt::MidButton){
+        if(Application::HasShiftModifier(ev) ||
+           Application::HasCtrlModifier(ev) ||
+           ev->button() == Qt::MidButton){
 
             GestureAborted();
             m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
@@ -938,264 +965,6 @@ bool GraphicsWebKitView::focusNextPrevChild(bool next){
     return false;
 }
 
-namespace{
-    class Element : public WebElement{
-    public:
-        Element()
-            : WebElement()
-        {
-            m_Element = QWebElement();
-            m_IsEditable = false;
-            m_LinkUrl = QUrl();
-            m_ImageUrl = QUrl();
-            m_Pixmap = QPixmap();
-            m_CoordinateOverridden = false;
-            m_OverriddenRectangle = QRect();
-        }
-        Element(QWebElement elem)
-            : WebElement()
-        {
-            m_Element = elem;
-            m_IsEditable = false;
-            m_LinkUrl = QUrl();
-            m_ImageUrl = QUrl();
-            m_Pixmap = QPixmap();
-            m_CoordinateOverridden = false;
-            m_OverriddenRectangle = QRect();
-
-            while(!elem.isNull()){
-                if(elem.attribute(QStringLiteral("contenteditable")) == QStringLiteral("true")){
-                    m_IsEditable = true;
-                    break;
-                }
-                elem = elem.parent();
-            }
-        }
-        Element(QWebElement elem, bool editable, QUrl link, QUrl image, QPixmap pixmap)
-            : WebElement()
-        {
-            m_Element = elem;
-            m_IsEditable = editable;
-            m_LinkUrl = link;
-            m_ImageUrl = image;
-            m_Pixmap = pixmap;
-            m_CoordinateOverridden = false;
-            m_OverriddenRectangle = QRect();
-        }
-        ~Element(){
-        }
-
-        bool SetFocus() Q_DECL_OVERRIDE {
-            m_Element.setFocus();
-            return true;
-        }
-        bool ClickEvent() Q_DECL_OVERRIDE {
-            return false;
-        }
-        QString TagName() const Q_DECL_OVERRIDE {
-            return m_Element.tagName();
-        }
-        QString InnerText() const Q_DECL_OVERRIDE {
-            return m_Element.toPlainText();
-        }
-        QUrl BaseUrl() const Q_DECL_OVERRIDE {
-            return m_Element.webFrame()->baseUrl();
-        }
-        QUrl LinkUrl() const Q_DECL_OVERRIDE {
-            if(m_LinkUrl.isEmpty()){
-                QWebElement elem = m_Element;
-                while(!elem.isNull()){
-                    QString href = elem.attribute(QStringLiteral("href"));
-                    if(!href.isEmpty())
-                        return Page::StringToUrl(href, elem.webFrame()->baseUrl());
-                    elem = elem.parent();
-                }
-            }
-            return m_LinkUrl;
-        }
-        QUrl ImageUrl() const Q_DECL_OVERRIDE {
-            if(m_ImageUrl.isEmpty()){
-                QWebElement elem = m_Element;
-                while(!elem.isNull()){
-                    QString src = elem.attribute(QStringLiteral("src"));
-                    if(!src.isEmpty())
-                        return Page::StringToUrl(src, elem.webFrame()->baseUrl());
-                    elem = elem.parent();
-                }
-            }
-            return m_ImageUrl;
-        }
-        QString LinkHtml() const Q_DECL_OVERRIDE {
-            QWebElement elem = m_Element;
-            while(!elem.isNull()){
-                QString href = elem.attribute(QStringLiteral("href"));
-                if(!href.isEmpty()) return elem.toOuterXml();
-                elem = elem.parent();
-            }
-            return QString();
-        }
-        QString ImageHtml() const Q_DECL_OVERRIDE {
-            QWebElement elem = m_Element;
-            while(!elem.isNull()){
-                QString src = elem.attribute(QStringLiteral("src"));
-                if(!src.isEmpty()) return elem.toOuterXml();
-                elem = elem.parent();
-            }
-            return QString();
-        }
-        QPoint Position() const Q_DECL_OVERRIDE {
-            if(m_CoordinateOverridden)
-                return m_OverriddenRectangle.center();
-            return Rectangle().center();
-        }
-        QRect Rectangle() const Q_DECL_OVERRIDE {
-            if(m_CoordinateOverridden)
-                return m_OverriddenRectangle;
-            QRect r = m_Element.geometry();
-            QWebFrame *f = m_Element.webFrame();
-            while(f){
-                r.translate(-f->scrollPosition());
-                r.translate(f->geometry().topLeft());
-                r = r.intersected(f->geometry());
-                f = f->parentFrame();
-            }
-            return r;
-        }
-        void SetPosition(QPoint pos) Q_DECL_OVERRIDE {
-            m_CoordinateOverridden = true;
-            m_OverriddenRectangle.moveCenter(pos);
-        }
-        void SetRectangle(QRect rect) Q_DECL_OVERRIDE {
-            m_CoordinateOverridden = true;
-            m_OverriddenRectangle = rect;
-        }
-        void SetText(QString text) Q_DECL_OVERRIDE {
-            m_Element.setAttribute("value", text);
-        }
-        QPixmap Pixmap() Q_DECL_OVERRIDE {
-            if(m_Pixmap.isNull()){
-                QPixmap pixmap(m_Element.geometry().size());
-                pixmap.fill(QColor(255,255,255,0));
-                QImage before = pixmap.toImage();
-                QPainter painter(&pixmap);
-                m_Element.render(&painter);
-                painter.end();
-                if(pixmap.toImage() == before)
-                    return QPixmap();
-                return pixmap;
-            }
-            return m_Pixmap;
-        }
-        bool IsNull() const Q_DECL_OVERRIDE {
-            return m_Element.isNull() || Rectangle().isNull() || Position().isNull();
-        }
-        bool IsJsCommandElement() const Q_DECL_OVERRIDE {
-            QString onclick = m_Element.attribute(QStringLiteral("onclick"));
-            QString href = m_Element.attribute(QStringLiteral("href")).toLower();
-            QString role = m_Element.attribute(QStringLiteral("role")).toLower();
-            return !onclick.isEmpty() ||
-                href.startsWith(QStringLiteral("javascript:")) ||
-                role == QStringLiteral("button") ||
-                role == QStringLiteral("link") ||
-                role == QStringLiteral("menu") ||
-                role == QStringLiteral("checkbox") ||
-                role == QStringLiteral("radio") ||
-                role == QStringLiteral("tab");
-        }
-        bool IsTextInputElement() const Q_DECL_OVERRIDE {
-            QString tag = m_Element.tagName().toLower();
-            QString type = m_Element.attribute(QStringLiteral("type")).toLower();
-            return tag == QStringLiteral("textaret") ||
-                (tag == QStringLiteral("input") &&
-                 (type == QStringLiteral("text") ||
-                  type == QStringLiteral("search") ||
-                  type == QStringLiteral("password")));
-        }
-        bool IsQueryInputElement() const Q_DECL_OVERRIDE {
-            QString tag = m_Element.tagName().toLower();
-            QString type = m_Element.attribute(QStringLiteral("type")).toLower();
-            return tag == QStringLiteral("input") &&
-                (type == QStringLiteral("text") ||
-                 type == QStringLiteral("search"));
-        }
-        bool IsEditableElement() const Q_DECL_OVERRIDE {
-            return m_IsEditable
-                || IsTextInputElement()
-                || IsQueryInputElement();
-        }
-        bool IsFrameElement() const Q_DECL_OVERRIDE {
-            QString tag = m_Element.tagName().toLower();
-            return tag == QStringLiteral("frame")
-                || tag == QStringLiteral("iframe");
-        }
-        Action GetAction() const Q_DECL_OVERRIDE {
-            QString tag = m_Element.tagName().toLower();
-            QString type = m_Element.attribute(QStringLiteral("type")).toLower();
-            QString onclick = m_Element.attribute(QStringLiteral("onclick"));
-            QString onhover = m_Element.attribute(QStringLiteral("onmouseover"));
-            QString href = m_Element.attribute(QStringLiteral("href")).toLower();
-            QString role = m_Element.attribute(QStringLiteral("role")).toLower();
-
-            if(href.startsWith(QStringLiteral("http:")) ||
-               href.startsWith(QStringLiteral("https:"))){
-
-                return None;
-            }
-            if(m_IsEditable ||
-               tag == QStringLiteral("textaret") ||
-               tag == QStringLiteral("object") ||
-               tag == QStringLiteral("embed") ||
-               tag == QStringLiteral("frame") ||
-               tag == QStringLiteral("iframe") ||
-               (tag == QStringLiteral("input") &&
-                (type == QStringLiteral("text") ||
-                 type == QStringLiteral("search") ||
-                 type == QStringLiteral("password")))){
-
-                return Focus;
-            }
-            if(!onclick.isEmpty() ||
-               href.startsWith(QStringLiteral("javascript:")) ||
-               tag == QStringLiteral("button") ||
-               tag == QStringLiteral("select") ||
-               tag == QStringLiteral("label") ||
-               role == QStringLiteral("button") ||
-               role == QStringLiteral("link") ||
-               role == QStringLiteral("menu") ||
-               role == QStringLiteral("checkbox") ||
-               role == QStringLiteral("radio") ||
-               role == QStringLiteral("tab") ||
-               (tag == QStringLiteral("input") &&
-                (type == QStringLiteral("checkbox") ||
-                 type == QStringLiteral("radio") ||
-                 type == QStringLiteral("file") ||
-                 type == QStringLiteral("submit") ||
-                 type == QStringLiteral("reset") ||
-                 type == QStringLiteral("button")))){
-
-                return Click;
-            }
-            if(!onhover.isEmpty()){
-
-                return Hover;
-            }
-            return None;
-        }
-        bool Equals(const WebElement &other) const Q_DECL_OVERRIDE {
-            return m_Element == static_cast<const Element*>(&other)->m_Element;
-        }
-
-    private:
-        QWebElement m_Element;
-        bool m_IsEditable;
-        QUrl m_LinkUrl;
-        QUrl m_ImageUrl;
-        QPixmap m_Pixmap;
-        bool m_CoordinateOverridden;
-        QRect m_OverriddenRectangle;
-    };
-}
-
 SharedWebElementList GraphicsWebKitView::FindElements(Page::FindElementsOption option){
 
     SharedWebElementList list;
@@ -1204,8 +973,8 @@ SharedWebElementList GraphicsWebKitView::FindElements(Page::FindElementsOption o
 
     traverseFrame = [&](QWebFrame *frame, QRect viewport){
         foreach(QWebElement elem, frame->findAllElements(Page::OptionToSelector(option))){
-            std::shared_ptr<Element> e = std::make_shared<Element>();
-            *e = Element(elem);
+            std::shared_ptr<WebKitElement> e = std::make_shared<WebKitElement>();
+            *e = WebKitElement(elem);
             if(!viewport.intersects(e->Rectangle()))
                 e->SetRectangle(QRect());
             list << e;
@@ -1238,8 +1007,8 @@ SharedWebElement GraphicsWebKitView::HitElement(const QPoint &pos){
         !r.element().isNull()     ? r.element() :
         !r.linkElement().isNull() ? r.linkElement() :
         r.enclosingBlockElement();
-    std::shared_ptr<Element> e = std::make_shared<Element>();
-    *e = Element(elem, r.isContentEditable(), r.linkUrl(), r.imageUrl(), r.pixmap());
+    std::shared_ptr<WebKitElement> e = std::make_shared<WebKitElement>();
+    *e = WebKitElement(elem, r.isContentEditable(), r.linkUrl(), r.imageUrl(), r.pixmap());
     return e;
 }
 

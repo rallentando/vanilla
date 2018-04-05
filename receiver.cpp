@@ -108,6 +108,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
     m_TreeBank = parent;
 
     if(!m_LocalServer){
+        QLocalServer::removeServer(Application::LocalServerName());
         m_LocalServer = new QLocalServer();
         m_LocalServer->listen(Application::LocalServerName());
     }
@@ -386,12 +387,12 @@ void Receiver::ForeignCommandReceived(){
 
     QDataStream in(clientConnection);
 
-#if QT_VERSION >= 0x050900
-    in.setVersion(QDataStream::Qt_5_9);
-#elif QT_VERSION >= 0x050800
-    in.setVersion(QDataStream::Qt_5_8);
+#if QT_VERSION >= 0x050B00
+    in.setVersion(QDataStream::Qt_5_11);
+#elif QT_VERSION >= 0x050A00
+    in.setVersion(QDataStream::Qt_5_10);
 #else
-    in.setVersion(QDataStream::Qt_5_7);
+    in.setVersion(QDataStream::Qt_5_9);
 #endif
 
     if(clientConnection->bytesAvailable() < static_cast<int>(sizeof(quint16))){
@@ -632,16 +633,16 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[cC]opy[tT]itle"), cmd)){                  emit CopyTitle();            return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[pP]age[aA]s[lL]ink"), cmd)){       emit CopyPageAsLink();       return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[sS]elected[hH]tml"), cmd)){        emit CopySelectedHtml();     return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){ emit OpenWithIE(); return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[eE]dge"), cmd)){  emit OpenWithEdge();         return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){ emit OpenWithFF(); return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[oO]pera"), cmd)){ emit OpenWithOpera();        return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){ emit OpenWithOPR();      return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[sS]afari"), cmd)){ emit OpenWithSafari();      return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){ emit OpenWithChrome();      return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){ emit OpenWithSleipnir();  return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){ emit OpenWithVivaldi();    return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){ emit OpenWithCustom();      return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+IE_RE, cmd)){   emit OpenWithIE();           return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+EDGE_RE, cmd)){ emit OpenWithEdge();         return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+FIREFOX_RE, cmd)){ emit OpenWithFF();        return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+OPERA_RE, cmd)){ emit OpenWithOpera();       return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+OPR_RE, cmd)){  emit OpenWithOPR();          return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+SAFARI_RE, cmd)){ emit OpenWithSafari();     return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+CHROME_RE, cmd)){ emit OpenWithChrome();     return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+SLEIPNIR_RE, cmd)){ emit OpenWithSleipnir(); return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+VIVALDI_RE, cmd)){ emit OpenWithVivaldi();   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[wW]ith|[oO]n)")+CUSTOM_RE, cmd)){ emit OpenWithCustom();     return; }
 
     if(Application::ExactMatch(QStringLiteral("[cC]lick(?:[eE]lement)?"), cmd)){                                          emit TriggerElementAction(Page::_ClickElement);                      return; }
     if(Application::ExactMatch(QStringLiteral("[fF]ocus(?:[eE]lement)?"), cmd)){                                          emit TriggerElementAction(Page::_FocusElement);                      return; }
@@ -652,16 +653,16 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[dD]ownload[lL]ink"), cmd)){                                               emit TriggerElementAction(Page::_DownloadLink);                      return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[lL]ink[uU]rl"), cmd)){                                             emit TriggerElementAction(Page::_CopyLinkUrl);                       return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[lL]ink[hH]tml"), cmd)){                                            emit TriggerElementAction(Page::_CopyLinkHtml);                      return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){  emit TriggerElementAction(Page::_OpenLinkWithIE);                    return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[eE]dge"), cmd)){                           emit TriggerElementAction(Page::_OpenLinkWithEdge);                  return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){           emit TriggerElementAction(Page::_OpenLinkWithFF);                    return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[oO]pera"), cmd)){                          emit TriggerElementAction(Page::_OpenLinkWithOpera);                 return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){                      emit TriggerElementAction(Page::_OpenLinkWithOPR);                   return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[sS]afari"), cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithSafari);                return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithChrome);                return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){                       emit TriggerElementAction(Page::_OpenLinkWithSleipnir);              return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){                        emit TriggerElementAction(Page::_OpenLinkWithVivaldi);               return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithCustom);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+IE_RE, cmd)){                            emit TriggerElementAction(Page::_OpenLinkWithIE);                    return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+EDGE_RE, cmd)){                          emit TriggerElementAction(Page::_OpenLinkWithEdge);                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+FIREFOX_RE, cmd)){                       emit TriggerElementAction(Page::_OpenLinkWithFF);                    return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+OPERA_RE, cmd)){                         emit TriggerElementAction(Page::_OpenLinkWithOpera);                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+OPR_RE, cmd)){                           emit TriggerElementAction(Page::_OpenLinkWithOPR);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+SAFARI_RE, cmd)){                        emit TriggerElementAction(Page::_OpenLinkWithSafari);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+CHROME_RE, cmd)){                        emit TriggerElementAction(Page::_OpenLinkWithChrome);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+SLEIPNIR_RE, cmd)){                      emit TriggerElementAction(Page::_OpenLinkWithSleipnir);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+VIVALDI_RE, cmd)){                       emit TriggerElementAction(Page::_OpenLinkWithVivaldi);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[lL]ink(?:[wW]ith|[oO]n)")+CUSTOM_RE, cmd)){                        emit TriggerElementAction(Page::_OpenLinkWithCustom);                return; }
 
     if(Application::ExactMatch(QStringLiteral("[lL]oad[iI]mage"), cmd)){                                                  emit TriggerElementAction(Page::_LoadImage);                         return; }
     if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage"), cmd)){                                                  emit TriggerElementAction(Page::_OpenImage);                         return; }
@@ -669,16 +670,16 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[cC]opy[iI]mage"), cmd)){                                                  emit TriggerElementAction(Page::_CopyImage);                         return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[iI]mage[uU]rl"), cmd)){                                            emit TriggerElementAction(Page::_CopyImageUrl);                      return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[iI]mage[hH]tml"), cmd)){                                           emit TriggerElementAction(Page::_CopyImageHtml);                     return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){ emit TriggerElementAction(Page::_OpenImageWithIE);                   return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[eE]dge"), cmd)){                          emit TriggerElementAction(Page::_OpenImageWithEdge);                 return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){          emit TriggerElementAction(Page::_OpenImageWithFF);                   return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[oO]pera"), cmd)){                         emit TriggerElementAction(Page::_OpenImageWithOpera);                return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){                     emit TriggerElementAction(Page::_OpenImageWithOPR);                  return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[sS]afari"), cmd)){                        emit TriggerElementAction(Page::_OpenImageWithSafari);               return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){                        emit TriggerElementAction(Page::_OpenImageWithChrome);               return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){                      emit TriggerElementAction(Page::_OpenImageWithSleipnir);             return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){                       emit TriggerElementAction(Page::_OpenImageWithVivaldi);              return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){                        emit TriggerElementAction(Page::_OpenImageWithCustom);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+IE_RE, cmd)){                           emit TriggerElementAction(Page::_OpenImageWithIE);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+EDGE_RE, cmd)){                         emit TriggerElementAction(Page::_OpenImageWithEdge);                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+FIREFOX_RE, cmd)){                      emit TriggerElementAction(Page::_OpenImageWithFF);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+OPERA_RE, cmd)){                        emit TriggerElementAction(Page::_OpenImageWithOpera);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+OPR_RE, cmd)){                          emit TriggerElementAction(Page::_OpenImageWithOPR);                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+SAFARI_RE, cmd)){                       emit TriggerElementAction(Page::_OpenImageWithSafari);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+CHROME_RE, cmd)){                       emit TriggerElementAction(Page::_OpenImageWithChrome);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+SLEIPNIR_RE, cmd)){                     emit TriggerElementAction(Page::_OpenImageWithSleipnir);             return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+VIVALDI_RE, cmd)){                      emit TriggerElementAction(Page::_OpenImageWithVivaldi);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[iI]mage(?:[wW]ith|[oO]n)")+CUSTOM_RE, cmd)){                       emit TriggerElementAction(Page::_OpenImageWithCustom);               return; }
 
     if(Application::ExactMatch(QStringLiteral("[lL]oad[mM]edia"), cmd)){                                                  emit TriggerElementAction(Page::_LoadMedia);                         return; }
     if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia"), cmd)){                                                  emit TriggerElementAction(Page::_OpenMedia);                         return; }
@@ -689,16 +690,16 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[tT]oggle[mM]edia[mM]ute"), cmd)){                                         emit TriggerElementAction(Page::_ToggleMediaMute);                   return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[mM]edia[uU]rl"), cmd)){                                            emit TriggerElementAction(Page::_CopyMediaUrl);                      return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[mM]edia[hH]tml"), cmd)){                                           emit TriggerElementAction(Page::_CopyMediaHtml);                     return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){ emit TriggerElementAction(Page::_OpenMediaWithIE);                   return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[eE]dge"), cmd)){                          emit TriggerElementAction(Page::_OpenMediaWithEdge);                 return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){          emit TriggerElementAction(Page::_OpenMediaWithFF);                   return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[oO]pera"), cmd)){                         emit TriggerElementAction(Page::_OpenMediaWithOpera);                return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){                     emit TriggerElementAction(Page::_OpenMediaWithOPR);                  return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[sS]afari"), cmd)){                        emit TriggerElementAction(Page::_OpenMediaWithSafari);               return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){                        emit TriggerElementAction(Page::_OpenMediaWithChrome);               return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){                      emit TriggerElementAction(Page::_OpenMediaWithSleipnir);             return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){                       emit TriggerElementAction(Page::_OpenMediaWithVivaldi);              return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){                        emit TriggerElementAction(Page::_OpenMediaWithCustom);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+IE_RE, cmd)){                           emit TriggerElementAction(Page::_OpenMediaWithIE);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+EDGE_RE, cmd)){                         emit TriggerElementAction(Page::_OpenMediaWithEdge);                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+FIREFOX_RE, cmd)){                      emit TriggerElementAction(Page::_OpenMediaWithFF);                   return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+OPERA_RE, cmd)){                        emit TriggerElementAction(Page::_OpenMediaWithOpera);                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+OPR_RE, cmd)){                          emit TriggerElementAction(Page::_OpenMediaWithOPR);                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+SAFARI_RE, cmd)){                       emit TriggerElementAction(Page::_OpenMediaWithSafari);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+CHROME_RE, cmd)){                       emit TriggerElementAction(Page::_OpenMediaWithChrome);               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+SLEIPNIR_RE, cmd)){                     emit TriggerElementAction(Page::_OpenMediaWithSleipnir);             return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+VIVALDI_RE, cmd)){                      emit TriggerElementAction(Page::_OpenMediaWithVivaldi);              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[mM]edia(?:[wW]ith|[oO]n)")+CUSTOM_RE, cmd)){                       emit TriggerElementAction(Page::_OpenMediaWithCustom);               return; }
 
     if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[vV]iew[nN]ode"), cmd)){                 emit TriggerElementAction(Page::_OpenInNewViewNode);                 return; }
     if(Application::ExactMatch(QStringLiteral("[oO]pen(?:[lL]ink)?[iI]n[nN]ew[hH]ist[nN]ode"), cmd)){                 emit TriggerElementAction(Page::_OpenInNewHistNode);                 return; }
@@ -784,16 +785,16 @@ void Receiver::ReceiveCommand(QString cmd){
     if(Application::ExactMatch(QStringLiteral("[cC]opy[nN]ode[uU]rl"), cmd)){                                  emit CopyNodeUrl();                     return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[nN]ode[tT]itle"), cmd)){                                emit CopyNodeTitle();                   return; }
     if(Application::ExactMatch(QStringLiteral("[cC]opy[nN]ode[aA]s[lL]ink"), cmd)){                            emit CopyNodeAsLink();                  return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[iI](?:nternet)?[eE](?:xplorer)?"), cmd)){ emit OpenNodeWithIE();        return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[eE]dge"), cmd)){                emit OpenNodeWithEdge();                return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[fF](?:ire)?[fF](?:ox)?"), cmd)){ emit OpenNodeWithFF();                 return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[oO]pera"), cmd)){               emit OpenNodeWithOpera();               return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[oO][pP][rR]"), cmd)){           emit OpenNodeWithOPR();                 return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[sS]afari"), cmd)){              emit OpenNodeWithSafari();              return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[cC]hrome"), cmd)){              emit OpenNodeWithChrome();              return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[sS]leipnir"), cmd)){            emit OpenNodeWithSleipnir();            return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[vV]ivaldi"), cmd)){             emit OpenNodeWithVivaldi();             return; }
-    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)[cC]ustom"), cmd)){              emit OpenNodeWithCustom();              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+IE_RE, cmd)){                 emit OpenNodeWithIE();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+EDGE_RE, cmd)){               emit OpenNodeWithEdge();                return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+FIREFOX_RE, cmd)){            emit OpenNodeWithFF();                  return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+OPERA_RE, cmd)){              emit OpenNodeWithOpera();               return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+OPR_RE, cmd)){                emit OpenNodeWithOPR();                 return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+SAFARI_RE, cmd)){             emit OpenNodeWithSafari();              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+CHROME_RE, cmd)){             emit OpenNodeWithChrome();              return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+SLEIPNIR_RE, cmd)){           emit OpenNodeWithSleipnir();            return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+VIVALDI_RE, cmd)){            emit OpenNodeWithVivaldi();             return; }
+    if(Application::ExactMatch(QStringLiteral("[oO]pen[nN]ode(?:[wW]ith|[oO]n)")+CUSTOM_RE, cmd)){             emit OpenNodeWithCustom();              return; }
 
     if(Application::ExactMatch(QStringLiteral("[tT]oggle[tT]rash"), cmd)){                                     emit ToggleTrash();                     return; }
     if(Application::ExactMatch(QStringLiteral("[sS]croll[uU]p"), cmd)){                                        emit ScrollUp();                        return; }

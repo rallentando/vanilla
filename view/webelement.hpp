@@ -4,6 +4,9 @@
 #include "switch.hpp"
 
 #include <QPixmap>
+#ifdef WEBKITVIEW
+#include <QWebElement>
+#endif
 
 #include <memory>
 
@@ -148,5 +151,51 @@ protected:
     QString m_XPath;
     QString m_Action;
 };
+
+#ifdef WEBKITVIEW
+class WebKitElement : public WebElement{
+public:
+    explicit WebKitElement();
+    explicit WebKitElement(QWebElement elem);
+    explicit WebKitElement(QWebElement elem, bool editable, QUrl link, QUrl image, QPixmap pixmap);
+    virtual ~WebKitElement();
+
+    bool SetFocus() Q_DECL_OVERRIDE;
+    bool ClickEvent() Q_DECL_OVERRIDE;
+    QString TagName() const Q_DECL_OVERRIDE;
+    QString InnerText() const Q_DECL_OVERRIDE;
+    QUrl BaseUrl() const Q_DECL_OVERRIDE;
+    QUrl LinkUrl() const Q_DECL_OVERRIDE;
+    QUrl ImageUrl() const Q_DECL_OVERRIDE;
+    QString LinkHtml() const Q_DECL_OVERRIDE;
+    QString ImageHtml() const Q_DECL_OVERRIDE;
+    QPoint Position() const Q_DECL_OVERRIDE;
+    QRect Rectangle() const Q_DECL_OVERRIDE;
+    void SetPosition(QPoint pos) Q_DECL_OVERRIDE;
+    void SetRectangle(QRect rect) Q_DECL_OVERRIDE;
+    void SetText(QString text) Q_DECL_OVERRIDE;
+    QPixmap Pixmap() Q_DECL_OVERRIDE;
+    bool IsNull() const Q_DECL_OVERRIDE;
+    bool IsJsCommandElement() const Q_DECL_OVERRIDE;
+    bool IsTextInputElement() const Q_DECL_OVERRIDE;
+    bool IsQueryInputElement() const Q_DECL_OVERRIDE;
+    bool IsEditableElement() const Q_DECL_OVERRIDE;
+    bool IsFrameElement() const Q_DECL_OVERRIDE;
+    bool IsLooped() const Q_DECL_OVERRIDE;
+    bool IsPaused() const Q_DECL_OVERRIDE;
+    bool IsMuted() const Q_DECL_OVERRIDE;
+    Action GetAction() const Q_DECL_OVERRIDE;
+    bool Equals(const WebElement &other) const Q_DECL_OVERRIDE;
+
+private:
+    QWebElement m_Element;
+    bool m_IsEditable;
+    QUrl m_LinkUrl;
+    QUrl m_ImageUrl;
+    QPixmap m_Pixmap;
+    bool m_CoordinateOverridden;
+    QRect m_OverriddenRectangle;
+};
+#endif //ifndef WEBKITVIEW
 
 #endif //ifndef WEBELEMENT_HPP

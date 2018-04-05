@@ -7,6 +7,7 @@
 
 #include <QWebPage>
 #include <QWebSettings>
+#include <QWebFullScreenRequest>
 
 #include <QWebFrame>
 
@@ -96,6 +97,9 @@ public slots:
                   const QString &file = QString()){
         m_Page->Download(url, file);
     }
+
+    void HandleFeaturePermission(QWebFrame *frame, QWebPage::Feature feature);
+    void HandleFullScreen(QWebFullScreenRequest request);
 
     void HandleUnsupportedContent(QNetworkReply *reply);
 

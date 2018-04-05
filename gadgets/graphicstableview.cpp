@@ -1520,19 +1520,12 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
         }
 
         if(collidings.isEmpty() &&
-           (ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-            || ev->modifiers() & Qt::MetaModifier
-#endif
-            || ev->modifiers() & Qt::ShiftModifier)){
+           (Application::HasCtrlModifier(ev) ||
+            Application::HasShiftModifier(ev))){
 
             ThumbList_UpDirectory();
 
-        } else if(ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-                  || ev->modifiers() & Qt::MetaModifier
-#endif
-                  ){
+        } else if(Application::HasCtrlModifier(ev)){
             foreach(QGraphicsItem *item, collidings){
                 if(item->parentItem() != this) continue;
                 if(Thumbnail *thumb = dynamic_cast<Thumbnail*>(item)){
@@ -1588,11 +1581,7 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     } else if(ev->button() == Qt::RightButton){
         QMenu *menu = 0;
 
-        if(ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-           || ev->modifiers() & Qt::MetaModifier
-#endif
-           )
+        if(Application::HasCtrlModifier(ev))
             menu = CreateSortMenu();
         else
             menu = CreateNodeMenu();
@@ -2451,7 +2440,7 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
     }
     case NodeTitleArea:{
         std::function<bool(NodeTitle*, NodeTitle*)> lessThan =
-            [this, basepos, notOnlyOneNode]
+            [basepos, notOnlyOneNode]
             (NodeTitle *n1, NodeTitle *n2) -> bool {
             QPointF p1 = n1->boundingRect().center() + n1->pos();
             QPointF p2 = n2->boundingRect().center() + n2->pos();
@@ -2797,7 +2786,7 @@ bool GraphicsTableView::ThumbList_MoveToLowerItem(){
 }
 
 bool GraphicsTableView::ThumbList_MoveToRightItem(){
-    return MoveTo(false, [this](int cur, int len){
+    return MoveTo(false, [](int cur, int len){
 
         int index = cur + 1;
 
@@ -2807,7 +2796,7 @@ bool GraphicsTableView::ThumbList_MoveToRightItem(){
 }
 
 bool GraphicsTableView::ThumbList_MoveToLeftItem(){
-    return MoveTo(false, [this](int cur, int len){
+    return MoveTo(false, [](int cur, int len){
 
         int index = cur - 1;
 
@@ -2842,14 +2831,14 @@ bool GraphicsTableView::ThumbList_MoveToNextPage(){
 }
 
 bool GraphicsTableView::ThumbList_MoveToFirstItem(){
-    return MoveTo(false, [this](int cur, int len){
+    return MoveTo(false, [](int cur, int len){
         Q_UNUSED(cur); Q_UNUSED(len);
         return 0;
     });
 }
 
 bool GraphicsTableView::ThumbList_MoveToLastItem(){
-    return MoveTo(false, [this](int cur, int len){
+    return MoveTo(false, [](int cur, int len){
         Q_UNUSED(cur);
         return len - 1;
     });
@@ -2985,7 +2974,7 @@ bool GraphicsTableView::ThumbList_TransferToLower(){
 }
 
 bool GraphicsTableView::ThumbList_TransferToRight(){
-    return TransferTo(true, false, [this](Thumbnail *neighbor, int cur, int len){
+    return TransferTo(true, false, [](Thumbnail *neighbor, int cur, int len){
         Q_UNUSED(len);
 
         if(!neighbor) return 0;
@@ -2994,7 +2983,7 @@ bool GraphicsTableView::ThumbList_TransferToRight(){
 }
 
 bool GraphicsTableView::ThumbList_TransferToLeft(){
-    return TransferTo(false, false, [this](Thumbnail *neighbor, int cur, int len){
+    return TransferTo(false, false, [](Thumbnail *neighbor, int cur, int len){
 
         if(!neighbor) return len;
         else          return cur;
@@ -3029,14 +3018,14 @@ bool GraphicsTableView::ThumbList_TransferToNextPage(){
 }
 
 bool GraphicsTableView::ThumbList_TransferToFirst(){
-    return TransferTo(false, false, [this](Thumbnail *neighbor, int cur, int len){
+    return TransferTo(false, false, [](Thumbnail *neighbor, int cur, int len){
         Q_UNUSED(neighbor); Q_UNUSED(cur); Q_UNUSED(len);
         return 0;
     });
 }
 
 bool GraphicsTableView::ThumbList_TransferToLast(){
-    return TransferTo(true, false, [this](Thumbnail *neighbor, int cur, int len){
+    return TransferTo(true, false, [](Thumbnail *neighbor, int cur, int len){
         Q_UNUSED(neighbor); Q_UNUSED(cur); Q_UNUSED(len);
         return len;
     });

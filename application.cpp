@@ -143,7 +143,9 @@ Application::Application(int &argc, char **argv)
     m_NetworkController = 0;
     m_AutoSaver = 0;
     srand(static_cast<unsigned int>(time(NULL)));
+#if 1 //QT_VERSION < 0x050B00
     SetUpInspector();
+#endif
 }
 
 Application::~Application(){
@@ -189,6 +191,7 @@ bool Application::notify(QObject *receiver, QEvent *ev){
     return false;
 }
 
+#if 1 //QT_VERSION < 0x050B00
 void Application::SetUpInspector(){
 #ifdef WEBENGINEVIEW
     QProcess process;
@@ -209,6 +212,7 @@ void Application::SetUpInspector(){
             QStringLiteral("%1").arg(m_RemoteDebuggingPort).toLatin1());
 #endif
 }
+#endif
 
 void Application::BootApplication(int &argc, char **argv, Application *instance){
     Q_UNUSED(argc);
@@ -220,14 +224,8 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         // skip first.
         for(int i = 1; i < argc; i++){
             QString arg = QLatin1String(argv[i]);
-            if(arg.startsWith(QStringLiteral("--"))){
-                // not yet implemented.
-                break;
-            }
-            if(arg.startsWith(QStringLiteral("-"))){
-                // not yet implemented.
-                break;
-            }
+            if(arg.startsWith(QStringLiteral("--"))){ /* not yet implemented. */ break;}
+            if(arg.startsWith(QStringLiteral("-"))){  /* not yet implemented. */ break;}
             list << arg;
         }
         t->SendCommandAndQuit(list.join(QStringLiteral(" ")));
@@ -281,7 +279,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         MainWindow * win = NewWindow();
         win->GetTreeBank()->OpenOnSuitableNode(QUrl(QStringLiteral("https://google.com")), true);
     } else {
-        Settings &s = Application::GlobalSettings();
+        Settings &s = GlobalSettings();
         QStringList keys = s.allKeys(QStringLiteral("mainwindow"));
 
         QList<int> ids = m_MainWindows.keys();
@@ -320,75 +318,6 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         }
     });
 }
-
-/*
-  standardPaths on Windows:
-
-  QStandardPaths::DesktopLocation       : "C:/Users/<user-name>/Desktop"
-  QStandardPaths::DocumentsLocation     : "C:/Users/<user-name>/Documents"
-  QStandardPaths::FontsLocation         : "C:/Windows/Fonts"
-  QStandardPaths::ApplicationsLocation  : "C:/Users/<user-name>/AppData/Roaming/Microsoft/Windows/Start Menu/Programs"
-  QStandardPaths::MusicLocation         : "C:/Users/<user-name>/Music"
-  QStandardPaths::MoviesLocation        : "C:/Users/<user-name>/Videos"
-  QStandardPaths::PicturesLocation      : "C:/Users/<user-name>/Pictures"
-  QStandardPaths::TempLocation          : "C:/Users/<user-name>/AppData/Local/Temp"
-  QStandardPaths::HomeLocation          : "C:/Users/<user-name>"
-  QStandardPaths::DataLocation          : "C:/Users/<user-name>/AppData/Local/<organization-name>/<application-name>"
-  QStandardPaths::CacheLocation         : "C:/Users/<user-name>/AppData/Local/<organization-name>/<application-name>/cache"
-  QStandardPaths::GenericDataLocation   : "C:/Users/<user-name>/AppData/Local"
-  QStandardPaths::RuntimeLocation       : "C:/Users/<user-name>"
-  QStandardPaths::ConfigLocation        : "C:/Users/<user-name>/AppData/Local/<organization-name>/<application-name>"
-  QStandardPaths::GenericConfigLocation : "C:/Users/<user-name>/AppData/Local"
-  QStandardPaths::DownloadLocation      : "C:/Users/<user-name>/Documents"
-  QStandardPaths::GenericCacheLocation  : "C:/Users/<user-name>/AppData/Local/cache"
-  QStandardPaths::AppDataLocation       : "C:/Users/<user-name>/AppData/Roaming/<organization-name>/<application-name>"
-  QStandardPaths::AppLocalDataLocation  : "C:/Users/<user-name>/AppData/Local/<organization-name>/<application-name>"
-
-  standardPaths on Mac:
-
-  QStandardPaths::DesktopLocation       : "/Users/<user-name>/Desktop"
-  QStandardPaths::DocumentsLocation     : "/Users/<user-name>/Documents"
-  QStandardPaths::FontsLocation         : "/System/Library/Fonts"
-  QStandardPaths::ApplicationsLocation  : "/Applications"
-  QStandardPaths::MusicLocation         : "/Users/<user-name>/Music"
-  QStandardPaths::MoviesLocation        : "/Users/<user-name>/Movies"
-  QStandardPaths::PicturesLocation      : "/Users/<user-name>/Pictures"
-  QStandardPaths::TempLocation          : "/var/folders/<randomly-generated-by-the-OS>"
-  QStandardPaths::HomeLocation          : "/Users/<user-name>"
-  QStandardPaths::DataLocation          : "/Users/<user-name>/Library/Application Support/<organization-name>/<application-name>"
-  QStandardPaths::CacheLocation         : "/Users/<user-name>/Library/Caches/<organization-name>/<application-name>"
-  QStandardPaths::GenericDataLocation   : "/Users/<user-name>/Library/Application Support"
-  QStandardPaths::RuntimeLocation       : "/Users/<user-name>/Library/Application Support"
-  QStandardPaths::ConfigLocation        : "/Users/<user-name>/Library/Preferences"
-  QStandardPaths::GenericConfigLocation : "/Users/<user-name>/Library/Preferences"
-  QStandardPaths::DownloadLocation      : "/Users/<user-name>/Documents"
-  QStandardPaths::GenericCacheLocation  : "/Users/<user-name>/Library/Caches"
-  QStandardPaths::AppDataLocation       : "/Users/<user-name>/Library/Application Support/<organization-name>/<application-name>"
-  QStandardPaths::AppLocalDataLocation  : "/Users/<user-name>/Library/Application Support/<organization-name>/<application-name>"
-
-  standardPaths on Linux:
-
-  QStandardPaths::DesktopLocation       : "/home/<user-name>/Desktop"
-  QStandardPaths::DocumentsLocation     : "/home/<user-name>/Documents"
-  QStandardPaths::FontsLocation         : "/home/<user-name>/.fonts"
-  QStandardPaths::ApplicationsLocation  : "/home/<user-name>/.local/share/applications"
-  QStandardPaths::MusicLocation         : "/home/<user-name>/Music"
-  QStandardPaths::MoviesLocation        : "/home/<user-name>/Videos"
-  QStandardPaths::PicturesLocation      : "/home/<user-name>/Pictures"
-  QStandardPaths::TempLocation          : "/tmp"
-  QStandardPaths::HomeLocation          : "/home/<user-name>"
-  QStandardPaths::DataLocation          : "/home/<user-name>/.local/share/<organization-name>/<application-name>"
-  QStandardPaths::CacheLocation         : "/home/<user-name>/.cache/<organization-name>/<application-name>"
-  QStandardPaths::GenericDataLocation   : "/home/<user-name>/.local/share"
-  QStandardPaths::RuntimeLocation       : "/run/user/<user-name>"
-  QStandardPaths::ConfigLocation        : "/home/<user-name>/.config"
-  QStandardPaths::GenericConfigLocation : "/home/<user-name>/.config"
-  QStandardPaths::DownloadLocation      : "/home/<user-name>/Download"
-  QStandardPaths::GenericCacheLocation  : "/home/<user-name>/.cache"
-  QStandardPaths::AppDataLocation       : "/home/<user-name>/.local/share/<APPNAME>"
-  QStandardPaths::AppLocalDataLocation  : "/home/<user-name>/.local/share/<APPNAME>"
-
- */
 
 void Application::Import(TreeBank *tb){
 
@@ -1392,8 +1321,8 @@ void Application::Quit(){
     TreeBank::ReleaseAllView();
 
     connect(m_AutoSaver, &AutoSaver::Finished, [](){
-        Application::GetInstance()->disconnect();
-        QTimer::singleShot(0, Application::GetInstance(), &Application::quit);
+        GetInstance()->disconnect();
+        QTimer::singleShot(0, GetInstance(), &Application::quit);
     });
     if(!m_AutoSaver->IsSaving()) m_AutoSaver->SaveAll();
 }
@@ -1549,10 +1478,10 @@ void Application::LoadGlobalSettings(){
 }
 
 void Application::SaveSettingsFile(){
-    QString datadir = Application::DataDirectory();
+    QString datadir = DataDirectory();
 
-    QString settings  = datadir + Application::GlobalSettingsFileName(false);
-    QString settingsb = datadir + Application::GlobalSettingsFileName(true);
+    QString settings  = datadir + GlobalSettingsFileName(false);
+    QString settingsb = datadir + GlobalSettingsFileName(true);
 
     if(QFile::exists(settingsb)) QFile::remove(settingsb);
 
@@ -1599,10 +1528,10 @@ void Application::LoadSettingsFile(){
 }
 
 void Application::SaveIconDatabase(){
-    QString datadir = Application::DataDirectory();
+    QString datadir = DataDirectory();
 
-    QString icondata  = datadir + Application::IconDatabaseFileName(false);
-    QString icondatab = datadir + Application::IconDatabaseFileName(true);
+    QString icondata  = datadir + IconDatabaseFileName(false);
+    QString icondatab = datadir + IconDatabaseFileName(true);
 
     if(QFile::exists(icondatab)) QFile::remove(icondatab);
 
@@ -1665,10 +1594,10 @@ QIcon Application::GetIcon(QString host){
 
 #ifdef PASSWORD_MANAGER
 void Application::SavePasswordSettings(){
-    QString datadir = Application::DataDirectory();
+    QString datadir = DataDirectory();
 
-    QString passdata  = datadir + Application::PasswordSettingsFileName(false);
-    QString passdatab = datadir + Application::PasswordSettingsFileName(true);
+    QString passdata  = datadir + PasswordSettingsFileName(false);
+    QString passdatab = datadir + PasswordSettingsFileName(true);
 
     if(QFile::exists(passdatab)) QFile::remove(passdatab);
 
@@ -2305,6 +2234,21 @@ int Application::EventKey(){
     return key;
 }
 
+QString Application::ProductVersion(){
+    static QString version = QString();
+    if(version.isNull()){
+#if defined(Q_OS_MAC)
+        QProcess process;
+        process.start("sw_vers", QStringList() << QStringLiteral("-productVersion"));
+        process.waitForFinished(-1);
+        version = process.readAllStandardOutput().trimmed();
+#else
+        version = QSysInfo::productVersion();
+#endif
+    }
+    return version;
+}
+
 MainWindow *Application::ShadeWindow(MainWindow *win){
     if(!win) win = GetCurrentWindow();
     if(win) win->Shade();
@@ -2323,7 +2267,18 @@ MainWindow *Application::NewWindow(int id, QPoint pos){
             if(!m_MainWindows.value(id = rand() + 1, 0))
                 break;
     TreeBank::LiftMaxViewCountIfNeed(m_MainWindows.count());
+#if defined(Q_OS_MAC)
+    MainWindow *win = new MainWindow(id, pos);
+    m_MainWindows[id] = win;
+    if(m_CurrentWindow && pos.isNull() && ProductVersion().startsWith(QStringLiteral("10.13"))){
+        QTimer::singleShot(16, [win](){ m_CurrentWindow = win; });
+    } else {
+        m_CurrentWindow = win;
+    }
+    return win;
+#else
     return m_MainWindows[id] = m_CurrentWindow = new MainWindow(id, pos);
+#endif
 }
 
 MainWindow *Application::CloseWindow(MainWindow *win){
@@ -2463,6 +2418,66 @@ ModelessDialogFrame *Application::GetTemporaryDialogFrame(){
 
 void Application::SetTemporaryDialogFrame(ModelessDialogFrame *frame){
     m_TemporaryDialogFrame = frame;
+}
+
+bool Application::IsIE(QString ua){
+    return ExactMatch(IE_RE, ua);
+}
+
+bool Application::IsEdge(QString ua){
+    return ExactMatch(EDGE_RE, ua);
+}
+
+bool Application::IsFF(QString ua){
+    return ExactMatch(FIREFOX_RE, ua);
+}
+
+bool Application::IsOpera(QString ua){
+    return ExactMatch(OPERA_RE, ua);
+}
+
+bool Application::IsOPR(QString ua){
+    return ExactMatch(OPR_RE, ua);
+}
+
+bool Application::IsSafari(QString ua){
+    return ExactMatch(SAFARI_RE, ua);
+}
+
+bool Application::IsChrome(QString ua){
+    return ExactMatch(CHROME_RE, ua);
+}
+
+bool Application::IsSleipnir(QString ua){
+    return ExactMatch(SLEIPNIR_RE, ua);
+}
+
+bool Application::IsVivaldi(QString ua){
+    return ExactMatch(VIVALDI_RE, ua);
+}
+
+bool Application::IsNetScape(QString ua){
+    return ExactMatch(NETSCAPE_RE, ua);
+}
+
+bool Application::IsSeaMonkey(QString ua){
+    return ExactMatch(SEAMONKEY_RE, ua);
+}
+
+bool Application::IsiCab(QString ua){
+    return ExactMatch(ICAB_RE, ua);
+}
+
+bool Application::IsCamino(QString ua){
+    return ExactMatch(CAMINO_RE, ua);
+}
+
+bool Application::IsGecko(QString ua){
+    return ExactMatch(GECKO_RE, ua);
+}
+
+bool Application::IsCustom(QString ua){
+    return ExactMatch(CUSTOM_RE, ua);
 }
 
 QString Application::UserAgent_IE(){
@@ -2622,12 +2637,12 @@ QString Application::BrowserPath_OPR(){
     if(QFile::exists(path)) return path;
     path = QStringLiteral("C:/Program Files (x86)/Opera/launcher.exe");
     if(QFile::exists(path)) return path;
-#elif defined(Q_OS_MAC)
+/* #elif defined(Q_OS_MAC)
     path = QStringLiteral("/Applications/Opera.app/Contents/MacOS/Opera");
     if(QFile::exists(path)) return path;
 #else
     path = QStringLiteral("/usr/bin/opera");
-    if(QFile::exists(path)) return path;
+    if(QFile::exists(path)) return path; */
 #endif
     path = DISABLE_FILENAME;
     return QString();
@@ -2828,7 +2843,11 @@ bool Application::OpenUrlWith_Edge(QUrl url){
 
 bool Application::OpenUrlWith_FF(QUrl url){
     if(url.isEmpty() || BrowserPath_FF().isEmpty()) return false;
+#if defined(Q_OS_MAC)
+    return QProcess::startDetached(QStringLiteral("open"), QStringList() << QStringLiteral("-a") << QStringLiteral("Firefox") << QString::fromUtf8(url.toEncoded()));
+#else
     return QProcess::startDetached(BrowserPath_FF(), QStringList() << QString::fromUtf8(url.toEncoded()));
+#endif
 }
 
 bool Application::OpenUrlWith_Opera(QUrl url){
@@ -2843,7 +2862,11 @@ bool Application::OpenUrlWith_OPR(QUrl url){
 
 bool Application::OpenUrlWith_Safari(QUrl url){
     if(url.isEmpty() || BrowserPath_Safari().isEmpty()) return false;
+#if defined(Q_OS_MAC)
+    return QProcess::startDetached(QStringLiteral("open"), QStringList() << QStringLiteral("-a") << QStringLiteral("Safari") << QString::fromUtf8(url.toEncoded()));
+#else
     return QProcess::startDetached(BrowserPath_Safari(), QStringList() << QString::fromUtf8(url.toEncoded()));
+#endif
 }
 
 bool Application::OpenUrlWith_Chrome(QUrl url){
@@ -2853,7 +2876,13 @@ bool Application::OpenUrlWith_Chrome(QUrl url){
 
 bool Application::OpenUrlWith_Sleipnir(QUrl url){
     if(url.isEmpty() || BrowserPath_Sleipnir().isEmpty()) return false;
+#if defined(Q_OS_MAC)
+    static QString app;
+    if(app.isNull()) app = BrowserPath_Sleipnir().split(QStringLiteral("/"))[2].split(QStringLiteral("."))[0];
+    return QProcess::startDetached(QStringLiteral("open"), QStringList() << QStringLiteral("-a") << app << QString::fromUtf8(url.toEncoded()));
+#else
     return QProcess::startDetached(BrowserPath_Sleipnir(), QStringList() << QString::fromUtf8(url.toEncoded()));
+#endif
 }
 
 bool Application::OpenUrlWith_Vivaldi(QUrl url){
@@ -2902,7 +2931,7 @@ void Application::CreateBackUpFiles(){
     QStringList list = dir.entryList(BackUpFileFilters(), QDir::NoFilter, QDir::Name);
 
     while(list.length() > m_MaxBackUpGenerationCount*backupfiles.length()){
-        QFile::remove(Application::DataDirectory() + list.takeFirst());
+        QFile::remove(DataDirectory() + list.takeFirst());
     }
 }
 

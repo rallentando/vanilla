@@ -137,13 +137,14 @@ public:
     }
 
     void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE {
+        emit urlChanged(url);
         load(url);
     }
     void TriggerNativeLoadAction(const QNetworkRequest &req,
                                  QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
                                  const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE {
-        Q_UNUSED(operation);
-        Q_UNUSED(body);
+        Q_UNUSED(operation); Q_UNUSED(body);
+        emit urlChanged(req.url());
         load(req.url());
     }
     void TriggerNativeGoBackAction() Q_DECL_OVERRIDE {
@@ -162,41 +163,28 @@ public:
     }
 
     void UpKeyEvent() Q_DECL_OVERRIDE {
-        page()->runJavaScript(QStringLiteral("(function(){ document.body.scrollTop-=40;})()"),
-                              [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(UpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void DownKeyEvent() Q_DECL_OVERRIDE {
-        page()->runJavaScript(QStringLiteral("(function(){ document.body.scrollTop+=40;})()"),
-                              [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(DownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void RightKeyEvent() Q_DECL_OVERRIDE {
-        page()->runJavaScript(QStringLiteral("(function(){ document.body.scrollLeft+=40;})()"),
-                              [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(RightKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void LeftKeyEvent() Q_DECL_OVERRIDE {
-        page()->runJavaScript(QStringLiteral("(function(){ document.body.scrollLeft-=40;})()"),
-                              [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(LeftKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void PageDownKeyEvent() Q_DECL_OVERRIDE {
-        page()->runJavaScript(QStringLiteral("(function(){ document.body.scrollTop+=document.documentElement.clientHeight*0.9;})()"),
-                              [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(PageDownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void PageUpKeyEvent() Q_DECL_OVERRIDE {
-        page()->runJavaScript(QStringLiteral("(function(){ document.body.scrollTop-=document.documentElement.clientHeight*0.9;})()"),
-                              [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(PageUpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void HomeKeyEvent() Q_DECL_OVERRIDE {
-        page()->runJavaScript(QStringLiteral("(function(){ document.body.scrollTop=0;})()"),
-                              [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(HomeKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void EndKeyEvent() Q_DECL_OVERRIDE {
-        page()->runJavaScript
-            (QStringLiteral("(function(){\n"
-                          VV"    document.body.scrollTop = \n"
-                          VV"        (document.documentElement.scrollHeight - \n"
-                          VV"         document.documentElement.clientHeight);\n"
-                          VV"})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(EndKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
 
     void KeyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE { keyPressEvent(ev);}
@@ -226,9 +214,8 @@ public:
 public slots:
     QSize size() Q_DECL_OVERRIDE { return base()->size();}
     void resize(QSize size) Q_DECL_OVERRIDE {
-        if(TreeBank::PurgeView()){
-            MainWindow *win = m_TreeBank ? m_TreeBank->GetMainWindow() : 0;
-            base()->setGeometry(win ? win->geometry() : QRect(QPoint(), size));
+        if(TreeBank::PurgeView() && m_TreeBank){
+            base()->setGeometry(QRect(m_TreeBank->mapToGlobal(QPoint()), size));
         } else {
             base()->setGeometry(QRect(QPoint(), size));
         }
@@ -314,7 +301,9 @@ public slots:
     void SetFocusToElement(QString);
     void FireClickEvent(QString, QPoint);
     void SetTextValue(QString, QString);
+#if QT_VERSION < 0x050B00
     void AssignInspector();
+#endif
     void OnIconChanged(const QIcon &icon);
 
     void Copy() Q_DECL_OVERRIDE;
@@ -376,7 +365,9 @@ protected:
 
 private:
     QImage m_GrabedDisplayData;
+#if QT_VERSION < 0x050B00
     static QMap<View*, QUrl> m_InspectorTable;
+#endif
     QWebEngineView *m_Inspector;
     int m_ScrollSignalTimer;
     bool m_PreventScrollRestoration;
@@ -420,12 +411,7 @@ protected:
             }
 
 #ifdef PASSWORD_MANAGER
-            if((ke->modifiers() & Qt::ControlModifier
-#    if defined(Q_OS_MAC)
-                || ke->modifiers() & Qt::MetaModifier
-#    endif
-                ) &&
-               ke->key() == Qt::Key_Return){
+            if(Application::HasCtrlModifier(ke) && ke->key() == Qt::Key_Return){
 
                 QString data = Application::GetAuthData
                     (m_View->page()->profile()->storageName() +

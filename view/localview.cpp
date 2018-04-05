@@ -250,9 +250,6 @@ void LocalView::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
-
-
-
         if(0);
 #ifdef WEBENGINEVIEW
         else if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
@@ -559,6 +556,8 @@ void LocalView::Connect(TreeBank *tb){
           //connect(receiver, SIGNAL(Left()),  this, SLOT(ThumbList_MoveToLeftItem()));
           //connect(receiver, SIGNAL(Home()),  this, SLOT(ThumbList_MoveToFirstItem()));
           //connect(receiver, SIGNAL(End()),   this, SLOT(ThumbList_MoveToLastItem()));
+          //connect(receiver, SIGNAL(PageUp()), this, SLOT(ThumbList_MoveToPrevPage()));
+          //connect(receiver, SIGNAL(PageDown()), this, SLOT(ThumbList_MoveToNextPage()));
         }
     }
 
@@ -674,6 +673,8 @@ void LocalView::Disconnect(TreeBank *tb){
           //disconnect(receiver, SIGNAL(Left()),  this, SLOT(ThumbList_MoveToLeftItem()));
           //disconnect(receiver, SIGNAL(Home()),  this, SLOT(ThumbList_MoveToFirstItem()));
           //disconnect(receiver, SIGNAL(End()),   this, SLOT(ThumbList_MoveToLastItem()));
+          //disconnect(receiver, SIGNAL(PageUp()), this, SLOT(ThumbList_MoveToPrevPage()));
+          //disconnect(receiver, SIGNAL(PageDown()), this, SLOT(ThumbList_MoveToNextPage()));
         }
     }
 
@@ -875,21 +876,11 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
             delete action;
             m_ActionTable[a] = action = new QAction(this);
             break;
-        case Gadgets::_ToggleNotifier:
-            action->setChecked(GetTreeBank()->GetNotifier());
-            return action;
-        case Gadgets::_ToggleReceiver:
-            action->setChecked(GetTreeBank()->GetReceiver());
-            return action;
-        case Gadgets::_ToggleMenuBar:
-            action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
-            return action;
-        case Gadgets::_ToggleTreeBar:
-            action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
-            return action;
-        case Gadgets::_ToggleToolBar:
-            action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
-            return action;
+        case Gadgets::_ToggleNotifier: action->setChecked(GetTreeBank()->GetNotifier()); return action;
+        case Gadgets::_ToggleReceiver: action->setChecked(GetTreeBank()->GetReceiver()); return action;
+        case Gadgets::_ToggleMenuBar:  action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty()); return action;
+        case Gadgets::_ToggleTreeBar:  action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible()); return action;
+        case Gadgets::_ToggleToolBar:  action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible()); return action;
         default:
             return action;
         }
@@ -2329,7 +2320,7 @@ void PixmapItem::keyPressEvent(QKeyEvent *ev){
                   ev->key() == Qt::Key_Backtab ||
                   ev->key() == Qt::Key_Backspace ||
                   (ev->key() == Qt::Key_Space &&
-                   ev->modifiers() == Qt::ShiftModifier)){
+                   Application::HasShiftModifier(ev))){
 
             m_LocalView->ThumbList_ScrollUp();
 
@@ -2432,60 +2423,44 @@ void VideoItem::keyPressEvent(QKeyEvent *ev){
             ev->setAccepted(true);
 
         } else if(ev->key() == Qt::Key_Left &&
-                  ev->modifiers() & Qt::ShiftModifier &&
-                  (ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-                   || ev->modifiers() & Qt::MetaModifier
-#endif
-                   )){
+                  Application::HasShiftModifier(ev) &&
+                  Application::HasCtrlModifier(ev)){
 
             emit statusBarMessage(tr("10 minutes back"));
             SetPositionRelative(-600000);
             ev->setAccepted(true);
 
         } else if(ev->key() == Qt::Key_Right &&
-                  ev->modifiers() & Qt::ShiftModifier &&
-                  (ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-                   || ev->modifiers() & Qt::MetaModifier
-#endif
-                   )){
+                  Application::HasShiftModifier(ev) &&
+                  Application::HasCtrlModifier(ev)){
 
             emit statusBarMessage(tr("10 minutes forward"));
             SetPositionRelative(600000);
             ev->setAccepted(true);
 
         } else if(ev->key() == Qt::Key_Left &&
-                  ev->modifiers() == Qt::ShiftModifier){
+                  Application::HasShiftModifier(ev)){
 
             emit statusBarMessage(tr("5 minutes back"));
             SetPositionRelative(-300000);
             ev->setAccepted(true);
 
         } else if(ev->key() == Qt::Key_Right &&
-                  ev->modifiers() == Qt::ShiftModifier){
+                  Application::HasShiftModifier(ev)){
 
             emit statusBarMessage(tr("5 minutes forward"));
             SetPositionRelative(300000);
             ev->setAccepted(true);
 
         } else if(ev->key() == Qt::Key_Left &&
-                  (ev->modifiers() == Qt::ControlModifier
-#if defined(Q_OS_MAC)
-                   || ev->modifiers() == Qt::MetaModifier
-#endif
-                   )){
+                  Application::HasCtrlModifier(ev)){
 
             emit statusBarMessage(tr("1 minute back"));
             SetPositionRelative(-60000);
             ev->setAccepted(true);
 
         } else if(ev->key() == Qt::Key_Right &&
-                  (ev->modifiers() == Qt::ControlModifier
-#if defined(Q_OS_MAC)
-                   || ev->modifiers() == Qt::MetaModifier
-#endif
-                   )){
+                  Application::HasCtrlModifier(ev)){
 
             emit statusBarMessage(tr("1 minute forward"));
             SetPositionRelative(60000);

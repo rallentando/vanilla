@@ -37,10 +37,6 @@ Notifier::Notifier(TreeBank *parent, bool purge)
         setAttribute(Qt::WA_TranslucentBackground);
     }
 
-    // display test.
-    //m_UploadItemTable["ulfile"] = 50;
-    //m_DownloadItemTable["dlfile"] = 50;
-
     // not display normally untill next ResizeNotify.
     resize(0, 0);
     show();

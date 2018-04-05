@@ -91,10 +91,17 @@ public:
     }
     QAction *Action(Page::CustomAction a, QVariant data = QVariant()) Q_DECL_OVERRIDE;
 
-    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE { m_QmlWebKitView->setProperty("url", url);}
+    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE {
+        emit urlChanged(url);
+        m_QmlWebKitView->setProperty("url", url);
+    }
     void TriggerNativeLoadAction(const QNetworkRequest &req,
-                                 QNetworkAccessManager::Operation = QNetworkAccessManager::GetOperation,
-                                 const QByteArray & = QByteArray()) Q_DECL_OVERRIDE { m_QmlWebKitView->setProperty("url", req.url());}
+                                 QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
+                                 const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE {
+        Q_UNUSED(operation); Q_UNUSED(body);
+        emit urlChanged(req.url());
+        m_QmlWebKitView->setProperty("url", req.url());
+    }
     void TriggerNativeGoBackAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebKitView, "goBack");}
     void TriggerNativeGoForwardAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebKitView, "goForward");}
 
@@ -133,7 +140,11 @@ public slots:
     void resize(QSize size) Q_DECL_OVERRIDE {
         rootObject()->setProperty("width", size.width());
         rootObject()->setProperty("height", size.height());
-        base()->setGeometry(QRect(QPoint(), size));
+        if(TreeBank::PurgeView() && m_TreeBank){
+            base()->setGeometry(QRect(m_TreeBank->mapToGlobal(QPoint()), size));
+        } else {
+            base()->setGeometry(QRect(QPoint(), size));
+        }
     }
     void show() Q_DECL_OVERRIDE {
         base()->show();
@@ -154,12 +165,12 @@ public slots:
         // set only notifier.
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
         CallWithScroll([this](QPointF pos){
-                if(m_TreeBank){
-                    if(Notifier *notifier = m_TreeBank->GetNotifier()){
-                        notifier->SetScroll(pos);
-                    }
+            if(m_TreeBank){
+                if(Notifier *notifier = m_TreeBank->GetNotifier()){
+                    notifier->SetScroll(pos);
                 }
-            });
+            }
+        });
     }
     void hide()    Q_DECL_OVERRIDE { base()->hide();}
     void raise()   Q_DECL_OVERRIDE { base()->raise();}

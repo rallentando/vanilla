@@ -106,58 +106,45 @@ public:
         return page() ? page()->Action(a, data) : 0;
     }
 
-    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE { m_QmlWebEngineView->setProperty("url", url);}
+    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE {
+        emit urlChanged(url);
+        m_QmlWebEngineView->setProperty("url", url);
+    }
     void TriggerNativeLoadAction(const QNetworkRequest &req,
-                                 QNetworkAccessManager::Operation = QNetworkAccessManager::GetOperation,
-                                 const QByteArray & = QByteArray()) Q_DECL_OVERRIDE { m_QmlWebEngineView->setProperty("url", req.url());}
+                                 QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
+                                 const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE {
+        Q_UNUSED(operation); Q_UNUSED(body);
+        emit urlChanged(req.url());
+        m_QmlWebEngineView->setProperty("url", req.url());
+    }
     void TriggerNativeGoBackAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goBack");}
     void TriggerNativeGoForwardAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goForward");}
     void TriggerNativeRewindAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "rewind");}
     void TriggerNativeFastForwardAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "fastForward");}
 
     void UpKeyEvent() Q_DECL_OVERRIDE {
-        CallWithEvaluatedJavaScriptResult
-            (QStringLiteral("(function(){ document.body.scrollTop-=40;})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(UpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void DownKeyEvent() Q_DECL_OVERRIDE {
-        CallWithEvaluatedJavaScriptResult
-            (QStringLiteral("(function(){ document.body.scrollTop+=40;})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(DownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void RightKeyEvent() Q_DECL_OVERRIDE {
-        CallWithEvaluatedJavaScriptResult
-            (QStringLiteral("(function(){ document.body.scrollLeft+=40;})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(RightKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void LeftKeyEvent() Q_DECL_OVERRIDE {
-        CallWithEvaluatedJavaScriptResult
-            (QStringLiteral("(function(){ document.body.scrollLeft-=40;})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(LeftKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void PageDownKeyEvent() Q_DECL_OVERRIDE {
-        CallWithEvaluatedJavaScriptResult
-            (QStringLiteral("(function(){ document.body.scrollTop+=document.documentElement.clientHeight*0.9;})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(PageDownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void PageUpKeyEvent() Q_DECL_OVERRIDE {
-        CallWithEvaluatedJavaScriptResult
-            (QStringLiteral("(function(){ document.body.scrollTop-=document.documentElement.clientHeight*0.9;})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(PageUpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void HomeKeyEvent() Q_DECL_OVERRIDE {
-        CallWithEvaluatedJavaScriptResult
-            (QStringLiteral("(function(){ document.body.scrollTop=0;})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(HomeKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
     void EndKeyEvent() Q_DECL_OVERRIDE {
-        CallWithEvaluatedJavaScriptResult
-            (QStringLiteral("(function(){\n"
-                          VV"    document.body.scrollTop = \n"
-                          VV"        (document.documentElement.scrollHeight - \n"
-                          VV"         document.documentElement.clientHeight);\n"
-                          VV"})()"),
-             [this](QVariant){ EmitScrollChanged();});
+        CallWithEvaluatedJavaScriptResult(EndKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
 
     void KeyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE { keyPressEvent(ev);}
@@ -186,7 +173,11 @@ public slots:
     void resize(QSize size) Q_DECL_OVERRIDE {
         m_QmlWebEngineView->setProperty("width", size.width());
         m_QmlWebEngineView->setProperty("height", size.height());
-        base()->setGeometry(QRect(QPoint(), size));
+        if(TreeBank::PurgeView() && m_TreeBank){
+            base()->setGeometry(QRect(m_TreeBank->mapToGlobal(QPoint()), size));
+        } else {
+            base()->setGeometry(QRect(QPoint(), size));
+        }
     }
     void show() Q_DECL_OVERRIDE {
         base()->show();
@@ -272,7 +263,9 @@ public slots:
     void SetFocusToElement(QString xpath);
     void FireClickEvent(QString xpath, QPoint pos);
     void SetTextValue(QString xpath, QString text);
+#if 1 //QT_VERSION < 0x050B00
     void AssignInspector();
+#endif
     void UpdateIcon(const QUrl &iconUrl);
 
     void HandleWindowClose();
@@ -428,7 +421,9 @@ private:
     QQuickItem *m_QmlWebEngineView;
     QIcon m_Icon;
     QImage m_GrabedDisplayData;
+#if 1 //QT_VERSION < 0x050B00
     static QMap<View*, QUrl> m_InspectorTable;
+#endif
     QWebEngineView *m_Inspector;
     int m_ScrollSignalTimer;
     bool m_PreventScrollRestoration;

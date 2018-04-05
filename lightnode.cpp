@@ -170,18 +170,6 @@ QIcon Node::GetIcon(){
     return Application::GetIcon(GetUrl().host());
 }
 
-void Node::SetCreateDateToCurrent(){
-    SetCreateDate(QDateTime::currentDateTime());
-}
-
-void Node::SetLastUpdateDateToCurrent(){
-    SetLastUpdateDate(QDateTime::currentDateTime());
-}
-
-void Node::SetLastAccessDateToCurrent(){
-    SetLastAccessDate(QDateTime::currentDateTime());
-}
-
 HistNode::HistNode()
     : Node()
 {
@@ -405,6 +393,18 @@ void HistNode::SetLastUpdateDate(QDateTime dt){
 
 void HistNode::SetLastAccessDate(QDateTime dt){
     m_LastAccessDate = dt;
+}
+
+void HistNode::SetCreateDateToCurrent(){
+    SetCreateDate(QDateTime::currentDateTime());
+}
+
+void HistNode::SetLastUpdateDateToCurrent(){
+    SetLastUpdateDate(QDateTime::currentDateTime());
+}
+
+void HistNode::SetLastAccessDateToCurrent(){
+    SetLastAccessDate(QDateTime::currentDateTime());
 }
 
 void HistNode::SetImage(const QImage &image){
@@ -823,6 +823,30 @@ void ViewNode::SetLastUpdateDate(QDateTime dt){
 
 void ViewNode::SetLastAccessDate(QDateTime dt){
     m_LastAccessDate = dt;
+}
+
+void ViewNode::SetCreateDateToCurrent(){
+    // unused.
+    SetCreateDate(QDateTime::currentDateTime());
+}
+
+void ViewNode::SetLastUpdateDateToCurrent(){
+    QDateTime current = QDateTime::currentDateTime();
+    SetLastUpdateDate(current);
+    Node *nd = this;
+    while(nd && !nd->IsRoot()){
+        nd->SetLastAccessDate(current);
+        nd = nd->GetParent();
+    }
+}
+
+void ViewNode::SetLastAccessDateToCurrent(){
+    QDateTime current = QDateTime::currentDateTime();
+    Node *nd = this;
+    while(nd && !nd->IsRoot()){
+        nd->SetLastAccessDate(current);
+        nd = nd->GetParent();
+    }
 }
 
 QCache<QString, QImage> LocalNode::m_FileImageCache(DEFAULT_LOCALVIEW_MAX_FILEIMAGE);

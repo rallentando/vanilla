@@ -76,6 +76,10 @@ WebKitPage::WebKitPage(NetworkAccessManager *nam, QObject *parent)
     //connect(this,   SIGNAL(selectionChanged()),
     //        parent, SIGNAL(selectionChanged()));
 
+    connect(this, SIGNAL(featurePermissionRequested(QWebFrame*, QWebPage::Feature)),
+            this, SLOT(HandleFeaturePermission(QWebFrame*, QWebPage::Feature)));
+    connect(this, SIGNAL(fullScreenRequested(QWebFullScreenRequest)),
+            this, SLOT(HandleFullScreen(QWebFullScreenRequest)));
     connect(this, SIGNAL(downloadRequested(QNetworkRequest)),
             this, SLOT(Download(QNetworkRequest)));
     connect(this, SIGNAL(unsupportedContent(QNetworkReply*)),
@@ -284,6 +288,65 @@ QAction *WebKitPage::Action(Page::CustomAction a, QVariant data){
     default: break;
     }
     return m_Page->Action(a, data);
+}
+
+void WebKitPage::HandleFeaturePermission(QWebFrame *frame, QWebPage::Feature feature){
+    QString featureString;
+    switch(feature){
+    case QWebPage::Notifications:
+        featureString = QStringLiteral("Notifications"); break;
+    case QWebPage::Geolocation:
+        featureString = QStringLiteral("Geolocation");   break;
+    default: return;
+    }
+
+    ModalDialog *dialog = new ModalDialog();
+    dialog->SetTitle(tr("Feature Permission Requested."));
+    dialog->SetCaption(tr("Feature Permission Requested."));
+    dialog->SetInformativeText
+        (tr("Feature: ") + featureString + QStringLiteral("\n\n") +
+         tr("Allow this feature?"));
+    dialog->SetButtons(QStringList() << tr("Yes") << tr("No") << tr("Cancel"));
+    dialog->Execute();
+
+    QString text = dialog->ClickedButton();
+    if(text == tr("Yes")){
+        setFeaturePermission(frame, feature, QWebPage::PermissionGrantedByUser);
+    } else if(text == tr("No")){
+        setFeaturePermission(frame, feature, QWebPage::PermissionDeniedByUser);
+    } else if(text == tr("Cancel")){
+        emit featurePermissionRequestCanceled(frame, feature);
+    }
+}
+
+void WebKitPage::HandleFullScreen(QWebFullScreenRequest request){
+    if(TreeBank *tb = m_View->GetTreeBank()){
+        bool on = request.toggleOn();
+        tb->GetMainWindow()->SetFullScreen(on);
+        m_View->SetDisplayObscured(on);
+        request.accept();
+        if(!on) return;
+        ModelessDialog *dialog = new ModelessDialog();
+        // connect to 'Returned', because default value is true.
+        connect(this, &WebKitPage::destroyed, dialog, &ModelessDialog::Returned);
+        connect(this, &WebKitPage::fullScreenRequested, dialog, &ModelessDialog::Returned);
+        dialog->SetTitle(tr("This page becomes full screen mode."));
+        dialog->SetCaption(tr("Press Esc to exit."));
+        dialog->SetButtons(QStringList() << tr("OK") << tr("Cancel"));
+        dialog->SetDefaultValue(true);
+        dialog->SetCallBack([this](bool ok){
+            if(!ok){
+                // this doesn't work...
+                //triggerAction(ToggleVideoFullscreen);
+                if(TreeBank *tb = m_View->GetTreeBank())
+                    tb->GetMainWindow()->SetFullScreen(false);
+                m_View->SetDisplayObscured(false);
+            }
+        });
+        QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    } else {
+        request.reject();
+    }
 }
 
 void WebKitPage::HandleUnsupportedContent(QNetworkReply *reply){

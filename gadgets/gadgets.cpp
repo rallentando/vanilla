@@ -360,6 +360,8 @@ void Gadgets::Connect(TreeBank *tb){
         connect(receiver, SIGNAL(Left()),  this, SLOT(ThumbList_MoveToLeftItem()));
         connect(receiver, SIGNAL(Home()),  this, SLOT(ThumbList_MoveToFirstItem()));
         connect(receiver, SIGNAL(End()),   this, SLOT(ThumbList_MoveToLastItem()));
+        connect(receiver, SIGNAL(PageUp()), this, SLOT(ThumbList_MoveToPrevPage()));
+        connect(receiver, SIGNAL(PageDown()), this, SLOT(ThumbList_MoveToNextPage()));
 
         connect(receiver, SIGNAL(Deactivate()),                      this, SLOT(Deactivate()));
         connect(receiver, SIGNAL(Refresh()),                         this, SLOT(ThumbList_Refresh()));
@@ -467,6 +469,8 @@ void Gadgets::Disconnect(TreeBank *tb){
         disconnect(receiver, SIGNAL(Left()),  this, SLOT(ThumbList_MoveToLeftItem()));
         disconnect(receiver, SIGNAL(Home()),  this, SLOT(ThumbList_MoveToFirstItem()));
         disconnect(receiver, SIGNAL(End()),   this, SLOT(ThumbList_MoveToLastItem()));
+        disconnect(receiver, SIGNAL(PageUp()), this, SLOT(ThumbList_MoveToPrevPage()));
+        disconnect(receiver, SIGNAL(PageDown()), this, SLOT(ThumbList_MoveToNextPage()));
 
         disconnect(receiver, SIGNAL(Deactivate()),                      this, SLOT(Deactivate()));
         disconnect(receiver, SIGNAL(Refresh()),                         this, SLOT(ThumbList_Refresh()));
@@ -1613,7 +1617,7 @@ void Gadgets::keyPressEvent(QKeyEvent *ev){
 
         if(Application::HasAnyModifier(ev) ||
            Application::IsFunctionKey(ev) ||
-           ev->modifiers() & Qt::ShiftModifier){
+           Application::HasShiftModifier(ev)){
 
             ev->setAccepted(TriggerKeyEvent(ev));
             return;
@@ -1683,7 +1687,7 @@ void Gadgets::keyPressEvent(QKeyEvent *ev){
                   ev->key() == Qt::Key_Backtab ||
                   ev->key() == Qt::Key_Backspace ||
                   (ev->key() == Qt::Key_Space &&
-                   ev->modifiers() == Qt::ShiftModifier)){
+                   Application::HasShiftModifier(ev))){
 
             AccessKey_PrevBlock();
 
@@ -1709,29 +1713,25 @@ void Gadgets::keyPressEvent(QKeyEvent *ev){
             AccessKey_NthBlock(ev->key() - Qt::Key_0);
 
         } else if(m_AccessKeySelectBlockMethod == ShiftedChar &&
-                  ev->modifiers() & Qt::ShiftModifier){
+                  Application::HasShiftModifier(ev)){
 
             m_CurrentAccessKeyBlockIndex = 0; // KeyToIndex uses this value.
             AccessKey_NthBlock(KeyToIndex(ev->key()));
 
         } else if(m_AccessKeySelectBlockMethod == CtrledChar &&
-                  (ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-                   || ev->modifiers() & Qt::MetaModifier
-#endif
-                   )){
+                  Application::HasCtrlModifier(ev)){
 
             m_CurrentAccessKeyBlockIndex = 0; // KeyToIndex uses this value.
             AccessKey_NthBlock(KeyToIndex(ev->key()));
 
         } else if(m_AccessKeySelectBlockMethod == AltedChar &&
-                  ev->modifiers() & Qt::AltModifier){
+                  Application::HasAltModifier(ev)){
 
             m_CurrentAccessKeyBlockIndex = 0; // KeyToIndex uses this value.
             AccessKey_NthBlock(KeyToIndex(ev->key()));
 
         } else if(m_AccessKeySelectBlockMethod == MetaChar &&
-                  ev->modifiers() & Qt::MetaModifier){
+                  Application::HasMetaModifier(ev)){
 
             m_CurrentAccessKeyBlockIndex = 0; // KeyToIndex uses this value.
             AccessKey_NthBlock(KeyToIndex(ev->key()));
@@ -1931,21 +1931,11 @@ QAction *Gadgets::Action(GadgetsAction a){
     QAction *action = m_ActionTable[a];
     if(action){
         switch(a){
-        case _ToggleNotifier:
-            action->setChecked(GetTreeBank()->GetNotifier());
-            break;
-        case _ToggleReceiver:
-            action->setChecked(GetTreeBank()->GetReceiver());
-            break;
-        case _ToggleMenuBar:
-            action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
-            break;
-        case _ToggleTreeBar:
-            action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
-            break;
-        case _ToggleToolBar:
-            action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
-            break;
+        case _ToggleNotifier: action->setChecked(GetTreeBank()->GetNotifier()); break;
+        case _ToggleReceiver: action->setChecked(GetTreeBank()->GetReceiver()); break;
+        case _ToggleMenuBar:  action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty()); break;
+        case _ToggleTreeBar:  action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible()); break;
+        case _ToggleToolBar:  action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible()); break;
         default: break;
         }
         return action;

@@ -1039,13 +1039,20 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::AutoLoadIconsForPage,              s.value(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::TouchIconsEnabled,                 s.value(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                ).value<bool>());
-#  if QT_VERSION >= 0x050800
     gwes->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled,          s.value(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled)         ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::PrintElementBackgrounds,           s.value(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)          ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::AllowRunningInsecureContent,       s.value(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gwes->testAttribute(QWebEngineSettings::AllowRunningInsecureContent)      ).value<bool>());
-#  endif
 #  if QT_VERSION >= 0x050900
     gwes->setAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, s.value(QStringLiteral("webview/preferences/AllowGeolocationOnInsecureOrigins"), gwes->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins)).value<bool>());
+#  endif
+#  if QT_VERSION >= 0x050A00
+    gwes->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, s.value(QStringLiteral("webview/preferences/AllowWindowActivationFromJavaScript"), gwes->testAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript)).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::ShowScrollBars,                    s.value(QStringLiteral("webview/preferences/ShowScrollBars"),                    gwes->testAttribute(QWebEngineSettings::ShowScrollBars)                   ).value<bool>());
+#  endif
+#  if QT_VERSION >= 0x050B00
+    gwes->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture,       s.value(QStringLiteral("webview/preferences/PlaybackRequiresUserGesture"),       gwes->testAttribute(QWebEngineSettings::PlaybackRequiresUserGesture)      ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly,        s.value(QStringLiteral("webview/preferences/WebRTCPublicInterfacesOnly"),        gwes->testAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly)       ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::JavascriptCanPaste,                s.value(QStringLiteral("webview/preferences/JavascriptCanPaste"),                gwes->testAttribute(QWebEngineSettings::JavascriptCanPaste)               ).value<bool>());
 #  endif
     gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::FullScreenSupportEnabled,          s.value(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),        /*gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)*/  true ).value<bool>());
@@ -1155,28 +1162,26 @@ void View::LoadSettings(){
                   gws->userStyleSheetUrl()).value<QUrl>());
 #endif //ifdef WEBKITVIEW
 
-    QString policy = s.value(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AlwaysAllowThirdPartyCookies")).value<QString>();
 #ifdef WEBKITVIEW
-    if(policy == QStringLiteral("AlwaysAllowThirdPartyCookies"))
+    QString cookiePolicy = s.value(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AlwaysAllowThirdPartyCookies")).value<QString>();
+    if(cookiePolicy == QStringLiteral("AlwaysAllowThirdPartyCookies"))
         gws->setThirdPartyCookiePolicy(QWebSettings::AlwaysAllowThirdPartyCookies);
-    if(policy == QStringLiteral("AlwaysBlockThirdPartyCookies"))
+    if(cookiePolicy == QStringLiteral("AlwaysBlockThirdPartyCookies"))
         gws->setThirdPartyCookiePolicy(QWebSettings::AlwaysBlockThirdPartyCookies);
-    if(policy == QStringLiteral("AllowThirdPartyWithExistingCookies"))
+    if(cookiePolicy == QStringLiteral("AllowThirdPartyWithExistingCookies"))
         gws->setThirdPartyCookiePolicy(QWebSettings::AllowThirdPartyWithExistingCookies);
 #endif
 
-#ifdef WEBKITVIEW
-    gws->setFontFamily(QWebSettings::StandardFont,         s.value(QStringLiteral("webview/font/StandardFont"),           gws->fontFamily(QWebSettings::StandardFont)         ).value<QString>());
-    gws->setFontFamily(QWebSettings::SansSerifFont,        s.value(QStringLiteral("webview/font/SansSerifFont"),          gws->fontFamily(QWebSettings::SansSerifFont)        ).value<QString>());
-    gws->setFontFamily(QWebSettings::SerifFont,            s.value(QStringLiteral("webview/font/SerifFont"),              gws->fontFamily(QWebSettings::SerifFont)            ).value<QString>());
-    gws->setFontFamily(QWebSettings::FixedFont,            s.value(QStringLiteral("webview/font/FixedFont"),              gws->fontFamily(QWebSettings::FixedFont)            ).value<QString>());
-    gws->setFontFamily(QWebSettings::CursiveFont,          s.value(QStringLiteral("webview/font/CursiveFont"),            gws->fontFamily(QWebSettings::CursiveFont)          ).value<QString>());
-    gws->setFontFamily(QWebSettings::FantasyFont,          s.value(QStringLiteral("webview/font/FantasyFont"),            gws->fontFamily(QWebSettings::FantasyFont)          ).value<QString>());
-    gws->setFontSize(QWebSettings::MinimumFontSize,        s.value(QStringLiteral("webview/font/MinimumFontSize"),        gws->fontSize(QWebSettings::MinimumFontSize)        ).value<int>());
-    gws->setFontSize(QWebSettings::MinimumLogicalFontSize, s.value(QStringLiteral("webview/font/MinimumLogicalFontSize"), gws->fontSize(QWebSettings::MinimumLogicalFontSize) ).value<int>());
-    gws->setFontSize(QWebSettings::DefaultFontSize,        s.value(QStringLiteral("webview/font/DefaultFontSize"),        gws->fontSize(QWebSettings::DefaultFontSize)        ).value<int>());
-    gws->setFontSize(QWebSettings::DefaultFixedFontSize,   s.value(QStringLiteral("webview/font/DefaultFixedFontSize"),   gws->fontSize(QWebSettings::DefaultFixedFontSize)   ).value<int>());
+#if defined(WEBENGINEVIEW) && QT_VERSION >= 0x050B00
+    QString schemePolicy = s.value(QStringLiteral("webview/detail/UnknownUrlSchemePolicy"), QStringLiteral("AllowUnknownUrlSchemesFromUserInteraction")).value<QString>();
+    if(schemePolicy == QStringLiteral("DisallowUnknownUrlSchemes"))
+        gwes->setUnknownUrlSchemePolicy(QWebEngineSettings::DisallowUnknownUrlSchemes);
+    if(schemePolicy == QStringLiteral("AllowUnknownUrlSchemesFromUserInteraction"))
+        gwes->setUnknownUrlSchemePolicy(QWebEngineSettings::AllowUnknownUrlSchemesFromUserInteraction);
+    if(schemePolicy == QStringLiteral("AllowAllUnknownUrlSchemes"))
+        gwes->setUnknownUrlSchemePolicy(QWebEngineSettings::AllowAllUnknownUrlSchemes);
 #endif
+
 #ifdef WEBENGINEVIEW
     gwes->setFontFamily(QWebEngineSettings::StandardFont,         s.value(QStringLiteral("webview/font/StandardFont"),           gwes->fontFamily(QWebEngineSettings::StandardFont)         ).value<QString>());
     gwes->setFontFamily(QWebEngineSettings::SansSerifFont,        s.value(QStringLiteral("webview/font/SansSerifFont"),          gwes->fontFamily(QWebEngineSettings::SansSerifFont)        ).value<QString>());
@@ -1189,6 +1194,18 @@ void View::LoadSettings(){
     gwes->setFontSize(QWebEngineSettings::MinimumLogicalFontSize, s.value(QStringLiteral("webview/font/MinimumLogicalFontSize"), gwes->fontSize(QWebEngineSettings::MinimumLogicalFontSize) ).value<int>());
     gwes->setFontSize(QWebEngineSettings::DefaultFontSize,        s.value(QStringLiteral("webview/font/DefaultFontSize"),        gwes->fontSize(QWebEngineSettings::DefaultFontSize)        ).value<int>());
     gwes->setFontSize(QWebEngineSettings::DefaultFixedFontSize,   s.value(QStringLiteral("webview/font/DefaultFixedFontSize"),   gwes->fontSize(QWebEngineSettings::DefaultFixedFontSize)   ).value<int>());
+#endif
+#ifdef WEBKITVIEW
+    gws->setFontFamily(QWebSettings::StandardFont,         s.value(QStringLiteral("webview/font/StandardFont"),           gws->fontFamily(QWebSettings::StandardFont)         ).value<QString>());
+    gws->setFontFamily(QWebSettings::SansSerifFont,        s.value(QStringLiteral("webview/font/SansSerifFont"),          gws->fontFamily(QWebSettings::SansSerifFont)        ).value<QString>());
+    gws->setFontFamily(QWebSettings::SerifFont,            s.value(QStringLiteral("webview/font/SerifFont"),              gws->fontFamily(QWebSettings::SerifFont)            ).value<QString>());
+    gws->setFontFamily(QWebSettings::FixedFont,            s.value(QStringLiteral("webview/font/FixedFont"),              gws->fontFamily(QWebSettings::FixedFont)            ).value<QString>());
+    gws->setFontFamily(QWebSettings::CursiveFont,          s.value(QStringLiteral("webview/font/CursiveFont"),            gws->fontFamily(QWebSettings::CursiveFont)          ).value<QString>());
+    gws->setFontFamily(QWebSettings::FantasyFont,          s.value(QStringLiteral("webview/font/FantasyFont"),            gws->fontFamily(QWebSettings::FantasyFont)          ).value<QString>());
+    gws->setFontSize(QWebSettings::MinimumFontSize,        s.value(QStringLiteral("webview/font/MinimumFontSize"),        gws->fontSize(QWebSettings::MinimumFontSize)        ).value<int>());
+    gws->setFontSize(QWebSettings::MinimumLogicalFontSize, s.value(QStringLiteral("webview/font/MinimumLogicalFontSize"), gws->fontSize(QWebSettings::MinimumLogicalFontSize) ).value<int>());
+    gws->setFontSize(QWebSettings::DefaultFontSize,        s.value(QStringLiteral("webview/font/DefaultFontSize"),        gws->fontSize(QWebSettings::DefaultFontSize)        ).value<int>());
+    gws->setFontSize(QWebSettings::DefaultFixedFontSize,   s.value(QStringLiteral("webview/font/DefaultFixedFontSize"),   gws->fontSize(QWebSettings::DefaultFixedFontSize)   ).value<int>());
 #endif
 
     m_LinkMenu = s.value(QStringLiteral("webview/menu/LinkMenu"), QStringLiteral(
@@ -1398,13 +1415,20 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)        );
     s.setValue(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)              );
     s.setValue(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                 );
-#  if QT_VERSION >= 0x050800
     s.setValue(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled)          );
     s.setValue(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)           );
     s.setValue(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gwes->testAttribute(QWebEngineSettings::AllowRunningInsecureContent)       );
-#  endif
 #  if QT_VERSION >= 0x050900
     s.setValue(QStringLiteral("webview/preferences/AllowGeolocationOnInsecureOrigins"), gwes->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins) );
+#  endif
+#  if QT_VERSION >= 0x050A00
+    s.setValue(QStringLiteral("webview/preferences/AllowWindowActivationFromJavaScript"), gwes->testAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript) );
+    s.setValue(QStringLiteral("webview/preferences/ShowScrollBars"),                    gwes->testAttribute(QWebEngineSettings::ShowScrollBars)                    );
+#  endif
+#  if QT_VERSION >= 0x050B00
+    s.setValue(QStringLiteral("webview/preferences/PlaybackRequiresUserGesture"),       gwes->testAttribute(QWebEngineSettings::PlaybackRequiresUserGesture)       );
+    s.setValue(QStringLiteral("webview/preferences/WebRTCPublicInterfacesOnly"),        gwes->testAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly)        );
+    s.setValue(QStringLiteral("webview/preferences/JavascriptCanPaste"),                gwes->testAttribute(QWebEngineSettings::JavascriptCanPaste)                );
 #  endif
     s.setValue(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                  );
     s.setValue(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),          gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)          );
@@ -1447,9 +1471,10 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),         gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)    );
 #endif //ifdef WEBENGINEVIEW
 
-#ifndef WEBKITVIEW
+#ifdef WEBENGINEVIEW
     s.setValue(QStringLiteral("webview/detail/DefaultTextEncoding"),             gwes->defaultTextEncoding());
-#else
+#endif
+#ifdef WEBKITVIEW
     s.setValue(QStringLiteral("webview/detail/DefaultTextEncoding"),             gws->defaultTextEncoding());
     s.setValue(QStringLiteral("webview/detail/MaximumPagesInCache"),             gws->maximumPagesInCache());
     s.setValue(QStringLiteral("webview/detail/LocalStoragePath"),                gws->localStoragePath());
@@ -1460,16 +1485,26 @@ void View::SaveSettings(){
 #endif
 
 #ifdef WEBKITVIEW
-    QWebSettings::ThirdPartyCookiePolicy policy = gws->thirdPartyCookiePolicy();
-    if(policy == QWebSettings::AlwaysAllowThirdPartyCookies)
+    QWebSettings::ThirdPartyCookiePolicy cookiePolicy = gws->thirdPartyCookiePolicy();
+    if(cookiePolicy == QWebSettings::AlwaysAllowThirdPartyCookies)
         s.setValue(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AlwaysAllowThirdPartyCookies"));
-    if(policy == QWebSettings::AlwaysBlockThirdPartyCookies)
+    if(cookiePolicy == QWebSettings::AlwaysBlockThirdPartyCookies)
         s.setValue(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AlwaysBlockThirdPartyCookies"));
-    if(policy == QWebSettings::AllowThirdPartyWithExistingCookies)
+    if(cookiePolicy == QWebSettings::AllowThirdPartyWithExistingCookies)
         s.setValue(QStringLiteral("webview/detail/ThirdPartyCookiePolicy"), QStringLiteral("AllowThirdPartyWithExistingCookies"));
 #endif
 
-#ifndef WEBKITVIEW
+#if defined(WEBENGINEVIEW) && QT_VERSION >= 0x050B00
+    QWebEngineSettings::UnknownUrlSchemePolicy schemePolicy = gwes->unknownUrlSchemePolicy();
+    if(schemePolicy == QWebEngineSettings::DisallowUnknownUrlSchemes)
+        s.setValue(QStringLiteral("webview/detail/UnknownUrlSchemePolicy"), QStringLiteral("DisallowUnknownUrlSchemes"));
+    if(schemePolicy == QWebEngineSettings::AllowUnknownUrlSchemesFromUserInteraction)
+        s.setValue(QStringLiteral("webview/detail/UnknownUrlSchemePolicy"), QStringLiteral("AllowUnknownUrlSchemesFromUserInteraction"));
+    if(schemePolicy == QWebEngineSettings::AllowAllUnknownUrlSchemes)
+        s.setValue(QStringLiteral("webview/detail/UnknownUrlSchemePolicy"), QStringLiteral("AllowAllUnknownUrlSchemes"));
+#endif
+
+#ifdef WEBENGINEVIEW
     s.setValue(QStringLiteral("webview/font/StandardFont"),           gwes->fontFamily(QWebEngineSettings::StandardFont)         );
     s.setValue(QStringLiteral("webview/font/FixedFont"),              gwes->fontFamily(QWebEngineSettings::FixedFont)            );
     s.setValue(QStringLiteral("webview/font/SerifFont"),              gwes->fontFamily(QWebEngineSettings::SerifFont)            );
@@ -1481,7 +1516,7 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/font/MinimumLogicalFontSize"), gwes->fontSize(QWebEngineSettings::MinimumLogicalFontSize) );
     s.setValue(QStringLiteral("webview/font/DefaultFontSize"),        gwes->fontSize(QWebEngineSettings::DefaultFontSize)        );
     s.setValue(QStringLiteral("webview/font/DefaultFixedFontSize"),   gwes->fontSize(QWebEngineSettings::DefaultFixedFontSize)   );
-#else
+#elif WEBKITVIEW
     s.setValue(QStringLiteral("webview/font/StandardFont"),           gws->fontFamily(QWebSettings::StandardFont)         );
     s.setValue(QStringLiteral("webview/font/FixedFont"),              gws->fontFamily(QWebSettings::FixedFont)            );
     s.setValue(QStringLiteral("webview/font/SerifFont"),              gws->fontFamily(QWebSettings::SerifFont)            );
@@ -1572,13 +1607,20 @@ void View::ApplySpecificSettings(QStringList set){
         s->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, g->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled));
         s->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, g->testAttribute(QWebEngineSettings::AutoLoadIconsForPage));
         s->setAttribute(QWebEngineSettings::TouchIconsEnabled, g->testAttribute(QWebEngineSettings::TouchIconsEnabled));
-#  if QT_VERSION >= 0x050800
         s->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled, g->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled));
         s->setAttribute(QWebEngineSettings::PrintElementBackgrounds, g->testAttribute(QWebEngineSettings::PrintElementBackgrounds));
         s->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, g->testAttribute(QWebEngineSettings::AllowRunningInsecureContent));
-#  endif
 #  if QT_VERSION >= 0x050900
         s->setAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, g->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins));
+#  endif
+#  if QT_VERSION >= 0x050A00
+        s->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, g->testAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript));
+        s->setAttribute(QWebEngineSettings::ShowScrollBars, g->testAttribute(QWebEngineSettings::ShowScrollBars));
+#  endif
+#  if QT_VERSION >= 0x050B00
+        s->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, g->testAttribute(QWebEngineSettings::PlaybackRequiresUserGesture));
+        s->setAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly, g->testAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly));
+        s->setAttribute(QWebEngineSettings::JavascriptCanPaste, g->testAttribute(QWebEngineSettings::JavascriptCanPaste));
 #  endif
         s->setAttribute(QWebEngineSettings::ErrorPageEnabled, g->testAttribute(QWebEngineSettings::ErrorPageEnabled));
         s->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, g->testAttribute(QWebEngineSettings::FullScreenSupportEnabled));

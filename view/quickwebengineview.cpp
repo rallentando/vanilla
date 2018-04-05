@@ -25,14 +25,18 @@
 
 #include <memory>
 
+#if 1 //QT_VERSION < 0x050B00
 QMap<View*, QUrl> QuickWebEngineView::m_InspectorTable = QMap<View*, QUrl>();
+#endif
 
 QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList set)
     :
-#if QT_VERSION >= 0x050800
-    QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.9.qml")), parent)
+#if QT_VERSION >= 0x050B00
+    QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.11.qml")), parent)
+#elif QT_VERSION >= 0x050A00
+    QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.10.qml")), parent)
 #else
-    QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.7.qml")), parent)
+    QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.9.qml")), parent)
 #endif
     , View(parent, id, set)
 {
@@ -90,7 +94,9 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
 }
 
 QuickWebEngineView::~QuickWebEngineView(){
+#if 1 //QT_VERSION < 0x050B00
     m_InspectorTable.remove(this);
+#endif
     if(m_Inspector) m_Inspector->deleteLater();
 }
 
@@ -118,13 +124,20 @@ void QuickWebEngineView::ApplySpecificSettings(QStringList set){
     SetPreference(QWebEngineSettings::TouchIconsEnabled,                 "TouchIconsEnabled");
     SetPreference(QWebEngineSettings::ErrorPageEnabled,                  "ErrorPageEnabled");
     SetPreference(QWebEngineSettings::FullScreenSupportEnabled,          "FullScreenSupportEnabled");
-#  if QT_VERSION >= 0x050800
     SetPreference(QWebEngineSettings::FocusOnNavigationEnabled,          "FocusOnNavigationEnabled");
     SetPreference(QWebEngineSettings::PrintElementBackgrounds,           "PrintElementBackgrounds");
     SetPreference(QWebEngineSettings::AllowRunningInsecureContent,       "AllowRunningInsecureContent");
-#  endif
 #  if QT_VERSION >= 0x050900
     SetPreference(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, "AllowGeolocationOnInsecureOrigins");
+#  endif
+#  if QT_VERSION >= 0x050A00
+    SetPreference(QWebEngineSettings::AllowWindowActivationFromJavaScript, "AllowWindowActivationFromJavaScript");
+    SetPreference(QWebEngineSettings::ShowScrollBars,                    "ShowScrollBars");
+#  endif
+#  if QT_VERSION >= 0x050B00
+    SetPreference(QWebEngineSettings::PlaybackRequiresUserGesture,       "PlaybackRequiresUserGesture");
+    SetPreference(QWebEngineSettings::WebRTCPublicInterfacesOnly,        "WebRTCPublicInterfacesOnly");
+    SetPreference(QWebEngineSettings::JavascriptCanPaste,                "JavascriptCanPaste");
 #  endif
 
     SetFontFamily(QWebEngineSettings::StandardFont,  "StandardFont");
@@ -145,6 +158,21 @@ void QuickWebEngineView::ApplySpecificSettings(QStringList set){
                               Q_ARG(QVariant, QVariant::fromValue(page()->profile()->httpAcceptLanguage())));
     QMetaObject::invokeMethod(m_QmlWebEngineView, "setDefaultTextEncoding",
                               Q_ARG(QVariant, QVariant::fromValue(page()->settings()->defaultTextEncoding())));
+
+#  if QT_VERSION >= 0x050B00
+    QString policy;
+    switch(page()->settings()->unknownUrlSchemePolicy()){
+    case QWebEngineSettings::DisallowUnknownUrlSchemes:
+        policy = "DisallowUnknownUrlSchemes"; break;
+    case QWebEngineSettings::AllowUnknownUrlSchemesFromUserInteraction:
+        policy = "AllowUnknownUrlSchemesFromUserInteraction"; break;
+    case QWebEngineSettings::AllowAllUnknownUrlSchemes:
+        policy = "AllowAllUnknownUrlSchemes"; break;
+    default: break;
+    }
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "setUnknownUrlSchemePolicy",
+                              Q_ARG(QVariant, QVariant::fromValue(policy)));
+#  endif
 }
 
 QQuickWidget *QuickWebEngineView::base(){
@@ -275,7 +303,10 @@ void QuickWebEngineView::OnLoadStarted(){
 
     emit statusBarMessage(tr("Started loading."));
     m_PreventScrollRestoration = false;
+
+#if 1 //QT_VERSION < 0x050B00
     AssignInspector();
+#endif
 
     if(m_Icon.isNull() && url() != BLANK_URL)
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
@@ -303,7 +334,9 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
     emit ViewChanged();
     emit statusBarMessage(tr("Finished loading."));
 
+#if 1 //QT_VERSION < 0x050B00
     AssignInspector();
+#endif
 
 #ifdef PASSWORD_MANAGER
     QString data = Application::GetAuthDataWithNoDialog
@@ -430,6 +463,7 @@ void QuickWebEngineView::SetTextValue(QString xpath, QString text){
     CallWithEvaluatedJavaScriptResult(SetTextValueJsCode(xpath, text), [](QVariant){});
 }
 
+#if 1 //QT_VERSION < 0x050B00
 void QuickWebEngineView::AssignInspector(){
     if(m_InspectorTable.contains(this)) return;
 
@@ -462,6 +496,7 @@ void QuickWebEngineView::AssignInspector(){
         }
     });
 }
+#endif
 
 void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
     m_Icon = QIcon();
@@ -548,6 +583,12 @@ void QuickWebEngineView::HandleFeaturePermission(const QUrl &securityOrigin, int
         featureString = QStringLiteral("MediaAudioVideoCapture"); break;
     case 3: //QQuickWebEngineView::Geolocation:
         featureString = QStringLiteral("Geolocation");            break;
+#if QT_VERSION >= 0x050A00
+    case 4: //QQuickNativeWebView::DesktopVideoCapture:
+        featureString = QStringLiteral("DesktopVideoCapture");    break;
+    case 5: //QQuickNativeWebView::DesktopAudioVideoCapture:
+        featureString = QStringLiteral("DesktopAudioVideoCapture"); break;
+#endif
     default: return;
     }
 
@@ -699,7 +740,7 @@ void QuickWebEngineView::Print(){
 
     if(filename.isEmpty()) return;
 
-    if(filename.toLower().endsWith(".pdf")){
+    if(filename.toLower().endsWith(QStringLiteral(".pdf"))){
 
         QMetaObject::invokeMethod(m_QmlWebEngineView, "printToPdf",
                                   Q_ARG(QString, filename));
@@ -758,6 +799,7 @@ void QuickWebEngineView::ExitFullScreen(){
 }
 
 void QuickWebEngineView::InspectElement(){
+#if 1 //QT_VERSION < 0x050B00
     if(!m_Inspector){
         m_Inspector = new QWebEngineView();
         m_Inspector->setAttribute(Qt::WA_DeleteOnClose, false);
@@ -767,6 +809,9 @@ void QuickWebEngineView::InspectElement(){
     }
     m_Inspector->show();
     m_Inspector->raise();
+#else
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "inspectElement");
+#endif
     //if(page()) page()->InspectElement();
 }
 
@@ -811,12 +856,7 @@ void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
     }
 
 #ifdef PASSWORD_MANAGER
-    if((ev->modifiers() & Qt::ControlModifier
-#    if defined(Q_OS_MAC)
-        || ev->modifiers() & Qt::MetaModifier
-#    endif
-        ) &&
-       ev->key() == Qt::Key_Return){
+    if(Application::HasCtrlModifier(ev) && ev->key() == Qt::Key_Return){
 
         QString data = Application::GetAuthData
             (page()->profile()->storageName() +
@@ -1056,12 +1096,9 @@ void QuickWebEngineView::mouseReleaseEvent(QMouseEvent *ev){
         QNetworkRequest req(link);
         req.setRawHeader("Referer", url().toEncoded());
 
-        if(ev->modifiers() & Qt::ShiftModifier
-           || ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-           || ev->modifiers() & Qt::MetaModifier
-#endif
-           || ev->button() == Qt::MidButton){
+        if(Application::HasShiftModifier(ev) ||
+           Application::HasCtrlModifier(ev) ||
+           ev->button() == Qt::MidButton){
 
             GestureAborted();
             m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
@@ -1146,6 +1183,11 @@ void QuickWebEngineView::dropEvent(QDropEvent *ev){
     QObject *source = ev->source();
     QString text = ev->mimeData()->text();
     QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
+
+    if(source == quickWindow()){
+        ev->setAccepted(true);
+        return;
+    }
 
     foreach(QUrl u, urls){ if(u.isLocalFile()) isLocal = true;}
 

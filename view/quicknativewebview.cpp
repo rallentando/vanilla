@@ -455,6 +455,12 @@ void QuickNativeWebView::HandleFeaturePermission(const QUrl &securityOrigin, int
         featureString = QStringLiteral("MediaAudioVideoCapture"); break;
     case 3: //QQuickNativeWebView::Geolocation:
         featureString = QStringLiteral("Geolocation");            break;
+#if QT_VERSION >= 0x050A00
+    case 4: //QQuickNativeWebView::DesktopVideoCapture:
+        featureString = QStringLiteral("DesktopVideoCapture");    break;
+    case 5: //QQuickNativeWebView::DesktopAudioVideoCapture:
+        featureString = QStringLiteral("DesktopAudioVideoCapture"); break;
+#endif
     default: return;
     }
 
@@ -575,7 +581,7 @@ void QuickNativeWebView::Print(){
 
     if(filename.isEmpty()) return;
 
-    if(filename.toLower().endsWith(".pdf")){
+    if(filename.toLower().endsWith(QStringLiteral(".pdf"))){
 
         QMetaObject::invokeMethod(m_QmlNativeWebView, "printToPdf",
                                   Q_ARG(QString, filename));
@@ -681,8 +687,7 @@ void QuickNativeWebView::keyPressEvent(QKeyEvent *ev){
     }
 
 #ifdef PASSWORD_MANAGER
-    if(ev->modifiers() & Qt::ControlModifier &&
-       ev->key() == Qt::Key_Return){
+    if(Application::HasCtrlModifier(ev) && ev->key() == Qt::Key_Return){
 
         QString data = Application::GetAuthData
             (page()->GetNetworkAccessManager()->GetId() +
@@ -913,8 +918,8 @@ void QuickNativeWebView::mouseReleaseEvent(QMouseEvent *ev){
         QNetworkRequest req(link);
         req.setRawHeader("Referer", url().toEncoded());
 
-        if(ev->modifiers() & Qt::ShiftModifier ||
-           ev->modifiers() & Qt::ControlModifier ||
+        if(Application::HasShiftModifier(ev) ||
+           Application::HasCtrlModifier(ev) ||
            ev->button() == Qt::MidButton){
 
             GestureAborted();

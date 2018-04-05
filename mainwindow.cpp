@@ -41,7 +41,8 @@
 #endif
 
 MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
-    : QMainWindow(parent)
+    :
+    QMainWindow(parent)
 {
     m_Index = id;
 
@@ -73,9 +74,6 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
              "QMenuBar::item:selected{ background-color:rgba(255, 255, 255, 225);}");
     }
 
-    move(pos);
-    LoadSettings();
-
     if(Application::EnableFramelessWindow()){
         setWindowFlags(Qt::FramelessWindowHint);
         m_TitleBar        = new TitleBar                  (this);
@@ -90,15 +88,6 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
         AdjustAllEdgeWidgets();
         connect(Application::GetInstance(), &Application::focusChanged,
                 this, &MainWindow::UpdateAllEdgeWidgets);
-
-        show();
-
-#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
-        setAttribute(Qt::WA_NoSystemBackground);
-        setAttribute(Qt::WA_TranslucentBackground);
-        QtWin::setCompositionEnabled(true);
-        QtWin::enableBlurBehindWindow(windowHandle());
-#endif
     } else {
         m_TitleBar        = 0;
         m_NorthWidget     = 0;
@@ -109,14 +98,35 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
         m_NorthEastWidget = 0;
         m_SouthWestWidget = 0;
         m_SouthEastWidget = 0;
+    }
 
-        show();
+    move(pos);
+    LoadSettings();
+
+#if defined(Q_OS_MAC)
+    QSize s = size();
+    show();
+    if(Application::ProductVersion().startsWith(QStringLiteral("10.13")))
+        // QMainWindow::size returns correct size,
+        // but displayed window's size is QSize(640, 480)...
+        resize(s);
+#else
+    show();
+#endif
 
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
+#  ifndef WEBKITVIEW // transparent html5 video issue...
+    if(Application::EnableFramelessWindow()){
+        setAttribute(Qt::WA_NoSystemBackground);
+        setAttribute(Qt::WA_TranslucentBackground);
+        QtWin::setCompositionEnabled(true);
+        QtWin::enableBlurBehindWindow(windowHandle());
+    } else {
         setAttribute(Qt::WA_TranslucentBackground);
         QtWin::extendFrameIntoClientArea(this, QMargins(-1, -1, -1, -1));
-#endif
     }
+#  endif
+#endif
 }
 
 MainWindow::~MainWindow(){
@@ -202,14 +212,10 @@ void MainWindow::LoadSettings(){
                 rect.moveTopLeft(pos());
         }
 
-#if defined(Q_OS_WIN)
         if(pos().isNull())
             setGeometry(rect);
         else
             resize(rect.size());
-#else
-        setGeometry(rect);
-#endif
 
     } else if(geometry_data.canConvert<QRect>()){
         setGeometry(geometry_data.toRect());
@@ -325,7 +331,6 @@ void MainWindow::RemoveSettings(){
     s.remove(QStringLiteral("mainwindow/toolbar%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/treebar%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/status%1").arg(m_Index));
-    //s.sync();
 }
 
 TreeBank *MainWindow::GetTreeBank() const {
@@ -371,8 +376,6 @@ void MainWindow::Shade(){
     setWindowOpacity(0.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-
-
             if(0);
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
@@ -409,7 +412,6 @@ void MainWindow::Unshade(){
     setWindowOpacity(1.0);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
-
             if(0);
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
@@ -437,8 +439,6 @@ void MainWindow::Unshade(){
     AdjustAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
     if(notifier && notifier->IsPurged()) notifier->show();
-    //Receiver *receiver = m_TreeBank->GetReceiver();
-    //if(receiver && receiver->IsPurged()) receiver->show();
     SetFocus();
 }
 
@@ -604,7 +604,7 @@ void MainWindow::ToggleShaded(){
 void MainWindow::SetMenuBar(bool on){
     if(on && IsMenuBarEmpty()){
         CreateMenuBar();
-    } else if(!IsMenuBarEmpty()){
+    } else if(!on && !IsMenuBarEmpty()){
         ClearMenuBar();
     }
 }
@@ -612,7 +612,7 @@ void MainWindow::SetMenuBar(bool on){
 void MainWindow::SetTreeBar(bool on){
     if(on && m_TreeBar->isHidden()){
         m_TreeBar->show();
-    } else if(!m_TreeBar->isVisible()){
+    } else if(!on && !m_TreeBar->isVisible()){
         m_TreeBar->hide();
     }
 }
@@ -620,7 +620,7 @@ void MainWindow::SetTreeBar(bool on){
 void MainWindow::SetToolBar(bool on){
     if(on && m_ToolBar->isHidden()){
         m_ToolBar->show();
-    } else if(!m_ToolBar->isVisible()){
+    } else if(!on && !m_ToolBar->isVisible()){
         m_ToolBar->hide();
     }
 }
@@ -628,7 +628,7 @@ void MainWindow::SetToolBar(bool on){
 void MainWindow::SetFullScreen(bool on){
     if(on && !isFullScreen()){
         showFullScreen();
-    } else if(isFullScreen()){
+    } else if(!on && isFullScreen()){
         showNormal();
     }
     SetFocus();
@@ -637,7 +637,7 @@ void MainWindow::SetFullScreen(bool on){
 void MainWindow::SetMaximized(bool on){
     if(on && !isMaximized()){
         showMaximized();
-    } else if(isMaximized()){
+    } else if(!on && isMaximized()){
         showNormal();
     }
     SetFocus();
@@ -646,7 +646,7 @@ void MainWindow::SetMaximized(bool on){
 void MainWindow::SetMinimized(bool on){
     if(on && !isMinimized()){
         showMinimized();
-    } else if(isMinimized()){
+    } else if(!on && isMinimized()){
         showNormal();
         SetFocus();
     }
@@ -655,7 +655,7 @@ void MainWindow::SetMinimized(bool on){
 void MainWindow::SetShaded(bool on){
     if(on && !IsShaded()){
         Shade();
-    } else if(IsShaded()){
+    } else if(!on && IsShaded()){
         Unshade();
         SetFocus();
     }
@@ -738,26 +738,27 @@ void MainWindow::moveEvent(QMoveEvent *ev){
     QMainWindow::moveEvent(ev);
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
+            QRect rect = QRect(m_TreeBank->mapToGlobal(QPoint()), m_TreeBank->size());
             if(0);
 #ifdef WEBENGINEVIEW
             else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
-                w->setGeometry(geometry());
+                w->setGeometry(rect);
             else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
-                w->setGeometry(geometry());
+                w->setGeometry(rect);
 #endif
 #ifdef WEBKITVIEW
             else if(WebKitView *w = qobject_cast<WebKitView*>(view->base()))
-                w->setGeometry(geometry());
+                w->setGeometry(rect);
             else if(QuickWebKitView *w = qobject_cast<QuickWebKitView*>(view->base()))
-                w->setGeometry(geometry());
+                w->setGeometry(rect);
 #endif
 #ifdef NATIVEWEBVIEW
             else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
-                w->setGeometry(geometry());
+                w->setGeometry(rect);
 #endif
 #ifdef TRIDENTVIEW
             else if(TridentView *w = qobject_cast<TridentView*>(view->base()))
-                w->setGeometry(geometry());
+                w->setGeometry(rect);
 #endif
             else;
         }
@@ -807,8 +808,6 @@ void MainWindow::showEvent(QShowEvent *ev){
     ShowAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
     if(notifier && notifier->IsPurged()) notifier->show();
-    //Receiver *receiver = m_TreeBank->GetReceiver();
-    //if(receiver && receiver->IsPurged()) receiver->show();
 }
 
 void MainWindow::hideEvent(QHideEvent *ev){

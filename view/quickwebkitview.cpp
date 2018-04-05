@@ -454,7 +454,7 @@ void QuickWebKitView::Print(){
 
     if(filename.isEmpty()) return;
 
-    if(filename.toLower().endsWith(".pdf")){
+    if(filename.toLower().endsWith(QStringLiteral(".pdf"))){
 
         QMetaObject::invokeMethod(m_QmlWebKitView, "printToPdf",
                                   Q_ARG(QString, filename));
@@ -523,7 +523,7 @@ void QuickWebKitView::keyPressEvent(QKeyEvent *ev){
         if(NavigationBySpaceKey() &&
            ev->key() == Qt::Key_Space){
 
-            if(ev->modifiers() & Qt::ShiftModifier){
+            if(Application::HasShiftModifier(ev)){
                 GetTreeBank()->Back(GetHistNode());
             } else {
                 GetTreeBank()->Forward(GetHistNode());
@@ -714,12 +714,9 @@ void QuickWebKitView::mouseReleaseEvent(QMouseEvent *ev){
         QNetworkRequest req(link);
         req.setRawHeader("Referer", url().toEncoded());
 
-        if(ev->modifiers() & Qt::ShiftModifier
-           || ev->modifiers() & Qt::ControlModifier
-#if defined(Q_OS_MAC)
-           || ev->modifiers() & Qt::MetaModifier
-#endif
-           || ev->button() == Qt::MidButton){
+        if(Application::HasShiftModifier(ev) ||
+           Application::HasCtrlModifier(ev) ||
+           ev->button() == Qt::MidButton){
 
             GestureAborted();
             m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());

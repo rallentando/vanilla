@@ -505,6 +505,90 @@ public:
           VV"})();");
     }
 
+    static inline QString UpKeyEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    elem.scrollTop -= 40;\n"
+          VV"    body.scrollTop -= 40;\n"
+          VV"})();");
+    }
+    static inline QString DownKeyEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    elem.scrollTop += 40;\n"
+          VV"    body.scrollTop += 40;\n"
+            "})();");
+    }
+    static inline QString RightKeyEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    elem.scrollLeft += 40;\n"
+          VV"    body.scrollLeft += 40;\n"
+          VV"})();");
+    }
+    static inline QString LeftKeyEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    elem.scrollLeft -= 40;\n"
+          VV"    body.scrollLeft -= 40;\n"
+          VV"})();");
+    }
+    static inline QString PageDownKeyEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    elem.scrollTop += elem.clientHeight * 0.9;\n"
+          VV"    body.scrollTop += body.clientHeight * 0.9;\n"
+          VV"})();");
+    }
+    static inline QString PageUpKeyEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    elem.scrollTop -= elem.clientHeight * 0.9;\n"
+          VV"    body.scrollTop -= body.clientHeight * 0.9;\n"
+          VV"})();");
+    }
+    static inline QString HomeKeyEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    elem.scrollTop = 0;\n"
+          VV"    body.scrollTop = 0;\n"
+          VV"})();");
+    }
+    static inline QString EndKeyEventJsCode(){
+        return QStringLiteral(
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    var vmax = elem.scrollHeight - elem.clientHeight;\n"
+          VV"    if(vmax <= 0) \n"
+          VV"        vmax = body.scrollHeight - body.clientHeight;\n"
+          VV"    elem.scrollTop = vmax;\n"
+          VV"    body.scrollTop = vmax;\n"
+          VV"})();");
+    }
+
     static inline QString SetFocusToElementJsCode(const QString &xpath){
         QString quoted = QString(xpath).replace(QStringLiteral("\""), QStringLiteral("\\\""));
         return QStringLiteral(
@@ -552,8 +636,14 @@ public:
     // return value is js array. and it'll be callbacked.
     static inline QString GetScrollValuePointJsCode(){
         return QStringLiteral(
-            "document.body && \n"
-          VV"[document.body.scrollLeft, document.body.scrollTop];");
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    var hval = elem.scrollLeft || body.scrollLeft;\n"
+          VV"    var vval = elem.scrollTop || body.scrollTop;\n"
+          VV"    return [hval, vval];\n"
+          VV"})();");
     }
 
     static inline QString SetScrollValuePointJsCode(const QPoint &pos){
@@ -563,11 +653,18 @@ public:
     // return value is js array. and it'll be callbacked.
     static inline QString GetScrollBarStateJsCode(){
         return QStringLiteral(
-            "document.documentElement &&\n"
-          VV"[document.documentElement.scrollWidth - \n"
-          VV" document.documentElement.clientWidth,\n"
-          VV" document.documentElement.scrollHeight - \n"
-          VV" document.documentElement.clientHeight];\n");
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    var hmax = elem.scrollWidth - elem.clientWidth;\n"
+          VV"    if(hmax <= 0) \n"
+          VV"        hmax = body.scrollWidth - body.clientWidth;\n"
+          VV"    var vmax = elem.scrollHeight - elem.clientHeight;\n"
+          VV"    if(vmax <= 0) \n"
+          VV"        vmax = body.scrollHeight - body.clientHeight;\n"
+          VV"    return [hmax, vmax];\n"
+          VV"})();");
     }
 
     // return value is js array. and it'll be callbacked.
@@ -575,12 +672,16 @@ public:
         return QStringLiteral(
             "(function(){\n"
           VV"    if(!document.body || !document.documentElement) return;\n"
-          VV"    var hval = document.body.scrollLeft;\n"
-          VV"    var vval = document.body.scrollTop;\n"
-          VV"    var hmax = document.documentElement.scrollWidth - \n"
-          VV"               document.documentElement.clientWidth;\n"
-          VV"    var vmax = document.documentElement.scrollHeight - \n"
-          VV"               document.documentElement.clientHeight;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    var hval = elem.scrollLeft || body.scrollLeft;\n"
+          VV"    var vval = elem.scrollTop || body.scrollTop;\n"
+          VV"    var hmax = elem.scrollWidth - elem.clientWidth;\n"
+          VV"    if(hmax <= 0) \n"
+          VV"        hmax = body.scrollWidth - body.clientWidth;\n"
+          VV"    var vmax = elem.scrollHeight - elem.clientHeight;\n"
+          VV"    if(vmax <= 0) \n"
+          VV"        vmax = body.scrollHeight - body.clientHeight;\n"
           VV"    return [hmax <= 0 ? 0.5 : hval / hmax,\n"
           VV"            vmax <= 0 ? 0.5 : vval / vmax];\n"
           VV"})();");
@@ -588,13 +689,20 @@ public:
 
     static inline QString SetScrollRatioPointJsCode(const QPointF &pos){
         return QStringLiteral(
-            "scrollTo(\n"
-          VV"    (document.documentElement.scrollWidth - \n"
-          VV"     document.documentElement.clientWidth) * \n"
-          VV"     %1,\n"
-          VV"    (document.documentElement.scrollHeight - \n"
-          VV"     document.documentElement.clientHeight) * \n"
-          VV"     %2);").arg(pos.x()).arg(pos.y());
+            "(function(){\n"
+          VV"    if(!document.body || !document.documentElement) return;\n"
+          VV"    var elem = document.documentElement;\n"
+          VV"    var body = document.body;\n"
+          VV"    var hmax = elem.scrollWidth - elem.clientWidth;\n"
+          VV"    if(hmax <= 0) \n"
+          VV"        hmax = body.scrollWidth - body.clientWidth;\n"
+          VV"    var vmax = elem.scrollHeight - elem.clientHeight;\n"
+          VV"    if(vmax <= 0) \n"
+          VV"        vmax = body.scrollHeight - body.clientHeight;\n"
+          VV"    var hval = hmax * %1;\n"
+          VV"    var vval = vmax * %2;\n"
+          VV"    scrollTo(hval, vval);\n"
+          VV"})();").arg(pos.x()).arg(pos.y());
     }
 
     static inline QString FindElementsJsCode(Page::FindElementsOption option){
@@ -611,8 +719,8 @@ public:
         return QStringLiteral(
             "(function(){\n"
             // scroll bar value is unused.
-          VV"    var scrollX = document.body.scrollLeft;\n"
-          VV"    var scrollY = document.body.scrollTop;\n"
+          VV"    var scrollX = document.documentElement.scrollLeft || document.body.scrollLeft;\n"
+          VV"    var scrollY = document.documentElement.scrollTop || document.body.scrollTop;\n"
           VV"    var baseUrl = \"\";\n"
           VV"    var baseDocument = \"index.html\";\n"
           VV"    var base = document.getElementsByTagName(\"base\");\n"
@@ -797,8 +905,8 @@ public:
         return QStringLiteral(
             "(function(){\n"
             // scroll bar value is unused.
-          VV"    var scrollX = document.body.scrollLeft;\n"
-          VV"    var scrollY = document.body.scrollTop;\n"
+          VV"    var scrollX = document.documentElement.scrollLeft || document.body.scrollLeft;\n"
+          VV"    var scrollY = document.documentElement.scrollTop || document.body.scrollTop;\n"
           VV"    var baseUrl = \"\";\n"
           VV"    var baseDocument = \"index.html\";\n"
           VV"    var base = document.getElementsByTagName(\"base\");\n"

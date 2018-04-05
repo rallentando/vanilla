@@ -410,40 +410,29 @@ void GlassStyle::Render(SpotLight *light, QPainter *painter) const {
 
     QPen pen;
 
-    if(p){
-        for(x = begx; x < endx; x++){
-            progress = (x - x1)/xrange;
-            begy = y1b + (ybrange * progress);
-            endy = y1e + (yerange * progress);
-            yrange = endy - begy;
-            for(y = begy+1; y < endy-1; y++)
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(  0, 100, 255, 77*(y-begy)/yrange));
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(  0, 100, 255, 50*(y-begy)/yrange));
-        }
-        pen.setColor(QColor(  0, 100, 255, 50));
-    } else if(h){
-        for(x = begx; x < endx; x++){
-            progress = (x - x1)/xrange;
-            begy = y1b + (ybrange * progress);
-            endy = y1e + (yerange * progress);
-            yrange = endy - begy;
-            for(y = begy+1; y < endy-1; y++)
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 255, 77*(y-begy)/yrange));
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 255, 50*(y-begy)/yrange));
-        }
-        pen.setColor(QColor(255, 255, 255, 50));
-    } else if(l){
-        for(x = begx; x < endx; x++){
-            progress = (x - x1)/xrange;
-            begy = y1b + (ybrange * progress);
-            endy = y1e + (yerange * progress);
-            yrange = endy - begy;
-            for(y = begy+1; y < endy-1; y++)
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 200, 44*(y-begy)/yrange));
-            if(rect.contains(x, y)) image.setPixel(x, y, qRgba(255, 255, 200, 30*(y-begy)/yrange));
-        }
-        pen.setColor(QColor(255, 255, 200, 30));
+    /*
+    const int r  = p ?   0 : h ? 255 : l ? 255 : 0;
+    const int g  = p ? 100 : h ? 255 : l ? 255 : 0;
+    const int b  = p ? 255 : h ? 255 : l ? 200 : 0;
+    const int a1 = p ?  77 : h ?  77 : l ?  44 : 0;
+    const int a2 = p ?  50 : h ?  50 : l ?  30 : 0;
+    */
+    const int r = p ? 0 : 255;
+    const int g = p ? 100 : 255;
+    const int b = l ? 200 : 255;
+    const int a1 = l ? 44 : 77;
+    const int a2 = l ? 30 : 50;
+
+    for(x = begx; x < endx; x++){
+        progress = (x - x1)/xrange;
+        begy = y1b + (ybrange * progress);
+        endy = y1e + (yerange * progress);
+        yrange = endy - begy;
+        for(y = begy+1; y < endy-1; y++)
+        if(rect.contains(x, y)) image.setPixel(x, y, qRgba(r, g, b, a1*(y-begy)/yrange));
+        if(rect.contains(x, y)) image.setPixel(x, y, qRgba(r, g, b, a2*(y-begy)/yrange));
     }
+    pen.setColor(QColor(r, g, b, a2));
 
     painter->drawImage(QPointF(), image);
 

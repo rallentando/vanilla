@@ -23,7 +23,9 @@ class MainWindowNorthEastWidget;
 class MainWindowSouthWestWidget;
 class MainWindowSouthEastWidget;
 
-class MainWindow : public QMainWindow{
+class MainWindow : public
+    QMainWindow
+{
     Q_OBJECT
 
 public:
