@@ -188,7 +188,7 @@ WebEngineView {
         triggerWebAction(WebEngineView.SelectAll)
     }
     function unselect(){
-        runJavaScript("(function(){ document.activeElement.blur(); getSelection().removeAllRanges();})()",
+        runJavaScript("(function(){ document.activeElement.blur(); getSelection().removeAllRanges();})();",
                       WebEngineScript.MainWorld)
     }
     function reloadAndBypassCache(){

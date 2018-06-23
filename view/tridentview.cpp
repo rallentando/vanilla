@@ -108,6 +108,14 @@ namespace {
         rect->get_bottom(&bottom);
         return QRect(left, top, right-left, bottom-top);
     }
+
+    const WinString hrefStr(L"href");
+    const WinString srcStr(L"src");
+    const WinString onclickStr(L"onclick");
+    const WinString onhoverStr(L"onmouseover");
+    const WinString roleStr(L"role");
+    const WinString typeStr(L"type");
+    const WinString relStr(L"rel");
 }
 
 class Handler : public IDocHostUIHandler, public IOleCommandTarget{
@@ -963,10 +971,10 @@ namespace {
             }
             return false;
         }
-        QString Attribute(WinString &name) const {
+        QString Attribute(const WinString &name) const {
             return Attribute(m_Element, name);
         }
-        QString Attribute(IHTMLElement *elem, WinString &name) const {
+        QString Attribute(IHTMLElement *elem, const WinString &name) const {
             if(!elem) return QString();
             WinStrVariant attr;
             elem->getAttribute(name.data, 0, &attr);
@@ -994,8 +1002,6 @@ namespace {
             if(m_Element && m_LinkUrl.isEmpty()){
                 IHTMLElement *elem = m_Element;
                 elem->AddRef();
-                WinString hrefStr(L"href");
-                WinString srcStr(L"src");
                 QString href;
                 QString src;
                 while(elem){
@@ -1018,7 +1024,6 @@ namespace {
             if(m_Element && m_ImageUrl.isEmpty()){
                 IHTMLElement *elem = m_Element;
                 elem->AddRef();
-                WinString srcStr(L"src");
                 QString src;
                 while(elem){
                     src = Attribute(elem, srcStr);
@@ -1039,8 +1044,6 @@ namespace {
             if(!m_Element) return QString();
             IHTMLElement *elem = m_Element;
             elem->AddRef();
-            WinString hrefStr(L"href");
-            WinString srcStr(L"src");
             QString href;
             QString src;
             QString str;
@@ -1065,7 +1068,6 @@ namespace {
             if(!m_Element) return QString();
             IHTMLElement *elem = m_Element;
             elem->AddRef();
-            WinString srcStr(L"src");
             QString src;
             QString str;
             while(elem){
@@ -1131,10 +1133,10 @@ namespace {
         }
         bool IsJsCommandElement() const Q_DECL_OVERRIDE {
             if(!m_Element) return false;
-            QString onclick = Attribute(WinString(L"onclick"));
-            QString href = Attribute(WinString(L"href")).toLower();
-            QString src  = Attribute(WinString(L"src")).toLower();
-            QString role = Attribute(WinString(L"role")).toLower();
+            QString onclick = Attribute(onclickStr);
+            QString href = Attribute(hrefStr).toLower();
+            QString src  = Attribute(srcStr).toLower();
+            QString role = Attribute(roleStr).toLower();
             if(href == src) href = QString();
             return !onclick.isEmpty() ||
                 href.startsWith(QStringLiteral("javascript:")) ||
@@ -1148,7 +1150,7 @@ namespace {
         bool IsTextInputElement() const Q_DECL_OVERRIDE {
             if(!m_Element) return false;
             QString tag = TagName().toLower();
-            QString type = Attribute(WinString(L"type")).toLower();
+            QString type = Attribute(typeStr).toLower();
             return tag == QStringLiteral("textarea") ||
                 (tag == QStringLiteral("input") &&
                  (type == QStringLiteral("text") ||
@@ -1158,7 +1160,7 @@ namespace {
         bool IsQueryInputElement() const Q_DECL_OVERRIDE {
             if(!m_Element) return false;
             QString tag = TagName().toLower();
-            QString type = Attribute(WinString(L"type")).toLower();
+            QString type = Attribute(typeStr).toLower();
             return tag == QStringLiteral("input") &&
                 (type == QStringLiteral("text") ||
                  type == QStringLiteral("search"));
@@ -1176,12 +1178,12 @@ namespace {
         }
         Action GetAction() const Q_DECL_OVERRIDE {
             QString tag = TagName().toLower();
-            QString type = Attribute(WinString(L"type")).toLower();
-            QString onclick = Attribute(WinString(L"onclick"));
-            QString onhover = Attribute(WinString(L"onmouseover"));
-            QString href = Attribute(WinString(L"href")).toLower();
-            QString src  = Attribute(WinString(L"src")).toLower();
-            QString role = Attribute(WinString(L"role")).toLower();
+            QString type = Attribute(typeStr).toLower();
+            QString onclick = Attribute(onclickStr);
+            QString onhover = Attribute(onhoverStr);
+            QString href = Attribute(hrefStr).toLower();
+            QString src  = Attribute(srcStr).toLower();
+            QString role = Attribute(roleStr).toLower();
             if(href == src) href = QString();
 
             if(href.startsWith(QStringLiteral("http:")) ||
@@ -1233,7 +1235,7 @@ namespace {
             return m_Element == static_cast<const Element*>(&other)->m_Element;
         }
 
-    public:
+    private:
         TridentView *m_Parent;
         IHTMLElement *m_Element;
         IHTMLElement2 *m_Element2;
@@ -1313,11 +1315,11 @@ SharedWebElementList TridentView::FindElements(Page::FindElementsOption option){
         if(option == Page::ForAccessKey){
             isNecessary = [](std::shared_ptr<Element> elem){
                 QString tag = elem->TagName().toLower();
-                QString onclick = elem->Attribute(WinString(L"onclick"));
-                QString onhover = elem->Attribute(WinString(L"onmouseover"));
-                QString href = elem->Attribute(WinString(L"href")).toLower();
-                QString src  = elem->Attribute(WinString(L"src")).toLower();
-                QString role = elem->Attribute(WinString(L"role")).toLower();
+                QString onclick = elem->Attribute(onclickStr);
+                QString onhover = elem->Attribute(onhoverStr);
+                QString href = elem->Attribute(hrefStr).toLower();
+                QString src  = elem->Attribute(srcStr).toLower();
+                QString role = elem->Attribute(roleStr).toLower();
                 if(href == src) href = QString();
                 return !href.isEmpty() ||
                     !onclick.isEmpty() ||
@@ -1340,12 +1342,12 @@ SharedWebElementList TridentView::FindElements(Page::FindElementsOption option){
             };
         } else if(option == Page::RelIsNext){
             isNecessary = [](std::shared_ptr<Element> elem){
-                QString rel = elem->Attribute(WinString(L"rel")).toLower();
+                QString rel = elem->Attribute(relStr).toLower();
                 return rel == QStringLiteral("next");
             };
         } else if(option == Page::RelIsPrev){
             isNecessary = [](std::shared_ptr<Element> elem){
-                QString rel = elem->Attribute(WinString(L"rel")).toLower();
+                QString rel = elem->Attribute(relStr).toLower();
                 return rel == QStringLiteral("prev");
             };
         } else {
@@ -1789,9 +1791,9 @@ void TridentView::SelectAll(){
 void TridentView::Unselect(){
     EvaluateJavaScript(QStringLiteral(
         "(function(){\n"
-      VV"    document.activeElement.blur();\n"
-      VV"    getSelection().removeAllRanges();\n"
-      VV"}());"));
+        "    document.activeElement.blur();\n"
+        "    getSelection().removeAllRanges();\n"
+        "}());"));
 }
 
 void TridentView::Reload(){
@@ -2050,18 +2052,7 @@ void TridentView::keyPressEvent(QKeyEvent *ev){
 void TridentView::keyReleaseEvent(QKeyEvent *ev){
     QAxWidget::keyReleaseEvent(ev);
 
-    int k = ev->key();
-
-    if(k == Qt::Key_Space ||
-     //k == Qt::Key_Up ||
-     //k == Qt::Key_Down ||
-     //k == Qt::Key_Right ||
-     //k == Qt::Key_Left ||
-       k == Qt::Key_PageUp ||
-       k == Qt::Key_PageDown ||
-       k == Qt::Key_Home ||
-       k == Qt::Key_End){
-
+    if(Application::IsMoveKey(ev)){
         QTimer::singleShot(500, this, &TridentView::EmitScrollChanged);
     }
 }

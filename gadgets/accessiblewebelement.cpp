@@ -50,7 +50,7 @@ void AccessibleWebElement::Initialize(){
     // settings
 }
 
-QRectF AccessibleWebElement::boundingRect() const{
+QRectF AccessibleWebElement::boundingRect() const {
     if(m_Pos.isNull() || !m_Element || m_Element->IsNull() || m_Index == -1)
         return QRectF();
 
@@ -82,7 +82,7 @@ QRectF AccessibleWebElement::boundingRect() const{
     return QRectF();
 }
 
-QPainterPath AccessibleWebElement::shape() const{
+QPainterPath AccessibleWebElement::shape() const {
     QPainterPath path;
     if(m_Pos.isNull() || !m_Element || m_Element->IsNull()) return path;
 
@@ -131,23 +131,23 @@ void AccessibleWebElement::SetElement(SharedWebElement elem){
     m_Gadgets->GetStyle()->OnSetElement(this, elem);
 }
 
-int AccessibleWebElement::GetIndex() const{
+int AccessibleWebElement::GetIndex() const {
     return m_Index;
 }
 
-QPoint AccessibleWebElement::GetBoundingPos() const{
+QPoint AccessibleWebElement::GetBoundingPos() const {
     return m_Pos;
 }
 
-SharedWebElement AccessibleWebElement::GetElement() const{
+SharedWebElement AccessibleWebElement::GetElement() const {
     return m_Element;
 }
 
-QPoint AccessibleWebElement::KeyExplanationBasePos() const{
+QPoint AccessibleWebElement::KeyExplanationBasePos() const {
     return QPoint(m_Pos - QPoint(40, ACCESSKEY_INFO_HEIGHT/2));
 }
 
-QMap<QString, QRect> AccessibleWebElement::KeyRects() const{
+QMap<QString, QRect> AccessibleWebElement::KeyRects() const {
     QMap<QString, QRect> map;
 
     int i = 0;
@@ -177,7 +177,7 @@ QMap<QString, QRect> AccessibleWebElement::KeyRects() const{
     return map;
 }
 
-QMap<QString, QRect> AccessibleWebElement::ExpRects() const{
+QMap<QString, QRect> AccessibleWebElement::ExpRects() const {
     QMap<QString, QRect> map;
 
     int i = 0;
@@ -202,15 +202,15 @@ QMap<QString, QRect> AccessibleWebElement::ExpRects() const{
     return map;
 }
 
-bool AccessibleWebElement::IsCurrentBlock() const{
+bool AccessibleWebElement::IsCurrentBlock() const {
     return m_Gadgets->IsCurrentBlock(this);
 }
 
-bool AccessibleWebElement::IsSelected() const{
+bool AccessibleWebElement::IsSelected() const {
     return isSelected();
 }
 
-QRect AccessibleWebElement::CharChipRect() const{
+QRect AccessibleWebElement::CharChipRect() const {
     QSize size;
     int len = m_Gadgets->IndexToString(m_Index).length();
 
@@ -228,7 +228,7 @@ QRect AccessibleWebElement::CharChipRect() const{
     return QRect(m_Pos - QPoint(size.width()/2, size.height()/2), size);
 }
 
-QFont AccessibleWebElement::CharChipFont() const{
+QFont AccessibleWebElement::CharChipFont() const {
     int len = m_Gadgets->IndexToString(m_Index).length();
 
     if(m_Element->IsFrameElement()){

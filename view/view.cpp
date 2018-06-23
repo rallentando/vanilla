@@ -1092,6 +1092,9 @@ void View::LoadSettings(){
     gws->setAttribute(QWebSettings::WebAudioEnabled,                   s.value(QStringLiteral("webview/preferences/WebAudioEnabled"),                   gws->testAttribute(QWebSettings::WebAudioEnabled)                        ).value<bool>());
     gws->setAttribute(QWebSettings::WebGLEnabled,                      s.value(QStringLiteral("webview/preferences/WebGLEnabled"),                      gws->testAttribute(QWebSettings::WebGLEnabled)                           ).value<bool>());
     gws->setAttribute(QWebSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gws->testAttribute(QWebSettings::Accelerated2dCanvasEnabled)             ).value<bool>());
+  //gws->setAttribute(QWebSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gws->testAttribute(QWebSettings::ErrorPageEnabled)                       ).value<bool>());
+    gws->setAttribute(QWebSettings::FullScreenSupportEnabled,          s.value(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),          gws->testAttribute(QWebSettings::FullScreenSupportEnabled)               ).value<bool>());
+    gws->setAttribute(QWebSettings::AllowRunningInsecureContent,       s.value(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gws->testAttribute(QWebSettings::AllowRunningInsecureContent)            ).value<bool>());
 #endif //ifdef WEBKITVIEW
 
 #ifdef WEBENGINEVIEW
@@ -1210,62 +1213,62 @@ void View::LoadSettings(){
 
     m_LinkMenu = s.value(QStringLiteral("webview/menu/LinkMenu"), QStringLiteral(
         "LinkUrl,"
-      VV"OpenLink,"
-      VV"DownloadLink,"
-      VV"CopyLinkUrl,"
-      VV"CopyLinkHtml,"
-      VV"OpenLinkWithOtherBrowser")).value<QString>();
+        "OpenLink,"
+        "DownloadLink,"
+        "CopyLinkUrl,"
+        "CopyLinkHtml,"
+        "OpenLinkWithOtherBrowser")).value<QString>();
 
     m_ImageMenu = s.value(QStringLiteral("webview/menu/ImageMenu"), QStringLiteral(
         "ImageUrl,"
-      VV"OpenImage,"
-      VV"DownloadImage,"
-      VV"CopyImage,"
-      VV"CopyImageUrl,"
-      VV"CopyImageHtml,"
-      VV"OpenImageWithOtherBrowser")).value<QString>();
+        "OpenImage,"
+        "DownloadImage,"
+        "CopyImage,"
+        "CopyImageUrl,"
+        "CopyImageHtml,"
+        "OpenImageWithOtherBrowser")).value<QString>();
 
     m_MediaMenu = s.value(QStringLiteral("webview/menu/MediaMenu"), QStringLiteral(
         "MediaUrl,"
-      VV"ToggleMediaPlayPause,"
-      VV"ToggleMediaMute,"
-      VV"ToggleMediaLoop,"
-      VV"Separator,"
-      VV"OpenMedia,"
-      VV"DownloadMedia,"
-      VV"CopyMediaUrl,"
-      VV"CopyMediaHtml,"
-      VV"OpenMediaWithOtherBrowser")).value<QString>();
+        "ToggleMediaPlayPause,"
+        "ToggleMediaMute,"
+        "ToggleMediaLoop,"
+        "Separator,"
+        "OpenMedia,"
+        "DownloadMedia,"
+        "CopyMediaUrl,"
+        "CopyMediaHtml,"
+        "OpenMediaWithOtherBrowser")).value<QString>();
 
     m_TextMenu = s.value(QStringLiteral("webview/menu/TextMenu"), QStringLiteral(
         "Undo,"
-      VV"Redo,"
-      VV"SelectAll,"
-      VV"Paste,"
-      VV"Cut")).value<QString>();
+        "Redo,"
+        "SelectAll,"
+        "Paste,"
+        "Cut")).value<QString>();
 
     m_SelectionMenu = s.value(QStringLiteral("webview/menu/SelectionMenu"), QStringLiteral(
         "Copy,"
-      VV"CopySelectedHtml,"
-      VV"Separator,"
-      VV"SearchMenu,"
-      VV"OpenAllUrl,"
-      VV"SaveAllUrl,"
-      VV"OpenAllImage,"
-      VV"SaveAllImage,"
-      VV"OpenTextAsUrl,"
-      VV"SaveTextAsUrl")).value<QString>();
+        "CopySelectedHtml,"
+        "Separator,"
+        "SearchMenu,"
+        "OpenAllUrl,"
+        "SaveAllUrl,"
+        "OpenAllImage,"
+        "SaveAllImage,"
+        "OpenTextAsUrl,"
+        "SaveTextAsUrl")).value<QString>();
 
     m_RegularMenu = s.value(QStringLiteral("webview/menu/RegularMenu"), QStringLiteral(
         "AddBookmarklet,"
-      VV"BookmarkletMenu,"
-      VV"Separator,"
-      VV"NewViewNode,"
-      VV"CloneViewNode,"
-      VV"CopyUrl,"
-      VV"CopyPageAsLink,"
-      VV"OpenWithOtherBrowser,"
-      VV"ViewOrApplySource")).value<QString>();
+        "BookmarkletMenu,"
+        "Separator,"
+        "NewViewNode,"
+        "CloneViewNode,"
+        "CopyUrl,"
+        "CopyPageAsLink,"
+        "OpenWithOtherBrowser,"
+        "ViewOrApplySource")).value<QString>();
 
     {   QStringList keys = s.allKeys(QStringLiteral("webview/keymap"));
 
@@ -1467,8 +1470,9 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/preferences/WebAudioEnabled"),                   gws->testAttribute(QWebSettings::WebAudioEnabled)                   );
     s.setValue(QStringLiteral("webview/preferences/WebGLEnabled"),                      gws->testAttribute(QWebSettings::WebGLEnabled)                      );
     s.setValue(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gws->testAttribute(QWebSettings::Accelerated2dCanvasEnabled)        );
-    s.setValue(QStringLiteral("webview/preferences/ErrorPageEnabled"),                 gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)            );
-    s.setValue(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),         gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)    );
+  //s.setValue(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gws->testAttribute(QWebSettings::ErrorPageEnabled)                  );
+    s.setValue(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),          gws->testAttribute(QWebSettings::FullScreenSupportEnabled)          );
+    s.setValue(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gws->testAttribute(QWebSettings::AllowRunningInsecureContent)       );
 #endif //ifdef WEBENGINEVIEW
 
 #ifdef WEBENGINEVIEW
@@ -1974,14 +1978,21 @@ void View::GestureStarted(QPoint pos){
     m_BeforeGesturePos  = pos;
     m_SameGestureVectorCount = 0;
     SetScrollBarState();
-    CallWithHitElement(pos, [this](SharedWebElement elem){ m_ClickedElement = elem;});
+    CallWithHitElement(pos, [this](SharedWebElement elem){
+        Q_UNUSED(this); m_ClickedElement = elem;
+    });
     CallWithSelectedText([pos, this](QString text){
         m_HadSelection = !text.isEmpty();
         if(m_HadSelection){
             m_SelectedText = text;
-            CallWithSelectedHtml([this](QString html){ m_SelectedHtml = html;});
-            CallWithGotCurrentBaseUrl([this](QUrl base){ m_CurrentBaseUrl = base;});
+            CallWithSelectedHtml([this](QString html){
+                Q_UNUSED(this); m_SelectedHtml = html;
+            });
+            CallWithGotCurrentBaseUrl([this](QUrl base){
+                Q_UNUSED(this); m_CurrentBaseUrl = base;
+            });
             CallWithSelectionRegion([this, pos](QRegion region){
+                Q_UNUSED(this);
                 if(region.contains(pos))
                     m_SelectionRegion = region;
                 else m_HadSelection = false;

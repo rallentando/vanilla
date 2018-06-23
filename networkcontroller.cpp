@@ -91,20 +91,7 @@ NetworkAccessManager::NetworkAccessManager(QString id)
         QString inner;
 
 #  ifdef USE_WEBCHANNEL
-        QFile file(":/qtwebchannel/qwebchannel.js");
-        if(file.open(QFile::ReadOnly)){
-            inner = QString::fromLatin1(file.readAll());
-        }
-        file.close();
-        inner += QStringLiteral
-            ("\n"
-           VV"if(typeof qt === \"undefined\" && typeof top.qt !== \"undefined\"){\n"
-           VV"    window.qt = top.qt;\n"
-           VV"}\n"
-           VV"new QWebChannel(qt.webChannelTransport, function(channel){\n"
-           VV"    window._vanilla = channel.objects._vanilla;\n"
-           VV"    window._view = channel.objects._view;\n"
-           VV"});\n");
+        inner += View::InstallWebChannelJsCode();
 #  endif
 #  ifdef PASSWORD_MANAGER
         inner += View::InstallSubmitEventJsCode();
@@ -116,8 +103,8 @@ NetworkAccessManager::NetworkAccessManager(QString id)
 #  endif
         source = QStringLiteral
             ("(function(){\n"
-           VV"%1\n"
-           VV"})()").arg(inner);
+             "%1\n"
+             "})();").arg(inner);
     }
 #  ifdef WEBENGINEVIEW
     QWebEngineScript script;
@@ -592,7 +579,7 @@ void NetworkAccessManager::SetSslProtocol(QString sslSet){
     else if(Application::ExactMatch(QStringLiteral("[sS]ecure(?:[pP]rotocol)?"), version))
         m_SslProtocol = QSsl::SecureProtocols;
     else if(Application::ExactMatch(QStringLiteral("[tT][lL][sS][vV](?:ersion)?1(?:.0)?"
-                                                 VV"[sS][sS][lL][vV](?:ersion)?3(?:.0)?"), version))
+                                                   "[sS][sS][lL][vV](?:ersion)?3(?:.0)?"), version))
         m_SslProtocol = QSsl::TlsV1SslV3;
     else
         m_SslProtocol = QSsl::UnknownProtocol;
@@ -665,7 +652,7 @@ DownloadItem::DownloadItem(QObject *object)
 #  endif
         m_RemoteUrl = item->url();
         m_Path = item->path();
-    } else {
+    } else if(object){
         connect(object, SIGNAL(stateChanged()),
                 this, SLOT(StateChanged()));
         connect(object, SIGNAL(receivedBytesChanged()),
@@ -931,6 +918,7 @@ void DownloadItem::Stop(){
     if(m_DownloadItem){
         QMetaObject::invokeMethod(m_DownloadItem, "cancel");
     }
+    emit Progress(m_Path, 100, 100);
     disconnect();
     m_FinishedFlag = true;
     if(!m_Path.isEmpty()){
@@ -968,7 +956,6 @@ void DownloadItem::DownloadProgress(qint64 received, qint64 total){
     }
 
     if(finished){
-
         Finished();
     }
 }
@@ -982,9 +969,11 @@ UploadItem::UploadItem(QNetworkReply *reply, qint64 size)
     : QObject(0)
 {
     m_UploadReply = reply;
-    connect(m_UploadReply, &QNetworkReply::finished, this, &UploadItem::Finished);
-    connect(m_UploadReply, &QNetworkReply::uploadProgress,
-            this, &UploadItem::UploadProgress);
+    if(m_UploadReply){
+        connect(m_UploadReply, &QNetworkReply::finished, this, &UploadItem::Finished);
+        connect(m_UploadReply, &QNetworkReply::uploadProgress,
+                this, &UploadItem::UploadProgress);
+    }
     m_FileSize = size;
     m_Path = ExpectFileName();
 }
@@ -993,9 +982,11 @@ UploadItem::UploadItem(QNetworkReply *reply, QString name)
     : QObject(0)
 {
     m_UploadReply = reply;
-    connect(m_UploadReply, &QNetworkReply::finished, this, &UploadItem::Finished);
-    connect(m_UploadReply, &QNetworkReply::uploadProgress,
-            this, &UploadItem::UploadProgress);
+    if(m_UploadReply){
+        connect(m_UploadReply, &QNetworkReply::finished, this, &UploadItem::Finished);
+        connect(m_UploadReply, &QNetworkReply::uploadProgress,
+                this, &UploadItem::UploadProgress);
+    }
     m_FileSize = -1;
     m_Path = name;
 }
@@ -1032,6 +1023,7 @@ void UploadItem::Finished(){
 
 void UploadItem::Stop(){
     m_UploadReply->abort();
+    emit Progress(m_Path, 100, 100);
     disconnect();
     deleteLater();
 }

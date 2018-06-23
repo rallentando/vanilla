@@ -116,8 +116,10 @@ private slots:
 
     void ReadyRead();
     void Finished();
-    void Stop();
     void DownloadProgress(qint64 received, qint64 total);
+
+public slots:
+    void Stop();
 
 signals:
     void Progress(QString, qint64, qint64);
@@ -132,7 +134,7 @@ class UploadItem : public QObject{
 
 public:
     UploadItem(QNetworkReply *reply, qint64 size);
-    UploadItem(QNetworkReply *reply, QString name);
+    UploadItem(QNetworkReply *reply, QString name = QString());
     ~UploadItem();
     QString GetPath() const;
     void SetPath(QString name);
@@ -146,8 +148,10 @@ private:
 
 private slots:
     void Finished();
-    void Stop();
     void UploadProgress(qint64 sent, qint64 total);
+
+public slots:
+    void Stop();
 
 signals:
     void Progress(QString, qint64, qint64);

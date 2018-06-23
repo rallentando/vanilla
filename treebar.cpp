@@ -669,16 +669,19 @@ namespace {
                     rect.setTop(rect.bottom() - 13);
                 else rect.setTop(rect.bottom() - 16);
                 rect.setBottom(rect.bottom() - 1);
+
                 rect.setLeft((rect.width()
                               - FRINGE_BUTTON_SIZE * 2.0 - SCROLL_INDICATOR_SIZE) * rate
                              + FRINGE_BUTTON_SIZE - 1);
                 rect.setWidth(SCROLL_INDICATOR_SIZE);
                 break;
             case Qt::Vertical:
+                int width = m_TreeBar->GetVerticalNodeWidth();
                 if(m_ButtonState == NotHovered)
-                    rect.setLeft(rect.width() - 13);
-                else rect.setLeft(rect.width() - 16);
-                rect.setRight(rect.right() - 1);
+                    rect.setLeft(width - 10);
+                else rect.setLeft(width - 13);
+                rect.setRight(width + 2);
+
                 rect.setTop((rect.height()
                              - FRINGE_BUTTON_SIZE * 2.0 - SCROLL_INDICATOR_SIZE) * rate
                             + FRINGE_BUTTON_SIZE - 1);
@@ -1018,7 +1021,11 @@ void TreeBar::MoveTabWindow(const QPoint &cursorPos){
     if(m_TabWindow) m_TabWindow->move(cursorPos - m_HotSpot);
 }
 
-void TreeBar::CloseTabWindow(){
+void TreeBar::HideTabWindow(){
+    if(m_TabWindow) m_TabWindow->hide();
+}
+
+void TreeBar::ClearTabWindow(){
     if(m_TabWindow){
         if(m_TabWindow->isVisible()){
             m_TabWindow = 0;
@@ -1032,10 +1039,6 @@ void TreeBar::CloseTabWindow(){
             setFocus();
         }
     }
-}
-
-void TreeBar::HideTabWindow(){
-    if(m_TabWindow) m_TabWindow->hide();
 }
 
 bool TreeBar::TabWindowVisible(){
@@ -1160,7 +1163,7 @@ void TreeBar::AddTreeBarMenu(QMenu *menu){
     animation->setCheckable(true);
     animation->setChecked(m_EnableAnimation);
     animation->connect(animation, &QAction::triggered,
-                       [this](){ m_EnableAnimation = !m_EnableAnimation;});
+                       [this](){ Q_UNUSED(this); m_EnableAnimation = !m_EnableAnimation;});
     settings->addAction(animation);
 
     QAction *closeButton = new QAction(settings);
@@ -1168,7 +1171,7 @@ void TreeBar::AddTreeBarMenu(QMenu *menu){
     closeButton->setCheckable(true);
     closeButton->setChecked(m_EnableCloseButton);
     closeButton->connect(closeButton, &QAction::triggered,
-                         [this](){ m_EnableCloseButton = !m_EnableCloseButton;});
+                         [this](){ Q_UNUSED(this); m_EnableCloseButton = !m_EnableCloseButton;});
     settings->addAction(closeButton);
 
     QAction *cloneButton = new QAction(menu);
@@ -1176,7 +1179,7 @@ void TreeBar::AddTreeBarMenu(QMenu *menu){
     cloneButton->setCheckable(true);
     cloneButton->setChecked(m_EnableCloneButton);
     cloneButton->connect(cloneButton, &QAction::triggered,
-                         [this](){ m_EnableCloneButton = !m_EnableCloneButton;});
+                         [this](){ Q_UNUSED(this); m_EnableCloneButton = !m_EnableCloneButton;});
     settings->addAction(cloneButton);
 
     menu->addMenu(settings);
@@ -3498,7 +3501,7 @@ void NodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 
 void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     bool windowCreated = m_TreeBar->TabWindowVisible();
-    m_TreeBar->CloseTabWindow();
+    m_TreeBar->ClearTabWindow();
 
     if(ev->button() == Qt::LeftButton){
 

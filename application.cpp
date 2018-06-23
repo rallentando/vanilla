@@ -424,7 +424,7 @@ void Application::Import(TreeBank *tb){
                 QStringList jsonlist =
                     bookmarksdir.entryList(QStringList() <<
                                            QStringLiteral("bookmarks-[0-9][0-9][0-9][0-9]-"
-                                                          VV"[0-9][0-9]-[0-9][0-9]_[0-9]*.json"),
+                                                          "[0-9][0-9]-[0-9][0-9]_[0-9]*.json"),
                                            QDir::NoFilter, QDir::Name);
                 if(!jsonlist.isEmpty()){
                     bookmarks = bookmarklist + QStringLiteral("/") + jsonlist.takeLast();
@@ -1226,12 +1226,12 @@ void Application::Export(TreeBank *tb){
                 modified.setUtcOffset(utcOffset);
                 out <<
                     QStringLiteral("<DT><A HREF=\"%1\" ADD_DATE=\"%2\""
-                                   VV" LAST_VISIT=\"%3\" LAST_MODIFIED=\"%4\">"
-                                   VV"%5</A>\n").arg(hn->GetUrl().toString())
-                                                .arg(added.toTime_t())
-                                                .arg(visited.toTime_t())
-                                                .arg(modified.toTime_t())
-                                                .arg(title);
+                                   " LAST_VISIT=\"%3\" LAST_MODIFIED=\"%4\">"
+                                   "%5</A>\n").arg(hn->GetUrl().toString())
+                                              .arg(added.toTime_t())
+                                              .arg(visited.toTime_t())
+                                              .arg(modified.toTime_t())
+                                              .arg(title);
             } else {
                 QString title = vn->GetTitle();
                 if(title.isEmpty()) title = QStringLiteral("NoTitle");
@@ -1244,12 +1244,12 @@ void Application::Export(TreeBank *tb){
                 QString folded = vn->GetFolded() ? QStringLiteral("true") : QStringLiteral("false");
                 out <<
                     QStringLiteral("<DT><H3 ADD_DATE=\"%1\" LAST_VISIT=\"%2\""
-                                   VV" LAST_MODIFIED=\"%3\" FOLDED=\"%4\">"
-                                   VV"%5</H3>\n").arg(added.toTime_t())
-                                                 .arg(visited.toTime_t())
-                                                 .arg(modified.toTime_t())
-                                                 .arg(folded)
-                                                 .arg(title);
+                                   " LAST_MODIFIED=\"%3\" FOLDED=\"%4\">"
+                                   "%5</H3>\n").arg(added.toTime_t())
+                                               .arg(visited.toTime_t())
+                                               .arg(modified.toTime_t())
+                                               .arg(folded)
+                                               .arg(title);
                 out << QString(4*(nest+1), ' ') << QStringLiteral("<DL><p>\n");
                 foreach(Node *child, vn->GetChildren()){
                     collectNode(child->ToViewNode(), nest+1, out);
@@ -1314,7 +1314,7 @@ void Application::Quit(){
     foreach(MainWindow *win, m_MainWindows.values()){
         win->hide();
     }
-#ifdef LocalView
+#ifdef LOCALVIEW
     LocalView::ClearCache();
 #endif
     // can't release QuickWebKitView...
@@ -1980,13 +1980,12 @@ QStringList Application::BackUpFileFilters(){
     static const QStringList filters =
         QStringList() << QStringLiteral(
             "[0-9][0-9][0-9][0-9]-" //yyyy-
-          VV"[0-9][0-9]-" //MM-
-          VV"[0-9][0-9]-" //dd-
-          VV"[0-9][0-9]-" //hh-
-          VV"[0-9][0-9]-" //mm-
-          VV"[0-9][0-9]-" //ss-
-          VV"*.xml") //(main_tree|trash_tree|cookie|config).xml
-          ;
+            "[0-9][0-9]-" //MM-
+            "[0-9][0-9]-" //dd-
+            "[0-9][0-9]-" //hh-
+            "[0-9][0-9]-" //mm-
+            "[0-9][0-9]-" //ss-
+            "*.xml"); //(main_tree|trash_tree|cookie|config).xml
     return filters;
 }
 

@@ -103,8 +103,8 @@ public:
 
     void ShowTabWindow(const QPoint &cursorPos, Node *node);
     void MoveTabWindow(const QPoint &cursorPos);
-    void CloseTabWindow();
     void HideTabWindow();
+    void ClearTabWindow();
     bool TabWindowVisible();
 
     void Adjust();

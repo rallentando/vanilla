@@ -400,6 +400,16 @@ protected:
         QWidget *widget = qobject_cast<QWidget*>(obj);
 
         switch(ev->type()){
+        case QEvent::FocusIn:{
+            QFocusEvent *fe = static_cast<QFocusEvent*>(ev);
+            m_View->focusInEvent(fe);
+            return fe->isAccepted();
+        }
+        case QEvent::FocusOut:{
+            QFocusEvent *fe = static_cast<QFocusEvent*>(ev);
+            m_View->focusOutEvent(fe);
+            return fe->isAccepted();
+        }
         case QEvent::KeyPress:{
             QKeyEvent *ke = static_cast<QKeyEvent*>(ev);
 
@@ -438,18 +448,8 @@ protected:
                 return m_View->TriggerKeyEvent(ke);
             }
 
-            int k = ke->key();
             if(!m_View->m_PreventScrollRestoration &&
-               (k == Qt::Key_Space ||
-                k == Qt::Key_Up ||
-                k == Qt::Key_Down ||
-                k == Qt::Key_Right ||
-                k == Qt::Key_Left ||
-                k == Qt::Key_PageUp ||
-                k == Qt::Key_PageDown ||
-                k == Qt::Key_Home ||
-                k == Qt::Key_End)){
-
+               Application::IsMoveKey(ke)){
                 m_View->m_PreventScrollRestoration = true;
             }
             return false;

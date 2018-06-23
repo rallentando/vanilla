@@ -3,13 +3,6 @@
 
 #include <QtCore>
 
-// for multi line QStringLiteral
-#if defined(Q_CC_MSVC) && Q_CC_MSVC < 1900
-#  define VV L
-#else
-#  define VV ""
-#endif
-
 #define QT_ASCII_CAST_WARNINGS
 
 #define QT_NO_CAST_FROM_ASCII

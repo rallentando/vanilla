@@ -58,6 +58,8 @@ public:
         Qt::MouseEventSource MouseEventSource() const {
             return m_MouseEventSource;
         }
+        void MousePressEvent(QMouseEvent *ev){ QGraphicsView::mousePressEvent(ev);}
+        void MouseReleaseEvent(QMouseEvent *ev){ QGraphicsView::mouseReleaseEvent(ev);}
     private:
         Qt::MouseEventSource m_MouseEventSource;
     };

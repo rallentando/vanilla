@@ -35,7 +35,7 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
     QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.11.qml")), parent)
 #elif QT_VERSION >= 0x050A00
     QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.10.qml")), parent)
-#else
+#elif QT_VERSION >= 0x050900
     QQuickWidget(QUrl(QStringLiteral("qrc:/view/quickwebengineview5.9.qml")), parent)
 #endif
     , View(parent, id, set)
@@ -390,6 +390,7 @@ void QuickWebEngineView::CallWithScroll(PointFCallBack callBack){
 void QuickWebEngineView::SetScrollBarState(){
     CallWithEvaluatedJavaScriptResult
         (GetScrollBarStateJsCode(), [this](QVariant var){
+            Q_UNUSED(this);
             if(!var.isValid()) return;
             QVariantList list = var.toList();
             int hmax = list[0].toInt();
@@ -885,18 +886,8 @@ void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
         return;
     }
 
-    int k = ev->key();
     if(!m_PreventScrollRestoration &&
-       (k == Qt::Key_Space ||
-        k == Qt::Key_Up ||
-        k == Qt::Key_Down ||
-        k == Qt::Key_Right ||
-        k == Qt::Key_Left ||
-        k == Qt::Key_PageUp ||
-        k == Qt::Key_PageDown ||
-        k == Qt::Key_Home ||
-        k == Qt::Key_End)){
-
+       Application::IsMoveKey(ev)){
         m_PreventScrollRestoration = true;
         return;
     }

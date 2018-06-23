@@ -2251,8 +2251,7 @@ void LocalView::wheelEvent(QGraphicsSceneWheelEvent *ev){
         }
     }
     ignoreStatusBarMessage = false;
-    if(up) ThumbList_ScrollUp();
-    else   ThumbList_ScrollDown();
+    Scroll(-ev->delta() * m_CurrentThumbnailColumnCount / 120.0);
 
     UpdateInPlaceNotifier(ev->pos(), ev->scenePos(), ignoreStatusBarMessage);
     ev->setAccepted(true);

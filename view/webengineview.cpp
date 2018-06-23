@@ -255,13 +255,17 @@ void WebEngineView::OnLoadFinished(bool ok){
 
     View::OnLoadFinished(ok);
 
+    QUrl historyUrl;
     if(history()->count()){
-        QUrl historyUrl = history()->currentItem().url();
-        if(!historyUrl.isEmpty()){
-            emit urlChanged(historyUrl);
-        } else if(!url().isEmpty()){
-            emit urlChanged(url());
-        }
+        historyUrl = history()->currentItem().url();
+    }
+    if(!url().isEmpty() && url().toEncoded().startsWith("view-source:")){
+        // why history's url doesn't start with "view-source:"....?
+        emit urlChanged(url());
+    } else if(!historyUrl.isEmpty()){
+        emit urlChanged(historyUrl);
+    } else if(!url().isEmpty()){
+        emit urlChanged(url());
     }
     if(!ok){
         emit statusBarMessage(tr("Failed to load."));
@@ -296,10 +300,10 @@ void WebEngineView::OnTitleChanged(const QString &title){
     ChangeNodeTitle(title);
 }
 
-void WebEngineView::OnUrlChanged(const QUrl &url){
+void WebEngineView::OnUrlChanged(const QUrl &uri){
     if(!GetHistNode()) return;
     SaveHistory();
-    ChangeNodeUrl(url);
+    ChangeNodeUrl(uri);
 }
 
 void WebEngineView::OnViewChanged(){
@@ -336,6 +340,7 @@ void WebEngineView::SetScrollBarState(){
     if(!page()) return;
     page()->runJavaScript
         (GetScrollBarStateJsCode(), [this](QVariant var){
+            Q_UNUSED(this);
             if(!var.isValid()) return;
             QVariantList list = var.toList();
             int hmax = list[0].toInt();
@@ -410,15 +415,6 @@ bool WebEngineView::RestoreHistory(){
 
     QByteArray ba = GetHistNode()->GetHistoryData();
     if(!ba.isEmpty()){
-        // source view cant be loaded from history stream...
-        HistNode *hn = GetHistNode();
-        if(hn->GetTitle().startsWith(QStringLiteral("view-source:"))){
-            if(QStringLiteral("http://") + hn->GetTitle().mid(12) == hn->GetUrl().toString())
-                Load(QStringLiteral("view-source:http://") + hn->GetTitle().mid(12));
-            else if(hn->GetTitle().mid(12) == hn->GetUrl().toString())
-                Load(hn->GetTitle());
-            return true;
-        }
         QDataStream stream(&ba, QIODevice::ReadOnly);
         stream >> (*history());
         return history()->count() > 0;
@@ -520,8 +516,8 @@ void WebEngineView::Unselect(){
         page()->triggerAction(QWebEnginePage::Unselect);
         page()->runJavaScript(QStringLiteral(
             "(function(){\n"
-          VV"    document.activeElement.blur();\n"
-          VV"}());"));
+            "    document.activeElement.blur();\n"
+            "}());"));
     }
 }
 
@@ -712,18 +708,8 @@ void WebEngineView::keyPressEvent(QKeyEvent *ev){
         return;
     }
 
-    int k = ev->key();
     if(!m_PreventScrollRestoration &&
-       (k == Qt::Key_Space ||
-        k == Qt::Key_Up ||
-        k == Qt::Key_Down ||
-        k == Qt::Key_Right ||
-        k == Qt::Key_Left ||
-        k == Qt::Key_PageUp ||
-        k == Qt::Key_PageDown ||
-        k == Qt::Key_Home ||
-        k == Qt::Key_End)){
-
+       Application::IsMoveKey(ev)){
         m_PreventScrollRestoration = true;
     }
 

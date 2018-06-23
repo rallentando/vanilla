@@ -187,7 +187,7 @@ QObject* WebKitPage::createPlugin(const QString &id, const QUrl &url,
     return QWebPage::createPlugin(id, url, names, values);
 }
 
-QString WebKitPage::userAgentForUrl(const QUrl &url) const{
+QString WebKitPage::userAgentForUrl(const QUrl &url) const {
     QString ua =
         static_cast<NetworkAccessManager*>(networkAccessManager())->GetUserAgent();
     if(ua.isEmpty()) return QWebPage::userAgentForUrl(url);
@@ -246,7 +246,7 @@ bool WebKitPage::extension(Extension extension,
     return QWebPage::extension(extension, option, output);
 }
 
-bool WebKitPage::supportsExtension(Extension extension) const{
+bool WebKitPage::supportsExtension(Extension extension) const {
     if(extension == ChooseMultipleFilesExtension)
         return true;
     if(extension == ErrorPageExtension)
@@ -264,6 +264,9 @@ void WebKitPage::TriggerAction(Page::CustomAction action, QVariant data){
 }
 
 QAction *WebKitPage::Action(Page::CustomAction a, QVariant data){
+    static QIcon reloadIcon = QIcon(":/resources/menu/reload.png");
+    static QIcon stopIcon   = QIcon(":/resources/menu/stop.png");
+
     QAction *result = 0;
     switch(a){
     // set text manually.
@@ -273,8 +276,9 @@ QAction *WebKitPage::Action(Page::CustomAction a, QVariant data){
     case Page::_Undo:          result = action(Undo);                    result->setText(tr("Undo"));          return result;
     case Page::_Redo:          result = action(Redo);                    result->setText(tr("Redo"));          return result;
     case Page::_SelectAll:     result = action(SelectAll);               result->setText(tr("SelectAll"));     return result;
-    case Page::_Reload:        result = action(Reload);                  result->setText(tr("Reload"));        return result;
-    case Page::_Stop:          result = action(Stop);                    result->setText(tr("Stop"));          return result;
+
+    case Page::_Reload:        result = action(Reload);                  result->setText(tr("Reload")); result->setIcon(reloadIcon); return result;
+    case Page::_Stop:          result = action(Stop);                    result->setText(tr("Stop"));   result->setIcon(stopIcon);   return result;
 
   //case Page::_LoadLink:      result = action(OpenLink);                result->setText(tr("LoadLink"));      return result;
     case Page::_OpenLink:      result = action(OpenLinkInNewWindow);     result->setText(tr("OpenLink"));      return result;

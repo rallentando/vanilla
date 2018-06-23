@@ -36,10 +36,6 @@ void Transmitter::SendCommand(QString command){
     out.setVersion(QDataStream::Qt_5_10);
 #elif QT_VERSION >= 0x050900
     out.setVersion(QDataStream::Qt_5_9);
-#elif QT_VERSION >= 0x050800
-    out.setVersion(QDataStream::Qt_5_8);
-#else
-    out.setVersion(QDataStream::Qt_5_7);
 #endif
 
     out << QString(command);

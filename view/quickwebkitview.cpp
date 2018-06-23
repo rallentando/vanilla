@@ -223,18 +223,22 @@ QAction *QuickWebKitView::Action(Page::CustomAction a, QVariant data){
         switch(a){
         case Page::_Reload:
             action->setText(tr("Reload"));
+            action->setIcon(QIcon(":/resources/menu/reload.png"));
             connect(action, SIGNAL(triggered()), m_QmlWebKitView, SLOT(reload()));
             break;
         case Page::_Stop:
             action->setText(tr("Stop"));
+            action->setIcon(QIcon(":/resources/menu/stop.png"));
             connect(action, SIGNAL(triggered()), m_QmlWebKitView, SLOT(stop()));
             break;
         case Page::_Back:
             action->setText(tr("Back"));
+            action->setIcon(QIcon(":/resources/menu/back.png"));
             connect(action, SIGNAL(triggered()), m_QmlWebKitView, SLOT(goBack()));
             break;
         case Page::_Forward:
             action->setText(tr("Forward"));
+            action->setIcon(QIcon(":/resources/menu/forward.png"));
             connect(action, SIGNAL(triggered()), m_QmlWebKitView, SLOT(goForward()));
             break;
         default: break;
@@ -860,26 +864,29 @@ void QuickWebKitView::dragLeaveEvent(QDragLeaveEvent *ev){
 void QuickWebKitView::wheelEvent(QWheelEvent *ev){
     if(!visible()) return;
 
-    QString wheel;
-    bool up = ev->delta() > 0;
+    if(ev->source() != Qt::MouseEventSynthesizedBySystem){
+        QString wheel;
+        bool up = ev->delta() > 0;
 
-    Application::AddModifiersToString(wheel, ev->modifiers());
-    Application::AddMouseButtonsToString(wheel, ev->buttons());
-    Application::AddWheelDirectionToString(wheel, up);
+        Application::AddModifiersToString(wheel, ev->modifiers());
+        Application::AddMouseButtonsToString(wheel, ev->buttons());
+        Application::AddWheelDirectionToString(wheel, up);
 
-    if(m_MouseMap.contains(wheel)){
+        if(m_MouseMap.contains(wheel)){
 
-        QString str = m_MouseMap[wheel];
-        if(!str.isEmpty()){
-            if(!View::TriggerAction(str, ev->pos()))
-                qDebug() << "Invalid mouse event: " << str;
+            QString str = m_MouseMap[wheel];
+            if(!str.isEmpty()){
+                if(!View::TriggerAction(str, ev->pos()))
+                    qDebug() << "Invalid mouse event: " << str;
+            }
+            ev->setAccepted(true);
+            return;
         }
-        ev->setAccepted(true);
-
-    } else {
-        QQuickWidget::wheelEvent(ev);
-        ev->setAccepted(true);
     }
+
+    QQuickWidget::wheelEvent(ev);
+    ev->setAccepted(true);
+
     QMetaObject::invokeMethod(m_QmlWebKitView, "emitScrollChangedIfNeed");
 }
 

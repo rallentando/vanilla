@@ -1384,7 +1384,7 @@ void GraphicsTableView::RenderBackground(QPainter *painter){
     GetStyle()->RenderBackground(this, painter);
 }
 
-QRectF GraphicsTableView::boundingRect() const{
+QRectF GraphicsTableView::boundingRect() const {
     return QRectF(QPointF(), m_Size);
 }
 
@@ -3214,7 +3214,7 @@ SpotLight::SpotLight(GraphicsTableView::SpotLightType type, QGraphicsItem *paren
 SpotLight::~SpotLight(){
 }
 
-QRectF SpotLight::boundingRect() const{
+QRectF SpotLight::boundingRect() const {
 
     const GraphicsTableView* parent = static_cast<GraphicsTableView*>(parentItem());
 
@@ -3249,7 +3249,7 @@ QRectF SpotLight::boundingRect() const{
                            qMax(y1e, y2e) - qMin(y1b, y2b)));
 }
 
-QPainterPath SpotLight::shape() const{
+QPainterPath SpotLight::shape() const {
 
     const GraphicsTableView* parent = static_cast<GraphicsTableView*>(parentItem());
 

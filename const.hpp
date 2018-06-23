@@ -43,17 +43,17 @@ static const QString NODE_DATETIME_FORMAT = QStringLiteral("yyyyMMddhhmmss");
 // user agent
 static const QString DEFAULT_USER_AGENT_IE        = QStringLiteral("Mozilla/5.0 (%SYSTEM%; Trident/7.0; rv:11.0) like Gecko");
 static const QString DEFAULT_USER_AGENT_EDGE      = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14393");
-static const QString DEFAULT_USER_AGENT_FIREFOX   = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:59.0) Gecko/20100101 Firefox/59.0");
+static const QString DEFAULT_USER_AGENT_FIREFOX   = QStringLiteral("Mozilla/5.0 (%SYSTEM%; rv:60.0) Gecko/20100101 Firefox/60.0");
 static const QString DEFAULT_USER_AGENT_OPERA     = QStringLiteral("Opera/9.80 (%SYSTEM%) Presto/2.12.388 Version/12.18");
-static const QString DEFAULT_USER_AGENT_OPR       = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36 OPR/52.0.2871.40");
-static const QString DEFAULT_USER_AGENT_SAFARI    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6");
-static const QString DEFAULT_USER_AGENT_CHROME    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36");
+static const QString DEFAULT_USER_AGENT_OPR       = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.170 Safari/537.36 OPR/53.0.2907.106");
+static const QString DEFAULT_USER_AGENT_SAFARI    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/606.1.15 (KHTML, like Gecko) Version/11.1 Safari/605.1.15");
+static const QString DEFAULT_USER_AGENT_CHROME    = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36");
 #if defined(Q_OS_MAC)
-static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/13604.5.6 Sleipnir/4.5.9020");
+static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1 Safari/13605.1.33.1.4 Sleipnir/4.5.10021");
 #else
-static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Sleipnir/4.5.11");
+static const QString DEFAULT_USER_AGENT_SLEIPNIR  = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36 Sleipnir/4.5.13");
 #endif
-static const QString DEFAULT_USER_AGENT_VIVALDI   = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.183 Safari/537.36 Vivaldi/1.96.1137.3");
+static const QString DEFAULT_USER_AGENT_VIVALDI   = QStringLiteral("Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.183 Safari/537.36 Vivaldi/1.97.1211.3");
 static const QString DEFAULT_USER_AGENT_NETSCAPE  = QStringLiteral("Mozilla/5.0 (Windows; U; %SYSTEM%; en-US; rv:1.7.2) Gecko/20040804 Netscape/7.2 (ax)");
 static const QString DEFAULT_USER_AGENT_SEAMONKEY = QStringLiteral("Mozilla/5.0 (Windows; U; %SYSTEM%; rv:10.0.1) Gecko/20100101 Firefox/10.0.1 SeaMonkey/2.7.1");
 static const QString DEFAULT_USER_AGENT_ICAB      = QStringLiteral("Mozilla/5.0 (compatible; iCab 3.0.3; Macintosh; U; PPC Mac OS X)");
@@ -150,9 +150,9 @@ static const qreal MULTIMEDIA_LAYER = 60.0;
 
 static const QString FOR_ACCESSKEY_CSS_SELECTOR =
     QStringLiteral("a,*[href],*[onclick],*[onmouseover],*[contenteditable=\"true\"],"
-                 VV"*[role=\"button\"],*[role=\"link\"],*[role=\"menu\"],"
-                 VV"button,select,label,legend,input,textarea,object,embed,frame,iframe,"
-                 VV"*[role=\"checkbox\"],*[role=\"radio\"],*[role=\"tab\"]");
+                   "*[role=\"button\"],*[role=\"link\"],*[role=\"menu\"],"
+                   "button,select,label,legend,input,textarea,object,embed,frame,iframe,"
+                   "*[role=\"checkbox\"],*[role=\"radio\"],*[role=\"tab\"]");
 static const QString HAVE_SOURCE_CSS_SELECTOR = QStringLiteral("*[src]");
 static const QString HAVE_REFERENCE_CSS_SELECTOR = QStringLiteral("*[href]");
 static const QString REL_IS_NEXT_CSS_SELECTOR = QStringLiteral("*[rel=\"next\"]");

@@ -227,7 +227,7 @@ cp scripts/edge.bat $TARGET_DIR/
 
 cp LICENSE $TARGET_DIR/
 
-#cp qt.conf $TARGET_DIR/
+cp qt.conf $TARGET_DIR/
 
 if [ -e $QT5_DIR/bin/Qt5WebKit.dll ]; then
     mkdir -p $TARGET_DIR/scenegraph/

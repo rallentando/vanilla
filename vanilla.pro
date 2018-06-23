@@ -16,19 +16,38 @@ exists($(QTDIR)/lib/*Qt*PrintSupport*) {
 }
 
 exists($(QTDIR)/lib/*Qt*WebEngine*) {
+
     DEFINES += WEBENGINEVIEW
     QT += webenginecore webengine webenginewidgets
+
+    greaterThan(QT_MINOR_VERSION, 10){
+        RESOURCES += qrc/quickwebengineview5.11.qrc
+        OTHER_FILES += view/quickwebengineview5.11.qml
+    } else:greaterThan(QT_MINOR_VERSION, 9){
+        RESOURCES += qrc/quickwebengineview5.10.qrc
+        OTHER_FILES += view/quickwebengineview5.10.qml
+    } else {
+        RESOURCES += qrc/quickwebengineview5.9.qrc
+        OTHER_FILES += view/quickwebengineview5.9.qml
+    }
 }
 
 exists($(QTDIR)/lib/*Qt*WebKit*) {
+
     DEFINES += WEBKITVIEW
     QT += webkit webkitwidgets
+
+    RESOURCES += qrc/quickwebkitview.qrc
+    OTHER_FILES += view/quickwebkitview.qml
 }
 
 winrt | android | ios {
 
     DEFINES += NATIVEWEBVIEW
     QT += webview
+
+    RESOURCES += qrc/quicknativewebview.qrc
+    OTHER_FILES += view/quicknativewebview.qml
 
 } else:win32 {
 
@@ -51,7 +70,7 @@ CONFIG += qt
 
 PROJECTNAME = vanilla
 
-RESOURCES += vanilla.qrc
+RESOURCES += qrc/vanilla.qrc
 
 win32 {
     RC_FILE = vanilla.rc
@@ -146,13 +165,6 @@ SOURCES += \
 TRANSLATIONS += \
     translations/vanilla_en.ts \
     translations/vanilla_ja.ts
-
-OTHER_FILES += \
-    view/quickwebengineview5.9.qml \
-    view/quickwebengineview5.10.qml \
-    view/quickwebengineview5.11.qml \
-    view/quickwebkitview.qml \
-    view/quicknativewebview.qml
 
 lupdate_only {
 

@@ -318,7 +318,7 @@ void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level
     QWebEnginePage::javaScriptConsoleMessage(level, msg, lineNumber, sourceId);
 }
 
-QNetworkAccessManager *WebEnginePage::networkAccessManager() const{
+QNetworkAccessManager *WebEnginePage::networkAccessManager() const {
     return m_NetworkAccessManager;
 }
 
@@ -326,7 +326,7 @@ void WebEnginePage::setNetworkAccessManager(QNetworkAccessManager *nam){
     m_NetworkAccessManager = nam;
 }
 
-QString WebEnginePage::userAgentForUrl(const QUrl &url) const{
+QString WebEnginePage::userAgentForUrl(const QUrl &url) const {
     Q_UNUSED(url);
     return static_cast<NetworkAccessManager*>(networkAccessManager())->GetUserAgent();
 }
@@ -472,7 +472,6 @@ void WebEnginePage::AddJsObject(){
     setWebChannel(new QWebChannel(this));
     if(channel) delete channel;
 
-#  ifdef USE_WEBCHANNEL
     if(m_View && m_View->GetJsObject()){
         webChannel()->registerObject(QStringLiteral("_view"), m_View->GetJsObject());
         m_View->OnSetJsObject(m_View->GetJsObject());
@@ -481,7 +480,6 @@ void WebEnginePage::AddJsObject(){
         webChannel()->registerObject(QStringLiteral("_vanilla"), m_View->GetTreeBank()->GetJsObject());
         m_View->OnSetJsObject(m_View->GetTreeBank()->GetJsObject());
     }
-#  endif
 #endif
 }
 
@@ -499,72 +497,72 @@ void WebEnginePage::AddSearchEngine(QPoint pos){
     m_View->CallWithGotCurrentBaseUrl([this, pos](QUrl base){
 
     m_View->CallWithEvaluatedJavaScriptResult(QStringLiteral(
-  "(function(){\n"
-VV"   var x = %1;\n"
-VV"   var y = %2;\n"
-VV"   var elem = document.elementFromPoint(x, y);\n"
-VV"   while(elem && (elem.tagName == \"FRAME\" || elem.tagName == \"IFRAME\")){\n"
-VV"       try{\n"
-VV"           var frameDocument = elem.contentDocument;\n"
-VV"           var rect = elem.getBoundingClientRect();\n"
-VV"           x -= rect.left;\n"
-VV"           y -= rect.top;\n"
-VV"           elem = frameDocument.elementFromPoint(x, y);\n"
-VV"       }\n"
-VV"       catch(e){ break;}\n"
-VV"   }\n"
-VV"   if(!elem) return {};\n"
-VV"   var name = elem.name;\n"
-VV"   var form = elem;\n"
-VV"   while(form && form.tagName != \"FORM\"){\n"
-VV"       form = form.parentNode;\n"
-VV"   }\n"
-VV"   if(!form) return {};\n"
-VV"   var encode = form.getAttribute(\"accept-charset\") || form.ownerDocument.charset || \"UTF-8\";\n"
-VV"   var method = form.method || \"get\";\n"
-VV"   if(method.toLowerCase() != \"get\") return {};\n"
-VV"   var result = {};\n"
-VV"   var queries = {};\n"
-VV"   var engines = {};\n"
-VV"   var inputs = form.getElementsByTagName(\"input\");\n"
-VV"   var buttons = form.getElementsByTagName(\"button\");\n"
-VV"   var selects = form.getElementsByTagName(\"select\");\n"
-VV"   for(var i = 0; i < inputs.length; i++){\n"
-VV"       var field = inputs[i];\n"
-VV"       var type = (field.type || \"text\").toLowerCase();\n"
-VV"       var name = field.name;\n"
-VV"       var val = field.value;\n"
-VV"       if(type == \"submit\"){\n"
-VV"           engines[name] = val; continue;\n"
-VV"       } else if(type == \"text\" || type == \"search\"){\n"
-VV"           if(field == elem) val = \"{query}\";\n"
-VV"       } else if(type == \"checkbox\" || type == \"radio\"){\n"
-VV"           if(!field.checked) continue;\n"
-VV"       } else if(type != \"hidden\") continue;\n"
-VV"       queries[name] = val;\n"
-VV"   }\n"
-VV"   for(var i = 0; i < buttons.length; i++){\n"
-VV"       var button = buttons[i];\n"
-VV"       engines[button.name] = button.getAttribute(\"aria-label\");\n"
-VV"   }\n"
-VV"   for(var i = 0; i < selects.length; i++){\n"
-VV"       var select = selects[i];\n"
-VV"       var index = select.selectedIndex;\n"
-VV"       if(index != -1){\n"
-VV"           var options = select.getElementsByTagName(\"option\");\n"
-VV"           queries[select.name] = options[index].textContent;\n"
-VV"       }\n"
-VV"   }\n"
-VV"   var labels = form.querySelectorAll(\"label[for=\\\"\"+name+\"\\\"]\");\n"
-VV"   var tag = labels.length ? labels[0].innerText : \"\";\n"
-VV"   result[0] = encode;\n"
-VV"   result[1] = method;\n"
-VV"   result[2] = form.action;\n"
-VV"   result[3] = queries;\n"
-VV"   result[4] = engines;\n"
-VV"   result[5] = tag;\n"
-VV"   return result;\n"
-VV"})()").arg(pos.x()).arg(pos.y()),
+"(function(){\n"
+"    var x = %1;\n"
+"    var y = %2;\n"
+"    var elem = document.elementFromPoint(x, y);\n"
+"    while(elem && (elem.tagName == \"FRAME\" || elem.tagName == \"IFRAME\")){\n"
+"        try{\n"
+"            var frameDocument = elem.contentDocument;\n"
+"            var rect = elem.getBoundingClientRect();\n"
+"            x -= rect.left;\n"
+"            y -= rect.top;\n"
+"            elem = frameDocument.elementFromPoint(x, y);\n"
+"        }\n"
+"        catch(e){ break;}\n"
+"    }\n"
+"    if(!elem) return {};\n"
+"    var name = elem.name;\n"
+"    var form = elem;\n"
+"    while(form && form.tagName != \"FORM\"){\n"
+"        form = form.parentNode;\n"
+"    }\n"
+"    if(!form) return {};\n"
+"    var encode = form.getAttribute(\"accept-charset\") || form.ownerDocument.charset || \"UTF-8\";\n"
+"    var method = form.method || \"get\";\n"
+"    if(method.toLowerCase() != \"get\") return {};\n"
+"    var result = {};\n"
+"    var queries = {};\n"
+"    var engines = {};\n"
+"    var inputs = form.getElementsByTagName(\"input\");\n"
+"    var buttons = form.getElementsByTagName(\"button\");\n"
+"    var selects = form.getElementsByTagName(\"select\");\n"
+"    for(var i = 0; i < inputs.length; i++){\n"
+"        var field = inputs[i];\n"
+"        var type = (field.type || \"text\").toLowerCase();\n"
+"        var name = field.name;\n"
+"        var val = field.value;\n"
+"        if(type == \"submit\"){\n"
+"            engines[name] = val; continue;\n"
+"        } else if(type == \"text\" || type == \"search\"){\n"
+"            if(field == elem) val = \"{query}\";\n"
+"        } else if(type == \"checkbox\" || type == \"radio\"){\n"
+"            if(!field.checked) continue;\n"
+"        } else if(type != \"hidden\") continue;\n"
+"        queries[name] = val;\n"
+"    }\n"
+"    for(var i = 0; i < buttons.length; i++){\n"
+"        var button = buttons[i];\n"
+"        engines[button.name] = button.getAttribute(\"aria-label\");\n"
+"    }\n"
+"    for(var i = 0; i < selects.length; i++){\n"
+"        var select = selects[i];\n"
+"        var index = select.selectedIndex;\n"
+"        if(index != -1){\n"
+"            var options = select.getElementsByTagName(\"option\");\n"
+"            queries[select.name] = options[index].textContent;\n"
+"        }\n"
+"    }\n"
+"    var labels = form.querySelectorAll(\"label[for=\\\"\"+name+\"\\\"]\");\n"
+"    var tag = labels.length ? labels[0].innerText : \"\";\n"
+"    result[0] = encode;\n"
+"    result[1] = method;\n"
+"    result[2] = form.action;\n"
+"    result[3] = queries;\n"
+"    result[4] = engines;\n"
+"    result[5] = tag;\n"
+"    return result;\n"
+"})();").arg(pos.x()).arg(pos.y()),
 [base](QVariant var){
 
     if(!var.isValid()) return;

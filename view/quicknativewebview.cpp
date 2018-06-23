@@ -716,18 +716,8 @@ void QuickNativeWebView::keyPressEvent(QKeyEvent *ev){
         return;
     }
 
-    int k = ev->key();
     if(!m_PreventScrollRestoration &&
-       (k == Qt::Key_Space ||
-        k == Qt::Key_Up ||
-        k == Qt::Key_Down ||
-        k == Qt::Key_Right ||
-        k == Qt::Key_Left ||
-        k == Qt::Key_PageUp ||
-        k == Qt::Key_PageDown ||
-        k == Qt::Key_Home ||
-        k == Qt::Key_End)){
-
+       Application::IsMoveKey(ev)){
         m_PreventScrollRestoration = true;
         return;
     }

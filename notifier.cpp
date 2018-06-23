@@ -27,6 +27,11 @@ Notifier::Notifier(TreeBank *parent, bool purge)
     , m_Position(SouthWest)
     , m_TreeBank(parent)
     , m_HotSpot(QPoint())
+    , m_DownloadItemTable(QMap<DownloadItem*, int>())
+    , m_UploadItemTable(QMap<UploadItem*, int>())
+    , m_HoveredDownloadItem(0)
+    , m_HoveredUploadItem(0)
+    , m_CancelButtonState(NotHovered)
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
     , m_Button(0)
     , m_Progress(0)
@@ -36,6 +41,7 @@ Notifier::Notifier(TreeBank *parent, bool purge)
         setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
         setAttribute(Qt::WA_TranslucentBackground);
     }
+    setMouseTracking(true);
 
     // not display normally untill next ResizeNotify.
     resize(0, 0);
@@ -406,6 +412,26 @@ void Notifier::paintEvent(QPaintEvent *ev){
                 painter.drawText(f, Qt::AlignLeft, ukeys[i-dlen]->GetPath().split(QStringLiteral("/")).last());
                 painter.drawText(p, Qt::AlignCenter, QStringLiteral("%1%").arg(m_UploadItemTable[ukeys[i-dlen]]));
             }
+
+            if(m_CancelButtonState != NotHovered){
+                static QPixmap close = QPixmap(":/resources/notifier/close.png");
+                static const QBrush ih = QBrush(QColor(180, 180, 180, 255));
+                static const QBrush bh = QBrush(QColor(220, 220, 220, 255));
+                static const QBrush bp = QBrush(QColor(255, 255, 255, 255));
+                int index = 0;
+                if(m_HoveredDownloadItem) index = dkeys.indexOf(m_HoveredDownloadItem);
+                if(m_HoveredUploadItem) index = dlen + ukeys.indexOf(m_HoveredUploadItem);
+                painter.setBrush(m_CancelButtonState == ItemHovered ? ih :
+                                  m_CancelButtonState == ButtonHovered ? bh : bp);
+                painter.setPen(Qt::NoPen);
+                painter.setRenderHint(QPainter::Antialiasing, true);
+                painter.drawEllipse(width() - TRANSFER_ITEM_HEIGHT + 5, index * TRANSFER_ITEM_HEIGHT + 6,
+                                     14, 14);
+                painter.setRenderHint(QPainter::Antialiasing, false);
+                painter.drawPixmap(QRect(QPoint(width() - TRANSFER_ITEM_HEIGHT + 7, index * TRANSFER_ITEM_HEIGHT + 8),
+                                          close.size()),
+                                    close, QRect(QPoint(), close.size()));
+            }
         }
     }
 
@@ -455,9 +481,24 @@ void Notifier::paintEvent(QPaintEvent *ev){
     ev->setAccepted(true);
 }
 
+void Notifier::enterEvent(QEvent *ev){
+    Q_UNUSED(ev);
+}
+
+void Notifier::leaveEvent(QEvent *ev){
+    Q_UNUSED(ev);
+    m_HoveredDownloadItem = 0;
+    m_HoveredUploadItem = 0;
+    m_CancelButtonState = NotHovered;
+    repaint();
+}
+
 void Notifier::mousePressEvent(QMouseEvent *ev){
     if(ev->button() == Qt::LeftButton){
-        if(!EmitScrollRequest(ev->pos())){
+        if(m_CancelButtonState == ButtonHovered){
+            m_CancelButtonState = ButtonPressed;
+            repaint();
+        } else if(!EmitScrollRequest(ev->pos())){
             m_HotSpot = ev->pos();
             ev->setAccepted(true);
         }
@@ -500,14 +541,67 @@ void Notifier::mouseMoveEvent(QMouseEvent *ev){
                 }
             }
             ev->setAccepted(true);
+            return;
         }
-    } else if(ev->buttons() & Qt::RightButton){
-        // do nothing.
     }
+
+    const int dlen = m_DownloadItemTable.size();
+    const int ulen = m_UploadItemTable.size();
+    const int len = dlen + ulen;
+    const QList<DownloadItem*> dkeys = m_DownloadItemTable.keys();
+    const QList<UploadItem*> ukeys = m_UploadItemTable.keys();
+    const int index = ev->pos().y() / TRANSFER_ITEM_HEIGHT;
+    bool shouldRepaint = false;
+    if(index < dlen){
+        if(m_HoveredDownloadItem != dkeys[index]){
+            m_HoveredDownloadItem = dkeys[index];
+            m_HoveredUploadItem = 0;
+            shouldRepaint = true;
+        }
+    } else if(index < len){
+        if(m_HoveredUploadItem != ukeys[index-dlen]){
+            m_HoveredDownloadItem = 0;
+            m_HoveredUploadItem = ukeys[index-dlen];
+            shouldRepaint = true;
+        }
+    } else {
+        if(m_HoveredDownloadItem != 0 || m_HoveredUploadItem != 0){
+            m_HoveredDownloadItem = 0;
+            m_HoveredUploadItem = 0;
+            shouldRepaint = true;
+        }
+    }
+    if(index < len){
+        if(ev->pos().x() > width() - TRANSFER_ITEM_HEIGHT){
+            if(!shouldRepaint && m_CancelButtonState == ButtonPressed){
+                // do nothing.
+            } else if(m_CancelButtonState != ButtonHovered){
+                m_CancelButtonState = ButtonHovered;
+                shouldRepaint = true;
+            }
+        } else {
+            if(m_CancelButtonState != ItemHovered){
+                m_CancelButtonState = ItemHovered;
+                shouldRepaint = true;
+            }
+        }
+    } else {
+        if(m_CancelButtonState != NotHovered){
+            m_CancelButtonState = NotHovered;
+            shouldRepaint = true;
+        }
+    }
+    if(shouldRepaint) repaint();
 }
 
 void Notifier::mouseReleaseEvent(QMouseEvent *ev){
     m_HotSpot = QPoint();
     ev->setAccepted(true);
     if(IsPurged()) m_TreeBank->GetMainWindow()->SetFocus();
+    if(m_CancelButtonState == ButtonPressed){
+        m_CancelButtonState = ButtonHovered;
+        if(m_HoveredDownloadItem) m_HoveredDownloadItem->Stop();
+        if(m_HoveredUploadItem) m_HoveredUploadItem->Stop();
+        repaint();
+    }
 }

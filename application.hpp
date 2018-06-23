@@ -469,6 +469,19 @@ public:
             ev->key() <= Qt::Key_F35;
     }
 
+    static inline bool IsMoveKey(QKeyEvent *ev){
+        return
+            ev->key() == Qt::Key_Space ||
+            ev->key() == Qt::Key_Up ||
+            ev->key() == Qt::Key_Down ||
+            ev->key() == Qt::Key_Right ||
+            ev->key() == Qt::Key_Left ||
+            ev->key() == Qt::Key_PageUp ||
+            ev->key() == Qt::Key_PageDown ||
+            ev->key() == Qt::Key_Home ||
+            ev->key() == Qt::Key_End;
+    }
+
     static inline int JsKeyToQtKey(int key){
         if(0x41 <= key && key <= 0x5a) // A ~ Z
             return key;

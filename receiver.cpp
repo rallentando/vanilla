@@ -391,7 +391,7 @@ void Receiver::ForeignCommandReceived(){
     in.setVersion(QDataStream::Qt_5_11);
 #elif QT_VERSION >= 0x050A00
     in.setVersion(QDataStream::Qt_5_10);
-#else
+#elif QT_VERSION >= 0x050900
     in.setVersion(QDataStream::Qt_5_9);
 #endif
 

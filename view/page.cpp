@@ -614,7 +614,7 @@ void Page::SetSource(const QString &html){
                      QStringLiteral("<pre style=\"white-space:normal;\">\\1</pre>"));
     viewable = QStringLiteral(
         "<html><head></head>"
-      VV"<body contenteditable=\"true\">") +
+        "<body contenteditable=\"true\">") +
         viewable +
         QStringLiteral("</body></html>");
 
@@ -1243,7 +1243,7 @@ void Page::HoverElement(){
         } else {                                                        \
             m_View->CallWithHitElement                                  \
                 (action->data().toPoint(), [this](SharedWebElement e){  \
-                    if(e && !e->IsNull()){ BLOCK;}                      \
+                    if(e && !e->IsNull()){ Q_UNUSED(this); BLOCK;}      \
                 });                                                     \
         }                                                               \
     }
@@ -2327,7 +2327,7 @@ void Page::LinkReq(QAction *action,
     m_View->CallWithHitLinkUrl(action ? action->data().toPoint() : QPoint(),
                                [this, action, callBack](QUrl url){
 
-    if(action && !url.isEmpty()){
+    if(!url.isEmpty()){
         QList<QNetworkRequest> reqs;
         QNetworkRequest req(url);
         req.setRawHeader("Referer", m_View->url().toEncoded());
@@ -2406,9 +2406,9 @@ void Page::ImageReq(QAction *action,
     }
 
     m_View->CallWithHitImageUrl(action ? action->data().toPoint() : QPoint(),
-                                [this, action, callBack](QUrl url){
+                                [this, callBack](QUrl url){
 
-    if(action && !url.isEmpty()){
+    if(!url.isEmpty()){
         QList<QNetworkRequest> reqs;
         QNetworkRequest req(url);
         req.setRawHeader("Referer", m_View->url().toEncoded());
@@ -2417,8 +2417,8 @@ void Page::ImageReq(QAction *action,
         return;
     }
 
-    m_View->CallWithGotCurrentBaseUrl([this, action, callBack](QUrl base){
-    m_View->CallWithSelectedHtml([this, action, callBack, base](QString html){
+    m_View->CallWithGotCurrentBaseUrl([this, callBack](QUrl base){
+    m_View->CallWithSelectedHtml([this, callBack, base](QString html){
 
     if(!html.isEmpty()){
         QList<QNetworkRequest> reqs;

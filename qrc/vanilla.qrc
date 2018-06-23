@@ -1,0 +1,37 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>../resources/blank.png</file>
+    <file>../resources/blankw.png</file>
+    <file>../resources/folder.png</file>
+    <file>../resources/folderw.png</file>
+    <file>../resources/folded.png</file>
+    <file>../resources/foldedw.png</file>
+    <file>../resources/unfolded.png</file>
+    <file>../resources/unfoldedw.png</file>
+    <file>../resources/tableview/close.png</file>
+    <file>../resources/tableview/clone.png</file>
+    <file>../resources/tableview/audible.png</file>
+    <file>../resources/tableview/muted.png</file>
+    <file>../resources/tableview/trash.png</file>
+    <file>../resources/tableview/table.png</file>
+    <file>../resources/treebar/close.png</file>
+    <file>../resources/treebar/clone.png</file>
+    <file>../resources/treebar/audible.png</file>
+    <file>../resources/treebar/muted.png</file>
+    <file>../resources/treebar/up.png</file>
+    <file>../resources/treebar/down.png</file>
+    <file>../resources/treebar/left.png</file>
+    <file>../resources/treebar/right.png</file>
+    <file>../resources/treebar/table.png</file>
+    <file>../resources/treebar/plus.png</file>
+    <file>../resources/notifier/close.png</file>
+    <file>../resources/toolbar/command.png</file>
+    <file>../resources/toolbar/search.png</file>
+    <file>../resources/menu/back.png</file>
+    <file>../resources/menu/forward.png</file>
+    <file>../resources/menu/rewind.png</file>
+    <file>../resources/menu/fastforward.png</file>
+    <file>../resources/menu/reload.png</file>
+    <file>../resources/menu/stop.png</file>
+</qresource>
+</RCC>

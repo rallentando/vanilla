@@ -364,8 +364,8 @@ public slots:
 
             source = QStringLiteral
                 ("(function(){\n"
-               VV"%1\n"
-               VV"})()").arg(inner);
+                 "%1\n"
+                 "})()").arg(inner);
         }
         return source;
     }

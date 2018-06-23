@@ -202,13 +202,14 @@ void WebKitView::OnLoadFinished(bool ok){
 
     View::OnLoadFinished(ok);
 
+    QUrl historyUrl;
     if(history()->count()){
-        QUrl historyUrl = history()->currentItem().url();
-        if(!historyUrl.isEmpty()){
-            emit urlChanged(historyUrl);
-        } else if(!url().isEmpty()){
-            emit urlChanged(url());
-        }
+        historyUrl = history()->currentItem().url();
+    }
+    if(!historyUrl.isEmpty()){
+        emit urlChanged(historyUrl);
+    } else if(!url().isEmpty()){
+        emit urlChanged(url());
     }
     if(!ok){
         emit statusBarMessage(tr("Failed to load."));
@@ -449,8 +450,8 @@ void WebKitView::Unselect(){
         page()->triggerAction(QWebPage::Unselect);
         page()->mainFrame()->evaluateJavaScript(QStringLiteral(
             "(function(){\n"
-          VV"    document.activeElement.blur();\n"
-          VV"}());"));
+            "    document.activeElement.blur();\n"
+            "}());"));
     }
 }
 
@@ -620,18 +621,8 @@ void WebKitView::keyPressEvent(QKeyEvent *ev){
 void WebKitView::keyReleaseEvent(QKeyEvent *ev){
     QWebView::keyReleaseEvent(ev);
 
-    int k = ev->key();
-
     if(page()->settings()->testAttribute(QWebSettings::ScrollAnimatorEnabled) &&
-       (k == Qt::Key_Space ||
-      //k == Qt::Key_Up ||
-      //k == Qt::Key_Down ||
-      //k == Qt::Key_Right ||
-      //k == Qt::Key_Left ||
-        k == Qt::Key_PageUp ||
-        k == Qt::Key_PageDown ||
-        k == Qt::Key_Home ||
-        k == Qt::Key_End)){
+       Application::IsMoveKey(ev)){
 
         for(int i = 1; i < 6; i++){
             QTimer::singleShot(i*200, this, &WebKitView::EmitScrollChangedIfNeed);
@@ -844,6 +835,7 @@ void WebKitView::mouseReleaseEvent(QMouseEvent *ev){
         } else if(!m_GestureStartedPos.isNull()){
             SharedWebElement elem = m_ClickedElement;
             GestureAborted(); // resets 'm_ClickedElement'.
+            m_SelectedText = page()->selectedText();
             page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos());
         }
         ev->setAccepted(true);
@@ -936,10 +928,31 @@ void WebKitView::dragLeaveEvent(QDragLeaveEvent *ev){
 }
 
 void WebKitView::wheelEvent(QWheelEvent *ev){
+    if(ev->source() != Qt::MouseEventSynthesizedBySystem){
+        QString wheel;
+        bool up = ev->delta() > 0;
+
+        Application::AddModifiersToString(wheel, ev->modifiers());
+        Application::AddMouseButtonsToString(wheel, ev->buttons());
+        Application::AddWheelDirectionToString(wheel, up);
+
+        if(m_MouseMap.contains(wheel)){
+
+            QString str = m_MouseMap[wheel];
+            if(!str.isEmpty()){
+                if(!View::TriggerAction(str, ev->pos()))
+                    qDebug() << "Invalid mouse event: " << str;
+            }
+            ev->setAccepted(true);
+            return;
+        }
+    }
+
     QWebView::wheelEvent(ev);
     ev->setAccepted(true);
 
-    if(page()->settings()->testAttribute(QWebSettings::ScrollAnimatorEnabled)){
+    if(page()->settings()->testAttribute(QWebSettings::ScrollAnimatorEnabled) &&
+       ev->source() != Qt::MouseEventSynthesizedBySystem){
         for(int i = 1; i < 6; i++){
             QTimer::singleShot(i*200, this, &WebKitView::EmitScrollChangedIfNeed);
         }

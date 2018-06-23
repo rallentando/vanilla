@@ -19,7 +19,7 @@ class TreeBank;
 class DownloadItem;
 class UploadItem;
 
-class Notifier : public QWidget{
+class Notifier : public QWidget {
     Q_OBJECT
 
 public:
@@ -71,6 +71,14 @@ private:
 
     QMap<DownloadItem*, int> m_DownloadItemTable;
     QMap<UploadItem*, int> m_UploadItemTable;
+    DownloadItem *m_HoveredDownloadItem;
+    UploadItem *m_HoveredUploadItem;
+    enum CancelButtonState {
+        NotHovered,
+        ItemHovered,
+        ButtonHovered,
+        ButtonPressed,
+    } m_CancelButtonState;
 
     bool m_UseLinkText;
     QString m_UpperText;
@@ -85,6 +93,8 @@ private:
 protected:
     void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
     void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
+    void enterEvent(QEvent *ev) Q_DECL_OVERRIDE;
+    void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
     void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
     void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
     void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
