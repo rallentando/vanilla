@@ -1,0 +1,55 @@
+NOTICES FOR THE COMPONENTS SHIPPED WITH VANILLA
+
+Vanilla itself is under the BSD 3-Clause licence; that text is 'LICENSE',
+beside the executable. What follows is about the components which travel
+with it.
+
+
+Qt
+--
+
+Vanilla uses the Qt libraries under the GNU Lesser General Public License
+version 3. The version shipped here is Qt 6.11.1, in the binaries built and
+published by The Qt Company; they are not modified.
+
+  LGPL-3.0-only.txt   the LGPLv3 itself
+  GPL-3.0-only.txt    the GPLv3, which the LGPLv3 builds upon
+
+The corresponding source is published at
+
+  https://download.qt.io/archive/qt/6.11/6.11.1/single/
+
+Qt is linked dynamically. Its libraries sit next to 'vanilla.exe' as separate
+DLLs, so they can be replaced with another build of the same Qt version
+without rebuilding vanilla.
+
+
+Qt WebEngine and Chromium
+-------------------------
+
+Qt WebEngine 6.11.1 is one of those Qt libraries, and it carries Chromium
+(based on Chromium 140.0.7339.264) together with the third-party code
+Chromium itself carries.
+
+  LICENSE.Chromium    Chromium's own licence
+
+The full list of the third-party components inside Qt WebEngine, with their
+licences, is published by The Qt Company as "Qt WebEngine Third-Party Code":
+
+  https://doc.qt.io/qt-6/qtwebengine-3rdparty.html
+
+
+Microsoft Edge WebView2
+-----------------------
+
+'WebView2Loader.dll' comes from the Microsoft.Web.WebView2 SDK. Its licence
+and notices are in 'licenses/webview2/'. The Edge WebView2 runtime itself is
+not shipped here; it is what the loader looks for on the machine.
+
+
+Microsoft Visual C++ Redistributable
+------------------------------------
+
+'vc_redist.x64.exe' is Microsoft's redistributable installer for the Visual
+C++ runtime, included under the distribution terms which come with Visual
+Studio. It is Microsoft's binary, unmodified.

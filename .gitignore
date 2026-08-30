@@ -6,3 +6,7 @@
 */#*#
 package/*
 Makefile*
+build/
+build-*/
+*.qmlc
+.qmake.stash

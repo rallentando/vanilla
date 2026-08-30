@@ -1,0 +1,2140 @@
+#include "switch.hpp"
+#include "const.hpp"
+#include "theme.hpp"
+
+#include "page.hpp"
+
+#include <QClipboard>
+#include <QList>
+#include <QSet>
+#include <QNetworkRequest>
+#include <QStyle>
+
+#include "view.hpp"
+#include "webengineview.hpp"
+#include "quickwebengineview.hpp"
+#include "webenginepage.hpp"
+#include "edgewebview.hpp"
+#include "treebank.hpp"
+#include "notifier.hpp"
+#include "receiver.hpp"
+#include "mainwindow.hpp"
+#include "treebar.hpp"
+#include "toolbar.hpp"
+#include "networkcontroller.hpp"
+#include "application.hpp"
+#include "dialog.hpp"
+
+#undef LoadImage
+
+QMap<QString, SearchEngine> Page::m_SearchEngineMap = QMap<QString, SearchEngine>();
+QMap<QString, Bookmarklet> Page::m_BookmarkletMap = QMap<QString, Bookmarklet>();
+
+Page::OpenCommandOperation Page::m_OpenCommandOperation = Page::InNewViewNode;
+
+Page::Page(QObject *parent, NetworkAccessManager *nam)
+    : QObject(parent)
+{
+    m_ActionTable = QMap<Page::CustomAction, QAction*>();
+    m_NetworkAccessManager = nam;
+
+    switch(m_OpenCommandOperation){
+    case InNewViewNode:
+        m_OpenInNewMethod0 = &Page::OpenInNewViewNode;
+        m_OpenInNewMethod1 = &Page::OpenInNewViewNode;
+        m_OpenInNewMethod2 = &Page::OpenInNewViewNode;
+        m_OpenInNewMethod3 = &Page::OpenInNewViewNode;
+        break;
+    case InNewDirectory:
+        m_OpenInNewMethod0 = &Page::OpenInNewDirectory;
+        m_OpenInNewMethod1 = &Page::OpenInNewDirectory;
+        m_OpenInNewMethod2 = &Page::OpenInNewDirectory;
+        m_OpenInNewMethod3 = &Page::OpenInNewDirectory;
+        break;
+    case OnRoot:
+        m_OpenInNewMethod0 = &Page::OpenOnRoot;
+        m_OpenInNewMethod1 = &Page::OpenOnRoot;
+        m_OpenInNewMethod2 = &Page::OpenOnRoot;
+        m_OpenInNewMethod3 = &Page::OpenOnRoot;
+        break;
+
+    case InNewViewNodeBackground:
+        m_OpenInNewMethod0 = &Page::OpenInNewViewNodeBackground;
+        m_OpenInNewMethod1 = &Page::OpenInNewViewNodeBackground;
+        m_OpenInNewMethod2 = &Page::OpenInNewViewNodeBackground;
+        m_OpenInNewMethod3 = &Page::OpenInNewViewNodeBackground;
+        break;
+    case InNewDirectoryBackground:
+        m_OpenInNewMethod0 = &Page::OpenInNewDirectoryBackground;
+        m_OpenInNewMethod1 = &Page::OpenInNewDirectoryBackground;
+        m_OpenInNewMethod2 = &Page::OpenInNewDirectoryBackground;
+        m_OpenInNewMethod3 = &Page::OpenInNewDirectoryBackground;
+        break;
+    case OnRootBackground:
+        m_OpenInNewMethod0 = &Page::OpenOnRootBackground;
+        m_OpenInNewMethod1 = &Page::OpenOnRootBackground;
+        m_OpenInNewMethod2 = &Page::OpenOnRootBackground;
+        m_OpenInNewMethod3 = &Page::OpenOnRootBackground;
+        break;
+
+    case InNewViewNodeNewWindow:
+        m_OpenInNewMethod0 = &Page::OpenInNewViewNodeNewWindow;
+        m_OpenInNewMethod1 = &Page::OpenInNewViewNodeNewWindow;
+        m_OpenInNewMethod2 = &Page::OpenInNewViewNodeNewWindow;
+        m_OpenInNewMethod3 = &Page::OpenInNewViewNodeNewWindow;
+        break;
+    case InNewDirectoryNewWindow:
+        m_OpenInNewMethod0 = &Page::OpenInNewDirectoryNewWindow;
+        m_OpenInNewMethod1 = &Page::OpenInNewDirectoryNewWindow;
+        m_OpenInNewMethod2 = &Page::OpenInNewDirectoryNewWindow;
+        m_OpenInNewMethod3 = &Page::OpenInNewDirectoryNewWindow;
+        break;
+    case OnRootNewWindow:
+        m_OpenInNewMethod0 = &Page::OpenOnRootNewWindow;
+        m_OpenInNewMethod1 = &Page::OpenOnRootNewWindow;
+        m_OpenInNewMethod2 = &Page::OpenOnRootNewWindow;
+        m_OpenInNewMethod3 = &Page::OpenOnRootNewWindow;
+        break;
+
+    default:
+        m_OpenInNewMethod0 = &Page::OpenInNewViewNode;
+        m_OpenInNewMethod1 = &Page::OpenInNewViewNode;
+        m_OpenInNewMethod2 = &Page::OpenInNewViewNode;
+        m_OpenInNewMethod3 = &Page::OpenInNewViewNode;
+    }
+
+    connect(this,   SIGNAL(urlChanged(const QUrl&)),
+            parent, SIGNAL(urlChanged(const QUrl&)));
+    connect(this,   SIGNAL(titleChanged(const QString&)),
+            parent, SIGNAL(titleChanged(const QString&)));
+    connect(this,   SIGNAL(loadStarted()),
+            parent, SIGNAL(loadStarted()));
+    connect(this,   SIGNAL(loadProgress(int)),
+            parent, SIGNAL(loadProgress(int)));
+    connect(this,   SIGNAL(loadFinished(bool)),
+            parent, SIGNAL(loadFinished(bool)));
+    connect(this,   SIGNAL(statusBarMessage(const QString&)),
+            parent, SIGNAL(statusBarMessage(const QString&)));
+    connect(this,   SIGNAL(statusBarMessage2(const QString&, const QString&)),
+            parent, SIGNAL(statusBarMessage2(const QString&, const QString&)));
+    connect(this,   SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
+            parent, SIGNAL(linkHovered(const QString&, const QString&, const QString&)));
+
+    connect(this,   SIGNAL(ViewChanged()),
+            parent, SIGNAL(ViewChanged()));
+    connect(this,   SIGNAL(ScrollChanged(QPointF)),
+            parent, SIGNAL(ScrollChanged(QPointF)));
+}
+
+Page::~Page(){}
+
+NetworkAccessManager *Page::GetNetworkAccessManager(){
+    NetworkAccessManager *nam = 0;
+#ifdef WEBENGINEVIEW
+    if(WebEnginePage *page = qobject_cast<WebEnginePage*>(m_View->page()))
+        nam = qobject_cast<NetworkAccessManager*>(page->networkAccessManager());
+#endif
+    if(!nam) nam = m_NetworkAccessManager;
+
+    return nam;
+}
+
+QUrl Page::CreateQueryUrl(QString query, QString key){
+    SearchEngine engine;
+    if(key.isEmpty())
+        engine = PrimarySearchEngine();
+    else if(m_SearchEngineMap.contains(key))
+        engine = m_SearchEngineMap[key];
+    else
+        engine = PrimarySearchEngine();
+
+    QString format = engine[0];
+    QByteArray encode = engine[1].toLatin1();
+
+    query = QString::fromLatin1(query.toUtf8().toPercentEncoding());
+    return QUrl::fromEncoded(format.arg(query).toLatin1());
+}
+
+QUrl Page::UpDirectoryUrl(QUrl url){
+    QStringList urlstr = QString::fromUtf8(url.toEncoded()).split(QStringLiteral("/"));
+    if(( urlstr.endsWith(QString()) && urlstr.length() > 4) ||
+       (!urlstr.endsWith(QString()) && urlstr.length() > 3))
+        urlstr.removeLast();
+    if(urlstr.length() > 3)
+        urlstr.removeLast();
+    return QUrl::fromEncoded(urlstr.join(QStringLiteral("/")).toLatin1());
+}
+
+QUrl Page::StringToUrl(QString str, QUrl baseUrl){
+    if(str.isEmpty()) return QUrl();
+    if(!baseUrl.isEmpty() &&
+       !baseUrl.scheme().isEmpty()){
+        QStringList base = QString::fromUtf8(baseUrl.toEncoded()).split(QStringLiteral("/"));
+        if(str.startsWith(QStringLiteral("about:"))        ||
+           str.startsWith(QStringLiteral("aim:"))          ||
+           str.startsWith(QStringLiteral("callto:"))       ||
+           str.startsWith(QStringLiteral("chrome:"))       ||
+           str.startsWith(QStringLiteral("clsid:"))        ||
+           str.startsWith(QStringLiteral("data:"))         ||
+           str.startsWith(QStringLiteral("disk:"))         ||
+           str.startsWith(QStringLiteral("feed:"))         ||
+           str.startsWith(QStringLiteral("file:"))         ||
+           str.startsWith(QStringLiteral("ftp:"))          ||
+           str.startsWith(QStringLiteral("gopher:"))       ||
+           str.startsWith(QStringLiteral("hcp:"))          ||
+           str.startsWith(QStringLiteral("help:"))         ||
+           str.startsWith(QStringLiteral("http:"))         ||
+           str.startsWith(QStringLiteral("https:"))        ||
+           str.startsWith(QStringLiteral("irc:"))          ||
+           str.startsWith(QStringLiteral("javascript:"))   ||
+           str.startsWith(QStringLiteral("livescript:"))   ||
+           str.startsWith(QStringLiteral("lynxcgi:"))      ||
+           str.startsWith(QStringLiteral("lynxexec:"))     ||
+           str.startsWith(QStringLiteral("mailto:"))       ||
+           str.startsWith(QStringLiteral("mhtml:"))        ||
+           str.startsWith(QStringLiteral("mk:"))           ||
+           str.startsWith(QStringLiteral("mocha:"))        ||
+           str.startsWith(QStringLiteral("montulli:"))     ||
+           str.startsWith(QStringLiteral("ms-help:"))      ||
+           str.startsWith(QStringLiteral("ms-its:"))       ||
+           str.startsWith(QStringLiteral("news:"))         ||
+           str.startsWith(QStringLiteral("nntp:"))         ||
+           str.startsWith(QStringLiteral("opera:"))        ||
+           str.startsWith(QStringLiteral("phone:"))        ||
+           str.startsWith(QStringLiteral("prospero:"))     ||
+           str.startsWith(QStringLiteral("res:"))          ||
+           str.startsWith(QStringLiteral("resource:"))     ||
+           str.startsWith(QStringLiteral("sftp:"))         ||
+           str.startsWith(QStringLiteral("shell:"))        ||
+           str.startsWith(QStringLiteral("ssh:"))          ||
+           str.startsWith(QStringLiteral("sstp:"))         ||
+           str.startsWith(QStringLiteral("tel:"))          ||
+           str.startsWith(QStringLiteral("telnet:"))       ||
+           str.startsWith(QStringLiteral("vbscript:"))     ||
+           str.startsWith(QStringLiteral("view-source:"))  ||
+           str.startsWith(QStringLiteral("vnd.ms.radio:")) ||
+           str.startsWith(QStringLiteral("wais:"))         ||
+           str.startsWith(QStringLiteral("webcal:"))       ||
+           str.startsWith(QStringLiteral("wimg:"))         ||
+           str.startsWith(QStringLiteral("worldwind:"))    ||
+           str.startsWith(QStringLiteral("wysiwyg:"))      ||
+           str.startsWith(QStringLiteral("qrc:/"))         ||
+           str.startsWith(VANILLA_SCHEME + QStringLiteral(":")) ||
+           str.startsWith(QStringLiteral(":/"))){
+        } else if(str.startsWith(QStringLiteral("//"))){
+            str = base[0] + str;
+        } else if(str.startsWith(QStringLiteral("/"))){
+            base = base.mid(0, 3);
+            str = base.join(QStringLiteral("/")) + str;
+        } else {
+            base.removeLast();
+            base.append(str);
+            str = base.join(QStringLiteral("/"));
+        }
+    }
+
+    QString reconverted = QString::fromLatin1(str.toLatin1());
+    if(str == reconverted)
+        return QUrl::fromEncoded(str.toLatin1());
+    else
+        return QUrl(str);
+}
+
+QList<QUrl> Page::ExtractUrlsFromHtml(QString html, QUrl baseUrl, FindElementsOption option){
+    QList<QUrl> list;
+    int pos = 0;
+    QRegularExpression reg;
+    if(option == HaveSource)
+        reg = QRegularExpression(QStringLiteral("src=(\"?)([^<>\\{\\}\\(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
+    if(option == HaveReference)
+        reg = QRegularExpression(QStringLiteral("href=(\"?)([^<>\\{\\}\\(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+)\\1"));
+    if(reg.isValid()){
+        QRegularExpressionMatch match;
+        while((match = reg.match(html, pos)).hasMatch()){
+            list << StringToUrl(match.captured(2), baseUrl);
+            pos = match.capturedEnd();
+        }
+    }
+    return QSet<QUrl>(list.begin(), list.end()).values();
+}
+
+QList<QUrl> Page::ExtractUrlsFromText(QString text, QUrl baseUrl){
+    QList<QUrl> list;
+    QStringList strs = text.split(QRegularExpression(QStringLiteral("[<>\\{\\}\\(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+")));
+    foreach(QString str, strs){
+        str = str.trimmed();
+        if(str.startsWith(QStringLiteral("/")) || str.startsWith(QStringLiteral("./")) || str.startsWith(QStringLiteral("../"))) ;
+        else if(str.startsWith(VANILLA_SCHEME + QStringLiteral(":"))) ;
+        else if(str.contains(QRegularExpression(QStringLiteral("^.*view-source:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral("view-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral( "^.*iew-source:")))) str = QStringLiteral("v"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral( "iew-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(  "^.*ew-source:")))) str = QStringLiteral("vi"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(  "ew-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(   "^.*w-source:")))) str = QStringLiteral("vie"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(   "w-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(    "^.*-source:")))) str = QStringLiteral("view"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(    "-source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(     "^.*source:")))) str = QStringLiteral("view-"    ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "source:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*ource:")))) str = QStringLiteral("view-s"   ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "ource:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*urce:")))) str = QStringLiteral("view-so"  ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "urce:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*rce:")))) str = QStringLiteral("view-sou" ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "rce:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(         "^.*ce:")))) str = QStringLiteral("view-sour") + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "ce:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(     "^.*sftp://")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "sftp://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*ftp://")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "ftp://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(   "^.*https?://")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(   "https?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(    "^.*ttps?://")))) str = QStringLiteral("h"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(    "ttps?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(     "^.*tps?://")))) str = QStringLiteral("ht"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "tps?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*ps?://")))) str = QStringLiteral("htt"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "ps?://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*s://")))) str = QStringLiteral("http"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "s://"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*file:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "file:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*ile:")))) str = QStringLiteral("f"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "ile:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(         "^.*le:")))) str = QStringLiteral("fi"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "le:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*about:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "about:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*bout:")))) str = QStringLiteral("a"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "bout:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*out:")))) str = QStringLiteral("ab"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "out:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(         "^.*ut:")))) str = QStringLiteral("abo"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "ut:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(          "^.*t:")))) str = QStringLiteral("abou"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(          "t:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(     "^.*chrome:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(     "chrome:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(      "^.*hrome:")))) str = QStringLiteral("c"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(      "hrome:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(       "^.*rome:")))) str = QStringLiteral("ch"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(       "rome:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(        "^.*ome:")))) str = QStringLiteral("chr"      ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(        "ome:"))));
+        else if(str.contains(QRegularExpression(QStringLiteral(         "^.*me:")))) str = QStringLiteral("chro"     ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(         "me:"))));
+        else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral(".\\.[a-z]+(?::[0-9]+)?$"))))
+            str = QStringLiteral("http://") + str;
+        else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral("(?:[1-9]|[1-9][0-9]|[1-2][0-9][0-9])(?:\\.(?:[1-9]|[1-9][0-9]|[1-2][0-9][0-9])){3}(?::[0-9]+)?$"))))
+            str = QStringLiteral("http://") + str;
+        else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral("\\[[0-9a-f]{1,4}(?::[0-9a-f]{0,4}){1,7}\\](?::[0-9]+)?$"))))
+            str = QStringLiteral("http://") + str;
+        else if(str.split(QStringLiteral("/")).first().contains(QRegularExpression(QStringLiteral("[0-9a-f]{1,4}(?::[0-9a-f]{0,4}){1,7}$")))){
+            QStringList l = str.split(QStringLiteral("/"));
+            QString host = l.takeFirst();
+            str = QStringLiteral("http://[") + host + QStringLiteral("]");
+            if(!l.isEmpty()) str = str + QStringLiteral("/") + l.join(QStringLiteral("/"));
+        }
+        else continue;
+        if(str.contains(QStringLiteral("file://localhost/"))) str = str.replace(QStringLiteral("file://localhost/"), QStringLiteral("file:///"));
+        list << StringToUrl(str, baseUrl);
+    }
+    return QSet<QUrl>(list.begin(), list.end()).values();
+}
+
+QList<QUrl> Page::DirtyStringToUrls(QString str){
+    QList<QUrl> urls = ExtractUrlsFromText(str);
+    if(!urls.isEmpty()) return urls;
+    urls << CreateQueryUrl(str);
+    return urls;
+}
+
+QList<QUrl> Page::MimeDataToUrls(const QMimeData *mime, QObject *source){
+    QList<QUrl> urls;
+    if(!mime->urls().isEmpty()){
+        if(qobject_cast<TreeBank*>(source) || dynamic_cast<View*>(source))
+            foreach(QUrl u, mime->urls()){ if(!u.isLocalFile()) urls << u;}
+        else urls = mime->urls();
+    }
+    if(urls.isEmpty() && !mime->html().isEmpty()){
+        urls = ExtractUrlsFromHtml(mime->html(), QUrl(), Page::HaveReference);
+    }
+    if(urls.isEmpty() && !mime->text().isEmpty()){
+        urls = DirtyStringToUrls(mime->text());
+    }
+    return urls;
+}
+
+void Page::RegisterBookmarklet(QString key, Bookmarklet bookmark){
+    m_BookmarkletMap[key] = bookmark;
+}
+
+void Page::RemoveBookmarklet(QString key){
+    m_BookmarkletMap.remove(key);
+}
+
+void Page::ClearBookmarklet(){
+    m_BookmarkletMap.clear();
+}
+
+QMap<QString, Bookmarklet> Page::GetBookmarkletMap(){
+    return m_BookmarkletMap;
+}
+
+Bookmarklet Page::GetBookmarklet(QString key){
+    return m_BookmarkletMap[key];
+}
+
+void Page::RegisterDefaultSearchEngines(){
+    SearchEngine google;
+    google << tr("https://www.google.com/search?c&q=%1&ie=UTF-8&oe=UTF-8") << QStringLiteral("UTF-8") << QStringLiteral("true");
+    SearchEngine yahoo;
+    yahoo << tr("http://search.yahoo.com/search?ei=UTF-8&p=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    SearchEngine bing;
+    bing << tr("https://www.bing.com/search?q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    SearchEngine amazon;
+    amazon << tr("https://www.amazon.com/s/?field-keywords=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    SearchEngine wiki;
+    wiki << tr("https://en.wikipedia.org/w/index.php?search=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    SearchEngine ifl;
+    ifl << tr("https://www.google.com/search?btnI=I%27m+Feeling+Lucky&ie=UTF-8&oe=UTF-8&q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+
+    m_SearchEngineMap[QStringLiteral("google")] = google;
+    m_SearchEngineMap[QStringLiteral("yahoo")] = yahoo;
+    m_SearchEngineMap[QStringLiteral("bing")] = bing;
+    m_SearchEngineMap[QStringLiteral("amazon")] = amazon;
+    m_SearchEngineMap[QStringLiteral("wiki")] = wiki;
+    m_SearchEngineMap[QStringLiteral("ifl")] = ifl;
+}
+
+void Page::RegisterSearchEngine(QString key, SearchEngine engine){
+    m_SearchEngineMap[key] = engine;
+}
+
+void Page::RemoveSearchEngine(QString key){
+    m_SearchEngineMap.remove(key);
+}
+
+void Page::ClearSearchEngine(){
+    m_SearchEngineMap.clear();
+}
+
+QMap<QString, SearchEngine> Page::GetSearchEngineMap(){
+    return m_SearchEngineMap;
+}
+
+SearchEngine Page::GetSearchEngine(QString key){
+    return m_SearchEngineMap[key];
+}
+
+SearchEngine Page::PrimarySearchEngine(){
+    foreach(QString key, m_SearchEngineMap.keys()){
+        if(m_SearchEngineMap[key].length() < 3)
+            m_SearchEngineMap[key] << QStringLiteral("false");
+        else if(m_SearchEngineMap[key][2] == QStringLiteral("true"))
+            return m_SearchEngineMap[key];
+    }
+    if(m_SearchEngineMap[QStringLiteral("google")].isEmpty()){
+        return *m_SearchEngineMap.begin();
+    } else {
+        return m_SearchEngineMap[QStringLiteral("google")];
+    }
+}
+
+bool Page::ShiftMod(){
+    return Application::keyboardModifiers() & Qt::ShiftModifier;
+}
+
+bool Page::CtrlMod(){
+    return Application::keyboardModifiers() & Qt::ControlModifier
+#if defined(Q_OS_MAC)
+        || Application::keyboardModifiers() & Qt::MetaModifier
+#endif
+        ;
+}
+
+bool Page::Activate(){
+    if(View::ActivateNewViewDefault())
+        return !CtrlMod();
+    else return CtrlMod();
+}
+
+void Page::Download(const QNetworkRequest &req,
+                    const QString &file){
+
+    NetworkAccessManager *nam = GetNetworkAccessManager();
+    if(!nam) return;
+
+    QNetworkRequest navigation(req);
+    NetworkAccessManager::SetRequestPurpose(navigation,
+                                            NetworkAccessManager::Navigation);
+
+    DownloadItem *item = 0;
+
+    if(file.isEmpty()){
+        item = NetworkController::Download(nam, navigation);
+    } else {
+        item = NetworkController::Download(nam, navigation, NetworkController::SelectedDirectory);
+        if(item) item->SetPathAndReady(file);
+    }
+
+    if(item && GetTB() && GetTB()->GetNotifier()){
+        GetTB()->GetNotifier()->RegisterDownload(item);
+    }
+}
+
+void Page::Download(const QUrl &target,
+                    const QUrl &referer,
+                    const QString &file){
+
+    QNetworkRequest req(target);
+    req.setRawHeader("Referer", referer.toEncoded());
+    Download(req, file);
+}
+
+void Page::Download(const QString &url,
+                    const QString &file){
+
+    Download(DirtyStringToUrls(url).first(),
+             m_View->url(), file);
+}
+
+void Page::SetSource(const QUrl &url){
+    m_View->GetViewNode()->SetUrl(QUrl());
+    QUrl other = QUrl::fromEncoded(url.toEncoded().mid(12));
+    QNetworkRequest req(other);
+    req.setRawHeader("Referer", other.toEncoded());
+    NetworkAccessManager::SetRequestPurpose(req, NetworkAccessManager::Navigation);
+    NetworkAccessManager *nam = GetNetworkAccessManager();
+    if(!nam) return;
+    DownloadItem *item =
+        NetworkController::Download(nam, req, NetworkController::ToVariable);
+
+    if(!item){
+        SetSource(QByteArray());
+        return;
+    }
+
+    connect(item, SIGNAL(DownloadResult(const QByteArray&)),
+            this, SLOT(SetSource(const QByteArray&)));
+}
+
+void Page::SetSource(const QByteArray &html){
+    QByteArray encoding = "UTF-8";
+        SetSource(QString::fromUtf8(html));
+}
+
+void Page::SetSource(const QString &html){
+    QUrl url = QUrl(m_View->GetViewNode()->GetUrl());
+    QString viewable = QString(html);
+    viewable.replace(QStringLiteral("&lt;"), QStringLiteral("{{{lt}}}"));
+    viewable.replace(QStringLiteral("&gt;"), QStringLiteral("{{{gt}}}"));
+    viewable.replace(QStringLiteral("<"), QStringLiteral("&lt;"));
+    viewable.replace(QStringLiteral(">"), QStringLiteral("&gt;"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!([dD][oO][cC][tT][yY][pP][eE](?:(?!&gt;).)*)&gt;")),
+                     QStringLiteral("{{{doctype}}}!\\1{{{/doctype}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!(--+)&gt;")),
+                     QStringLiteral("{{{lt}}}!\\1{{{gt}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--((?:(?:(?!&gt;|&lt;|\\[).)*)\\[(?:(?:(?!&gt;|&lt;|\\]).)*)\\](?:(?:(?!&gt;).)*))--&gt;")),
+                     QStringLiteral("{{{switch0}}}!--\\1--{{{/switch0}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--\\[((?:(?!&gt;|\\]).)*)\\]&gt;")),
+                     QStringLiteral("{{{switch1}}}\\1{{{/switch1}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--&lt;!\\[((?:(?!&gt;|\\]).)*)\\]--&gt;")),
+                     QStringLiteral("{{{lt}}}!--{{{switch2}}}\\1{{{/switch2}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--\\[((?:(?!\\]|&gt;).)*)\\]&gt;")),
+                     QStringLiteral("{{{switch1}}}\\1{{{/switch1}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!\\[((?:(?!\\]|&gt;).)*)\\]--&gt;")),
+                     QStringLiteral("{{{switch2}}}\\1{{{/switch2}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;!--((?:(?!--&gt;).)*)--&gt;")),
+                     QStringLiteral("{{{comment}}}\\1{{{/comment}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;(/?script(?:(?!&gt;).)*)&gt;")),
+                     QStringLiteral("{{{script}}}\\1{{{/script}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;(/?style(?:(?!&gt;).)*)&gt;")),
+                     QStringLiteral("{{{style}}}\\1{{{/style}}}"));
+
+    viewable.replace(QRegularExpression(QStringLiteral("&lt;(/?[a-zA-Z][a-zA-Z0-9]*(?:[ \t\n\r\f](?:(?!&gt;).)*)?)&gt;")),
+                     QStringLiteral("{{{alltag}}}\\1{{{/alltag}}}"));
+
+    viewable.replace(QStringLiteral("{{{doctype}}}")  , QStringLiteral("<font color=\"purple\">&lt;"));
+    viewable.replace(QStringLiteral("{{{/doctype}}}") , QStringLiteral("&gt;</font>"));
+
+    viewable.replace(QStringLiteral("{{{switch0}}}")  , QStringLiteral("<font color=\"red\">&lt;"));
+    viewable.replace(QStringLiteral("{{{/switch0}}}") , QStringLiteral("&gt;</font>"));
+
+    viewable.replace(QStringLiteral("{{{switch1}}}")  , QStringLiteral("<font color=\"red\">&lt;!--["));
+    viewable.replace(QStringLiteral("{{{/switch1}}}") , QStringLiteral("]&gt;</font>"));
+
+    viewable.replace(QStringLiteral("{{{switch2}}}")  , QStringLiteral("<font color=\"red\">&lt;!["));
+    viewable.replace(QStringLiteral("{{{/switch2}}}") , QStringLiteral("]--&gt;</font>"));
+
+    viewable.replace(QStringLiteral("{{{comment}}}")  , QStringLiteral("<font color=\"gray\">&lt;!--"));
+    viewable.replace(QStringLiteral("{{{/comment}}}") , QStringLiteral("--&gt;</font>"));
+
+    viewable.replace(QStringLiteral("{{{script}}}")   , QStringLiteral("<font color=\"olive\">&lt;"));
+    viewable.replace(QStringLiteral("{{{/script}}}")  , QStringLiteral("&gt;</font>"));
+
+    viewable.replace(QStringLiteral("{{{style}}}")    , QStringLiteral("<font color=\"teal\">&lt;"));
+    viewable.replace(QStringLiteral("{{{/style}}}")   , QStringLiteral("&gt;</font>"));
+
+    viewable.replace(QStringLiteral("{{{alltag}}}")   , QStringLiteral("<font color=\"blue\">&lt;"));
+    viewable.replace(QStringLiteral("{{{/alltag}}}")  , QStringLiteral("&gt;</font>"));
+
+    viewable.replace(QStringLiteral("{{{lt}}}")       , QStringLiteral("&amp;lt;"));
+    viewable.replace(QStringLiteral("{{{gt}}}")       , QStringLiteral("&amp;gt;"));
+
+    viewable.replace(QStringLiteral("\n"), QStringLiteral("<br>\n"));
+    viewable.replace(QRegularExpression(QStringLiteral("^(.*)$")),
+                     QStringLiteral("<pre style=\"white-space:normal;\">\\1</pre>"));
+    viewable = QStringLiteral(
+        "<html><head></head>"
+        "<body contenteditable=\"true\">") +
+        viewable +
+        QStringLiteral("</body></html>");
+
+    m_View->setHtml(viewable, url);
+    emit urlChanged(url);
+    emit titleChanged(QString::fromUtf8(url.toEncoded()));
+    emit loadFinished(true);
+}
+
+void Page::UpKey()       { m_View->UpKeyEvent();}
+void Page::DownKey()     { m_View->DownKeyEvent();}
+void Page::RightKey()    { m_View->RightKeyEvent();}
+void Page::LeftKey()     { m_View->LeftKeyEvent();}
+void Page::HomeKey()     { m_View->HomeKeyEvent();}
+void Page::EndKey()      { m_View->EndKeyEvent();}
+void Page::PageUpKey()   { m_View->PageUpKeyEvent();}
+void Page::PageDownKey() { m_View->PageDownKeyEvent();}
+
+void Page::Import(){
+    Application::Import(GetTB());
+}
+
+void Page::Export(){
+    Application::Export(GetTB());
+}
+
+void Page::AboutVanilla(){
+    Application::AboutVanilla(GetTB());
+}
+
+void Page::AboutQt(){
+    Application::AboutQt(GetTB());
+}
+
+void Page::OpenSettings(){
+    if(TreeBank *tb = GetTB()) tb->OpenSettings();
+}
+
+void Page::OpenDirectorySettings(){
+    if(TreeBank *tb = GetTB()) tb->OpenDirectorySettings();
+}
+
+void Page::Quit(){
+    if(m_View->GetDisplayObscured())
+        m_View->ExitFullScreen();
+    QTimer::singleShot(0, [](){
+        Application::Quit();
+    });
+}
+
+void Page::ClearCookies(){
+#ifdef WEBENGINEVIEW
+    if(!ModalDialog::Question(tr("Clear cookies."),
+                              tr("Every cookie of every network space is deleted.\n"
+                                 "Anything a site kept you signed in with goes with them."))) return;
+    NetworkController::ClearCookies();
+#endif
+}
+
+void Page::ClearHttpCache(){
+#ifdef WEBENGINEVIEW
+    NetworkController::ClearHttpCache();
+#endif
+}
+
+void Page::ClearVisitedLinks(){
+#ifdef WEBENGINEVIEW
+    NetworkController::ClearVisitedLinks();
+#endif
+}
+
+void Page::ToggleNotifier(){
+    GetTB()->ToggleNotifier();
+}
+
+void Page::ToggleReceiver(){
+    GetTB()->ToggleReceiver();
+}
+
+void Page::ToggleMenuBar(){
+    GetTB()->GetMainWindow()->ToggleMenuBar();
+}
+
+void Page::ToggleTreeBar(){
+    GetTB()->GetMainWindow()->ToggleTreeBar();
+}
+
+void Page::ToggleToolBar(){
+    GetTB()->GetMainWindow()->ToggleToolBar();
+}
+
+void Page::ToggleFullScreen(){
+    GetTB()->GetMainWindow()->ToggleFullScreen();
+}
+
+void Page::ToggleMaximized(){
+    GetTB()->GetMainWindow()->ToggleMaximized();
+}
+
+void Page::ToggleMinimized(){
+    GetTB()->GetMainWindow()->ToggleMinimized();
+}
+
+void Page::ToggleShaded(){
+    GetTB()->GetMainWindow()->ToggleShaded();
+}
+
+MainWindow *Page::ShadeWindow(MainWindow *win){
+    return Application::ShadeWindow(win ? win : GetTB()->GetMainWindow());
+}
+
+MainWindow *Page::UnshadeWindow(MainWindow *win){
+    return Application::UnshadeWindow(win ? win : GetTB()->GetMainWindow());
+}
+
+MainWindow *Page::NewWindow(int id){
+    return Application::NewWindow(id);
+}
+
+MainWindow *Page::CloseWindow(MainWindow *win){
+    return Application::CloseWindow(win ? win : GetTB()->GetMainWindow());
+}
+
+MainWindow *Page::SwitchWindow(bool next){
+    return Application::SwitchWindow(next);
+}
+
+MainWindow *Page::NextWindow(){
+    return Application::NextWindow();
+}
+
+MainWindow *Page::PrevWindow(){
+    return Application::PrevWindow();
+}
+
+void Page::Back(){
+    View::SetSwitchingState(true);
+    GetTB()->Back();
+    View::SetSwitchingState(false);
+}
+
+void Page::Forward(){
+    View::SetSwitchingState(true);
+    GetTB()->Forward();
+    View::SetSwitchingState(false);
+}
+
+void Page::Rewind(){
+    View::SetSwitchingState(true);
+    GetTB()->Rewind();
+    View::SetSwitchingState(false);
+}
+
+void Page::FastForward(){
+    View::SetSwitchingState(true);
+    GetTB()->FastForward();
+    View::SetSwitchingState(false);
+}
+
+void Page::UpDirectory(){
+    View::SetSwitchingState(true);
+    GetTB()->UpDirectory();
+    View::SetSwitchingState(false);
+}
+
+void Page::Close(){
+    if(m_View->GetDisplayObscured())
+        m_View->ExitFullScreen();
+    View::CloseLater(m_View->GetThis());
+}
+
+void Page::Restore(){
+    View::SetSwitchingState(true);
+    GetTB()->Restore();
+    View::SetSwitchingState(false);
+}
+
+void Page::Recreate(){
+    if(m_View->GetDisplayObscured())
+        m_View->ExitFullScreen();
+    TreeBank *tb = GetTB();
+    QTimer::singleShot(0, [tb](){
+        View::SetSwitchingState(true);
+        tb->Recreate();
+        View::SetSwitchingState(false);
+    });
+}
+
+void Page::NextView(){
+    View::SetSwitchingState(true);
+    GetTB()->NextView();
+    View::SetSwitchingState(false);
+}
+
+void Page::PrevView(){
+    View::SetSwitchingState(true);
+    GetTB()->PrevView();
+    View::SetSwitchingState(false);
+}
+
+void Page::BuryView(){
+    View::SetSwitchingState(true);
+    GetTB()->BuryView();
+    View::SetSwitchingState(false);
+}
+
+void Page::DigView(){
+    View::SetSwitchingState(true);
+    GetTB()->DigView();
+    View::SetSwitchingState(false);
+}
+
+void Page::FirstView(){
+    View::SetSwitchingState(true);
+    GetTB()->FirstView();
+    View::SetSwitchingState(false);
+}
+
+void Page::SecondView(){
+    View::SetSwitchingState(true);
+    GetTB()->SecondView();
+    View::SetSwitchingState(false);
+}
+
+void Page::ThirdView(){
+    View::SetSwitchingState(true);
+    GetTB()->ThirdView();
+    View::SetSwitchingState(false);
+}
+
+void Page::FourthView(){
+    View::SetSwitchingState(true);
+    GetTB()->FourthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::FifthView(){
+    View::SetSwitchingState(true);
+    GetTB()->FifthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::SixthView(){
+    View::SetSwitchingState(true);
+    GetTB()->SixthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::SeventhView(){
+    View::SetSwitchingState(true);
+    GetTB()->SeventhView();
+    View::SetSwitchingState(false);
+}
+
+void Page::EighthView(){
+    View::SetSwitchingState(true);
+    GetTB()->EighthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::NinthView(){
+    View::SetSwitchingState(true);
+    GetTB()->NinthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::TenthView(){
+    View::SetSwitchingState(true);
+    GetTB()->TenthView();
+    View::SetSwitchingState(false);
+}
+
+void Page::LastView(){
+    View::SetSwitchingState(true);
+    GetTB()->LastView();
+    View::SetSwitchingState(false);
+}
+
+void Page::NewViewNode(){
+    View::SetSwitchingState(true);
+    SuitTB()->NewViewNode(m_View->GetViewNode());
+    View::SetSwitchingState(false);
+}
+
+
+void Page::CloneViewNode(){
+    View::SetSwitchingState(true);
+    SuitTB()->CloneViewNode(m_View->GetViewNode());
+    View::SetSwitchingState(false);
+}
+
+
+void Page::DisplayAccessKey(){
+    GetTB()->DisplayAccessKey();
+}
+
+void Page::DisplayViewTree(){
+    GetTB()->DisplayViewTree();
+}
+
+
+void Page::DisplayTrashTree(){
+    GetTB()->DisplayTrashTree();
+}
+
+void Page::OpenTextSeeker(){
+    GetTB()->OpenTextSeeker();
+}
+
+void Page::OpenQueryEditor(){
+    GetTB()->OpenQueryEditor();
+}
+
+void Page::OpenUrlEditor(){
+    GetTB()->OpenUrlEditor();
+}
+
+void Page::OpenCommand(){
+    GetTB()->OpenCommand();
+}
+
+void Page::ReleaseHiddenView(){
+    GetTB()->ReleaseHiddenView();
+}
+
+void Page::Load(){
+    m_View->Load();
+}
+
+void Page::Copy(){
+    m_View->Copy();
+}
+
+void Page::Cut(){
+    m_View->Cut();
+}
+
+void Page::Paste(){
+    m_View->Paste();
+}
+
+#define VANILLA_EDIT_ACTION(name)               \
+    void Page::name(){                          \
+        m_View->name();                         \
+    }
+FOR_EACH_EDIT_EVENTS(VANILLA_EDIT_ACTION)
+#undef VANILLA_EDIT_ACTION
+
+void Page::Undo(){
+    m_View->Undo();
+}
+
+void Page::Redo(){
+    m_View->Redo();
+}
+
+void Page::SelectAll(){
+    m_View->SelectAll();
+}
+
+void Page::Unselect(){
+    m_View->Unselect();
+}
+
+void Page::Reload(){
+    m_View->Reload();
+}
+
+void Page::ReloadAndBypassCache(){
+    m_View->ReloadAndBypassCache();
+}
+
+void Page::Stop(){
+    m_View->Stop();
+}
+
+void Page::StopAndUnselect(){
+    m_View->StopAndUnselect();
+}
+
+void Page::Print(){
+    m_View->Print();
+}
+
+void Page::Save(){
+    m_View->Save();
+}
+
+void Page::ZoomIn(){
+    m_View->ZoomIn();
+}
+
+void Page::ZoomOut(){
+    m_View->ZoomOut();
+}
+
+void Page::ViewSource(){
+    QUrl newUrl = QUrl::fromEncoded("view-source:" + m_View->url().toEncoded());
+    SharedView newView = SharedView();
+
+    bool native = false;
+#ifdef WEBENGINEVIEW
+    if(qobject_cast<WebEngineView*>(m_View->base()) ||
+       qobject_cast<QuickWebEngineView*>(m_View->base())) native = true;
+#endif
+#ifdef EDGEWEBVIEW
+    if(qobject_cast<EdgeWebView*>(m_View->base())) native = true;
+#endif
+
+    if(native){
+        newView = SuitTB()->OpenInNewViewNode(newUrl, Activate()||ShiftMod(), m_View->GetViewNode());
+    } else {
+        newView = SuitTB()->OpenInNewViewNode(QUrl(), Activate()||ShiftMod(), m_View->GetViewNode());
+        ViewNode *h = newView->GetViewNode();
+        h->SetUrl(newUrl);
+        m_View->CallWithWholeHtml([newView](QString html){ newView->SetSource(html);});
+    }
+
+    newView->SetMaster(m_View->GetThis());
+    m_View->SetSlave(newView->GetThis());
+}
+
+void Page::ApplySource(){
+    if(SharedView view = m_View->GetMaster().lock()){
+        QUrl url = QUrl(view->url());
+        m_View->CallWithWholeText([view](QString text){ view->setHtml(text, view->url());});
+    }
+}
+
+void Page::OpenBookmarklet(){
+    if(QAction *action = qobject_cast<QAction*>(sender())){
+        m_View->Load(GetBookmarklet(action->text()).first());
+    }
+}
+
+void Page::SearchWith(){
+    if(QAction *action = qobject_cast<QAction*>(sender())){
+        m_View->CallWithSelectedText([this, action](QString text){
+            OpenInNew(action->text(), text);
+        });
+    }
+}
+
+void Page::AddSearchEngine(){
+    if(QAction *action = qobject_cast<QAction*>(sender())){
+        if(action->data().canConvert<SharedWebElement>()){
+            if(SharedWebElement e = action->data().value<SharedWebElement>()){
+                if(!e->IsNull()){
+#ifdef WEBENGINEVIEW
+                    if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
+                        m_View->AddSearchEngine(e->Position() / w->zoomFactor());
+                    else
+#endif
+                        m_View->AddSearchEngine(e->Position());
+                }
+            }
+        } else {
+            m_View->AddSearchEngine(action->data().toPoint());
+        }
+    }
+}
+
+void Page::AddBookmarklet(){
+    if(QAction *action = qobject_cast<QAction*>(sender())){
+        if(action->data().canConvert<SharedWebElement>()){
+            if(SharedWebElement e = action->data().value<SharedWebElement>()){
+                if(!e->IsNull()){
+#ifdef WEBENGINEVIEW
+                    if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
+                        m_View->AddBookmarklet(e->Position() / w->zoomFactor());
+                    else
+#endif
+                        m_View->AddBookmarklet(e->Position());
+                }
+            }
+        } else {
+            m_View->AddBookmarklet(action->data().toPoint());
+        }
+    }
+}
+
+void Page::InspectElement(){
+    m_View->InspectElement();
+}
+
+void Page::CopyUrl(){
+    Application::clipboard()->setText(QString::fromUtf8(m_View->GetViewNode()->GetUrl().toEncoded()));
+}
+
+void Page::CopyTitle(){
+    Application::clipboard()->setText(m_View->GetViewNode()->GetTitle());
+}
+
+void Page::CopyPageAsLink(){
+    QString title = m_View->GetTitle();
+    QString url = QString::fromUtf8(m_View->GetViewNode()->GetUrl().toEncoded());
+    Application::clipboard()->setText(QStringLiteral("<a href=\"%1\">%2</a>").arg(url, title));
+}
+
+void Page::CopySelectedHtml(){
+    m_View->CallWithSelectedHtml([](QString html){
+        if(!html.isEmpty())
+            Application::clipboard()->setText(html);
+    });
+}
+
+void Page::OpenWithDefault(){
+    Application::OpenUrlWithDefaultBrowser(m_View->GetViewNode()->GetUrl());
+}
+
+void Page::OpenWithCommand(){
+    if(QAction *action = qobject_cast<QAction*>(sender()))
+        Application::RunExternalCommand
+            (action->property(EXTERNAL_COMMAND_PROPERTY).toString(),
+             m_View->GetViewNode()->GetUrl());
+}
+
+void Page::ClickElement(){
+    if(QAction *action = qobject_cast<QAction*>(sender())){
+        QPoint pos;
+        if(action->data().canConvert<SharedWebElement>()){
+            if(SharedWebElement e = action->data().value<SharedWebElement>()){
+                if(!e->IsNull()){
+
+                    if(e->ClickEvent()) return;
+
+#ifdef WEBENGINEVIEW
+                    if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
+                        pos = e->Position() / w->zoomFactor();
+                    else
+#endif
+                        pos = e->Position();
+                }
+            }
+        }
+        if(pos.isNull()){
+            pos = action->data().toPoint();
+        }
+
+        QMouseEvent pressEvent  (QEvent::MouseButtonPress,   pos, pos, Qt::LeftButton, Qt::MouseButtons(), Qt::KeyboardModifiers());
+        QMouseEvent releaseEvent(QEvent::MouseButtonRelease, pos, pos, Qt::LeftButton, Qt::MouseButtons(), Qt::KeyboardModifiers());
+
+        m_View->MousePressEvent(&pressEvent);
+        m_View->MouseReleaseEvent(&releaseEvent);
+    }
+}
+
+void Page::FocusElement(){
+    if(QAction *action = qobject_cast<QAction*>(sender())){
+        QPoint pos;
+        if(action->data().canConvert<SharedWebElement>()){
+            if(SharedWebElement e = action->data().value<SharedWebElement>()){
+                if(!e->IsNull()){
+
+                    e->SetFocus();
+
+#ifdef WEBENGINEVIEW
+                    if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
+                        pos = e->Position() / w->zoomFactor();
+                    else
+#endif
+                        pos = e->Position();
+                }
+            }
+        }
+        if(pos.isNull()){
+            pos = action->data().toPoint();
+        }
+        m_View->CallWithHitElement(pos, [this](SharedWebElement e){
+            if(!e || e->IsNull()) return;
+
+            e->SetFocus();
+
+            QKeyEvent tabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
+            QKeyEvent tabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::NoModifier);
+            QKeyEvent backTabPress = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::ShiftModifier);
+            QKeyEvent backTabRelease = QKeyEvent(QEvent::KeyRelease, Qt::Key_Tab, Qt::ShiftModifier);
+
+            m_View->KeyPressEvent(&tabPress);
+            m_View->KeyReleaseEvent(&tabRelease);
+            m_View->KeyPressEvent(&backTabPress);
+            m_View->KeyReleaseEvent(&backTabRelease);
+        });
+    }
+}
+
+void Page::HoverElement(){
+    if(QAction *action = qobject_cast<QAction*>(sender())){
+        QPoint pos;
+        if(action->data().canConvert<SharedWebElement>()){
+            if(SharedWebElement e = action->data().value<SharedWebElement>()){
+                if(!e->IsNull()){
+                    pos = e->Position();
+                }
+            }
+        }
+        if(pos.isNull()){
+            pos = action->data().toPoint();
+        }
+
+        if(TreeBank *tb = GetTB()){
+            QCursor::setPos(tb->mapToGlobal(pos));
+        }
+    }
+}
+
+#define ELEMENT_ACTION(BLOCK)                                           \
+    if(QAction *action = qobject_cast<QAction*>(sender())){             \
+        if(action->data().canConvert<SharedWebElement>()){              \
+            if(SharedWebElement e = action->data().value<SharedWebElement>()){ \
+                if(!e->IsNull()){ BLOCK;}                               \
+            }                                                           \
+        } else {                                                        \
+            m_View->CallWithHitElement                                  \
+                (action->data().toPoint(), [this](SharedWebElement e){  \
+                    if(e && !e->IsNull()){ Q_UNUSED(this) BLOCK;}      \
+                });                                                     \
+        }                                                               \
+    }
+
+#define NAMED_ELEMENT_ACTION(BLOCK)                                     \
+    if(QAction *action = qobject_cast<QAction*>(sender())){             \
+        const QString name =                                            \
+            action->property(EXTERNAL_COMMAND_PROPERTY).toString();     \
+        if(action->data().canConvert<SharedWebElement>()){              \
+            if(SharedWebElement e = action->data().value<SharedWebElement>()){ \
+                if(!e->IsNull()){ BLOCK;}                               \
+            }                                                           \
+        } else {                                                        \
+            m_View->CallWithHitElement                                  \
+                (action->data().toPoint(), [name](SharedWebElement e){  \
+                    if(e && !e->IsNull()){ BLOCK;}                       \
+                });                                                     \
+        }                                                               \
+    }
+
+void Page::LoadLink(){
+    ELEMENT_ACTION(m_View->Load(e->LinkUrl()));
+}
+
+void Page::OpenLink(){
+    ELEMENT_ACTION(OpenInNew(e->LinkUrl()));
+}
+
+void Page::DownloadLink(){
+    ELEMENT_ACTION(Download(e->LinkUrl(), e->BaseUrl()));
+}
+
+void Page::CopyLinkUrl(){
+    ELEMENT_ACTION(Application::clipboard()->setText(e->LinkUrl().toString()));
+}
+
+void Page::CopyLinkHtml(){
+    ELEMENT_ACTION(Application::clipboard()->setText(e->LinkHtml()));
+}
+
+void Page::OpenLinkWithDefault(){
+    ELEMENT_ACTION(Application::OpenUrlWithDefaultBrowser(e->LinkUrl()));
+}
+
+void Page::OpenLinkWithCommand(){
+    NAMED_ELEMENT_ACTION(Application::RunExternalCommand(name, e->LinkUrl()));
+}
+
+void Page::LoadImage(){
+    ELEMENT_ACTION(m_View->Load(e->ImageUrl()));
+}
+
+void Page::OpenImage(){
+    ELEMENT_ACTION(OpenInNew(e->ImageUrl()));
+}
+
+void Page::DownloadImage(){
+    ELEMENT_ACTION(Download(e->ImageUrl(), e->BaseUrl()));
+}
+
+void Page::CopyImage(){
+    ELEMENT_ACTION(Application::clipboard()->setPixmap(e->Pixmap()));
+}
+
+void Page::CopyImageUrl(){
+    ELEMENT_ACTION(Application::clipboard()->setText(e->ImageUrl().toString()));
+}
+
+void Page::CopyImageHtml(){
+    ELEMENT_ACTION(Application::clipboard()->setText(e->ImageHtml()));
+}
+
+void Page::OpenImageWithDefault(){
+    ELEMENT_ACTION(Application::OpenUrlWithDefaultBrowser(e->ImageUrl()));
+}
+
+void Page::OpenImageWithCommand(){
+    NAMED_ELEMENT_ACTION(Application::RunExternalCommand(name, e->ImageUrl()));
+}
+
+void Page::LoadMedia(){
+    ELEMENT_ACTION(m_View->Load(e->ImageUrl()));
+}
+
+void Page::OpenMedia(){
+    ELEMENT_ACTION(OpenInNew(e->ImageUrl()));
+}
+
+void Page::DownloadMedia(){
+    ELEMENT_ACTION(Download(e->ImageUrl(), e->BaseUrl()));
+}
+
+void Page::ToggleMediaControls(){
+    m_View->ToggleMediaControls();
+}
+
+void Page::ToggleMediaLoop(){
+    m_View->ToggleMediaLoop();
+}
+
+void Page::ToggleMediaPlayPause(){
+    m_View->ToggleMediaPlayPause();
+}
+
+void Page::ToggleMediaMute(){
+    m_View->ToggleMediaMute();
+}
+
+void Page::CopyMediaUrl(){
+    ELEMENT_ACTION(Application::clipboard()->setText(e->ImageUrl().toString()));
+}
+
+void Page::CopyMediaHtml(){
+    ELEMENT_ACTION(Application::clipboard()->setText(e->ImageHtml()));
+}
+
+void Page::OpenMediaWithDefault(){
+    ELEMENT_ACTION(Application::OpenUrlWithDefaultBrowser(e->ImageUrl()));
+}
+
+void Page::OpenMediaWithCommand(){
+    NAMED_ELEMENT_ACTION(Application::RunExternalCommand(name, e->ImageUrl()));
+}
+#undef NAMED_ELEMENT_ACTION
+#undef ELEMENT_ACTION
+
+
+void Page::OpenInNewViewNode                 (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenInNewDirectory                (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenOnRoot                        (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs, Activate()||ShiftMod()                       );});}
+
+void Page::OpenInNewViewNodeForeground       (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenInNewDirectoryForeground      (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenOnRootForeground              (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs,          true                                );});}
+
+void Page::OpenInNewViewNodeBackground       (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs,             ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenInNewDirectoryBackground      (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs,             ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenOnRootBackground              (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs,             ShiftMod()                       );});}
+
+void Page::OpenInNewViewNodeThisWindow       (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewViewNode  (reqs, Activate()            , m_View->GetViewNode());});}
+void Page::OpenInNewDirectoryThisWindow      (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewDirectory (reqs, Activate()            , m_View->GetViewNode());});}
+void Page::OpenOnRootThisWindow              (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenOnSuitableNode (reqs, Activate()                                   );});}
+
+void Page::OpenInNewViewNodeNewWindow        (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenInNewDirectoryNewWindow       (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenOnRootNewWindow               (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenOnSuitableNode (reqs,          true                                );});}
+
+void Page::OpenImageInNewViewNode            (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenImageInNewDirectory           (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenImageOnRoot                   (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs, Activate()||ShiftMod()                       );});}
+
+void Page::OpenImageInNewViewNodeForeground  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenImageInNewDirectoryForeground (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenImageOnRootForeground         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs,          true                                );});}
+
+void Page::OpenImageInNewViewNodeBackground  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs,             ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenImageInNewDirectoryBackground (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs,             ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenImageOnRootBackground         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs,             ShiftMod()                       );});}
+
+void Page::OpenImageInNewViewNodeThisWindow  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewViewNode  (reqs, Activate()            , m_View->GetViewNode());});}
+void Page::OpenImageInNewDirectoryThisWindow (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewDirectory (reqs, Activate()            , m_View->GetViewNode());});}
+void Page::OpenImageOnRootThisWindow         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenOnSuitableNode (reqs, Activate()                                   );});}
+
+void Page::OpenImageInNewViewNodeNewWindow   (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenImageInNewDirectoryNewWindow  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenImageOnRootNewWindow          (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenOnSuitableNode (reqs,          true                                );});}
+
+void Page::OpenMediaInNewViewNode            (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectory           (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenMediaOnRoot                   (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs, Activate()||ShiftMod()                       );});}
+
+void Page::OpenMediaInNewViewNodeForeground  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectoryForeground (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenMediaOnRootForeground         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs,          true                                );});}
+
+void Page::OpenMediaInNewViewNodeBackground  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs,             ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectoryBackground (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs,             ShiftMod(), m_View->GetViewNode());});}
+void Page::OpenMediaOnRootBackground         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenOnSuitableNode (reqs,             ShiftMod()                       );});}
+
+void Page::OpenMediaInNewViewNodeThisWindow  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewViewNode  (reqs, Activate()            , m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectoryThisWindow (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenInNewDirectory (reqs, Activate()            , m_View->GetViewNode());});}
+void Page::OpenMediaOnRootThisWindow         (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){  GetTB()->OpenOnSuitableNode (reqs, Activate()                                   );});}
+
+void Page::OpenMediaInNewViewNodeNewWindow   (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewViewNode  (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenMediaInNewDirectoryNewWindow  (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenInNewDirectory (reqs,          true         , m_View->GetViewNode());});}
+void Page::OpenMediaOnRootNewWindow          (){ ImageReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ MakeTB()->OpenOnSuitableNode (reqs,          true                                );});}
+
+View *Page::OpenInNewViewNode            (QUrl url)                   { return GetTB()->OpenInNewViewNode  (url,                        true,  m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectory           (QUrl url)                   { return GetTB()->OpenInNewDirectory (url,                        true,  m_View->GetViewNode()).get();}
+View *Page::OpenOnRoot                   (QUrl url)                   { return GetTB()->OpenOnSuitableNode (url,                        true                        ).get();}
+
+View *Page::OpenInNewViewNode            (QList<QUrl> urls)           { return GetTB()->OpenInNewViewNode  (urls,                       true,  m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectory           (QList<QUrl> urls)           { return GetTB()->OpenInNewDirectory (urls,                       true,  m_View->GetViewNode()).get();}
+View *Page::OpenOnRoot                   (QList<QUrl> urls)           { return GetTB()->OpenOnSuitableNode (urls,                       true                        ).get();}
+
+View *Page::OpenInNewViewNode            (QString query)              { return GetTB()->OpenInNewViewNode  (CreateQueryUrl(query),      true,  m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectory           (QString query)              { return GetTB()->OpenInNewDirectory (CreateQueryUrl(query),      true,  m_View->GetViewNode()).get();}
+View *Page::OpenOnRoot                   (QString query)              { return GetTB()->OpenOnSuitableNode (CreateQueryUrl(query),      true                        ).get();}
+
+View *Page::OpenInNewViewNode            (QString key, QString query) { return GetTB()->OpenInNewViewNode  (CreateQueryUrl(query, key), true,  m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectory           (QString key, QString query) { return GetTB()->OpenInNewDirectory (CreateQueryUrl(query, key), true,  m_View->GetViewNode()).get();}
+View *Page::OpenOnRoot                   (QString key, QString query) { return GetTB()->OpenOnSuitableNode (CreateQueryUrl(query, key), true                        ).get();}
+
+View *Page::OpenInNewViewNodeBackground  (QUrl url)                   { return GetTB()->OpenInNewViewNode  (url,                        false, m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectoryBackground (QUrl url)                   { return GetTB()->OpenInNewDirectory (url,                        false, m_View->GetViewNode()).get();}
+View *Page::OpenOnRootBackground         (QUrl url)                   { return GetTB()->OpenOnSuitableNode (url,                        false                       ).get();}
+
+View *Page::OpenInNewViewNodeBackground  (QList<QUrl> urls)           { return GetTB()->OpenInNewViewNode  (urls,                       false, m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectoryBackground (QList<QUrl> urls)           { return GetTB()->OpenInNewDirectory (urls,                       false, m_View->GetViewNode()).get();}
+View *Page::OpenOnRootBackground         (QList<QUrl> urls)           { return GetTB()->OpenOnSuitableNode (urls,                       false                       ).get();}
+
+View *Page::OpenInNewViewNodeBackground  (QString query)              { return GetTB()->OpenInNewViewNode  (CreateQueryUrl(query),      false, m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectoryBackground (QString query)              { return GetTB()->OpenInNewDirectory (CreateQueryUrl(query),      false, m_View->GetViewNode()).get();}
+View *Page::OpenOnRootBackground         (QString query)              { return GetTB()->OpenOnSuitableNode (CreateQueryUrl(query),      false                       ).get();}
+
+View *Page::OpenInNewViewNodeBackground  (QString key, QString query) { return GetTB()->OpenInNewViewNode  (CreateQueryUrl(query, key), false, m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectoryBackground (QString key, QString query) { return GetTB()->OpenInNewDirectory (CreateQueryUrl(query, key), false, m_View->GetViewNode()).get();}
+View *Page::OpenOnRootBackground         (QString key, QString query) { return GetTB()->OpenOnSuitableNode (CreateQueryUrl(query, key), false                       ).get();}
+
+View *Page::OpenInNewViewNodeNewWindow   (QUrl url)                   { return MakeTB()->OpenInNewViewNode  (url,                        true, m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectoryNewWindow  (QUrl url)                   { return MakeTB()->OpenInNewDirectory (url,                        true, m_View->GetViewNode()).get();}
+View *Page::OpenOnRootNewWindow          (QUrl url)                   { return MakeTB()->OpenOnSuitableNode (url,                        true                       ).get();}
+
+View *Page::OpenInNewViewNodeNewWindow   (QList<QUrl> urls)           { return MakeTB()->OpenInNewViewNode  (urls,                       true, m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectoryNewWindow  (QList<QUrl> urls)           { return MakeTB()->OpenInNewDirectory (urls,                       true, m_View->GetViewNode()).get();}
+View *Page::OpenOnRootNewWindow          (QList<QUrl> urls)           { return MakeTB()->OpenOnSuitableNode (urls,                       true                       ).get();}
+
+View *Page::OpenInNewViewNodeNewWindow   (QString query)              { return MakeTB()->OpenInNewViewNode  (CreateQueryUrl(query),      true, m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectoryNewWindow  (QString query)              { return MakeTB()->OpenInNewDirectory (CreateQueryUrl(query),      true, m_View->GetViewNode()).get();}
+View *Page::OpenOnRootNewWindow          (QString query)              { return MakeTB()->OpenOnSuitableNode (CreateQueryUrl(query),      true                       ).get();}
+
+View *Page::OpenInNewViewNodeNewWindow   (QString key, QString query) { return MakeTB()->OpenInNewViewNode  (CreateQueryUrl(query, key), true, m_View->GetViewNode()).get();}
+View *Page::OpenInNewDirectoryNewWindow  (QString key, QString query) { return MakeTB()->OpenInNewDirectory (CreateQueryUrl(query, key), true, m_View->GetViewNode()).get();}
+View *Page::OpenOnRootNewWindow          (QString key, QString query) { return MakeTB()->OpenOnSuitableNode (CreateQueryUrl(query, key), true                       ).get();}
+
+void Page::OpenAllUrl(){
+    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
+    m_View->CallWithSelectedHtml([this, base](QString html){
+
+    QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveReference);
+
+    UrlCountCheck(urls.length(), [this, urls](bool result){
+
+    if(result){
+        QList<QNetworkRequest> reqs;
+        foreach(QUrl url, urls){
+            QNetworkRequest req(url);
+            req.setRawHeader("Referer", m_View->url().toEncoded());
+            reqs << req;
+        }
+        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+    }
+});});});
+}
+
+void Page::OpenAllImage(){
+    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
+    m_View->CallWithSelectedHtml([this, base](QString html){
+
+    QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveSource);
+
+    UrlCountCheck(urls.length(), [this, urls](bool result){
+
+    if(result){
+        QList<QNetworkRequest> reqs;
+        foreach(QUrl url, urls){
+            QNetworkRequest req(url);
+            req.setRawHeader("Referer", m_View->url().toEncoded());
+            reqs << req;
+        }
+        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+    }
+});});});
+}
+
+void Page::OpenTextAsUrl(){
+    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
+    m_View->CallWithSelectedText([this, base](QString text){
+
+    QList<QUrl> urls = ExtractUrlsFromText(text, base);
+
+    UrlCountCheck(urls.length(), [this, urls](bool result){
+
+    if(result){
+        QList<QNetworkRequest> reqs;
+        foreach(QUrl url, urls){
+            QNetworkRequest req(url);
+            reqs << req;
+        }
+        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+    }
+});});});
+}
+
+void Page::SaveAllUrl(){
+    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
+    m_View->CallWithSelectedHtml([this, base](QString html){
+
+    QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveReference);
+
+    if(urls.isEmpty()) return;
+    QString directory =
+        ModalDialog::GetExistingDirectory(QString(), Application::GetDownloadDirectory());
+    if(directory.isEmpty()) return;
+    if(Application::GetDownloadPolicy() == Application::Undefined_ ||
+       Application::GetDownloadPolicy() == Application::AskForEachDownload)
+        Application::SetDownloadDirectory(directory + QStringLiteral("/"));
+    foreach(QUrl url, urls){
+        QNetworkRequest req(url);
+        req.setRawHeader("Referer", m_View->url().toEncoded());
+        Download(req, directory + QStringLiteral("/") + url.toString().split(QStringLiteral("/")).last());
+    }
+});});
+}
+
+void Page::SaveAllImage(){
+    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
+    m_View->CallWithSelectedHtml([this, base](QString html){
+
+    QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveSource);
+
+    if(urls.isEmpty()) return;
+    QString directory =
+        ModalDialog::GetExistingDirectory(QString(), Application::GetDownloadDirectory());
+    if(directory.isEmpty()) return;
+    if(Application::GetDownloadPolicy() == Application::Undefined_ ||
+       Application::GetDownloadPolicy() == Application::AskForEachDownload)
+        Application::SetDownloadDirectory(directory + QStringLiteral("/"));
+    foreach(QUrl url, urls){
+        QNetworkRequest req(url);
+        req.setRawHeader("Referer", m_View->url().toEncoded());
+        Download(req, directory + QStringLiteral("/") + url.toString().split(QStringLiteral("/")).last());
+    }
+});});
+}
+
+void Page::SaveTextAsUrl(){
+    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
+    m_View->CallWithSelectedText([this, base](QString text){
+
+    QList<QUrl> urls = ExtractUrlsFromText(text, base);
+
+    if(urls.isEmpty()) return;
+    QString directory =
+        ModalDialog::GetExistingDirectory(QString(), Application::GetDownloadDirectory());
+    if(directory.isEmpty()) return;
+    if(Application::GetDownloadPolicy() == Application::Undefined_ ||
+       Application::GetDownloadPolicy() == Application::AskForEachDownload)
+        Application::SetDownloadDirectory(directory + QStringLiteral("/"));
+    foreach(QUrl url, urls){
+        QNetworkRequest req(url);
+        Download(req, directory + QStringLiteral("/") + url.toString().split(QStringLiteral("/")).last());
+    }
+});});
+}
+
+QAction *Page::Action(CustomAction a, QVariant data){
+    static const QList<CustomAction> exclude = QList<CustomAction>()
+        << _NoAction << _End      << _Undo
+        << _Up       << _PageUp   << _Redo
+        << _Down     << _PageDown << _SelectAll
+        << _Right    << _Cut      << _SwitchWindow
+        << _Left     << _Copy     << _NextWindow
+        << _Home     << _Paste    << _PrevWindow;
+    static CustomAction previousAction = _NoAction;
+    static int sameActionCount = 0;
+    if(exclude.contains(a)){
+        sameActionCount = 0;
+        previousAction = _NoAction;
+    } else if(a == previousAction){
+        if(++sameActionCount > MAX_SAME_ACTION_COUNT)
+            a = _NoAction;
+    } else {
+        sameActionCount = 0;
+        previousAction = a;
+    }
+
+    QAction *webaction = m_ActionTable[a];
+    bool create = false;
+    if(!webaction){
+        create = true;
+        m_ActionTable[a] = webaction = new QAction(this);
+    }
+
+    webaction->setData(data);
+
+    switch(a){
+    case _Back:    webaction->setEnabled(m_View->CanGoBack()); break;
+    case _Forward: webaction->setEnabled(m_View->CanGoForward()); break;
+    case _Rewind:  webaction->setEnabled(m_View->CanGoBack()); break;
+    case _Reload:  webaction->setEnabled(!m_View->IsLoading()); break;
+    case _Stop:    webaction->setEnabled(m_View->IsLoading()); break;
+    default: break;
+    }
+
+    switch(a){
+    case _Up:          webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowUp));    break;
+    case _Down:        webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowDown));  break;
+    case _Right:       webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowRight)); break;
+    case _Left:        webaction->setIcon(Application::style()->standardIcon(QStyle::SP_ArrowLeft));  break;
+    case _Back:        webaction->setIcon(QIcon(Theme::Pixmap(QStringLiteral(":/resources/menu/back.png"), Theme::BarIcon)));        break;
+    case _Forward:     webaction->setIcon(QIcon(Theme::Pixmap(QStringLiteral(":/resources/menu/forward.png"), Theme::BarIcon)));     break;
+    case _Rewind:      webaction->setIcon(QIcon(Theme::Pixmap(QStringLiteral(":/resources/menu/rewind.png"), Theme::BarIcon)));      break;
+    case _FastForward: webaction->setIcon(QIcon(Theme::Pixmap(QStringLiteral(":/resources/menu/fastforward.png"), Theme::BarIcon))); break;
+    case _Reload:      webaction->setIcon(QIcon(Theme::Pixmap(QStringLiteral(":/resources/menu/reload.png"), Theme::BarIcon)));      break;
+    case _Stop:        webaction->setIcon(QIcon(Theme::Pixmap(QStringLiteral(":/resources/menu/stop.png"), Theme::BarIcon)));        break;
+    default: break;
+    }
+
+    if(!create){
+        switch(a){
+        case _ToggleNotifier: webaction->setChecked(GetTB()->GetNotifier()); break;
+        case _ToggleReceiver: webaction->setChecked(GetTB()->GetReceiver()); break;
+        case _ToggleMenuBar:  webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty()); break;
+        case _ToggleTreeBar:  webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible()); break;
+        case _ToggleToolBar:  webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible()); break;
+        default: break;
+        }
+        return webaction;
+    }
+
+    switch(a){
+    case _NoAction: break;
+
+#define DEFINE_ACTION(name, text)                                       \
+        case _##name:                                                   \
+            webaction->setText(text);                                   \
+            webaction->setToolTip(text);                                \
+            connect(webaction, SIGNAL(triggered()),                     \
+                    this,      SLOT(name##Key()));                      \
+            break;
+
+        DEFINE_ACTION(Up,       tr("UpKey"));
+        DEFINE_ACTION(Down,     tr("DownKey"));
+        DEFINE_ACTION(Right,    tr("RightKey"));
+        DEFINE_ACTION(Left,     tr("LeftKey"));
+        DEFINE_ACTION(Home,     tr("HomeKey"));
+        DEFINE_ACTION(End,      tr("EndKey"));
+        DEFINE_ACTION(PageUp,   tr("PageUpKey"));
+        DEFINE_ACTION(PageDown, tr("PageDownKey"));
+
+#undef  DEFINE_ACTION
+#define DEFINE_ACTION(name, text)                                       \
+        case _##name:                                                   \
+            webaction->setText(text);                                   \
+            webaction->setToolTip(text);                                \
+            connect(webaction, SIGNAL(triggered()),                     \
+                    this,      SLOT(name()));                           \
+            break;
+
+        DEFINE_ACTION(Import,       tr("Import"));
+        DEFINE_ACTION(Export,       tr("Export"));
+        DEFINE_ACTION(AboutVanilla, tr("AboutVanilla"));
+        DEFINE_ACTION(AboutQt,      tr("AboutQt"));
+        DEFINE_ACTION(OpenSettings, tr("Settings"));
+        DEFINE_ACTION(OpenDirectorySettings, tr("DirectorySettings"));
+        DEFINE_ACTION(Quit,         tr("Quit"));
+
+        DEFINE_ACTION(ClearCookies,      tr("ClearCookies"));
+        DEFINE_ACTION(ClearHttpCache,    tr("ClearHttpCache"));
+        DEFINE_ACTION(ClearVisitedLinks, tr("ClearVisitedLinks"));
+
+        DEFINE_ACTION(ToggleNotifier,        tr("ToggleNotifier"));
+        DEFINE_ACTION(ToggleReceiver,        tr("ToggleReceiver"));
+        DEFINE_ACTION(ToggleMenuBar,         tr("ToggleMenuBar"));
+        DEFINE_ACTION(ToggleTreeBar,         tr("ToggleTreeBar"));
+        DEFINE_ACTION(ToggleToolBar,         tr("ToggleToolBar"));
+        DEFINE_ACTION(ToggleFullScreen,      tr("ToggleFullScreen"));
+        DEFINE_ACTION(ToggleMaximized,       tr("ToggleMaximized"));
+        DEFINE_ACTION(ToggleMinimized,       tr("ToggleMinimized"));
+        DEFINE_ACTION(ToggleShaded,          tr("ToggleShaded"));
+        DEFINE_ACTION(ShadeWindow,           tr("ShadeWindow"));
+        DEFINE_ACTION(UnshadeWindow,         tr("UnshadeWindow"));
+        DEFINE_ACTION(NewWindow,             tr("NewWindow"));
+        DEFINE_ACTION(CloseWindow,           tr("CloseWindow"));
+        DEFINE_ACTION(SwitchWindow,          tr("SwitchWindow"));
+        DEFINE_ACTION(NextWindow,            tr("NextWindow"));
+        DEFINE_ACTION(PrevWindow,            tr("PrevWindow"));
+
+        DEFINE_ACTION(Back,                  tr("Back"));
+        DEFINE_ACTION(Forward,               tr("Forward"));
+        DEFINE_ACTION(Rewind,                tr("Rewind"));
+        DEFINE_ACTION(FastForward,           tr("FastForward"));
+        DEFINE_ACTION(UpDirectory,           tr("UpDirectory"));
+        DEFINE_ACTION(Close,                 tr("Close"));
+        DEFINE_ACTION(Restore,               tr("Restore"));
+        DEFINE_ACTION(Recreate,              tr("Recreate"));
+        DEFINE_ACTION(NextView,              tr("NextView"));
+        DEFINE_ACTION(PrevView,              tr("PrevView"));
+        DEFINE_ACTION(BuryView,              tr("BuryView"));
+        DEFINE_ACTION(DigView,               tr("DigView"));
+        DEFINE_ACTION(FirstView,             tr("FirstView"));
+        DEFINE_ACTION(SecondView,            tr("SecondView"));
+        DEFINE_ACTION(ThirdView,             tr("ThirdView"));
+        DEFINE_ACTION(FourthView,            tr("FourthView"));
+        DEFINE_ACTION(FifthView,             tr("FifthView"));
+        DEFINE_ACTION(SixthView,             tr("SixthView"));
+        DEFINE_ACTION(SeventhView,           tr("SeventhView"));
+        DEFINE_ACTION(EighthView,            tr("EighthView"));
+        DEFINE_ACTION(NinthView,             tr("NinthView"));
+        DEFINE_ACTION(TenthView,             tr("TenthView"));
+        DEFINE_ACTION(LastView,              tr("LastView"));
+        DEFINE_ACTION(NewViewNode,           tr("NewViewNode"));
+        DEFINE_ACTION(CloneViewNode,         tr("CloneViewNode"));
+
+        DEFINE_ACTION(DisplayAccessKey,      tr("DisplayAccessKey"));
+        DEFINE_ACTION(DisplayViewTree,       tr("DisplayViewTree"));
+        DEFINE_ACTION(DisplayTrashTree,      tr("DisplayTrashTree"));
+
+        DEFINE_ACTION(OpenTextSeeker,        tr("OpenTextSeeker"));
+        DEFINE_ACTION(OpenQueryEditor,       tr("OpenQueryEditor"));
+        DEFINE_ACTION(OpenUrlEditor,         tr("OpenUrlEditor"));
+        DEFINE_ACTION(OpenCommand,           tr("OpenCommand"));
+
+        DEFINE_ACTION(ReleaseHiddenView,     tr("ReleaseHiddenView"));
+
+        DEFINE_ACTION(Load,                  tr("Load"));
+
+        DEFINE_ACTION(Copy,                  tr("Copy"));
+        DEFINE_ACTION(Cut,                   tr("Cut"));
+        DEFINE_ACTION(Paste,                 tr("Paste"));
+
+        DEFINE_ACTION(PasteAndMatchStyle,     tr("PasteAndMatchStyle"));
+        DEFINE_ACTION(ToggleBold,             tr("ToggleBold"));
+        DEFINE_ACTION(ToggleItalic,           tr("ToggleItalic"));
+        DEFINE_ACTION(ToggleUnderline,        tr("ToggleUnderline"));
+        DEFINE_ACTION(ToggleStrikethrough,    tr("ToggleStrikethrough"));
+        DEFINE_ACTION(AlignLeft,              tr("AlignLeft"));
+        DEFINE_ACTION(AlignCenter,            tr("AlignCenter"));
+        DEFINE_ACTION(AlignRight,             tr("AlignRight"));
+        DEFINE_ACTION(AlignJustified,         tr("AlignJustified"));
+        DEFINE_ACTION(Indent,                 tr("Indent"));
+        DEFINE_ACTION(Outdent,                tr("Outdent"));
+        DEFINE_ACTION(InsertOrderedList,      tr("InsertOrderedList"));
+        DEFINE_ACTION(InsertUnorderedList,    tr("InsertUnorderedList"));
+        DEFINE_ACTION(ChangeTextDirectionLTR, tr("ChangeTextDirectionLTR"));
+        DEFINE_ACTION(ChangeTextDirectionRTL, tr("ChangeTextDirectionRTL"));
+        DEFINE_ACTION(Undo,                  tr("Undo"));
+        DEFINE_ACTION(Redo,                  tr("Redo"));
+        DEFINE_ACTION(SelectAll,             tr("SelectAll"));
+        DEFINE_ACTION(Unselect,              tr("Unselect"));
+        DEFINE_ACTION(Reload,                tr("Reload"));
+        DEFINE_ACTION(ReloadAndBypassCache,  tr("ReloadAndBypassCache"));
+        DEFINE_ACTION(Stop,                  tr("Stop"));
+        DEFINE_ACTION(StopAndUnselect,       tr("StopAndUnselect"));
+
+        DEFINE_ACTION(Print,                 tr("Print"));
+        DEFINE_ACTION(Save,                  tr("Save"));
+        DEFINE_ACTION(ZoomIn,                tr("ZoomIn"));
+        DEFINE_ACTION(ZoomOut,               tr("ZoomOut"));
+        DEFINE_ACTION(ViewSource,            tr("ViewSource"));
+        DEFINE_ACTION(ApplySource,           tr("ApplySource"));
+
+        DEFINE_ACTION(OpenBookmarklet,       tr("OpenBookmarklet"));
+        DEFINE_ACTION(SearchWith,            tr("SearchWith"));
+        DEFINE_ACTION(AddSearchEngine,       tr("AddSearchEngine"));
+        DEFINE_ACTION(AddBookmarklet,        tr("AddBookmarklet"));
+        DEFINE_ACTION(InspectElement,        tr("InspectElement"));
+
+        DEFINE_ACTION(CopyUrl,               tr("CopyUrl"));
+        DEFINE_ACTION(CopyTitle,             tr("CopyTitle"));
+        DEFINE_ACTION(CopyPageAsLink,        tr("CopyPageAsLink"));
+        DEFINE_ACTION(CopySelectedHtml,      tr("CopySelectedHtml"));
+        DEFINE_ACTION(OpenWithDefault,       tr("OpenWithDefault"));
+
+        DEFINE_ACTION(ClickElement,          tr("ClickElement"));
+        DEFINE_ACTION(FocusElement,          tr("FocusElement"));
+        DEFINE_ACTION(HoverElement,          tr("HoverElement"));
+
+        DEFINE_ACTION(LoadLink,              tr("LoadLink"));
+        DEFINE_ACTION(OpenLink,              tr("OpenLink"));
+        DEFINE_ACTION(DownloadLink,          tr("DownloadLink"));
+        DEFINE_ACTION(CopyLinkUrl,           tr("CopyLinkUrl"));
+        DEFINE_ACTION(CopyLinkHtml,          tr("CopyLinkHtml"));
+        DEFINE_ACTION(OpenLinkWithDefault,   tr("OpenLinkWithDefault"));
+
+        DEFINE_ACTION(LoadImage,             tr("LoadImage"));
+        DEFINE_ACTION(OpenImage,             tr("OpenImage"));
+        DEFINE_ACTION(DownloadImage,         tr("DownloadImage"));
+        DEFINE_ACTION(CopyImage,             tr("CopyImage"));
+        DEFINE_ACTION(CopyImageUrl,          tr("CopyImageUrl"));
+        DEFINE_ACTION(CopyImageHtml,         tr("CopyImageHtml"));
+        DEFINE_ACTION(OpenImageWithDefault,  tr("OpenImageWithDefault"));
+
+        DEFINE_ACTION(LoadMedia,             tr("LoadMedia"));
+        DEFINE_ACTION(OpenMedia,             tr("OpenMedia"));
+        DEFINE_ACTION(DownloadMedia,         tr("DownloadMedia"));
+        DEFINE_ACTION(ToggleMediaControls,   tr("ToggleMediaControls"));
+        DEFINE_ACTION(ToggleMediaLoop,       tr("ToggleMediaLoop"));
+        DEFINE_ACTION(ToggleMediaPlayPause,  tr("ToggleMediaPlayPause"));
+        DEFINE_ACTION(ToggleMediaMute,       tr("ToggleMediaMute"));
+        DEFINE_ACTION(CopyMediaUrl,          tr("CopyMediaUrl"));
+        DEFINE_ACTION(CopyMediaHtml,         tr("CopyMediaHtml"));
+        DEFINE_ACTION(OpenMediaWithDefault,  tr("OpenMediaWithDefault"));
+
+        DEFINE_ACTION(OpenInNewViewNode,                 tr("OpenInNewViewNode"));
+        DEFINE_ACTION(OpenInNewDirectory,                tr("OpenInNewDirectory"));
+        DEFINE_ACTION(OpenOnRoot,                        tr("OpenOnRoot"));
+        DEFINE_ACTION(OpenInNewViewNodeForeground,       tr("OpenInNewViewNodeForeground"));
+        DEFINE_ACTION(OpenInNewDirectoryForeground,      tr("OpenInNewDirectoryForeground"));
+        DEFINE_ACTION(OpenOnRootForeground,              tr("OpenOnRootForeground"));
+        DEFINE_ACTION(OpenInNewViewNodeBackground,       tr("OpenInNewViewNodeBackground"));
+        DEFINE_ACTION(OpenInNewDirectoryBackground,      tr("OpenInNewDirectoryBackground"));
+        DEFINE_ACTION(OpenOnRootBackground,              tr("OpenOnRootBackground"));
+        DEFINE_ACTION(OpenInNewViewNodeThisWindow,       tr("OpenInNewViewNodeThisWindow"));
+        DEFINE_ACTION(OpenInNewDirectoryThisWindow,      tr("OpenInNewDirectoryThisWindow"));
+        DEFINE_ACTION(OpenOnRootThisWindow,              tr("OpenOnRootThisWindow"));
+        DEFINE_ACTION(OpenInNewViewNodeNewWindow,        tr("OpenInNewViewNodeNewWindow"));
+        DEFINE_ACTION(OpenInNewDirectoryNewWindow,       tr("OpenInNewDirectoryNewWindow"));
+        DEFINE_ACTION(OpenOnRootNewWindow,               tr("OpenOnRootNewWindow"));
+
+        DEFINE_ACTION(OpenImageInNewViewNode,            tr("OpenImageInNewViewNode"));
+        DEFINE_ACTION(OpenImageInNewDirectory,           tr("OpenImageInNewDirectory"));
+        DEFINE_ACTION(OpenImageOnRoot,                   tr("OpenImageOnRoot"));
+        DEFINE_ACTION(OpenImageInNewViewNodeForeground,  tr("OpenImageInNewViewNodeForeground"));
+        DEFINE_ACTION(OpenImageInNewDirectoryForeground, tr("OpenImageInNewDirectoryForeground"));
+        DEFINE_ACTION(OpenImageOnRootForeground,         tr("OpenImageOnRootForeground"));
+        DEFINE_ACTION(OpenImageInNewViewNodeBackground,  tr("OpenImageInNewViewNodeBackground"));
+        DEFINE_ACTION(OpenImageInNewDirectoryBackground, tr("OpenImageInNewDirectoryBackground"));
+        DEFINE_ACTION(OpenImageOnRootBackground,         tr("OpenImageOnRootBackground"));
+        DEFINE_ACTION(OpenImageInNewViewNodeThisWindow,  tr("OpenImageInNewViewNodeThisWindow"));
+        DEFINE_ACTION(OpenImageInNewDirectoryThisWindow, tr("OpenImageInNewDirectoryThisWindow"));
+        DEFINE_ACTION(OpenImageOnRootThisWindow,         tr("OpenImageOnRootThisWindow"));
+        DEFINE_ACTION(OpenImageInNewViewNodeNewWindow,   tr("OpenImageInNewViewNodeNewWindow"));
+        DEFINE_ACTION(OpenImageInNewDirectoryNewWindow,  tr("OpenImageInNewDirectoryNewWindow"));
+        DEFINE_ACTION(OpenImageOnRootNewWindow,          tr("OpenImageOnRootNewWindow"));
+
+        DEFINE_ACTION(OpenMediaInNewViewNode,            tr("OpenMediaInNewViewNode"));
+        DEFINE_ACTION(OpenMediaInNewDirectory,           tr("OpenMediaInNewDirectory"));
+        DEFINE_ACTION(OpenMediaOnRoot,                   tr("OpenMediaOnRoot"));
+        DEFINE_ACTION(OpenMediaInNewViewNodeForeground,  tr("OpenMediaInNewViewNodeForeground"));
+        DEFINE_ACTION(OpenMediaInNewDirectoryForeground, tr("OpenMediaInNewDirectoryForeground"));
+        DEFINE_ACTION(OpenMediaOnRootForeground,         tr("OpenMediaOnRootForeground"));
+        DEFINE_ACTION(OpenMediaInNewViewNodeBackground,  tr("OpenMediaInNewViewNodeBackground"));
+        DEFINE_ACTION(OpenMediaInNewDirectoryBackground, tr("OpenMediaInNewDirectoryBackground"));
+        DEFINE_ACTION(OpenMediaOnRootBackground,         tr("OpenMediaOnRootBackground"));
+        DEFINE_ACTION(OpenMediaInNewViewNodeThisWindow,  tr("OpenMediaInNewViewNodeThisWindow"));
+        DEFINE_ACTION(OpenMediaInNewDirectoryThisWindow, tr("OpenMediaInNewDirectoryThisWindow"));
+        DEFINE_ACTION(OpenMediaOnRootThisWindow,         tr("OpenMediaOnRootThisWindow"));
+        DEFINE_ACTION(OpenMediaInNewViewNodeNewWindow,   tr("OpenMediaInNewViewNodeNewWindow"));
+        DEFINE_ACTION(OpenMediaInNewDirectoryNewWindow,  tr("OpenMediaInNewDirectoryNewWindow"));
+        DEFINE_ACTION(OpenMediaOnRootNewWindow,          tr("OpenMediaOnRootNewWindow"));
+
+        DEFINE_ACTION(OpenAllUrl,    tr("OpenAllUrl"));
+        DEFINE_ACTION(OpenAllImage,  tr("OpenAllImage"));
+        DEFINE_ACTION(OpenTextAsUrl, tr("OpenTextAsUrl"));
+        DEFINE_ACTION(SaveAllUrl,    tr("SaveAllUrl"));
+        DEFINE_ACTION(SaveAllImage,  tr("SaveAllImage"));
+        DEFINE_ACTION(SaveTextAsUrl, tr("SaveTextAsUrl"));
+
+#undef  DEFINE_ACTION
+    }
+    switch(a){
+
+    case _ToggleNotifier:
+        webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetNotifier());
+        webaction->setText(tr("Notifier"));
+        webaction->setToolTip(tr("Notifier"));
+        break;
+    case _ToggleReceiver:
+        webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetReceiver());
+        webaction->setText(tr("Receiver"));
+        webaction->setToolTip(tr("Receiver"));
+        break;
+    case _ToggleMenuBar:
+        webaction->setCheckable(true);
+        webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty());
+        webaction->setText(tr("MenuBar"));
+        webaction->setToolTip(tr("MenuBar"));
+        break;
+    case _ToggleTreeBar:
+        webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible());
+        webaction->setText(tr("TreeBar"));
+        webaction->setToolTip(tr("TreeBar"));
+        break;
+    case _ToggleToolBar:
+        webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible());
+        webaction->setText(tr("ToolBar"));
+        webaction->setToolTip(tr("ToolBar"));
+        break;
+
+    case _NewViewNode:
+    case _CloneViewNode:
+    case _OpenInNewViewNode:
+    case _OpenInNewDirectory:
+    case _OpenOnRoot:
+    case _OpenImageInNewViewNode:
+    case _OpenImageInNewDirectory:
+    case _OpenImageOnRoot:
+    case _OpenMediaInNewViewNode:
+    case _OpenMediaInNewDirectory:
+    case _OpenMediaOnRoot:
+    case _ViewSource:
+    case _OpenAllUrl:
+    case _OpenAllImage:
+    case _OpenTextAsUrl:
+        webaction->setToolTip(webaction->toolTip() +
+                              (View::ActivateNewViewDefault()
+                               ? tr("\n Shift+Click: InNewWindow"
+                                    "\n Ctrl +Click: InBackground")
+                               : tr("\n Shift+Click: InNewWindow"
+                                    "\n Ctrl +Click: InForeground")));
+        break;
+    case _OpenInNewViewNodeForeground:
+    case _OpenInNewDirectoryForeground:
+    case _OpenOnRootForeground:
+    case _OpenInNewViewNodeBackground:
+    case _OpenInNewDirectoryBackground:
+    case _OpenOnRootBackground:
+    case _OpenImageInNewViewNodeForeground:
+    case _OpenImageInNewDirectoryForeground:
+    case _OpenImageOnRootForeground:
+    case _OpenImageInNewViewNodeBackground:
+    case _OpenImageInNewDirectoryBackground:
+    case _OpenImageOnRootBackground:
+    case _OpenMediaInNewViewNodeForeground:
+    case _OpenMediaInNewDirectoryForeground:
+    case _OpenMediaOnRootForeground:
+    case _OpenMediaInNewViewNodeBackground:
+    case _OpenMediaInNewDirectoryBackground:
+    case _OpenMediaOnRootBackground:
+        webaction->setToolTip(webaction->toolTip() +
+                              tr("\n Shift+Click: InNewWindow"));
+        break;
+    case _OpenInNewViewNodeThisWindow:
+    case _OpenInNewDirectoryThisWindow:
+    case _OpenOnRootThisWindow:
+    case _OpenImageInNewViewNodeThisWindow:
+    case _OpenImageInNewDirectoryThisWindow:
+    case _OpenImageOnRootThisWindow:
+    case _OpenMediaInNewViewNodeThisWindow:
+    case _OpenMediaInNewDirectoryThisWindow:
+    case _OpenMediaOnRootThisWindow:
+        webaction->setToolTip(webaction->toolTip() +
+                              (View::ActivateNewViewDefault()
+                               ? tr("\n Ctrl+Click: InBackground")
+                               : tr("\n Ctrl+Click: InForeground")));
+        break;
+    default: break;
+    }
+
+    if(data.canConvert<SharedWebElement>()){
+        if(SharedWebElement e = data.value<SharedWebElement>()){
+            switch(a){
+            case _ToggleMediaLoop:
+                webaction->setCheckable(true);
+                webaction->setChecked(e->IsLooped());
+                break;
+            case _ToggleMediaPlayPause:
+                webaction->setCheckable(true);
+                webaction->setChecked(e->IsPaused());
+                break;
+            case _ToggleMediaMute:
+                webaction->setCheckable(true);
+                webaction->setChecked(e->IsMuted());
+                break;
+            default: break;
+            }
+        }
+    }
+    return webaction;
+}
+
+void Page::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
+                              QPoint localPos, QPoint globalPos, MediaType type){
+
+    QMenu *menu = new QMenu(parent);
+    menu->setToolTipsVisible(true);
+
+    m_View->AddSpellCheckMenu(menu);
+    m_View->AddContextMenu(menu, elem, type);
+
+    menu->addSeparator();
+    menu->addAction(Action(Page::_InspectElement));
+
+    if(elem && !elem->IsNull() && elem->IsQueryInputElement()){
+        if(!menu->isEmpty()) menu->addSeparator();
+        menu->addAction(Action(Page::_AddSearchEngine, localPos));
+    }
+
+    m_View->AddRegularMenu(menu, elem);
+
+    menu->exec(globalPos);
+    delete menu;
+}
+
+void Page::DownloadSuggest(const QUrl& url){
+    QNetworkRequest req(url);
+    DownloadItem *item =
+        NetworkController::Download(GetNetworkAccessManager(),
+                                    req, NetworkController::ToVariable);
+
+    if(!item) return;
+
+    connect(item, SIGNAL(DownloadResult(const QByteArray&)),
+            this, SIGNAL(SuggestResult(const QByteArray&)));
+}
+
+TreeBank *Page::GetTB(){
+    return m_View->GetTreeBank();
+}
+
+TreeBank *Page::MakeTB(){
+    return NewWindow()->GetTreeBank();
+}
+
+TreeBank *Page::SuitTB(){
+    return ShiftMod() ? MakeTB() : GetTB();
+}
+
+void Page::LinkReq(QAction *action,
+                   std::function<void(QList<QNetworkRequest>)> callBack){
+
+    if(action->data().canConvert<SharedWebElement>()){
+        if(SharedWebElement e = action->data().value<SharedWebElement>()){
+            if(!e->IsNull() && !e->LinkUrl().isEmpty()){
+                QList<QNetworkRequest> reqs;
+                QNetworkRequest req(e->LinkUrl());
+                req.setRawHeader("Referer", m_View->url().toEncoded());
+                reqs << req;
+                callBack(reqs);
+                return;
+            }
+        }
+    }
+
+    m_View->CallWithHitLinkUrl(action ? action->data().toPoint() : QPoint(),
+                               [this, action, callBack](QUrl url){
+
+    if(!url.isEmpty()){
+        QList<QNetworkRequest> reqs;
+        QNetworkRequest req(url);
+        req.setRawHeader("Referer", m_View->url().toEncoded());
+        reqs << req;
+        callBack(reqs);
+        return;
+    }
+
+    m_View->CallWithGotCurrentBaseUrl([this, action, callBack](QUrl base){
+    m_View->CallWithSelectedHtml([this, action, callBack, base](QString html){
+
+    if(!html.isEmpty()){
+        QList<QNetworkRequest> reqs;
+        QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveReference);
+
+        if(!urls.isEmpty()){
+            foreach(QUrl u, urls){
+                QNetworkRequest req = QNetworkRequest(u);
+                req.setRawHeader("Referer", m_View->url().toEncoded());
+                reqs << req;
+            }
+
+            UrlCountCheck(reqs.length(), [callBack, reqs](bool result){
+                    if(result) callBack(reqs);
+                    else callBack(QList<QNetworkRequest>());
+                });
+            return;
+        }
+    }
+
+    m_View->CallWithSelectedText([this, action, callBack, base](QString text){
+
+    if(!text.isEmpty()){
+        QList<QNetworkRequest> reqs;
+        QList<QUrl> urls = ExtractUrlsFromText(text, base);
+
+        if(!urls.isEmpty()){
+            foreach(QUrl u, urls){
+                reqs << QNetworkRequest(u);
+            }
+            UrlCountCheck(reqs.length(), [callBack, reqs](bool result){
+                    if(result) callBack(reqs);
+                    else callBack(QList<QNetworkRequest>());
+                });
+            return;
+        }
+        reqs << QNetworkRequest(Page::CreateQueryUrl(text));
+        callBack(reqs);
+        return;
+    }
+
+    ImageReq(action, callBack);
+
+});});});});
+}
+
+void Page::ImageReq(QAction *action,
+                    std::function<void(QList<QNetworkRequest>)> callBack){
+
+    if(action && action->data().canConvert<SharedWebElement>()){
+        if(SharedWebElement e = action->data().value<SharedWebElement>()){
+            if(!e->IsNull() && !e->ImageUrl().isEmpty()){
+                QList<QNetworkRequest> reqs;
+                QNetworkRequest req(e->ImageUrl());
+                req.setRawHeader("Referer", m_View->url().toEncoded());
+                reqs << req;
+                callBack(reqs);
+                return;
+            }
+        }
+    }
+
+    m_View->CallWithHitImageUrl(action ? action->data().toPoint() : QPoint(),
+                                [this, callBack](QUrl url){
+
+    if(!url.isEmpty()){
+        QList<QNetworkRequest> reqs;
+        QNetworkRequest req(url);
+        req.setRawHeader("Referer", m_View->url().toEncoded());
+        reqs << req;
+        callBack(reqs);
+        return;
+    }
+
+    m_View->CallWithGotCurrentBaseUrl([this, callBack](QUrl base){
+    m_View->CallWithSelectedHtml([this, callBack, base](QString html){
+
+    if(!html.isEmpty()){
+        QList<QNetworkRequest> reqs;
+        QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveSource);
+
+        if(!urls.isEmpty()){
+            foreach(QUrl u, urls){
+                QNetworkRequest req = QNetworkRequest(u);
+                req.setRawHeader("Referer", m_View->url().toEncoded());
+                reqs << req;
+            }
+            UrlCountCheck(reqs.length(), [callBack, reqs](bool result){
+                    if(result) callBack(reqs);
+                    else callBack(QList<QNetworkRequest>());
+                });
+            return;
+        }
+    }
+
+    callBack(QList<QNetworkRequest>());
+
+});});});
+}
+
+void Page::UrlCountCheck(int count, BoolCallBack callBack){
+    if(count > OPEN_LINK_WARNING_THRESHOLD){
+        ModelessDialog::Question
+            (tr("Too many links or images."), tr("Open anyway?"), callBack, this);
+    } else {
+        callBack(true);
+    }
+}

@@ -1,5 +1,8 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-    <file>../view/quicknativewebview.qml</file>
+    <!-- the alias pins the resource path: 'QuickNativeWebView' loads
+         'qrc:/view/quicknativewebview.qml', and without it the path would
+         follow wherever the file sits in the tree. -->
+    <file alias="view/quicknativewebview.qml">../src/view/quicknativewebview.qml</file>
 </qresource>
 </RCC>

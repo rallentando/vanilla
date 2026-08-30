@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <!-- the alias pins the resource path: 'QuickWebEngineView' loads
+         'qrc:/view/quickwebengineview6.qml', and without it the path would
+         follow wherever the file sits in the tree. -->
+    <file alias="view/quickwebengineview6.qml">../src/view/webengine/quickwebengineview6.qml</file>
+    <file alias="view/quickwebengineinspector6.qml">../src/view/webengine/quickwebengineinspector6.qml</file>
+</qresource>
+</RCC>

@@ -1,0 +1,49 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "description": "The build tree lives outside the repository, in 'vanilla-build/' beside it -- 'sourceParentDir' is the directory holding this checkout, so no absolute path is written down and this resolves to the same place wherever the repository sits. Why it is kept out of the repository is in docs/BUILD.md. Qt comes from 'QTDIR', which a preset cannot carry itself: this file is committed and that path differs on every machine.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceParentDir}/vanilla-build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "$env{QTDIR}"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release",
+            "description": "Builds into ../vanilla-build/release. Set QTDIR first.",
+            "inherits": "base",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+        },
+        {
+            "name": "debug",
+            "displayName": "Debug",
+            "description": "Builds into ../vanilla-build/debug. Set QTDIR first.",
+            "inherits": "base",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+        }
+    ],
+
+    "buildPresets": [
+        { "name": "release", "configurePreset": "release" },
+        { "name": "debug",   "configurePreset": "debug" }
+    ],
+
+    "testPresets": [
+        {
+            "name": "release",
+            "configurePreset": "release",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "debug",
+            "configurePreset": "debug",
+            "output": { "outputOnFailure": true }
+        }
+    ]
+}
