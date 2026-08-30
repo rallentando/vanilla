@@ -1,10 +1,11 @@
 # ビルド手順
 
-最終更新: 2026-08-12
+最終更新: 2026-08-30
 
 ビルドシステムは **CMake**（[CMakeLists.txt](../CMakeLists.txt)）。
-**qmake（[vanilla.pro](../vanilla.pro)）も当面そのまま残してある**が、
-移行が済んだら削除する（ROADMAP.md Phase 4）。
+**qmake（[vanilla.pro](../vanilla.pro)）は 0.3.0 まで並存させると決めた**（D-241。
+リリースノートにも「this release only」と書いた）。0.3.0 は公開済みなので次版で削除する
+（ROADMAP.md D）。それまではソースを足すとき両方に足すこと。
 
 ---
 
@@ -260,11 +261,10 @@ macOS 固有のソース（`src/ui/mainwindowsettings.mm`）は `if(APPLE)` で�
 Qt のインストーラは要らない。
 
 ```sh
-sudo apt install build-essential cmake ninja-build \r
-    qt6-base-dev qt6-base-dev-tools qt6-declarative-dev \r
-    qt6-webengine-dev qt6-webengine-dev-tools qt6-webchannel-dev qt6-webview-dev \r
-    qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \r
-    libgl1-mesa-dev
+sudo apt install build-essential cmake ninja-build libgl1-mesa-dev
+sudo apt install qt6-base-dev qt6-base-dev-tools qt6-declarative-dev
+sudo apt install qt6-webengine-dev qt6-webengine-dev-tools qt6-webchannel-dev qt6-webview-dev
+sudo apt install qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools
 cmake -S . -B ../vanilla-build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build ../vanilla-build/release
 ```
@@ -346,8 +346,11 @@ cmake --build ../vanilla-build/release                                # .qm は�
 ## 配布物を作る
 
 ```bat
-cmake --install ..\vanilla-build\release --prefix C:\Users\mater\vanilla-build\package
+cmake --install ..\vanilla-build\release --prefix %BUILDROOT%\package
 ```
+
+`%BUILDROOT%` は `..\vanilla-build` の**絶対パス**（`--prefix` は相対だと止まる。下の注意）。
+この文書では以後もその意味で使う。
 
 > **配る package は公式の QtWebEngine で作ること**（D-241 追記4）。開発機は
 > 自前ビルド（H.264 / AAC 入り）を入れていることがあり、**install はそのとき Qt に
@@ -356,7 +359,7 @@ cmake --install ..\vanilla-build\release --prefix C:\Users\mater\vanilla-build\p
 > SHA256 が `02FFF5F4…` であることを確かめる。
 
 Qt の入っていないマシンで動くディレクトリが1発でできる。中身は `windeployqt`（macOS では
-`macdeployqt`）が決めるので、こちらで DLL を並べる必要はない。**実測 426MB / 1596 ファイル**（2026-08-27、FFmpeg 除外後）。
+`macdeployqt`）が決めるので、こちらで DLL を並べる必要はない。**実測 426MB / 1600 ファイル**（2026-08-30、0.3.0 の配布物。FFmpeg 除外後、ライセンス通知込み）。
 
 - 出力先はビルドツリーの隣の `vanilla-build\package`。
 - **`--prefix` は絶対パスで渡すこと。** 相対パスだと `qt.conf` を書く段で
@@ -404,7 +407,7 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
   VCINSTALLDIR の有無 × 既定 / `--compiler-runtime` の4通りを確認、2026-08-24）。
   2026-08-24 の監査 prefix に無かったのはこれが原因で、8/13 の package には入っている。
   **配る package は必ず vcvars のシェルで作り、`vc_redist.x64.exe` の有無を
-  確かめること**（ROADMAP.md D の 0.3.0 ゲート）。
+  確かめること**（下の「リリース手順」）。
   CMake は `--compiler-runtime` を明示して渡すが、**それで気づけるわけではない** ——
   2026-08-27 に Qt 6.11.1 で測り直したところ、`VCINSTALLDIR` の無いシェルでは
   明示しても何も言わず、`--no-compiler-runtime` との差も出なかった
@@ -413,9 +416,127 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
 - `qt.conf` は `windeployqt` が `Prefix = .` で書き出す。**リポジトリの `qt.conf` は同梱していない**
   （`Data = .` は `Prefix = .` に含まれるため）。
 
-配布の方針は決まった（D-241。0.3.0、**zip**、コード署名は今回保留で SHA-256 公開）。
-残るゲートは ROADMAP.md D の「0.3.0 リリースゲート」を参照。
-CI は当面入れない（D-016）。
+配布の方針は D-241（zip、コード署名は保留で SHA-256 公開）。**0.3.0 は 2026-08-30 に
+この手順で公開した** —— 通しの手順は次の「リリース手順」。次版へ向けた課題は
+ROADMAP.md D。CI は当面入れない（D-016）。
+
+## リリース手順（0.3.0 で実際に踏んだ手順、2026-08-30）
+
+公開は GitHub（github.com/rallentando/vanilla）への**スナップショット方式**（D-242）。
+私有リポジトリ（Bitbucket）の履歴は公開側に繋がない。順番は次のとおりで、
+**成果物はすべてタグのコミットから作る**。途中で私有側にコミットを足したら、タグを
+打ち直して package から作り直す（0.3.0 はそれを一度やった）。
+
+### 0. 出す前に確かめること
+
+- `VERSION` の版番号。exe の VersionInfo は `vanilla.rc` が `<VERSION>` を include して
+  同じ値になる（qmake は `RC_INCLUDEPATH`）。出したあと exe のプロパティで見る
+- `.ts` の未訳が英日とも 0（`grep -c 'type="unfinished"' translations/*.ts`）
+- `third_party/qt/NOTICE.txt` の Qt と Chromium の版が、ビルドに使う Qt と合っている
+  （食い違うと configure が warning）。WebView2 の通知は無いと configure が止まる
+- **QtWebEngine が公式ビルドであること**（上の「配布物を作る」の冒頭）
+- ROADMAP D に、その版で片づけると決めた項目が残っていないこと
+
+### 1. 私有側: タグと push
+
+```bat
+git tag 0.3.0
+git push origin master
+git push origin 0.3.0
+```
+
+タグは lightweight（0.2.x までと同じ形）。打ち直すときは `git tag -f 0.3.0 <commit>` と
+`git push --force origin 0.3.0`。既存の `0.2.2` は 2016 年の別履歴を指すので触らない。
+
+### 2. package と zip（vcvars のシェルで）
+
+```bat
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+set PATH=C:\Qt\Tools\CMake_64\bin;C:\Qt\6.11.1\msvc2022_64\bin;%PATH%
+for %I in (..\vanilla-build) do set BUILDROOT=%~fI
+cmake --build %BUILDROOT%\release
+ctest --test-dir %BUILDROOT%\release --output-on-failure
+rmdir /s /q %BUILDROOT%\package\vanilla-0.3.0
+cmake --install %BUILDROOT%\release --prefix %BUILDROOT%\package\vanilla-0.3.0
+cd /d %BUILDROOT%\package
+C:\Windows\System32\tar.exe -a -c -f ..\vanilla-0.3.0-x64.zip vanilla-0.3.0
+certutil -hashfile ..\vanilla-0.3.0-x64.zip SHA256
+```
+
+`for %I … set BUILDROOT=%~fI` は `..\vanilla-build` を絶対パスにする（`--prefix` が相対を断るため）。
+バッチファイルに書くなら `%%I`。
+
+- prefix を `package\vanilla-0.3.0` にするのは、zip の根に展開先ディレクトリを1つ持たせるため。
+  zip の名前は過去のリリースに合わせて `vanilla-<版>-x64.zip`
+- **zip は Windows 同梱の `tar.exe`（bsdtar）で作る。** .NET の
+  `ZipFile.CreateFromDirectory` はエントリ名の区切りが `\` になり（ZIP の仕様は `/`）、
+  Windows 以外の展開ツールで壊れる。Git Bash の GNU tar は zip を作れない。
+  作ったら `\` を含むエントリ数、FFmpeg の有無、`vc_redist.x64.exe`、`licenses/` の中身を数える
+- **zip はタイムスタンプを含むので、同じ手順で作り直すとハッシュが変わる。**
+  （余談だがこの文書のコードブロックでは行を `\` で継がない —— リポジトリは CRLF なので
+  Linux で `\` の直後に CR が来て継続にならず、2026-08-30 には継ぎの `\` が
+  文字どおりの `\r` に化けたまま公開された。1コマンド1行にする）
+  Release に上げた実物をそのまま配り、ノートの SHA-256 はその実物の値にする
+- package の exe を起動して試したなら `data/` `temp/` を消してから zip にする
+  （検証用の probe を置いたなら、それも）
+
+### 3. 公開ツリー: スナップショットと2コミット
+
+```bat
+python scripts\make-public-snapshot.py --dest ..\vanilla-gh --ref 0.3.0 ^
+    --report %BUILDROOT%\snapshot-report.txt
+```
+
+レポートの **`needs a human` と `must not ship` が 0** であること、除外一覧が想定どおり
+（AGENTS / CLAUDE / 内部 docs / `docs/relay/` / リリースノート / このスクリプト /
+WebView2 のヘッダ）であることを見る。`third_party/qt/` と `third_party/webview2/` の
+通知、`docs/deodorant.zip` は出る。
+
+vanilla-gh では**コミットを2つに分ける**（0.2.2 までの作法）:
+
+1. **変更コミット** —— `VERSION` 以外の全部（`git add -A` して `git restore --staged VERSION`）。
+   メッセージは、触った領域を小文字で並べて `and periodic update.` で締める要約1行、
+   空行、`* …` の箇条書き（過去の版の本文と同じ形）。
+2. **リリースコミット** —— `VERSION` だけ。メッセージは版番号だけ（`0.3.0`）。
+   `RELEASE_NOTES.md` はリポジトリに置かない（ノートは Release の本文だけ）。
+
+どちらにも `Co-Authored-By:` を3行（Claude Opus / Claude Fable / Codex CLI）。
+Codex の行は上流の既定に合わせ `Codex CLI (<model>) <noreply@openai.com>`
+（このアドレスが GitHub 上の Codex bot に対応する）。
+
+```bat
+git tag 0.3.0
+git push origin master
+git push origin 0.3.0
+```
+
+### 4. GitHub Release
+
+本文は `docs/RELEASE_NOTES-<版>.md`（この側にだけ置く。公開ツリーには出ない）。
+形は過去のリリースに合わせ、**リリース名は空**（タグ名が見出しになる）、本文は英語の
+`## What's new in vanilla <版>.` ＋箇条書き。末尾に zip の名前と SHA-256、Credits。
+
+```powershell
+gh release create 0.3.0 -R rallentando/vanilla --verify-tag `
+    --notes-file docs\RELEASE_NOTES-0.3.0.md `
+    ..\vanilla-build\vanilla-0.3.0-x64.zip
+```
+
+- **`--title ""` を渡さないこと。** PowerShell 5.1 は空文字の引数を落とすので、
+  `--title` が次の `--notes-file` を題名として食い、本文が空になってノートの `.md` が
+  資産として上がる（0.3.0 で踏んだ）。題名を省けば gh が空にする。
+  直すなら `gh release delete-asset` で余計な資産を消し、
+  `gh api --method PATCH repos/rallentando/vanilla/releases/<id> --input body.json` で
+  `name` と `body` を書き直す。**`--input` の JSON は BOM 無し**（`Set-Content -Encoding utf8`
+  は BOM を付けて 400 になる。`[IO.File]::WriteAllText` に `UTF8Encoding($false)` を渡す）
+- 作ったら `gh release view 0.3.0 --json name,tagName,assets,body` で、名前が空、
+  資産が zip 1本、バイト数が手元と一致することを見る
+
+### 5. あとに
+
+- ROADMAP D を次版に向けたものへ書き換え、決定の記録（D-241 / D-242）に結果を追記する
+- `vanilla-build\package` と zip は次に作り直すまで残しておく（配った実物）
+- 引継ぎ資料の「まだ確かめていないこと」に、その版で見ていないもの（別環境の起動など）を書く
 
 ---
 
@@ -433,7 +554,8 @@ macOS / Linux では `AppLocalDataLocation` を使う。
 
 ## 既知の問題
 
-- deprecation 警告（MSVC の C4996）は `QSsl::TlsV1_0` と `QSsl::TlsV1_1` の2件だけ。
+- deprecation 警告（MSVC の C4996）は `QSsl::TlsV1_0` / `QSsl::TlsV1_1` の2件だったが、
+  D-269 でその2つを削除した。**その後の件数は数え直していない。**
   **CMake ビルドでは既定で見えない。** `CMakeLists.txt` は `/W` を指定しないので
   MSVC 既定の `/W1` になり、レベル3の C4996 は出力されない。数えるときは
   `-DCMAKE_CXX_FLAGS="/DWIN32 /D_WINDOWS /EHsc /W3"` で別ツリーを建てる。

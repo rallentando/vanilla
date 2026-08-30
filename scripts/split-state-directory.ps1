@@ -30,14 +30,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# every executable the development machine has seen. '-All' walks these and
-# skips the ones with no 'data/'.
-$knownExeDirs = @(
-    "C:\Program Files\vanilla",
-    "C:\Users\mater\vanilla-build\release",
-    "C:\Users\mater\vanilla-build\debug",
-    "C:\Users\mater\vanilla-build\package"
-)
+# every place an executable is expected: the installation, and the build
+# trees beside this repository (BUILD.md, 'ビルドディレクトリ'). '-All' walks
+# these and skips the ones with no 'data/'.
+$buildRoot = Join-Path $PSScriptRoot '..\..\vanilla-build'
+$knownExeDirs = @("C:\Program Files\vanilla") + @('release', 'debug', 'package') |
+    ForEach-Object { if($_ -like '*:\*'){ $_ } else { Join-Path $buildRoot $_ } }
 
 # 'Application::BaseDirectory()': beside the executable, unless it sits in a
 # UAC protected directory, and then '<AppLocalDataLocation>'.

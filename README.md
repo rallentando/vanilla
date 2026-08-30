@@ -39,7 +39,9 @@
 
 ## 配布物について
 
-- 配布は zip 形式のポータブル構成。設定とセッションは実行ファイルの隣の `data/` に作られる
+- 配布は [GitHub の Releases](https://github.com/rallentando/vanilla/releases)。zip 形式の
+  ポータブル構成で、設定とセッションは実行ファイルの隣の `data/` に作られる
+- 同梱している Qt / Qt WebEngine / Edge WebView2 ローダのライセンス通知は zip の `licenses/` にある
 - 実行ファイルは**コード署名をしていない**。初回起動時に Windows の SmartScreen が
   警告を出すことがある（「詳細情報」→「実行」で起動できる）。
   配布 zip の SHA-256 をリリースノートで公開するので、照合のうえ実行してほしい
