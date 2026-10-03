@@ -12,6 +12,7 @@
 #include <QIcon>
 #include <QImage>
 #include <QPointer>
+#include <QScopedPointer>
 #include <QMultiHash>
 #include <QStringList>
 #include <QTimer>
@@ -21,7 +22,9 @@
 #include <QElapsedTimer>
 
 #include "edgewebviewstate.hpp"
+#include <QMenu>
 #include "nativehistory.hpp"
+#include "extensioncontroller.hpp"
 
 #include <windows.h>
 #include <wrl.h>
@@ -54,6 +57,7 @@ public:
     ICoreWebView2Environment *GetEnvironment() const { return m_Environment.Get();}
 
     static QString UserDataFolder();
+    static void PinExtensionCopies();
 
 private:
     EdgeEnvironment();
@@ -64,6 +68,32 @@ private:
     EdgeEnvironmentState m_State;
     ComPtr<ICoreWebView2Environment> m_Environment;
     QHash<int, QPointer<EdgeWebView>> m_Waiters;
+};
+
+class EdgeDownloadCarriers : public QObject {
+public:
+    static EdgeDownloadCarriers *Instance();
+
+    void Add(SharedView view);
+    bool Contains(const View *view) const;
+    void ReleaseLater(WeakView weak);
+    void ReleaseAll();
+
+    EdgeBackendCallLedger &Calls(){ return m_Releases.Calls();}
+
+    void WhenCallsAreDone(QObject *context, std::function<void()> action){
+        m_Releases.WhenCallsAreDone(this, context, action);
+    }
+
+    void DrainNow(){ m_Releases.DrainNow(this);}
+
+private:
+    EdgeDownloadCarriers();
+
+    void RetireEveryCarrier();
+
+    SharedViewList m_Carriers;
+    EdgeReleaseQueue m_Releases;
 };
 
 struct EdgeWebView::Private {
@@ -91,10 +121,23 @@ struct EdgeWebView::Private {
 
     EdgeControllerState m_State;
 
+    EdgeContextMenuState m_ContextMenu;
+    ComPtr<ICoreWebView2ContextMenuRequestedEventArgs> m_ContextMenuArgs;
+    ComPtr<ICoreWebView2Deferral> m_ContextMenuDeferral;
+    QPointer<QMenu> m_ContextMenuWidget;
+    EdgeWebView::ContextTarget m_MenuRetry;
+    bool m_MenuRetryArmed;
+    int m_MenuSequence;
+    int m_MenuHandlerDepth;
+    bool m_Retiring;
+
+    quint64 m_HostNumber;
+    QScopedPointer<QObject> m_HostToken;
+    QString m_Space;
+
     int m_Token;
 
     NativeHistory m_History;
-
 
     QPointF m_PageScroll;
     QSizeF m_PageContents;
@@ -103,11 +146,14 @@ struct EdgeWebView::Private {
 
     EdgeDownloadCloseLedger m_Downloads;
 
+    EdgeAbortLatch m_Aborts;
+
     EdgeDocumentCoordinator m_Document;
     QString m_ProfileName;
     bool m_PrivateMode;
 
     QString m_ActualProfileName;
+    QPointer<ExtensionController> m_Extensions;
     bool m_ActualPrivate;
     bool m_ProfileMeasured;
     QStringList m_SpecificSet;
@@ -132,9 +178,11 @@ struct EdgeWebView::Private {
     QSet<WId> m_InspectorBefore;
 
     QUrl m_Url;
+    EdgeStringDocument m_StringDocument;
     QString m_Title;
     QIcon m_Icon;
     QColor m_BaseBackgroundColor;
+    QString m_FailureText;
     QImage m_GrabbedDisplayData;
     QPointF m_Scroll;
 
@@ -159,6 +207,15 @@ struct EdgeWebView::Private {
         , m_DropTargetWindow(nullptr)
         , m_HandledKeys(QSet<int>())
         , m_State(EdgeControllerState())
+        , m_ContextMenu(EdgeContextMenuState())
+        , m_MenuRetry(EdgeWebView::ContextTarget())
+        , m_MenuRetryArmed(false)
+        , m_MenuSequence(0)
+        , m_MenuHandlerDepth(0)
+        , m_Retiring(false)
+        , m_HostNumber(0)
+        , m_HostToken(new QObject())
+        , m_Space(QString())
         , m_Token(0)
         , m_HasFocus(false)
         , m_Downloads(EdgeDownloadCloseLedger())
@@ -176,6 +233,7 @@ struct EdgeWebView::Private {
         , m_InspectorWatch(nullptr)
         , m_InspectorProbeTicks(0)
         , m_Url(QUrl())
+        , m_StringDocument()
         , m_Title(QString())
         , m_Icon(QIcon())
         , m_BaseBackgroundColor(QColor())
@@ -220,7 +278,20 @@ inline RECT PhysicalBoundsOf(QWindow *window){
     return rect;
 }
 
+inline QUrl ReportedSourceOf(ICoreWebView2 *sender){
+    if(!sender) return QUrl();
+    LPWSTR source = nullptr;
+    if(FAILED(sender->get_Source(&source)) || !source) return QUrl();
+    const QUrl reported = QUrl(QString::fromWCharArray(source));
+    CoTaskMemFree(source);
+    return reported;
+}
+
 bool EdgeInspectorTraceOn();
+
+HRESULT EdgeAnswerExtensionHost(ExtensionController *controller, quint64 viewNumber, QObject *owner,
+                                ICoreWebView2WebResourceRequestedEventArgs *args,
+                                ICoreWebView2WebResourceRequest *request, const QUrl &url);
 QString BlankBackgroundJsCode(const QColor &color);
 
 #endif

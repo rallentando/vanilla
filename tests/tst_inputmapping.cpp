@@ -252,6 +252,12 @@ void tst_inputmapping::tellsAUrlFromSomethingToSearchFor_data(){
         << QStringLiteral("chrome://net-internals/#dns")
         << QStringLiteral("chrome://net-internals/#dns");
 
+    QTest::newRow("edge")
+        << QStringLiteral("edge://flags") << QStringLiteral("edge://flags");
+    QTest::newRow("edge with path")
+        << QStringLiteral("edge://settings/privacy") << QStringLiteral("edge://settings/privacy");
+    QTest::newRow("not edge")   << QStringLiteral("knowledge:base") << QString();
+
     QTest::newRow("vanilla")
         << QStringLiteral("vanilla://settings") << QStringLiteral("vanilla://settings");
     QTest::newRow("vanilla with slash")

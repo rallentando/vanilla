@@ -215,6 +215,30 @@ private slots:
         QCOMPARE(QSet<QString>(written.keyBegin(), written.keyEnd()), keys);
     }
 
+    void thedefaultAcceptLanguageFollowsTheMachine(){
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("ja-Jpan-JP") << QStringLiteral("ja-JP")
+                                                  << QStringLiteral("ja-Jpan") << QStringLiteral("ja")),
+                 QStringLiteral("ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("ja-JP") << QStringLiteral("ja")),
+                 QStringLiteral("ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("en-US") << QStringLiteral("en")),
+                 QStringLiteral("en-US,en;q=0.9"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("en")),
+                 QStringLiteral("en-US,en;q=0.9"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("en-GB")),
+                 QStringLiteral("en-GB,en;q=0.9,en-US;q=0.8"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("de_DE")),
+                 QStringLiteral("de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("zh-Hans-CN")),
+                 QStringLiteral("zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("es-419")),
+                 QStringLiteral("es-419,es;q=0.9,en-US;q=0.8,en;q=0.7"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("ja-Jpan")),
+                 QStringLiteral("ja,en-US;q=0.9,en;q=0.8"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList()), QStringLiteral("en-US,en;q=0.9"));
+        QCOMPARE(UserAgent::DefaultAcceptLanguage(QStringList() << QStringLiteral("C")), QStringLiteral("en-US,en;q=0.9"));
+    }
+
     void themanagerCompletesANavigationWithWhatABrowserCarries(){
         QNetworkRequest bare(QUrl(QStringLiteral("https://example.com/file.bin")));
         NetworkAccessManager::SetRequestPurpose(bare, NetworkAccessManager::Navigation);

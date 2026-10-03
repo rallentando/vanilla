@@ -29,9 +29,7 @@ typedef QList<Node*>      NodeList;
 typedef QList<ViewNode*>  ViewNodeList;
 typedef QList<LocalNode*> LocalNodeList;
 
-
 class Node {
-
 
 public:
     enum NodeType {
@@ -66,7 +64,6 @@ protected:
     static bool m_Booting;
     static QSet<QString> m_AllImageFileName;
     static QSet<QString> m_AllHistoryFileName;
-
 
 public:
     Node();
@@ -106,6 +103,13 @@ public:
         return m_Title;
     }
     quint64 GetSerial() const { return m_Serial;}
+
+    static constexpr quint64 SERIAL_SPAN = quint64(1) << 20;
+    static constexpr quint64 SERIAL_CEILING = (quint64(1) << 31) - (quint64(1) << 21);
+    static quint64 SerialStart(const QByteArray &kept);
+    static quint64 SerialAfter(quint64 start, quint64 next);
+    static void SeedSerials(quint64 start);
+    static quint64 NextSerial(){ return m_SerialCounter.load();}
 
     bool GetFolded()   const { return m_Folded;}
     Node *GetParent()  const { return m_Parent;}
@@ -410,7 +414,6 @@ public:
 
     void SaveHistoryIfNeed();
 };
-
 
 class LocalNode : public Node {
 

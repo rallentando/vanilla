@@ -2,6 +2,10 @@
 #include "const.hpp"
 
 #include <QtTest>
+#include <QImage>
+#include <QPainter>
+
+#include <functional>
 
 #include "graphicstableview.hpp"
 
@@ -20,6 +24,10 @@ private slots:
     void scrollFollowsTheIndicator();
     void scrollFollowsTheIndicator_data();
     void scrollIsZeroWhenNothingScrolls();
+    void indicatorIsCentredAcrossDisplayScales_data();
+    void indicatorIsCentredAcrossDisplayScales();
+    void paintedIndicatorIsCentredAcrossDisplayScales_data();
+    void paintedIndicatorIsCentredAcrossDisplayScales();
 
     void neitherEverReturnsANaN();
     void neitherEverReturnsANaN_data();
@@ -89,6 +97,82 @@ void tst_gadgetsscroll::scrollIsZeroWhenNothingScrolls(){
     QCOMPARE(GraphicsTableView::ScrollFromIndicatorY(10.0, 0.0, 40.0), 0.0);
     QCOMPARE(GraphicsTableView::ScrollFromIndicatorY(10.0, -4.0, 40.0), 0.0);
     QCOMPARE(GraphicsTableView::ScrollFromIndicatorY(10.0, 200.0, 0.0), 0.0);
+}
+
+void tst_gadgetsscroll::indicatorIsCentredAcrossDisplayScales_data(){
+    QTest::addColumn<int>("dpi");
+
+    QTest::newRow("100 percent") << 96;
+    QTest::newRow("125 percent") << 120;
+    QTest::newRow("150 percent") << 144;
+    QTest::newRow("200 percent") << 192;
+}
+
+void tst_gadgetsscroll::indicatorIsCentredAcrossDisplayScales(){
+    QFETCH(int, dpi);
+
+    const qreal inset = DeviceScale::FromDpi(3, dpi);
+    const QRectF bar(20.0, 30.0,
+                     DeviceScale::FromDpi(GADGETS_SCROLL_BAR_WIDTH, dpi), 200.0);
+    const QRectF indicator = GraphicsTableView::ScrollIndicatorRect(bar, inset, 40.0);
+
+    QCOMPARE(indicator.center().x(), bar.center().x());
+    QCOMPARE(indicator.left() - bar.left(), bar.right() - indicator.right());
+}
+
+void tst_gadgetsscroll::paintedIndicatorIsCentredAcrossDisplayScales_data(){
+    indicatorIsCentredAcrossDisplayScales_data();
+}
+
+void tst_gadgetsscroll::paintedIndicatorIsCentredAcrossDisplayScales(){
+    QFETCH(int, dpi);
+
+    const qreal inset = DeviceScale::FromDpi(3, dpi);
+    const QRectF bar(10.0, 10.0,
+                     DeviceScale::FromDpi(GADGETS_SCROLL_BAR_WIDTH, dpi), 50.0);
+    const QRectF rect = GraphicsTableView::ScrollIndicatorRect(bar, inset, 30.0);
+    const qreal travel = GraphicsTableView::ScrollIndicatorTravel
+        (bar.height(), rect.height(), inset);
+
+    const auto PaintedBounds = [](const std::function<void(QPainter*)> &draw){
+        QImage image(64, 64, QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::transparent);
+        QPainter painter(&image);
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        draw(&painter);
+        painter.end();
+
+        QRect bounds;
+        for(int y = 0; y < image.height(); y++){
+            for(int x = 0; x < image.width(); x++){
+                if(qAlpha(image.pixel(x, y)) != 0)
+                    bounds = bounds.united(QRect(x, y, 1, 1));
+            }
+        }
+        return bounds;
+    };
+
+    const QRect barPixels = PaintedBounds([&bar](QPainter *painter){
+        painter->setPen(Qt::white);
+        painter->setBrush(Qt::gray);
+        painter->drawRect(bar);
+    });
+    const QRect topIndicatorPixels = PaintedBounds([&rect](QPainter *painter){
+        ScrollIndicator indicator;
+        indicator.setRect(rect);
+        indicator.paint(painter, nullptr, nullptr);
+    });
+    const QRect bottomIndicatorPixels = PaintedBounds([&rect, travel](QPainter *painter){
+        ScrollIndicator indicator;
+        indicator.setRect(rect.translated(0.0, travel));
+        indicator.paint(painter, nullptr, nullptr);
+    });
+
+    const qreal barCenter = barPixels.x() + barPixels.width() / 2.0;
+    const qreal indicatorCenter = topIndicatorPixels.x() + topIndicatorPixels.width() / 2.0;
+    QCOMPARE(indicatorCenter, barCenter);
+    QCOMPARE(topIndicatorPixels.top() - barPixels.top(),
+             barPixels.bottom() - bottomIndicatorPixels.bottom());
 }
 
 void tst_gadgetsscroll::neitherEverReturnsANaN_data(){

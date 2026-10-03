@@ -4,11 +4,14 @@
 #ifdef EDGEWEBVIEW
 
 #include "edgewebview_p.hpp"
+#include "extensionhostwire.hpp"
 
 #include <QDir>
 #include <QTimer>
-#include <QWebEngineSettings>
-#include <QWebEngineProfile>
+#ifdef WEBENGINEVIEW
+#  include <QWebEngineSettings>
+#  include <QWebEngineProfile>
+#endif
 
 #include "application.hpp"
 
@@ -92,7 +95,8 @@ namespace {
     };
 
     class EdgeEnvironmentOptions : public ICoreWebView2EnvironmentOptions,
-                                   public ICoreWebView2EnvironmentOptions4 {
+                                   public ICoreWebView2EnvironmentOptions4,
+                                   public ICoreWebView2EnvironmentOptions6 {
 
     public:
         EdgeEnvironmentOptions() : m_Ref(1) {}
@@ -117,23 +121,28 @@ namespace {
                 AddRef();
                 return S_OK;
             }
+            if(id == IID_ICoreWebView2EnvironmentOptions6){
+                *out = static_cast<ICoreWebView2EnvironmentOptions6*>(this);
+                AddRef();
+                return S_OK;
+            }
             *out = nullptr;
             return E_NOINTERFACE;
         }
 
         HRESULT STDMETHODCALLTYPE get_AdditionalBrowserArguments(LPWSTR *value) override {
             if(!value) return E_POINTER;
-            bool gesture = false;
-#ifdef WEBENGINEVIEW
-            gesture = QWebEngineProfile::defaultProfile()->settings()
-                ->testAttribute(QWebEngineSettings::PlaybackRequiresUserGesture);
-#endif
-            gesture = Application::GlobalSettings().value
+            const bool gesture = Application::GlobalSettings().value
                 (QStringLiteral("webview/preferences/PlaybackRequiresUserGesture"),
-                 gesture).value<bool>();
-            *value = CoString
-                (gesture ? QString()
+                 true).value<bool>();
+            QStringList switches;
+            switches << (gesture
+                         ? QStringLiteral("--autoplay-policy=user-gesture-required")
                          : QStringLiteral("--autoplay-policy=no-user-gesture-required"));
+            switches << Application::ChromiumSwitchesIn
+                (Application::GlobalSettings().value
+                 (QStringLiteral("application/@ChromiumFlags"), QStringList()).value<QStringList>());
+            *value = CoString(Application::JoinChromiumSwitches(switches, true));
             return *value ? S_OK : E_OUTOFMEMORY;
         }
         HRESULT STDMETHODCALLTYPE put_AdditionalBrowserArguments(LPCWSTR) override {
@@ -165,19 +174,28 @@ namespace {
             if(!count || !registrations) return E_POINTER;
             *count = 0;
             *registrations = static_cast<ICoreWebView2CustomSchemeRegistration**>
-                (CoTaskMemAlloc(sizeof(ICoreWebView2CustomSchemeRegistration*)));
+                (CoTaskMemAlloc(2 * sizeof(ICoreWebView2CustomSchemeRegistration*)));
             if(!*registrations) return E_OUTOFMEMORY;
 
             EdgeSchemeRegistration *registration = new EdgeSchemeRegistration
                 (VANILLA_SCHEME, VANILLA_SCHEME + QStringLiteral("://*"));
             (*registrations)[0] = registration;
-            *count = 1;
+            (*registrations)[1] = new EdgeSchemeRegistration
+                (QString::fromLatin1(ExtensionHostWire::SCHEME), QStringLiteral("*"));
+            *count = 2;
             return S_OK;
         }
         HRESULT STDMETHODCALLTYPE SetCustomSchemeRegistrations(
             UINT32, ICoreWebView2CustomSchemeRegistration**) override {
             return S_OK;
         }
+
+        HRESULT STDMETHODCALLTYPE get_AreBrowserExtensionsEnabled(BOOL *value) override {
+            if(!value) return E_POINTER;
+            *value = TRUE;
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE put_AreBrowserExtensionsEnabled(BOOL) override { return S_OK; }
 
     private:
         static HRESULT Empty(LPWSTR *value){
@@ -209,6 +227,17 @@ QString EdgeEnvironment::UserDataFolder(){
         (Application::DataDirectory() + QStringLiteral("edgewebview"));
 }
 
+bool EdgeWebView::RuntimeAvailable(){
+    static const bool available = [](){
+        LPWSTR version = nullptr;
+        const HRESULT hr = GetAvailableCoreWebView2BrowserVersionString(nullptr, &version);
+        const bool found = SUCCEEDED(hr) && version;
+        if(version) CoTaskMemFree(version);
+        return found;
+    }();
+    return available;
+}
+
 void EdgeEnvironment::Request(int token, EdgeWebView *view){
     if(!token || !view) return;
 
@@ -235,6 +264,7 @@ void EdgeEnvironment::Forget(int token){
 
 void EdgeEnvironment::StartCreation(){
     const QString folder = UserDataFolder();
+    PinExtensionCopies();
 
     ComPtr<ICoreWebView2EnvironmentOptions> options;
     options.Attach(static_cast<ICoreWebView2EnvironmentOptions*>

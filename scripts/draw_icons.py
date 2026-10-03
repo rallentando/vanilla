@@ -6,8 +6,9 @@
 # What it draws and what it leaves alone:
 #   - drawn: the chevrons (menu back/forward/rewind/fastforward, tree bar
 #     up/down/left/right), the crosses, the speakers, clone, trash, plus,
-#     reload, and the tool bar's command and search. Thin strokes (1px at
-#     base size), corners square and circles round, near-opaque black ink
+#     reload, the tool bar's command and search, and the extension bar's
+#     puzzle piece and pin. Thin strokes (1px at base size), corners
+#     square and circles round, near-opaque black ink
 #     (alpha 230 -- Theme::Ink recolours through the alpha, so the ink is
 #     the shape and the colour arrives at paint time).
 #   - left alone: the tree glyphs (blank/folder/folded/unfolded and their
@@ -221,6 +222,47 @@ def icon_search(size=16):
     return im
 
 
+def arc_points(cx, cy, r, a0, a1, n=12):
+    # points along a circle, PIL's way round: 0 is 3 o'clock and the angle
+    # grows clockwise, because y is down.
+    import math
+    return [(cx + r * math.cos(math.radians(a0 + (a1 - a0) * i / n)),
+             cy + r * math.sin(math.radians(a0 + (a1 - a0) * i / n)))
+            for i in range(n + 1)]
+
+
+def icon_extension(size=16):
+    # a puzzle piece: the tool bar's button for the extensions list. A square
+    # body with a round knob on the top edge and a round socket cut into the
+    # left one -- a knob on the left as well made the glyph read wide (user's
+    # eye). Both arcs are centred ON the edge they sit in, so the edge runs
+    # straight into them: no slanted neck. The lines sit on half pixels,
+    # which is where a 1px stroke comes out crisp.
+    im = canvas(size)
+    d = ImageDraw.Draw(im)
+    left, top, right, bottom = 3.5, 5.5, 13.5, 14.5
+    r = 2.2
+    pts = [(left, top)]
+    pts += arc_points(8.5, top, r, 180, 360)             # the knob, over the top
+    pts += [(right, top), (right, bottom), (left, bottom)]
+    pts += arc_points(left, 10.0, r, 90, -90)            # the socket, into the body
+    poly_outline(d, pts)
+    return im
+
+
+def icon_pin(size=16):
+    # a push pin, seen side on: a head, a collar it rests on, and the needle.
+    # It marks the extensions the list keeps a button for on the bar; the
+    # button is checkable, so 'pinned' is the pressed state of the same glyph
+    # rather than a second bitmap.
+    im = canvas(size)
+    d = ImageDraw.Draw(im)
+    poly_outline(d, [(6.0, 2.5), (10.0, 2.5), (10.0, 6.5), (12.5, 9.5),
+                     (3.5, 9.5), (6.0, 6.5)])
+    stroke(d, [(8.0, 9.5), (8.0, 14.0)])
+    return im
+
+
 ICONS = {
     "menu/back.png":            icon_back,
     "menu/forward.png":         icon_forward,
@@ -245,6 +287,8 @@ ICONS = {
     "treebar/right.png":        icon_chevron_right,
     "toolbar/command.png":      icon_command,
     "toolbar/search.png":       icon_search,
+    "toolbar/extension.png":    icon_extension,
+    "toolbar/pin.png":          icon_pin,
 }
 
 

@@ -15,13 +15,18 @@ WebEngineView {
     function makeDefaultScript(){
         var script = WebEngine.script()
         script.injectionPoint = WebEngineScript.DocumentReady
-        script.worldId = WebEngineScript.MainWorld
+        // not the page's world: what this script says, the host acts on. (D-355)
+        script.worldId = WebEngineScript.ApplicationWorld
         script.runsOnSubFrames = true
         script.sourceCode = viewInterface.defaultScript()
         return script
     }
 
-    onNavigationRequested: {
+    onNavigationRequested: function(request) {
+        if(request.isMainFrame && viewInterface.DeferExtensionNavigation(request.url)){
+            request.reject()
+            return
+        }
         if(userScripts.collection.length == 0){
             userScripts.collection = [makeDefaultScript()]
         }
@@ -46,8 +51,28 @@ WebEngineView {
         if(status == WebEngineView.LoadSucceededStatus){
             viewInterface.loadFinished(true)
         }
+        /*
+          A failed load, and a stopped one, are two different things.
+
+          'loadFinished(false)' is this seam's only word for failure, and the
+          status bar repeats it -- so a load which was stopped, by the user
+          or by a navigation which turned into a download, must not use it.
+          But it still has to *end*: this file is the only place the C++ side
+          hears about the end of a load, so a status which is not looked at
+          is a view which stays "loading" for good -- the tab keeps the
+          download's address, the stop button stays up, and
+          'TreeBank::GoBackOrCloseForDownload' never comes back
+          (measured 2026-08-30, D-280 追記2).
+
+          So stopping has an ending of its own. 'quicknativewebview.qml' says
+          the same thing the same way, and the widget views reach it through
+          'LoadEnding' (D-280).
+         */
         if(status == WebEngineView.LoadFailedStatus){
             viewInterface.loadFinished(false)
+        }
+        if(status == WebEngineView.LoadStoppedStatus){
+            viewInterface.loadStopped()
         }
     }
 

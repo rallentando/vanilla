@@ -52,6 +52,9 @@ namespace {
         QColor(  0,   0,   0,  10),
         QColor(255, 255, 255,  50),
 
+        QColor(224, 237, 255, 255),
+        QColor( 23, 100, 192, 255),
+
         QColor(255, 255, 255, 200),
         QColor(255, 255, 255, 200),
         QColor(  0,   0,   0, 255),
@@ -63,13 +66,13 @@ namespace {
 
         QColor(  0,   0,   0, 170),
         QColor(255, 255, 200,  44),
-        QColor(  0, 100, 255,  77),
+        QColor( 23, 100, 192,  77),
         QColor(255, 255, 255,  77),
         QColor(255, 200, 220, 170),
         QColor(255, 255, 200,  44),
         QColor(255, 255, 200,  30),
-        QColor(  0, 100, 255,  77),
-        QColor(  0, 100, 255,  50),
+        QColor( 23, 100, 192,  77),
+        QColor( 23, 100, 192,  50),
         QColor(255, 255, 255,  77),
         QColor(255, 255, 255,  50),
         QColor(255, 255, 255, 255),
@@ -96,9 +99,9 @@ namespace {
         QColor(225, 225, 225, 255),
         QColor(100, 100, 255, 255),
         QColor(100, 100, 255,  50),
-        QColor(100, 255, 255, 255),
+        QColor( 23, 100, 192, 255),
         QColor(255, 255, 255, 255),
-        QColor(  0,   0, 100, 255),
+        QColor( 23, 100, 192, 255),
         QColor(120, 120, 120, 255),
         QColor(  0,   0,   0, 127),
         QColor(255, 255, 255, 255),
@@ -128,7 +131,10 @@ namespace {
         QColor(  0,   0,   0,  25),
         QColor(  0,   0,   0,  70),
         QColor(  0,   0,   0,  90),
+        QColor(  0,   0,   0,  65),
         QColor( 70, 110, 160, 110),
+        QColor( 70, 110, 160,  35),
+        QColor( 80, 120,  80,  50),
 
         QColor(240, 240, 240, 180),
         QColor( 20,  20,  20, 200),
@@ -201,6 +207,9 @@ namespace {
         QColor(255, 255, 255,  10),
         QColor(  0,   0,   0,  50),
 
+        QColor( 38,  62,  89, 255),
+        QColor(123, 183, 255, 255),
+
         QColor( 40,  40,  40, 200),
         QColor( 40,  40,  40, 200),
         QColor(230, 230, 230, 255),
@@ -212,13 +221,13 @@ namespace {
 
         QColor(  0,   0,   0, 190),
         QColor(255, 255, 200,  44),
-        QColor(  0, 140, 255,  90),
+        QColor(123, 183, 255,  90),
         QColor(255, 255, 255,  60),
         QColor(255, 170, 200, 150),
         QColor(255, 255, 200,  44),
         QColor(255, 255, 200,  30),
-        QColor(  0, 140, 255,  90),
-        QColor(  0, 140, 255,  60),
+        QColor(123, 183, 255,  90),
+        QColor(123, 183, 255,  60),
         QColor(255, 255, 255,  60),
         QColor(255, 255, 255,  40),
         QColor(255, 255, 255, 255),
@@ -245,9 +254,9 @@ namespace {
         QColor( 64,  64,  64, 255),
         QColor(120, 150, 255, 255),
         QColor(120, 150, 255,  60),
-        QColor(120, 230, 230, 255),
+        QColor(123, 183, 255, 255),
         QColor( 32,  32,  32, 255),
-        QColor(120, 170, 255, 255),
+        QColor(123, 183, 255, 255),
         QColor(140, 140, 140, 255),
         QColor(  0,   0,   0, 127),
         QColor(255, 255, 255, 255),
@@ -277,7 +286,10 @@ namespace {
         QColor(255, 255, 255,  30),
         QColor(255, 255, 255,  80),
         QColor(255, 255, 255, 100),
+        QColor(255, 255, 255,  70),
         QColor(120, 160, 210, 120),
+        QColor(120, 160, 210,  40),
+        QColor(120, 175, 120,  60),
 
         QColor( 32,  32,  32, 180),
         QColor(235, 235, 235, 200),
@@ -456,6 +468,11 @@ QByteArray PageColorVariables(){
 
 QPixmap Ink(const QPixmap &pixmap, Role role){
     if(!IsDark() || pixmap.isNull()) return pixmap;
+    return Fill(pixmap, role);
+}
+
+QPixmap Fill(const QPixmap &pixmap, Role role){
+    if(pixmap.isNull()) return pixmap;
 
     QPixmap tinted = pixmap;
     QPainter painter(&tinted);

@@ -559,13 +559,18 @@ private slots:
         QVERIFY(!BookmarkIO::ChromeBookmarkFile().isEmpty());
         QVERIFY(!BookmarkIO::OperaBookmarkFile().isEmpty());
         QVERIFY(!BookmarkIO::VivaldiBookmarkFile().isEmpty());
+        QVERIFY(!BookmarkIO::EdgeBookmarkFile().isEmpty());
 
-        QVERIFY(BookmarkIO::ChromeBookmarkFile().endsWith(QStringLiteral("/Bookmarks")));
-        QVERIFY(BookmarkIO::OperaBookmarkFile().endsWith(QStringLiteral("/Bookmarks")));
-        QVERIFY(BookmarkIO::VivaldiBookmarkFile().endsWith(QStringLiteral("/Bookmarks")));
-        QVERIFY(BookmarkIO::ChromeBookmarkFile() != BookmarkIO::OperaBookmarkFile());
-        QVERIFY(BookmarkIO::ChromeBookmarkFile() != BookmarkIO::VivaldiBookmarkFile());
-        QVERIFY(BookmarkIO::OperaBookmarkFile() != BookmarkIO::VivaldiBookmarkFile());
+        const QStringList chromeFamily = {
+            BookmarkIO::ChromeBookmarkFile(),
+            BookmarkIO::OperaBookmarkFile(),
+            BookmarkIO::VivaldiBookmarkFile(),
+            BookmarkIO::EdgeBookmarkFile(),
+        };
+        for(const QString &file : chromeFamily)
+            QVERIFY2(file.endsWith(QStringLiteral("/Bookmarks")), qPrintable(file));
+        QCOMPARE(QSet<QString>(chromeFamily.begin(), chromeFamily.end()).size(),
+                 chromeFamily.size());
     }
 };
 

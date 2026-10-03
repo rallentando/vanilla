@@ -30,6 +30,8 @@ QString SettingsKey(const QString &name);
 QString Expand(QString tmpl, const QString &system,
                const QString &location, const QString &chromium);
 
+QString DefaultAcceptLanguage(const QStringList &uiLanguages);
+
 typedef QMap<QString, QString> Map;
 
 Map Load(const SettingsIO::Map &settings);

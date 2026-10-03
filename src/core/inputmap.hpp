@@ -39,6 +39,12 @@ QString UnescapeKeyName(const QString &name);
 
 QStringList NamesUnder(const SettingsIO::Map &settings, const QString &group);
 
+bool IsSingleKey(const QKeySequence &seq);
+
+QString CanonicalKeyName(const QString &name);
+QString CanonicalMouseName(const QString &name);
+QString CanonicalGestureName(const QString &name);
+
 bool LoadKeyMap(const SettingsIO::Map &settings, const QString &group,
                 KeyMap &map, const Hooks &hooks = Hooks());
 bool LoadGestureMap(const SettingsIO::Map &settings, const QString &group,

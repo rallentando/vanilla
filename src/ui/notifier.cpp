@@ -112,6 +112,10 @@ void Notifier::RegisterDownload(DownloadItem *item){
     if(!item) return;
     connect(item, &DownloadItem::Progress,
             this, &Notifier::SetSaveProgress);
+
+    connect(item, &QObject::destroyed, this, [this, item](){
+        RemoveDownloadItem(item);
+    });
 }
 
 void Notifier::RegisterUpload(UploadItem *item){

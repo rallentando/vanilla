@@ -120,8 +120,6 @@ private slots:
     void trashLeavesOutTheSideFiles();
     void windowIdsGoThroughTheHooks();
 
-    void readsTheLegacyXmlTree();
-    void readsAnIndentedLegacyXmlTree();
 };
 
 void tst_treeserializer::initTestCase(){
@@ -383,7 +381,6 @@ void tst_treeserializer::refusesAMissingFile(){
     MakeFolder(root, QStringLiteral("kept"));
 
     QVERIFY(!TreeSerializer::ReadJsonFile(Path(QStringLiteral("nothing.json")), root));
-    QVERIFY(!TreeSerializer::ReadLegacyXmlFile(Path(QStringLiteral("nothing.xml")), root));
 
     QCOMPARE(root->ChildrenLength(), 1);
 
@@ -405,8 +402,6 @@ void tst_treeserializer::refusesABrokenFile(){
     const QString empty = Path(QStringLiteral("nothing_at_all.json"));
     WriteAll(empty, QString());
     QVERIFY(!TreeSerializer::ReadJsonFile(empty, root));
-
-    QVERIFY(!TreeSerializer::ReadLegacyXmlFile(truncated, root));
 
     QCOMPARE(root->ChildrenLength(), 1);
 
@@ -470,72 +465,6 @@ void tst_treeserializer::windowIdsGoThroughTheHooks(){
     QCOMPARE(titles, QStringList() << QStringLiteral("shown"));
 
     delete reread;
-    delete root;
-}
-
-void tst_treeserializer::readsTheLegacyXmlTree(){
-    const QString xml = Path(QStringLiteral("legacy.xml"));
-    WriteAll(xml, QStringLiteral(R"xml(<?xml version="1.0" encoding="UTF-8"?>)xml")
-             + QStringLiteral(R"xml(<root><viewnode primary="true" holdview="false" folded="false" title="folder" )xml")
-             + QStringLiteral(R"xml(create="20260101120000" lastupdate="20260101120100" lastaccess="20260101120200">)xml")
-             + QStringLiteral(R"xml(<viewnode primary="true" holdview="true" folded="true" title="a &quot;quoted&quot; tab" )xml")
-             + QStringLiteral(R"xml(create="20260101120000" lastupdate="20260101120100" lastaccess="20260101120200" )xml")
-             + QStringLiteral(R"xml(index="0" url="https://example.com/?a=1&amp;b=2" )xml")
-             + QStringLiteral(R"xml(scrollx="7" scrolly="8" zoom="125"/></viewnode></root>)xml"));
-
-    ViewNode *fromXml = new ViewNode();
-    {
-        Booting booting;
-        QVERIFY(TreeSerializer::ReadLegacyXmlFile(xml, fromXml));
-    }
-
-    const QString json = Path(QStringLiteral("legacy_out.json"));
-    QVERIFY(TreeSerializer::WriteJsonFile(json, fromXml));
-
-    ViewNode *fromJson = new ViewNode();
-    {
-        Booting booting;
-        QVERIFY(TreeSerializer::ReadJsonFile(json, fromJson));
-    }
-
-    const QString again = Path(QStringLiteral("legacy_again.json"));
-    QVERIFY(TreeSerializer::WriteJsonFile(again, fromJson));
-
-    QCOMPARE(ReadAll(again), ReadAll(json));
-
-    ViewNode *tab = fromXml->GetChildAt(0)->GetChildAt(0)->ToViewNode();
-    QVERIFY(tab);
-    QCOMPARE(tab->GetTitle(), QStringLiteral("a \"quoted\" tab"));
-    QCOMPARE(tab->GetUrl(), QUrl(QStringLiteral("https://example.com/?a=1&b=2")));
-    QCOMPARE(tab->GetZoom(), 1.25f);
-    QCOMPARE(tab->GetScrollX(), 7);
-
-    delete fromJson;
-    delete fromXml;
-}
-
-void tst_treeserializer::readsAnIndentedLegacyXmlTree(){
-    const QString xml = Path(QStringLiteral("indented.xml"));
-    WriteAll(xml, QStringLiteral(R"xml(<?xml version="1.0" encoding="UTF-8"?>
-<root>
- <viewnode holdview="false" folded="false" title="folder"
-           create="20260101120000" lastupdate="20260101120100" lastaccess="20260101120200">
-  <viewnode holdview="true" folded="true" title="tab" url="https://example.com/"
-            create="20260101120000" lastupdate="20260101120100" lastaccess="20260101120200"/>
- </viewnode>
-</root>
-)xml"));
-
-    ViewNode *root = new ViewNode();
-    {
-        Booting booting;
-        QVERIFY(TreeSerializer::ReadLegacyXmlFile(xml, root));
-    }
-
-    QCOMPARE(root->ChildrenLength(), 1);
-    QCOMPARE(root->GetChildAt(0)->ChildrenLength(), 1);
-    QCOMPARE(root->GetChildAt(0)->GetChildAt(0)->GetTitle(), QStringLiteral("tab"));
-
     delete root;
 }
 

@@ -17,6 +17,7 @@ class QCompleter;
 class QStandardItemModel;
 class QPaintEvent;
 class QResizeEvent;
+class ExtensionBar;
 
 class ToolBar : public QToolBar {
     Q_OBJECT
@@ -58,11 +59,13 @@ protected:
     void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
     void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
     void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE;
 
 private:
     SharedView m_View;
     TreeBank *m_TreeBank;
     LineEdit *m_LineEdit;
+    ExtensionBar *m_ExtensionBar;
     QCompleter *m_Completer;
     QStandardItemModel *m_Model;
     QAction *m_BackAction;

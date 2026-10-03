@@ -3,6 +3,7 @@
 
 #include "inputmap.hpp"
 
+#include <algorithm>
 
 namespace InputMap {
 
@@ -48,6 +49,85 @@ QStringList NamesUnder(const SettingsIO::Map &settings, const QString &group){
         names << name;
     }
     return names;
+}
+
+bool IsSingleKey(const QKeySequence &seq){
+    if(seq.count() != 1) return false;
+    const QKeyCombination combination = seq[0];
+    if(combination.keyboardModifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))
+        return false;
+    return combination.key() < 0x01000000;
+}
+
+QString CanonicalKeyName(const QString &name){
+    const QKeySequence seq = QKeySequence::fromString(name, QKeySequence::PortableText);
+    if(seq.isEmpty()) return QString();
+    for(int i = 0; i < seq.count(); i++){
+        const Qt::Key key = seq[i].key();
+        if(key == Qt::Key_unknown || key == 0 ||
+           key == Qt::Key_Shift   || key == Qt::Key_Control ||
+           key == Qt::Key_Meta    || key == Qt::Key_Alt) return QString();
+    }
+    const QString canonical = seq.toString(QKeySequence::PortableText);
+    if(QKeySequence(canonical) != seq) return QString();
+    return canonical;
+}
+
+namespace {
+
+const QStringList MODIFIERS = QStringList()
+    << QStringLiteral("Shift") << QStringLiteral("Ctrl") << QStringLiteral("Alt")
+    << QStringLiteral("Meta")  << QStringLiteral("Keypad");
+
+QStringList Buttons(){
+    QStringList buttons;
+    buttons << QStringLiteral("LeftButton") << QStringLiteral("RightButton")
+            << QStringLiteral("MidButton");
+    for(int i = 1; i <= 24; i++) buttons << QStringLiteral("ExtraButton%1").arg(i);
+    return buttons;
+}
+
+const QStringList WHEELS = QStringList()
+    << QStringLiteral("WheelUp") << QStringLiteral("WheelDown");
+
+const QStringList STROKES = QStringList()
+    << QStringLiteral("U")  << QStringLiteral("D")  << QStringLiteral("R")  << QStringLiteral("L")
+    << QStringLiteral("UR") << QStringLiteral("UL") << QStringLiteral("DR") << QStringLiteral("DL");
+
+}
+
+QString CanonicalMouseName(const QString &name){
+    static const QStringList buttons = Buttons();
+
+    QStringList tokens = name.split(QLatin1Char('+'));
+    const QString last = tokens.takeLast();
+    if(!buttons.contains(last) && !WHEELS.contains(last)) return QString();
+
+    QList<int> modifiers, held;
+    foreach(QString token, tokens){
+        const int modifier = MODIFIERS.indexOf(token);
+        const int button = buttons.indexOf(token);
+        if(modifier >= 0 && !modifiers.contains(modifier)) modifiers << modifier;
+        else if(button >= 0 && !held.contains(button) && token != last) held << button;
+        else return QString();
+    }
+    std::sort(modifiers.begin(), modifiers.end());
+    std::sort(held.begin(), held.end());
+
+    QStringList canonical;
+    foreach(int modifier, modifiers) canonical << MODIFIERS[modifier];
+    foreach(int button, held) canonical << buttons[button];
+    canonical << last;
+    return canonical.join(QLatin1Char('+'));
+}
+
+QString CanonicalGestureName(const QString &name){
+    const QStringList strokes = name.split(QLatin1Char(','));
+    for(int i = 0; i < strokes.length(); i++){
+        if(!STROKES.contains(strokes[i])) return QString();
+        if(i > 0 && strokes[i] == strokes[i - 1]) return QString();
+    }
+    return strokes.join(QLatin1Char(','));
 }
 
 bool LoadKeyMap(const SettingsIO::Map &settings, const QString &group,

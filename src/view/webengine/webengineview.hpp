@@ -11,6 +11,7 @@
 #include "notifier.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
+#include "settingspage.hpp"
 
 #include <stdlib.h>
 
@@ -19,6 +20,9 @@
 #include <QWebEngineHistory>
 #include <QWebEngineHttpRequest>
 #include <QPointer>
+#include <QGuiApplication>
+#include <QInputMethod>
+#include <QTransform>
 
 class QKeySequence;
 class EventEater;
@@ -87,6 +91,14 @@ public:
     bool IsRenderable() Q_DECL_OVERRIDE {
         return page() != 0 && (visible() || !m_GrabedDisplayData.isNull());
     }
+    bool MakesSidePanels() const Q_DECL_OVERRIDE { return true; }
+    QUrl CommittedUrl() Q_DECL_OVERRIDE {
+        return page() && page()->history() ? page()->history()->currentItem().url() : QUrl();
+    }
+    QImage CaptureVisible() Q_DECL_OVERRIDE {
+        if(!page() || !visible() || !window() || window()->isMinimized()) return QImage();
+        return grab().toImage();
+    }
     void Render(QPainter *painter) Q_DECL_OVERRIDE {
         if(visible()){
             QImage image(size(), QImage::Format_ARGB32);
@@ -109,8 +121,9 @@ public:
             p.end();
             m_GrabedDisplayData = image;
 
-        }
-        if(!m_GrabedDisplayData.isNull()){
+            if(!clip.isEmpty())
+                render(painter, clip.boundingRect().topLeft(), clip);
+        } else if(!m_GrabedDisplayData.isNull()){
             foreach(QRect rect, clip){
                 painter->drawImage(rect, m_GrabedDisplayData.copy(rect));
             }
@@ -154,10 +167,10 @@ public:
         return page() ? page()->Action(a, data) : 0;
     }
 
-    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE {
-        emit urlChanged(url);
-        load(url);
-    }
+    ExtensionController *Extensions() const override;
+    QWidget *CreateExtensionView(const QUrl &url, ExtensionPage page, QWidget *parent,
+                                 const std::function<void()> &closed = std::function<void()>()) override;
+    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE;
     void TriggerNativeLoadAction(const QNetworkRequest &req,
                                  QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
                                  const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE {
@@ -174,7 +187,7 @@ public:
         if(operation == QNetworkAccessManager::PostOperation)
             request.setPostData(body);
 
-        load(request);
+        LoadAfterExtensions(request);
     }
     void TriggerNativeGoBackAction() Q_DECL_OVERRIDE {
         if(page()) page()->triggerAction(QWebEnginePage::Back);
@@ -248,19 +261,22 @@ public slots:
         }
     }
     void show() Q_DECL_OVERRIDE {
+        const bool wasVisible = base()->isVisible();
         WakeUp();
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
 
-        MainWindow *win = Application::GetCurrentWindow();
-        QSize s =
-            m_TreeBank ? m_TreeBank->ViewSize() :
-            win ? win->GetTreeBank()->ViewSize() :
-            !size().isEmpty() ? size() :
-            DEFAULT_WINDOW_SIZE;
-        resize(QSize(s.width(), s.height()+1));
-        resize(s);
+        if(!wasVisible){
+            MainWindow *win = Application::GetCurrentWindow();
+            QSize s =
+                m_TreeBank ? m_TreeBank->ViewSize() :
+                win ? win->GetTreeBank()->ViewSize() :
+                !size().isEmpty() ? size() :
+                DEFAULT_WINDOW_SIZE;
+            resize(QSize(s.width(), s.height()+1));
+            resize(s);
+        }
 
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
         CallWithScroll([this](QPointF pos){
@@ -313,10 +329,12 @@ public slots:
     bool RestoreScroll() Q_DECL_OVERRIDE;
     bool SaveZoom() Q_DECL_OVERRIDE;
     bool RestoreZoom() Q_DECL_OVERRIDE;
+    float MinimumZoom() const Q_DECL_OVERRIDE { return ChromiumMinimumZoom / DeviceZoomScale();}
+    float MaximumZoom() const Q_DECL_OVERRIDE { return ChromiumMaximumZoom / DeviceZoomScale();}
     bool SaveHistory() Q_DECL_OVERRIDE;
     bool RestoreHistory() Q_DECL_OVERRIDE;
 #ifdef MEDIATIME
-    bool SaveMediaTime() Q_DECL_OVERRIDE;
+    bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) Q_DECL_OVERRIDE;
     bool RestoreMediaTime() Q_DECL_OVERRIDE;
 #endif
 
@@ -362,7 +380,9 @@ public slots:
     void AddSearchEngine(QPoint pos) Q_DECL_OVERRIDE;
     void AddBookmarklet(QPoint pos)  Q_DECL_OVERRIDE;
 
+    void LoadAfterExtensions(const QWebEngineHttpRequest &request);
 signals:
+    void ExtensionContextChanged();
     void statusBarMessage(const QString&);
     void statusBarMessage2(const QString&, const QString&);
     void ViewChanged();
@@ -399,6 +419,7 @@ private:
     int m_MediaTimeSaveTimer;
 #endif
     bool m_PreventScrollRestoration;
+    qreal m_ReportedZoomFactor;
 
     friend class EventEater;
 };
@@ -445,6 +466,11 @@ protected:
                 }
             }
 
+            if(VanillaPage::IsSettingsUrl(m_View->url())){
+                if(Application::IsMoveKey(ke)) m_View->m_PreventScrollRestoration = true;
+                return false;
+            }
+
             if(Application::HasAnyModifier(ke) ||
                Application::IsFunctionKey(ke)){
                 return m_View->TriggerKeyEvent(ke);
@@ -457,6 +483,18 @@ protected:
             return false;
         }
         case QEvent::KeyRelease:{
+            return false;
+        }
+        case QEvent::InputMethodQuery:{
+            if(widget && widget == QGuiApplication::focusObject()){
+                const QPoint origin = widget->mapTo(widget->window(), QPoint(0, 0));
+                const QTransform transform = QTransform::fromTranslate(origin.x(), origin.y());
+                QInputMethod *method = QGuiApplication::inputMethod();
+                if(method->inputItemTransform() != transform){
+                    method->setInputItemTransform(transform);
+                    method->setInputItemRectangle(widget->rect());
+                }
+            }
             return false;
         }
         case QEvent::MouseMove:

@@ -41,6 +41,7 @@ public:
     virtual QRectF NodeTitleAreaRect(GraphicsTableView *gtv) const = 0;
     virtual QRectF ScrollBarAreaRect(GraphicsTableView *gtv) const = 0;
     virtual QGraphicsRectItem *CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const = 0;
+    virtual QRectF ThumbnailHitRect(const Thumbnail *thumb) const = 0;
 
     virtual bool ScrollToChangeDirectory(bool value) const = 0;
     virtual bool RightClickToRenameNode(bool value) const = 0;
@@ -100,6 +101,7 @@ public:
     QRectF NodeTitleAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
     QRectF ScrollBarAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
     QGraphicsRectItem *CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const Q_DECL_OVERRIDE;
+    QRectF ThumbnailHitRect(const Thumbnail *thumb) const Q_DECL_OVERRIDE;
 
     bool ScrollToChangeDirectory(bool value) const Q_DECL_OVERRIDE { return value;}
     bool RightClickToRenameNode(bool value) const Q_DECL_OVERRIDE { return value;}
@@ -152,6 +154,7 @@ public:
     QRectF NodeTitleAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
     QRectF ScrollBarAreaRect(GraphicsTableView *gtv) const Q_DECL_OVERRIDE;
     QGraphicsRectItem *CreateSelectRect(GraphicsTableView *gtv, QPointF pos) const Q_DECL_OVERRIDE;
+    QRectF ThumbnailHitRect(const Thumbnail *thumb) const Q_DECL_OVERRIDE;
 
     bool ScrollToChangeDirectory(bool) const Q_DECL_OVERRIDE { return false;}
     bool RightClickToRenameNode(bool) const Q_DECL_OVERRIDE { return false;}

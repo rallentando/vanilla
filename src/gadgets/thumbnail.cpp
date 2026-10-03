@@ -59,8 +59,15 @@ void Thumbnail::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 }
 
 QRectF Thumbnail::boundingRect() const {
+    if(m_TransitionRect) return *m_TransitionRect;
     if(!m_LockedRect.isNull()) return m_LockedRect;
     return m_TableView->ComputeRect(this, m_Index);
+}
+
+QPainterPath Thumbnail::shape() const {
+    QPainterPath path;
+    path.addRect(m_TableView->GetStyle()->ThumbnailHitRect(this));
+    return path;
 }
 
 QVariant Thumbnail::itemChange(GraphicsItemChange change, const QVariant &value){

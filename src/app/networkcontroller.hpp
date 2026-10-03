@@ -2,6 +2,8 @@
 #define NETCONTROL_HPP
 
 #include "switch.hpp"
+#include "dnrrules.hpp"
+#include <QSharedPointer>
 #include "const.hpp"
 
 #include <QNetworkAccessManager>
@@ -69,8 +71,18 @@ class RequestInterceptor : public QWebEngineUrlRequestInterceptor {
 public:
     RequestInterceptor(QObject *parent = nullptr);
     void interceptRequest(QWebEngineUrlRequestInfo &info) Q_DECL_OVERRIDE;
+    void AskExtensionRules(QWebEngineUrlRequestInfo &info);
+    static Dnr::ResourceType DnrTypeOf(QWebEngineUrlRequestInfo::ResourceType type);
 
     static RequestInterceptor *Instance();
+    static RequestInterceptor *PrivateInstance();
+    static RequestInterceptor *For(bool offTheRecord){
+        return offTheRecord ? PrivateInstance() : Instance();
+    }
+
+private:
+    bool m_AsksExtensionRules = true;
+    Dnr::Framed m_Framed;
 };
 #endif
 
@@ -88,6 +100,22 @@ public:
 private:
     static QList<QRegularExpression> m_Blocked;
     static bool m_SendDoNotTrack;
+};
+
+class ExtensionNetRules {
+
+public:
+    struct Source {
+        QString id;
+        QStringList files;
+        QByteArray session;
+        QByteArray dynamic;
+    };
+
+    static void Reload();
+    static void Load(const QList<Source> &sources, bool async = true);
+    static QSharedPointer<const Dnr::Rules> Current(quint64 *generation = nullptr);
+    static void WaitForLoads();
 };
 
 class NetworkAccessManager : public QNetworkAccessManager {
@@ -117,10 +145,11 @@ public:
     void SetProxy(QString proxySet);
     void SetSslProtocol(QString sslSet);
     static QSsl::SslProtocol SslProtocolForSetting(const QString &sslSet);
-    void SetOffTheRecord(QString offTheRecordSet);
 #ifdef WEBENGINEVIEW
-    QWebEngineProfile *GetProfile() const;
-    SharedProfile GetSharedProfile() const;
+
+    QWebEngineProfile *GetProfile(bool offTheRecord);
+    SharedProfile GetSharedProfile(bool offTheRecord);
+    QList<QWebEngineProfile*> Profiles() const;
 #endif
 
 private slots:
@@ -144,11 +173,11 @@ private:
     QSsl::SslProtocol m_SslProtocol;
 #ifdef WEBENGINEVIEW
     SharedProfile m_Profile;
-    QMetaObject::Connection m_CookieMirrorAdded;
-    QMetaObject::Connection m_CookieMirrorRemoved;
-    void SetupProfile();
-    void SetupClientHints(const QString &browser, const QString &ua,
-                          const QString &full);
+    SharedProfile m_PrivateProfile;
+    void SetupProfile(QWebEngineProfile *profile);
+    static void SetupClientHints(QWebEngineProfile *profile,
+                                 const QString &browser, const QString &ua,
+                                 const QString &full);
 #endif
     static const QList<QEvent::Type> m_EventTypes;
 };
@@ -180,7 +209,8 @@ private:
     QString CreateDefaultFromReplyOrRequest();
 
     QPointer<QNetworkReply> m_DownloadReply = nullptr;
-    QObject *m_DownloadItem = nullptr;
+
+    QPointer<QObject> m_DownloadItem = nullptr;
 
     bool       m_GettingPath = false;
     QString    m_Path;
@@ -191,7 +221,8 @@ private:
     bool       m_FinishedFlag = false;
 
 private slots:
-#ifdef WEBENGINEVIEW
+#if defined(WEBENGINEVIEW) || defined(EDGEWEBVIEW)
+
     void StateChanged();
     void ReceivedBytesChanged();
 #endif
@@ -263,7 +294,6 @@ public:
     static void SetUserAgent(NetworkAccessManager *nam, QStringList set);
     static void SetProxy(NetworkAccessManager *nam, QStringList set);
     static void SetSslProtocol(NetworkAccessManager *nam, QStringList set);
-    static void SetOffTheRecord(NetworkAccessManager *nam, QStringList set);
 
 #ifdef WEBENGINEVIEW
     static QWebEngineProfile* InspectorProfile();
@@ -275,6 +305,7 @@ public:
     static void ApplyQuickPermissionsPolicy(QQuickWebEngineProfile *profile);
     static void ApplyQuickBlockRules(QQuickWebEngineProfile *profile);
     static void ApplyQuickCommonSettings(QQuickWebEngineProfile *profile);
+    static void ApplyAcceptLanguage();
     static void ConnectQuickNotifications(QQuickWebEngineProfile *profile);
 
     static QString ProfileKey(const QObject *profile);
@@ -296,9 +327,9 @@ public:
     static QMap<QString, NetworkAccessManager*> AllNetworkAccessManager();
     static void InitializeNetworkAccessManager(QString id, const QList<QNetworkCookie> &cookies);
     static bool LoadCookieFile(QString path);
-    static bool LoadLegacyCookieFile(QString path);
     static void LoadAllCookies();
-    static void SaveAllCookies();
+    static QByteArray CookieSnapshot();
+    static bool SaveCookieSnapshot(const QByteArray &snapshot);
     static bool ShouldSaveCookie(const QNetworkCookie &cookie,
                                  bool saveSessionCookie, const QDateTime &now);
 

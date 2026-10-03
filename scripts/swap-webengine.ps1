@@ -24,7 +24,7 @@ param(
     [switch]$WhatIf
 )
 
-$qt      = "C:\Qt\6.11.1\msvc2022_64"
+$qt      = "C:\Qt\6.12.0\msvc2022_64"
 $staging = "C:\qtwe-staging"          # output of the local build (C:\qtwe)
 $backup  = "C:\qtwe-official-backup"  # made on the first swap
 
@@ -36,8 +36,14 @@ function Show-Dll {
     if(-not (Test-Path $d)){ "$why : (no dll)"; return }
     $h = (Get-FileHash $d).Hash
     $name = switch ($h) {
-        "B3E99957A940480E0F5E0F00E1B16F70ABC0887781BECFE248EEA4187CC00F6B" { "self built" }
-        "02FFF5F4AC7C449A2EB541BC81CB840419339A367EEDC4ED713BB04BE84D340C" { "official" }
+        "65BE5235AA1F0FA3EEEA0268AD2492BD9DF94D8A37680493ADD1661361FA9181" { "self built (Qt 6.12.0 / WebEngine 6.140.0, patched: WAR + isolated world eval + IME to active widget, 2026-10-02)" }
+        "475A605D6A2A2A089F3C6AAD4B072BD0F14265D1974B47C5068C98BE655979AD" { "official (Qt 6.12.0 / WebEngine 6.140.0)" }
+        # Qt 6.11.2
+        "3E977233F5DBE7FAFD099CB3C490DD1C21AB20B0B5C092B192F4247B828527C4" { "self built (patched: WAR + isolated world eval + IME to active widget, 2026-09-25)" }
+        "124EEE96BE6EC896BD7287E517708A67A2CA29E9F3BD29B4C41AB23277DDF6D2" { "self built (patched: WAR + isolated world eval, 2026-09-23)" }
+        "ECCDF8D52EBE122CC18472625EA0A676B080C6E4BDBF555D70547E1D720F1F75" { "self built (patched: WAR, 2026-09-22)" }
+        "1E63D1738F1AF3078AAD45AFFB810683C15162EFC1E23316F01BF3D1E712B34E" { "self built (unpatched, 2026-09-16)" }
+        "D6995CE685FEC54B28B3E2BD7C891666E3DFF825696C30EF46B009EF5EB1A831" { "official" }
         default { "unknown -- update the hashes in this script" }
     }
     "$why : $name ($($h.Substring(0,8))...)"
@@ -115,3 +121,6 @@ else {
 
 Show-Dll "after"
 "remember to rebuild vanilla and remake the package: the engine dlls are deployed into it"
+"and delete the GPUCache of every vanilla profile that will run the new engine (same exe path ="
+"same profile = same shader cache, and a cache made by the other build flickers -- BUILD.md):"
+'  Get-ChildItem "$env:APPDATA\vanilla\QtWebEngine" -Directory -Recurse -Filter GPUCache | Remove-Item -Recurse -Force'

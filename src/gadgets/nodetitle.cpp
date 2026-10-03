@@ -55,6 +55,7 @@ void NodeTitle::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 }
 
 QRectF NodeTitle::boundingRect() const {
+    if(m_TransitionRect) return *m_TransitionRect;
     if(!m_LockedRect.isNull()) return m_LockedRect;
     return m_TableView->ComputeRect(this, m_Index);
 }

@@ -33,10 +33,14 @@ public:
     int MapWidth() const;
     void ResizeNotify(QSize size);
 
-    enum BlockKind { TextBlock, MediaBlock, ControlBlock };
+    enum BlockKind {
+        TextBlock, MediaBlock, ControlBlock, FrameBlock,
+        PositionedBackgroundBlock
+    };
     struct Block {
         QRectF rect;
         int kind;
+        bool followsViewport;
     };
 
     static qreal SlideOffset(qreal drawingHeight, qreal stripHeight,
@@ -55,6 +59,10 @@ private slots:
     void OnViewDestroyed(QObject *base);
 
 private:
+    static QString CollectBlocksJsCode();
+    static QRectF PaintedBlockRect(const Block &block, qreal conversion,
+                                   qreal scale, qreal offset,
+                                   qreal indicatorTop);
     struct Snapshot {
         QList<Block> blocks;
         QSizeF pageSize;

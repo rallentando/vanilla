@@ -1,0 +1,2 @@
+# Applied with patch --binary to a file that is LF in the Qt WebEngine sources
+tools/patches/qtwebengine-6.140.0-isolated-world-unsafe-eval.patch -text

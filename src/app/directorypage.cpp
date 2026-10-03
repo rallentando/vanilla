@@ -21,6 +21,10 @@
 #include "treebank.hpp"
 #include "useragent.hpp"
 #include "view.hpp"
+#ifdef WEBENGINEVIEW
+#  include <QWebEngineProfile>
+#  include <QWebEngineSettings>
+#endif
 
 namespace {
 
@@ -38,7 +42,9 @@ namespace {
           QT_TRANSLATE_NOOP("DirectoryPage",
               "On, nothing under this directory is kept on this machine: no "
               "cookies, no history, no cache, no session. What the sites "
-              "themselves see is unchanged."),
+              "themselves see is unchanged. The private directories of one "
+              "profile share one private session, which lasts until the "
+              "application quits."),
           "(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)", "Private", "!Private", -1, false, false },
         { "autoload",
           QT_TRANSLATE_NOOP("DirectoryPage", "Auto load"),
@@ -49,6 +55,13 @@ namespace {
               "directory is loaded only when it is opened. (Default: off)"),
           "[nN](?:o)?(?:[aA](?:uto)?)?[lL](?:oad)?", "!NoAutoLoad", "NoAutoLoad",
           0, true, false },
+        { "rightgesture",
+          QT_TRANSLATE_NOOP("DirectoryPage", "Mouse gestures"),
+          QT_TRANSLATE_NOOP("DirectoryPage",
+              "Dragging with the right mouse button runs the action assigned "
+              "to the shape drawn."),
+          "(?:[rR](?:ight)?[gG](?:esture)?|[mM](?:ouse)?[gG](?:esture)?)",
+          "RightGesture", "!RightGesture", -1, false, false },
         { "draggesture",
           QT_TRANSLATE_NOOP("DirectoryPage", "Super drag"),
           QT_TRANSLATE_NOOP("DirectoryPage",
@@ -153,6 +166,12 @@ namespace {
         return DirectoryPage::Tokens().first();
     }
 
+    bool SpellsId(const QString &word){
+        return QRegularExpression(QStringLiteral("\\A(?:%1)\\Z")
+                                  .arg(QLatin1String(IdToken().pattern)))
+            .match(word).hasMatch();
+    }
+
     QString IdOf(const Node *nd){
         return nd ? QString::number(nd->GetSerial(), 16) : QString();
     }
@@ -185,8 +204,7 @@ namespace {
             if(!vn) return QString();
             const QString title = vn->GetTitle();
             if(vn == TreeBank::GetViewRoot() || vn == TreeBank::GetTrashRoot() ||
-               (vn->IsDirectory() && !title.isEmpty() &&
-                DirectoryPage::TokenState(title, IdToken()) == 1)){
+               (vn->IsDirectory() && DirectoryPage::SaysId(title))){
 
                 return DirectoryPage::TitleName(title);
             }
@@ -280,15 +298,20 @@ namespace {
         strings[QStringLiteral("followed")] =
             QCoreApplication::translate("DirectoryPage",
                 "Saved, and %1 directories below were changed to follow it");
-        strings[QStringLiteral("ancestors")] =
+        strings[QStringLiteral("ancestorsShow")] =
             QCoreApplication::translate("DirectoryPage",
-                "Directories above (%1)");
+                "Show directories above (%1)");
+        strings[QStringLiteral("ancestorsHide")] =
+            QCoreApplication::translate("DirectoryPage",
+                "Hide directories above (%1)");
+        strings[QStringLiteral("currentDirectory")] =
+            QCoreApplication::translate("DirectoryPage", "This directory");
         strings[QStringLiteral("name")] =
             QCoreApplication::translate("DirectoryPage", "Name");
         strings[QStringLiteral("profile")] =
             QCoreApplication::translate("DirectoryPage", "Profile in force:");
         strings[QStringLiteral("stateDefault")] =
-            QCoreApplication::translate("DirectoryPage", "Default");
+            QCoreApplication::translate("DirectoryPage", "Default (%1)");
         strings[QStringLiteral("stateOn")] =
             QCoreApplication::translate("DirectoryPage", "On");
         strings[QStringLiteral("stateOff")] =
@@ -348,6 +371,34 @@ namespace {
             QCoreApplication::translate("DirectoryPage",
                 "Could not load the directories: ");
         return strings;
+    }
+
+    int DefaultState(const DirectoryPage::Token &token){
+        if(QLatin1String(token.key) == QLatin1String("rightgesture"))
+            return View::EnableRightGesture() ? 1 : 0;
+        const QLatin1String key(token.key);
+        if(key == QLatin1String("draggesture"))
+            return View::EnableDragGesture() ? 1 : 0;
+        if(key == QLatin1String("id") || key == QLatin1String("private"))
+            return 0;
+#ifdef WEBENGINEVIEW
+        const auto *settings = QWebEngineProfile::defaultProfile()->settings();
+        if(key == QLatin1String("image"))
+            return settings->testAttribute(QWebEngineSettings::AutoLoadImages) ? 1 : 0;
+        if(key == QLatin1String("javascript"))
+            return settings->testAttribute(QWebEngineSettings::JavascriptEnabled) ? 1 : 0;
+        if(key == QLatin1String("plugins"))
+            return settings->testAttribute(QWebEngineSettings::PluginsEnabled) ? 1 : 0;
+#else
+        const auto &settings = Application::GlobalSettings();
+        if(key == QLatin1String("image"))
+            return settings.value(QStringLiteral("webview/preferences/AutoLoadImages"), true).toBool() ? 1 : 0;
+        if(key == QLatin1String("javascript"))
+            return settings.value(QStringLiteral("webview/preferences/JavascriptEnabled"), true).toBool() ? 1 : 0;
+        if(key == QLatin1String("plugins"))
+            return settings.value(QStringLiteral("webview/preferences/PluginsEnabled"), true).toBool() ? 1 : 0;
+#endif
+        return token.absence;
     }
 }
 
@@ -419,6 +470,10 @@ int StateIn(const QStringList &set, const QString &pattern){
     return -1;
 }
 
+bool SaysPrivate(const QStringList &set){
+    return StateIn(set, QStringLiteral("(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)")) == 1;
+}
+
 QStringList ChangedWords(const QString &before, const QString &after){
     const QMap<QString, QString> was = WordsInForce(TitleTokens(before));
     const QMap<QString, QString> now = WordsInForce(TitleTokens(after));
@@ -467,9 +522,20 @@ QString WithTokenState(const QString &title, const Token &token, int state){
     return ComposeTitle(TitleName(title), kept);
 }
 
+bool SaysId(const QString &title){
+    foreach(const QString &token, TitleTokens(title))
+        if(SpellsId(token)) return true;
+    return false;
+}
+
+bool NameSpellsId(const QString &name){
+    return SpellsId(name);
+}
+
 bool IsValidTitle(const QString &title){
-    return !TitleName(title).isEmpty() &&
-           !title.contains(QRegularExpression(QStringLiteral("[<>\":\\?\\|\\*/\\\\]")));
+    if(title.contains(QRegularExpression(QStringLiteral("[<>\":\\?\\|\\*/\\\\]"))))
+        return false;
+    return !TitleName(title).isEmpty() || !SaysId(title);
 }
 
 QUrl PageUrl(){
@@ -493,7 +559,7 @@ QJsonObject Describe(){
         object[QStringLiteral("pattern")] = QLatin1String(token.pattern);
         object[QStringLiteral("on")]      = QLatin1String(token.on);
         if(token.off[0]) object[QStringLiteral("off")] = QLatin1String(token.off);
-        object[QStringLiteral("absence")] = token.absence;
+        object[QStringLiteral("absence")] = DefaultState(token);
         if(token.inverted) object[QStringLiteral("inverted")] = true;
         if(TokenBlocked(token)) object[QStringLiteral("blocked")] = true;
         switches.append(object);
@@ -545,6 +611,10 @@ QByteArray HandleSet(const QJsonObject &request){
 
     const QString after = ComposeTitle(name, tokens);
     if(!IsValidTitle(after)) return Error(QStringLiteral("bad title"));
+    if(name.isEmpty() && vn == TreeBank::GetViewRoot())
+        return Error(QStringLiteral("bad title"));
+    if(name.isEmpty() && NameSpellsId(TitleName(vn->GetTitle())))
+        return Error(QStringLiteral("bad title"));
 
     const QString before = vn->GetTitle();
     int followed = 0;
@@ -579,11 +649,14 @@ QMenu *CreateSettingsMenu(ViewNode *vn, std::function<void()> openPage,
         const int inherited = InheritedState(vn, tokens[i]);
         const int state = own != -1 ? own
                         : inherited != -1 ? inherited
-                        : (tokens[i].absence == 1 ? 1 : 0);
+                        : (DefaultState(tokens[i]) == 1 ? 1 : 0);
         check->setChecked(state == 1);
         if(!tokens[i].off[0] && own == -1 && inherited == 1)
             check->setEnabled(false);
         if(TokenBlocked(tokens[i])) check->setEnabled(false);
+        if(QLatin1String(tokens[i].key) == QLatin1String("id") &&
+           own != 1 && TitleName(vn->GetTitle()).isEmpty())
+            check->setEnabled(false);
         QLabel *label = new QLabel(QCoreApplication::translate
                                    ("DirectoryPage", tokens[i].label));
         const QString hint = QCoreApplication::translate
@@ -600,6 +673,7 @@ QMenu *CreateSettingsMenu(ViewNode *vn, std::function<void()> openPage,
                      WithTokenState(before, Tokens()[i],
                                     state == Qt::Checked ? 1 : 0);
                  if(before == after) return;
+                 if(!IsValidTitle(after)) return;
                  nd->SetTitle(after);
                  TreeBank::ReconfigureDirectory(nd, before, after);
                  LetDescendantsFollow(nd, ChangedWords(before, after));

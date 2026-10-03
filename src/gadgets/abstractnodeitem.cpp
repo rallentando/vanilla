@@ -110,6 +110,13 @@ void AbstractNodeItem::UnlockRect(){
     m_LockedRect = QRectF();
 }
 
+void AbstractNodeItem::SetTransitionRect(std::optional<QRectF> rect){
+    if(m_TransitionRect == rect) return;
+    prepareGeometryChange();
+    m_TransitionRect = rect;
+    update();
+}
+
 QVariant AbstractNodeItem::itemChange(GraphicsItemChange change, const QVariant &value){
     if(change == ItemSelectedChange && scene()){
 
@@ -139,6 +146,7 @@ void AbstractNodeItem::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
 }
 
 void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    m_TableView->FinishFoldAnimation();
     m_TableView->SetInPlaceNotifierContent(nullptr);
 
     if(ev->button() == Qt::RightButton){

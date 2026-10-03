@@ -24,6 +24,7 @@ QStringList PaintingSources(){
         << SRC + QStringLiteral("/ui/toolbar.cpp")
         << SRC + QStringLiteral("/ui/treebar.cpp")
         << SRC + QStringLiteral("/ui/notifier.cpp")
+        << SRC + QStringLiteral("/ui/extensionbar.cpp")
         << SRC + QStringLiteral("/app/receiver.cpp");
 }
 

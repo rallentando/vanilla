@@ -3,13 +3,17 @@
 #ifdef EDGEWEBVIEW
 
 #include "edgewebview_p.hpp"
+#include "extensionhostwire.hpp"
 
 #include <QDir>
 #include <QFileInfo>
+#include <QCoreApplication>
 #include <QTimer>
 #include <QDebug>
 #include <QCursor>
+#include <QThread>
 #include <QSslCertificate>
+#include <QElapsedTimer>
 
 #include "dialog.hpp"
 #include "certificatepolicy.hpp"
@@ -19,8 +23,114 @@
 #include "mainwindow.hpp"
 #include "application.hpp"
 #include "networkcontroller.hpp"
+#include "notifier.hpp"
 #include "downloadname.hpp"
+#include "loadending.hpp"
 #include "settingspage.hpp"
+
+class EdgeDownloadAdapter : public QObject {
+    Q_OBJECT
+
+    Q_PROPERTY(QUrl url READ GetUrl CONSTANT)
+    Q_PROPERTY(QString path READ GetPath CONSTANT)
+    Q_PROPERTY(int state READ GetState NOTIFY stateChanged)
+    Q_PROPERTY(int interruptReason READ GetInterruptReason NOTIFY stateChanged)
+    Q_PROPERTY(qint64 receivedBytes READ GetReceivedBytes NOTIFY receivedBytesChanged)
+    Q_PROPERTY(qint64 totalBytes READ GetTotalBytes NOTIFY receivedBytesChanged)
+
+public:
+    EdgeDownloadAdapter(QObject *parent,
+                        Microsoft::WRL::ComPtr<ICoreWebView2DownloadOperation> operation,
+                        std::shared_ptr<EdgeDownloadCell> cell,
+                        const QUrl &url, const QString &path)
+        : QObject(parent)
+        , m_Operation(operation)
+        , m_Cell(cell)
+        , m_Url(url)
+        , m_Path(path)
+        , m_Releasing(false)
+    {}
+
+    QUrl GetUrl() const { return m_Url;}
+    QString GetPath() const { return m_Path;}
+    int GetState() const { return m_Cell ? m_Cell->ReportedState() : 0;}
+    int GetInterruptReason() const { return m_Cell ? m_Cell->ReportedReason() : 0;}
+    qint64 GetReceivedBytes() const { return m_Cell ? m_Cell->ReceivedBytes() : 0;}
+    qint64 GetTotalBytes() const { return m_Cell ? m_Cell->TotalBytes() : -1;}
+
+    void NotifyState(){ emit stateChanged();}
+    void NotifyReceivedBytes(){ emit receivedBytesChanged();}
+
+    void Replay(){
+        NotifyReceivedBytes();
+        NotifyState();
+    }
+
+    void ReleaseAfterUnwind(){
+        if(m_Releasing) return;
+        m_Releasing = true;
+        EdgeDownloadCarriers::Instance()->WhenCallsAreDone(this, [this](){
+            m_Operation.Reset();
+            m_Cell.reset();
+            deleteLater();
+        });
+    }
+
+public slots:
+
+    void cancel(){
+        if(!m_Operation) return;
+        HRESULT hr = E_FAIL;
+        {
+            EdgeBackendCall call(EdgeDownloadCarriers::Instance()->Calls());
+            hr = m_Operation->Cancel();
+        }
+        if(FAILED(hr))
+            qWarning() << "edge: a download refused to be cancelled;"
+                       << "it continues, and its row has already gone";
+    }
+
+    void resume(){
+        if(!m_Cell || m_Cell->ResumeAttempted()) return;
+        m_Cell->MarkResumeAttempted();
+        if(!m_Operation) return;
+
+        HRESULT hr = E_FAIL;
+        {
+            EdgeBackendCall call(EdgeDownloadCarriers::Instance()->Calls());
+            hr = m_Operation->Resume();
+        }
+        if(SUCCEEDED(hr)) return;
+
+        qWarning() << "edge: a download refused to be resumed";
+        m_Cell->FailResume();
+        EdgeDownloadCarriers::Instance()->WhenCallsAreDone(this, [this](){
+            NotifyState();
+            ReleaseAfterUnwind();
+        });
+    }
+
+signals:
+    void stateChanged();
+    void receivedBytesChanged();
+
+private:
+    Microsoft::WRL::ComPtr<ICoreWebView2DownloadOperation> m_Operation;
+    std::shared_ptr<EdgeDownloadCell> m_Cell;
+    QUrl m_Url;
+    QString m_Path;
+    bool m_Releasing;
+};
+
+namespace {
+
+    qint64 EdgeMonotonicMsec(){
+        static QElapsedTimer clock;
+        if(!clock.isValid()) clock.start();
+        return clock.elapsed();
+    }
+
+}
 
 void EdgeWebView::RemoveWebViewHandlers(){
     m_Impl->m_WebViewEvents.RevokeAll();
@@ -116,21 +226,15 @@ namespace {
             return QString();
         }
     }
-
-    QUrl ReportedSourceOf(ICoreWebView2 *sender){
-        if(!sender) return QUrl();
-        LPWSTR source = nullptr;
-        if(FAILED(sender->get_Source(&source)) || !source) return QUrl();
-        const QUrl reported = QUrl(QString::fromWCharArray(source));
-        CoTaskMemFree(source);
-        return reported;
-    }
 }
 
 void EdgeWebView::AdoptReportedSource(const QUrl &reported){
     if(reported.isEmpty()) return;
 
-    if(!EdgeIsOwnViewSource(m_Impl->m_Url, reported)) m_Impl->m_Url = reported;
+    if(!IsOwnReportedSource(reported)){
+        m_Impl->m_Url = reported;
+        m_Impl->m_StringDocument.ViewWentElsewhere();
+    }
     m_Impl->m_History.Visit(m_Impl->m_Url);
     SaveHistory();
     emit urlChanged(m_Impl->m_Url);
@@ -146,6 +250,24 @@ void EdgeWebView::RegisterNavigationHandlers(){
         (Callback<ICoreWebView2NavigationStartingEventHandler>
          ([this](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs *args) -> HRESULT {
              if(m_Impl->m_State.IsRetired()) return S_OK;
+
+             if(args && EdgeDownloadCarriers::Instance()->Contains(this)){
+                 args->put_Cancel(TRUE);
+                 return S_OK;
+             }
+
+             if(args){
+                 UINT64 navigation = 0;
+                 args->get_NavigationId(&navigation);
+                 LPWSTR uri = nullptr;
+                 QString address;
+                 if(SUCCEEDED(args->get_Uri(&uri)) && uri){
+                     address = QString::fromWCharArray(uri);
+                     CoTaskMemFree(uri);
+                 }
+                 m_Impl->m_Aborts.Started(navigation, address);
+             }
+
              m_Impl->m_PageScroll = QPointF();
              m_Impl->m_PageContents = QSizeF();
              m_Impl->m_PageViewport = QSizeF();
@@ -167,8 +289,12 @@ void EdgeWebView::RegisterNavigationHandlers(){
 
              const QUrl reported = ReportedSourceOf(sender);
              if(!reported.isEmpty() && reported != m_Impl->m_Url &&
-                !EdgeIsOwnViewSource(m_Impl->m_Url, reported))
+                !EdgeIsOwnViewSource(m_Impl->m_Url, reported)){
                  AdoptReportedSource(reported);
+             } else if(m_Impl->m_History.CurrentUrl() != m_Impl->m_Url){
+                 m_Impl->m_History.Visit(m_Impl->m_Url);
+                 SaveHistory();
+             }
              emit loadProgress(50);
              return S_OK;
          }).Get(), &token)))
@@ -190,7 +316,27 @@ void EdgeWebView::RegisterNavigationHandlers(){
              PullCookiesIntoJar();
 
              if(success) RestoreStateAfterLoad();
-             emit statusBarMessage(success ? tr("Finished loading.") : tr("Failed to load."));
+
+             COREWEBVIEW2_WEB_ERROR_STATUS webError =
+                 COREWEBVIEW2_WEB_ERROR_STATUS_UNKNOWN;
+             if(args) args->get_WebErrorStatus(&webError);
+             UINT64 navigation = 0;
+             if(args) args->get_NavigationId(&navigation);
+
+             if(success){
+                 m_Impl->m_Aborts.Completed(navigation, true, int(webError),
+                                            EdgeMonotonicMsec(), nullptr);
+                 emit statusBarMessage(tr("Finished loading."));
+             } else {
+                 int generation = 0;
+                 const EdgeAbortLatch::Verdict verdict =
+                     m_Impl->m_Aborts.Completed(navigation, false, int(webError),
+                                                EdgeMonotonicMsec(), &generation);
+                 if(verdict == EdgeAbortLatch::Verdict::Say)
+                     emit statusBarMessage(tr("Failed to load."));
+                 else if(verdict == EdgeAbortLatch::Verdict::Hold)
+                     AskAgainAboutAbort(generation, EdgeAbortLatch::Wait);
+             }
 
              if(visible() && m_TreeBank &&
                 m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible())
@@ -223,6 +369,60 @@ void EdgeWebView::RegisterNavigationHandlers(){
              return S_OK;
          }).Get(), &token)))
         VANILLA_KEEP_WEBVIEW_EVENT(webview, SourceChanged, token);
+}
+
+namespace {
+
+    QList<EdgeMenuItem> MenuItemsOf(ICoreWebView2ContextMenuItemCollection *items, bool extensionsOnly);
+
+    EdgeMenuItem MenuItemOf(ICoreWebView2ContextMenuItem *item){
+        EdgeMenuItem made;
+        LPWSTR label = nullptr;
+        if(SUCCEEDED(item->get_Label(&label)) && label){
+            made.label = QString::fromWCharArray(label);
+            CoTaskMemFree(label);
+        }
+        INT32 id = -1;
+        if(SUCCEEDED(item->get_CommandId(&id))) made.commandId = id;
+        COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND kind = COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND;
+        if(SUCCEEDED(item->get_Kind(&kind))){
+            switch(kind){
+            case COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_CHECK_BOX: made.kind = EdgeMenuItem::Kind::CheckBox; break;
+            case COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_RADIO:     made.kind = EdgeMenuItem::Kind::Radio;    break;
+            case COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR: made.kind = EdgeMenuItem::Kind::Separator; break;
+            case COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SUBMENU:   made.kind = EdgeMenuItem::Kind::Submenu;  break;
+            default:                                            made.kind = EdgeMenuItem::Kind::Command;  break;
+            }
+        }
+        BOOL flag = FALSE;
+        if(SUCCEEDED(item->get_IsEnabled(&flag))) made.enabled = flag ? true : false;
+        flag = FALSE;
+        if(SUCCEEDED(item->get_IsChecked(&flag))) made.checked = flag ? true : false;
+        if(made.kind == EdgeMenuItem::Kind::Submenu){
+            ComPtr<ICoreWebView2ContextMenuItemCollection> children;
+            if(SUCCEEDED(item->get_Children(&children)) && children)
+                made.children = MenuItemsOf(children.Get(), false);
+        }
+        return made;
+    }
+
+    QList<EdgeMenuItem> MenuItemsOf(ICoreWebView2ContextMenuItemCollection *items, bool extensionsOnly){
+        QList<EdgeMenuItem> made;
+        UINT32 count = 0;
+        if(FAILED(items->get_Count(&count))) return made;
+        for(UINT32 i = 0; i < count; ++i){
+            ComPtr<ICoreWebView2ContextMenuItem> item;
+            if(FAILED(items->GetValueAtIndex(i, &item)) || !item) continue;
+            if(extensionsOnly){
+                LPWSTR name = nullptr;
+                const bool ours = SUCCEEDED(item->get_Name(&name)) && name && wcscmp(name, L"extension") == 0;
+                if(name) CoTaskMemFree(name);
+                if(!ours) continue;
+            }
+            made.append(MenuItemOf(item.Get()));
+        }
+        return made;
+    }
 }
 
 void EdgeWebView::RegisterDocumentHandlers(){
@@ -282,8 +482,10 @@ void EdgeWebView::RegisterDocumentHandlers(){
 
              LPWSTR path = nullptr;
              QString name;
+             QString file;
              if(SUCCEEDED(args->get_ResultFilePath(&path)) && path){
-                 name = QFileInfo(QString::fromWCharArray(path)).fileName();
+                 file = QString::fromWCharArray(path);
+                 name = QFileInfo(file).fileName();
                  CoTaskMemFree(path);
              }
              if(name.isEmpty()) return S_OK;
@@ -297,9 +499,12 @@ void EdgeWebView::RegisterDocumentHandlers(){
                  const QString native = QDir::toNativeSeparators(target);
 
                  if(SUCCEEDED(args->put_ResultFilePath
-                              (reinterpret_cast<PCWSTR>(native.utf16()))))
+                              (reinterpret_cast<PCWSTR>(native.utf16())))){
+                     file = native;
                      name = QFileInfo(native).fileName();
+                 }
              }
+             file = QDir::cleanPath(QDir::fromNativeSeparators(file));
 
              emit statusBarMessage(tr("Downloading %1").arg(name));
 
@@ -308,16 +513,36 @@ void EdgeWebView::RegisterDocumentHandlers(){
 
              auto settled = std::make_shared<bool>(false);
 
+             auto cell = std::make_shared<EdgeDownloadCell>();
+             auto wired = std::make_shared<QPointer<EdgeDownloadAdapter>>();
+
              QPointer<EdgeWebView> alive(this);
              EventRegistrationToken stateToken = {};
              const HRESULT hr = operation->add_StateChanged
                  (Callback<ICoreWebView2StateChangedEventHandler>
-                  ([alive, name, downloadOnly, settled]
+                  ([alive, name, downloadOnly, settled, cell, wired]
                    (ICoreWebView2DownloadOperation *sender, IUnknown*) -> HRESULT {
-                      if(!alive || !sender) return S_OK;
+                      if(!sender) return S_OK;
+
                       COREWEBVIEW2_DOWNLOAD_STATE state =
                           COREWEBVIEW2_DOWNLOAD_STATE_IN_PROGRESS;
                       sender->get_State(&state);
+
+                      BOOL resumable = FALSE;
+                      if(state == COREWEBVIEW2_DOWNLOAD_STATE_INTERRUPTED &&
+                         FAILED(sender->get_CanResume(&resumable)))
+                          resumable = FALSE;
+
+                      const EdgeDownloadReport report =
+                          cell->Arrive(static_cast<EdgeDownloadCell::Backend>(state),
+                                       resumable != FALSE);
+                      if(EdgeDownloadAdapter *adapter = wired->data()){
+                          adapter->NotifyState();
+                          if(report.terminal) adapter->ReleaseAfterUnwind();
+                      }
+
+                      if(!alive) return S_OK;
+
                       if(state == COREWEBVIEW2_DOWNLOAD_STATE_COMPLETED)
                           emit alive->statusBarMessage(tr("Downloaded %1").arg(name));
                       else if(state == COREWEBVIEW2_DOWNLOAD_STATE_INTERRUPTED)
@@ -325,12 +550,17 @@ void EdgeWebView::RegisterDocumentHandlers(){
                       else
                           return S_OK;
 
+                      if(!report.terminal) return S_OK;
+
                       if(!downloadOnly || *settled) return S_OK;
                       *settled = true;
                       alive->m_Impl->m_Downloads.Settled();
 
-                      if(!alive->m_Impl->m_Downloads.MayClose() ||
-                         !alive->m_Impl->m_History.IsEmpty()) return S_OK;
+                      if(!alive->m_Impl->m_Downloads.MayClose()) return S_OK;
+
+                      EdgeDownloadCarriers::Instance()->ReleaseLater(alive->GetThis());
+
+                      if(!alive->m_Impl->m_History.IsEmpty()) return S_OK;
 
                       QPointer<EdgeWebView> waiting(alive);
                       View::CloseLater(alive->GetThis(), [waiting](){
@@ -341,11 +571,77 @@ void EdgeWebView::RegisterDocumentHandlers(){
                       return S_OK;
                   }).Get(), &stateToken);
 
-             if(FAILED(hr) && downloadOnly){
-                 qWarning() << "edge: a download cannot be watched;"
-                            << "this tab will not close itself";
-                 alive->m_Impl->m_Downloads.Untracked();
+             if(FAILED(hr)){
+                 if(downloadOnly){
+                     qWarning() << "edge: a download cannot be watched;"
+                                << "this tab will not close itself";
+                     m_Impl->m_Downloads.Untracked();
+                 }
+                 return S_OK;
              }
+
+             EventRegistrationToken bytesToken = {};
+             operation->add_BytesReceivedChanged
+                 (Callback<ICoreWebView2BytesReceivedChangedEventHandler>
+                  ([cell, wired]
+                   (ICoreWebView2DownloadOperation *sender, IUnknown*) -> HRESULT {
+                      if(!sender) return S_OK;
+                      INT64 received = 0;
+                      INT64 total = -1;
+                      if(FAILED(sender->get_BytesReceived(&received))) received = 0;
+                      if(FAILED(sender->get_TotalBytesToReceive(&total))) total = -1;
+                      cell->SetProgress(received, total);
+                      if(EdgeDownloadAdapter *adapter = wired->data())
+                          adapter->NotifyReceivedBytes();
+                      return S_OK;
+                  }).Get(), &bytesToken);
+
+             {
+                 INT64 received = 0;
+                 INT64 total = -1;
+                 if(FAILED(operation->get_BytesReceived(&received))) received = 0;
+                 if(FAILED(operation->get_TotalBytesToReceive(&total))) total = -1;
+                 cell->SetProgress(received, total);
+             }
+
+             QUrl remote;
+             {
+                 LPWSTR uri = nullptr;
+                 if(SUCCEEDED(operation->get_Uri(&uri)) && uri){
+                     const QString address = QString::fromWCharArray(uri);
+                     remote = QUrl(address);
+                     CoTaskMemFree(uri);
+                     m_Impl->m_Aborts.DownloadStarted(address);
+                 }
+             }
+
+             EdgeDownloadAdapter *adapter =
+                 new EdgeDownloadAdapter(this, operation, cell, remote, file);
+             *wired = adapter;
+
+             DownloadItem *item = new DownloadItem(adapter);
+             MainWindow *win = Application::GetCurrentWindow();
+             if(win && win->GetTreeBank() && win->GetTreeBank()->GetNotifier())
+                 win->GetTreeBank()->GetNotifier()->RegisterDownload(item);
+
+             const bool terminalBeforeReplay = cell->IsTerminal();
+
+             adapter->Replay();
+             if(terminalBeforeReplay) adapter->ReleaseAfterUnwind();
+
+             if(!downloadOnly || terminalBeforeReplay) return S_OK;
+
+             ViewNode *vn = GetViewNode();
+             TreeBank *tb = GetTreeBank();
+             if(!vn || !tb) return S_OK;
+
+             SharedView held = tb->ExtractDownloadCarrier(vn);
+             if(!held) return S_OK;
+
+             EdgeDownloadCarriers::Instance()->Add(held);
+
+             if(m_Impl->m_Downloads.MayClose())
+                 EdgeDownloadCarriers::Instance()->ReleaseLater(held);
 
              return S_OK;
          }).Get(), &token))){
@@ -377,7 +673,6 @@ void EdgeWebView::RegisterDocumentHandlers(){
     }
     VANILLA_STOP_IF_RETIRED();
 
-
     if(SUCCEEDED(webview->add_ContainsFullScreenElementChanged
         (Callback<ICoreWebView2ContainsFullScreenElementChangedEventHandler>
          ([this](ICoreWebView2 *sender, IUnknown*) -> HRESULT {
@@ -400,11 +695,26 @@ void EdgeWebView::RegisterDocumentHandlers(){
              ([this](ICoreWebView2*,
                      ICoreWebView2ContextMenuRequestedEventArgs *args) -> HRESULT {
                  if(!args) return S_OK;
+                 const int sequence = ++m_Impl->m_MenuSequence;
+                 m_Impl->m_MenuHandlerDepth++;
+                 struct HandlerDepth {
+                     QPointer<EdgeWebView> view;
+                     ~HandlerDepth(){ if(view && view->m_Impl->m_MenuHandlerDepth > 0) view->m_Impl->m_MenuHandlerDepth--;}
+                 } depth{QPointer<EdgeWebView>(this)};
+                 QPointer<EdgeWebView> here(this);
                  args->put_Handled(TRUE);
+                 if(!here) return S_OK;
 
                  if(m_Impl->m_State.IsRetired()) return S_OK;
 
+                 if(EdgeInspectorTraceOn()){
+                     fprintf(stderr, "edge-menu: request outstanding=%d generation=%d\n",
+                             m_Impl->m_ContextMenu.HasOutstanding() ? 1 : 0, m_Impl->m_ContextMenu.Generation());
+                     fflush(stderr);
+                 }
+
                  ContextTarget target;
+                 target.m_Sequence = sequence;
 
                  target.m_Position = mapFromGlobal(QCursor::pos());
 
@@ -447,6 +757,49 @@ void EdgeWebView::RegisterDocumentHandlers(){
                      }
                  }
 
+                 if(!here) return S_OK;
+                 if(m_Impl->m_State.IsRetired()) return S_OK;
+
+                 {
+                     QPointer<EdgeWebView> still(this);
+                     if(m_Impl->m_ContextMenu.HasOutstanding())
+                         CompleteContextMenu(m_Impl->m_ContextMenu.Generation(), -1);
+                     if(!still) return S_OK;
+                     if(m_Impl->m_State.IsRetired()) return S_OK;
+                 }
+                 if(m_Impl->m_ContextMenuWidget) m_Impl->m_ContextMenuWidget->close();
+                 {
+                     ComPtr<ICoreWebView2ContextMenuItemCollection> items;
+                     if(SUCCEEDED(args->get_MenuItems(&items)) && items)
+                         target.m_ExtensionItems = MenuItemsOf(items.Get(), true);
+                 }
+                 if(!here) return S_OK;
+                 if(!target.m_ExtensionItems.isEmpty()){
+                     ComPtr<ICoreWebView2Deferral> deferral;
+                     const HRESULT deferred = args->GetDeferral(&deferral);
+                     if(!here){
+                         if(SUCCEEDED(deferred) && deferral) deferral->Complete();
+                         return S_OK;
+                     }
+                     const bool current = !m_Impl->m_State.IsRetired() &&
+                         sequence == m_Impl->m_MenuSequence;
+                     const int generation =
+                         SUCCEEDED(deferred) && deferral && current
+                         ? m_Impl->m_ContextMenu.Take() : 0;
+                     if(generation > 0){
+                         target.m_Generation = generation;
+                         m_Impl->m_ContextMenuArgs = args;
+                         m_Impl->m_ContextMenuDeferral = deferral;
+                     } else {
+                         target.m_Superseded = deferral &&
+                             (m_Impl->m_ContextMenu.HasOutstanding() || m_Impl->m_ContextMenu.IsRetired());
+                         target.m_ExtensionItems.clear();
+                         QPointer<EdgeWebView> still(this);
+                         if(deferral) CountedComplete(nullptr, deferral.Get(), -1);
+                         if(!still) return S_OK;
+                     }
+                 }
+
                  QPointer<EdgeWebView> alive(this);
                  QTimer::singleShot(0, this, [alive, target](){
                      if(alive) alive->DisplayContextMenuFor(target);
@@ -457,7 +810,6 @@ void EdgeWebView::RegisterDocumentHandlers(){
                 (webview11.Get(), ContextMenuRequested, token);
     }
 }
-
 
 void EdgeWebView::RegisterAskingHandlers(){
     if(!m_Impl->m_WebView || m_Impl->m_State.IsRetired()) return;
@@ -509,7 +861,7 @@ void EdgeWebView::RegisterAskingHandlers(){
              QTimer::singleShot(0, EdgeEnvironment::Instance(),
                                 [alive, held, deferral, url,
                                  description, fingerprint](){
-                 if(alive && !alive->m_Impl->m_State.IsRetired())
+                 if(alive && !alive->IsGoing())
                      held->put_Action
                          (static_cast<COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION>
                           (alive->DecideCertificateError(url, description, fingerprint)));
@@ -561,7 +913,7 @@ void EdgeWebView::RegisterAskingHandlers(){
 
              QTimer::singleShot(0, EdgeEnvironment::Instance(),
                                 [alive, held, deferral, origin, kind](){
-                 if(alive && !alive->m_Impl->m_State.IsRetired()){
+                 if(alive && !alive->IsGoing()){
                      bool remember = false;
                      const int state = alive->DecidePermission
                          (origin, static_cast<int>(kind), &remember);
@@ -639,7 +991,7 @@ void EdgeWebView::RegisterAskingHandlers(){
              QPointer<EdgeWebView> alive(this);
              QTimer::singleShot(0, EdgeEnvironment::Instance(),
                                 [alive, conclude, title, body, origin](){
-                 if(!alive || alive->m_Impl->m_State.IsRetired()){
+                 if(!alive || alive->IsGoing()){
                      conclude(false);
                      return;
                  }
@@ -684,6 +1036,10 @@ void EdgeWebView::RegisterInputHandlers(){
              ([this](ICoreWebView2Controller*,
                      ICoreWebView2AcceleratorKeyPressedEventArgs *args) -> HRESULT {
                  if(!args) return S_OK;
+                 if(IsGoing() || !m_TreeBank){
+                     args->put_Handled(TRUE);
+                     return S_OK;
+                 }
 
                  COREWEBVIEW2_KEY_EVENT_KIND kind = COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN;
                  UINT32 virtualKey = 0;
@@ -709,6 +1065,14 @@ void EdgeWebView::RegisterInputHandlers(){
             (Callback<ICoreWebView2FocusChangedEventHandler>
              ([this](ICoreWebView2Controller*, IUnknown*) -> HRESULT {
                  m_Impl->m_HasFocus = true;
+                 if(!m_Impl->m_State.IsRetired() && m_TreeBank && visible() &&
+                    m_TreeBank->GetCurrentView().get() == this){
+                     if(MainWindow *win = m_TreeBank->GetMainWindow()){
+                         Application::SetCurrentWindow(win);
+                         win->RaiseAllEdgeWidgets();
+                         win->UpdateAllEdgeWidgets();
+                     }
+                 }
                  return S_OK;
              }).Get(), &token)))
             VANILLA_KEEP_CONTROLLER_EVENT(controller, GotFocus, token);
@@ -750,6 +1114,64 @@ void EdgeWebView::RegisterHandlers(){
     RegisterInputHandlers();
 }
 
+namespace {
+
+    void PutVanillaPageResponse
+        (ICoreWebView2WebResourceRequestedEventArgs *args,
+         ICoreWebView2Environment *environment,
+         const VanillaPageResponse &answer){
+        Q_ASSERT(!answer.NeedsUserInteraction());
+
+        ComPtr<IStream> stream;
+        if(!answer.m_Body.isEmpty())
+            stream.Attach(SHCreateMemStream
+                          (reinterpret_cast<const BYTE*>(answer.m_Body.constData()),
+                           static_cast<UINT>(answer.m_Body.size())));
+
+        const QString headers = QStringLiteral("Content-Type: ") +
+            QString::fromLatin1(answer.m_ContentType);
+        const QString reason = answer.m_Status == 200
+            ? QStringLiteral("OK") : QStringLiteral("Error");
+
+        ComPtr<ICoreWebView2WebResourceResponse> response;
+        if(SUCCEEDED(environment->CreateWebResourceResponse
+                     (stream.Get(), answer.m_Status,
+                      reinterpret_cast<PCWSTR>(reason.utf16()),
+                      reinterpret_cast<PCWSTR>(headers.utf16()), &response)) && response)
+            args->put_Response(response.Get());
+    }
+
+    VanillaPageResponse VanillaPageFailure(int status){
+        VanillaPageResponse response;
+        response.m_Status = status;
+        return response;
+    }
+
+    class VanillaPageDeferralCompletion {
+    public:
+        explicit VanillaPageDeferralCompletion
+            (ComPtr<ICoreWebView2Deferral> deferral)
+            : m_Deferral(deferral), m_Thread(QThread::currentThread())
+            , m_Completed(false) {}
+
+        ~VanillaPageDeferralCompletion(){ Complete();}
+
+        void Complete(){
+            if(m_Completed) return;
+            m_Completed = true;
+            Q_ASSERT(QThread::currentThread() == m_Thread);
+            ComPtr<ICoreWebView2Deferral> deferral = m_Deferral;
+            m_Deferral.Reset();
+            if(deferral) deferral->Complete();
+        }
+
+    private:
+        ComPtr<ICoreWebView2Deferral> m_Deferral;
+        QThread *m_Thread;
+        bool m_Completed;
+    };
+
+}
 
 HRESULT EdgeWebView::AnswerVanillaPage(ICoreWebView2WebResourceRequestedEventArgs *args,
                                        ICoreWebView2WebResourceRequest *request,
@@ -795,23 +1217,37 @@ HRESULT EdgeWebView::AnswerVanillaPage(ICoreWebView2WebResourceRequestedEventArg
     const VanillaPageResponse answer =
         VanillaPage::Answer(url, method, body, initiator);
 
-    ComPtr<IStream> stream;
-    if(!answer.m_Body.isEmpty())
-        stream.Attach(SHCreateMemStream
-                      (reinterpret_cast<const BYTE*>(answer.m_Body.constData()),
-                       static_cast<UINT>(answer.m_Body.size())));
+    if(!answer.NeedsUserInteraction()){
+        PutVanillaPageResponse(args, environment, answer);
+        return S_OK;
+    }
 
-    const QString headers = QStringLiteral("Content-Type: ") +
-        QString::fromLatin1(answer.m_ContentType);
-    const QString reason = answer.m_Status == 200
-        ? QStringLiteral("OK") : QStringLiteral("Error");
+    ComPtr<ICoreWebView2Deferral> deferral;
+    if(FAILED(args->GetDeferral(&deferral)) || !deferral){
+        PutVanillaPageResponse(args, environment, VanillaPageFailure(503));
+        return S_OK;
+    }
 
-    ComPtr<ICoreWebView2WebResourceResponse> response;
-    if(SUCCEEDED(environment->CreateWebResourceResponse
-                 (stream.Get(), answer.m_Status,
-                  reinterpret_cast<PCWSTR>(reason.utf16()),
-                  reinterpret_cast<PCWSTR>(headers.utf16()), &response)) && response)
-        args->put_Response(response.Get());
+    QCoreApplication *application = QCoreApplication::instance();
+    Q_ASSERT(!application || QThread::currentThread() == application->thread());
+
+    QPointer<EdgeWebView> alive(this);
+    ComPtr<ICoreWebView2WebResourceRequestedEventArgs> heldArgs(args);
+    ComPtr<ICoreWebView2Environment> heldEnvironment(environment);
+    auto completion =
+        std::make_shared<VanillaPageDeferralCompletion>(deferral);
+
+    QTimer::singleShot(0, EdgeEnvironment::Instance(),
+                       [alive, heldArgs, heldEnvironment, answer, completion](){
+        VanillaPageResponse completed;
+        if(!alive || alive->IsGoing())
+            completed = VanillaPageFailure(410);
+        else
+            completed = VanillaPage::CompleteUserInteraction(answer);
+
+        PutVanillaPageResponse(heldArgs.Get(), heldEnvironment.Get(), completed);
+        completion->Complete();
+    });
     return S_OK;
 }
 
@@ -851,6 +1287,20 @@ void EdgeWebView::RegisterResourceFilter(){
                  if(SUCCEEDED(request->get_Uri(&pageUri)) && pageUri){
                      pageUrl = QUrl(QString::fromWCharArray(pageUri));
                      CoTaskMemFree(pageUri);
+                 }
+                 if(pageUrl.scheme() == QLatin1String(ExtensionHostWire::SCHEME)){
+                     if(retired){
+                         ICoreWebView2Environment *environment =
+                             EdgeEnvironment::Instance()->GetEnvironment();
+                         ComPtr<ICoreWebView2WebResourceResponse> response;
+                         if(environment &&
+                            SUCCEEDED(environment->CreateWebResourceResponse
+                                      (nullptr, 410, L"Gone", L"", &response)) && response)
+                             args->put_Response(response.Get());
+                         return S_OK;
+                     }
+                     return EdgeAnswerExtensionHost(m_Impl->m_Extensions.data(), m_Impl->m_HostNumber,
+                                                    m_Impl->m_HostToken.data(), args, request.Get(), pageUrl);
                  }
                  if(VanillaPage::IsPageUrl(pageUrl)){
                      if(!retired)
@@ -1045,7 +1495,11 @@ void EdgeWebView::ShowPageNotification(const QString &title, const QString &body
     QObject::connect(sentinel, &QObject::destroyed, EdgeEnvironment::Instance(),
                      [conclude](){ conclude(false);});
 
-    QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    QPointer<EdgeWebView> alive(this);
+    QTimer::singleShot(0, dialog, [dialog, alive](){
+        if(!alive || alive->IsGoing()){ dialog->deleteLater(); return;}
+        dialog->Execute();
+    });
 }
 
 void EdgeWebView::HandleFullScreen(bool on){
@@ -1071,5 +1525,90 @@ void EdgeWebView::HandleFullScreen(bool on){
 void EdgeWebView::ExitFullScreen(){
     RunScript(QStringLiteral("if(document.exitFullscreen) document.exitFullscreen();"));
 }
+
+void EdgeWebView::AskAgainAboutAbort(int generation, qint64 after){
+    QPointer<EdgeWebView> waiting(this);
+    QTimer::singleShot(int(after), this, [waiting, generation](){
+        if(!waiting || waiting->m_Impl->m_State.IsRetired()) return;
+
+        const qint64 now = EdgeMonotonicMsec();
+        if(waiting->m_Impl->m_Aborts.Elapsed(now, generation) ==
+           EdgeAbortLatch::Verdict::Say){
+            emit waiting->statusBarMessage(tr("Failed to load."));
+            return;
+        }
+
+        const qint64 left = waiting->m_Impl->m_Aborts.Remaining(now, generation);
+        if(left > 0) waiting->AskAgainAboutAbort(generation, left);
+    });
+}
+
+namespace {
+
+    void RetireCarrier(SharedView view){
+        if(!view) return;
+        if(EdgeWebView *edge = dynamic_cast<EdgeWebView*>(view.get()))
+            edge->DeleteLater();
+        else
+            view->DeleteLater();
+    }
+
+}
+
+EdgeDownloadCarriers::EdgeDownloadCarriers()
+    : QObject(Application::GetInstance())
+    , m_Carriers(SharedViewList())
+{
+}
+
+EdgeDownloadCarriers *EdgeDownloadCarriers::Instance(){
+    static EdgeDownloadCarriers *instance = nullptr;
+    if(!instance) instance = new EdgeDownloadCarriers();
+    return instance;
+}
+
+void EdgeDownloadCarriers::Add(SharedView view){
+    if(!view || m_Carriers.contains(view)) return;
+    m_Carriers << view;
+}
+
+bool EdgeDownloadCarriers::Contains(const View *view) const {
+    if(!view) return false;
+    foreach(SharedView held, m_Carriers)
+        if(held.get() == view) return true;
+    return false;
+}
+
+void EdgeDownloadCarriers::ReleaseLater(WeakView weak){
+
+    WhenCallsAreDone(this, [this, weak](){
+        SharedView view = weak.lock();
+        if(!view) return;
+        if(!Contains(view.get())) return;
+
+        EdgeWebView *edge = dynamic_cast<EdgeWebView*>(view.get());
+        if(edge && !edge->m_Impl->m_Downloads.MayClose()) return;
+
+        m_Carriers.removeAll(view);
+        RetireCarrier(view);
+    });
+}
+
+void EdgeDownloadCarriers::ReleaseAll(){
+    WhenCallsAreDone(this, [this](){ RetireEveryCarrier();});
+}
+
+void EdgeDownloadCarriers::RetireEveryCarrier(){
+    SharedViewList carriers = m_Carriers;
+    m_Carriers.clear();
+    foreach(SharedView view, carriers) RetireCarrier(view);
+}
+
+void EdgeWebView::ReleaseDownloadCarriers(){
+    EdgeDownloadCarriers::Instance()->ReleaseAll();
+    EdgeDownloadCarriers::Instance()->DrainNow();
+}
+
+#include "edgewebviewhandlers.moc"
 
 #endif

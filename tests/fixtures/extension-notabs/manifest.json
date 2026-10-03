@@ -1,0 +1,6 @@
+{
+  "manifest_version": 3,
+  "name": "Vanilla extension test without tabs",
+  "version": "1.0.0",
+  "action": {"default_title": "Vanilla extension test without tabs", "default_popup": "popup.html"}
+}

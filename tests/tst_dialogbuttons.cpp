@@ -5,6 +5,7 @@
 
 #include <type_traits>
 
+#include "application.hpp"
 #include "dialog.hpp"
 
 class tst_dialogbuttons : public QObject {
@@ -20,8 +21,18 @@ private slots:
     void aDialogStopsCountingOnlyWhenItIsDeleted();
     void aDialogThatCameAndWentLeavesAMarkBehindIt();
     void nothingIsNotAButton();
+    void theWordsOnADialogAreNotReadAsMarkup();
+    void aDiscardedModelessDialogIsNeverAnsweredAndLeavesItsFrame();
+    void aModelessDialogDeletedByAnotherHandLeavesItsFrame();
+    void aFrameGoingFirstTakesItsDialogsWithoutReachingBack();
 
 private:
+    static ModelessDialogFrame *TakeTemporaryFrame(){
+        ModelessDialogFrame *frame = Application::GetTemporaryDialogFrame();
+        Application::SetTemporaryDialogFrame(nullptr);
+        return frame;
+    }
+
     static QMetaEnum Enumeration(){
         return QMetaEnum::fromType<Dialog::Button>();
     }
@@ -265,6 +276,80 @@ void tst_dialogbuttons::aDialogThatCameAndWentLeavesAMarkBehindIt(){
 
 void tst_dialogbuttons::nothingIsNotAButton(){
     QVERIFY(Dialog::Text(Dialog::NoButton).isEmpty());
+}
+
+void tst_dialogbuttons::theWordsOnADialogAreNotReadAsMarkup(){
+    const QString page = QStringLiteral("<b style=\"color:red\">Update</b><img src=\"x\">\nnow");
+    DialogLabel label(page, QFont());
+    QCOMPARE(label.textFormat(), Qt::PlainText);
+    QCOMPARE(label.text(), page);
+}
+
+void tst_dialogbuttons::aDiscardedModelessDialogIsNeverAnsweredAndLeavesItsFrame(){
+    int answered = 0;
+
+    ModelessDialog *early = new ModelessDialog();
+    early->SetCallBack([&](bool){ answered++;});
+    QPointer<ModelessDialog> earlyAlive(early);
+    early->Discard();
+    early->Execute();
+    QVERIFY2(!Application::GetTemporaryDialogFrame(),
+             "a dialog discarded before it was shown was put in a frame");
+
+    ModelessDialog *late = new ModelessDialog();
+    late->SetCallBack([&](bool){ answered++;});
+    QPointer<ModelessDialog> lateAlive(late);
+    late->Execute();
+    ModelessDialogFrame *frame = TakeTemporaryFrame();
+    QVERIFY(frame);
+    QVERIFY(frame->Dialogs().contains(late));
+
+    late->Discard();
+    QVERIFY2(!frame->Dialogs().contains(late), "a discarded dialog stayed in its frame");
+    emit late->Returned();
+    emit late->Aborted();
+    QCOMPARE(answered, 0);
+
+    QTRY_VERIFY(earlyAlive.isNull() && lateAlive.isNull());
+    QCOMPARE(answered, 0);
+    delete frame;
+}
+
+void tst_dialogbuttons::aModelessDialogDeletedByAnotherHandLeavesItsFrame(){
+    ModelessDialog *dialog = new ModelessDialog();
+    ModelessDialog *other = new ModelessDialog();
+    dialog->Execute();
+    other->Execute();
+    ModelessDialogFrame *frame = TakeTemporaryFrame();
+    QVERIFY(frame);
+    QCOMPARE(frame->Dialogs().size(), 2);
+
+    delete dialog;
+    QVERIFY2(!frame->Dialogs().contains(dialog), "a deleted dialog stayed in its frame");
+    QCOMPARE(frame->Dialogs().size(), 1);
+    frame->Adjust();
+    QCOMPARE(frame->height(), other->height());
+    delete frame;
+}
+
+void tst_dialogbuttons::aFrameGoingFirstTakesItsDialogsWithoutReachingBack(){
+    int answered = 0;
+    ModelessDialog *shown = new ModelessDialog();
+    ModelessDialog *discarded = new ModelessDialog();
+    shown->SetCallBack([&](bool){ answered++;});
+    discarded->SetCallBack([&](bool){ answered++;});
+    QPointer<ModelessDialog> shownAlive(shown), discardedAlive(discarded);
+    shown->Execute();
+    discarded->Execute();
+    ModelessDialogFrame *frame = TakeTemporaryFrame();
+    QVERIFY(frame);
+    discarded->Discard();
+
+    delete frame;
+    QVERIFY(shownAlive.isNull());
+    QVERIFY(discardedAlive.isNull());
+    QTest::qWait(0);
+    QCOMPARE(answered, 0);
 }
 
 QTEST_MAIN(tst_dialogbuttons)

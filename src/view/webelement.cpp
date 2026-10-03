@@ -8,7 +8,6 @@
 
 #include "view.hpp"
 
-
 JsWebElement::JsWebElement()
     : WebElement()
 {

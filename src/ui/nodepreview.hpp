@@ -18,6 +18,7 @@ public:
     void Request(const QImage &image, const QString &title,
                  const QRect &itemRect, bool isDirectory);
     void Dismiss();
+    bool IsAbout(const QString &title, const QRect &itemRect) const;
 
     static QRect Place(const QRect &itemRect, const QSize &size, const QRect &screen, int gap);
 

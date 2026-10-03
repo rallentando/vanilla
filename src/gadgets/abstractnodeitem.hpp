@@ -6,6 +6,7 @@
 #include <QGraphicsItem>
 #include <QStaticText>
 #include <QFont>
+#include <optional>
 
 class Node;
 class GraphicsTableView;
@@ -48,11 +49,13 @@ public:
 
     void LockRect();
     void UnlockRect();
+    void SetTransitionRect(std::optional<QRectF> rect);
 
 protected:
     GraphicsTableView *m_TableView;
     Node *m_Node;
     QRectF m_LockedRect;
+    std::optional<QRectF> m_TransitionRect;
     int m_Index;
     int m_NestLevel;
     QStaticText m_TitleText;

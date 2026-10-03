@@ -36,6 +36,8 @@ QStringList InheritTokens(const QStringList &titlesNearestFirst);
 
 int StateIn(const QStringList &set, const QString &pattern);
 
+bool SaysPrivate(const QStringList &set);
+
 QStringList ChangedWords(const QString &before, const QString &after);
 
 QString TitleFollowing(const QString &title, const QStringList &changed);
@@ -48,6 +50,10 @@ int     TokenState(const QString &title, const Token &token);
 QString WithTokenState(const QString &title, const Token &token, int state);
 
 bool TokenBlocked(const Token &token);
+
+bool SaysId(const QString &title);
+
+bool NameSpellsId(const QString &name);
 
 bool IsValidTitle(const QString &title);
 

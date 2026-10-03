@@ -13,7 +13,6 @@ class QMenu;
 class QTimerEvent;
 class QPaintEvent;
 
-
 class TreeBank;
 class DownloadItem;
 class UploadItem;

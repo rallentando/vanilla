@@ -4,7 +4,11 @@
 #include <QtTest>
 #include <QUrl>
 
+#include <QFile>
+#include <QRegularExpression>
+
 #include "lightnode.hpp"
+#include "treebank.hpp"
 
 #include "testsupport.hpp"
 
@@ -53,6 +57,9 @@ private slots:
     void prevWalksTheTreeBackwards();
     void nextAndPrevStopAtTheEnds();
 
+    void theAutoLoadWalkStopsAtTheFirstTabItLoads();
+    void theAutoLoadWalkStepsOverRefusedTabsWithoutGrowingTheStack();
+
     void ancestorsAndDescendants();
     void primaryPath();
 
@@ -64,7 +71,57 @@ private slots:
 
     void everyNodeGetsASerialOfItsOwn();
     void aserialIsNeverHandedOutTwice();
+    void aRunsSerialsBeginPastTheLastRuns();
+
+    void theNextCurrentIsAViewUnderTheSameParent();
+    void theNextCurrentFallsBackToTheParentsChildrenByLastAccess();
+    void theNodeWhichIsLeavingIsNeverTheNextCurrent();
+    void aViewAnotherWindowIsShowingIsNoCandidate();
+    void aDirectoryStandsForThePrimaryChildBelowIt();
+    void aLeafWithNothingBesideItLeavesNobodyToBeCurrent();
+
+    void theDownloadCarrierIsTakenApartInOneOrder();
+    void nothingAboutADownloadCarrierGoesThroughTheTrash();
+    void quarantineLetsGoOfAllThreePointers();
+    void treeLoadOnlyConsidersJsonGenerations();
+
+    void overviewSharesTheWebViewAreaAndLeavesCompanionsAlone();
+    void showingAnAlreadyVisibleEngineViewDoesNotJiggleItsSize();
 };
+
+namespace {
+
+std::function<bool(Node*)> Refuse(Node *nd = nullptr){
+    return [nd](Node *asked){ return nd && asked == nd;};
+}
+
+QString TreeBankSource(){
+    QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + QStringLiteral("/ui/treebank.cpp"));
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) return QString();
+    return QString::fromUtf8(file.readAll());
+}
+
+QString SourceFile(const QString &relative){
+    QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + relative);
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) return QString();
+    return QString::fromUtf8(file.readAll());
+}
+
+QString BodyOf(const QString &source, const QString &signature){
+    const int at = source.indexOf(signature);
+    if(at == -1) return QString();
+    int depth = 0;
+    for(int i = source.indexOf(QLatin1Char('{'), at); i < source.length(); i++){
+        if(source.at(i) == QLatin1Char('{')) depth++;
+        else if(source.at(i) == QLatin1Char('}')){
+            depth--;
+            if(!depth) return source.mid(at, i - at + 1);
+        }
+    }
+    return QString();
+}
+
+}
 
 void tst_viewnode::initTestCase(){
     TestSupport::SilenceDebugOutput();
@@ -201,6 +258,60 @@ void tst_viewnode::nextAndPrevStopAtTheEnds(){
     QVERIFY(!only->Next());
     QVERIFY(only->Prev() == root);
     QVERIFY(!root->Prev());
+
+    delete root;
+}
+
+void tst_viewnode::theAutoLoadWalkStopsAtTheFirstTabItLoads(){
+    ViewNode *root = new ViewNode();
+    ViewNode *one = MakeFolder(root, QStringLiteral("1"));
+    ViewNode *start = MakeTab(one, QStringLiteral("1-1"), QStringLiteral("https://a.test/"));
+    MakeTab(one, QStringLiteral("1-2"));
+    MakeTab(one, QStringLiteral("1-3"), QStringLiteral("https://b.test/"));
+    ViewNode *two = MakeTab(root, QStringLiteral("2"), QStringLiteral("https://c.test/"));
+    MakeTab(root, QStringLiteral("3"), QStringLiteral("https://d.test/"));
+
+    QStringList offered;
+    ViewNode *iter = start;
+    TreeBank::WalkToAutoLoad(iter, true, [&](ViewNode *vn){
+        offered << vn->GetTitle();
+        return vn == two;
+    });
+    QCOMPARE(offered, QStringList() << QStringLiteral("1-3") << QStringLiteral("2"));
+    QVERIFY(iter == two);
+
+    offered.clear();
+    iter = two;
+    TreeBank::WalkToAutoLoad(iter, false, [&](ViewNode *vn){
+        offered << vn->GetTitle();
+        return false;
+    });
+    QCOMPARE(offered, QStringList() << QStringLiteral("1-3") << QStringLiteral("1-1"));
+    QVERIFY(!iter);
+
+    delete root;
+}
+
+void tst_viewnode::theAutoLoadWalkStepsOverRefusedTabsWithoutGrowingTheStack(){
+    static const int Folders = 100;
+    static const int TabsPerFolder = 1000;
+
+    ViewNode *root = new ViewNode();
+    ViewNode *start = MakeTab(root, QStringLiteral("start"), QStringLiteral("https://start.test/"));
+    for(int i = 0; i < Folders; i++){
+        ViewNode *folder = MakeFolder(root, QString());
+        for(int j = 0; j < TabsPerFolder; j++)
+            MakeTab(folder, QString(), QStringLiteral("about:blank"));
+    }
+
+    int offered = 0;
+    ViewNode *iter = start;
+    TreeBank::WalkToAutoLoad(iter, true, [&](ViewNode *){
+        offered++;
+        return false;
+    });
+    QCOMPARE(offered, Folders * TabsPerFolder);
+    QVERIFY(!iter);
 
     delete root;
 }
@@ -366,6 +477,259 @@ void tst_viewnode::aserialIsNeverHandedOutTwice(){
     }
 
     delete root;
+}
+
+void tst_viewnode::theNextCurrentIsAViewUnderTheSameParent(){
+    ViewNode *root = new ViewNode();
+    ViewNode *dir = MakeFolder(root, QStringLiteral("dir"));
+    ViewNode *leaving = MakeTab(dir, QStringLiteral("leaving"));
+    ViewNode *beside = MakeTab(dir, QStringLiteral("beside"));
+    ViewNode *elsewhere = MakeTab(root, QStringLiteral("elsewhere"));
+
+    const NodeList views = NodeList() << elsewhere << leaving << beside;
+
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(views, dir, leaving, Refuse()),
+             static_cast<Node*>(beside));
+
+    delete root;
+}
+
+void tst_viewnode::theNextCurrentFallsBackToTheParentsChildrenByLastAccess(){
+    ViewNode *root = new ViewNode();
+    ViewNode *dir = MakeFolder(root, QStringLiteral("dir"));
+    ViewNode *leaving = MakeTab(dir, QStringLiteral("leaving"));
+    ViewNode *older = MakeTab(dir, QStringLiteral("older"));
+    ViewNode *newer = MakeTab(dir, QStringLiteral("newer"));
+
+    older->SetLastAccessDate(QDateTime::currentDateTime().addSecs(-60));
+    newer->SetLastAccessDate(QDateTime::currentDateTime());
+
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(NodeList(), dir, leaving, Refuse()),
+             static_cast<Node*>(newer));
+
+    older->SetLastAccessDate(QDateTime::currentDateTime().addSecs(60));
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(NodeList(), dir, leaving, Refuse()),
+             static_cast<Node*>(older));
+
+    delete root;
+}
+
+void tst_viewnode::theNodeWhichIsLeavingIsNeverTheNextCurrent(){
+    ViewNode *root = new ViewNode();
+    ViewNode *dir = MakeFolder(root, QStringLiteral("dir"));
+    ViewNode *leaving = MakeTab(dir, QStringLiteral("leaving"));
+
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(NodeList() << leaving, dir, leaving, Refuse()),
+             static_cast<Node*>(nullptr));
+
+    delete root;
+}
+
+void tst_viewnode::aViewAnotherWindowIsShowingIsNoCandidate(){
+    ViewNode *root = new ViewNode();
+    ViewNode *dir = MakeFolder(root, QStringLiteral("dir"));
+    ViewNode *leaving = MakeTab(dir, QStringLiteral("leaving"));
+    ViewNode *theirs = MakeTab(root, QStringLiteral("theirs"));
+
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(NodeList() << theirs, dir, leaving,
+                                                Refuse(theirs)),
+             static_cast<Node*>(nullptr));
+
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(NodeList() << theirs, dir, leaving,
+                                                Refuse()),
+             static_cast<Node*>(theirs));
+
+    delete root;
+}
+
+void tst_viewnode::aDirectoryStandsForThePrimaryChildBelowIt(){
+    ViewNode *root = new ViewNode();
+    ViewNode *dir = MakeFolder(root, QStringLiteral("dir"));
+    ViewNode *leaving = MakeTab(dir, QStringLiteral("leaving"));
+
+    ViewNode *other = MakeFolder(root, QStringLiteral("other"));
+    ViewNode *first = MakeTab(other, QStringLiteral("first"));
+    ViewNode *primary = MakeTab(other, QStringLiteral("primary"));
+
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(NodeList() << other, dir, leaving, Refuse()),
+             static_cast<Node*>(first));
+
+    other->SetPrimary(primary);
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(NodeList() << other, dir, leaving, Refuse()),
+             static_cast<Node*>(primary));
+
+    delete root;
+}
+
+void tst_viewnode::aLeafWithNothingBesideItLeavesNobodyToBeCurrent(){
+    ViewNode *root = new ViewNode();
+    ViewNode *dir = MakeFolder(root, QStringLiteral("dir"));
+    ViewNode *leaving = MakeTab(dir, QStringLiteral("leaving"));
+
+    MakeFolder(root, QStringLiteral("empty"));
+
+    QCOMPARE(TreeBank::ChooseCurrentAfterDelete(NodeList() << leaving, dir, leaving, Refuse()),
+             static_cast<Node*>(nullptr));
+
+    delete root;
+}
+
+void tst_viewnode::theDownloadCarrierIsTakenApartInOneOrder(){
+    const QString source = TreeBankSource();
+    QVERIFY2(!source.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const QString body =
+        BodyOf(source, QStringLiteral("SharedView TreeBank::ExtractDownloadCarrier"));
+    QVERIFY(!body.isEmpty());
+
+    const QStringList steps = QStringList()
+        << QStringLiteral("GetThis().lock()")
+        << QStringLiteral("QuarantineViewNode(vn)")
+        << QStringLiteral("DislinkView(vn)")
+        << QStringLiteral("held->Orphan()")
+        << QStringLiteral("DisownNode(vn)")
+        << QStringLiteral("EmitNodeDeleted(deleted)")
+        << QStringLiteral("ForgetNodeItems(deleted)")
+        << QStringLiteral("vn->Delete()")
+        << QStringLiteral("SetCurrent(next)");
+
+    int at = -1;
+    foreach(const QString &step, steps){
+        const int found = body.indexOf(step);
+        QVERIFY2(found != -1, qPrintable(QStringLiteral("missing step: ") + step));
+        QVERIFY2(found > at, qPrintable(QStringLiteral("out of order: ") + step));
+        at = found;
+    }
+
+    QVERIFY(body.indexOf(QStringLiteral("FindCurrentAfterDelete")) <
+            body.indexOf(QStringLiteral("QuarantineViewNode(vn)")));
+
+    QVERIFY(body.contains(QStringLiteral("HasNoChildren()")));
+}
+
+void tst_viewnode::nothingAboutADownloadCarrierGoesThroughTheTrash(){
+    const QString source = TreeBankSource();
+    QVERIFY2(!source.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const QString body =
+        BodyOf(source, QStringLiteral("SharedView TreeBank::ExtractDownloadCarrier"));
+    QVERIFY(!body.isEmpty());
+
+    QVERIFY(!body.contains(QStringLiteral("MoveToTrash")));
+    QVERIFY(!body.contains(QStringLiteral("m_TrashRoot")));
+}
+
+void tst_viewnode::quarantineLetsGoOfAllThreePointers(){
+    const QString source = TreeBankSource();
+    QVERIFY2(!source.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const QString body =
+        BodyOf(source, QStringLiteral("void TreeBank::QuarantineViewNode"));
+    QVERIFY(!body.isEmpty());
+
+    QVERIFY(body.contains(QStringLiteral("SetCurrentViewNode(nullptr)")));
+    QVERIFY(body.contains(QStringLiteral("SetViewIterForward(nullptr)")));
+    QVERIFY(body.contains(QStringLiteral("SetViewIterBackward(nullptr)")));
+}
+
+void tst_viewnode::treeLoadOnlyConsidersJsonGenerations(){
+    const QString source = TreeBankSource();
+    QVERIFY2(!source.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const QString body = BodyOf(source, QStringLiteral("void TreeBank::LoadTree"));
+    QVERIFY(!body.isEmpty());
+    QVERIFY(body.contains(QStringLiteral("backup.endsWith(filename)")));
+    QVERIFY(!body.contains(QStringLiteral("Legacy")));
+    QVERIFY(!body.contains(QStringLiteral(".xml")));
+}
+
+void tst_viewnode::overviewSharesTheWebViewAreaAndLeavesCompanionsAlone(){
+    const QString tree = TreeBankSource();
+    QVERIFY2(!tree.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const QString area =
+        BodyOf(tree, QStringLiteral("void TreeBank::ResizeViewArea"));
+    const QString before =
+        BodyOf(tree, QStringLiteral("void TreeBank::BeforeStartingDisplayGadgets"));
+    const QString after =
+        BodyOf(tree, QStringLiteral("void TreeBank::AfterFinishingDisplayGadgets"));
+    const QString resize =
+        BodyOf(tree, QStringLiteral("void TreeBank::resizeEvent"));
+    const QString shelve =
+        BodyOf(tree, QStringLiteral("void TreeBank::SetMiniMapShelved"));
+    const QString setCurrent =
+        BodyOf(tree, QStringLiteral("bool TreeBank::SetCurrent(Node *nd)"));
+    QVERIFY(!area.isEmpty());
+    QVERIFY(!before.isEmpty());
+    QVERIFY(!after.isEmpty());
+    QVERIFY(!resize.isEmpty());
+    QVERIFY(!shelve.isEmpty());
+    QVERIFY(!setCurrent.isEmpty());
+
+    QVERIFY(area.contains(QStringLiteral("m_View->setGeometry(QRect(QPoint(), size))")));
+    QVERIFY(area.contains(QStringLiteral("m_View->setSceneRect(QRect(QPoint(), size))")));
+    QVERIFY(area.contains(QStringLiteral("m_Gadgets->ResizeNotify(size)")));
+    QVERIFY(resize.contains(QStringLiteral("const QSize viewSize = ViewSize()")));
+    QVERIFY(resize.contains(QStringLiteral("ResizeViewArea(viewSize)")));
+    QVERIFY(resize.contains(QStringLiteral("m_CurrentView->resize(viewSize)")));
+    QVERIFY(shelve.contains(QStringLiteral("ResizeViewArea(viewSize)")));
+    const int setMiniMap = setCurrent.indexOf(QStringLiteral("m_MiniMap->SetView"));
+    const int resizeArea = setCurrent.indexOf(QStringLiteral("ResizeViewArea(viewSize)"));
+    QVERIFY(setMiniMap != -1);
+    QVERIFY2(resizeArea > setMiniMap,
+             "a tab switch sizes the overview before the minimap chooses ViewSize");
+
+    QVERIFY2(!before.contains(QStringLiteral("SuspendInspectorPane")),
+             "opening the overview still moves the inspector");
+    QVERIFY2(!after.contains(QStringLiteral("SuspendInspectorPane")),
+             "closing the overview still moves the inspector");
+    QVERIFY2(!before.contains(QStringLiteral("m_MiniMap->hide()")),
+             "opening the overview still hides the minimap");
+    QVERIFY2(!after.contains(QStringLiteral("m_MiniMap->show()")),
+             "closing the overview still shows the minimap again");
+    const int restack = before.indexOf(QStringLiteral("RestackChildWidgets(OverviewUp)"));
+    const int repaint = before.indexOf(QStringLiteral("m_View->viewport()->repaint()"));
+    QVERIFY(restack != -1);
+    QVERIFY2(repaint > restack,
+             "a native page can disappear before the raised overview is painted");
+}
+
+void tst_viewnode::showingAnAlreadyVisibleEngineViewDoesNotJiggleItsSize(){
+    const QStringList files = QStringList()
+        << QStringLiteral("/view/webengine/webengineview.hpp")
+        << QStringLiteral("/view/webengine/quickwebengineview.hpp");
+
+    foreach(const QString &file, files){
+        const QString source = SourceFile(file);
+        QVERIFY2(!source.isEmpty(), qPrintable(file + QStringLiteral(" was not read")));
+        const QString body = BodyOf(source, QStringLiteral("void show() Q_DECL_OVERRIDE"));
+        QVERIFY2(!body.isEmpty(), qPrintable(file + QStringLiteral(" has no show body")));
+
+        const int visible = body.indexOf(QStringLiteral("const bool wasVisible = base()->isVisible()"));
+        const int guard = body.indexOf(QStringLiteral("if(!wasVisible)"));
+        const int jiggle = body.indexOf(QStringLiteral("s.height()+1"));
+        QVERIFY2(visible != -1, qPrintable(file + QStringLiteral(" does not remember visibility")));
+        QVERIFY2(guard > visible, qPrintable(file + QStringLiteral(" does not guard the refresh")));
+        QVERIFY2(jiggle > guard, qPrintable(file + QStringLiteral(" refreshes before the guard")));
+    }
+}
+
+void tst_viewnode::aRunsSerialsBeginPastTheLastRuns(){
+    const quint64 span = Node::SERIAL_SPAN, ceiling = Node::SERIAL_CEILING;
+    QCOMPARE(Node::SerialStart(QByteArray()), quint64(1));
+    QCOMPARE(Node::SerialStart("x"), quint64(1));
+    QCOMPARE(Node::SerialStart("0"), quint64(1));
+    QCOMPARE(Node::SerialStart("-5"), quint64(1));
+    QCOMPARE(Node::SerialStart(QByteArray::number(ceiling)), quint64(1));
+    QCOMPARE(Node::SerialStart(QByteArray::number(ceiling - 1)), ceiling - 1);
+    QCOMPARE(Node::SerialStart("12345\n"), quint64(12345));
+    QCOMPARE(Node::SerialAfter(1, 1), 1 + span);
+    QCOMPARE(Node::SerialAfter(1, 10), 1 + span);
+    QCOMPARE(Node::SerialAfter(100, 100 + span + 7), 100 + span + 7);
+    QCOMPARE(Node::SerialAfter(ceiling - span, ceiling - span), quint64(1));
+    QCOMPARE(Node::SerialAfter(ceiling - span - 1, ceiling - span - 1), ceiling - 1);
+    QCOMPARE(Node::SerialAfter(1, ceiling + 5), quint64(1));
+    QVERIFY(Node::SerialStart(QByteArray::number(Node::SerialAfter(ceiling - 1, ceiling - 1))) < ceiling);
 }
 
 QTEST_MAIN(tst_viewnode)

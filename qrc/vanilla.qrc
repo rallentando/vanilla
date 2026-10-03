@@ -60,6 +60,10 @@
     <file>../resources/toolbar/command@2x.png</file>
     <file>../resources/toolbar/search.png</file>
     <file>../resources/toolbar/search@2x.png</file>
+    <file>../resources/toolbar/extension.png</file>
+    <file>../resources/toolbar/extension@2x.png</file>
+    <file>../resources/toolbar/pin.png</file>
+    <file>../resources/toolbar/pin@2x.png</file>
     <file>../resources/menu/back.png</file>
     <file>../resources/menu/back@2x.png</file>
     <file>../resources/menu/forward.png</file>

@@ -89,6 +89,7 @@ public:
     static void AbortAll();
 
     static bool AnyRunning();
+    static bool InFileDialog();
 
     static quint64 Generation();
 
@@ -164,6 +165,7 @@ public:
     void Adjust();
     static void RegisterDialog(ModelessDialog *dialog);
     static void DeregisterDialog(ModelessDialog *dialog);
+    QList<ModelessDialog*> Dialogs() const { return m_Dialogs;}
 
 private:
     QList<ModelessDialog*> m_Dialogs;
@@ -195,6 +197,8 @@ public:
     static void Information(const QString &title, const QString &text, QObject *caller = nullptr);
     static void Question(const QString &title, const QString &text, BoolCallBack callBack, QObject *caller = nullptr);
 
+    void Discard();
+
     Dialog::Button ClickedButton(){ return m_ClickedButton;}
     void SetTitle(QString title){ m_Title = title;}
     void SetCaption(QString caption){ m_Caption = caption;}
@@ -219,7 +223,6 @@ private:
     void StopTimer();
 
     void Finish(bool value);
-    void Discard();
     void TakeAway();
 
     void Answer(Dialog::Button button);
@@ -234,6 +237,8 @@ private:
     int m_TimerId;
     BoolCallBack m_CallBack;
     bool m_Finished;
+    ModelessDialogFrame *m_Frame;
+    friend class ModelessDialogFrame;
 };
 
 class DialogLabel : public QLabel {
@@ -241,8 +246,10 @@ class DialogLabel : public QLabel {
 
 public:
     DialogLabel(const QString &text, const QFont &font, QWidget *parent = nullptr)
-        : QLabel(text, parent)
+        : QLabel(parent)
     {
+        setTextFormat(Qt::PlainText);
+        setText(text);
         setFont(font);
         ApplyTheme();
     }

@@ -240,12 +240,20 @@ public slots:
     void OnLoadStarted() Q_DECL_OVERRIDE;
     void OnLoadProgress(int) Q_DECL_OVERRIDE;
     void OnLoadFinished(bool) Q_DECL_OVERRIDE;
+
+    void loadStopped();
+
     void OnTitleChanged(const QString&) Q_DECL_OVERRIDE;
     void OnUrlChanged(const QUrl&) Q_DECL_OVERRIDE;
     void OnViewChanged() Q_DECL_OVERRIDE;
     void OnScrollChanged() Q_DECL_OVERRIDE;
 
     void EmitScrollChanged() Q_DECL_OVERRIDE;
+
+private:
+    bool EndLoad(bool ok);
+
+public slots:
 
     void CallWithScroll(PointFCallBack callBack);
     void SetScrollBarState() Q_DECL_OVERRIDE;
@@ -258,7 +266,7 @@ public slots:
     bool SaveHistory() Q_DECL_OVERRIDE;
     bool RestoreHistory() Q_DECL_OVERRIDE;
 #ifdef MEDIATIME
-    bool SaveMediaTime() Q_DECL_OVERRIDE;
+    bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) Q_DECL_OVERRIDE;
     bool RestoreMediaTime() Q_DECL_OVERRIDE;
 #endif
 
@@ -404,8 +412,15 @@ private:
     bool m_EverShown;
     bool m_LoadedWhileHidden;
 
+    QuickNativeLoadTail m_LoadTail;
+
     void AskForLoadOf(const QUrl &target){
-        if(NativeHistory::StartsALoad(target, url())) m_History.Release();
+        if(NativeHistory::StartsALoad(target, url())) ReleaseTail();
+    }
+
+    void ReleaseTail(){
+        if(m_LoadTail.Take(m_History.Pending() != NativeHistory::NoMove))
+            m_History.Release();
     }
 
     bool NativeIsLoading() const {

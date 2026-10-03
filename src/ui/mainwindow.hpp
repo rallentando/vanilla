@@ -5,12 +5,14 @@
 #include "const.hpp"
 #include "theme.hpp"
 #include "devicescale.hpp"
+#include "windowframereveal.hpp"
 
 #include <QMainWindow>
 
-
 class QGraphicsScene;
 class QDockWidget;
+class SidePanels;
+class QTimer;
 
 class TreeBank;
 class TreeBar;
@@ -47,6 +49,7 @@ public:
     void RemoveSettings();
 
     TreeBank *GetTreeBank() const;
+    SidePanels *GetSidePanels() const { return m_SidePanels;}
     TreeBar *GetTreeBar() const;
     ToolBar *GetToolBar() const;
     ModelessDialogFrame *DialogFrame() const;
@@ -58,6 +61,9 @@ public:
 #if defined(Q_OS_WIN) && defined(EDGEWEBVIEW)
     void ApplyInspectorDockFrame();
 #endif
+
+    QMenu *createPopupMenu() Q_DECL_OVERRIDE;
+    void AddDisplayMenuActions(QMenu *menu);
 
     bool IsMenuBarEmpty() const;
     void ClearMenuBar();
@@ -91,7 +97,15 @@ public slots:
     void SetShaded(bool on);
     void SetFocus();
 
+public:
+    void ActivateIfNeeded();
+    static void ActivateWindowIfNeeded(QWidget *window);
+    static void ActivateWindowIfNeeded(QWidget *window, WId front);
+
+    bool IsFrameActive() const;
+
 protected:
+    void changeEvent(QEvent *ev) Q_DECL_OVERRIDE;
     bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE;
     void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
     void closeEvent(QCloseEvent *ev) Q_DECL_OVERRIDE;
@@ -101,8 +115,11 @@ protected:
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
 
 private:
+    friend class tst_windowframe;
     void ShowWindowFrameWidgets();
     void HideWindowFrameWidgets();
+    void UpdateTitleBarVisibility();
+    void ApplyTitleBarVisibility(const QPoint &cursor, bool active, bool buttonsDown);
 
     void UpdateInspectorDock();
 
@@ -116,11 +133,14 @@ private:
     TreeBar *m_TreeBar;
     ToolBar *m_ToolBar;
     QDockWidget *m_InspectorDock;
+    SidePanels *m_SidePanels;
     bool m_InspectorDockClosed;
     bool m_InspectorDockSuspended;
     bool m_InspectorDockPlaced;
     ModelessDialogFrame *m_DialogFrame;
     TitleBar *m_TitleBar;
+    QTimer *m_TitleBarTimer;
+    WindowFrameReveal m_TitleBarReveal;
     MainWindowNorthWidget *m_NorthWidget;
     MainWindowSouthWidget *m_SouthWidget;
     MainWindowWestWidget *m_WestWidget;
@@ -135,6 +155,9 @@ class TitleBar : public QWidget {
     Q_OBJECT
 public:
     TitleBar(MainWindow *mainwindow);
+    int CompactWidth() const {
+        return ScaleByDevice(32) + ScaleByDevice(28)*4 + ScaleByDevice(6);
+    }
 
     template <class T> T ScaleByDevice(T v) const {
         return DeviceScale::FromDpi(v, static_cast<int>(logicalDpiY()));
@@ -168,12 +191,12 @@ private:
     QRect MinimizeAreaRect() const;
     QRect MaximizeAreaRect() const;
     QRect CloseAreaRect() const;
-    QRect MenuAreaRect1()     const { QRect r = MenuAreaRect();     return QRect(r.x()-ScaleByDevice(4), r.y()-ScaleByDevice(4), r.width()+ScaleByDevice(9), r.height()+ScaleByDevice(9));}
-    QRect ViewTreeAreaRect1() const { QRect r = ViewTreeAreaRect(); return QRect(r.x()-ScaleByDevice(8), r.y()-ScaleByDevice(4), r.width()+ScaleByDevice(17),r.height()+ScaleByDevice(9));}
-    QRect ShadeAreaRect1()    const { QRect r = ShadeAreaRect();    return QRect(r.x()-ScaleByDevice(9), r.y()-ScaleByDevice(5), r.width()+ScaleByDevice(17),r.height()+ScaleByDevice(9));}
-    QRect MinimizeAreaRect1() const { QRect r = MinimizeAreaRect(); return QRect(r.x()-ScaleByDevice(9), r.y()-ScaleByDevice(5), r.width()+ScaleByDevice(17),r.height()+ScaleByDevice(9));}
-    QRect MaximizeAreaRect1() const { QRect r = MaximizeAreaRect(); return QRect(r.x()-ScaleByDevice(9), r.y()-ScaleByDevice(5), r.width()+ScaleByDevice(17),r.height()+ScaleByDevice(9));}
-    QRect CloseAreaRect1()    const { QRect r = CloseAreaRect();    return QRect(r.x()-ScaleByDevice(10),r.y()-ScaleByDevice(5), r.width()+ScaleByDevice(26),r.height()+ScaleByDevice(9));}
+    QRect MenuAreaRect1()     const { if(m_MainWindow->isMaximized()) return QRect(); QRect r = MenuAreaRect(); return QRect(r.x()-ScaleByDevice(4), 0, r.width()+ScaleByDevice(9), height());}
+    QRect ViewTreeAreaRect1() const { QRect r = ViewTreeAreaRect(); return QRect(r.x()-ScaleByDevice(8), 0, r.width()+ScaleByDevice(17),height());}
+    QRect ShadeAreaRect1()    const { QRect r = ShadeAreaRect();    return QRect(r.x()-ScaleByDevice(9), 0, r.width()+ScaleByDevice(17),height());}
+    QRect MinimizeAreaRect1() const { QRect r = MinimizeAreaRect(); return QRect(r.x()-ScaleByDevice(9), 0, r.width()+ScaleByDevice(17),height());}
+    QRect MaximizeAreaRect1() const { QRect r = MaximizeAreaRect(); return QRect(r.x()-ScaleByDevice(9), 0, r.width()+ScaleByDevice(17),height());}
+    QRect CloseAreaRect1()    const { QRect r = CloseAreaRect();    return QRect(r.x()-ScaleByDevice(10),0, r.width()+ScaleByDevice(26),height());}
 
     int ButtonAreaWidth(int count) const {
         return ScaleByDevice(19) + ScaleByDevice(32)

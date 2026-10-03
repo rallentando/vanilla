@@ -9,7 +9,7 @@
 #include <QPropertyAnimation>
 #include <QtWidgets>
 #include <QtMath>
-
+#include <utility>
 
 #include "dialog.hpp"
 #include "application.hpp"
@@ -22,6 +22,13 @@
 namespace {
     bool NearlyEqual(const qreal a, const qreal b){
         return qFabs(a - b) < 0.001;
+    }
+
+    QRectF FoldOrigin(const QRectF &directory, const QRectF &rect, bool title){
+        QRectF origin(0, 0, title ? rect.width() : 1, 1);
+        origin.moveCenter(QPointF(title ? rect.center().x() : directory.center().x(),
+                                  directory.center().y()));
+        return origin;
     }
 }
 
@@ -86,6 +93,35 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
 
     m_CurrentThumbnailZoomFactor = 1.0f;
     m_ScrollAnimation = new QPropertyAnimation(this, "scroll");
+    m_FoldAnimation = new QVariantAnimation(this);
+    m_FoldAnimation->setObjectName(QStringLiteral("foldAnimation"));
+    m_FoldAnimation->setDuration(200);
+    m_FoldAnimation->setStartValue(0.0);
+    m_FoldAnimation->setEndValue(1.0);
+    m_FoldAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    connect(m_FoldAnimation, &QVariantAnimation::valueChanged, this,
+            [this](const QVariant &value){
+        const qreal progress = value.toReal();
+        for(const FoldTransition &entry : m_FoldTransitions){
+            const QRectF rect(entry.from.topLeft() * (1 - progress) + entry.to.topLeft() * progress,
+                              entry.from.size() * (1 - progress) + entry.to.size() * progress);
+            if(entry.ghost){
+                const QRectF base = entry.item->boundingRect();
+                QTransform transform;
+                transform.translate(rect.x(), rect.y());
+                transform.scale(rect.width() / base.width(), rect.height() / base.height());
+                transform.translate(-base.x(), -base.y());
+                entry.item->setTransform(transform);
+            } else {
+                static_cast<AbstractNodeItem*>(entry.item)->SetTransitionRect(rect);
+            }
+            entry.item->setOpacity(entry.opacity * (entry.ghost ? 1 - progress :
+                                                    entry.entering ? progress : 1));
+        }
+        Update();
+    });
+    connect(m_FoldAnimation, &QVariantAnimation::finished,
+            this, &GraphicsTableView::FinishFoldAnimation);
     connect(m_ScrollAnimation, &QPropertyAnimation::finished,
             this, &GraphicsTableView::ResetTargetScroll);
     m_CurrentScroll = 0;
@@ -108,6 +144,7 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
 }
 
 GraphicsTableView::~GraphicsTableView(){
+    FinishFoldAnimation();
     m_DummyViewNode->Delete();
 
 }
@@ -133,7 +170,7 @@ void GraphicsTableView::LoadSettings(){
     m_EnableInPlaceNotifier   = s.value(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),    true).value<bool>();
     m_EnableCloseButton       = s.value(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),        true).value<bool>();
     m_EnableCloneButton       = s.value(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),        true).value<bool>();
-    m_EnableAnimation         = s.value(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         false).value<bool>();
+    m_EnableAnimation         = s.value(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         true ).value<bool>();
     m_EnableFrameRate         = s.value(QStringLiteral("gadgets/thumblist/@EnableFrameRate"),         false).value<bool>();
 }
 
@@ -154,17 +191,24 @@ void GraphicsTableView::SaveSettings(){
 }
 
 void GraphicsTableView::Activate(DisplayType type){
+    m_DisplayType = type;
+    show();
     if(m_TreeBank){
         m_TreeBank->BeforeStartingDisplayGadgets();
     }
-    show();
     setFocus(Qt::OtherFocusReason);
 
     QTimer::singleShot(0, this, [this](){
-        if(isVisible() && !hasFocus()) setFocus(Qt::OtherFocusReason);
+        if(!isVisible()) return;
+
+        if(m_TreeBank && m_TreeBank->GetView() && !m_TreeBank->GetView()->hasFocus()){
+            QWidget *holder = QApplication::focusWidget();
+            if(!holder || !holder->testAttribute(Qt::WA_InputMethodEnabled))
+                m_TreeBank->GetView()->setFocus(Qt::OtherFocusReason);
+        }
+        if(!hasFocus()) setFocus(Qt::OtherFocusReason);
     });
     setCursor(Qt::ArrowCursor);
-    m_DisplayType = type;
 
     m_HoveredItemIndex = -1;
     m_PrimaryItemIndex = -1;
@@ -176,6 +220,7 @@ void GraphicsTableView::Activate(DisplayType type){
 }
 
 void GraphicsTableView::Deactivate(){
+    FinishFoldAnimation();
     if(m_EnableFrameRate){
         StopFrameRateTimer();
     }
@@ -241,6 +286,7 @@ void GraphicsTableView::SetCurrent(Node *nd){
 }
 
 void GraphicsTableView::CollectNodes(Node *nd, QString filter){
+    FinishFoldAnimation();
     if(!nd) return;
 
     foreach(QGraphicsItem *item, childItems()){
@@ -326,28 +372,6 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
         }
         break;
     }
-    case Straight:{
-
-        Node *now = TreeBank::GetRoot(nd);
-
-        if(m_DisplayType == ViewTree || m_DisplayType == TrashTree){
-            if(now->GetPrimary())
-                now = now->GetPrimary();
-            else if(!now->HasNoChildren())
-                now = now->GetFirstChild();
-        }
-
-        for(int i = 0; now != nullptr; i++){
-            convertOneNode(now, i);
-            if(now->GetPrimary())
-                now = now->GetPrimary();
-            else if(!now->HasNoChildren())
-                now = now->GetFirstChild();
-            else
-                now = nullptr;
-        }
-        break;
-    }
     case Recursive:{
 
         std::function<void (Node*, int)> convertNodeRec;
@@ -414,6 +438,16 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     }
 
     int loadcount = 0;
+    m_PrimaryItemIndex = -1;
+    Node *primaryNode = nd;
+    if((type == Recursive || type == Foldable) && m_DisplayType == ViewTree){
+        primaryNode = DisplayedViewNode();
+        QSet<Node*> visibleNodes;
+        for(Thumbnail *thumb : m_DisplayThumbnails)
+            visibleNodes.insert(thumb->GetNode());
+        while(primaryNode && !visibleNodes.contains(primaryNode))
+            primaryNode = primaryNode->GetParent();
+    }
 
     for(int i = 0; i < m_DisplayThumbnails.length(); i++){
         Thumbnail *thumb = m_DisplayThumbnails[i];
@@ -450,16 +484,9 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
             if(thumb->GetNode()->IsPrimaryOfParent())
                 m_PrimaryItemIndex = i;
             break;
-        case Straight:
-            if(thumb->GetNode() == nd)
-                m_PrimaryItemIndex = i;
-            break;
         case Recursive:
-            if(thumb->GetNode() == nd)
-                m_PrimaryItemIndex = i;
-            break;
         case Foldable:
-            if(thumb->GetNode() == nd)
+            if(thumb->GetNode() == primaryNode)
                 m_PrimaryItemIndex = i;
             break;
         }
@@ -520,6 +547,7 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
 }
 
 bool GraphicsTableView::DeleteNodes(NodeList list){
+    FinishFoldAnimation();
 
     if(m_DisplayThumbnails.isEmpty()) return false;
 
@@ -551,12 +579,8 @@ bool GraphicsTableView::DeleteNodes(NodeList list){
     if(!success) return false;
 
     if(type == Node::ViewTypeNode){
-        if(GetNodeCollectionType() == Straight){
-            SetCurrent(m_TreeBank->GetCurrentViewNode());
-        } else {
-            m_DummyViewNode->SetParent(parent);
-            SetCurrent(m_DummyViewNode);
-        }
+        m_DummyViewNode->SetParent(parent);
+        SetCurrent(m_DummyViewNode);
     }
 
     SetScroll(scroll);
@@ -1047,6 +1071,7 @@ void GraphicsTableView::ResizeNotify(QSize size){
 }
 
 void GraphicsTableView::Resize(QSizeF size){
+    FinishFoldAnimation();
     if(!scene()) return;
     scene()->setSceneRect(0.0, 0.0, size.width(), size.height());
     prepareGeometryChange();
@@ -1065,8 +1090,9 @@ QSizeF GraphicsTableView::Size(){
 QRectF GraphicsTableView::ComputeRect(const Thumbnail *thumb, const int index) const {
     Q_UNUSED(thumb)
     if(index == -1) return QRectF();
-    return QRectF(ScaleByDevice(DISPLAY_PADDING_X) + (index % m_CurrentThumbnailColumnCount) * m_CurrentThumbnailWidth,
-                  ScaleByDevice(DISPLAY_PADDING_Y) + (index / m_CurrentThumbnailColumnCount) * m_CurrentThumbnailHeight
+    const int dpi = m_TreeBank ? m_TreeBank->logicalDpiY() : DeviceScale::BaseDpi;
+    return QRectF(DeviceScale::FromDpi(DISPLAY_PADDING_X, dpi) + (index % m_CurrentThumbnailColumnCount) * m_CurrentThumbnailWidth,
+                  DeviceScale::FromDpi(DISPLAY_PADDING_Y, dpi) + (index / m_CurrentThumbnailColumnCount) * m_CurrentThumbnailHeight
                   - round(m_CurrentScroll
                           / m_CurrentThumbnailColumnCount
                           * m_CurrentThumbnailHeight),
@@ -1078,13 +1104,14 @@ QRectF GraphicsTableView::ComputeRect(const NodeTitle *title, const int index) c
     Q_UNUSED(title)
     int height = GetStyle()->NodeTitleHeight(const_cast<GraphicsTableView* const>(this));
     if(index == -1) return QRectF();
-    const int paddingX = ScaleByDevice(DISPLAY_PADDING_X);
-    const int scrollBar = ScaleByDevice(GADGETS_SCROLL_BAR_MARGIN) * 2
-                        + ScaleByDevice(GADGETS_SCROLL_BAR_WIDTH);
+    const int dpi = m_TreeBank ? m_TreeBank->logicalDpiY() : DeviceScale::BaseDpi;
+    const int paddingX = DeviceScale::FromDpi(DISPLAY_PADDING_X, dpi);
+    const int scrollBar = DeviceScale::FromDpi(GADGETS_SCROLL_BAR_MARGIN, dpi) * 2
+                        + DeviceScale::FromDpi(GADGETS_SCROLL_BAR_WIDTH, dpi);
     return QRectF(paddingX
                   + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
                   + scrollBar,
-                  ScaleByDevice(DISPLAY_PADDING_Y) + height * index
+                  DeviceScale::FromDpi(DISPLAY_PADDING_Y, dpi) + height * index
                   - round(m_CurrentScroll * height),
 
                   m_Size.width()
@@ -1097,6 +1124,7 @@ QRectF GraphicsTableView::ComputeRect(const NodeTitle *title, const int index) c
 }
 
 void GraphicsTableView::RelocateContents(){
+    FinishFoldAnimation();
     GetStyle()->ComputeContentsLayout
         (this,
          m_CurrentThumbnailColumnCount,
@@ -1107,13 +1135,12 @@ void GraphicsTableView::RelocateContents(){
 
 void GraphicsTableView::RelocateScrollBar(){
     QRectF back = ScrollBarAreaRect();
-    int width = static_cast<int>(back.width()) - ScaleByDevice(5);
+    const int inset = ScaleByDevice(3);
     int height = ScaleByDevice(GADGETS_SCROLL_CONTROLER_HEIGHT);
     if(height > back.height() - ScaleByDevice(5))
         height = static_cast<int>(back.height()) - ScaleByDevice(5);
 
-    QRectF rect = QRectF(back.topLeft() + QPointF(ScaleByDevice(3), ScaleByDevice(3)),
-                         QSizeF(width, height));
+    const QRectF rect = ScrollIndicatorRect(back, inset, height);
 
     m_ScrollIndicator->setRect(rect);
 
@@ -1121,8 +1148,8 @@ void GraphicsTableView::RelocateScrollBar(){
 
         if(m_DisplayThumbnails.length()){
 
-            const int maxY = static_cast<int>(ScrollBarAreaRect().height())
-                - static_cast<int>(m_ScrollIndicator->boundingRect().height()) - ScaleByDevice(4);
+            const qreal maxY = ScrollIndicatorTravel
+                (back.height(), rect.height(), inset);
 
             m_ScrollIndicator->setPos
                 (0, ScrollIndicatorY(maxY, m_CurrentScroll, MaxScroll()));
@@ -1259,7 +1286,6 @@ bool GraphicsTableView::TransferTo(bool toRight, bool basedOnScroll,
                                    std::function<int(Thumbnail*, int, int)> compute){
     if(!m_CurrentNode ||
        !IsDisplayingViewNode() ||
-       GetNodeCollectionType() == Straight ||
        m_NodesRegister.isEmpty()){
         return false;
     }
@@ -1456,7 +1482,6 @@ GraphicsTableView::NodeCollectionType GraphicsTableView::DefaultNodeCollectionTy
 
 QString GraphicsTableView::NodeCollectionTypeName(NodeCollectionType type){
     switch(type){
-    case Straight:  return QStringLiteral("Straight");
     case Recursive: return QStringLiteral("Recursive");
     case Foldable:  return QStringLiteral("Foldable");
     case Flat:      break;
@@ -1466,7 +1491,6 @@ QString GraphicsTableView::NodeCollectionTypeName(NodeCollectionType type){
 
 GraphicsTableView::NodeCollectionType
 GraphicsTableView::NodeCollectionTypeFromName(const QString &name){
-    if(name == QStringLiteral("Straight"))  return Straight;
     if(name == QStringLiteral("Recursive")) return Recursive;
     if(name == QStringLiteral("Foldable"))  return Foldable;
     return Flat;
@@ -1513,6 +1537,7 @@ void GraphicsTableView::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
 }
 
 void GraphicsTableView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    FinishFoldAnimation();
     switch(ev->button()){
     case Qt::LeftButton:
         if(m_SelectRect){
@@ -1753,6 +1778,134 @@ bool GraphicsTableView::ThumbList_RefreshNoScroll(){
     return true;
 }
 
+void GraphicsTableView::FinishFoldAnimation(){
+    m_FoldAnimation->stop();
+    if(m_FoldTransitions.isEmpty()) return;
+    const auto entries = std::exchange(m_FoldTransitions, {});
+    for(const FoldTransition &entry : entries){
+        if(entry.ghost){
+            delete entry.item;
+        } else {
+            static_cast<AbstractNodeItem*>(entry.item)->SetTransitionRect(std::nullopt);
+            entry.item->setOpacity(entry.opacity);
+        }
+    }
+    Update();
+}
+
+void GraphicsTableView::OnFoldedChanged(const NodeList &nodes){
+    FinishFoldAnimation();
+    if(!isVisible() || !IsDisplayingViewNode() || GetNodeCollectionType() != Foldable ||
+       !m_CurrentNode || nodes.isEmpty()){
+        ThumbList_RefreshNoScroll();
+        return;
+    }
+    m_ScrollAnimation->stop();
+    ResetTargetScroll();
+
+    struct Before {
+        AbstractNodeItem *item;
+        QRectF rect;
+        QPixmap image;
+        AbstractNodeItem *anchor;
+        bool title;
+    };
+    QList<Before> before;
+    QHash<QGraphicsItem*, QRectF> oldRects;
+    const QRectF viewport(QPointF(), Size());
+    qreal dpr = 1;
+    if(scene() && !scene()->views().isEmpty())
+        dpr = scene()->views().first()->devicePixelRatioF();
+    QSet<Node*> folding;
+    QSet<Node*> unfolding;
+    for(Node *node : nodes){
+        if(!node) continue;
+        if(node->GetFolded()) folding.insert(node);
+        else unfolding.insert(node);
+    }
+
+    auto capture = [&](const auto &items, bool title){
+        QHash<Node*, AbstractNodeItem*> byNode;
+        for(auto *item : items) byNode.insert(item->GetNode(), item);
+        for(auto *item : items){
+            const QRectF rect = item->boundingRect().translated(item->pos());
+            oldRects.insert(item, rect);
+            AbstractNodeItem *anchor = nullptr;
+            for(Node *parent = item->GetNode()->GetParent(); parent; parent = parent->GetParent()){
+                if(folding.contains(parent) && byNode.contains(parent))
+                    anchor = byNode.value(parent);
+            }
+            QPixmap image;
+            const QRectF clipped = rect.intersected(viewport);
+            if(anchor && !clipped.isEmpty()){
+                image = QPixmap((clipped.size() * dpr).toSize());
+                image.setDevicePixelRatio(dpr);
+                image.fill(Qt::transparent);
+                QPainter painter(&image);
+                painter.translate(-clipped.topLeft() + item->pos());
+                item->paint(&painter, nullptr, nullptr);
+            }
+            before.append({item, rect, image, anchor, title});
+        }
+    };
+    capture(m_DisplayThumbnails, false);
+    capture(m_DisplayNodeTitles, true);
+
+    ThumbList_RefreshNoScroll();
+
+    QHash<QGraphicsItem*, QRectF> newRects;
+    auto collect = [&](const auto &items){
+        for(auto *item : items)
+            newRects.insert(item, item->boundingRect());
+    };
+    collect(m_DisplayThumbnails);
+    collect(m_DisplayNodeTitles);
+    auto enter = [&](const auto &items, const auto &cache, bool title){
+        for(auto *item : items){
+            const QRectF to = newRects.value(item);
+            const bool entering = !oldRects.contains(item);
+            QRectF from = oldRects.value(item, to);
+            if(entering){
+                from = FoldOrigin(to, to, title);
+                for(Node *parent = item->GetNode()->GetParent(); parent; parent = parent->GetParent()){
+                    auto *anchor = cache.value(parent, nullptr);
+                    if(unfolding.contains(parent) && anchor && oldRects.contains(anchor)){
+                        from = FoldOrigin(oldRects.value(anchor), to, title);
+                        break;
+                    }
+                }
+            }
+            const bool shown = entering ? to.intersects(viewport) :
+                               from.intersects(viewport) || to.intersects(viewport);
+            if(shown && (from != to || entering))
+                m_FoldTransitions.append({item, from, to, item->opacity(), entering, false});
+        }
+    };
+    enter(m_DisplayThumbnails, m_ThumbnailCache, false);
+    enter(m_DisplayNodeTitles, m_NodeTitleCache, true);
+    for(const Before &old : before){
+        if(newRects.contains(old.item) || old.image.isNull()) continue;
+        auto *ghost = new QGraphicsPixmapItem(old.image, this);
+        ghost->setAcceptedMouseButtons(Qt::NoButton);
+        ghost->setAcceptHoverEvents(false);
+        ghost->setEnabled(false);
+        ghost->setZValue(MAIN_CONTENTS_LAYER);
+        const QRectF from = old.rect.intersected(viewport);
+        ghost->setOffset(from.topLeft());
+        const QRectF to = FoldOrigin(newRects.value(old.anchor, oldRects.value(old.anchor)),
+                                     from, old.title);
+        m_FoldTransitions.append({ghost, from, to, old.item->opacity(), false, true});
+    }
+    if(!m_FoldTransitions.isEmpty()){
+        for(const FoldTransition &entry : m_FoldTransitions){
+            if(!entry.ghost)
+                static_cast<AbstractNodeItem*>(entry.item)->SetTransitionRect(entry.from);
+            entry.item->setOpacity(entry.entering ? 0 : entry.opacity);
+        }
+        m_FoldAnimation->start();
+    }
+}
+
 bool GraphicsTableView::ThumbList_OpenNode(){
     if(!IsDisplayingNode()) return false;
 
@@ -1761,7 +1914,7 @@ bool GraphicsTableView::ThumbList_OpenNode(){
 
             nd->SetFolded(!nd->GetFolded());
             TreeBank::EmitFoldedChanged(NodeList() << nd);
-            ThumbList_RefreshNoScroll();
+            if(!m_TreeBank) OnFoldedChanged(NodeList() << nd);
             return true;
         }
 
@@ -2243,8 +2396,7 @@ bool GraphicsTableView::ThumbList_ToggleTrash(){
 
 bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF basepos){
     if(!m_CurrentNode ||
-       !IsDisplayingViewNode() ||
-       GetNodeCollectionType() == Straight){
+       !IsDisplayingViewNode()){
         ThumbList_RefreshNoScroll();
         return false;
     }
@@ -2401,6 +2553,17 @@ qreal GraphicsTableView::ScrollFromIndicatorY(qreal y, qreal maxY, qreal maxScro
     return qBound(0.0, maxScroll * y / maxY, maxScroll < 0.0 ? 0.0 : maxScroll);
 }
 
+QRectF GraphicsTableView::ScrollIndicatorRect(const QRectF &bar, qreal inset, qreal height){
+    return QRectF(bar.topLeft() + QPointF(inset, inset),
+                  QSizeF(bar.width() - inset * 2.0, height));
+}
+
+qreal GraphicsTableView::ScrollIndicatorTravel(qreal barHeight,
+                                                qreal indicatorHeight,
+                                                qreal inset){
+    return qMax(0.0, barHeight - indicatorHeight - inset * 2.0);
+}
+
 qreal GraphicsTableView::MaxScrollOf(int count, int columns, int lines, int titles){
     if(count <= 0 || columns <= 0) return 0.0;
 
@@ -2518,6 +2681,7 @@ void GraphicsTableView::SetScroll(QPointF pos){
 }
 
 void GraphicsTableView::SetScroll(qreal target){
+    FinishFoldAnimation();
     if(!isVisible()) return;
 
     const qreal min = MinScroll();
@@ -3022,12 +3186,18 @@ bool GraphicsTableView::ThumbList_SetNodeCollectionType(NodeCollectionType type)
         ResumeStatusBarMessage();
 
         QString s = tr("Displaying %1 nodes.").arg(m_DisplayThumbnails.length());
-        switch(GetNodeCollectionType()){
-        case Flat:      emit statusBarMessage2(s, QStringLiteral("[Flat] Straight  Recursive  Foldable ")); break;
-        case Straight:  emit statusBarMessage2(s, QStringLiteral(" Flat [Straight] Recursive  Foldable ")); break;
-        case Recursive: emit statusBarMessage2(s, QStringLiteral(" Flat  Straight [Recursive] Foldable ")); break;
-        case Foldable:  emit statusBarMessage2(s, QStringLiteral(" Flat  Straight  Recursive [Foldable]")); break;
+        QStringList types;
+        for(NodeCollectionType candidate : { Flat, Recursive, Foldable }){
+            QString label;
+            switch(candidate){
+            case Flat:      label = tr("Normal"); break;
+            case Recursive: label = tr("Recursive"); break;
+            case Foldable:  label = tr("Foldable"); break;
+            }
+            types << (candidate == GetNodeCollectionType()
+                      ? QStringLiteral("[%1]").arg(label) : label);
         }
+        emit statusBarMessage2(s, types.join(QStringLiteral("  ")));
     }
     return true;
 }
@@ -3037,8 +3207,7 @@ bool GraphicsTableView::ThumbList_SwitchNodeCollectionType(){
 
     NodeCollectionType next = Flat;
     switch (GetNodeCollectionType()){
-    case Flat:      next = Straight;  break;
-    case Straight:  next = Recursive; break;
+    case Flat:      next = Recursive; break;
     case Recursive: next = Foldable;  break;
     case Foldable:  next = Flat;      break;
     }
@@ -3052,26 +3221,23 @@ bool GraphicsTableView::ThumbList_SwitchNodeCollectionTypeReverse(){
     switch (GetNodeCollectionType()){
     case Flat:      next = Foldable;  break;
     case Foldable:  next = Recursive; break;
-    case Recursive: next = Straight;  break;
-    case Straight:  next = Flat;      break;
+    case Recursive: next = Flat;      break;
     }
     return ThumbList_SetNodeCollectionType(next);
 }
 
 QMenu *GraphicsTableView::CreateNodeCollectionTypeMenu(QWidget *parent){
     QMenu *menu = new QMenu(parent ? parent : static_cast<QWidget*>(m_TreeBank));
-    menu->setTitle(tr("Collect"));
+    menu->setTitle(tr("DisplayType"));
 
     struct Entry { NodeCollectionType type; const char *text; const char *tip;};
     static const Entry entries[] = {
-        { Flat,      QT_TR_NOOP("Siblings"),
+        { Flat,      QT_TR_NOOP("Normal"),
                      QT_TR_NOOP("The nodes beside this one, and nothing below them.")},
-        { Straight,  QT_TR_NOOP("Lineage"),
-                     QT_TR_NOOP("One line from the root down, following the primary mark.")},
-        { Recursive, QT_TR_NOOP("Descendants"),
+        { Recursive, QT_TR_NOOP("Recursive"),
                      QT_TR_NOOP("Everything below, however deep. A large tree puts a "
                                 "great many thumbnails on the screen at once.")},
-        { Foldable,  QT_TR_NOOP("Descendants, foldable"),
+        { Foldable,  QT_TR_NOOP("Foldable"),
                      QT_TR_NOOP("As above, but a folded directory hides what is under "
                                 "it. Opening a directory folds and unfolds it instead "
                                 "of entering it.")},
@@ -3240,7 +3406,7 @@ void ScrollIndicator::paint(QPainter *painter,
                                    : Theme::GadgetsScrollIndicator));
 
     painter->setRenderHint(QPainter::Antialiasing, false);
-    painter->drawRect(boundingRect());
+    painter->drawRect(rect());
 
     painter->restore();
 }
@@ -3249,8 +3415,9 @@ QVariant ScrollIndicator::itemChange(GraphicsItemChange change, const QVariant &
     if(change == ItemPositionChange && scene()){
         QPointF newPos = value.toPointF();
         const int minY = 0;
-        const int maxY = m_TableView->ScrollBarAreaRect().height()
-            - boundingRect().height() - m_TableView->ScaleByDevice(4);
+        const qreal maxY = GraphicsTableView::ScrollIndicatorTravel
+            (m_TableView->ScrollBarAreaRect().height(), rect().height(),
+             m_TableView->ScaleByDevice(3));
         if(!qIsFinite(newPos.y()) || newPos.y() < minY) newPos.setY(minY);
         if(newPos.y() > maxY) newPos.setY(maxY < minY ? minY : maxY);
         newPos.setX(0);
@@ -3410,8 +3577,14 @@ void GraphicsButton::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     ev->setAccepted(true);
 }
 
+void GraphicsButton::HoverItem(){
+    if(AbstractNodeItem *item = dynamic_cast<AbstractNodeItem*>(m_Item))
+        item->SetHovered();
+}
+
 void GraphicsButton::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
     QGraphicsItem::hoverEnterEvent(ev);
+    HoverItem();
     SetState(Hovered);
     ev->setAccepted(true);
 }
@@ -3424,6 +3597,7 @@ void GraphicsButton::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
 
 void GraphicsButton::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
     QGraphicsItem::hoverMoveEvent(ev);
+    HoverItem();
     SetState(Hovered);
     ev->setAccepted(true);
 }

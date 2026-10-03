@@ -31,6 +31,13 @@ endif()
 
 set(VANILLA_HEADERS
     src/app/application.hpp
+    src/app/extensionhost.hpp
+    src/app/extensioncontroller.hpp
+    src/ui/extensionbar.hpp
+    src/ui/sidepanels.hpp
+    src/view/webengine/webengineextensions.hpp
+    src/app/saveflow.hpp
+    src/app/shutdownflow.hpp
     src/input/actionmapper.hpp
     src/ui/mainwindow.hpp
     src/app/saver.hpp
@@ -41,14 +48,25 @@ set(VANILLA_HEADERS
     src/core/bookmarkio.hpp
     src/core/settingsio.hpp
     src/core/inputmap.hpp
+    src/core/inputmapschema.hpp
     src/core/commandmap.hpp
     src/core/commandframe.hpp
     src/core/certificatepolicy.hpp
     src/core/fileoperation.hpp
     src/core/fileexchange.hpp
     src/core/windowledger.hpp
+    src/core/windowframereveal.hpp
     src/core/useragent.hpp
+    src/core/cdpshims.hpp
+    src/core/extensioncopy.hpp
+    src/core/extensionhostwire.hpp
+    src/core/extensionmainscripts.hpp
+    src/core/extensionuserscripts.hpp
+    src/core/extensionui.hpp
+    src/core/dnrrules.hpp
     src/core/downloadname.hpp
+    src/core/loadending.hpp
+    src/core/translationorder.hpp
     src/core/nativehistory.hpp
     src/ui/treebank.hpp
     src/ui/treebar.hpp
@@ -66,6 +84,7 @@ set(VANILLA_HEADERS
     src/app/directorypage.hpp
     src/input/keymap.hpp
     src/input/mousemap.hpp
+    src/input/spentbuttons.hpp
     src/app/receiver.hpp
     src/app/transmitter.hpp
     src/ui/dialog.hpp
@@ -83,6 +102,8 @@ set(VANILLA_HEADERS
     src/view/edge/edgeeventsubscriptions.hpp
     src/view/edge/edgeunadoptedcontroller.hpp
     src/view/edge/edgewebviewstate.hpp
+    src/view/edge/edgemenuitem.hpp
+    src/view/edge/edgehostwindow.hpp
     src/gadgets/graphicstableview.hpp
     src/gadgets/gadgets.hpp
     src/gadgets/gadgetsstyle.hpp
@@ -93,6 +114,12 @@ set(VANILLA_HEADERS
 
 set(VANILLA_SOURCES
     src/app/application.cpp
+    src/app/extensionhost.cpp
+    src/app/extensioncontroller.cpp
+    src/ui/extensionbar.cpp
+    src/ui/sidepanels.cpp
+    src/view/webengine/webengineextensions.cpp
+    src/view/edge/edgeextensions.cpp
     src/ui/mainwindow.cpp
     src/app/saver.cpp
     src/core/lightnode.cpp
@@ -101,12 +128,20 @@ set(VANILLA_SOURCES
     src/core/bookmarkio.cpp
     src/core/settingsio.cpp
     src/core/inputmap.cpp
+    src/core/inputmapschema.cpp
     src/core/commandmap.cpp
     src/core/commandframe.cpp
     src/core/certificatepolicy.cpp
     src/core/fileoperation.cpp
     src/core/fileexchange.cpp
     src/core/useragent.cpp
+    src/core/cdpshims.cpp
+    src/core/extensioncopy.cpp
+    src/core/extensionhostwire.cpp
+    src/core/extensionmainscripts.cpp
+    src/core/extensionuserscripts.cpp
+    src/core/extensionui.cpp
+    src/core/dnrrules.cpp
     src/core/downloadname.cpp
     src/core/nativehistory.cpp
     src/ui/treebank.cpp
@@ -141,6 +176,7 @@ set(VANILLA_SOURCES
     src/view/edge/edgewebviewpage.cpp
     src/view/edge/edgewebviewprofile.cpp
     src/view/edge/edgewebviewstate.cpp
+    src/view/edge/edgehostwindow.cpp
     src/view/edge/edgeeventsubscriptions.cpp
     src/gadgets/graphicstableview.cpp
     src/gadgets/gadgets.cpp
@@ -176,10 +212,10 @@ target_include_directories(vanilla_core PUBLIC
 
 target_compile_definitions(vanilla_core PUBLIC LOCALVIEW)
 
-# saving and restoring the playback position of a page's video (A-1). off by
-# default: a tree is expected to hold tens of thousands of nodes, and every
-# view node pays for the member and the session file for the field.
-option(VANILLA_MEDIATIME "save and restore the playback position of videos" OFF)
+# saving and restoring the playback position of a page's video (A-1). on by
+# default since D-063 追記 (2026-09-01): the cost -- a float on every view
+# node and a field in the session file -- was accepted.
+option(VANILLA_MEDIATIME "save and restore the playback position of videos" ON)
 if(VANILLA_MEDIATIME)
     target_compile_definitions(vanilla_core PUBLIC MEDIATIME)
 endif()
@@ -190,6 +226,13 @@ target_link_libraries(vanilla_core PUBLIC
     Qt6::WebChannel
     Qt6::Multimedia Qt6::MultimediaWidgets
     Qt6::Qml Qt6::Quick Qt6::QuickWidgets)
+
+# a border on full screen OpenGL windows, so other windows show over them
+# ('QWindowsApplication::setHasBorderInFullScreenDefault', application.cpp).
+if(WIN32)
+    find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
+    target_link_libraries(vanilla_core PUBLIC Qt6::GuiPrivate)
+endif()
 
 if(TARGET Qt6::PrintSupport)
     target_link_libraries(vanilla_core PUBLIC Qt6::PrintSupport)
@@ -450,8 +493,17 @@ if(WIN32)
     # FFmpeg is not redistributed (D-241). '--no-ffmpeg' leaves its
     # libraries out, and the multimedia plugin which needs them has to go
     # with them -- what is left plays video through Windows Media.
-    list(APPEND VANILLA_DEPLOY_OPTIONS
-        --no-ffmpeg --exclude-plugins ffmpegmediaplugin)
+    # A package that stays on this machine may keep them (D-241 addendum 6):
+    # with the FFmpeg backend present, Qt Multimedia prefers it and
+    # 'LocalView' plays what Windows Media cannot. OFF is the default so
+    # that a distribution build cannot ship FFmpeg by forgetting a flag.
+    option(VANILLA_PACKAGE_FFMPEG
+        "Ship Qt Multimedia's FFmpeg backend in the package (local packages only; a distributed package excludes it, D-241)"
+        OFF)
+    if(NOT VANILLA_PACKAGE_FFMPEG)
+        list(APPEND VANILLA_DEPLOY_OPTIONS
+            --no-ffmpeg --exclude-plugins ffmpegmediaplugin)
+    endif()
 
     # 'vc_redist.x64.exe' belongs in the package (D-241). the tool deploys
     # it by default, so this only says so out loud -- it does NOT make a
@@ -467,3 +519,40 @@ qt_generate_deploy_app_script(
     NO_UNSUPPORTED_PLATFORM_ERROR
     DEPLOY_TOOL_OPTIONS ${VANILLA_DEPLOY_OPTIONS})
 install(SCRIPT ${VANILLA_DEPLOY_SCRIPT})
+
+# windeployqt follows optional imports and copies several standalone QML
+# modules which neither our three QML files nor WebEngine's control delegates
+# require. Windows style imports Fusion and its Menu uses Effects, so those
+# transitive dependencies stay in the package (D-297).
+set(VANILLA_UNUSED_QML_MODULES
+    QtQml/XmlListModel
+    QtQuick/Controls/FluentWinUI3
+    QtQuick/Controls/Imagine
+    QtQuick/Controls/Material
+    QtQuick/Controls/Universal
+    QtQuick/Dialogs/quickimpl/qml/+Fusion
+    QtQuick/Dialogs/quickimpl/qml/+Imagine
+    QtQuick/Dialogs/quickimpl/qml/+Material
+    QtQuick/Dialogs/quickimpl/qml/+Universal
+    QtQuick/LocalStorage
+    QtQuick/Particles
+    QtQuick/Pdf
+    QtQuick/Shapes
+    QtQuick/tooling
+    QtQuick/VectorImage)
+foreach(module IN LISTS VANILLA_UNUSED_QML_MODULES)
+    install(CODE "file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/qml/${module}\")")
+endforeach()
+
+set(VANILLA_UNUSED_QML_LIBRARIES
+    Qt6QuickControls2FluentWinUI3StyleImpl
+    Qt6QuickControls2Imagine
+    Qt6QuickControls2ImagineStyleImpl
+    Qt6QuickControls2Material
+    Qt6QuickControls2MaterialStyleImpl
+    Qt6QuickControls2Universal
+    Qt6QuickControls2UniversalStyleImpl
+    Qt6QuickShapes)
+foreach(library IN LISTS VANILLA_UNUSED_QML_LIBRARIES)
+    install(CODE "file(REMOVE \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_SHARED_LIBRARY_PREFIX}${library}${CMAKE_SHARED_LIBRARY_SUFFIX}\")")
+endforeach()

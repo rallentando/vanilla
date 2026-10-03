@@ -13,13 +13,13 @@
 #include <QMap>
 #include <QGraphicsView>
 
+#include <functional>
+
 class QString;
 class QUrl;
 class QNetworkRequest;
 class QMenu;
 class QAction;
-class QDomDocument;
-class QDomElement;
 
 class _Vanilla;
 
@@ -63,7 +63,10 @@ public:
     static void Initialize();
 
     static inline ViewNode *GetViewRoot() { return m_ViewRoot;}
+    static ViewNode *TabOfSerial(quint64 serial);
     static inline ViewNode *GetTrashRoot(){ return m_TrashRoot;}
+    static QStringList SettingsOf(ViewNode *vn);
+    static QString NetworkSpaceOf(ViewNode *vn);
 
     static inline void AppendToAllViews(SharedView view){ m_AllViews.append(view);}
     static inline void PrependToAllViews(SharedView view){ m_AllViews.prepend(view);}
@@ -98,9 +101,14 @@ signals:
     void CurrentChanged(Node *nd);
 
 public:
+    static void WhenSomethingChanges(std::function<void()> told);
+    static void SomethingChanged();
+
     static void EmitTreeStructureChanged();
     static void EmitNodeCreated(NodeList &nds);
     static void EmitNodeDeleted(NodeList &nds);
+
+    static void ForgetNodeItems(NodeList &nds);
     static void EmitFoldedChanged(NodeList &nds);
 
 private:
@@ -111,9 +119,9 @@ public:
     bool RenameNode(Node*);
     static void ReconfigureDirectory(ViewNode*, QString, QString);
 private:
-    static void ApplySpecificSettings(ViewNode *vn, ViewNode *dir = nullptr);
+    static void ApplySpecificSettings(ViewNode *vn);
 
-    static void ApplySpecificSettings(ViewNode*, QString, QString);
+    static void ReapplySpecificSettings(ViewNode*);
 
 private:
     static void DoUpdate();
@@ -126,6 +134,8 @@ public:
 
 public:
     static void AutoLoad();
+    static void WalkToAutoLoad(ViewNode *&iter, bool forward,
+                               const std::function<bool(ViewNode*)> &load);
 private:
     static void LoadViewForward();
     static void LoadViewBackward();
@@ -143,8 +153,13 @@ public:
     static int WinIndex(SharedView);
     static void LiftMaxViewCountIfNeed(int now);
 
+    typedef QMap<ViewNode*, int> WindowIndexMap;
     static void LoadTree();
-    static void SaveTree();
+    static WindowIndexMap WindowIndexSnapshot();
+    static bool SaveTree(const WindowIndexMap &windowIndices);
+#ifdef MEDIATIME
+    static void SaveMediaTimesForQuit(VoidCallBack finished);
+#endif
     static void UpdateCurrentThumbnails();
 
     static void LoadSettings();
@@ -161,6 +176,29 @@ private:
     static void ReleaseView(SharedView view);
 public:
     static void ReleaseAllView();
+
+    SharedView ExtractDownloadCarrier(ViewNode *vn);
+
+    class ChangeScope {
+    public:
+        ChangeScope(){ m_Depth++;}
+        ~ChangeScope(){ m_Depth--;}
+        ChangeScope(const ChangeScope&) = delete;
+        ChangeScope &operator=(const ChangeScope&) = delete;
+        static int Depth(){ return m_Depth;}
+    private:
+        static int m_Depth;
+    };
+    static bool MayChangeFromOutside();
+    static void WhenItMayChange(std::function<void()> action, int milliseconds = 0);
+    static bool IsLive(TreeBank *bank);
+
+    ViewNode *FindCurrentAfterDelete(Node *prevparent, ViewNode *leaving);
+    bool SelectCurrentAfterDelete(Node *prevparent);
+    static Node *ChooseCurrentAfterDelete(const NodeList &views,
+                                          Node *prevparent,
+                                          ViewNode *leaving,
+                                          const std::function<bool(Node*)> &refused);
 
 private:
     static void RaiseDisplayedViewPriority();
@@ -209,7 +247,6 @@ public:
     SharedView OpenOnSuitableNode (QList<QNetworkRequest> reqs, bool activate, ViewNode *parent = nullptr, int position = -1);
     SharedView OpenOnSuitableNode (QList<QUrl>            urls, bool activate, ViewNode *parent = nullptr, int position = -1);
     void OpenByCommandOperation(const QUrl &url);
-
 
     QMenu *NodeMenu();
     QMenu *DisplayMenu();
@@ -260,7 +297,7 @@ public slots:
     void Import();
     void Export();
     void AboutVanilla();
-    void OpenSettings();
+    void OpenSettings(const QString &category = QString());
     void OpenDirectorySettings();
     void OpenDirectorySettings(ViewNode *subject);
     void AboutQt();
@@ -383,6 +420,8 @@ public:
     bool TriggerKeyEvent(QString str);
 
 private:
+    void ResizeViewArea(QSize size);
+
     QGraphicsScene *m_Scene;
     GraphicsView *m_View;
     Notifier *m_Notifier;
@@ -424,6 +463,8 @@ private:
     static QMap<QString, QString> m_MouseMap;
 
 public:
+    static bool TakesKey(const QKeySequence &seq){ return !KeyAction(seq).isEmpty(); }
+    static QString KeyAction(const QKeySequence &seq);
     static void DeleteView(View *view);
     static SharedView CreateView(QNetworkRequest req, ViewNode *vn);
     static bool NeedsEngineForVanillaPage(const QUrl &url, const QStringList &set);

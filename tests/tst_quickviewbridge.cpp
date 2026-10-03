@@ -97,6 +97,33 @@ private slots:
         QVERIFY(!m_Cpp.isEmpty());
     }
 
+    void aStoppedLoadEndsWithoutFailing(){
+        const QString handler = WithoutComments(m_Qml)
+            .section(QStringLiteral("onLoadingChanged"), 1)
+            .section(QStringLiteral("onLoadProgressChanged"), 0, 0);
+        QVERIFY2(!handler.isEmpty(), "the load handler moved");
+
+        foreach(const QString &name, QStringList()
+                << QStringLiteral("LoadStartedStatus") << QStringLiteral("LoadSucceededStatus")
+                << QStringLiteral("LoadFailedStatus")  << QStringLiteral("LoadStoppedStatus"))
+            QVERIFY2(handler.contains(QStringLiteral("WebEngineView.") + name),
+                     qPrintable(QStringLiteral("the load handler never looks at %1").arg(name)));
+
+        const QString stopped = handler.section(QStringLiteral("LoadStoppedStatus"), 1);
+        QVERIFY2(stopped.contains(QStringLiteral("loadStopped()")),
+                 "a stopped load ends nothing");
+        QVERIFY2(!stopped.contains(QStringLiteral("loadFinished(")),
+                 "a stopped load is reported as a finished or failed one");
+        QVERIFY2(handler.section(QStringLiteral("LoadFailedStatus"), 1)
+                 .contains(QStringLiteral("loadFinished(false)")),
+                 "a failed load reports nothing");
+        QVERIFY2(!handler.contains(QStringLiteral("LoadFailedStatus ||")),
+                 "stopping is folded into failing");
+
+        QVERIFY2(m_Cpp.contains(QStringLiteral("void QuickWebEngineView::loadStopped()")),
+                 "the QML calls a name the view does not have");
+    }
+
     void noFunctionOfTheViewHasAnEmptyBody(){
         const QMap<QString, QString> functions = FunctionsOf(WithoutComments(m_Qml));
         QVERIFY2(functions.size() > 30, "the functions of the view moved");

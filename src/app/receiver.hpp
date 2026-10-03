@@ -7,6 +7,7 @@
 
 #include <QWidget>
 #include <QLineEdit>
+#include <QPointer>
 
 #include "view.hpp"
 
@@ -107,6 +108,8 @@ private:
     TreeBank *m_TreeBank;
 
     static QLocalServer *m_LocalServer;
+    QPointer<QLocalServer> m_Server;
+    friend class tst_receiver;
     LineEdit *m_LineEdit;
     QString m_LineString;
     QStringList m_SuggestStrings;

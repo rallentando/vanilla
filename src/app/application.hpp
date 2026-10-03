@@ -5,9 +5,11 @@
 
 #include "windowledger.hpp"
 #include "useragent.hpp"
+#include "shutdownflow.hpp"
 
 #include <QApplication>
 #include <QSettings>
+#include <QSGRendererInterface>
 #include <QKeySequence>
 #include <QKeyEvent>
 #include <QWheelEvent>
@@ -61,6 +63,7 @@ public:
     static void AboutQt(QWidget *widget);
     static void Quit();
     static void TakeDown();
+    int Run();
 
     static NetworkController *GetNetworkController(){
         return m_NetworkController;
@@ -75,23 +78,35 @@ private:
     static Application *m_Instance;
     static NetworkController *m_NetworkController;
     static AutoSaver *m_AutoSaver;
+    static quint64 m_SerialStart;
+    static void SeedSerials();
+    static void KeepSerials(quint64 next);
     static int m_DelayFileCount;
     static bool m_Quitting;
-    static bool m_TakenDown;
-    static bool m_WaitedForDialog;
-    static quint64 m_QuietGeneration;
-
+    static ShutdownFlow m_ShutdownFlow;
+    static void QueueTakeDown();
+    static void WaitForPriorSave();
+    static void RequestExit();
 
 public:
     static Settings &GlobalSettings();
     static void SaveGlobalSettings();
     static void LoadGlobalSettings();
-    static void SaveSettingsFile();
+    static bool SaveSettingsFile(const Settings &snapshot);
     static void LoadSettingsFile();
     static void ApplyChromiumFlags();
+    static QStringList ChromiumSwitches(const QString &flags, QStringList *ignored = nullptr);
+    static QStringList ChromiumSwitchesIn(const QStringList &lines, QStringList *ignored = nullptr);
+    static QString JoinChromiumSwitches(const QStringList &switches, bool forWindows);
+    static void ApplyGraphicsApi();
+    static QSGRendererInterface::GraphicsApi GraphicsApiFor(const QString &value);
+    static bool GraphicsApiRunsHere(QSGRendererInterface::GraphicsApi api);
+    static QByteArray WidgetsRhiBackendFor(QSGRendererInterface::GraphicsApi api);
+    static void ApplyWidgetsRhi(bool enabled, QSGRendererInterface::GraphicsApi api, bool variable);
     static void ApplyGlobalWebEngineSettings();
     static void ReassertColorSchemeForWeb();
-    static void SaveIconDatabase();
+    static Settings IconDatabaseSnapshot();
+    static bool SaveIconDatabase(const Settings &snapshot);
     static void LoadIconDatabase();
     static void RegisterIcon(QString, QIcon);
     static QIcon GetIcon(QString);
@@ -117,7 +132,6 @@ private:
     static int m_AutoSaveInterval;
     static int m_AutoLoadInterval;
 
-
 public:
     static void SetDownloadDirectory(QString);
     static QString GetDownloadDirectory();
@@ -132,7 +146,6 @@ private:
     static QString m_DownloadDirectory;
     static QString m_UploadDirectory;
     static QStringList m_ChosenFiles;
-
 
 public:
     enum SslErrorPolicy {
@@ -170,6 +183,7 @@ public:
     static QString LocalServerName();
     static QString SharedMemoryKey();
     static int EventKey();
+    static QString EventToken();
     static QString ProductVersion();
 private:
     static bool m_SaveSessionCookie;
@@ -180,7 +194,6 @@ private:
     static QStringList m_BlockedCertificates;
     static SslErrorPolicy m_SslErrorPolicy;
     static DownloadPolicy m_DownloadPolicy;
-
 
 public:
     static MainWindow *ShadeWindow(MainWindow *win = nullptr);
@@ -211,7 +224,6 @@ private:
 
     static ModelessDialogFrame *m_TemporaryDialogFrame;
 
-
 public:
     static void SetMaxBackUpGenerationCount(int);
     static int GetMaxBackUpGenerationCount();
@@ -234,8 +246,6 @@ public:
     static QString CookieFileName(bool tmp = false);
     static QString GlobalSettingsFileName(bool tmp = false);
     static QString IconDatabaseFileName(bool tmp = false);
-    static QString LegacyFileName(QString name);
-
 protected:
     void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
 private:
@@ -253,7 +263,6 @@ signals:
     void SaveCookieRequest();
     void SaveTreeRequest();
 
-
 public:
 
 public:
@@ -261,14 +270,12 @@ public:
 private:
     static UserAgent::Map m_UserAgents;
 
-
 public:
     static bool OpenUrlWithDefaultBrowser(QUrl url);
 
     static QList<QPair<QString, QString> > ExternalCommands();
 
     static bool RunExternalCommand(QString name, QUrl url);
-
 
 public:
     static inline QKeySequence MakeKeySequence(QKeyEvent *ev){

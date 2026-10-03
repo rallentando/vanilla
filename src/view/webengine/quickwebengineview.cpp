@@ -25,6 +25,9 @@
 #include "application.hpp"
 #include "mainwindow.hpp"
 #include "directorypage.hpp"
+#include "settingspage.hpp"
+#include "extensioncontroller.hpp"
+#include "webengineextensions.hpp"
 
 #include <memory>
 
@@ -40,14 +43,15 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
 
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
 
+    const bool offTheRecord = DirectoryPage::SaysPrivate(set);
     m_QmlWebEngineView->setProperty(
         "profile",
         QVariant::fromValue<QObject*>(
-            nam->GetProfile()->isOffTheRecord()
+            offTheRecord
                 ? NetworkController::QuickPrivateProfile(id)
                 : NetworkController::QuickProfile(id)));
 
-    m_Page = new WebEnginePage(nam, this);
+    m_Page = new WebEnginePage(nam, offTheRecord, this);
     ApplySpecificSettings(set);
 
     if(parent) setParent(parent);
@@ -128,20 +132,26 @@ void QuickWebEngineView::ApplySpecificSettings(QStringList set){
     View::ApplySpecificSettings(set);
 
     {
-        const int state = DirectoryPage::StateIn
-            (set, QStringLiteral("(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"));
         QQuickWebEngineProfile *current =
             qobject_cast<QQuickWebEngineProfile*>(
                 m_QmlWebEngineView->property("profile").value<QObject*>());
-        if(state != -1 && current){
+        if(current){
             const QString id = NetworkController::ProfileKey(current)
                 .section(QLatin1Char(':'), 1);
-            QQuickWebEngineProfile *wanted = state == 1
+            QQuickWebEngineProfile *wanted = DirectoryPage::SaysPrivate(set)
                 ? NetworkController::QuickPrivateProfile(id)
                 : NetworkController::QuickProfile(id);
-            if(wanted != current)
+            if(wanted != current){
+                emit ExtensionContextChanged();
+                ExtensionNavigation::Of(this)->Cancel();
+                ExtensionController *controller = ExtensionController::Of(wanted);
+                const bool starting = controller && !controller->IsReady();
                 m_QmlWebEngineView->setProperty(
                     "profile", QVariant::fromValue<QObject*>(wanted));
+                emit ExtensionContextChanged();
+                if(starting)
+                    ExtensionNavigation::Of(this)->Request(controller, [this](){ Reload(); });
+            }
         }
     }
 
@@ -252,15 +262,41 @@ TreeBank *QuickWebEngineView::parent(){
 }
 
 void QuickWebEngineView::setUrl(const QUrl &url){
-    m_QmlWebEngineView->setProperty("url", url);
+    ExtensionNavigation::Of(this)->Request(Extensions(), [this, url] {
+        m_QmlWebEngineView->setProperty("url", url);
+    });
     emit urlChanged(url);
 }
 
 void QuickWebEngineView::setHtml(const QString &html, const QUrl &url){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "loadHtml",
-                              Q_ARG(QString, html),
-                              Q_ARG(QUrl,    url));
+    ExtensionNavigation::Of(this)->Request(Extensions(), [this, html, url] {
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "loadHtml", Q_ARG(QString, html), Q_ARG(QUrl, url));
+    });
     emit urlChanged(url);
+}
+
+ExtensionController *QuickWebEngineView::Extensions() const {
+    return ExtensionController::Of(m_QmlWebEngineView->property("profile").value<QObject*>());
+}
+
+bool QuickWebEngineView::DeferExtensionNavigation(const QUrl &url) {
+    auto *manager = Extensions();
+    if (!manager || manager->IsReady()) return false;
+    ExtensionNavigation::Of(this)->Request(manager, [this, url] { setUrl(url); });
+    return true;
+}
+
+QString QuickWebEngineView::ExtensionStatus() const {
+    QObject *profile = m_QmlWebEngineView->property("profile").value<QObject*>();
+    const QString error = profile ? profile->property("extensionProfileError").toString() : QString();
+    return error.isEmpty() ? View::ExtensionStatus() : error;
+}
+
+QWidget *QuickWebEngineView::CreateExtensionView(const QUrl &url, ExtensionPage kind, QWidget *parent, const std::function<void()> &closed) {
+    Q_UNUSED(closed)
+    if(kind == ExtensionSidePanelPage) return nullptr;
+    auto *profile = qobject_cast<QQuickWebEngineProfile*>(m_QmlWebEngineView->property("profile").value<QObject*>());
+    return WebEngineExtensions::CreatePopup(profile, url, kind == ExtensionActionPage, GetThis(), parent);
 }
 
 void QuickWebEngineView::setParent(TreeBank* t){
@@ -340,7 +376,6 @@ void QuickWebEngineView::Disconnect(TreeBank *tb){
 
 void QuickWebEngineView::OnSetViewNode(ViewNode*){}
 
-
 void QuickWebEngineView::OnSetThis(WeakView){}
 
 void QuickWebEngineView::OnSetMaster(WeakView){}
@@ -374,10 +409,21 @@ void QuickWebEngineView::OnLoadProgress(int progress){
         emit statusBarMessage(tr("Loading ... (%1 percent)").arg(progress));
 }
 
-void QuickWebEngineView::OnLoadFinished(bool ok){
-    if(!GetViewNode()) return;
+bool QuickWebEngineView::EndLoad(bool ok){
+    if(!GetViewNode()) return false;
 
     View::OnLoadFinished(ok);
+    return true;
+}
+
+void QuickWebEngineView::loadStopped(){
+    if(!EndLoad(false)) return;
+
+    emit statusBarMessage(QString());
+}
+
+void QuickWebEngineView::OnLoadFinished(bool ok){
+    if(!EndLoad(ok)) return;
 
     if(!ok){
         emit statusBarMessage(tr("Failed to load."));
@@ -484,6 +530,7 @@ bool QuickWebEngineView::SaveScroll(){
 bool QuickWebEngineView::RestoreScroll(){
     if(size().isEmpty()) return false;
     if(m_PreventScrollRestoration) return false;
+    if(VanillaPage::IsSettingsUrl(url())) return false;
     QMetaObject::invokeMethod(m_QmlWebEngineView, "restoreScroll");
     return true;
 }
@@ -521,14 +568,18 @@ bool QuickWebEngineView::RestoreHistory(){
 }
 
 #ifdef MEDIATIME
-bool QuickWebEngineView::SaveMediaTime(){
-    if(IsLoading()) return false;
+bool QuickWebEngineView::SaveMediaTime(VoidCallBack settled){
+    if(IsLoading()){
+        if(settled) settled();
+        return false;
+    }
     const QUrl source = url();
+    QPointer<QuickWebEngineView> alive(this);
     CallWithEvaluatedJavaScriptResult
-        (GetMediaTimeJsCode(), [this, source](QVariant var){
-            if(!var.isValid() || !GetViewNode()) return;
-            if(url() != source) return;
-            GetViewNode()->SetMediaTime(var.toFloat());
+        (GetMediaTimeJsCode(), [alive, source, settled](QVariant var){
+            if(alive && var.isValid() && alive->GetViewNode() && alive->url() == source)
+                alive->GetViewNode()->SetMediaTime(var.toFloat());
+            if(settled) settled();
         });
     return true;
 }
@@ -594,7 +645,7 @@ void QuickWebEngineView::HandleWindowClose(){
 
 void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString &msg){
     if(level != 0) return;
-    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
@@ -603,7 +654,7 @@ void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString
         if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
         if(!Application::IsOnlyModifier(&ke)) TriggerKeyEvent(&ke);
-    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
@@ -611,7 +662,7 @@ void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
         if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
     }
-    else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventKey()), msg)){
+    else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventToken()), msg)){
         m_PreventScrollRestoration = true;
     }
 }
@@ -989,6 +1040,12 @@ void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){
         }
     }
 
+    if(VanillaPage::IsSettingsUrl(url())){
+        if(Application::IsMoveKey(ev)) m_PreventScrollRestoration = true;
+        QQuickWidget::keyPressEvent(ev);
+        return;
+    }
+
     if(Application::HasAnyModifier(ev) ||
        Application::IsFunctionKey(ev)){
         ev->setAccepted(TriggerKeyEvent(ev));
@@ -1027,7 +1084,7 @@ void QuickWebEngineView::mouseMoveEvent(QMouseEvent *ev){
         ev->setAccepted(false);
         return;
     }
-    if(m_EnableMouseGesture &&
+    if(m_EnableRightGestureLocal &&
        ev->buttons() & Qt::RightButton &&
        !m_GestureStartedPos.isNull()){
 
@@ -1126,7 +1183,10 @@ void QuickWebEngineView::mouseMoveEvent(QMouseEvent *ev){
         drag->setMimeData(mime);
         drag->setPixmap(pixmap);
         drag->setHotSpot(pos);
-        drag->exec(Qt::CopyAction | Qt::MoveAction);
+        {
+            View::DragOutScope dragging;
+            drag->exec(Qt::CopyAction | Qt::MoveAction);
+        }
         drag->deleteLater();
         ev->setAccepted(true);
     } else {
@@ -1148,15 +1208,18 @@ void QuickWebEngineView::mousePressEvent(QMouseEvent *ev){
         QString str = m_MouseMap[mouse];
         if(!str.isEmpty()){
             if(!View::TriggerAction(str, ev->pos())){
+                m_SpentButtons.Press(ev->button(), false);
                 ev->setAccepted(false);
                 return;
             }
+            m_SpentButtons.Press(ev->button(), true);
             GestureAborted();
             ev->setAccepted(true);
             return;
         }
     }
 
+    m_SpentButtons.Press(ev->button(), false);
     GestureStarted(ev->pos());
     QQuickWidget::mousePressEvent(ev);
     ev->setAccepted(true);
@@ -1164,6 +1227,11 @@ void QuickWebEngineView::mousePressEvent(QMouseEvent *ev){
 
 void QuickWebEngineView::mouseReleaseEvent(QMouseEvent *ev){
     emit statusBarMessage(QString());
+
+    if(m_SpentButtons.Settle(ev->button())){
+        ev->setAccepted(true);
+        return;
+    }
 
     if(m_DragStarted){
         m_DragStarted = false;
@@ -1214,11 +1282,23 @@ void QuickWebEngineView::mouseReleaseEvent(QMouseEvent *ev){
     }
 
     GestureAborted();
-    QQuickWidget::mouseReleaseEvent(ev);
+    ForwardMouseReleaseToEngine(ev);
     ev->setAccepted(true);
 }
 
+void QuickWebEngineView::ForwardMouseReleaseToEngine(QMouseEvent *ev){
+    QQuickWidget::mouseReleaseEvent(ev);
+}
+
 void QuickWebEngineView::mouseDoubleClickEvent(QMouseEvent *ev){
+    QString mouse;
+    Application::AddModifiersToString(mouse, ev->modifiers());
+    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
+    Application::AddMouseButtonToString(mouse, ev->button());
+    if(m_MouseMap.contains(mouse) && !m_MouseMap[mouse].isEmpty()){
+        mousePressEvent(ev);
+        return;
+    }
     QQuickWidget::mouseDoubleClickEvent(ev);
     ev->setAccepted(false);
 }

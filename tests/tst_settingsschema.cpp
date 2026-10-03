@@ -3,9 +3,13 @@
 #include <QtTest>
 #include <QFile>
 #include <QDir>
+#include <QSet>
+#include <QJsonArray>
 #include <QRegularExpression>
 
 #include "settingsschema.hpp"
+#include "graphicstableview.hpp"
+#include "application.hpp"
 
 #include "testsupport.hpp"
 
@@ -13,19 +17,28 @@ class tst_settingsschema : public QObject {
     Q_OBJECT
 
 private slots:
+    void retiredCollectionFallsBackOnlyOnRead();
     void initTestCase();
 
     void everyKeyAppearsOnce();
     void everyItemIsInAKnownCategory();
+    void everyCategoryHasARowAndTheTableKeepsTheirOrder();
     void everyChoiceDefaultIsOneOfTheChoices();
     void everyLabelIsPresent();
     void everyDependencyNamesABooleanInTheTable();
+    void chromeExtensionsOfferADirectoryPicker();
 
     void defaultsAgreeWithTheCodeThatReadsTheKey();
     void noKeyIsShadowedByAnotherOneTheCodeReadsFirst();
+    void everyGraphicsApiChoiceMeansSomethingToQt();
+    void theWidgetsCompositeOnTheGraphicsApiOrNotAtAll();
+    void theMainWindowIsAnRhiWindowOnlyWhenAskedFor();
+    void chromiumSwitchesKeepQuotedSpaces();
 
     void findOnlyKnowsTheKeysInTheTable();
     void everySettingReachesTheProfilesItIsMeantFor();
+    void everyPreferenceRowIsAppliedByTheView();
+    void aTabListItemMadeWithTheWindowAsksForARestart();
 
     void fromJsonRefusesTheWrongShape();
     void fromJsonRefusesAChoiceThatIsNotOffered();
@@ -37,6 +50,22 @@ private slots:
 
 void tst_settingsschema::initTestCase(){
     TestSupport::SilenceDebugOutput();
+}
+
+void tst_settingsschema::retiredCollectionFallsBackOnlyOnRead(){
+    const auto *item = SettingsSchema::Find(QStringLiteral("gadgets/thumblist/@NodeCollectionType"));
+    QVERIFY(item);
+    QCOMPARE(QString::fromLatin1(item->choices), QStringLiteral("Flat|Recursive|Foldable"));
+    for(const QString &value : { QStringLiteral("Straight"), QStringLiteral("invalid") }){
+        QCOMPARE(GraphicsTableView::NodeCollectionTypeFromName(value), GraphicsTableView::Flat);
+        QCOMPARE(SettingsSchema::ToJson(*item, value).toString(), QStringLiteral("Flat"));
+        QVERIFY(!SettingsSchema::FromJson(*item, QJsonValue(value)).isValid());
+    }
+    for(const QString &value : { QStringLiteral("Flat"), QStringLiteral("Recursive"),
+                                QStringLiteral("Foldable") }){
+        QCOMPARE(SettingsSchema::ToJson(*item, value).toString(), value);
+        QCOMPARE(SettingsSchema::FromJson(*item, QJsonValue(value)).toString(), value);
+    }
 }
 
 void tst_settingsschema::everyKeyAppearsOnce(){
@@ -61,6 +90,27 @@ void tst_settingsschema::everyItemIsInAKnownCategory(){
                  qPrintable(QStringLiteral("%1 is in the unknown category %2")
                             .arg(QString::fromLatin1(item.key), category)));
     }
+}
+
+void tst_settingsschema::everyCategoryHasARowAndTheTableKeepsTheirOrder(){
+    QStringList order;
+    typedef QPair<QString, QString> Pair;
+    foreach(const Pair &pair, SettingsSchema::Categories())
+        order << pair.first;
+
+    QStringList seen;
+    foreach(const SettingsSchema::Item &item, SettingsSchema::Items()){
+        const QString category = QString::fromLatin1(item.category);
+        if(seen.isEmpty() || seen.last() != category){
+            QVERIFY2(!seen.contains(category),
+                     qPrintable(QStringLiteral("%1 is apart from the rest of %2")
+                                .arg(QString::fromLatin1(item.key), category)));
+            seen << category;
+        }
+    }
+    QStringList expected = order;
+    expected.removeOne(QStringLiteral("input"));
+    QCOMPARE(seen, expected);
 }
 
 void tst_settingsschema::everyChoiceDefaultIsOneOfTheChoices(){
@@ -111,6 +161,29 @@ void tst_settingsschema::everyDependencyNamesABooleanInTheTable(){
     }
 }
 
+void tst_settingsschema::chromeExtensionsOfferADirectoryPicker(){
+    const SettingsSchema::Item *item =
+        SettingsSchema::Find(QStringLiteral("network/@Extensions"));
+    QVERIFY(item);
+    QCOMPARE(item->type, SettingsSchema::TextList);
+    QCOMPARE(QString::fromLatin1(item->label), QStringLiteral("Chrome extensions"));
+    QVERIFY(item->picker);
+    QCOMPARE(QString::fromLatin1(item->picker), QStringLiteral("chrome-extension"));
+
+    const QJsonArray described =
+        SettingsSchema::Describe()[QStringLiteral("items")].toArray();
+    int found = 0;
+    for(const QJsonValue &value : described){
+        const QJsonObject object = value.toObject();
+        if(object[QStringLiteral("key")].toString() !=
+           QStringLiteral("network/@Extensions")) continue;
+        found++;
+        QCOMPARE(object[QStringLiteral("picker")].toString(),
+                 QStringLiteral("chrome-extension"));
+    }
+    QCOMPARE(found, 1);
+}
+
 namespace {
 
     QString TheSources(int *count){
@@ -155,38 +228,40 @@ void tst_settingsschema::defaultsAgreeWithTheCodeThatReadsTheKey(){
         const QString fallback = QString::fromLatin1(item.fallback);
 
         QRegularExpression pattern(
-            QStringLiteral("value\\(QStringLiteral\\(\"%1\"\\)\\s*,\\s*"
+            QStringLiteral("value\\s*\\(QStringLiteral\\(\"%1\"\\)\\s*,\\s*"
                            "(QStringLiteral\\(\"[^\"]*\"\\)"
                            "|QString\\(\\)|QStringList\\(\\)"
                            "|[^),]+)\\)")
             .arg(QRegularExpression::escape(key)));
 
-        QRegularExpressionMatch match = pattern.match(all);
-        if(!match.hasMatch()) continue;
+        bool compared = false;
+        QRegularExpressionMatchIterator matches = pattern.globalMatch(all);
+        while(matches.hasNext()){
+            const QString expression = matches.next().captured(1).trimmed();
 
-        const QString expression = match.captured(1).trimmed();
+            QString actual;
+            const QRegularExpressionMatch literal =
+                QRegularExpression(QStringLiteral("^QStringLiteral\\(\"(.*)\"\\)$")).match(expression);
+            if(literal.hasMatch()){
+                actual = literal.captured(1);
+            } else if(expression == QStringLiteral("QString()") ||
+                      expression == QStringLiteral("QStringList()")){
+                actual = QString();
+            } else if(expression == QStringLiteral("true") ||
+                      expression == QStringLiteral("false")){
+                actual = expression;
+            } else if(QRegularExpression(QStringLiteral("^-?\\d+$")).match(expression).hasMatch()){
+                actual = expression;
+            } else {
+                continue;
+            }
 
-        QString actual;
-        const QRegularExpressionMatch literal =
-            QRegularExpression(QStringLiteral("^QStringLiteral\\(\"(.*)\"\\)$")).match(expression);
-        if(literal.hasMatch()){
-            actual = literal.captured(1);
-        } else if(expression == QStringLiteral("QString()") ||
-                  expression == QStringLiteral("QStringList()")){
-            actual = QString();
-        } else if(expression == QStringLiteral("true") ||
-                  expression == QStringLiteral("false")){
-            actual = expression;
-        } else if(QRegularExpression(QStringLiteral("^-?\\d+$")).match(expression).hasMatch()){
-            actual = expression;
-        } else {
-            continue;
+            QVERIFY2(actual == fallback,
+                     qPrintable(QStringLiteral("%1: the schema says \"%2\", the code reads \"%3\"")
+                                .arg(key, fallback, actual)));
+            compared = true;
         }
-
-        QVERIFY2(actual == fallback,
-                 qPrintable(QStringLiteral("%1: the schema says \"%2\", the code reads \"%3\"")
-                            .arg(key, fallback, actual)));
-        checked++;
+        if(compared) checked++;
     }
 
     QVERIFY2(checked > 40, qPrintable(QStringLiteral("only %1 defaults were compared").arg(checked)));
@@ -248,6 +323,59 @@ void tst_settingsschema::findOnlyKnowsTheKeysInTheTable(){
     QVERIFY2(!SettingsSchema::Find(QStringLiteral("webview/@EnableScrollGesture")),
              "the scroll gesture row is back on the page; see D-124 before "
              "keeping it, and update this test with what was decided.");
+}
+
+void tst_settingsschema::everyPreferenceRowIsAppliedByTheView(){
+    QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) +
+               QStringLiteral("/view/view.cpp"));
+    QVERIFY2(file.open(QIODevice::ReadOnly),
+             "'view.cpp' was not read; check VANILLA_SOURCE_DIR");
+
+    QSet<QString> applied;
+    const QRegularExpression setter
+        (QStringLiteral("^\\s*gwes->setAttribute\\(QWebEngineSettings::(\\w+),"));
+    foreach(const QString &line, QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'))){
+        const QRegularExpressionMatch match = setter.match(line);
+        if(match.hasMatch()) applied << match.captured(1);
+    }
+    QVERIFY2(applied.size() > 20,
+             qPrintable(QStringLiteral("only %1 attributes are applied; the pattern no longer matches")
+                        .arg(applied.size())));
+
+    int rows = 0;
+    foreach(const SettingsSchema::Item &item, SettingsSchema::Items()){
+        const QString key = QString::fromLatin1(item.key);
+        if(!key.startsWith(QStringLiteral("webview/preferences/"))) continue;
+        rows++;
+        const QString attribute = key.section(QLatin1Char('/'), -1);
+        QVERIFY2(applied.contains(attribute),
+                 qPrintable(QStringLiteral("%1 is offered, but 'View::LoadSettings' never applies it")
+                            .arg(key)));
+    }
+    QVERIFY2(rows > 20, qPrintable(QStringLiteral("only %1 preference rows were checked").arg(rows)));
+}
+
+void tst_settingsschema::aTabListItemMadeWithTheWindowAsksForARestart(){
+    QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) +
+               QStringLiteral("/gadgets/graphicstableview.cpp"));
+    QVERIFY2(file.open(QIODevice::ReadOnly),
+             "'graphicstableview.cpp' was not read; check VANILLA_SOURCE_DIR");
+
+    const QRegularExpression made
+        (QStringLiteral("^\\s*m_(Enable\\w+)\\s*\\?\\s*new\\s"));
+    int rows = 0;
+    foreach(const QString &line, QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'))){
+        const QRegularExpressionMatch match = made.match(line);
+        if(!match.hasMatch()) continue;
+        const QString key = QStringLiteral("gadgets/thumblist/@") + match.captured(1);
+        const SettingsSchema::Item *item = SettingsSchema::Find(key);
+        QVERIFY2(item, qPrintable(key + QStringLiteral(" is not in the table")));
+        QVERIFY2(item->needsRestart,
+                 qPrintable(key + QStringLiteral(" is made with the window but asks for no restart")));
+        rows++;
+    }
+    QVERIFY2(rows >= 5, qPrintable(QStringLiteral("only %1 items were found; the pattern no longer matches")
+                                   .arg(rows)));
 }
 
 void tst_settingsschema::fromJsonRefusesTheWrongShape(){
@@ -354,6 +482,12 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
     const QString source =
         QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
 
+    const int from = source.indexOf(QStringLiteral("void NetworkAccessManager::SetupProfile(QWebEngineProfile *profile){"));
+    QVERIFY2(from != -1, "'SetupProfile' was not found");
+    const int to = source.indexOf(QStringLiteral("\n}\n"), from);
+    QVERIFY(to != -1);
+    const QString widget = source.mid(from, to - from);
+    const QString quick = source.left(from) + source.mid(to);
     const QStringList setters = QStringList()
         << QStringLiteral("setPersistentCookiesPolicy")
         << QStringLiteral("setUrlRequestInterceptor")
@@ -362,13 +496,14 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
         << QStringLiteral("setHttpCacheType")
         << QStringLiteral("setHttpCacheMaximumSize")
         << QStringLiteral("setPushServiceEnabled")
+        << QStringLiteral("setHttpAcceptLanguage")
         << QStringLiteral("setPersistentPermissionsPolicy");
 
     foreach(const QString &setter, setters){
-        QVERIFY2(source.contains(QStringLiteral("m_Profile->") + setter),
+        QVERIFY2(widget.contains(QStringLiteral("profile->") + setter),
                  qPrintable(QStringLiteral("the widget profile is no longer told '%1'")
                             .arg(setter)));
-        QVERIFY2(source.contains(QStringLiteral("profile->") + setter),
+        QVERIFY2(quick.contains(QStringLiteral("profile->") + setter),
                  qPrintable(QStringLiteral("the quick profile is no longer told '%1'")
                             .arg(setter)));
     }
@@ -385,7 +520,7 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
         << QStringLiteral("ApplyQuickBlockRules(profile)")
         << QStringLiteral("ApplyQuickCommonSettings(profile)");
     foreach(const QString &helper, helpers){
-        QCOMPARE(source.count(helper), 2);
+        QCOMPARE(source.count(helper), 3);
         QVERIFY2(privateBody.contains(helper),
                  qPrintable(QStringLiteral("the private quick profile no longer calls '%1'")
                             .arg(helper)));
@@ -417,6 +552,166 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
                  qPrintable(QStringLiteral("the private quick profile is told '%1', "
                                            "which is about disk").arg(setter)));
     }
+}
+
+void tst_settingsschema::chromiumSwitchesKeepQuotedSpaces(){
+    QStringList ignored;
+    QCOMPARE(Application::ChromiumSwitches(QStringLiteral("  --a   --b=c\t--d  "), &ignored),
+             QStringList() << QStringLiteral("--a") << QStringLiteral("--b=c") << QStringLiteral("--d"));
+    QVERIFY(ignored.isEmpty());
+
+    const QStringList rules = QStringList() << QStringLiteral("--host-resolver-rules=MAP a b");
+    QCOMPARE(Application::ChromiumSwitches(QStringLiteral("--host-resolver-rules=\"MAP a b\"")), rules);
+    QCOMPARE(Application::ChromiumSwitches(QStringLiteral("\"--host-resolver-rules=MAP a b\"")), rules);
+    QCOMPARE(Application::ChromiumSwitches(QStringLiteral("--host-resolver-rules=MAP\" a \"b")), rules);
+    QCOMPARE(Application::ChromiumSwitches(QStringLiteral("--x --host-resolver-rules=\"MAP a b")),
+             QStringList() << QStringLiteral("--x") << rules);
+
+    ignored.clear();
+    QCOMPARE(Application::ChromiumSwitches(QStringLiteral("url --a -b \"c d\" \"\""), &ignored),
+             QStringList() << QStringLiteral("--a"));
+    QCOMPARE(ignored, QStringList() << QStringLiteral("url") << QStringLiteral("-b")
+                                    << QStringLiteral("c d"));
+    ignored.clear();
+    QCOMPARE(Application::ChromiumSwitches(QStringLiteral("\"\" --a"), &ignored),
+             QStringList() << QStringLiteral("--a"));
+    QVERIFY(ignored.isEmpty());
+    QVERIFY(Application::ChromiumSwitches(QString()).isEmpty());
+
+    const SettingsSchema::Item *item = SettingsSchema::Find(QStringLiteral("application/@ChromiumFlags"));
+    QVERIFY(item);
+    QCOMPARE(item->type, SettingsSchema::TextList);
+    ignored.clear();
+    QCOMPARE(Application::ChromiumSwitchesIn(QStringList()
+                 << QStringLiteral("--a --b") << QStringLiteral("--c=\"d e") << QStringLiteral("f --g"), &ignored),
+             QStringList() << QStringLiteral("--a") << QStringLiteral("--b")
+                           << QStringLiteral("--c=d e") << QStringLiteral("--g"));
+    QCOMPARE(ignored, QStringList() << QStringLiteral("f"));
+    const QVariant older(QStringLiteral("--a --b=\"c d\""));
+    QCOMPARE(Application::ChromiumSwitchesIn(older.value<QStringList>()),
+             QStringList() << QStringLiteral("--a") << QStringLiteral("--b=c d"));
+    QCOMPARE(SettingsSchema::ToJson(*item, older).toArray().size(), 1);
+    QCOMPARE(SettingsSchema::ToJson(*item, older).toArray().at(0).toString(), older.toString());
+
+    const QStringList switches = QStringList()
+        << QStringLiteral("--a") << QStringLiteral("--host-resolver-rules=MAP a b")
+        << QStringLiteral("--dir=C:\\my dir\\");
+    QCOMPARE(Application::JoinChromiumSwitches(switches, false),
+             QStringLiteral("--a \"--host-resolver-rules=MAP a b\" \"--dir=C:\\my dir\\\""));
+    QCOMPARE(Application::ChromiumSwitches(Application::JoinChromiumSwitches(switches, false)), switches);
+    QCOMPARE(Application::JoinChromiumSwitches(switches, true),
+             QStringLiteral("--a \"--host-resolver-rules=MAP a b\" \"--dir=C:\\my dir\\\\\""));
+    QCOMPARE(Application::JoinChromiumSwitches(QStringList() << QStringLiteral("--dir=C:\\x\\"), true),
+             QStringLiteral("--dir=C:\\x\\"));
+    QCOMPARE(Application::JoinChromiumSwitches(QStringList() << QStringLiteral("--a=\"b c"), true),
+             QStringLiteral("\"--a=b c\""));
+    const QStringList wide = QStringList() << QStringLiteral("--a=b") + QChar(0x3000) + QStringLiteral("c");
+    QCOMPARE(Application::ChromiumSwitches(Application::JoinChromiumSwitches(wide, false)), wide);
+}
+
+void tst_settingsschema::theWidgetsCompositeOnTheGraphicsApiOrNotAtAll(){
+    QCOMPARE(Application::WidgetsRhiBackendFor(QSGRendererInterface::OpenGL),     QByteArrayLiteral("opengl"));
+    QCOMPARE(Application::WidgetsRhiBackendFor(QSGRendererInterface::Direct3D11), QByteArrayLiteral("d3d11"));
+    QCOMPARE(Application::WidgetsRhiBackendFor(QSGRendererInterface::Direct3D12), QByteArrayLiteral("d3d12"));
+    QCOMPARE(Application::WidgetsRhiBackendFor(QSGRendererInterface::Vulkan),     QByteArrayLiteral("vulkan"));
+    QVERIFY(Application::WidgetsRhiBackendFor(QSGRendererInterface::Software).isEmpty());
+    QVERIFY(Application::WidgetsRhiBackendFor(QSGRendererInterface::Unknown).isEmpty());
+    QCOMPARE(Application::WidgetsRhiBackendFor(QSGRendererInterface::Metal),      QByteArrayLiteral("metal"));
+}
+
+void tst_settingsschema::theMainWindowIsAnRhiWindowOnlyWhenAskedFor(){
+    const QByteArray rhi = qgetenv("QT_WIDGETS_RHI");
+    const QByteArray backend = qgetenv("QT_WIDGETS_RHI_BACKEND");
+    const bool hadRhi = qEnvironmentVariableIsSet("QT_WIDGETS_RHI");
+    const bool hadBackend = qEnvironmentVariableIsSet("QT_WIDGETS_RHI_BACKEND");
+    qunsetenv("QT_WIDGETS_RHI");
+    qunsetenv("QT_WIDGETS_RHI_BACKEND");
+
+    Application::ApplyWidgetsRhi(false, QSGRendererInterface::Direct3D11, false);
+    QVERIFY(!qEnvironmentVariableIsSet("QT_WIDGETS_RHI"));
+    QVERIFY(!qEnvironmentVariableIsSet("QT_WIDGETS_RHI_BACKEND"));
+    Application::ApplyWidgetsRhi(false, QSGRendererInterface::Unknown, false);
+    QVERIFY(!qEnvironmentVariableIsSet("QT_WIDGETS_RHI"));
+
+    Application::ApplyWidgetsRhi(true, QSGRendererInterface::Software, false);
+    QVERIFY(!qEnvironmentVariableIsSet("QT_WIDGETS_RHI"));
+
+    Application::ApplyWidgetsRhi(true, QSGRendererInterface::Direct3D11, false);
+    QCOMPARE(qgetenv("QT_WIDGETS_RHI"), QByteArrayLiteral("1"));
+    QCOMPARE(qgetenv("QT_WIDGETS_RHI_BACKEND"), QByteArrayLiteral("d3d11"));
+
+    qunsetenv("QT_WIDGETS_RHI");
+    qunsetenv("QT_WIDGETS_RHI_BACKEND");
+    if(hadRhi) qputenv("QT_WIDGETS_RHI", rhi);
+    if(hadBackend) qputenv("QT_WIDGETS_RHI_BACKEND", backend);
+
+    const SettingsSchema::Item *item = SettingsSchema::Find(QStringLiteral("application/@EnableMainWindowRhi"));
+    QVERIFY(item);
+    QCOMPARE(item->type, SettingsSchema::Bool);
+    QCOMPARE(QString::fromLatin1(item->fallback), QStringLiteral("false"));
+    QVERIFY(item->needsRestart);
+}
+
+void tst_settingsschema::everyGraphicsApiChoiceMeansSomethingToQt(){
+    const SettingsSchema::Item *item = SettingsSchema::Find(QStringLiteral("application/@GraphicsApi"));
+    QVERIFY(item);
+    QCOMPARE(item->type, SettingsSchema::Choice);
+    QCOMPARE(QString::fromLatin1(item->fallback), QStringLiteral("Auto"));
+
+    const QStringList choices = QString::fromLatin1(item->choices).split(QLatin1Char('|'));
+    foreach(const QString &choice, choices){
+        const QSGRendererInterface::GraphicsApi api = Application::GraphicsApiFor(choice);
+        if(choice == QStringLiteral("Auto")){
+            QCOMPARE(api, QSGRendererInterface::Unknown);
+        } else {
+            QVERIFY2(api != QSGRendererInterface::Unknown,
+                     qPrintable(QStringLiteral("'%1' is offered but means nothing to Qt").arg(choice)));
+        }
+    }
+    QCOMPARE(Application::GraphicsApiFor(QStringLiteral("Software")), QSGRendererInterface::Software);
+    QCOMPARE(Application::GraphicsApiFor(QStringLiteral("OpenGL")), QSGRendererInterface::OpenGL);
+    QCOMPARE(Application::GraphicsApiFor(QStringLiteral("Direct3D11")), QSGRendererInterface::Direct3D11);
+    QCOMPARE(Application::GraphicsApiFor(QStringLiteral("Direct3D12")), QSGRendererInterface::Direct3D12);
+    QCOMPARE(Application::GraphicsApiFor(QStringLiteral("Vulkan")), QSGRendererInterface::Vulkan);
+    QCOMPARE(Application::GraphicsApiFor(QStringLiteral("Metal")), QSGRendererInterface::Metal);
+
+    const struct { const char *was; const char *now; QSGRendererInterface::GraphicsApi api; } older[] = {
+        { "auto",     "Auto",       QSGRendererInterface::Unknown },
+        { "software", "Software",   QSGRendererInterface::Software },
+        { "opengl",   "OpenGL",     QSGRendererInterface::OpenGL },
+        { "d3d11",    "Direct3D11", QSGRendererInterface::Direct3D11 },
+        { "d3d12",    "Direct3D12", QSGRendererInterface::Direct3D12 },
+        { "vulkan",   "Vulkan",     QSGRendererInterface::Vulkan },
+        { "metal",    "Metal",      QSGRendererInterface::Metal },
+    };
+    for(const auto &word : older){
+        QCOMPARE(Application::GraphicsApiFor(QLatin1String(word.was)), word.api);
+        QCOMPARE(SettingsSchema::ToJson(*item, QVariant(QString::fromLatin1(word.was))).toString(),
+                 QString::fromLatin1(word.now));
+        QVERIFY2(choices.contains(QString::fromLatin1(word.now)), word.now);
+    }
+
+    QCOMPARE(Application::GraphicsApiFor(QStringLiteral("null")), QSGRendererInterface::Unknown);
+    QCOMPARE(Application::GraphicsApiFor(QString()), QSGRendererInterface::Unknown);
+
+    QVERIFY(Application::GraphicsApiRunsHere(QSGRendererInterface::Software));
+    QVERIFY(Application::GraphicsApiRunsHere(QSGRendererInterface::OpenGL));
+    QVERIFY(!Application::GraphicsApiRunsHere(QSGRendererInterface::Unknown));
+    QVERIFY(!Application::GraphicsApiRunsHere(QSGRendererInterface::Null));
+#if defined(Q_OS_WIN)
+    QVERIFY(Application::GraphicsApiRunsHere(QSGRendererInterface::Direct3D11));
+    QVERIFY(Application::GraphicsApiRunsHere(QSGRendererInterface::Direct3D12));
+    QVERIFY(Application::GraphicsApiRunsHere(QSGRendererInterface::Vulkan));
+    QVERIFY(!Application::GraphicsApiRunsHere(QSGRendererInterface::Metal));
+#elif defined(Q_OS_MACOS)
+    QVERIFY(!Application::GraphicsApiRunsHere(QSGRendererInterface::Direct3D11));
+    QVERIFY(Application::GraphicsApiRunsHere(QSGRendererInterface::Metal));
+    QVERIFY(!Application::GraphicsApiRunsHere(QSGRendererInterface::Vulkan));
+#else
+    QVERIFY(!Application::GraphicsApiRunsHere(QSGRendererInterface::Direct3D11));
+    QVERIFY(!Application::GraphicsApiRunsHere(QSGRendererInterface::Metal));
+    QVERIFY(Application::GraphicsApiRunsHere(QSGRendererInterface::Vulkan));
+#endif
 }
 
 QTEST_MAIN(tst_settingsschema)

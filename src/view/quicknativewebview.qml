@@ -24,6 +24,15 @@ WebView {
       Both are ends of a load, and the history list needs to hear about the
       ends, so both say so now. ('tst_nativehistory' checks these names
       against the backend's own type description. C-3c)
+
+      They do not say the same thing, though. A load which was *stopped* did
+      not fail: the user pressed Stop, or the navigation was taken over --
+      and 'loadFinished(false)' is the one word this view has for "failed",
+      which the status bar then repeats. So stopping calls 'loadStopped'
+      instead: the same ending, with nothing said about it. The other quick
+      view has the same rule the other way round -- it only ever looks at
+      'LoadFailedStatus' ('quickwebengineview6.qml') -- and the widget views
+      reach it through 'LoadEnding' (D-280).
      */
     onLoadingChanged: {
         var status = loadRequest.status
@@ -37,9 +46,11 @@ WebView {
             restoreZoom()
             viewInterface.loadFinished(true)
         }
-        if(status == WebView.LoadFailedStatus ||
-           status == WebView.LoadStoppedStatus){
+        if(status == WebView.LoadFailedStatus){
             viewInterface.loadFinished(false)
+        }
+        if(status == WebView.LoadStoppedStatus){
+            viewInterface.loadStopped()
         }
     }
 

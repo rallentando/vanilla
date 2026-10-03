@@ -9,8 +9,6 @@
 #include <QTextStream>
 #include <QDateTime>
 #include <QUrl>
-#include <QDomDocument>
-#include <QDomElement>
 
 #include <charconv>
 #include <climits>
@@ -578,23 +576,6 @@ bool ReadJsonFile(const QString &path, ViewNode *root, const Hooks &hooks){
     return true;
 }
 
-bool ReadLegacyXmlFile(const QString &path, ViewNode *root, const Hooks &hooks){
-    QFile file(path);
-    if(!file.open(QIODevice::ReadOnly)) return false;
-    QDomDocument doc;
-    bool check = !!doc.setContent(&file);
-    file.close();
-    if(!check) return false;
-
-    QDomNodeList children = doc.documentElement().childNodes();
-    QDomElement de;
-    for(int i = 0; i < children.length(); i++){
-        de = children.item(i).toElement();
-        ReadLegacyNode(de, root, hooks);
-    }
-    return true;
-}
-
 bool WriteJsonFile(const QString &path, ViewNode *root, const Hooks &hooks){
     QFile file(path);
     if(!file.open(QIODevice::WriteOnly)) return false;
@@ -617,57 +598,6 @@ bool WriteJsonFile(const QString &path, ViewNode *root, const Hooks &hooks){
     file.close();
     if(!ok) file.remove();
     return ok;
-}
-
-void ReadLegacyNode(const QDomElement &elem, ViewNode *parent, const Hooks &hooks){
-    m_ReadNodeCount++;
-
-    hooks.Tock();
-
-    ViewNode *vn = parent->MakeChild();
-    if(elem.attribute(QStringLiteral("primary"), QStringLiteral("false")) == QStringLiteral("true"))
-        parent->SetPrimary(vn);
-    if(elem.attribute(QStringLiteral("folded"), QStringLiteral("true")) == QStringLiteral("true"))
-        vn->SetFolded(true);
-    else vn->SetFolded(false);
-    if(elem.attribute(QStringLiteral("title"), QString()) != QString())
-        vn->SetTitle(elem.attribute(QStringLiteral("title")));
-
-    ReadDates(vn,
-              elem.attribute(QStringLiteral("create"),     QString()),
-              elem.attribute(QStringLiteral("lastupdate"), QString()),
-              elem.attribute(QStringLiteral("lastaccess"), QString()));
-
-    if(elem.attribute(QStringLiteral("holdview"), QStringLiteral("false")) == QStringLiteral("true")){
-        m_ReadViewCount++;
-
-        vn->SetHoldView(true);
-        vn->SetUrl(QUrl::fromEncoded(elem.attribute(QStringLiteral("url")).toLatin1()));
-
-        vn->SetScrollX(elem.attribute(QStringLiteral("scrollx"), QStringLiteral("0")).toInt());
-        vn->SetScrollY(elem.attribute(QStringLiteral("scrolly"), QStringLiteral("0")).toInt());
-        float zoom = elem.attribute(QStringLiteral("zoom"), QStringLiteral("1.0")).toFloat();
-        if(zoom > 10) vn->SetZoom(zoom/100);
-        else          vn->SetZoom(zoom);
-
-        if(!elem.attribute(QStringLiteral("history")).isEmpty())
-            vn->SetHistoryFileName(elem.attribute(QStringLiteral("history")));
-
-        if(!elem.attribute(QStringLiteral("thumb")).isEmpty())
-            vn->SetImageFileName(elem.attribute(QStringLiteral("thumb")));
-
-        int id = elem.attribute(QStringLiteral("index"), QStringLiteral("0")).toInt();
-
-        if(id) hooks.Restore(vn, id);
-
-    } else {
-        QDomNodeList children = elem.childNodes();
-        QDomElement de;
-        for(int i = 0; i < children.length(); i++){
-            de = children.item(i).toElement();
-            ReadLegacyNode(de, vn, hooks);
-        }
-    }
 }
 
 QString JsonEscape(QString str){

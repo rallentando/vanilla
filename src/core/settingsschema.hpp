@@ -32,6 +32,8 @@ struct Item {
 
     const char *appliesWhenKey;
     bool appliesWhen;
+
+    const char *picker;
 };
 
 const QList<Item> &Items();

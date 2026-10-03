@@ -17,6 +17,7 @@
 class QAction;
 class QMenu;
 class QPropertyAnimation;
+class QVariantAnimation;
 class TreeBank;
 
 class GadgetsStyle;
@@ -70,10 +71,9 @@ public:
     };
 
     enum NodeCollectionType {
-        Flat,
-        Straight,
-        Recursive,
-        Foldable
+        Flat = 0,
+        Recursive = 2,
+        Foldable = 3
     };
 
     static void LoadSettings();
@@ -159,6 +159,7 @@ public:
     QRectF ComputeRect(const Thumbnail*, const int) const;
     QRectF ComputeRect(const NodeTitle*, const int) const;
     void RelocateContents();
+    void FinishFoldAnimation();
     void RelocateScrollBar();
     void AppendToSelection(Node*);
     void RemoveFromSelection(Node*);
@@ -231,11 +232,16 @@ private slots:
     void ToggleSortByLastAccessDate();
 
 protected:
+    virtual Node *DisplayedViewNode() const {
+        return m_TreeBank ? m_TreeBank->GetCurrentViewNode() : nullptr;
+    }
     void CollectNodes(Node *root, QString filter = QString());
 
 public:
     static qreal ScrollIndicatorY(qreal maxY, qreal scroll, qreal maxScroll);
     static qreal ScrollFromIndicatorY(qreal y, qreal maxY, qreal maxScroll);
+    static QRectF ScrollIndicatorRect(const QRectF &bar, qreal inset, qreal height);
+    static qreal ScrollIndicatorTravel(qreal barHeight, qreal indicatorHeight, qreal inset);
 
     static qreal MaxScrollOf(int count, int columns, int lines, int titles);
 
@@ -286,6 +292,7 @@ protected:
 
 public slots:
     virtual bool ThumbList_Refresh();
+    void OnFoldedChanged(const NodeList &nodes);
     virtual bool ThumbList_RefreshNoScroll();
     virtual bool ThumbList_OpenNode();
     virtual bool ThumbList_OpenNodeOnNewWindow();
@@ -403,6 +410,16 @@ protected:
     }
 
     QPropertyAnimation *m_ScrollAnimation;
+    struct FoldTransition {
+        QGraphicsItem *item;
+        QRectF from;
+        QRectF to;
+        qreal opacity;
+        bool entering;
+        bool ghost;
+    };
+    QList<FoldTransition> m_FoldTransitions;
+    QVariantAnimation *m_FoldAnimation;
     qreal m_CurrentScroll;
     qreal m_TargetScroll;
     int m_CurrentThumbnailLineCount;
@@ -592,6 +609,8 @@ protected:
     void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
     void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
     void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+
+    void HoverItem();
 
 protected:
     GraphicsTableView *m_TableView;

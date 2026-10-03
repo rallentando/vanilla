@@ -57,6 +57,7 @@ private slots:
     void thePreviewStaysOnTheScreen_data();
 
     void thePreviewOfAFolderWithNothingToBorrowSaysSo();
+    void thePreviewKnowsWhichTabItIsWaitingFor();
 
 private:
     ViewNode *m_Root;
@@ -288,6 +289,22 @@ void tst_thumbnail::thePreviewOfAFolderWithNothingToBorrowSaysSo(){
     QVERIFY(has(folder, Theme::PreviewPlaceholderDirectory));
     QVERIFY(has(page, Theme::PreviewPlaceholderPage));
     QVERIFY(folder != page);
+}
+
+void tst_thumbnail::thePreviewKnowsWhichTabItIsWaitingFor(){
+    NodePreview *preview = NodePreview::Instance();
+    const QRect tab(100, 30, 150, 28);
+
+    preview->Dismiss();
+    QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
+
+    preview->Request(QImage(), QStringLiteral("t"), tab, false);
+    QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
+    QVERIFY(!preview->IsAbout(QStringLiteral("u"), tab));
+    QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab.translated(150, 0)));
+
+    preview->Dismiss();
+    QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
 }
 
 QTEST_MAIN(tst_thumbnail)

@@ -10,3 +10,7 @@ build/
 build-*/
 *.qmlc
 .qmake.stash
+!.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/build/

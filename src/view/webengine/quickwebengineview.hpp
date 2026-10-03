@@ -81,6 +81,10 @@ public:
     bool IsRenderable() Q_DECL_OVERRIDE {
         return status() == QQuickWidget::Ready && (visible() || !m_GrabedDisplayData.isNull());
     }
+    QImage CaptureVisible() Q_DECL_OVERRIDE {
+        if(status() != QQuickWidget::Ready || !visible() || !window() || window()->isMinimized()) return QImage();
+        return grabFramebuffer();
+    }
     void Render(QPainter *painter) Q_DECL_OVERRIDE {
         if(visible()) m_GrabedDisplayData = grabFramebuffer();
         painter->drawImage(QPoint(), m_GrabedDisplayData);
@@ -121,15 +125,13 @@ public:
     }
 
     void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE {
-        emit urlChanged(url);
-        m_QmlWebEngineView->setProperty("url", url);
+        setUrl(url);
     }
     void TriggerNativeLoadAction(const QNetworkRequest &req,
                                  QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
                                  const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE {
         Q_UNUSED(operation) Q_UNUSED(body)
-        emit urlChanged(req.url());
-        m_QmlWebEngineView->setProperty("url", req.url());
+        setUrl(req.url());
     }
     void TriggerNativeGoBackAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goBack");}
     void TriggerNativeGoForwardAction() Q_DECL_OVERRIDE { QMetaObject::invokeMethod(m_QmlWebEngineView, "goForward");}
@@ -194,19 +196,22 @@ public slots:
         }
     }
     void show() Q_DECL_OVERRIDE {
+        const bool wasVisible = base()->isVisible();
         WakeUp();
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
 
-        MainWindow *win = Application::GetCurrentWindow();
-        QSize s =
-            m_TreeBank ? m_TreeBank->ViewSize() :
-            win ? win->GetTreeBank()->ViewSize() :
-            !size().isEmpty() ? size() :
-            DEFAULT_WINDOW_SIZE;
-        resize(QSize(s.width(), s.height()+1));
-        resize(s);
+        if(!wasVisible){
+            MainWindow *win = Application::GetCurrentWindow();
+            QSize s =
+                m_TreeBank ? m_TreeBank->ViewSize() :
+                win ? win->GetTreeBank()->ViewSize() :
+                !size().isEmpty() ? size() :
+                DEFAULT_WINDOW_SIZE;
+            resize(QSize(s.width(), s.height()+1));
+            resize(s);
+        }
 
         if(!m_TreeBank || !m_TreeBank->GetNotifier()) return;
         CallWithScroll([this](QPointF pos){
@@ -249,12 +254,20 @@ public slots:
     void OnLoadStarted() Q_DECL_OVERRIDE;
     void OnLoadProgress(int) Q_DECL_OVERRIDE;
     void OnLoadFinished(bool) Q_DECL_OVERRIDE;
+
+    void loadStopped();
+
     void OnTitleChanged(const QString&) Q_DECL_OVERRIDE;
     void OnUrlChanged(const QUrl&) Q_DECL_OVERRIDE;
     void OnViewChanged() Q_DECL_OVERRIDE;
     void OnScrollChanged() Q_DECL_OVERRIDE;
 
     void EmitScrollChanged() Q_DECL_OVERRIDE;
+
+private:
+    bool EndLoad(bool ok);
+
+public slots:
 
     void CallWithScroll(PointFCallBack callBack);
     void SetScrollBarState() Q_DECL_OVERRIDE;
@@ -265,10 +278,12 @@ public slots:
     bool RestoreScroll() Q_DECL_OVERRIDE;
     bool SaveZoom() Q_DECL_OVERRIDE;
     bool RestoreZoom() Q_DECL_OVERRIDE;
+    float MinimumZoom() const Q_DECL_OVERRIDE { return ChromiumMinimumZoom / DeviceZoomScale();}
+    float MaximumZoom() const Q_DECL_OVERRIDE { return ChromiumMaximumZoom / DeviceZoomScale();}
     bool SaveHistory() Q_DECL_OVERRIDE;
     bool RestoreHistory() Q_DECL_OVERRIDE;
 #ifdef MEDIATIME
-    bool SaveMediaTime() Q_DECL_OVERRIDE;
+    bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) Q_DECL_OVERRIDE;
     bool RestoreMediaTime() Q_DECL_OVERRIDE;
 #endif
 
@@ -399,7 +414,13 @@ public slots:
         return source;
     }
 
+    ExtensionController *Extensions() const override;
+    bool DeferExtensionNavigation(const QUrl &url);
+    QString ExtensionStatus() const override;
+    QWidget *CreateExtensionView(const QUrl &url, ExtensionPage page, QWidget *parent,
+                                 const std::function<void()> &closed = std::function<void()>()) override;
 signals:
+    void ExtensionContextChanged();
     void CallBackResult(int, QVariant);
     void ViewChanged();
     void ScrollChanged(QPointF);
@@ -449,6 +470,8 @@ protected:
     bool focusNextPrevChild(bool next) Q_DECL_OVERRIDE;
 
 private:
+    virtual void ForwardMouseReleaseToEngine(QMouseEvent *ev);
+
     QQuickItem *m_QmlWebEngineView;
     QIcon m_Icon;
     QImage m_GrabedDisplayData;

@@ -207,6 +207,19 @@ QString VivaldiBookmarkFile(){
 #endif
 }
 
+QString EdgeBookmarkFile(){
+#if defined(Q_OS_WIN)
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        QStringLiteral("/Microsoft/Edge/User Data/Default/Bookmarks");
+#elif defined(Q_OS_MAC)
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        QStringLiteral("/Microsoft Edge/Default/Bookmarks");
+#else
+    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) +
+        QStringLiteral("/microsoft-edge/Default/Bookmarks");
+#endif
+}
+
 int LocalUtcOffset(){
     return QDateTime::currentDateTime().offsetFromUtc();
 }

@@ -18,8 +18,6 @@
 #include <QJsonArray>
 #include <QJsonValue>
 #include <QJsonParseError>
-#include <QDomDocument>
-#include <QDomElement>
 
 namespace SettingsIO {
 
@@ -29,10 +27,6 @@ QJsonValue TaggedJson(QString tag, const QJsonValue &body){
     QJsonObject obj;
     obj[tag] = body;
     return QJsonValue(obj);
-}
-
-QString Field(const QStringList &args, int i){
-    return i < args.length() ? args.at(i) : QString();
 }
 
 QByteArray ReadWholeFile(const QString &path, bool *ok){
@@ -175,87 +169,10 @@ QByteArray WriteJson(const Map &map){
     return QJsonDocument(obj).toJson(QJsonDocument::Indented);
 }
 
-bool ReadLegacyXml(const QByteArray &xml, Map &map){
-    QDomDocument doc;
-    if(!doc.setContent(xml)) return false;
-
-    QDomNodeList allsettings = doc.elementsByTagName(QStringLiteral("setting"));
-
-    QDomElement settingtag;
-    for(int i = 0; i < allsettings.length(); i++){
-        settingtag = allsettings.item(i).toElement();
-        QDomNode node = settingtag.parentNode();
-        QStringList path;
-        path << settingtag.attribute(QStringLiteral("id"));
-
-        while(node.nodeName() != QStringLiteral("body")){
-            path.insert(0, node.nodeName());
-            node = node.parentNode();
-        }
-
-        QVariant var(settingtag.text().replace(QStringLiteral("\\0\\0\\0"), QStringLiteral("\n")));
-        if(var.toString().startsWith(QStringLiteral("@"))){
-            QStringList args = var.toString().split(QStringLiteral("/"));
-            if     (args[0] == QStringLiteral("@bool"))
-                var = QVariant(Field(args, 1) == QStringLiteral("true") ? true : false);
-            else if(args[0] == QStringLiteral("@url"))
-                var = QVariant(QUrl(var.toString().mid(QStringLiteral("@url/").length())));
-            else if(args[0] == QStringLiteral("@int"))
-                var = QVariant(Field(args, 1).toInt());
-            else if(args[0] == QStringLiteral("@uint"))
-                var = QVariant(Field(args, 1).toUInt());
-            else if(args[0] == QStringLiteral("@longlong"))
-                var = QVariant(Field(args, 1).toLongLong());
-            else if(args[0] == QStringLiteral("@ulonglong"))
-                var = QVariant(Field(args, 1).toULongLong());
-            else if(args[0] == QStringLiteral("@double"))
-                var = QVariant(Field(args, 1).toDouble());
-            else if(args[0] == QStringLiteral("@size"))
-                var = QVariant(QSize(Field(args, 1).toInt(), Field(args, 2).toInt()));
-            else if(args[0] == QStringLiteral("@sizef"))
-                var = QVariant(QSizeF(Field(args, 1).toDouble(), Field(args, 2).toDouble()));
-            else if(args[0] == QStringLiteral("@point"))
-                var = QVariant(QPoint(Field(args, 1).toInt(), Field(args, 2).toInt()));
-            else if(args[0] == QStringLiteral("@pointf"))
-                var = QVariant(QPointF(Field(args, 1).toDouble(), Field(args, 2).toDouble()));
-            else if(args[0] == QStringLiteral("@rect"))
-                var = QVariant(QRect(Field(args, 1).toInt(), Field(args, 2).toInt(),
-                                     Field(args, 3).toInt(), Field(args, 4).toInt()));
-            else if(args[0] == QStringLiteral("@rectf"))
-                var = QVariant(QRectF(Field(args, 1).toDouble(), Field(args, 2).toDouble(),
-                                      Field(args, 3).toDouble(), Field(args, 4).toDouble()));
-            else if(args[0] == QStringLiteral("@color"))
-                var = QVariant(QColor(Field(args, 1).toInt(), Field(args, 2).toInt(),
-                                      Field(args, 3).toInt(), Field(args, 4).toInt()));
-            else if(args[0] == QStringLiteral("@stringlist")){
-                args.removeFirst();
-                QStringList list = args.join(QStringLiteral("/")).split(QStringLiteral(","));
-                if(list.length() == 1 && list[0] == QString())
-                    list.removeFirst();
-                var = QVariant(list);
-            }
-            else if(args[0] == QStringLiteral("@variant")){
-                QByteArray ba(settingtag.text().toLatin1().mid(9));
-                ba = QByteArray::fromBase64(ba);
-                QDataStream stream(&ba, QIODevice::ReadOnly);
-                stream >> var;
-            }
-        }
-        map.insert(path.join(QStringLiteral("/")), var);
-    }
-    return true;
-}
-
 bool ReadJsonFile(const QString &path, Map &map){
     bool ok = false;
     QByteArray data = ReadWholeFile(path, &ok);
     return ok && ReadJson(data, map);
-}
-
-bool ReadLegacyXmlFile(const QString &path, Map &map){
-    bool ok = false;
-    QByteArray data = ReadWholeFile(path, &ok);
-    return ok && ReadLegacyXml(data, map);
 }
 
 bool WriteJsonFile(const QString &path, const Map &map){
@@ -270,8 +187,6 @@ bool WriteJsonFile(const QString &path, const Map &map){
 }
 
 void Load(const QString &directory, const QString &filename, Map &map, const Hooks &hooks){
-    const QString legacy = hooks.LegacyName(filename);
-
     if(ReadJsonFile(directory + filename, map)) return;
 
     const QString previous = directory + filename + QStringLiteral(".prev");
@@ -280,22 +195,14 @@ void Load(const QString &directory, const QString &filename, Map &map, const Hoo
         return;
     }
 
-    if(!legacy.isEmpty() && ReadLegacyXmlFile(directory + legacy, map)) return;
-
     QDir dir = QDir(directory);
     QStringList list =
         dir.entryList(hooks.BackUpFilters(), QDir::NoFilter, QDir::Name | QDir::Reversed);
 
     foreach(QString backup, list){
 
-        bool isLegacy = !legacy.isEmpty() && backup.endsWith(legacy);
-        if(!isLegacy && !backup.endsWith(filename)) continue;
-
-        bool check = isLegacy
-            ? ReadLegacyXmlFile(directory + backup, map)
-            : ReadJsonFile(directory + backup, map);
-
-        if(!check) continue;
+        if(!backup.endsWith(filename)) continue;
+        if(!ReadJsonFile(directory + backup, map)) continue;
 
         hooks.ReportRestore(backup);
         break;

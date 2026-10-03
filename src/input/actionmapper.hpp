@@ -99,6 +99,160 @@
     F(ChangeTextDirectionLTR, changeTextDirectionLTR)           \
     F(ChangeTextDirectionRTL, changeTextDirectionRTL)
 
+#define FOR_EACH_VANILLA_JS_METHOD(F)               \
+    F(Repaint, repaint)                              \
+    F(Reconfigure, reconfigure)                      \
+    F(Up, up) F(Down, down)                          \
+    F(Right, right) F(Left, left)                    \
+    F(PageUp, pageUp) F(PageDown, pageDown)          \
+    F(Home, home) F(End, end)                        \
+    F(AboutVanilla, aboutVanilla)                    \
+    F(AboutQt, aboutQt)                              \
+    F(Back, back) F(Forward, forward)                \
+    F(Rewind, rewind) F(FastForward, fastForward)    \
+    F(UpDirectory, upDirectory)                      \
+    F(Restore, restore)                              \
+    F(NextView, nextView)                            \
+    F(PrevView, previousView)                        \
+    F(BuryView, buryView) F(DigView, digView)        \
+    F(FirstView, firstView)                          \
+    F(SecondView, secondView)                        \
+    F(ThirdView, thirdView)                          \
+    F(FourthView, fourthView)                        \
+    F(FifthView, fifthView)                          \
+    F(SixthView, sixthView)                          \
+    F(SeventhView, seventhView)                      \
+    F(EighthView, eighthView)                        \
+    F(NinthView, ninthView)                          \
+    F(TenthView, tenthView)                          \
+    F(LastView, lastView)                            \
+    F(DisplayViewTree, displayViewtree)              \
+    F(DisplayAccessKey, displayAccessKey)            \
+    F(OpenTextSeeker, openTextSeeker)                \
+    F(OpenQueryEditor, openQueryEditor)              \
+    F(OpenUrlEditor, openUrlEditor)                  \
+    F(OpenCommand, openCommand)                      \
+    F(ReleaseHiddenView, releaseHiddenView)          \
+    F(Load, load)                                    \
+    F(Copy, copy) F(Cut, cut) F(Paste, paste)        \
+    F(Undo, undo) F(Redo, redo)                      \
+    F(SelectAll, selectAll) F(Unselect, unselect)    \
+    F(Reload, reload)                                \
+    F(ReloadAndBypassCache, reloadAndBypassCache)    \
+    F(Stop, stop) F(StopAndUnselect, stopAndUnselect) \
+    F(Print, print) F(Save, save)                    \
+    F(ClearCookies, clearCookies)                    \
+    F(ClearHttpCache, clearHttpCache)                \
+    F(ClearVisitedLinks, clearVisitedLinks)
+
+#define FOR_EACH_VIEW_JS_ACTION(F)                                  \
+    F(Up, up) F(Down, down) F(Right, right) F(Left, left)            \
+    F(Home, home) F(End, end) F(PageUp, pageUp) F(PageDown, pageDown) \
+    F(AboutVanilla, aboutVanilla) F(AboutQt, aboutQt)                \
+    F(ClearCookies, clearCookies) F(ClearHttpCache, clearHttpCache) \
+    F(ClearVisitedLinks, clearVisitedLinks)                         \
+    F(ToggleNotifier, toggleNotifier) F(ToggleReceiver, toggleReceiver) \
+    F(ToggleMenuBar, toggleMenuBar) F(ToggleTreeBar, toggleTreeBar) \
+    F(ToggleToolBar, toggleToolBar) F(ToggleFullScreen, toggleFullScreen) \
+    F(ToggleMaximized, toggleMaximized) F(ToggleMinimized, toggleMinimized) \
+    F(ToggleShaded, toggleShaded) F(ShadeWindow, shadeWindow)        \
+    F(UnshadeWindow, unshadeWindow) F(NewWindow, newWindow)          \
+    F(CloseWindow, closeWindow) F(SwitchWindow, switchWindow)        \
+    F(NextWindow, nextWindow) F(PrevWindow, prevWindow)              \
+    F(Back, back) F(Forward, forward) F(Rewind, rewind)              \
+    F(FastForward, fastForward) F(UpDirectory, upDirectory)          \
+    F(Restore, restore) F(PrevView, prevView) F(NextView, nextView)  \
+    F(BuryView, buryView) F(DigView, digView)                        \
+    F(FirstView, firstView) F(SecondView, secondView)                \
+    F(ThirdView, thirdView) F(FourthView, fourthView)                \
+    F(FifthView, fifthView) F(SixthView, sixthView)                  \
+    F(SeventhView, seventhView) F(EighthView, eighthView)            \
+    F(NinthView, ninthView) F(TenthView, tenthView) F(LastView, lastView) \
+    F(NewViewNode, newViewNode) F(CloneViewNode, cloneViewNode)      \
+    F(DisplayAccessKey, displayAccessKey) F(DisplayViewTree, displayViewTree) \
+    F(DisplayTrashTree, displayTrashTree)                            \
+    F(OpenTextSeeker, openTextSeeker) F(OpenQueryEditor, openQueryEditor) \
+    F(OpenUrlEditor, openUrlEditor) F(OpenCommand, openCommand)      \
+    F(ReleaseHiddenView, releaseHiddenView) F(Load, load)            \
+    FOR_EACH_EDIT_EVENTS_WITH_JS_NAME(F)                             \
+    F(Copy, copy) F(Cut, cut) F(Paste, paste)                        \
+    F(Undo, undo) F(Redo, redo) F(SelectAll, selectAll)              \
+    F(Unselect, unselect) F(Reload, reload)                          \
+    F(ReloadAndBypassCache, reloadAndBypassCache)                    \
+    F(Stop, stop) F(StopAndUnselect, stopAndUnselect)                \
+    F(Print, print) F(Save, save) F(ZoomIn, zoomIn) F(ZoomOut, zoomOut) \
+    F(ViewSource, viewSource) F(ApplySource, applySource)            \
+    F(OpenBookmarklet, openBookmarklet) F(SearchWith, searchWith)    \
+    F(AddSearchEngine, addSearchEngine) F(AddBookmarklet, addBookmarklet) \
+    F(InspectElement, inspectElement)                                \
+    F(CopyUrl, copyUrl) F(CopyTitle, copyTitle)                      \
+    F(CopyPageAsLink, copyPageAsLink) F(CopySelectedHtml, copySelectedHtml) \
+    F(OpenWithDefault, openWithDefault)                              \
+    F(ClickElement, clickElement) F(FocusElement, focusElement)      \
+    F(HoverElement, hoverElement)                                   \
+    F(LoadLink, loadLink) F(OpenLink, openLink)                      \
+    F(DownloadLink, downloadLink) F(CopyLinkUrl, copyLinkUrl)        \
+    F(CopyLinkHtml, copyLinkHtml) F(OpenLinkWithDefault, openLinkWithDefault) \
+    F(LoadImage, loadImage) F(OpenImage, openImage)                  \
+    F(DownloadImage, downloadImage) F(CopyImage, copyImage)          \
+    F(CopyImageUrl, copyImageUrl) F(CopyImageHtml, copyImageHtml)    \
+    F(OpenImageWithDefault, openImageWithDefault)                    \
+    F(LoadMedia, loadMedia) F(OpenMedia, openMedia)                  \
+    F(DownloadMedia, downloadMedia)                                 \
+    F(ToggleMediaControls, toggleMediaControls)                      \
+    F(ToggleMediaLoop, toggleMediaLoop)                              \
+    F(ToggleMediaPlayPause, toggleMediaPlayPause)                    \
+    F(ToggleMediaMute, toggleMediaMute)                              \
+    F(CopyMediaUrl, copyMediaUrl) F(CopyMediaHtml, copyMediaHtml)    \
+    F(OpenMediaWithDefault, openMediaWithDefault)                    \
+    F(OpenInNewViewNode, openInNewViewNode)                          \
+    F(OpenInNewDirectory, openInNewDirectory) F(OpenOnRoot, openOnRoot) \
+    F(OpenInNewViewNodeForeground, openInNewViewNodeForeground)      \
+    F(OpenInNewDirectoryForeground, openInNewDirectoryForeground)    \
+    F(OpenOnRootForeground, openOnRootForeground)                    \
+    F(OpenInNewViewNodeBackground, openInNewViewNodeBackground)      \
+    F(OpenInNewDirectoryBackground, openInNewDirectoryBackground)    \
+    F(OpenOnRootBackground, openOnRootBackground)                    \
+    F(OpenInNewViewNodeThisWindow, openInNewViewNodeThisWindow)      \
+    F(OpenInNewDirectoryThisWindow, openInNewDirectoryThisWindow)    \
+    F(OpenOnRootThisWindow, openOnRootThisWindow)                    \
+    F(OpenInNewViewNodeNewWindow, openInNewViewNodeNewWindow)        \
+    F(OpenInNewDirectoryNewWindow, openInNewDirectoryNewWindow)      \
+    F(OpenOnRootNewWindow, openOnRootNewWindow)                      \
+    F(OpenImageInNewViewNode, openImageInNewViewNode)                \
+    F(OpenImageInNewDirectory, openImageInNewDirectory)              \
+    F(OpenImageOnRoot, openImageOnRoot)                              \
+    F(OpenImageInNewViewNodeForeground, openImageInNewViewNodeForeground) \
+    F(OpenImageInNewDirectoryForeground, openImageInNewDirectoryForeground) \
+    F(OpenImageOnRootForeground, openImageOnRootForeground)          \
+    F(OpenImageInNewViewNodeBackground, openImageInNewViewNodeBackground) \
+    F(OpenImageInNewDirectoryBackground, openImageInNewDirectoryBackground) \
+    F(OpenImageOnRootBackground, openImageOnRootBackground)          \
+    F(OpenImageInNewViewNodeThisWindow, openImageInNewViewNodeThisWindow) \
+    F(OpenImageInNewDirectoryThisWindow, openImageInNewDirectoryThisWindow) \
+    F(OpenImageOnRootThisWindow, openImageOnRootThisWindow)          \
+    F(OpenImageInNewViewNodeNewWindow, openImageInNewViewNodeNewWindow) \
+    F(OpenImageInNewDirectoryNewWindow, openImageInNewDirectoryNewWindow) \
+    F(OpenImageOnRootNewWindow, openImageOnRootNewWindow)            \
+    F(OpenMediaInNewViewNode, openMediaInNewViewNode)                \
+    F(OpenMediaInNewDirectory, openMediaInNewDirectory)              \
+    F(OpenMediaOnRoot, openMediaOnRoot)                              \
+    F(OpenMediaInNewViewNodeForeground, openMediaInNewViewNodeForeground) \
+    F(OpenMediaInNewDirectoryForeground, openMediaInNewDirectoryForeground) \
+    F(OpenMediaOnRootForeground, openMediaOnRootForeground)          \
+    F(OpenMediaInNewViewNodeBackground, openMediaInNewViewNodeBackground) \
+    F(OpenMediaInNewDirectoryBackground, openMediaInNewDirectoryBackground) \
+    F(OpenMediaOnRootBackground, openMediaOnRootBackground)          \
+    F(OpenMediaInNewViewNodeThisWindow, openMediaInNewViewNodeThisWindow) \
+    F(OpenMediaInNewDirectoryThisWindow, openMediaInNewDirectoryThisWindow) \
+    F(OpenMediaOnRootThisWindow, openMediaOnRootThisWindow)          \
+    F(OpenMediaInNewViewNodeNewWindow, openMediaInNewViewNodeNewWindow) \
+    F(OpenMediaInNewDirectoryNewWindow, openMediaInNewDirectoryNewWindow) \
+    F(OpenMediaOnRootNewWindow, openMediaOnRootNewWindow)            \
+    F(OpenAllUrl, openAllUrl) F(OpenAllImage, openAllImage)          \
+    F(OpenTextAsUrl, openTextAsUrl) F(SaveAllUrl, saveAllUrl)        \
+    F(SaveAllImage, saveAllImage) F(SaveTextAsUrl, saveTextAsUrl)
+
 #define FOR_EACH_WEB_EVENTS1(F)                 \
     FOR_EACH_EDIT_EVENTS(F)                     \
     F(Copy)                                     \

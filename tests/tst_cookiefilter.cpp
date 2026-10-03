@@ -193,7 +193,7 @@ private slots:
         const QString source =
             QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
 
-        QCOMPARE(source.count(QStringLiteral("MirrorProfileCookies(")), 3);
+        QCOMPARE(source.count(QStringLiteral("MirrorProfileCookies(")), 4);
         QVERIFY2(source.contains(QStringLiteral("MirrorProfileCookies(m_Profile->cookieStore()")),
                  "the widget profile no longer feeds the jar");
         QVERIFY2(source.contains(QStringLiteral("QStringLiteral(\"web:\") + m_Profile->storageName()")),
@@ -203,8 +203,8 @@ private slots:
         QVERIFY2(source.contains(QStringLiteral("MirrorProfileCookies(profile->cookieStore()")),
                  "the quick profile no longer feeds the jar");
 
-        QVERIFY2(source.contains(QStringLiteral("if(!m_Profile->isOffTheRecord())\n"
-                                                "        MirrorProfileCookies")),
+        QCOMPARE(source.count(QStringLiteral("MirrorProfileCookies(m_Profile->")), 1);
+        QVERIFY2(!source.contains(QStringLiteral("MirrorProfileCookies(m_PrivateProfile")),
                  "an off the record profile would now feed the shared jar");
 
         QVERIFY2(source.contains(QStringLiteral("GetNetworkCookieJar()->GetPersistableCookies()")),
@@ -231,11 +231,29 @@ private slots:
                  "the quick profile no longer keeps session cookies when told to");
 
         QVERIFY2(source.contains(QStringLiteral("if(Application::SaveSessionCookie())\n"
-                                                "            m_Profile->setPersistentCookiesPolicy")),
+                                                "            profile->setPersistentCookiesPolicy")),
                  "the widget profile no longer reads the setting");
         QVERIFY2(source.contains(QStringLiteral("profile->setPersistentCookiesPolicy\n"
                                                 "            (Application::SaveSessionCookie()")),
                  "the quick profile no longer reads the setting");
+    }
+
+    void cookieLoadOnlyConsidersJsonGenerations(){
+        QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) +
+                   QStringLiteral("/app/networkcontroller.cpp"));
+        QVERIFY2(file.open(QIODevice::ReadOnly),
+                 "'networkcontroller.cpp' was not read; check VANILLA_SOURCE_DIR");
+        const QString source = QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
+        const int begin = source.indexOf(QStringLiteral("void NetworkController::LoadAllCookies"));
+        const int end = source.indexOf(QStringLiteral("bool NetworkController::ShouldSaveCookie"), begin);
+        QVERIFY(begin != -1);
+        QVERIFY(end != -1);
+        const QString body = source.mid(begin, end - begin);
+
+        QVERIFY(body.contains(QStringLiteral("backup.endsWith(filename)")));
+        QVERIFY(!body.contains(QStringLiteral("Legacy")));
+        QVERIFY(!body.contains(QStringLiteral(".xml")));
+        QVERIFY(!body.contains(QStringLiteral(".prev")));
     }
 
     void mirroringAnAddressReplacesWhatItAnswersFor(){

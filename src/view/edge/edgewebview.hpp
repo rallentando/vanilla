@@ -10,10 +10,13 @@ struct EdgePendingLoad;
 class EdgeCookieClearLedger;
 class QPainter;
 struct ICoreWebView2Controller;
+struct ICoreWebView2ContextMenuRequestedEventArgs;
+struct ICoreWebView2Deferral;
 template <class Controller> class EdgeUnadoptedControllerOf;
 
 #include "view.hpp"
 #include "nativehistory.hpp"
+#include "edgemenuitem.hpp"
 
 #include <QWidget>
 #include <QImage>
@@ -34,10 +37,17 @@ public:
 
     QWidget *base() Q_DECL_OVERRIDE;
     Page *page() Q_DECL_OVERRIDE;
+    ExtensionController *Extensions() const override;
+    QString ExtensionStatus() const override;
+    QWidget *CreateExtensionView(const QUrl &url, ExtensionPage page, QWidget *parent,
+                                 const std::function<void()> &closed = std::function<void()>()) override;
+    void SetupExtensions();
+    QUrl ReportedSource() const;
 
     QUrl url() Q_DECL_OVERRIDE;
     TreeBank *parent() Q_DECL_OVERRIDE;
     void setUrl(const QUrl &url) Q_DECL_OVERRIDE;
+    void setHtml(const QString &html, const QUrl &url) Q_DECL_OVERRIDE;
     void setParent(TreeBank *t) Q_DECL_OVERRIDE;
 
     void Connect(TreeBank *tb) Q_DECL_OVERRIDE;
@@ -62,6 +72,9 @@ public:
     void Render(QPainter *painter) Q_DECL_OVERRIDE;
     void Render(QPainter *painter, const QRegion &clip) Q_DECL_OVERRIDE;
     QImage GrabView();
+    QImage CaptureVisible() Q_DECL_OVERRIDE;
+    bool MakesSidePanels() const Q_DECL_OVERRIDE { return true; }
+    QUrl CommittedUrl() Q_DECL_OVERRIDE { return ReportedSource();}
 
     QSize GetViewportSize() Q_DECL_OVERRIDE;
     void SetViewportSize(QSize) Q_DECL_OVERRIDE {}
@@ -111,6 +124,8 @@ public:
     bool RestoreScroll() Q_DECL_OVERRIDE;
     bool SaveZoom() Q_DECL_OVERRIDE;
     bool RestoreZoom() Q_DECL_OVERRIDE;
+    float MinimumZoom() const Q_DECL_OVERRIDE { return ChromiumMinimumZoom;}
+    float MaximumZoom() const Q_DECL_OVERRIDE { return ChromiumMaximumZoom;}
 
     void DeleteLater();
 
@@ -121,6 +136,15 @@ public:
     static void ClearHttpCache();
     static void ClearVisitedLinks();
 
+    static void ReleaseDownloadCarriers();
+
+    static bool RuntimeAvailable();
+
+private:
+    void AskAgainAboutAbort(int generation, qint64 after);
+
+public:
+
     static bool CanCompleteAction(const QString &action);
 
     int GetToken() const;
@@ -128,6 +152,7 @@ public:
     bool IsPrivateMode() const;
 
 signals:
+    void ExtensionContextChanged();
     void ViewChanged();
     void ScrollChanged(QPointF);
     void PageGeometryChanged();
@@ -209,7 +234,7 @@ public:
     void SetAudioMuted(bool muted) Q_DECL_OVERRIDE;
 
 #ifdef MEDIATIME
-    bool SaveMediaTime() Q_DECL_OVERRIDE;
+    bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) Q_DECL_OVERRIDE;
     bool RestoreMediaTime() Q_DECL_OVERRIDE;
 #endif
 
@@ -223,6 +248,7 @@ private:
     void AdoptInspectorWindow(WId id);
     void WatchInspectorWindow();
     void ReleaseInspector(InspectorRelease why);
+    bool InspectorHoldsKeyboard() const;
 
     void ApplyBounds();
 
@@ -296,17 +322,28 @@ private:
         QString m_SelectedText;
         bool m_Editable;
         int m_MediaType;
+        QList<EdgeMenuItem> m_ExtensionItems;
+        int m_Generation;
+        bool m_Superseded;
+        int m_Sequence;
 
         ContextTarget()
             : m_Position(QPoint()), m_LinkUrl(QUrl()), m_SourceUrl(QUrl())
-            , m_SelectedText(QString()), m_Editable(false), m_MediaType(0) {}
+            , m_SelectedText(QString()), m_Editable(false), m_MediaType(0)
+            , m_ExtensionItems(QList<EdgeMenuItem>()), m_Generation(0)
+            , m_Superseded(false), m_Sequence(0) {}
     };
     void DisplayContextMenuFor(const ContextTarget &target);
+    void CompleteContextMenu(int generation, int commandId);
+    void FinishContextMenu(int commandId);
+    void CountedComplete(ICoreWebView2ContextMenuRequestedEventArgs *args,
+                         ICoreWebView2Deferral *deferral, int commandId);
 
     void PullCookiesIntoJar();
 
     typedef std::function<void(const QVariant&)> VariantCallBack;
-    void CallWithScriptResult(const QString &script, VariantCallBack callBack);
+    void CallWithScriptResult(const QString &script, VariantCallBack callBack,
+                              VoidCallBack discarded = VoidCallBack());
     void RunScript(const QString &script);
 
 public:
@@ -352,6 +389,7 @@ private:
     bool MayStartLoad() const;
     void StartLoad(const EdgePendingLoad &load);
     void PerformLoad(const EdgePendingLoad &load);
+    bool IsOwnReportedSource(const QUrl &reported) const;
     void TryFlushPendingNavigation();
     QString ProfileKey() const;
     bool MeasureProfile(struct ICoreWebView2Controller *controller,
@@ -363,18 +401,23 @@ private:
     long AnswerVanillaPage(struct ICoreWebView2WebResourceRequestedEventArgs *args,
                            struct ICoreWebView2WebResourceRequest *request,
                            const QUrl &url, bool document);
-    void Retire();
+    void Retire(bool force = false);
+    bool IsGoing() const;
     void PerformHistoryMove(const NativeHistory::Request &request);
-    void ReportCreationFailure();
+    void ReportCreationFailure(long result);
+    void ShowFailure(const QString &text);
+    void PaintHostWindow();
 
     bool BuildControllerOptions(struct ICoreWebView2Environment *environment,
                                 struct ICoreWebView2Environment10 **environment10,
                                 struct ICoreWebView2ControllerOptions **options);
-    void FailCreation(const char *why);
+    void FailCreation(const char *why, long result);
     void UnwireComposition();
     void TakeController(EdgeUnadoptedControllerOf<ICoreWebView2Controller> &made);
 
     struct Private;
+    friend class EdgeDownloadCarriers;
+
     std::unique_ptr<Private> m_Impl;
 };
 

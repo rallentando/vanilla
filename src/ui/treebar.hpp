@@ -53,9 +53,6 @@ public:
             QGraphicsView::wheelEvent(ev);
             m_MouseEventSource = Qt::MouseEventNotSynthesized;
         }
-        QSize sizeHint() const Q_DECL_OVERRIDE {
-            return QGraphicsView::sizeHint();
-        }
         QSize minimumSizeHint() const Q_DECL_OVERRIDE {
             return QSize(0, 0);
         }
@@ -82,8 +79,6 @@ public:
     static void ToggleEnableAnimation();
     static void ToggleEnableCloseButton();
     static void ToggleEnableCloneButton();
-    static void ToggleScrollToSwitchNode();
-    static void ToggleWheelClickToClose();
 
     void SetHorizontalNodeWidth(int width);
     void SetVerticalNodeHeight(int height);
@@ -132,6 +127,8 @@ public slots:
     void OnTreeStructureChanged();
     void OnNodeCreated(NodeList &nds);
     void OnNodeDeleted(NodeList &nds);
+
+    void ForgetNodes(NodeList &nds);
     void OnFoldedChanged(NodeList &nds);
     void OnCurrentChanged(Node *nd);
 
@@ -153,15 +150,17 @@ protected:
     void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
-    void enterEvent(QEnterEvent *ev) Q_DECL_OVERRIDE;
     void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
 
 private:
+    QRect HandlePaintRect(const QRect &rect) const;
+    typedef QPair<Node*, int> VisibleNode;
+    static QList<VisibleNode> VisibleSubtree(Node *root, int nest, const NodeList &currentPath);
+
     TreeBank *m_TreeBank;
     GraphicsView *m_View;
+    friend class tst_treebaritem;
+
     QGraphicsScene *m_Scene;
     QWidget *m_ResizeGrip;
     QSize m_OverrideSize;
@@ -214,6 +213,7 @@ public:
     void Scroll(qreal delta);
     void ScrollForDelete(int count);
     void LockWhileAnimating();
+    bool FinishAnimations();
     void ResetTargetScroll();
     void AutoScrollDown();
     void AutoScrollUp();
@@ -250,33 +250,20 @@ public:
     void SwapWithNext(int index);
     void SwapWithPrev(int index);
 
-    QMenu *LayerMenu();
     QMenu *MakeNodeMenu();
 
 public slots:
     void NewViewNode();
     void CloneViewNode();
-    void MakeDirectory();
-    void MakeDirectoryWithSelectedNode();
-    void MakeDirectoryWithSameDomainNode();
-    void ToggleEnableAnimation();
-    void ToggleEnableCloseButton();
-    void ToggleEnableCloneButton();
     void DisplayTrashTree();
 
 protected:
     void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void dragEnterEvent(QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
     void dropEvent(QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
     void dragMoveEvent(QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
     void dragLeaveEvent(QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
     void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void hoverEnterEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
     void wheelEvent(QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
 
 private:
@@ -350,10 +337,14 @@ public:
     void UnfoldDirectory();
 
     void OnCreated(QRectF target, QRectF start = QRectF());
+    void StayUnderWhileGrowing();
     void OnDeleted(QRectF target, QRectF start = QRectF());
+
+    void ForgetNode();
     void OnNestChanged();
     void OnUngrabbed();
     void Slide(int step);
+    bool OutOfSight(const QRectF &rect) const;
 
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
 
@@ -364,11 +355,9 @@ public:
     void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
     void hoverEnterEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
     void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void wheelEvent(QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
     QPointF ScheduledPosition();
 
     QMenu *NodeMenu();
@@ -396,6 +385,16 @@ public slots:
     void ApplySiblingsOrder();
 
 private:
+    QRectF ThumbnailRect(const QRectF &bound) const;
+    QRect TitleBandRect(const QRectF &bound) const;
+    QRectF TitleTextRect(const QRectF &bound, const QRect &titleBand) const;
+    static int CloneSlot();
+    QRectF RightChipRect(int slot) const;
+    QRect RightIconRect(int slot) const;
+
+    static QRect CenteredIconRect(const QRect &area, const QSize &size);
+    friend class tst_treebaritem;
+
     TreeBank *m_TreeBank;
     TreeBar *m_TreeBar;
     Node *m_Node;

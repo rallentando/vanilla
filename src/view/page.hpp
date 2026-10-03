@@ -72,6 +72,7 @@ public:
     };
 
     static QUrl        CreateQueryUrl(QString, QString key = QString());
+    static QUrl        CreateQueryUrl(const SearchEngine &engine, QString query);
     static QUrl        UpDirectoryUrl(QUrl);
     static QUrl        StringToUrl   (QString str,  QUrl baseUrl = QUrl());
     static QList<QUrl> ExtractUrlsFromText(QString text, QUrl baseUrl = QUrl());
@@ -407,7 +408,8 @@ signals:
 
 public:
     QAction *Action(CustomAction a, QVariant data = QVariant());
-    void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint localPos, QPoint globalPos, MediaType type = MediaTypeNone);
+    void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint localPos, QPoint globalPos, MediaType type = MediaTypeNone,
+                            const std::function<void(QMenu*)> &extra = std::function<void(QMenu*)>());
 
 public slots:
     void DownloadSuggest(const QUrl&);

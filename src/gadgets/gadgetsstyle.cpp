@@ -947,6 +947,10 @@ QGraphicsRectItem *GlassStyle::CreateSelectRect(GraphicsTableView *gtv, QPointF 
                                  Theme::Brush(Theme::GlassSelectRectFill));
 }
 
+QRectF GlassStyle::ThumbnailHitRect(const Thumbnail *thumb) const {
+    return thumb->boundingRect();
+}
+
 int GlassStyle::NodeTitleHeight(GraphicsTableView *gtv) const {
     return gtv->ScaleByDevice(m_NodeTitleHeight);
 }
@@ -1126,8 +1130,8 @@ void FlatStyle::Render(Thumbnail *thumb, QPainter *painter) const {
         }
         if(icon.isNull() || icon.availableSizes().first().width() <= 2){
             icon = lightInk
-                ? (!isDir ? blankw : !foldable ? folderw : isFolded ? folderw : unfoldedw)
-                : (!isDir ? blank  : !foldable ? folder  : isFolded ? folder  : unfolded);
+                ? (!isDir ? blankw : !foldable ? folderw : isFolded ? foldedw : unfoldedw)
+                : (!isDir ? blank  : !foldable ? folder  : isFolded ? folded  : unfolded);
         }
         QSize iconSize = gtv->ScaleByDevice(QSize(16, 16));
         QPixmap pixmap = icon.pixmap(iconSize, (view || isDir) ? QIcon::Normal : QIcon::Disabled);
@@ -1374,11 +1378,13 @@ void FlatStyle::Render(AccessibleWebElement *awe, QPainter *painter) const {
 }
 
 void FlatStyle::OnSetNest(Thumbnail *thumb, int nest) const {
-    Q_UNUSED(thumb) Q_UNUSED(nest)
+    Q_UNUSED(nest)
+    thumb->setOpacity(1.0);
 }
 
 void FlatStyle::OnSetNest(NodeTitle *title, int nest) const {
-    Q_UNUSED(title) Q_UNUSED(nest)
+    Q_UNUSED(nest)
+    title->setOpacity(1.0);
 }
 
 void FlatStyle::OnSetPrimary(Thumbnail *thumb, bool) const {
@@ -1468,4 +1474,11 @@ QGraphicsRectItem *FlatStyle::CreateSelectRect(GraphicsTableView *gtv, QPointF p
     return gtv->scene()->addRect(QRectF(pos, pos),
                                  Theme::Pen(Theme::FlatSelectRectBorder),
                                  Theme::Brush(Theme::FlatSelectRectFill));
+}
+
+QRectF FlatStyle::ThumbnailHitRect(const Thumbnail *thumb) const {
+    GraphicsTableView *gtv = thumb->GetTableView();
+    const qreal dx = gtv->ScaleByDevice(m_ThumbnailPaddingX);
+    const qreal dy = gtv->ScaleByDevice(m_ThumbnailPaddingY);
+    return thumb->boundingRect().adjusted(dx, dy, -dx, -dy);
 }

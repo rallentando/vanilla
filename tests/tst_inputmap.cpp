@@ -5,6 +5,7 @@
 #include <QKeySequence>
 
 #include "inputmap.hpp"
+#include "application.hpp"
 
 #include "testsupport.hpp"
 
@@ -201,6 +202,94 @@ private slots:
 
         QCOMPARE(second, first);
         QCOMPARE(read, map);
+    }
+
+    void akeyWhichTypesIsAsingleKey(){
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(Qt::Key_Q)));
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(Qt::Key_Slash)));
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(Qt::Key_Semicolon)));
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(Qt::Key_Space)));
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(Qt::Key_1)));
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(Qt::SHIFT | Qt::Key_N)));
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(QStringLiteral("Z"))));
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(QStringLiteral("Shift+Z"))));
+        QVERIFY(InputMap::IsSingleKey(QKeySequence(QStringLiteral(","))));
+    }
+
+    void achordOrAkeyWhichTypesNothingIsNot(){
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::CTRL | Qt::Key_W)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::ALT | Qt::Key_X)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::META | Qt::Key_A)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::Key_F5)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::Key_Escape)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::Key_Left)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::Key_PageDown)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::Key_Backspace)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::SHIFT | Qt::Key_Backspace)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence(Qt::Key_G, Qt::Key_G)));
+        QVERIFY(!InputMap::IsSingleKey(QKeySequence()));
+    }
+
+    void amouseNameIsSpelledTheWayApressIsBuilt(){
+        QString press;
+        Application::AddModifiersToString(press, Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier);
+        Application::AddMouseButtonsToString(press, Qt::RightButton | Qt::MiddleButton);
+        Application::AddMouseButtonToString(press, Qt::LeftButton);
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("MidButton+Alt+RightButton+Ctrl+Shift+LeftButton")), press);
+
+        QString wheel;
+        Application::AddModifiersToString(wheel, Qt::ControlModifier | Qt::ShiftModifier);
+        Application::AddWheelDirectionToString(wheel, true);
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("Ctrl+Shift+WheelUp")), wheel);
+
+        QString extra;
+        Application::AddMouseButtonsToString(extra, Qt::ExtraButton2);
+        Application::AddMouseButtonToString(extra, Qt::ExtraButton1);
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("ExtraButton2+ExtraButton1")), extra);
+
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("RightButton+LeftButton")),
+                 QStringLiteral("RightButton+LeftButton"));
+    }
+
+    void amouseNameNoPressMakesIsRefused(){
+        QCOMPARE(InputMap::CanonicalMouseName(QString()), QString());
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("Ctrl")), QString());
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("WheelUp+LeftButton")), QString());
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("LeftButton+LeftButton")), QString());
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("Ctrl+Ctrl+WheelUp")), QString());
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("Ctrl+")), QString());
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("Hyper+LeftButton")), QString());
+        QCOMPARE(InputMap::CanonicalMouseName(QStringLiteral("None")), QString());
+    }
+
+    void agestureIsStrokesTheRecognizerMakes(){
+        QCOMPARE(InputMap::CanonicalGestureName(QStringLiteral("U")), QStringLiteral("U"));
+        QCOMPARE(InputMap::CanonicalGestureName(QStringLiteral("D,R,UL")), QStringLiteral("D,R,UL"));
+        QCOMPARE(InputMap::CanonicalGestureName(QStringLiteral("U,D,U")), QStringLiteral("U,D,U"));
+        QCOMPARE(InputMap::CanonicalGestureName(QStringLiteral("U,U")), QString());
+        QCOMPARE(InputMap::CanonicalGestureName(QStringLiteral("RU")), QString());
+        QCOMPARE(InputMap::CanonicalGestureName(QStringLiteral("U,")), QString());
+        QCOMPARE(InputMap::CanonicalGestureName(QString()), QString());
+        QCOMPARE(InputMap::CanonicalGestureName(QStringLiteral("None")), QString());
+    }
+
+    void akeyNameIsTheSpellingTheFileHolds(){
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("ctrl+w")), QStringLiteral("Ctrl+W"));
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Shift+Ctrl+Z")), QStringLiteral("Ctrl+Shift+Z"));
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Ctrl+/")), QStringLiteral("Ctrl+/"));
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("F5")), QStringLiteral("F5"));
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Ctrl+K, Ctrl+C")), QStringLiteral("Ctrl+K, Ctrl+C"));
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Ctrl+W")),
+                 QKeySequence(Qt::CTRL | Qt::Key_W).toString());
+
+        QCOMPARE(InputMap::CanonicalKeyName(QString()), QString());
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("None")), QString());
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Ctrl+NoSuchKey")), QString());
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Ctrl")), QString());
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Alt")), QString());
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Shift")), QString());
+        QCOMPARE(InputMap::CanonicalKeyName(QStringLiteral("Meta")), QString());
     }
 };
 

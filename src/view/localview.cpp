@@ -1900,7 +1900,6 @@ void LocalView::OnMediaError(){
 
 void LocalView::OnSetViewNode(ViewNode*){}
 
-
 void LocalView::OnSetThis(WeakView){}
 
 void LocalView::OnSetMaster(WeakView){}
@@ -2075,7 +2074,7 @@ void LocalView::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
 void LocalView::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
     Application::SetCurrentWindow(GetTreeBank()->GetMainWindow());
 
-    if(m_EnableMouseGesture &&
+    if(m_EnableRightGestureLocal &&
        ev->buttons() & Qt::RightButton &&
        !m_GestureStartedPos.isNull()){
 

@@ -3,6 +3,8 @@
 
 #include "switch.hpp"
 
+#include <functional>
+#include <QEvent>
 #include <QTimer>
 #include <QElapsedTimer>
 #include <QMenu>
@@ -14,6 +16,7 @@
 #include <memory>
 
 #include "callback.hpp"
+#include "spentbuttons.hpp"
 #include "application.hpp"
 #include "page.hpp"
 #include "webelement.hpp"
@@ -24,6 +27,7 @@ class QMimeData;
 class View;
 class _View;
 class _Vanilla;
+class ExtensionController;
 
 typedef std::shared_ptr<View> SharedView;
 typedef std::weak_ptr<View>   WeakView;
@@ -68,6 +72,27 @@ class View {
 public:
     View(TreeBank *parent = 0, QString id = QString(), QStringList set = QStringList());
     virtual ~View();
+    virtual ExtensionController *Extensions() const { return nullptr; }
+    virtual QString ExtensionStatus() const;
+    enum ExtensionPage { ExtensionActionPage, ExtensionOptionsPage, ExtensionSidePanelPage };
+    virtual bool MakesSidePanels() const { return false; }
+    static QEvent::Type SidePanelShutdownEvent(){
+        static const QEvent::Type type = static_cast<QEvent::Type>(QEvent::registerEventType());
+        return type;
+    }
+    class SidePanelNavigate : public QEvent {
+    public:
+        explicit SidePanelNavigate(const QUrl &url) : QEvent(Type()), m_Url(url) { setAccepted(false); }
+        static QEvent::Type Type(){
+            static const QEvent::Type type = static_cast<QEvent::Type>(QEvent::registerEventType());
+            return type;
+        }
+        QUrl Url() const { return m_Url;}
+    private:
+        QUrl m_Url;
+    };
+    virtual QWidget *CreateExtensionView(const QUrl &, ExtensionPage, QWidget *,
+                                         const std::function<void()> & = std::function<void()>()) { return nullptr; }
 
     enum GestureVector {
         Gv_Up,
@@ -106,7 +131,9 @@ public:
     virtual QString GetViewTypeName();
 
     void Initialize();
-    void DeleteLater();
+    virtual void DeleteLater();
+
+    void Orphan();
 
     TreeBank  *GetTreeBank() const;
     ViewNode  *GetViewNode() const;
@@ -140,6 +167,7 @@ public:
     void AddExternalCommandActions(QMenu *menu, const char *slot, QVariant data);
 
     void AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type = Page::MediaTypeNone);
+    void AddExtensionMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type = Page::MediaTypeNone);
     void AddRegularMenu(QMenu *menu, SharedWebElement elem);
 
     virtual void AddSpellCheckMenu(QMenu*){}
@@ -151,14 +179,16 @@ public:
     static void SaveSettings();
     virtual void ApplySpecificSettings(QStringList set);
     QStringList SpecificSettings() const { return m_SpecificSettings;}
-    void RebuildForOffTheRecord();
+    virtual void RebuildForOffTheRecord();
 
     static bool ActivateNewViewDefault(){ return m_ActivateNewViewDefault;}
-    static bool NavigationBySpaceKey(){ return m_NavigationBySpaceKey;}
+    static bool EnableSingleKeyShortcut(){ return m_EnableSingleKeyShortcut;}
     static bool DragToStartDownload(){ return m_DragToStartDownload;}
     static bool EnableDestinationInferrer(){ return m_EnableDestinationInferrer;}
     static bool EnableDragGesture(){ return m_EnableDragGesture;}
     bool EnableDragGestureLocal() const { return m_EnableDragGestureLocal;}
+    static bool EnableRightGesture(){ return m_EnableMouseGesture;}
+    bool EnableRightGestureLocal() const { return m_EnableRightGestureLocal;}
     static bool InspectorInMainWindow(){ return m_InspectorInMainWindow;}
     static QString SuspendHiddenViews(){ return m_SuspendHiddenViews;}
     static bool HiddenViewsStayActive(){
@@ -177,6 +207,14 @@ public:
 
     static qreal DeviceZoomScale();
 
+    class DragOutScope {
+    public:
+        DragOutScope(){ m_DraggingOut++;}
+        ~DragOutScope(){ m_DraggingOut--;}
+        DragOutScope(const DragOutScope&) = delete;
+        DragOutScope &operator=(const DragOutScope&) = delete;
+    };
+    static bool IsDraggingOut(){ return m_DraggingOut > 0;}
     static bool GetSwitchingState(){ return m_Switching;}
     static void SetSwitchingState(bool switching){ m_Switching = switching;}
 
@@ -210,6 +248,9 @@ public:
 
     int LoadProgress(){ return m_LoadProgress;}
     bool IsLoading(){ return m_IsLoading;}
+    quint64 LoadSerial() const { return m_LoadSerial;}
+    static bool TakesKey(const QKeySequence &seq){ return !KeyAction(seq).isEmpty();}
+    static QString KeyAction(const QKeySequence &seq);
     RenderProcessLedger &RenderProcessDeaths(){ return m_RenderProcessLedger;}
     virtual bool CanGoBack(){ return false;}
     virtual bool CanGoForward(){ return false;}
@@ -260,6 +301,8 @@ public:
     virtual bool IsRenderable(){ return false;}
     virtual void Render(QPainter*){}
     virtual void Render(QPainter*, const QRegion&){}
+    virtual QImage CaptureVisible(){ return QImage();}
+    virtual QUrl CommittedUrl(){ return IsLoading() ? QUrl() : url();}
     virtual QSize GetViewportSize(){ return QSize();}
     virtual void SetViewportSize(QSize){}
     virtual void SetSource(const QUrl&){}
@@ -360,13 +403,9 @@ public:
     virtual void OnSetSlave(WeakView){}
     virtual void OnSetJsObject(_View*){}
     virtual void OnSetJsObject(_Vanilla*){}
-    virtual void OnLoadStarted(){ m_LoadProgress = 0; m_IsLoading = true;}
+    virtual void OnLoadStarted();
     virtual void OnLoadProgress(int progress){ m_LoadProgress = progress;}
-    virtual void OnLoadFinished(bool ok){
-        m_LoadProgress = 100;
-        m_IsLoading = false;
-        if(ok) m_RenderProcessLedger.Clear();
-    }
+    virtual void OnLoadFinished(bool ok);
     virtual void OnTitleChanged(const QString&){}
     virtual void OnUrlChanged(const QUrl&){}
     virtual void OnViewChanged(){}
@@ -384,10 +423,19 @@ public:
     virtual bool RestoreScroll(){ return false;}
     virtual bool SaveZoom(){ return false;}
     virtual bool RestoreZoom(){ return false;}
+    virtual float MinimumZoom() const { return GetZoomFactorLevels().first();}
+    virtual float MaximumZoom() const { return GetZoomFactorLevels().last();}
+    float FitZoom(float zoom) const { return qBound(MinimumZoom(), zoom, MaximumZoom());}
+    static constexpr float ChromiumMinimumZoom = 0.25f;
+    static constexpr float ChromiumMaximumZoom = 5.0f;
     virtual bool SaveHistory(){ return false;}
     virtual bool RestoreHistory(){ return false;}
+    void RestoreHistoryOrLoad(const QNetworkRequest &request);
 #ifdef MEDIATIME
-    virtual bool SaveMediaTime(){ return false;}
+    virtual bool SaveMediaTime(VoidCallBack settled = VoidCallBack()){
+        if(settled) settled();
+        return false;
+    }
     virtual bool RestoreMediaTime(){ return false;}
 #endif
 
@@ -399,6 +447,7 @@ protected:
 
     virtual bool TriggerKeyEvent(QKeyEvent*);
     virtual bool TriggerKeyEvent(QString);
+    bool RunExtensionCommand(const QKeySequence &seq, const QString &key, bool repeat);
 
     void ChangeNodeTitle(const QString &title);
     void ChangeNodeUrl(const QUrl &url);
@@ -409,6 +458,10 @@ protected:
     float PrepareForZoomIn();
     float PrepareForZoomOut();
 
+public:
+    static float StepZoom(float zoom, bool in, float min, float max);
+
+protected:
     static inline GestureVector GetGestureVector4(int dx, int dy){
         if(dy >  dx && dy > -dx) return Gv_Up;
         if(dy <  dx && dy < -dx) return Gv_Down;
@@ -632,51 +685,136 @@ public:
             "})();");
     }
 
-    static inline QString SetFocusToElementJsCode(const QString &xpath){
-        QString quoted = EscapeJsStringLiteral(xpath);
+    static inline QString ElementPathJsCode(){
         return QStringLiteral(
-            "(function(){\n"
-            "    var elem;\n"
-            "    var doc = document;\n"
-            "    var xpaths = \"%1\".split(\",\");\n"
-            "    for(var i = 0; i < xpaths.length; i++){\n"
-            "        elem = doc.evaluate(xpaths[i], doc, null, 7, null).snapshotItem(0);\n"
-            "        try{\n"
-            "            if(elem.contentDocument){\n"
-            "                doc = elem.contentDocument;\n"
+            "var elementPath = function(elem){\n"
+            "    var xpath = \"\";\n"
+            "    var iter = elem;\n"
+            "    var rootOf = function(n){ while(n && n.parentNode) n = n.parentNode; return n; };\n"
+            "    var inShadow = function(n){ var r = rootOf(n); return !!(r && r.nodeType == 11 && r.host); };\n"
+            "    var shadow = inShadow(iter);\n"
+            "    while(iter && iter.nodeType == 1){\n"
+            "        var str = iter.tagName;\n"
+            "        var siblings = iter.parentNode.childNodes;\n"
+            "        var synonym = [];\n"
+            "        for(var j = 0; j < siblings.length; j++){\n"
+            "            if(siblings[j].nodeType == 1 &&\n"
+            "               (shadow ? siblings[j].tagName.toLowerCase() == iter.tagName.toLowerCase()\n"
+            "                       : siblings[j].tagName == iter.tagName)){\n"
+            "                synonym.push(siblings[j]);\n"
             "            }\n"
             "        }\n"
-            "        catch(e){ break;}\n"
+            "        if(synonym.length > 1 && synonym.indexOf(iter) != -1){\n"
+            "            str += \"[\" + (synonym.indexOf(iter) + 1) + \"]\";\n"
+            "        }\n"
+            "        if(xpath && !xpath.startsWith(\",\") && !xpath.startsWith(\"|\")){\n"
+            "            xpath = str + \"/\" + xpath;\n"
+            "        } else {\n"
+            "            xpath = str + xpath;\n"
+            "        }\n"
+            "        iter = iter.parentNode;\n"
+            "        if(iter && iter.nodeType == 9 && iter !== document){\n"
+            "            xpath = \",//\" + xpath.toLowerCase();\n"
+            "            iter = iter.defaultView.frameElement;\n"
+            "            shadow = inShadow(iter);\n"
+            "        } else if(iter && iter.nodeType == 11 && iter.host){\n"
+            "            xpath = \"|\" + xpath.toLowerCase();\n"
+            "            iter = iter.host;\n"
+            "            shadow = inShadow(iter);\n"
+            "        }\n"
             "    }\n"
+            "    return \"//\" + xpath.toLowerCase();\n"
+            "};\n");
+    }
+
+    static inline QString ResolveElementPathJsCode(){
+        return QStringLiteral(
+            "var resolveElementPath = function(path){\n"
+            "    var elem = null;\n"
+            "    var doc = document;\n"
+            "    var segments = path.match(/[,|]?[^,|]+/g) || [];\n"
+            "    for(var i = 0; i < segments.length; i++){\n"
+            "        var seg = segments[i];\n"
+            "        if(seg.charAt(0) == \"|\"){\n"
+            "            var node = elem ? elem.shadowRoot : null;\n"
+            "            var steps = seg.substring(1).split(\"/\");\n"
+            "            for(var k = 0; node && k < steps.length; k++){\n"
+            "                var m = /^([^\\[]+)(?:\\[(\\d+)\\])?$/.exec(steps[k]);\n"
+            "                var nth = m && m[2] ? parseInt(m[2], 10) : 1;\n"
+            "                var kids = node.childNodes;\n"
+            "                var next = null;\n"
+            "                for(var c = 0; m && c < kids.length; c++){\n"
+            "                    if(kids[c].nodeType == 1 &&\n"
+            "                       kids[c].tagName.toLowerCase() == m[1] &&\n"
+            "                       --nth == 0){\n"
+            "                        next = kids[c];\n"
+            "                        break;\n"
+            "                    }\n"
+            "                }\n"
+            "                node = next;\n"
+            "            }\n"
+            "            elem = node;\n"
+            "        } else {\n"
+            "            if(seg.charAt(0) == \",\"){\n"
+            "                var inner = null;\n"
+            "                try{ inner = elem ? elem.contentDocument : null; }\n"
+            "                catch(e){ inner = null; }\n"
+            "                if(!inner){ elem = null; break; }\n"
+            "                doc = inner;\n"
+            "                seg = seg.substring(1);\n"
+            "            }\n"
+            "            elem = doc.evaluate(seg, doc, null, 7, null).snapshotItem(0);\n"
+            "        }\n"
+            "    }\n"
+            "    return { elem: elem, doc: doc };\n"
+            "};\n");
+    }
+
+    static inline QString CollectElementsJsCode(){
+        return QStringLiteral(
+            "var collectElements = function(root, selector){\n"
+            "    var found = [];\n"
+            "    var walk = function(r){\n"
+            "        var hit = r.querySelectorAll(selector);\n"
+            "        for(var i = 0; i < hit.length; i++) found.push(hit[i]);\n"
+            "        var all = r.querySelectorAll(\"*\");\n"
+            "        for(var k = 0; k < all.length; k++){\n"
+            "            if(all[k].shadowRoot) walk(all[k].shadowRoot);\n"
+            "        }\n"
+            "    };\n"
+            "    walk(root);\n"
+            "    return found;\n"
+            "};\n");
+    }
+
+    static inline QString SetFocusToElementJsCode(const QString &xpath){
+        QString quoted = EscapeJsStringLiteral(xpath);
+        return (QStringLiteral(
+            "(function(){\n")
+            + ResolveElementPathJsCode() +
+            QStringLiteral(
+            "    var elem = resolveElementPath(\"%1\").elem;\n"
             "    elem.focus();\n"
-            "})();").arg(quoted);
+            "})();")).arg(quoted);
     }
 
     static inline QString FireClickEventJsCode(const QString &xpath, const QPoint &pos){
         QString quoted = EscapeJsStringLiteral(xpath);
-        return QStringLiteral(
-            "(function(){\n"
-            "    var elem;\n"
-            "    var doc = document;\n"
-            "    var xpaths = \"%1\".split(\",\");\n"
-            "    for(var i = 0; i < xpaths.length; i++){\n"
-            "        elem = doc.evaluate(xpaths[i], doc, null, 7, null).snapshotItem(0);\n"
-            "        try{\n"
-            "            if(elem.contentDocument){\n"
-            "                doc = elem.contentDocument;\n"
-            "            }\n"
-            "        }\n"
-            "        catch(e){ break;}\n"
-            "    }\n"
+        return (QStringLiteral(
+            "(function(){\n")
+            + ResolveElementPathJsCode() +
+            QStringLiteral(
+            "    var found = resolveElementPath(\"%1\");\n"
             "    var event = new MouseEvent(\"click\", {\n"
             "        bubbles: true,\n"
             "        cancelable: true,\n"
-            "        view: doc.defaultView,\n"
+            "        composed: true,\n"
+            "        view: found.doc.defaultView,\n"
             "        clientX: %2,\n"
             "        clientY: %3,\n"
             "    });\n"
-            "    elem.dispatchEvent(event);\n"
-            "})();").arg(quoted, QString::number(pos.x()), QString::number(pos.y()));
+            "    found.elem.dispatchEvent(event);\n"
+            "})();")).arg(quoted, QString::number(pos.x()), QString::number(pos.y()));
     }
 
     static inline QString GetScrollValuePointJsCode(){
@@ -798,8 +936,10 @@ public:
         QString fix = QStringLiteral("1");
 #endif
 
-        return QStringLiteral(
-            "(function(){\n"
+        return (QStringLiteral(
+            "(function(){\n")
+            + CollectElementsJsCode() + ElementPathJsCode() +
+            QStringLiteral(
             "    var scrollX = document.documentElement.scrollLeft || document.body.scrollLeft;\n"
             "    var scrollY = document.documentElement.scrollTop || document.body.scrollTop;\n"
             "    var baseUrl = \"\";\n"
@@ -812,7 +952,7 @@ public:
             "            location.protocol + \"//\" + location.hostname + \n"
             "            (location.port && \":\" + location.port) + \"/\";\n"
             "    }\n"
-            "    var elems = Array.from(document.querySelectorAll(\"%1\"));\n"
+            "    var elems = collectElements(document, \"%1\");\n"
             "    var map = {};\n"
             "    for(var i = 0; i < elems.length; i++){\n"
             "        var data = {};\n"
@@ -935,41 +1075,15 @@ public:
             "        if(elems[i].tagName == \"FRAME\" || elems[i].tagName == \"IFRAME\"){\n"
             "            try{\n"
             "                var frameDocument = elems[i].contentDocument;\n"
-            "                elems = elems.concat(Array.from(frameDocument.querySelectorAll(\"%1\")));\n"
+            "                elems = elems.concat(collectElements(frameDocument, \"%1\"));\n"
             "            }\n"
             "            catch(e){}\n"
             "        }\n"
-            "        var xpath = \"\";\n"
-            "        var iter = elems[i];\n"
-            "        while(iter && iter.nodeType == 1){\n"
-            "            var str = iter.tagName;\n"
-            "            var siblings = iter.parentNode.childNodes;\n"
-            "            var synonym = [];\n"
-            "            for(var j = 0; j < siblings.length; j++){\n"
-            "                if(siblings[j].nodeType == 1 &&\n"
-            "                   siblings[j].tagName == iter.tagName){\n"
-            "                    synonym.push(siblings[j]);\n"
-            "                }\n"
-            "            }\n"
-            "            if(synonym.length > 1 && synonym.indexOf(iter) != -1){\n"
-            "                str += \"[\" + (synonym.indexOf(iter) + 1) + \"]\";\n"
-            "            }\n"
-            "            if(xpath && !xpath.startsWith(\",\")){\n"
-            "                xpath = str + \"/\" + xpath;\n"
-            "            } else {\n"
-            "                xpath = str + xpath;\n"
-            "            }\n"
-            "            iter = iter.parentNode;\n"
-            "            if(iter && iter.nodeType == 9 && iter !== document){\n"
-            "                xpath = \",//\" + xpath.toLowerCase();\n"
-            "                iter = iter.defaultView.frameElement;\n"
-            "            }\n"
-            "        }\n"
-            "        data.xPath = \"//\" + xpath.toLowerCase();\n"
+            "        data.xPath = elementPath(elems[i]);\n"
             "        map[i] = data;\n"
             "    }\n"
             "    return map;\n"
-            "})();").arg(quoted, ignoreOutOfView, fix);
+            "})();")).arg(quoted, ignoreOutOfView, fix);
     }
 
     static inline QString HitElementJsCode(QPoint pos){
@@ -980,8 +1094,10 @@ public:
 #else
         QString fix = QStringLiteral("1");
 #endif
-        return QStringLiteral(
-            "(function(){\n"
+        return (QStringLiteral(
+            "(function(){\n")
+            + ElementPathJsCode() +
+            QStringLiteral(
             "    var scrollX = document.documentElement.scrollLeft || document.body.scrollLeft;\n"
             "    var scrollY = document.documentElement.scrollTop || document.body.scrollTop;\n"
             "    var baseUrl = \"\";\n"
@@ -1129,35 +1245,9 @@ public:
             "           elem.type.toLowerCase() == \"button\"))) ? \"Click\" :\n"
             "         (elem.onmouseover) ? \"Hover\" :\n"
             "         \"None\";\n"
-            "    var xpath = \"\";\n"
-            "    var iter = elem;\n"
-            "    while(iter && iter.nodeType == 1){\n"
-            "        var str = iter.tagName;\n"
-            "        var siblings = iter.parentNode.childNodes;\n"
-            "        var synonym = [];\n"
-            "        for(var j = 0; j < siblings.length; j++){\n"
-            "            if(siblings[j].nodeType == 1 &&\n"
-            "               siblings[j].tagName == iter.tagName){\n"
-            "                synonym.push(siblings[j]);\n"
-            "            }\n"
-            "        }\n"
-            "        if(synonym.length > 1 && synonym.indexOf(iter) != -1){\n"
-            "            str += \"[\" + (synonym.indexOf(iter) + 1) + \"]\";\n"
-            "        }\n"
-            "        if(xpath && !xpath.startsWith(\",\")){\n"
-            "            xpath = str + \"/\" + xpath;\n"
-            "        } else {\n"
-            "            xpath = str + xpath;\n"
-            "        }\n"
-            "        iter = iter.parentNode;\n"
-            "        if(iter && iter.nodeType == 9 && iter !== document){\n"
-            "            xpath = \",//\" + xpath.toLowerCase();\n"
-            "            iter = iter.defaultView.frameElement;\n"
-            "        }\n"
-            "    }\n"
-            "    data.xPath = \"//\" + xpath.toLowerCase();\n"
+            "    data.xPath = elementPath(elem);\n"
             "    return data;\n"
-            "})();").arg(pos.x()).arg(pos.y()).arg(fix);
+            "})();")).arg(pos.x()).arg(pos.y()).arg(fix);
     }
 
     static inline QString HitLinkUrlJsCode(QPoint pos){
@@ -1259,23 +1349,14 @@ public:
     static inline QString SetTextValueJsCode(const QString &xpath, const QString &text){
         QString quotedXpath = EscapeJsStringLiteral(xpath);
         QString quotedText = EscapeJsStringLiteral(text);
-        return QStringLiteral(
-            "(function(){\n"
-            "    var elem;\n"
-            "    var doc = document;\n"
-            "    var xpaths = \"%1\".split(\",\");\n"
-            "    for(var i = 0; i < xpaths.length; i++){\n"
-            "        elem = doc.evaluate(xpaths[i], doc, null, 7, null).snapshotItem(0);\n"
-            "        try{\n"
-            "            if(elem.contentDocument){\n"
-            "                doc = elem.contentDocument;\n"
-            "            }\n"
-            "        }\n"
-            "        catch(e){ break;}\n"
-            "    }\n"
+        return (QStringLiteral(
+            "(function(){\n")
+            + ResolveElementPathJsCode() +
+            QStringLiteral(
+            "    var elem = resolveElementPath(\"%1\").elem;\n"
             "    elem.setAttribute(\"value\", \"%2\");\n"
             "    elem.focus();\n"
-            "})();").arg(quotedXpath, quotedText);
+            "})();")).arg(quotedXpath, quotedText);
     }
 
     static inline QString ExecCommandJsCode(const QString &command){
@@ -1456,17 +1537,35 @@ public:
         return QStringLiteral("{%1}").arg(entries.join(QStringLiteral(",")));
     }
 
+    static inline QString FocusedElementJsCode(){
+        return QStringLiteral(
+                "var focusedElement = function(e, d){\n"
+                "    var el = (e && e.composedPath) ? e.composedPath()[0] : null;\n"
+                "    if(!el || !el.tagName) el = d ? d.activeElement : null;\n"
+                "    while(el && el.shadowRoot && el.shadowRoot.activeElement)\n"
+                "        el = el.shadowRoot.activeElement;\n"
+                "    return el;\n"
+                "};\n");
+    }
+
     static inline QString EdgeInputBridgeJsCode(const QList<int> &plain,
                                                 const QList<int> &shifted){
         const QString plainSet = JsKeyCodeSet(plain);
         const QString shiftedSet = JsKeyCodeSet(shifted);
 
-        return QStringLiteral(
+        return (QStringLiteral(
                 "(function(){\n"
                 "    if(!window.chrome || !window.chrome.webview) return;\n"
+                "    var wv = window.chrome.webview;\n"
                 "    var d = document;\n"
+                "    var later = window.setTimeout;\n"
+                "    var tag = %1;\n")
+                + FocusedElementJsCode() +
+                QStringLiteral(
                 "    if(window === window.top){\n"
                 "    d.addEventListener(\"keydown\", function(e){\n"
+                "        // a key the page made up is not a key (D-355).\n"
+                "        if(!e.isTrusted) return;\n"
                 "        // the IME owns the keystroke while it is composing.\n"
                 "        if(e.isComposing || e.keyCode == 229) return;\n"
                 "        // a held key acts once.\n"
@@ -1477,8 +1576,17 @@ public:
                 "        var c = e.keyCode;\n"
                 "        var wanted = e.shiftKey ? %2 : %3;\n"
                 "        if(!wanted[c]) return;\n"
+                "        if(c == 27){\n"
+                "            later(function(){\n"
+                "                if(e.defaultPrevented) return;\n"
+                "                wv.postMessage({\n"
+                "                    v: 1, tag: tag, kind: \"key\",\n"
+                "                    code: 27, shift: false});\n"
+                "            }, 0);\n"
+                "            return;\n"
+                "        }\n"
                 "        // where the caret is decides what the key means.\n"
-                "        var el = d.activeElement;\n"
+                "        var el = focusedElement(e, d);\n"
                 "        if(el && (el.isContentEditable ||\n"
                 "                  el.tagName == \"INPUT\" ||\n"
                 "                  el.tagName == \"TEXTAREA\" ||\n"
@@ -1486,18 +1594,18 @@ public:
                 "                  el.tagName == \"BUTTON\" ||\n"
                 "                  el.tagName == \"FRAME\" ||\n"
                 "                  el.tagName == \"IFRAME\")) return;\n"
-                "        window.chrome.webview.postMessage({\n"
-                "            v: 1, tag: %1, kind: \"key\",\n"
+                "        wv.postMessage({\n"
+                "            v: 1, tag: tag, kind: \"key\",\n"
                 "            code: c, shift: !!e.shiftKey});\n"
                 "        e.preventDefault();\n"
                 "    }, false);\n"
                 "    }\n"
                 "    window.print = function(){\n"
-                "        window.chrome.webview.postMessage({\n"
-                "            v: 1, tag: %1, kind: \"print\"});\n"
+                "        wv.postMessage({\n"
+                "            v: 1, tag: tag, kind: \"print\"});\n"
                 "    };\n"
                 "})();\n"
-            ).arg(Application::EventKey()).arg(shiftedSet, plainSet);
+            )).arg(Application::EventKey()).arg(shiftedSet, plainSet);
     }
 
     static inline QString EdgeScrollReportJsCode(){
@@ -1505,6 +1613,7 @@ public:
                 "(function(){\n"
                 "    if(window !== window.top) return;\n"
                 "    if(!window.chrome || !window.chrome.webview) return;\n"
+                "    var wv = window.chrome.webview;\n"
                 "    var last = \"\";\n"
                 "    function report(){\n"
                 "        var de = document.documentElement;\n"
@@ -1519,7 +1628,7 @@ public:
                 "        var key = location.href+\"|\"+m.x+\",\"+m.y+\",\"+m.w+\",\"+m.h+\",\"+m.vw+\",\"+m.vh;\n"
                 "        if(key === last) return;\n"
                 "        last = key;\n"
-                "        window.chrome.webview.postMessage(m);\n"
+                "        wv.postMessage(m);\n"
                 "    }\n"
                 "    var pending = false;\n"
                 "    function schedule(){\n"
@@ -1536,14 +1645,159 @@ public:
             ).arg(Application::EventKey());
     }
 
+    static inline QString EdgeHideWebViewJsCode(){
+        return QStringLiteral(
+                "(function(){\n"
+                "    if(!window.chrome || !window.chrome.webview) return;\n"
+                "    try { delete window.chrome.webview; } catch(e){}\n"
+                "})();\n");
+    }
+
+    static inline QString ExtensionPopupSizeJsCode(){
+        return QStringLiteral(
+                "(function(){\n"
+                "    var root = document.documentElement;\n"
+                "    if(!root || !document.body) return null;\n"
+                "    var text = root.getAttribute(\"style\");\n"
+                "    var bar = Math.max(0, window.innerWidth - root.clientWidth);\n"
+                "    var width, height;\n"
+                "    try {\n"
+                "        root.style.setProperty(\"height\", \"auto\", \"important\");\n"
+                "        root.style.setProperty(\"width\", \"min-content\", \"important\");\n"
+                "        width = Math.min(Math.max(root.getBoundingClientRect().width, 25), 800);\n"
+                "        root.style.setProperty(\"width\", Math.ceil(width) + \"px\", \"important\");\n"
+                "        height = root.getBoundingClientRect().height;\n"
+                "    } finally {\n"
+                "        root.getAttribute(\"style\");\n"
+                "        if(text !== null) root.setAttribute(\"style\", text); else root.removeAttribute(\"style\");\n"
+                "    }\n"
+                "    if(height > 600){ height = 600; width = Math.min(width + bar, 800); }\n"
+                "    height = Math.max(height, 25);\n"
+                "    var ratio = window.devicePixelRatio || 1;\n"
+                "    return Math.ceil(width * ratio) + \",\" + Math.ceil(height * ratio);\n"
+                "})()"
+            );
+    }
+
+    static inline QString EdgeExtensionTabQueryJsCode(){
+        return QStringLiteral(
+                "(function(){\n"
+                "    if(window !== window.top) return;\n"
+                "    var chrome = window.chrome;\n"
+                "    if(!chrome || !chrome.tabs || typeof chrome.tabs.query !== \"function\" ||\n"
+                "       !chrome.webview || typeof chrome.webview.postMessage !== \"function\") return;\n"
+                "    var tabs = chrome.tabs;\n"
+                "    var original = tabs.query;\n"
+                "    var manifest = (chrome.runtime && typeof chrome.runtime.getManifest === \"function\")\n"
+                "                   ? chrome.runtime.getManifest() : null;\n"
+                "    var permissions = (manifest && Array.isArray(manifest.permissions)) ? manifest.permissions : [];\n"
+                "    var hosts = (manifest && Array.isArray(manifest.host_permissions)) ? manifest.host_permissions : [];\n"
+                "    var seesAll = permissions.indexOf(\"tabs\") >= 0;\n"
+                "    if(!seesAll && !hosts.length) return;\n"
+                "    var CURRENT = (chrome.windows && typeof chrome.windows.WINDOW_ID_CURRENT === \"number\")\n"
+                "                  ? chrome.windows.WINDOW_ID_CURRENT : -2;\n"
+                "    var mark = Math.random().toString(36).slice(2) + Date.now().toString(36);\n"
+                "    var sequence = 0;\n"
+                "    var pending = {};\n"
+                "    function settle(seq, id){\n"
+                "        var request = pending[seq];\n"
+                "        if(!request) return;\n"
+                "        delete pending[seq];\n"
+                "        clearTimeout(request.timer);\n"
+                "        request.take(id);\n"
+                "    }\n"
+                "    chrome.webview.addEventListener(\"message\", function(event){\n"
+                "        var data = event.data;\n"
+                "        if(!data || data.vanilla !== \"extension-tab\" || data.doc !== mark ||\n"
+                "           typeof data.seq !== \"number\") return;\n"
+                "        settle(data.seq, typeof data.id === \"number\" ? data.id : -1);\n"
+                "    });\n"
+                "    function ask(candidates, take){\n"
+                "        var seq = ++sequence;\n"
+                "        pending[seq] = { take: take, timer: setTimeout(function(){ settle(seq, -1);}, 2000) };\n"
+                "        chrome.webview.postMessage({ vanilla: \"extension-tab\", doc: mark, seq: seq, tabs: candidates });\n"
+                "    }\n"
+                "    function wantsCurrent(info){\n"
+                "        return !!info && typeof info === \"object\" &&\n"
+                "               (info.active === true || info.currentWindow === true ||\n"
+                "                info.lastFocusedWindow === true || info.windowId === CURRENT);\n"
+                "    }\n"
+                "    function rest(info, all){\n"
+                "        var out = {};\n"
+                "        Object.keys(info).forEach(function(key){\n"
+                "            var value = info[key];\n"
+                "            if(!all && (key === \"active\" || key === \"currentWindow\" || key === \"lastFocusedWindow\") && value === true) return;\n"
+                "            if(!all && key === \"windowId\" && value === CURRENT) return;\n"
+                "            out[key] = Array.isArray(value) ? value.slice() : value;\n"
+                "        });\n"
+                "        return out;\n"
+                "    }\n"
+                "    function resolve(info, done, fail){\n"
+                "        var conditions = rest(info, false);\n"
+                "        var asked = rest(info, true);\n"
+                "        var settled = false;\n"
+                "        function finish(take, value){\n"
+                "            if(settled) return;\n"
+                "            settled = true;\n"
+                "            take(value);\n"
+                "        }\n"
+                "        function call(query, take){\n"
+                "            try { original.call(tabs, query, take); }\n"
+                "            catch(e){ if(settled) throw e; finish(fail, e); }\n"
+                "        }\n"
+                "        call({}, function(list){\n"
+                "            var error = chrome.runtime.lastError;\n"
+                "            if(error){ finish(fail, error); return; }\n"
+                "            var candidates = [];\n"
+                "            (Array.isArray(list) ? list : []).forEach(function(tab){\n"
+                "                if(typeof tab.id !== \"number\" || typeof tab.url !== \"string\") return;\n"
+                "                candidates.push({ id: tab.id, url: tab.url });\n"
+                "            });\n"
+                "            ask(candidates, function(id){\n"
+                "                if(id < 0 && !seesAll){\n"
+                "                    call(asked, function(list){\n"
+                "                        var error = chrome.runtime.lastError;\n"
+                "                        if(error){ finish(fail, error); return; }\n"
+                "                        finish(done, Array.isArray(list) ? list : []);\n"
+                "                    });\n"
+                "                    return;\n"
+                "                }\n"
+                "                if(id < 0){ finish(done, []); return; }\n"
+                "                call(conditions, function(filtered){\n"
+                "                    var error = chrome.runtime.lastError;\n"
+                "                    if(error){ finish(fail, error); return; }\n"
+                "                    finish(done, (Array.isArray(filtered) ? filtered : []).filter(function(tab){ return tab.id === id;}));\n"
+                "                });\n"
+                "            });\n"
+                "        });\n"
+                "    }\n"
+                "    tabs.query = function(info, callback){\n"
+                "        if(!wantsCurrent(info)) return original.apply(tabs, arguments);\n"
+                "        if(typeof callback === \"function\"){\n"
+                "            resolve(info, callback, function(){ callback([]);});\n"
+                "            return;\n"
+                "        }\n"
+                "        return new Promise(function(fulfil, reject){\n"
+                "            resolve(info, fulfil, function(error){\n"
+                "                reject(new Error(error && error.message ? error.message : String(error)));\n"
+                "            });\n"
+                "        });\n"
+                "    };\n"
+                "})();\n"
+            );
+    }
+
     static inline QString InstallEventFilterJsCode(const QList<QEvent::Type> &types){
         QString inner;
+        if(types.contains(QEvent::KeyPress) || types.contains(QEvent::KeyRelease))
+            inner += QStringLiteral("\n") + FocusedElementJsCode();
         if(types.contains(QEvent::KeyPress))
             inner += QStringLiteral(
                 "\n"
                 "doc.addEventListener(\"keydown\", function(e){\n"
+                "    if(!e.isTrusted) return;\n"
                 "    var prevent = false;\n"
-                "    var elem = e.target.ownerDocument.activeElement;\n"
+                "    var elem = focusedElement(e, e.target.ownerDocument);\n"
                 "    if(e.keyCode == 9 || e.keyCode == 13){\n"
                 "        prevent = false;\n"
                 "        console.info(\"keyPressEvent%1,\" + \n"
@@ -1578,8 +1832,9 @@ public:
             inner += QStringLiteral(
                 "\n"
                 "doc.addEventListener(\"keyup\", function(e){\n"
+                "    if(!e.isTrusted) return;\n"
                 "    var prevent = false;\n"
-                "    var elem = e.target.ownerDocument.activeElement;\n"
+                "    var elem = focusedElement(e, e.target.ownerDocument);\n"
                 "    if(e.keyCode == 9 || e.keyCode == 13){\n"
                 "        prevent = false;\n"
                 "        console.info(\"keyReleaseEvent%1,\" + \n"
@@ -1616,6 +1871,7 @@ public:
             inner += QStringLiteral(
                 "\n"
                 "doc.addEventListener(\"mousemove\", function(e){\n"
+                "    if(!e.isTrusted) return;\n"
                 "    console.info(\"mouseMoveEvent%1,\" + \n"
                 "                 e.button.toString() + \",\" + \n"
                 "                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
@@ -1627,6 +1883,7 @@ public:
             inner += QStringLiteral(
                 "\n"
                 "doc.addEventListener(\"mousedown\", function(e){\n"
+                "    if(!e.isTrusted) return;\n"
                 "    console.info(\"mousePressEvent%1,\" + \n"
                 "                 e.button.toString() + \",\" + \n"
                 "                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
@@ -1638,6 +1895,7 @@ public:
             inner += QStringLiteral(
                 "\n"
                 "doc.addEventListener(\"mouseup\", function(e){\n"
+                "    if(!e.isTrusted) return;\n"
                 "    console.info(\"mouseReleaseEvent%1,\" + \n"
                 "                 e.button.toString() + \",\" + \n"
                 "                 e.clientX.toString() + \",\" + e.clientY.toString() + \",\" + \n"
@@ -1649,6 +1907,7 @@ public:
             inner += QStringLiteral(
                 "\n"
                 "doc.addEventListener(\"mousewheel\", function(e){\n"
+                "    if(!e.isTrusted) return;\n"
                 "    console.info(\"wheelEvent%1,\" + e.wheelDelta.toString());\n"
                 "}, false);\n");
 
@@ -1663,7 +1922,7 @@ public:
                 "        }\n"
                 "        catch(e){}\n"
                 "    }\n"
-                "})();").arg(inner.arg(Application::EventKey()));
+                "})();").arg(inner.arg(Application::EventToken()));
     }
 
 private:
@@ -1692,7 +1951,6 @@ private:
         return result;
     }
 
-
 protected:
     static QKeyEvent *m_UpKey;
     static QKeyEvent *m_DownKey;
@@ -1711,9 +1969,11 @@ protected:
     static bool m_DragStarted;
     static bool m_HadSelection;
     static bool m_Switching;
+    static int m_DraggingOut;
     static bool m_RightButtonConsumed;
     static QElapsedTimer m_OwnDropTimer;
     static QPoint m_GestureStartedPos;
+    static SpentButtons m_SpentButtons;
     static QPoint m_BeforeGesturePos;
     static Gesture m_Gesture;
     static GestureVector m_CurrentGestureVector;
@@ -1729,7 +1989,7 @@ protected:
     static QMap<QString, QString> m_ScrollGestureMap;
 
     static bool m_ActivateNewViewDefault;
-    static bool m_NavigationBySpaceKey;
+    static bool m_EnableSingleKeyShortcut;
     static bool m_DragToStartDownload;
     static bool m_EnableDestinationInferrer;
     static bool m_EnableDragGesture;
@@ -1738,6 +1998,7 @@ protected:
     static bool m_InspectorInMainWindow;
     static QString m_SuspendHiddenViews;
     bool m_EnableDragGestureLocal;
+    bool m_EnableRightGestureLocal;
 
     static const QList<float> m_ZoomFactorLevels;
 
@@ -1757,6 +2018,7 @@ protected:
     _View    *m_JsObject;
     int m_LoadProgress;
     bool m_IsLoading;
+    quint64 m_LoadSerial = 0;
     bool m_DisplayObscured;
     RenderProcessLedger m_RenderProcessLedger;
     QStringList m_SpecificSettings;

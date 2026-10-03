@@ -17,7 +17,6 @@
 #include <QNetworkRequest>
 #include <QLatin1Char>
 
-
 #include <functional>
 
 #include "graphicstableview.hpp"
@@ -41,7 +40,7 @@
 
 #include "lightnode.hpp"
 
-bool Gadgets::m_EnableMultiStroke = false;
+bool Gadgets::m_EnableMultiStroke = true;
 QString Gadgets::m_AccessKeyCustomSequence = QString();
 Gadgets::AccessKeyMode Gadgets::m_AccessKeyMode = BothHands;
 Gadgets::AccessKeyAction Gadgets::m_AccessKeyAction = OpenMenu;
@@ -106,7 +105,7 @@ void Gadgets::LoadSettings(){
         InputMap::LoadGestureMap(s, QStringLiteral("gadgets/thumblist/mouse"), m_MouseMap, InputMap::Hooks(IsValidAction));
     }
 
-    m_EnableMultiStroke = s.value(QStringLiteral("gadgets/accesskey/@EnableMultiStroke"), false).value<bool>();
+    m_EnableMultiStroke = s.value(QStringLiteral("gadgets/accesskey/@EnableMultiStroke"), true).value<bool>();
     m_AccessKeyCustomSequence =
         InputMap::UnescapeKeyName(s.value(QStringLiteral("gadgets/accesskey/@AccessKeyCustomSequence"), QString()).value<QString>().toUpper());
 
@@ -193,6 +192,11 @@ void Gadgets::SaveSettings(){
     else if(m_AccessKeySelectBlockMethod == MetaChar)    s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySelectBlockMethod"), QStringLiteral("MetaChar"));
 
     InputMap::SaveKeyMap(s, QStringLiteral("gadgets/accesskey/keymap"), m_AccessKeyKeyMap);
+}
+
+void Gadgets::ApplyNodeCollectionTypeSetting(){
+    m_ViewNodeCollectionType = DefaultNodeCollectionType();
+    if(isVisible() && IsDisplayingViewNode()) ThumbList_Refresh();
 }
 
 void Gadgets::Activate(DisplayType type){

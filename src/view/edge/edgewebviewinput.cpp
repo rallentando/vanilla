@@ -3,6 +3,7 @@
 #ifdef EDGEWEBVIEW
 
 #include "edgewebview_p.hpp"
+#include "edgehostwindow.hpp"
 
 #include <QAction>
 #include <QKeyEvent>
@@ -19,12 +20,15 @@
 #include <cstdio>
 
 #include "page.hpp"
+
+bool EdgeInspectorTraceOn();
 #include "webelement.hpp"
 #include "treebank.hpp"
 #include "application.hpp"
 #include "theme.hpp"
+#include "devicescale.hpp"
 #include "actionmapper.hpp"
-
+#include "extensionhost.hpp"
 
 bool EdgeWebView::CanCompleteAction(const QString &action){
     static QSet<QString> completable;
@@ -97,15 +101,21 @@ void EdgeWebView::RegisterInputBridge(){
         QKeyEvent plainEvent(QEvent::KeyPress, key, Qt::NoModifier);
         QKeyEvent shiftEvent(QEvent::KeyPress, key, Qt::ShiftModifier);
 
-        const QString plainAction = m_KeyMap.value(Application::MakeKeySequence(&plainEvent));
-        const QString shiftAction = m_KeyMap.value(Application::MakeKeySequence(&shiftEvent));
+        const QString plainAction = KeyAction(Application::MakeKeySequence(&plainEvent));
+        const QString shiftAction = KeyAction(Application::MakeKeySequence(&shiftEvent));
 
         if(!plainAction.isEmpty() && CanCompleteAction(plainAction)) plain << code;
         if(!shiftAction.isEmpty() && CanCompleteAction(shiftAction)) shifted << code;
     }
+    {
+        QKeyEvent escapeEvent(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        const QString escapeAction = KeyAction(Application::MakeKeySequence(&escapeEvent));
+        if(!escapeAction.isEmpty() && CanCompleteAction(escapeAction)) plain << 0x1B;
+    }
 
     const QString script =
-        EdgeInputBridgeJsCode(plain, shifted) + EdgeScrollReportJsCode();
+        EdgeInputBridgeJsCode(plain, shifted) + EdgeScrollReportJsCode()
+        + EdgeHideWebViewJsCode();
 
     const HRESULT hr = m_Impl->m_WebView->AddScriptToExecuteOnDocumentCreated
         (reinterpret_cast<PCWSTR>(script.utf16()),
@@ -139,7 +149,9 @@ void EdgeWebView::RegisterInputBridge(){
 void EdgeWebView::HandleWebMessage(const QString &json, const QString &source){
     if(!m_Impl->m_Document.IsDocumentActive()) return;
 
-    if(!EdgeMessage::IsFromDocument(source, m_Impl->m_Url)) return;
+    if(!EdgeMessage::IsFromDocument(source, m_Impl->m_Url) &&
+       !m_Impl->m_StringDocument.IsOwn(m_Impl->m_Url, QUrl(source)))
+        return;
 
     const EdgeMessage message = EdgeMessage::Parse(json, Application::EventKey());
 
@@ -175,7 +187,7 @@ void EdgeWebView::HandleWebMessage(const QString &json, const QString &source){
         break;
     }
     case EdgeMessage::Kind::Print:
-        QTimer::singleShot(0, this, [this](){ HandlePagePrintRequest();});
+        QTimer::singleShot(0, this, [this](){ if(!IsGoing()) HandlePagePrintRequest();});
         break;
     case EdgeMessage::Kind::PreventScrollRestoration:
         break;
@@ -201,6 +213,8 @@ bool EdgeWebView::HandleAcceleratorKey(int virtualKey, bool down, bool repeat){
     if((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000)
         modifiers |= Qt::MetaModifier;
 
+    if(virtualKey == VK_ESCAPE && modifiers == Qt::NoModifier) return false;
+
     QKeyEvent event(QEvent::KeyPress,
                     Application::JsKeyToQtKey(virtualKey),
                     modifiers);
@@ -208,7 +222,7 @@ bool EdgeWebView::HandleAcceleratorKey(int virtualKey, bool down, bool repeat){
     const QKeySequence sequence = Application::MakeKeySequence(&event);
     if(sequence.isEmpty()) return false;
 
-    const QString action = m_KeyMap.value(sequence);
+    const QString action = KeyAction(sequence);
     if(action.isEmpty() || !CanCompleteAction(action)) return false;
 
     if(IsMovementAction(action)) return false;
@@ -220,7 +234,32 @@ bool EdgeWebView::HandleAcceleratorKey(int virtualKey, bool down, bool repeat){
 }
 
 void EdgeWebView::DisplayContextMenuFor(const ContextTarget &target){
-    if(!page() || !m_TreeBank) return;
+    const int generation = target.m_Generation;
+    if(target.m_Superseded) return;
+    if(target.m_Sequence != m_Impl->m_MenuSequence) return;
+    if(generation && !(m_Impl->m_ContextMenu.HasOutstanding() &&
+                       m_Impl->m_ContextMenu.Generation() == generation))
+        return;
+    if(m_Impl->m_State.IsRetired()) return;
+    if(m_Impl->m_ContextMenu.IsFinishing() || m_Impl->m_MenuHandlerDepth > 0){
+        m_Impl->m_MenuRetry = target;
+        if(!m_Impl->m_MenuRetryArmed){
+            m_Impl->m_MenuRetryArmed = true;
+            QPointer<EdgeWebView> later(this);
+            QTimer::singleShot(16, this, [later](){
+                if(!later) return;
+                later->m_Impl->m_MenuRetryArmed = false;
+                const ContextTarget again = later->m_Impl->m_MenuRetry;
+                later->m_Impl->m_MenuRetry = ContextTarget();
+                later->DisplayContextMenuFor(again);
+            });
+        }
+        return;
+    }
+    if(!page() || !m_TreeBank){
+        if(generation) CompleteContextMenu(generation, -1);
+        return;
+    }
 
     std::shared_ptr<JsWebElement> element = std::make_shared<JsWebElement>();
     *element = JsWebElement(this, target.m_Position, target.m_LinkUrl,
@@ -228,10 +267,77 @@ void EdgeWebView::DisplayContextMenuFor(const ContextTarget &target){
 
     m_SelectedText = target.m_SelectedText;
 
+    std::shared_ptr<int> chosen = std::make_shared<int>(-1);
+    std::function<void(QMenu*)> extra;
+    QPointer<EdgeWebView> alive(this);
+    if(!target.m_ExtensionItems.isEmpty()){
+        const QList<EdgeMenuItem> items = target.m_ExtensionItems;
+        extra = [items, chosen, alive](QMenu *menu){
+            if(alive) alive->m_Impl->m_ContextMenuWidget = menu;
+            AddEdgeMenuItems(menu, items, [chosen](int id){ *chosen = id;});
+        };
+    }
+
     page()->DisplayContextMenu(m_TreeBank, element,
                                target.m_Position,
                                mapToGlobal(target.m_Position),
-                               static_cast<Page::MediaType>(target.m_MediaType));
+                               static_cast<Page::MediaType>(target.m_MediaType),
+                               extra);
+    if(!alive) return;
+
+    if(generation){
+        const int id = *chosen;
+        QTimer::singleShot(0, alive.data(), [alive, generation, id](){
+            if(alive) alive->CompleteContextMenu(generation, id);
+        });
+    }
+}
+
+void EdgeWebView::CompleteContextMenu(int generation, int commandId){
+    if(EdgeInspectorTraceOn()){
+        fprintf(stderr, "edge-menu: complete generation=%d command=%d held=%d outstanding=%d\n",
+                generation, commandId, m_Impl->m_ContextMenu.Generation(),
+                m_Impl->m_ContextMenu.HasOutstanding() ? 1 : 0);
+        fflush(stderr);
+    }
+    if(!m_Impl->m_ContextMenu.Complete(generation)) return;
+    FinishContextMenu(commandId);
+}
+
+void EdgeWebView::FinishContextMenu(int commandId){
+
+    ComPtr<ICoreWebView2ContextMenuRequestedEventArgs> args = m_Impl->m_ContextMenuArgs;
+    ComPtr<ICoreWebView2Deferral> deferral = m_Impl->m_ContextMenuDeferral;
+    m_Impl->m_ContextMenuArgs.Reset();
+    m_Impl->m_ContextMenuDeferral.Reset();
+    CountedComplete(args.Get(), deferral.Get(), commandId);
+}
+
+void EdgeWebView::CountedComplete(ICoreWebView2ContextMenuRequestedEventArgs *args,
+                                  ICoreWebView2Deferral *deferral, int commandId){
+    QPointer<EdgeWebView> alive(this);
+    m_Impl->m_ContextMenu.BeginFinish();
+    if(args && commandId >= 0){
+        ViewNode *vn = GetViewNode();
+        const qint64 tab = vn ? static_cast<qint64>(vn->GetSerial()) : 0;
+        const QPointer<ExtensionController> extensions = m_Impl->m_Extensions;
+        if(SUCCEEDED(args->put_SelectedCommandId(commandId))){
+            QString page;
+            ComPtr<ICoreWebView2ContextMenuTarget> target;
+            LPWSTR uri = nullptr;
+            if(SUCCEEDED(args->get_ContextMenuTarget(&target)) && target &&
+               SUCCEEDED(target->get_PageUri(&uri)) && uri){
+                page = QString::fromWCharArray(uri);
+                CoTaskMemFree(uri);
+            }
+            if(extensions) ExtensionHost::MenuPicked(extensions.data(), tab, page);
+        }
+    }
+    if(deferral) deferral->Complete();
+    if(!alive) return;
+    if(m_Impl->m_ContextMenu.EndFinish()){
+        Retire();
+    }
 }
 
 void EdgeWebView::setFocus(Qt::FocusReason reason){
@@ -241,9 +347,22 @@ void EdgeWebView::setFocus(Qt::FocusReason reason){
 }
 
 void EdgeWebView::TakeKeyboardBack(){
-    if(!m_Impl->m_HasFocus) return;
+    const bool inspector = InspectorHoldsKeyboard();
+    if(EdgeInspectorTraceOn()){
+        fprintf(stderr, "edge-keyboard: TakeKeyboardBack backend=%d inspector=%d\n",
+                m_Impl->m_HasFocus ? 1 : 0, inspector ? 1 : 0);
+        fflush(stderr);
+    }
+    if(!m_Impl->m_HasFocus && !inspector) return;
     if(QWidget *top = window())
         ::SetFocus(reinterpret_cast<HWND>(top->winId()));
+}
+
+bool EdgeWebView::InspectorHoldsKeyboard() const {
+    const HWND hwnd = reinterpret_cast<HWND>(m_Impl->m_InspectorWinId);
+    if(!hwnd || !::IsWindow(hwnd)) return false;
+    const HWND focus = ::GetFocus();
+    return focus && (focus == hwnd || ::IsChild(hwnd, focus));
 }
 
 bool EdgeWebView::eventFilter(QObject *watched, QEvent *ev){
@@ -255,24 +374,40 @@ bool EdgeWebView::eventFilter(QObject *watched, QEvent *ev){
                 reinterpret_cast<void*>(m_Impl->m_HostWindow->winId()));
         fflush(stderr);
     }
-    if(watched == m_Impl->m_HostWindow && ev && ev->type() == QEvent::Expose &&
-       !m_Impl->m_Controller &&
-       m_Impl->m_HostWindow->isExposed() && !m_Impl->m_HostWindow->size().isEmpty()){
-        const QRect rect(QPoint(), m_Impl->m_HostWindow->size());
-        const QColor color = m_Impl->m_BaseBackgroundColor.isValid()
-            ? m_Impl->m_BaseBackgroundColor : Theme::Color(Theme::PageBackground);
-        QBackingStore store(m_Impl->m_HostWindow);
-        store.resize(rect.size());
-        store.beginPaint(rect);
-        {
-            QPainter painter(store.paintDevice());
-            painter.fillRect(rect, color);
-        }
-        store.endPaint();
-        store.flush(rect);
-    }
+    if(watched == m_Impl->m_HostWindow && ev && ev->type() == QEvent::Expose)
+        PaintHostWindow();
+    if(watched == m_Impl->m_HostWindow && ev && ev->type() == QEvent::MouseButtonPress)
+        if(EdgeHostWindow *host = qobject_cast<EdgeHostWindow*>(m_Impl->m_HostWindow))
+            host->TakeQtFocus();
     if(m_Impl && m_Impl->m_Composition && ev && ForwardMouseEvent(ev)) return true;
     return QWidget::eventFilter(watched, ev);
+}
+
+void EdgeWebView::PaintHostWindow(){
+    if(!m_Impl->m_HostWindow || m_Impl->m_Controller ||
+       !m_Impl->m_HostWindow->isExposed() || m_Impl->m_HostWindow->size().isEmpty()) return;
+
+    const QRect rect(QPoint(), m_Impl->m_HostWindow->size());
+    const QColor color = m_Impl->m_BaseBackgroundColor.isValid()
+        ? m_Impl->m_BaseBackgroundColor : Theme::Color(Theme::PageBackground);
+    QBackingStore store(m_Impl->m_HostWindow);
+    store.resize(rect.size());
+    store.beginPaint(rect);
+    {
+        QPainter painter(store.paintDevice());
+        painter.fillRect(rect, color);
+        if(!m_Impl->m_FailureText.isEmpty()){
+            painter.setPen(color.lightness() < 128 ? Qt::white : Qt::black);
+            const int margin = DeviceScale::FromDpi(16, logicalDpiY());
+            const QRect box = rect.width() > margin * 2 ? rect.adjusted(margin, 0, -margin, 0) : rect;
+            const bool fits = painter.boundingRect(box, Qt::AlignCenter | Qt::TextWordWrap,
+                                                   m_Impl->m_FailureText).height() <= box.height();
+            painter.drawText(box, (fits ? Qt::AlignCenter : Qt::AlignHCenter | Qt::AlignTop) | Qt::TextWordWrap,
+                             m_Impl->m_FailureText);
+        }
+    }
+    store.endPaint();
+    store.flush(rect);
 }
 
 static EdgeInputLedger::Button LedgerButtonOf(Qt::MouseButton button){
@@ -416,7 +551,7 @@ bool EdgeWebView::ForwardMouseEvent(QEvent *ev){
         const QString action = m_MouseMap.value(name);
         const bool hostWants = !action.isEmpty() && CanCompleteAction(action);
 
-        if(!hostWants && m_EnableMouseGesture && me->button() == Qt::RightButton &&
+        if(!hostWants && m_EnableRightGestureLocal && me->button() == Qt::RightButton &&
            m_Impl->m_Input.Hold(button)){
             m_Impl->m_Clicks.Reset();
             GestureStarted(me->position().toPoint());

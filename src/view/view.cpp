@@ -7,8 +7,12 @@
 #include "view.hpp"
 #include "inputmap.hpp"
 #include "devicescale.hpp"
+#include "extensioncontroller.hpp"
+
+#include <functional>
 
 #include <QNetworkRequest>
+#include <QPointer>
 #include <QThread>
 #include <QTimer>
 #include <QGuiApplication>
@@ -25,7 +29,6 @@
 #  include <QWebEngineProfile>
 #endif
 
-
 #include "webengineview.hpp"
 #include "quickwebengineview.hpp"
 #include "webenginepage.hpp"
@@ -39,7 +42,6 @@
 #include "jsobject.hpp"
 #include "dialog.hpp"
 #include "directorypage.hpp"
-
 
 bool View::m_EnableDestinationInferrer = false;
 bool View::m_EnableDragGesture = false;
@@ -70,14 +72,16 @@ QString View::m_SelectedText = QString();
 QString View::m_SelectedHtml = QString();
 
 bool View::m_ActivateNewViewDefault = false;
-bool View::m_NavigationBySpaceKey = false;
+bool View::m_EnableSingleKeyShortcut = false;
 bool View::m_DragToStartDownload = false;
 bool View::m_DragStarted = false;
 bool View::m_HadSelection = false;
 bool View::m_Switching = false;
+int View::m_DraggingOut = 0;
 bool View::m_RightButtonConsumed = false;
 QElapsedTimer View::m_OwnDropTimer = QElapsedTimer();
 QPoint View::m_GestureStartedPos = QPoint();
+SpentButtons View::m_SpentButtons;
 QPoint View::m_BeforeGesturePos = QPoint();
 View::Gesture View::m_Gesture = QList<View::GestureVector>();
 View::GestureVector View::m_CurrentGestureVector = Gv_NoMove;
@@ -173,6 +177,7 @@ View::View(TreeBank *parent, QString id, QStringList set){
     m_ViewNode = 0;
     m_Page = 0;
     m_EnableDragGestureLocal = m_EnableDragGesture;
+    m_EnableRightGestureLocal = m_EnableMouseGesture;
     m_JsObject = new _View(this);
     m_LoadProgress = 0;
     m_IsLoading = false;
@@ -223,6 +228,18 @@ void View::DeleteLater(){
     m_TreeBank = 0;
     m_ViewNode = 0;
     if(base()) base()->deleteLater();
+}
+
+void View::Orphan(){
+    if(m_ViewNode && m_ViewNode->GetView() == this){
+        m_ViewNode->SetView(0);
+    }
+    m_TreeBank = 0;
+    m_ViewNode = 0;
+    if(QWidget *w = qobject_cast<QWidget*>(base())){
+        w->lower();
+        w->hide();
+    }
 }
 
 TreeBank *View::GetTreeBank() const {
@@ -886,6 +903,75 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
     }
 }
 
+void View::AddExtensionMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type){
+    ExtensionController *controller = Extensions();
+    if(!controller || controller->MenusMirrored()) return;
+
+    ExtensionUi::MenuContext context;
+    const QUrl linkUrl = elem ? elem->LinkUrl() : QUrl();
+    const QUrl mediaUrl = elem ? elem->ImageUrl() : QUrl();
+    if(!linkUrl.isEmpty()){
+        context.contexts.insert(QStringLiteral("link"));
+        context.linkUrl = linkUrl;
+    }
+    if(type == Page::MediaTypePlayable){
+        context.contexts.insert(QStringLiteral("video"));
+        context.srcUrl = mediaUrl;
+    } else if(type == Page::MediaTypeImage || !mediaUrl.isEmpty()){
+        context.contexts.insert(QStringLiteral("image"));
+        context.srcUrl = mediaUrl;
+    }
+    if(elem && elem->IsEditableElement()) context.contexts.insert(QStringLiteral("editable"));
+    if(!m_SelectedText.isEmpty()){
+        context.contexts.insert(QStringLiteral("selection"));
+        context.selectionText = m_SelectedText;
+    }
+    if(context.contexts.isEmpty()) context.contexts.insert(QStringLiteral("page"));
+    context.pageUrl = url();
+    const qint64 tab = GetViewNode() ? static_cast<qint64>(GetViewNode()->GetSerial()) : 0;
+
+    QPointer<ExtensionController> weak(controller);
+    std::function<void(QMenu*, const QString&, const QList<ExtensionUi::MenuShown>&)> add;
+    add = [&add, weak, context, tab](QMenu *into, const QString &id, const QList<ExtensionUi::MenuShown> &items){
+        foreach(const ExtensionUi::MenuShown &one, items){
+            if(one.item.type == QStringLiteral("separator")){ into->addSeparator(); continue; }
+            if(!one.children.isEmpty()){
+                QMenu *sub = into->addMenu(one.title);
+                sub->setEnabled(one.item.enabled);
+                add(sub, id, one.children);
+                continue;
+            }
+            QAction *action = into->addAction(one.title);
+            action->setEnabled(one.item.enabled);
+            if(one.item.type == QStringLiteral("checkbox") || one.item.type == QStringLiteral("radio")){
+                action->setCheckable(true);
+                action->setChecked(one.item.checked);
+            }
+            const QString itemId = one.item.id;
+            QObject::connect(action, &QAction::triggered, into, [weak, id, itemId, context, tab](){
+                if(weak) weak->ClickMenu(id, itemId, context, tab);
+            });
+        }
+    };
+
+    bool any = false;
+    foreach(const ExtensionRow &row, controller->Rows()){
+        if(!row.loaded || !row.enabled || !controller->HasPermission(row.manifest.id, QStringLiteral("contextMenus"))) continue;
+        const ExtensionUi::Menus *menus = controller->MenusOf(row.manifest.id);
+        if(!menus) continue;
+        const QList<ExtensionUi::MenuShown> shown = menus->Shown(context);
+        if(shown.isEmpty()) continue;
+        if(!any && !menu->isEmpty()) menu->addSeparator();
+        any = true;
+        if(shown.size() == 1 && shown.first().item.type != QStringLiteral("separator")){
+            add(menu, row.manifest.id, shown);
+        } else {
+            QMenu *sub = menu->addMenu(row.manifest.icon, row.manifest.name);
+            add(sub, row.manifest.id, shown);
+        }
+    }
+}
+
 void View::AddRegularMenu(QMenu *menu, SharedWebElement elem){
     QVariant data = QVariant::fromValue(elem);
 
@@ -936,7 +1022,7 @@ void View::LoadSettings(){
     m_EnableMouseGesture        = s.value(QStringLiteral("webview/@EnableMouseGesture"), true).value<bool>();
     m_EnableScrollGesture       = s.value(QStringLiteral("webview/@EnableScrollGesture"), false).value<bool>();
     m_ActivateNewViewDefault    = s.value(QStringLiteral("webview/@ActivateNewViewDefault"), true).value<bool>();
-    m_NavigationBySpaceKey      = s.value(QStringLiteral("webview/@NavigationBySpaceKey"), false).value<bool>();
+    m_EnableSingleKeyShortcut   = s.value(QStringLiteral("webview/@EnableSingleKeyShortcut"), false).value<bool>();
     m_DragToStartDownload       = s.value(QStringLiteral("webview/@DragToStartDownload"), false).value<bool>();
     m_InspectorInMainWindow     = s.value(QStringLiteral("webview/@InspectorInMainWindow"), true).value<bool>();
     m_SuspendHiddenViews        = s.value(QStringLiteral("webview/@SuspendHiddenViews"), QStringLiteral("Active")).value<QString>();
@@ -969,7 +1055,7 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::SpatialNavigationEnabled,          s.value(QStringLiteral("webview/preferences/SpatialNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::SpatialNavigationEnabled)         ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::XSSAuditingEnabled,                s.value(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                gwes->testAttribute(QWebEngineSettings::XSSAuditingEnabled)               ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled,          s.value(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          gwes->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled)         ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled,             s.value(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             gwes->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)            ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled,             s.value(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             true).value<bool>());
     gwes->setAttribute(QWebEngineSettings::ScreenCaptureEnabled,              s.value(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              gwes->testAttribute(QWebEngineSettings::ScreenCaptureEnabled)             ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::WebGLEnabled,                      s.value(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                     ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
@@ -981,7 +1067,7 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, s.value(QStringLiteral("webview/preferences/AllowGeolocationOnInsecureOrigins"), gwes->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins)).value<bool>());
     gwes->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, s.value(QStringLiteral("webview/preferences/AllowWindowActivationFromJavaScript"), gwes->testAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript)).value<bool>());
     gwes->setAttribute(QWebEngineSettings::ShowScrollBars,                    s.value(QStringLiteral("webview/preferences/ShowScrollBars"),                    gwes->testAttribute(QWebEngineSettings::ShowScrollBars)                   ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture,       s.value(QStringLiteral("webview/preferences/PlaybackRequiresUserGesture"),       gwes->testAttribute(QWebEngineSettings::PlaybackRequiresUserGesture)      ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture,       s.value(QStringLiteral("webview/preferences/PlaybackRequiresUserGesture"),       true).value<bool>());
     gwes->setAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly,        s.value(QStringLiteral("webview/preferences/WebRTCPublicInterfacesOnly"),        gwes->testAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly)       ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::JavascriptCanPaste,                s.value(QStringLiteral("webview/preferences/JavascriptCanPaste"),                gwes->testAttribute(QWebEngineSettings::JavascriptCanPaste)               ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::DnsPrefetchEnabled,                s.value(QStringLiteral("webview/preferences/DnsPrefetchEnabled"),                gwes->testAttribute(QWebEngineSettings::DnsPrefetchEnabled)               ).value<bool>());
@@ -1093,9 +1179,6 @@ void View::LoadSettings(){
         "SaveTextAsUrl")).value<QString>();
 
     m_RegularMenu = s.value(QStringLiteral("webview/menu/RegularMenu"), QStringLiteral(
-        "AddBookmarklet,"
-        "BookmarkletMenu,"
-        "Separator,"
         "NewViewNode,"
         "CloneViewNode,"
         "CopyUrl,"
@@ -1166,7 +1249,7 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/@EnableMouseGesture"),   m_EnableMouseGesture);
     s.setValue(QStringLiteral("webview/@EnableScrollGesture"),  m_EnableScrollGesture);
     s.setValue(QStringLiteral("webview/@ActivateNewViewDefault"), m_ActivateNewViewDefault);
-    s.setValue(QStringLiteral("webview/@NavigationBySpaceKey"), m_NavigationBySpaceKey);
+    s.setValue(QStringLiteral("webview/@EnableSingleKeyShortcut"), m_EnableSingleKeyShortcut);
     s.setValue(QStringLiteral("webview/@DragToStartDownload"),  m_DragToStartDownload);
     s.setValue(QStringLiteral("webview/@InspectorInMainWindow"), m_InspectorInMainWindow);
 
@@ -1279,13 +1362,13 @@ void View::SaveSettings(){
 }
 
 void View::CloseLater(WeakView weak, std::function<bool()> stillWanted){
-    QTimer::singleShot(0, [weak, stillWanted](){
+    TreeBank::WhenItMayChange([weak, stillWanted](){
         SharedView view = weak.lock();
         if(!view) return;
 
         ViewNode *vn = view->GetViewNode();
         TreeBank *tb = view->GetTreeBank();
-        if(!vn || !tb || vn->GetView() != view.get()) return;
+        if(!vn || !TreeBank::IsLive(tb) || vn->GetView() != view.get()) return;
 
         if(stillWanted && !stillWanted()) return;
 
@@ -1297,7 +1380,7 @@ void View::CloseLater(WeakView weak, std::function<bool()> stillWanted){
 
 void View::RebuildForOffTheRecord(){
     WeakView weak = GetThis();
-    QTimer::singleShot(0, [weak](){
+    TreeBank::WhenItMayChange([weak](){
         SharedView view = weak.lock();
         if(!view) return;
         ViewNode *vn = view->GetViewNode();
@@ -1375,6 +1458,11 @@ void View::ApplySpecificSettings(QStringList set){
 #endif
 
     m_EnableDragGestureLocal = m_EnableDragGesture;
+    m_EnableRightGestureLocal = m_EnableMouseGesture;
+
+    const int right = DirectoryPage::StateIn
+        (set, QStringLiteral("(?:[rR](?:ight)?[gG](?:esture)?|[mM](?:ouse)?[gG](?:esture)?)"));
+    if(right != -1) m_EnableRightGestureLocal = right == 1;
 
     const int drag = DirectoryPage::StateIn
         (set, QStringLiteral("[dD](?:rag)?[hH](?:ack)?|[dD](?:rag)?[gG](?:esture)?"));
@@ -1450,8 +1538,6 @@ void View::UpdateThumbnail(){
         int width_diff  = parentsize.width()  - SAVING_THUMBNAIL_SIZE.width();
         int height_diff = parentsize.height() - SAVING_THUMBNAIL_SIZE.height();
 
-
-
         if(width_diff == 0 && height_diff == 0){
             m_ViewNode->SetImage(
                 image.
@@ -1517,6 +1603,10 @@ QAction *View::Action(QString str, QVariant data){
     return action;
 }
 
+QString View::ExtensionStatus() const {
+    return QObject::tr("Extensions are unavailable in this view or private profile.");
+}
+
 void View::Load(){
     bool ok;
     QString str =
@@ -1542,6 +1632,16 @@ void View::Load(const QString &url){
 
 void View::Load(const QUrl &url){
     Load(QNetworkRequest(url));
+}
+
+void View::RestoreHistoryOrLoad(const QNetworkRequest &request){
+    QObject *target = base();
+    if(!target) return;
+    const WeakView weak = GetThis();
+    ExtensionNavigation::Of(target)->Request(Extensions(), [weak, request] {
+        if(const auto view = weak.lock())
+            if(!view->RestoreHistory()) view->Load(request);
+    });
 }
 
 void View::Load(const QNetworkRequest &req){
@@ -1758,11 +1858,27 @@ void View::GestureFinished(QPoint pos, Qt::MouseButton button){
     m_DragStarted = false;
 }
 
+QString View::KeyAction(const QKeySequence &seq){
+    if(!m_EnableSingleKeyShortcut && InputMap::IsSingleKey(seq)) return QString();
+    return m_KeyMap.value(seq);
+}
+
 bool View::TriggerKeyEvent(QKeyEvent *ev){
     QKeySequence seq = Application::MakeKeySequence(ev);
     if(seq.isEmpty()) return false;
-    QString str = m_KeyMap[seq];
-    if(str.isEmpty()) return false;
+    QString str = KeyAction(seq);
+    if(str.isEmpty()){
+        const Qt::KeyboardModifiers modifiers = ev->modifiers();
+        if(modifiers & Qt::MetaModifier) return false;
+        return RunExtensionCommand(seq, ExtensionUi::ChromeKeyOf(modifiers & Qt::ControlModifier, modifiers & Qt::AltModifier,
+                                                                  modifiers & Qt::ShiftModifier,
+#ifdef Q_OS_WIN
+                                                                  static_cast<int>(ev->nativeVirtualKey()),
+#else
+                                                                  0,
+#endif
+                                                                  ev->key()), ev->isAutoRepeat());
+    }
 
     if(!TriggerAction(str)){
         return false;
@@ -1773,8 +1889,15 @@ bool View::TriggerKeyEvent(QKeyEvent *ev){
 bool View::TriggerKeyEvent(QString str){
     QKeySequence seq = Application::MakeKeySequence(str);
     if(seq.isEmpty()) return false;
-    str = m_KeyMap[seq];
-    if(str.isEmpty()) return false;
+    str = m_KeyMap.value(seq);
+    if(str.isEmpty()){
+        if(seq.count() != 1) return false;
+        const QKeyCombination combination = seq[0];
+        const Qt::KeyboardModifiers modifiers = combination.keyboardModifiers();
+        if(modifiers & Qt::MetaModifier) return false;
+        return RunExtensionCommand(seq, ExtensionUi::ChromeKeyOf(modifiers & Qt::ControlModifier, modifiers & Qt::AltModifier,
+                                                                  modifiers & Qt::ShiftModifier, 0, combination.key()), false);
+    }
 
     if(!TriggerAction(str)){
         return false;
@@ -1782,14 +1905,42 @@ bool View::TriggerKeyEvent(QString str){
     return true;
 }
 
+bool View::RunExtensionCommand(const QKeySequence &seq, const QString &key, bool repeat){
+    ExtensionController *controller = Extensions();
+    const bool command = controller && controller->HasCommand(key);
+    if(ExtensionUi::RouteKey(false, TreeBank::TakesKey(seq), command) != ExtensionUi::KeyRoute::Extension) return false;
+    const qint64 serial = GetViewNode() ? static_cast<qint64>(GetViewNode()->GetSerial()) : 0;
+    if(!repeat) controller->RunCommand(key, serial);
+    return true;
+}
+
+void View::OnLoadStarted(){
+    m_LoadProgress = 0;
+    m_IsLoading = true;
+    static quint64 serial = 0;
+    m_LoadSerial = ++serial;
+    TreeBank::SomethingChanged();
+}
+
+void View::OnLoadFinished(bool ok){
+    m_LoadProgress = 100;
+    m_IsLoading = false;
+    if(ok) m_RenderProcessLedger.Clear();
+    TreeBank::SomethingChanged();
+}
+
 void View::ChangeNodeTitle(const QString &title){
-    if(m_ViewNode && !title.isEmpty())
+    if(m_ViewNode && !title.isEmpty()){
         m_ViewNode->SetTitle(title);
+        TreeBank::SomethingChanged();
+    }
 }
 
 void View::ChangeNodeUrl(const QUrl &url){
-    if(m_ViewNode && !url.isEmpty())
+    if(m_ViewNode && !url.isEmpty()){
         m_ViewNode->SetUrl(url);
+        TreeBank::SomethingChanged();
+    }
 }
 
 void View::SaveViewState(){
@@ -1805,42 +1956,45 @@ void View::RestoreViewState(){
     RestoreZoom();
 }
 
-float View::PrepareForZoomIn(){
+float View::StepZoom(float zoom, bool in, float min, float max){
     static const float eps = 0.01f;
-    ViewNode *vn = GetViewNode();
-    int len   = GetZoomFactorLevels().length();
-    int level = GetZoomFactorLevels().indexOf(vn->GetZoom());
-    float zoom;
+    const QList<float> &levels = GetZoomFactorLevels();
+    const int len = levels.length();
+    const float from = qBound(min, zoom, max);
+    const int level = levels.indexOf(from);
+    float to = from;
     if(level == -1){
-        for(int i = 0; i < len; i++){
-            zoom = GetZoomFactorLevels()[i];
-            if((zoom - vn->GetZoom()) > eps) break;
+        if(in){
+            for(int i = 0; i < len; i++){
+                to = levels[i];
+                if((to - from) > eps) break;
+            }
+        } else {
+            for(int i = len - 1; i >= 0; i--){
+                to = levels[i];
+                if((from - to) > eps) break;
+            }
         }
-    } else if(level < len - 1){
-        zoom = GetZoomFactorLevels()[level + 1];
-    } else {
-        zoom = GetZoomFactorLevels()[level];
+    } else if(in && level < len - 1){
+        to = levels[level + 1];
+    } else if(!in && level > 0){
+        to = levels[level - 1];
     }
+    return qBound(min, to, max);
+}
+
+float View::PrepareForZoomIn(){
+    ViewNode *vn = GetViewNode();
+    const float zoom = StepZoom(vn->GetZoom(), true, MinimumZoom(), MaximumZoom());
     vn->SetZoom(zoom);
+    TreeBank::SomethingChanged();
     return zoom;
 }
 
 float View::PrepareForZoomOut(){
-    static const float eps = 0.01f;
     ViewNode *vn = GetViewNode();
-    int len   = GetZoomFactorLevels().length();
-    int level = GetZoomFactorLevels().indexOf(vn->GetZoom());
-    float zoom;
-    if(level == -1){
-        for(int i = len - 1; i >= 0; i--){
-            zoom = GetZoomFactorLevels()[i];
-            if((vn->GetZoom() - zoom) > eps) break;
-        }
-    } else if(level > 0){
-        zoom = GetZoomFactorLevels()[level - 1];
-    } else {
-        zoom = GetZoomFactorLevels()[level];
-    }
+    const float zoom = StepZoom(vn->GetZoom(), false, MinimumZoom(), MaximumZoom());
     vn->SetZoom(zoom);
+    TreeBank::SomethingChanged();
     return zoom;
 }

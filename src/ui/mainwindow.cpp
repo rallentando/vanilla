@@ -16,6 +16,7 @@
 #include <QMenuBar>
 #include <QScreen>
 #include <QTimer>
+#include <QCursor>
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
@@ -26,7 +27,9 @@
 
 #include "view.hpp"
 #include "application.hpp"
+#include "saver.hpp"
 #include "treebank.hpp"
+#include "sidepanels.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "gadgets.hpp"
@@ -48,10 +51,12 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
     , m_TreeBarVisibleBeforeFullScreen(false)
     , m_ToolBarVisibleBeforeFullScreen(false)
     , m_InspectorDock(nullptr)
+    , m_SidePanels(nullptr)
     , m_InspectorDockClosed(false)
     , m_InspectorDockSuspended(false)
     , m_InspectorDockPlaced(false)
     , m_TitleBar(nullptr)
+    , m_TitleBarTimer(nullptr)
     , m_NorthWidget(nullptr)
     , m_SouthWidget(nullptr)
     , m_WestWidget(nullptr)
@@ -93,6 +98,7 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
 #endif
     addDockWidget(Qt::RightDockWidgetArea, m_InspectorDock);
     m_InspectorDock->hide();
+    m_SidePanels = new SidePanels(this);
 
     m_DialogFrame = Application::GetTemporaryDialogFrame();
     if(m_DialogFrame){
@@ -118,6 +124,10 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
         m_NorthEastWidget = new MainWindowNorthEastWidget (this);
         m_SouthWestWidget = new MainWindowSouthWestWidget (this);
         m_SouthEastWidget = new MainWindowSouthEastWidget (this);
+        m_TitleBarTimer = new QTimer(this);
+        m_TitleBarTimer->setObjectName(QStringLiteral("TitleBarRevealTimer"));
+        m_TitleBarTimer->setInterval(100);
+        connect(m_TitleBarTimer, &QTimer::timeout, this, &MainWindow::UpdateTitleBarVisibility);
         AdjustAllEdgeWidgets();
         connect(Application::GetInstance(), &Application::focusChanged,
                 this, &MainWindow::UpdateAllEdgeWidgets);
@@ -127,6 +137,7 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
     LoadSettings();
 
     m_InspectorDock->hide();
+    for(QDockWidget *dock : m_SidePanels->Docks()) dock->hide();
 
 #if defined(Q_OS_MAC)
     QSize s = size();
@@ -140,6 +151,7 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
 }
 
 MainWindow::~MainWindow(){
+    if(m_TitleBarTimer) m_TitleBarTimer->stop();
     SetInspectorPane(nullptr);
     m_DialogFrame->deleteLater();
     if(m_TitleBar){
@@ -168,6 +180,7 @@ void MainWindow::SaveSettings(){
     s.setValue(QStringLiteral("mainwindow/menubar%1").arg(m_Index), !IsMenuBarEmpty());
     s.setValue(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), saveState());
     s.setValue(QStringLiteral("mainwindow/inspectordock%1").arg(m_Index), m_InspectorDockPlaced);
+    s.setValue(QStringLiteral("mainwindow/sidepaneldock%1").arg(m_Index), m_SidePanels->Placed());
     s.setValue(QStringLiteral("mainwindow/treebar%1").arg(m_Index), m_TreeBar->GetStat());
     s.setValue(QStringLiteral("mainwindow/status%1").arg(m_Index), static_cast<int>(windowState()));
     if(!isFullScreen() && !isMaximized() && !isMinimized() && width() && height())
@@ -187,13 +200,14 @@ void MainWindow::LoadSettings(){
     QVariant treebar_data   = s.value(QStringLiteral("mainwindow/treebar%1").arg(m_Index), QVariant());
 
     m_InspectorDockPlaced = s.value(QStringLiteral("mainwindow/inspectordock%1").arg(m_Index), false).toBool();
+    m_SidePanels->SetPlaced(s.value(QStringLiteral("mainwindow/sidepaneldock%1").arg(m_Index), 0).toInt());
 
     if(tableview_data.isNull()){
 
         QStringList list = current
             ? current->GetTreeBank()->GetGadgets()->GetStat()
             : QStringList()
-            << QStringLiteral("%1").arg(static_cast<int>(GraphicsTableView::Flat))
+            << QStringLiteral("%1").arg(static_cast<int>(GraphicsTableView::DefaultNodeCollectionType()))
             << QStringLiteral("%1").arg(1.0);
 
         m_TreeBank->GetGadgets()->SetStat(list);
@@ -343,6 +357,7 @@ void MainWindow::RemoveSettings(){
     s.remove(QStringLiteral("mainwindow/treebar%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/status%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/inspectordock%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/sidepaneldock%1").arg(m_Index));
 }
 
 TreeBank *MainWindow::GetTreeBank() const {
@@ -455,6 +470,30 @@ void MainWindow::ClearMenuBar(){
     menuBar()->hide();
 }
 
+QMenu *MainWindow::createPopupMenu(){
+    QMenu *menu = new QMenu(this);
+    AddDisplayMenuActions(menu);
+    return menu;
+}
+
+void MainWindow::AddDisplayMenuActions(QMenu *menu){
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleMenuBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleTreeBar));
+    menu->addAction(m_TreeBank->Action(TreeBank::_ToggleToolBar));
+    QAction *inspector = menu->addAction(tr("Inspector"));
+    inspector->setCheckable(true);
+    inspector->setChecked(m_InspectorDock->isVisible());
+    connect(m_InspectorDock, &QDockWidget::visibilityChanged,
+            inspector, &QAction::setChecked);
+    connect(menu, &QMenu::aboutToShow, inspector, [this, inspector](){
+        inspector->setChecked(m_InspectorDock->isVisible());
+    });
+    connect(inspector, &QAction::triggered, this, [this](){
+        if(!m_InspectorDock->isVisible()) m_TreeBank->InspectElement();
+        else CloseInspectorPane();
+    });
+}
+
 void MainWindow::CreateMenuBar(){
     menuBar()->addMenu(m_TreeBank->ApplicationMenu(true));
     menuBar()->addMenu(m_TreeBank->NodeMenu());
@@ -532,20 +571,13 @@ void MainWindow::Unshade(){
 }
 
 void MainWindow::ShowWindowFrameWidgets(){
-    if(!m_TitleBar) return;
-    m_TitleBar        ->show();
-    m_NorthWidget     ->show();
-    m_SouthWidget     ->show();
-    m_WestWidget      ->show();
-    m_EastWidget      ->show();
-    m_NorthWestWidget ->show();
-    m_NorthEastWidget ->show();
-    m_SouthWestWidget ->show();
-    m_SouthEastWidget ->show();
+    AdjustAllEdgeWidgets();
 }
 
 void MainWindow::HideWindowFrameWidgets(){
     if(!m_TitleBar) return;
+    m_TitleBarTimer->stop();
+    m_TitleBarReveal.Reset();
     m_TitleBar        ->hide();
     m_NorthWidget     ->hide();
     m_SouthWidget     ->hide();
@@ -559,35 +591,17 @@ void MainWindow::HideWindowFrameWidgets(){
 
 void MainWindow::ShowAllEdgeWidgets(){
     m_DialogFrame->show();
-    if(!m_TitleBar || m_ContentFullScreen) return;
-    m_TitleBar        ->show();
-    m_NorthWidget     ->show();
-    m_SouthWidget     ->show();
-    m_WestWidget      ->show();
-    m_EastWidget      ->show();
-    m_NorthWestWidget ->show();
-    m_NorthEastWidget ->show();
-    m_SouthWestWidget ->show();
-    m_SouthEastWidget ->show();
+    ShowWindowFrameWidgets();
 }
 
 void MainWindow::HideAllEdgeWidgets(){
     m_DialogFrame->hide();
-    if(!m_TitleBar) return;
-    m_TitleBar        ->hide();
-    m_NorthWidget     ->hide();
-    m_SouthWidget     ->hide();
-    m_WestWidget      ->hide();
-    m_EastWidget      ->hide();
-    m_NorthWestWidget ->hide();
-    m_NorthEastWidget ->hide();
-    m_SouthWestWidget ->hide();
-    m_SouthEastWidget ->hide();
+    HideWindowFrameWidgets();
 }
 
 void MainWindow::RaiseAllEdgeWidgets(){
     m_DialogFrame->raise();
-    if(!m_TitleBar) return;
+    if(!m_TitleBar || !m_TitleBar->isVisible()) return;
     m_NorthWidget     ->raise();
     m_SouthWidget     ->raise();
     m_WestWidget      ->raise();
@@ -603,15 +617,22 @@ void MainWindow::RaiseAllEdgeWidgets(){
 
 void MainWindow::AdjustAllEdgeWidgets(){
     QRect rect = geometry();
-    m_DialogFrame->setGeometry(rect.left(), rect.top(), rect.width(), m_DialogFrame->height());
+    const int dialogWidth = rect.width() / MODELESS_DIALOG_WIDTH_DIVISOR;
+    m_DialogFrame->setGeometry(rect.left() + rect.width() - dialogWidth, rect.top(),
+                               dialogWidth, m_DialogFrame->height());
     m_DialogFrame->Adjust();
     if(!m_TitleBar) return;
+    const bool frameVisible = isVisible() && !isMinimized() &&
+                              !isFullScreen() && !m_ContentFullScreen;
+    const bool edgesVisible = frameVisible && !isMaximized();
+    for(QWidget *edge : QList<QWidget*>{m_NorthWidget, m_SouthWidget, m_WestWidget, m_EastWidget,
+                         m_NorthWestWidget, m_NorthEastWidget,
+                         m_SouthWestWidget, m_SouthEastWidget})
+        edge->setVisible(edgesVisible);
     if(IsShaded()) rect.setHeight(0);
     const int e = ScaleByDevice(EDGE_WIDGET_SIZE);
     const int t = ScaleByDevice(TITLE_BAR_HEIGHT);
     const int et = e+t;
-    int t0 = isMaximized() ? 0 : t;
-    m_TitleBar        ->setGeometry(QRect(rect.left(), rect.top()-t0, rect.width(), t));
     m_NorthWidget     ->setGeometry(QRect(rect.left()-1, rect.top()-et, rect.width()+2, e));
     m_SouthWidget     ->setGeometry(QRect(rect.left()-1, rect.bottom()+1, rect.width()+2, e));
     m_WestWidget      ->setGeometry(QRect(rect.left()-e, rect.top()-t-1, e, rect.height()+t+2));
@@ -622,6 +643,69 @@ void MainWindow::AdjustAllEdgeWidgets(){
     m_NorthEastWidget ->setGeometry(QRect(rect.right()+1-c, rect.top()-et, e+c, e+c));
     m_SouthWestWidget ->setGeometry(QRect(rect.left()-e, rect.bottom()+1-c, e+c, e+c));
     m_SouthEastWidget ->setGeometry(QRect(rect.right()+1-c, rect.bottom()+1-c, e+c, e+c));
+    if(frameVisible && isMaximized()){
+        if(!m_TitleBarTimer->isActive()) m_TitleBarTimer->start();
+    } else {
+        m_TitleBarTimer->stop();
+    }
+    UpdateTitleBarVisibility();
+}
+
+bool MainWindow::IsFrameActive() const {
+    QWidget *purged = nullptr;
+    if(TreeBank::PurgeView() && m_TreeBank){
+        if(SharedView view = m_TreeBank->GetCurrentView()){
+            if(view->visible())
+                purged = qobject_cast<QWidget*>(view->base());
+        }
+    }
+#if defined(Q_OS_WIN)
+    const HWND foreground = GetForegroundWindow();
+    if(!foreground) return false;
+    const HWND root = GetAncestor(foreground, GA_ROOTOWNER);
+    for(const QWidget *widget : {static_cast<const QWidget*>(this),
+                                 static_cast<const QWidget*>(m_TitleBar),
+                                 static_cast<const QWidget*>(purged)}){
+        if(widget && widget->internalWinId() &&
+           root == reinterpret_cast<HWND>(widget->window()->internalWinId()))
+            return true;
+    }
+    return false;
+#else
+    return isActiveWindow() || (m_TitleBar && m_TitleBar->isActiveWindow()) ||
+           (purged && purged->isActiveWindow());
+#endif
+}
+
+void MainWindow::UpdateTitleBarVisibility(){
+    if(!m_TitleBar) return;
+    ApplyTitleBarVisibility(QCursor::pos(), IsFrameActive(),
+                           QApplication::mouseButtons() != Qt::NoButton);
+}
+
+void MainWindow::ApplyTitleBarVisibility(const QPoint &cursor, bool active, bool buttonsDown){
+    if(!m_TitleBar) return;
+    const QRect rect = geometry();
+    const int t = m_TitleBar->ScaleByDevice(TITLE_BAR_HEIGHT);
+    const int titleWidth = isMaximized() ? qMin(rect.width(), m_TitleBar->CompactWidth()) : rect.width();
+    const int titleTop = isMaximized() ? rect.top() : rect.top()-t;
+    m_TitleBar->setGeometry(rect.right()+1-titleWidth, titleTop, titleWidth, t);
+    const bool frameVisible = isVisible() && !isMinimized() &&
+                              !isFullScreen() && !m_ContentFullScreen;
+    const bool enabled = frameVisible && isMaximized();
+    const QRect monitor = screen() ? screen()->geometry() : QRect();
+    const QRect strip = QRect(QPoint(geometry().left(), monitor.top()),
+                               QPoint(geometry().right(), m_TitleBar->geometry().bottom()))
+                            .intersected(monitor);
+    const bool revealed = m_TitleBarReveal.Update(enabled, active, strip, cursor, buttonsDown);
+    const bool visible = frameVisible && (!isMaximized() || revealed);
+    if(visible != m_TitleBar->isVisible()){
+        m_TitleBar->setVisible(visible);
+        if(visible){
+            RaiseAllEdgeWidgets();
+            m_TitleBar->update();
+        }
+    }
 }
 
 void MainWindow::UpdateAllEdgeWidgets(){
@@ -816,15 +900,50 @@ void MainWindow::SetShaded(bool on){
 
 void MainWindow::SetFocus(){
     raise();
-    activateWindow();
+    ActivateIfNeeded();
     if(GetTreeBank()->GetGadgets()->IsActive()){
         GetTreeBank()->GetView()->setFocus();
         GetTreeBank()->GetGadgets()->setFocus();
     } else if(SharedView view = GetTreeBank()->GetCurrentView()){
         if(TreeBank::PurgeView())
             if(QWidget *w = qobject_cast<QWidget*>(view->base()))
-                w->activateWindow();
+                ActivateWindowIfNeeded(w);
         view->setFocus();
+    }
+    RaiseAllEdgeWidgets();
+    UpdateAllEdgeWidgets();
+}
+
+void MainWindow::ActivateWindowIfNeeded(QWidget *window){
+#if defined(Q_OS_WIN)
+    ActivateWindowIfNeeded(window, reinterpret_cast<WId>(GetForegroundWindow()));
+#else
+    if(window) window->activateWindow();
+#endif
+}
+
+void MainWindow::ActivateWindowIfNeeded(QWidget *window, WId front){
+    if(!window) return;
+    const WId id = window->window()->internalWinId();
+    if(id && id == front) return;
+    window->activateWindow();
+}
+
+void MainWindow::ActivateIfNeeded(){
+    ActivateWindowIfNeeded(this);
+}
+
+void MainWindow::changeEvent(QEvent *ev){
+    QMainWindow::changeEvent(ev);
+    if(ev->type() == QEvent::WindowStateChange){
+        AdjustAllEdgeWidgets();
+        RaiseAllEdgeWidgets();
+    } else if(ev->type() == QEvent::ActivationChange){
+        UpdateTitleBarVisibility();
+        if(isActiveWindow()){
+            RaiseAllEdgeWidgets();
+            UpdateAllEdgeWidgets();
+        }
     }
 }
 
@@ -833,16 +952,19 @@ void MainWindow::paintEvent(QPaintEvent *ev){
 }
 
 void MainWindow::closeEvent(QCloseEvent *ev){
+    if(m_SidePanels) m_SidePanels->ShutdownPages();
 
     if(Application::GetMainWindows().count() == 1){
         QMainWindow::closeEvent(ev);
         Application::Quit();
     } else {
+        TreeBank::ChangeScope changing;
         Application::RemoveWindow(this);
 
         foreach(QObject *child, m_TreeBank->children()){
             if(View *view = dynamic_cast<View*>(child)){
                 view->setParent(Application::GetCurrentWindow()->GetTreeBank());
+                view->SetTreeBank(Application::GetCurrentWindow()->GetTreeBank());
                 view->lower();
                 view->show();
                 view->hide();
@@ -856,15 +978,14 @@ void MainWindow::closeEvent(QCloseEvent *ev){
         foreach(QObject *child, windowHandle()->children()){
             if(View *view = dynamic_cast<View*>(child)){
                 view->setParent(Application::GetCurrentWindow()->GetTreeBank());
+                view->SetTreeBank(Application::GetCurrentWindow()->GetTreeBank());
                 view->hide();
             }
         }
 
         QMainWindow::closeEvent(ev);
         RemoveSettings();
-        TreeBank::SaveSettings();
-        Application::SaveGlobalSettings();
-        Application::SaveSettingsFile();
+        Application::GetAutoSaver()->SaveAllAsync();
         deleteLater();
     }
     ev->setAccepted(true);
@@ -981,6 +1102,7 @@ TitleBar::TitleBar(MainWindow *mainwindow)
     , m_MainWindow(mainwindow)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+    setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_TranslucentBackground);
     setMouseTracking(true);
 
@@ -1010,26 +1132,20 @@ void TitleBar::paintEvent(QPaintEvent *ev){
 
     bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
 
-    if(m_MainWindow->isMaximized()){
-        painter.setPen(Theme::Pen(Theme::TitleBarBorder));
-        painter.setBrush(Theme::Brush(Theme::TitleBarBackground, isCurrent ? 200 : 128));
-        painter.drawRect(QRect(width()-ScaleByDevice(32)-ScaleByDevice(28)*4 - ScaleByDevice(6), 0,
-                               ScaleByDevice(32)+ScaleByDevice(28)*4 + ScaleByDevice(5), height()-1));
-    } else {
-        painter.setPen(Theme::Pen(Theme::TitleBarBorder));
-        painter.setBrush(Theme::Brush(Theme::TitleBarBackground, isCurrent ? 200 : 128));
-        painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
+    painter.setPen(Theme::Pen(Theme::TitleBarBorder));
+    painter.setBrush(Theme::Brush(Theme::TitleBarBackground, isCurrent ? 200 : 128));
+    painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
 
+    if(!m_MainWindow->isMaximized()){
         painter.setPen(Theme::Pen(Theme::TitleBarButton));
         painter.setBrush(Theme::Brush(Theme::TitleBarButton));
         painter.drawRect(MenuAreaRect());
-
         painter.setPen(Qt::NoPen);
         painter.setBrush(Theme::Brush(Theme::TitleBarButtonHovered));
         if(m_HoveredButton == MenuButton) painter.drawRect(MenuAreaRect1());
     }
 
-    if(width() > ButtonAreaWidth(4)){
+    if(m_MainWindow->isMaximized() || width() > ButtonAreaWidth(4)){
         painter.setPen(Theme::Pen(Theme::TitleBarButton));
         painter.setBrush(Theme::Brush(Theme::TitleBarButton));
         painter.drawRect(ViewTreeAreaRect());
@@ -1042,19 +1158,19 @@ void TitleBar::paintEvent(QPaintEvent *ev){
     painter.setPen(Qt::NoPen);
     painter.setBrush(Theme::Brush(Theme::TitleBarButtonHovered));
 
-    if(width() > ButtonAreaWidth(3)){
+    if(m_MainWindow->isMaximized() || width() > ButtonAreaWidth(3)){
         if(m_MainWindow->IsShaded())
             painter.drawPixmap(ShadeAreaRect(), m_Unshade, QRect(QPoint(), m_Unshade.size()));
         else painter.drawPixmap(ShadeAreaRect(), m_Shade, QRect(QPoint(), m_Shade.size()));
         if(m_HoveredButton == ShadeButton) painter.drawRect(ShadeAreaRect1());
     }
-    if(width() > ButtonAreaWidth(2)){
+    if(m_MainWindow->isMaximized() || width() > ButtonAreaWidth(2)){
         if(m_MainWindow->isMinimized())
             painter.drawPixmap(MinimizeAreaRect(), m_Normal, QRect(QPoint(), m_Normal.size()));
         else painter.drawPixmap(MinimizeAreaRect(), m_Minimize, QRect(QPoint(), m_Minimize.size()));
         if(m_HoveredButton == MinimizeButton) painter.drawRect(MinimizeAreaRect1());
     }
-    if(width() > ButtonAreaWidth(1)){
+    if(m_MainWindow->isMaximized() || width() > ButtonAreaWidth(1)){
         if(m_MainWindow->isMaximized())
             painter.drawPixmap(MaximizeAreaRect(), m_Normal, QRect(QPoint(), m_Normal.size()));
         else painter.drawPixmap(MaximizeAreaRect(), m_Maximize, QRect(QPoint(), m_Maximize.size()));
@@ -1068,9 +1184,9 @@ void TitleBar::paintEvent(QPaintEvent *ev){
         painter.setFont(TitleBarTitleFont());
         painter.setPen(Theme::Pen(Theme::TitleBarText));
         painter.setBrush(Qt::NoBrush);
-        painter.drawText(QRect(QPoint(ScaleByDevice(22),ScaleByDevice(2)),
-                               size()-QSize(ScaleByDevice(171),1)),
-                         Qt::TextSingleLine,
+        painter.drawText(QRect(ScaleByDevice(22), 0,
+                               qMax(0, ViewTreeAreaRect1().left()-ScaleByDevice(26)), height()),
+                         Qt::TextSingleLine | Qt::AlignVCenter,
                          m_MainWindow->windowTitle());
     }
     ev->setAccepted(true);
@@ -1170,27 +1286,27 @@ void TitleBar::leaveEvent(QEvent *ev){
 }
 
 QRect TitleBar::MenuAreaRect() const {
-    return QRect(ScaleByDevice(5),ScaleByDevice(5),ScaleByDevice(10),ScaleByDevice(10));
+    return QRect(ScaleByDevice(5),(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
 }
 
 QRect TitleBar::ViewTreeAreaRect() const {
-    return QRect(width()-ScaleByDevice(29)-ScaleByDevice(28)*4,ScaleByDevice(5),ScaleByDevice(10),ScaleByDevice(10));
+    return QRect(width()-ScaleByDevice(29)-ScaleByDevice(28)*4,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
 }
 
 QRect TitleBar::ShadeAreaRect() const {
-    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*3,ScaleByDevice(6),ScaleByDevice(10),ScaleByDevice(10));
+    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*3,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
 }
 
 QRect TitleBar::MinimizeAreaRect() const {
-    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*2,ScaleByDevice(6),ScaleByDevice(10),ScaleByDevice(10));
+    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*2,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
 }
 
 QRect TitleBar::MaximizeAreaRect() const {
-    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*1,ScaleByDevice(6),ScaleByDevice(10),ScaleByDevice(10));
+    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*1,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
 }
 
 QRect TitleBar::CloseAreaRect() const {
-    return QRect(width()-ScaleByDevice(27)-ScaleByDevice(28)*0,ScaleByDevice(6),ScaleByDevice(10),ScaleByDevice(10));
+    return QRect(width()-ScaleByDevice(27)-ScaleByDevice(28)*0,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
 }
 
 MainWindowEdgeWidget::MainWindowEdgeWidget(MainWindow *mainwindow)

@@ -89,6 +89,11 @@ void NodePreview::Request(const QImage &image, const QString &title,
     }
 }
 
+bool NodePreview::IsAbout(const QString &title, const QRect &itemRect) const {
+    return m_ItemRect == itemRect && m_Title == title
+        && (isVisible() || m_Timer.isActive());
+}
+
 void NodePreview::Dismiss(){
     m_Timer.stop();
     hide();

@@ -8,7 +8,6 @@
 #include <functional>
 
 class ViewNode;
-class QDomElement;
 class QTextStream;
 
 namespace TreeSerializer {
@@ -29,11 +28,8 @@ public:
 
 bool ReadJsonFile(const QString &path, ViewNode *root, const Hooks &hooks = Hooks());
 
-bool ReadLegacyXmlFile(const QString &path, ViewNode *root, const Hooks &hooks = Hooks());
-
 bool WriteJsonFile(const QString &path, ViewNode *root, const Hooks &hooks = Hooks());
 
-void ReadLegacyNode(const QDomElement &elem, ViewNode *parent, const Hooks &hooks = Hooks());
 void WriteNode(ViewNode *nd, QTextStream &out, int depth, const Hooks &hooks = Hooks());
 QString JsonEscape(QString str);
 

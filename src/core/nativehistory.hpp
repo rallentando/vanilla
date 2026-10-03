@@ -7,6 +7,26 @@
 #include <QUrl>
 #include <QByteArray>
 
+class QuickNativeLoadTail {
+public:
+    QuickNativeLoadTail() : m_Owed(false) {}
+
+    void Started(){ m_Owed = true;}
+
+    bool Take(bool listIsWaiting = false){
+        const bool owed = m_Owed;
+        m_Owed = false;
+        return owed || listIsWaiting;
+    }
+
+    bool Owed() const { return m_Owed;}
+
+    void Forget(){ m_Owed = false;}
+
+private:
+    bool m_Owed;
+};
+
 class NativeHistory {
 
 public:

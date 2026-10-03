@@ -66,11 +66,6 @@ private:
 
     static SettingsIO::Hooks Hooks(QStringList *restored = nullptr){
         SettingsIO::Hooks hooks;
-        hooks.LegacyNameOf = [](QString name){
-            return name.endsWith(QStringLiteral(".json"))
-                ? name.left(name.length()-5) + QStringLiteral(".xml")
-                : QString();
-        };
         hooks.BackUpFiltersOf = [](){
             return QStringList() << QStringLiteral("*config.json") << QStringLiteral("*config.xml");
         };
@@ -205,85 +200,7 @@ private slots:
 
         QVERIFY(!SettingsIO::ReadJson("{\"unterminated\": ", map));
         QVERIFY(!SettingsIO::ReadJson("[1,2,3]", map));
-        QVERIFY(!SettingsIO::ReadLegacyXml("this is not xml", map));
-
         QCOMPARE(map.keys(), QStringList() << QStringLiteral("already/here"));
-    }
-
-    void readsTheLegacyXml(){
-        const QByteArray xml =
-            "<?xml version=\"1.0\"?>\n"
-            "<body>\n"
-            "  <application>\n"
-            "    <setting id=\"@ColorScheme\">dark</setting>\n"
-            "    <setting id=\"@EnableAutoSave\">@bool/true</setting>\n"
-            "    <setting id=\"@AutoSaveInterval\">@int/300000</setting>\n"
-            "    <setting id=\"@Zoom\">@double/1.25</setting>\n"
-            "    <setting id=\"@Home\">@url/https://example.com/</setting>\n"
-            "  </application>\n"
-            "  <mainwindow>\n"
-            "    <setting id=\"geometry0\">@rect/10/20/800/600</setting>\n"
-            "    <setting id=\"@Ink\">@color/1/2/3/4</setting>\n"
-            "  </mainwindow>\n"
-            "</body>\n";
-
-        SettingsIO::Map map;
-        QVERIFY(SettingsIO::ReadLegacyXml(xml, map));
-
-        QCOMPARE(map.value(QStringLiteral("application/@ColorScheme")).toString(), QStringLiteral("dark"));
-        QCOMPARE(map.value(QStringLiteral("application/@EnableAutoSave")).toBool(), true);
-        QCOMPARE(map.value(QStringLiteral("application/@AutoSaveInterval")).toInt(), 300000);
-        QCOMPARE(map.value(QStringLiteral("application/@Zoom")).toDouble(), 1.25);
-        QCOMPARE(map.value(QStringLiteral("application/@Home")).toUrl(), QUrl(QStringLiteral("https://example.com/")));
-        QCOMPARE(map.value(QStringLiteral("mainwindow/geometry0")).value<QRect>(), QRect(10, 20, 800, 600));
-        QCOMPARE(map.value(QStringLiteral("mainwindow/@Ink")).value<QColor>(), QColor(1, 2, 3, 4));
-    }
-
-    void atruncatedLegacyValueIsReadAsZeroesRatherThanAcrash(){
-        const QByteArray xml =
-            "<?xml version=\"1.0\"?>\n"
-            "<body><application>\n"
-            "  <setting id=\"@Rect\">@rect/10/20</setting>\n"
-            "  <setting id=\"@Color\">@color/1</setting>\n"
-            "  <setting id=\"@Size\">@size</setting>\n"
-            "  <setting id=\"@Point\">@point/5</setting>\n"
-            "  <setting id=\"@Int\">@int</setting>\n"
-            "  <setting id=\"@Bool\">@bool</setting>\n"
-            "</application></body>\n";
-
-        SettingsIO::Map map;
-        QVERIFY(SettingsIO::ReadLegacyXml(xml, map));
-
-        QCOMPARE(map.value(QStringLiteral("application/@Rect")).value<QRect>(),   QRect(10, 20, 0, 0));
-        QCOMPARE(map.value(QStringLiteral("application/@Color")).value<QColor>(), QColor(1, 0, 0, 0));
-        QCOMPARE(map.value(QStringLiteral("application/@Size")).value<QSize>(),   QSize(0, 0));
-        QCOMPARE(map.value(QStringLiteral("application/@Point")).value<QPoint>(), QPoint(5, 0));
-        QCOMPARE(map.value(QStringLiteral("application/@Int")).toInt(),           0);
-        QCOMPARE(map.value(QStringLiteral("application/@Bool")).toBool(),         false);
-    }
-
-    void readsTheLegacyStringList(){
-        const QByteArray xml =
-            "<?xml version=\"1.0\"?>\n"
-            "<body><application>\n"
-            "  <setting id=\"@Two\">@stringlist/a,b</setting>\n"
-            "  <setting id=\"@Empty\">@stringlist/</setting>\n"
-            "  <setting id=\"@WithSlash\">@stringlist/http://a,http://b</setting>\n"
-            "</application></body>\n";
-
-        SettingsIO::Map map;
-        QVERIFY(SettingsIO::ReadLegacyXml(xml, map));
-        QCOMPARE(map.value(QStringLiteral("application/@Two")).toStringList(),
-                 QStringList() << QStringLiteral("a") << QStringLiteral("b"));
-        QCOMPARE(map.value(QStringLiteral("application/@Empty")).toStringList(), QStringList());
-        QCOMPARE(map.value(QStringLiteral("application/@WithSlash")).toStringList(),
-                 QStringList() << QStringLiteral("http://a") << QStringLiteral("http://b"));
-    }
-
-    void readsTheLegacyNewlinePlaceholder(){
-        SettingsIO::Map map;
-        QVERIFY(SettingsIO::ReadLegacyXml("<body><g><setting id=\"k\">one\\0\\0\\0two</setting></g></body>", map));
-        QCOMPARE(map.value(QStringLiteral("g/k")).toString(), QStringLiteral("one\ntwo"));
     }
 
     void saveThenLoadIsTheSameMap(){
@@ -325,9 +242,11 @@ private slots:
     void loadRecoversTheGenerationLeftAsideByAnInterruptedSwap(){
         WriteAll(Path(QStringLiteral("config.json.prev")), QStringLiteral("{\"a/k\": \"kept\"}"));
 
+        QStringList restored;
         SettingsIO::Map map;
-        SettingsIO::Load(Dir(), QStringLiteral("config.json"), map, Hooks());
+        SettingsIO::Load(Dir(), QStringLiteral("config.json"), map, Hooks(&restored));
         QCOMPARE(map.value(QStringLiteral("a/k")).toString(), QStringLiteral("kept"));
+        QCOMPARE(restored, QStringList() << QStringLiteral("config.json.prev"));
     }
 
     void thefileItselfWinsOverAleftoverPrev(){
@@ -339,13 +258,15 @@ private slots:
         QCOMPARE(map.value(QStringLiteral("a/k")).toString(), QStringLiteral("current"));
     }
 
-    void loadFallsBackToTheLegacyXml(){
+    void loadIgnoresTheLegacyXml(){
         WriteAll(Path(QStringLiteral("config.xml")),
                  QStringLiteral("<body><application><setting id=\"@ColorScheme\">light</setting></application></body>"));
 
+        QStringList restored;
         SettingsIO::Map map;
-        SettingsIO::Load(Dir(), QStringLiteral("config.json"), map, Hooks());
-        QCOMPARE(map.value(QStringLiteral("application/@ColorScheme")).toString(), QStringLiteral("light"));
+        SettingsIO::Load(Dir(), QStringLiteral("config.json"), map, Hooks(&restored));
+        QVERIFY(map.isEmpty());
+        QVERIFY(restored.isEmpty());
     }
 
     void loadFallsBackToTheNewestBackupAndSaysSo(){
@@ -361,16 +282,20 @@ private slots:
         QCOMPARE(restored, QStringList() << QStringLiteral("20260201000000config.json"));
     }
 
-    void loadCanFallBackToAlegacyBackup(){
+    void loadSkipsLegacyAndBrokenBackupsBeforeTheNextJson(){
         WriteAll(Path(QStringLiteral("config.json")), QStringLiteral("{ truncated"));
-        WriteAll(Path(QStringLiteral("20260101000000config.xml")),
-                 QStringLiteral("<body><a><setting id=\"k\">from xml</setting></a></body>"));
+        WriteAll(Path(QStringLiteral("20260401000000config.xml")),
+                 QStringLiteral("{\"a/k\": \"wrong extension\"}"));
+        WriteAll(Path(QStringLiteral("20260301000000config.json")), QStringLiteral("{ broken"));
+        WriteAll(Path(QStringLiteral("20260201000000config.xml")),
+                 QStringLiteral("{\"a/k\": \"also wrong\"}"));
+        WriteAll(Path(QStringLiteral("20260101000000config.json")), QStringLiteral("{\"a/k\": \"json\"}"));
 
         QStringList restored;
         SettingsIO::Map map;
         SettingsIO::Load(Dir(), QStringLiteral("config.json"), map, Hooks(&restored));
-        QCOMPARE(map.value(QStringLiteral("a/k")).toString(), QStringLiteral("from xml"));
-        QCOMPARE(restored.length(), 1);
+        QCOMPARE(map.value(QStringLiteral("a/k")).toString(), QStringLiteral("json"));
+        QCOMPARE(restored, QStringList() << QStringLiteral("20260101000000config.json"));
     }
 
     void loadOnAnEmptyDirectoryIsSilent(){

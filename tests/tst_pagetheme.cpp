@@ -86,6 +86,9 @@ private slots:
     void neitherStyleSheetDecidesTheScheme();
     void neitherStyleSheetDecidesTheScheme_data();
 
+    void aPickerSentBelowFirstCanStillFlip();
+    void aPickerSentBelowFirstCanStillFlip_data();
+
     void everyVariableUsedIsGenerated();
     void everyVariableUsedIsGenerated_data();
 
@@ -147,6 +150,22 @@ void tst_pagetheme::neitherStyleSheetDecidesTheScheme(){
              "the style sheet decides the scheme; Theme does that.");
     QVERIFY2(!css.contains(QStringLiteral("color-scheme")),
              "the style sheet sets 'color-scheme'; the generated block does that.");
+}
+
+void tst_pagetheme::aPickerSentBelowFirstCanStillFlip_data(){
+    neitherStyleSheetHoldsAColour_data();
+}
+
+void tst_pagetheme::aPickerSentBelowFirstCanStillFlip(){
+    QFETCH(QString, path);
+    const QString css = Rules(Read(path));
+
+    static const QRegularExpression picker(
+        QStringLiteral("::picker\\(select\\)\\s*\\{([^}]*position-try-order[^}]*)\\}"));
+    const QRegularExpressionMatch match = picker.match(css);
+    QVERIFY2(match.hasMatch(), "no picker rule orders its placements");
+    QVERIFY2(match.captured(1).contains(QStringLiteral("min-height: min-content")),
+             "the picker may shrink into the room below instead of flipping");
 }
 
 void tst_pagetheme::everyVariableUsedIsGenerated_data(){

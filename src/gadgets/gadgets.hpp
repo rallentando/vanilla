@@ -74,6 +74,7 @@ public:
 
     static void LoadSettings();
     static void SaveSettings();
+    void ApplyNodeCollectionTypeSetting();
 
     void SetNodeCollectionType(NodeCollectionType type) Q_DECL_OVERRIDE {
         if(IsDisplayingViewNode()){
@@ -88,8 +89,17 @@ public:
     }
     void SetStat(QStringList list){
         if(list.isEmpty()) return;
-        m_ViewNodeCollectionType =
-            static_cast<NodeCollectionType>(list[0].toInt());
+        const int collection = list[0].toInt();
+        switch(collection){
+        case Flat:
+        case Recursive:
+        case Foldable:
+            m_ViewNodeCollectionType = static_cast<NodeCollectionType>(collection);
+            break;
+        default:
+            m_ViewNodeCollectionType = Flat;
+            break;
+        }
         SetZoomFactor(list.last().toFloat());
     }
     QStringList GetStat() const {

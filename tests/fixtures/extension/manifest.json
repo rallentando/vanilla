@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Vanilla extension test",
+  "version": "1.0.0",
+  "permissions": ["storage", "declarativeNetRequest", "tabs", "webNavigation", "contextMenus"],
+  "default_locale": "en",
+  "host_permissions": ["http://127.0.0.1/*"],
+  "declarative_net_request": {"rule_resources": [{"id": "probe", "enabled": true, "path": "rules.json"}]},
+  "content_scripts": [{"matches": ["http://127.0.0.1/*"], "js": ["content.js"]}],
+  "action": {"default_title": "Vanilla extension test", "default_popup": "popup.html"},
+  "options_ui": {"page": "popup.html", "open_in_tab": true}
+}

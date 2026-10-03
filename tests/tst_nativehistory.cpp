@@ -6,6 +6,7 @@
 #include <QSet>
 
 #include "nativehistory.hpp"
+#include "loadending.hpp"
 
 class tst_nativehistory : public QObject {
     Q_OBJECT
@@ -46,6 +47,15 @@ private slots:
     void onlyAFileWhichReadsWholeCountsAsOurs();
 
     void theQmlSpellsTheBackendsLoadStatusesTheWayTheBackendDoes();
+
+    void aLoadOwesExactlyOneRelease();
+    void anEarlyReleaseLeavesNothingForTheEnding();
+    void anEndingLeavesNothingForAStopAfterIt();
+    void aSecondLoadOwesItsOwnRelease();
+    void aReleaseWithNoLoadRunningIsNotOwed();
+    void aForgottenTailOwesNothing();
+    void everyReleaseInTheViewGoesThroughTheTail();
+    void aStepWaitingBeforeAnyLoadStartedIsStillReleased();
 
 private:
     static QUrl U(const char *path);
@@ -450,6 +460,100 @@ void tst_nativehistory::onlyAFileWhichReadsWholeCountsAsOurs(){
     QVERIFY(!NativeHistory::LooksLikeOurs(QByteArray()));
 }
 
+void tst_nativehistory::aLoadOwesExactlyOneRelease(){
+    QuickNativeLoadTail tail;
+    QVERIFY(!tail.Owed());
+
+    tail.Started();
+    QVERIFY(tail.Owed());
+
+    QVERIFY2(tail.Take(), "the first caller does not release");
+    QVERIFY2(!tail.Take(), "a second caller releases as well");
+    QVERIFY2(!tail.Take(), "and a third");
+    QVERIFY(!tail.Owed());
+}
+
+void tst_nativehistory::anEarlyReleaseLeavesNothingForTheEnding(){
+    QuickNativeLoadTail tail;
+    tail.Started();
+
+    QVERIFY(tail.Take());
+    QVERIFY(!tail.Take());
+}
+
+void tst_nativehistory::anEndingLeavesNothingForAStopAfterIt(){
+    QuickNativeLoadTail tail;
+    tail.Started();
+
+    QVERIFY(tail.Take());
+    QVERIFY(!tail.Take());
+    QVERIFY(!tail.Take());
+}
+
+void tst_nativehistory::aSecondLoadOwesItsOwnRelease(){
+    QuickNativeLoadTail tail;
+    tail.Started();
+    tail.Started();
+
+    QVERIFY(tail.Take());
+    QVERIFY2(!tail.Take(), "two loads left two debts");
+
+    tail.Started();
+    QVERIFY(tail.Take());
+}
+
+void tst_nativehistory::aReleaseWithNoLoadRunningIsNotOwed(){
+    QuickNativeLoadTail tail;
+    QVERIFY(!tail.Take());
+    QVERIFY(!tail.Owed());
+}
+
+void tst_nativehistory::aForgottenTailOwesNothing(){
+    QuickNativeLoadTail tail;
+    tail.Started();
+    tail.Forget();
+    QVERIFY(!tail.Owed());
+    QVERIFY(!tail.Take());
+}
+
+void tst_nativehistory::aStepWaitingBeforeAnyLoadStartedIsStillReleased(){
+    NativeHistory history = ListOf(3, 2);
+    QuickNativeLoadTail tail;
+
+    const NativeHistory::Request request = history.RequestBack(false);
+    QVERIFY(request.kind != NativeHistory::NoMove);
+    QVERIFY2(history.Busy(false), "the list is not waiting for anything");
+    QVERIFY2(!tail.Owed(), "the tail owes something before any load started");
+
+    const bool release = tail.Take(history.Pending() != NativeHistory::NoMove);
+    QVERIFY2(release, "the replacement does not release the waiting step");
+    history.Release();
+
+    QVERIFY2(!history.Busy(false), "the list is still waiting for a url");
+
+    tail.Started();
+    QVERIFY(tail.Take(history.Pending() != NativeHistory::NoMove));
+    QVERIFY(!tail.Take(history.Pending() != NativeHistory::NoMove));
+}
+
+void tst_nativehistory::everyReleaseInTheViewGoesThroughTheTail(){
+    QString source;
+    foreach(const QString &name, QStringList()
+            << QStringLiteral("/view/quicknativewebview.cpp")
+            << QStringLiteral("/view/quicknativewebview.hpp")){
+        QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR) + name));
+        QVERIFY2(file.open(QIODevice::ReadOnly), "check VANILLA_SOURCE_DIR");
+        source += QString::fromUtf8(file.readAll());
+    }
+
+    QCOMPARE(source.count(QStringLiteral("m_History.Release()")), 1);
+    QVERIFY2(source.contains(QStringLiteral("m_LoadTail.Take(m_History.Pending() != NativeHistory::NoMove)")),
+             "the one release does not ask the tail and the list");
+
+    QVERIFY2(source.contains(QStringLiteral("m_LoadTail.Started()")),
+             "nothing ever owes a release");
+}
+
 void tst_nativehistory::theQmlSpellsTheBackendsLoadStatusesTheWayTheBackendDoes(){
     QFile qml(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR "/view/quicknativewebview.qml")));
     QVERIFY2(qml.open(QIODevice::ReadOnly), "check VANILLA_SOURCE_DIR");
@@ -466,9 +570,21 @@ void tst_nativehistory::theQmlSpellsTheBackendsLoadStatusesTheWayTheBackendDoes(
 
     QVERIFY2(handler.section(QStringLiteral("LoadFailedStatus"), 1)
              .contains(QStringLiteral("loadFinished(false)")),
-             "a failed or stopped load reports nothing");
+             "a failed load reports nothing");
     QVERIFY2(handler.contains(QStringLiteral("loadFinished(true)")),
              "a finished load reports nothing");
+
+    const QString stopped = handler.section(QStringLiteral("LoadStoppedStatus"), 1);
+    QVERIFY2(stopped.contains(QStringLiteral("loadStopped()")),
+             "a stopped load ends nothing");
+    QVERIFY2(!stopped.contains(QStringLiteral("loadFinished(")),
+             "a stopped load is reported as a finished or failed one");
+    QVERIFY2(!handler.contains(QStringLiteral("LoadFailedStatus ||")),
+             "stopping is folded into failing again");
+
+    QVERIFY(LoadEnding::QuickEnding(LoadEnding::QuickFailed).saysFailure);
+    QVERIFY(!LoadEnding::QuickEnding(LoadEnding::QuickStopped).saysFailure);
+    QVERIFY(LoadEnding::QuickEnding(LoadEnding::QuickStopped).endsLoad);
 
     QSet<QString> asked;
     QRegularExpression spelling(QStringLiteral("WebView\\.(\\w*Status)\\b"));

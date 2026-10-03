@@ -151,6 +151,31 @@ protected:
         }
         return QWidget::event(ev);
     }
+
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) Q_DECL_OVERRIDE {
+        if(eventType == "windows_generic_MSG"){
+            const MSG *msg = static_cast<const MSG*>(message);
+            if(msg->message == WM_PARENTNOTIFY){
+                switch(LOWORD(msg->wParam)){
+                case WM_LBUTTONDOWN: case WM_RBUTTONDOWN:
+                case WM_MBUTTONDOWN: case WM_XBUTTONDOWN:
+                    GiveKeyboardToFrontend();
+                    break;
+                default: break;
+                }
+            }
+        }
+        return QWidget::nativeEvent(eventType, message, result);
+    }
+    void GiveKeyboardToFrontend(){
+        if(m_State != State::Attached) return;
+        const HWND hwnd = reinterpret_cast<HWND>(m_Hwnd);
+        if(!::IsWindow(hwnd)) return;
+        const HWND focus = ::GetFocus();
+        const bool has = focus == hwnd || (focus && ::IsChild(hwnd, focus));
+        EdgeInspectorTrace(has ? "click: frontend has focus" : "click: SetFocus(frontend)", this, m_Hwnd);
+        if(!has) ::SetFocus(hwnd);
+    }
     bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE {
         if(watched == m_Dock.data() &&
            (ev->type() == QEvent::Move || ev->type() == QEvent::Resize ||

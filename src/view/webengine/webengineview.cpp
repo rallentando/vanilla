@@ -35,6 +35,9 @@
 #include "application.hpp"
 #include "mainwindow.hpp"
 #include "directorypage.hpp"
+#include "extensioncontroller.hpp"
+#include "webengineextensions.hpp"
+#include "extensionhost.hpp"
 
 WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
     : QWebEngineView(TreeBank::PurgeView() ? 0 : static_cast<QWidget*>(parent))
@@ -45,7 +48,8 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
 
     Initialize();
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
-    m_Page = new WebEnginePage(nam, this);
+    m_Page = new WebEnginePage(nam, DirectoryPage::SaysPrivate(set), this);
+    ExtensionHost::StampRequestsOf(page(), this);
     ApplySpecificSettings(set);
     setPage(page());
     ApplyTheme();
@@ -61,12 +65,15 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
 
     m_Inspector = 0;
     m_PreventScrollRestoration = false;
+    m_ReportedZoomFactor = 0.0;
     m_ScrollSignalTimer = 0;
 #ifdef MEDIATIME
     m_MediaTimeSaveTimer = 0;
 #endif
     connect(this, SIGNAL(iconChanged(const QIcon&)),
             this, SLOT(OnIconChanged(const QIcon&)));
+    connect(page(), &QWebEnginePage::zoomFactorChanged,
+            this, [this](qreal factor){ m_ReportedZoomFactor = factor; });
 
 #ifdef MEDIATIME
     connect(page(), &QWebEnginePage::recentlyAudibleChanged,
@@ -145,13 +152,34 @@ TreeBank *WebEngineView::parent(){
 }
 
 void WebEngineView::setUrl(const QUrl &url){
-    base()->setUrl(url);
+    ExtensionNavigation::Of(this)->Request(Extensions(), [this, url] { base()->setUrl(url); });
     emit urlChanged(url);
 }
 
 void WebEngineView::setHtml(const QString &html, const QUrl &url){
-    base()->setHtml(html, url);
+    ExtensionNavigation::Of(this)->Request(Extensions(), [this, html, url] { base()->setHtml(html, url); });
     emit urlChanged(url);
+}
+
+ExtensionController *WebEngineView::Extensions() const {
+    auto *page = qobject_cast<WebEnginePage*>(m_Page);
+    return page ? ExtensionController::Of(page->profile()) : nullptr;
+}
+
+QWidget *WebEngineView::CreateExtensionView(const QUrl &url, ExtensionPage kind, QWidget *parent, const std::function<void()> &closed) {
+    auto *page = qobject_cast<WebEnginePage*>(m_Page);
+    return page ? WebEngineExtensions::CreatePopup(page->GetSharedProfile(), url, kind == ExtensionActionPage, GetThis(), parent,
+                                                   kind == ExtensionSidePanelPage ? closed : std::function<void()>(),
+                                                   kind == ExtensionSidePanelPage)
+                : nullptr;
+}
+
+void WebEngineView::TriggerNativeLoadAction(const QUrl &url) {
+    setUrl(url);
+}
+
+void WebEngineView::LoadAfterExtensions(const QWebEngineHttpRequest &request) {
+    ExtensionNavigation::Of(this)->Request(Extensions(), [this, request] { load(request); });
 }
 
 void WebEngineView::setParent(TreeBank* tb){
@@ -234,10 +262,8 @@ void WebEngineView::Disconnect(TreeBank *tb){
 void WebEngineView::ApplySpecificSettings(QStringList set){
     View::ApplySpecificSettings(set);
 
-    const int state = DirectoryPage::StateIn
-        (set, QStringLiteral("(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"));
-    if(state != -1 && page() && page()->profile() &&
-       page()->profile()->isOffTheRecord() != (state == 1))
+    if(page() && page()->profile() &&
+       page()->profile()->isOffTheRecord() != DirectoryPage::SaysPrivate(set))
         RebuildForOffTheRecord();
 }
 
@@ -299,7 +325,6 @@ void WebEngineView::WakeUp(){
 }
 
 void WebEngineView::OnSetViewNode(ViewNode*){}
-
 
 void WebEngineView::OnSetThis(WeakView){}
 
@@ -452,6 +477,7 @@ bool WebEngineView::SaveScroll(){
 bool WebEngineView::RestoreScroll(){
     if(!page() || !GetViewNode()) return false;
     if(m_PreventScrollRestoration) return false;
+    if(VanillaPage::IsSettingsUrl(url())) return false;
     QPoint pos = QPoint(GetViewNode()->GetScrollX(),
                         GetViewNode()->GetScrollY());
     page()->runJavaScript(SetScrollValuePointJsCode(pos));
@@ -459,15 +485,26 @@ bool WebEngineView::RestoreScroll(){
 }
 
 #ifdef MEDIATIME
-bool WebEngineView::SaveMediaTime(){
-    if(!page()) return false;
-    if(IsLoading()) return false;
+bool WebEngineView::SaveMediaTime(VoidCallBack settled){
+    if(!page()){
+        if(settled) settled();
+        return false;
+    }
+    if(IsLoading()){
+        if(settled) settled();
+        return false;
+    }
     const QUrl source = url();
+    QPointer<WebEngineView> alive(this);
     page()->runJavaScript
-        (GetMediaTimeJsCode(), [this, source](QVariant var){
-            if(!var.isValid() || !GetViewNode()) return;
-            if(url() != source) return;
-            GetViewNode()->SetMediaTime(var.toFloat());
+        (GetMediaTimeJsCode(), [alive, source, settled](QVariant var){
+            if(!alive){
+                if(settled) settled();
+                return;
+            }
+            if(var.isValid() && alive->GetViewNode() && alive->url() == source)
+                alive->GetViewNode()->SetMediaTime(var.toFloat());
+            if(settled) settled();
         });
     return true;
 }
@@ -483,7 +520,8 @@ bool WebEngineView::RestoreMediaTime(){
 
 bool WebEngineView::SaveZoom(){
     if(!GetViewNode()) return false;
-    GetViewNode()->SetZoom(static_cast<float>(zoomFactor() / DeviceZoomScale()));
+    if(m_ReportedZoomFactor <= 0.0) return false;
+    GetViewNode()->SetZoom(static_cast<float>(m_ReportedZoomFactor / DeviceZoomScale()));
     return true;
 }
 
@@ -512,6 +550,7 @@ bool WebEngineView::RestoreHistory(){
     if(!ba.isEmpty()){
         QDataStream stream(&ba, QIODevice::ReadOnly);
         stream >> (*history());
+        ExtensionHost::StampRequestsOf(page(), this);
 #ifdef USE_WEBCHANNEL
 #endif
         return history()->count() > 0;
@@ -840,7 +879,7 @@ void WebEngineView::mouseMoveEvent(QMouseEvent *ev){
         ev->setAccepted(true);
         return;
     }
-    if(m_EnableMouseGesture &&
+    if(m_EnableRightGestureLocal &&
        ev->buttons() & Qt::RightButton &&
        !m_GestureStartedPos.isNull()){
 
@@ -939,7 +978,10 @@ void WebEngineView::mouseMoveEvent(QMouseEvent *ev){
         drag->setMimeData(mime);
         drag->setPixmap(pixmap);
         drag->setHotSpot(pos);
-        drag->exec(Qt::CopyAction | Qt::MoveAction);
+        {
+            View::DragOutScope dragging;
+            drag->exec(Qt::CopyAction | Qt::MoveAction);
+        }
         drag->deleteLater();
         ev->setAccepted(true);
     } else {
@@ -961,15 +1003,18 @@ void WebEngineView::mousePressEvent(QMouseEvent *ev){
         QString str = m_MouseMap[mouse];
         if(!str.isEmpty()){
             if(!View::TriggerAction(str, ev->pos())){
+                m_SpentButtons.Press(ev->button(), false);
                 ev->setAccepted(false);
                 return;
             }
+            m_SpentButtons.Press(ev->button(), true);
             GestureAborted();
             ev->setAccepted(true);
             return;
         }
     }
 
+    m_SpentButtons.Press(ev->button(), false);
     GestureStarted(ev->pos());
     QWebEngineView::mousePressEvent(ev);
     ev->setAccepted(false);
@@ -977,6 +1022,11 @@ void WebEngineView::mousePressEvent(QMouseEvent *ev){
 
 void WebEngineView::mouseReleaseEvent(QMouseEvent *ev){
     emit statusBarMessage(QString());
+
+    if(m_SpentButtons.Settle(ev->button())){
+        ev->setAccepted(true);
+        return;
+    }
 
     if(m_DragStarted){
         m_DragStarted = false;
@@ -1028,6 +1078,14 @@ void WebEngineView::mouseReleaseEvent(QMouseEvent *ev){
 }
 
 void WebEngineView::mouseDoubleClickEvent(QMouseEvent *ev){
+    QString mouse;
+    Application::AddModifiersToString(mouse, ev->modifiers());
+    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
+    Application::AddMouseButtonToString(mouse, ev->button());
+    if(m_MouseMap.contains(mouse) && !m_MouseMap[mouse].isEmpty()){
+        mousePressEvent(ev);
+        return;
+    }
     QWebEngineView::mouseDoubleClickEvent(ev);
     ev->setAccepted(false);
 }

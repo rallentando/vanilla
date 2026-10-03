@@ -1,0 +1,65 @@
+--- a/src/core/render_widget_host_view_qt_delegate_client.cpp
++++ b/src/core/render_widget_host_view_qt_delegate_client.cpp
+@@ -30,6 +30,21 @@
+ 
+ namespace QtWebEngineCore {
+ 
++// The widget which the input method talks to: the one whose focused element
++// takes text, which may be an out-of-process iframe's (an extension page shown
++// in a frame, Vimium's Vomnibar). Aura does the same (RenderWidgetHostViewAura
++// ::SetCompositionText). Without it, the root widget is sent the composition,
++// which an out-of-process frame never sees, while the caret rectangle and the
++// input state are taken from the active widget -- so the two disagree.
++static inline content::RenderWidgetHostImpl *imeTarget(RenderWidgetHostViewQt *rwhv)
++{
++    if (auto *manager = rwhv->GetTextInputManager()) {
++        if (auto *widget = manager->GetActiveWidget())
++            return widget;
++    }
++    return rwhv->host();
++}
++
+ static inline int firstAvailableId(const QMap<int, int> &map)
+ {
+     ui::BitSet32 usedIds;
+@@ -487,11 +502,11 @@
+         // We're getting the composition result in a key event.
+         if (event->key() != 0) {
+             // The key event is not a result of an IME composition. Cancel IME.
+-            m_rwhv->host()->ImeCancelComposition();
++            imeTarget(m_rwhv)->ImeCancelComposition();
+             m_receivedEmptyImeEvent = false;
+         } else {
+             if (event->type() == QEvent::KeyRelease) {
+-                m_rwhv->host()->ImeCommitText(toString16(event->text()),
++                imeTarget(m_rwhv)->ImeCommitText(toString16(event->text()),
+                                               std::vector<ui::ImeTextSpan>(),
+                                               gfx::Range::InvalidRange(), 0);
+                 m_receivedEmptyImeEvent = false;
+@@ -882,7 +897,7 @@
+             m_receivedEmptyImeEvent = false;
+             if (m_imeInProgress) {
+                 m_imeInProgress = false;
+-                m_rwhv->host()->ImeCancelComposition();
++                imeTarget(m_rwhv)->ImeCancelComposition();
+             }
+         }
+ 
+@@ -893,7 +908,7 @@
+ 
+     // Finish composition: insert or erase text.
+     if (!commitString.isEmpty() || replacementLength > 0) {
+-        m_rwhv->host()->ImeCommitText(toString16(commitString), underlines, replacementRange, 0);
++        imeTarget(m_rwhv)->ImeCommitText(toString16(commitString), underlines, replacementRange, 0);
+         m_imeInProgress = false;
+     }
+ 
+@@ -901,7 +916,7 @@
+     // Be aware of that, we might get a commit string and a pre-edit string in a single event and
+     // this means a new composition.
+     if (!preeditString.isEmpty()) {
+-        m_rwhv->host()->ImeSetComposition(toString16(preeditString), underlines, replacementRange,
++        imeTarget(m_rwhv)->ImeSetComposition(toString16(preeditString), underlines, replacementRange,
+                                           selectionRange.start(), selectionRange.end());
+         m_imeInProgress = true;
+     }

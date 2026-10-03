@@ -4,6 +4,8 @@
 #ifdef WEBENGINEVIEW
 
 #include "webenginepage.hpp"
+
+#include "loadending.hpp"
 #include "page.hpp"
 
 #ifdef USE_WEBCHANNEL
@@ -41,10 +43,9 @@
 #include "dialog.hpp"
 #include "certificatepolicy.hpp"
 
-
-WebEnginePage::WebEnginePage(NetworkAccessManager *nam, QObject *parent)
-    : QWebEnginePage(nam->GetProfile(), parent)
-    , m_Profile(nam->GetSharedProfile())
+WebEnginePage::WebEnginePage(NetworkAccessManager *nam, bool offTheRecord, QObject *parent)
+    : QWebEnginePage(nam->GetProfile(offTheRecord), parent)
+    , m_Profile(nam->GetSharedProfile(offTheRecord))
 {
     setNetworkAccessManager(nam);
 
@@ -199,7 +200,7 @@ QStringList WebEnginePage::chooseFiles(FileSelectionMode mode, const QStringList
 
 void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,
                                              int lineNumber, const QString &sourceId){
-    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
@@ -208,7 +209,8 @@ void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level
         if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
         m_View->KeyPressEvent(&ke);
-    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+        return;
+    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
@@ -217,6 +219,7 @@ void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level
         if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
         m_View->KeyReleaseEvent(&ke);
+        return;
     }
     QWebEnginePage::javaScriptConsoleMessage(level, msg, lineNumber, sourceId);
 }
@@ -721,11 +724,20 @@ void WebEnginePage::HandleLoading(const QWebEngineLoadingInfo &info){
             m_View->ApplySpecificSettings(m_View->SpecificSettings());
     }
 
-    if(info.status() != QWebEngineLoadingInfo::LoadFailedStatus) return;
-    if(info.errorDomain() == QWebEngineLoadingInfo::NoErrorDomain) return;
-
-    emit statusBarMessage2(tr("Failed to load: %1").arg(info.errorString()),
-                           QString());
+    switch(LoadEnding::WebEngineEnding(int(info.status()), int(info.errorDomain()))){
+    case LoadEnding::Verdict::Clear:
+        emit statusBarMessage2(QString(), QString());
+        return;
+    case LoadEnding::Verdict::Report:
+        emit statusBarMessage2(tr("Failed to load: %1")
+                               .arg(LoadEnding::WebEngineErrorText
+                                    (info.errorString(), int(info.errorDomain()),
+                                     info.errorCode(), info.url())),
+                               QString());
+        return;
+    case LoadEnding::Verdict::Nothing:
+        return;
+    }
 }
 
 void WebEnginePage::HandleFindTextFinished(const QWebEngineFindTextResult &result){

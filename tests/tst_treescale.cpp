@@ -200,7 +200,6 @@ private slots:
     void everyCostStaysProportionalToTheNodeCount();
 };
 
-
 void tst_treescale::initTestCase(){
     TestSupport::SilenceDebugOutput();
     QVERIFY2(m_Dir.isValid(), "could not create a temporary directory.");

@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <QSet>
 #include <QMap>
+#include <QMetaMethod>
 #include <QPair>
 #include <QDir>
 #include <QFile>
@@ -12,6 +13,7 @@
 
 #include "commandmap.hpp"
 #include "actionmapper.hpp"
+#include "jsobject.hpp"
 
 #include "testsupport.hpp"
 
@@ -77,6 +79,54 @@ static QStringList Sorted(QStringList list){
     std::sort(list.begin(), list.end());
     return list;
 }
+
+static QStringList OwnSlotNames(const QMetaObject &metaObject){
+    QSet<QString> names;
+    for(int i = metaObject.methodOffset(); i < metaObject.methodCount(); i++){
+        const QMetaMethod method = metaObject.method(i);
+        if(method.methodType() == QMetaMethod::Slot)
+            names.insert(QString::fromLatin1(method.name()));
+    }
+    return Sorted(names.values());
+}
+
+static QStringList DialogMethodContracts(){
+    QStringList contracts;
+    for(int i = _Vanilla::staticMetaObject.methodOffset();
+        i < _Vanilla::staticMetaObject.methodCount(); i++){
+        const QMetaMethod method = _Vanilla::staticMetaObject.method(i);
+        const QByteArray name = method.name();
+        if(name == "getInt" || name == "getDouble" ||
+           name == "getItem" || name == "getText"){
+            contracts << QString::fromLatin1(method.methodSignature()) +
+                QStringLiteral("->") + QString::fromLatin1(method.typeName());
+        }
+    }
+    return Sorted(contracts);
+}
+
+class ActionRecordingView : public QObject, public View {
+
+public:
+    ActionRecordingView() : QObject(nullptr), View(nullptr) {}
+
+    QObject *base() Q_DECL_OVERRIDE { return this;}
+    QSize size() Q_DECL_OVERRIDE { return QSize();}
+    void resize(QSize) Q_DECL_OVERRIDE {}
+    void show() Q_DECL_OVERRIDE {}
+    void hide() Q_DECL_OVERRIDE {}
+    void raise() Q_DECL_OVERRIDE {}
+    void lower() Q_DECL_OVERRIDE {}
+    void repaint() Q_DECL_OVERRIDE {}
+    bool visible() Q_DECL_OVERRIDE { return false;}
+    void setFocus(Qt::FocusReason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {}
+
+    void TriggerAction(Page::CustomAction action, QVariant) Q_DECL_OVERRIDE {
+        called = action;
+    }
+
+    Page::CustomAction called = Page::_NoAction;
+};
 
 class tst_commandmap : public QObject {
     Q_OBJECT
@@ -271,6 +321,125 @@ private slots:
             QVERIFY2(source.contains(QStringLiteral("function %1(").arg(jsName)),
                      qPrintable(jsName));
         }
+    }
+
+    void theJavaScriptApiKeepsItsPublicNames(){
+        const QStringList vanilla = QStringLiteral(
+            "aboutQt aboutVanilla alignCenter alignJustified alignLeft alignRight back buryView "
+            "changeTextDirectionLTR changeTextDirectionRTL clearCookies clearHttpCache "
+            "clearVisitedLinks close copy cut digView displayAccessKey displayViewtree down "
+            "eighthView end fastForward fifthView firstView forward fourthView getDouble getInt "
+            "getItem getText home indent insertOrderedList insertUnorderedList lastView left load "
+            "nextView ninthView openCommand openQueryEditor openTextSeeker openUrlEditor outdent "
+            "pageDown pageUp paste pasteAndMatchStyle previousView print quit reconfigure recreate "
+            "redo releaseHiddenView reload reloadAndBypassCache repaint restore rewind right save "
+            "secondView selectAll seventhView sixthView stop stopAndUnselect tenthView thirdView "
+            "toggleBold toggleItalic toggleStrikethrough toggleUnderline undo unselect up upDirectory"
+        ).split(QLatin1Char(' '));
+
+        const QStringList view = QStringLiteral(
+            "aboutQt aboutVanilla addBookmarklet addSearchEngine alignCenter alignJustified alignLeft "
+            "alignRight applySource back buryView changeTextDirectionLTR changeTextDirectionRTL "
+            "clearCookies clearHttpCache clearVisitedLinks clickElement cloneViewNode close "
+            "closeWindow copy copyImage copyImageHtml copyImageUrl copyLinkHtml copyLinkUrl "
+            "copyMediaHtml copyMediaUrl copyPageAsLink copySelectedHtml copyTitle copyUrl cut digView "
+            "displayAccessKey displayTrashTree displayViewTree down downloadImage downloadLink "
+            "downloadMedia eighthView end fastForward fifthView firstView focusElement forward "
+            "fourthView home hoverElement indent insertOrderedList insertUnorderedList inspectElement "
+            "lastView left load loadImage loadLink loadMedia newViewNode newWindow nextView nextWindow "
+            "ninthView openAllImage openAllUrl openBookmarklet openCommand openImage "
+            "openImageInNewDirectory openImageInNewDirectoryBackground openImageInNewDirectoryForeground "
+            "openImageInNewDirectoryNewWindow openImageInNewDirectoryThisWindow openImageInNewViewNode "
+            "openImageInNewViewNodeBackground openImageInNewViewNodeForeground "
+            "openImageInNewViewNodeNewWindow openImageInNewViewNodeThisWindow openImageOnRoot "
+            "openImageOnRootBackground openImageOnRootForeground openImageOnRootNewWindow "
+            "openImageOnRootThisWindow openImageWithDefault openInNewDirectory "
+            "openInNewDirectoryBackground openInNewDirectoryForeground openInNewDirectoryNewWindow "
+            "openInNewDirectoryThisWindow openInNewViewNode openInNewViewNodeBackground "
+            "openInNewViewNodeForeground openInNewViewNodeNewWindow openInNewViewNodeThisWindow "
+            "openLink openLinkWithDefault openMedia openMediaInNewDirectory "
+            "openMediaInNewDirectoryBackground openMediaInNewDirectoryForeground "
+            "openMediaInNewDirectoryNewWindow openMediaInNewDirectoryThisWindow openMediaInNewViewNode "
+            "openMediaInNewViewNodeBackground openMediaInNewViewNodeForeground "
+            "openMediaInNewViewNodeNewWindow openMediaInNewViewNodeThisWindow openMediaOnRoot "
+            "openMediaOnRootBackground openMediaOnRootForeground openMediaOnRootNewWindow "
+            "openMediaOnRootThisWindow openMediaWithDefault openOnRoot openOnRootBackground "
+            "openOnRootForeground openOnRootNewWindow openOnRootThisWindow openQueryEditor "
+            "openTextAsUrl openTextSeeker openUrlEditor openWithDefault outdent pageDown pageUp paste "
+            "pasteAndMatchStyle prevView prevWindow print quit recreate redo releaseHiddenView reload "
+            "reloadAndBypassCache restore rewind right save saveAllImage saveAllUrl saveTextAsUrl "
+            "searchWith secondView selectAll seventhView shadeWindow sixthView stop stopAndUnselect "
+            "switchWindow tenthView thirdView toggleBold toggleFullScreen toggleItalic toggleMaximized "
+            "toggleMediaControls toggleMediaLoop toggleMediaMute toggleMediaPlayPause toggleMenuBar "
+            "toggleMinimized toggleNotifier toggleReceiver toggleShaded toggleStrikethrough "
+            "toggleToolBar toggleTreeBar toggleUnderline undo unselect unshadeWindow up upDirectory "
+            "viewSource zoomIn zoomOut"
+        ).split(QLatin1Char(' '));
+
+        QCOMPARE(OwnSlotNames(_Vanilla::staticMetaObject), vanilla);
+        QCOMPARE(OwnSlotNames(_View::staticMetaObject), view);
+
+        const QStringList dialogContracts = Sorted(QStringLiteral(
+            "getInt(QString,QString,int,int,int,int)->int "
+            "getInt(QString,QString,int,int,int)->int "
+            "getInt(QString,QString,int,int)->int "
+            "getInt(QString,QString,int)->int "
+            "getInt(QString,QString)->int "
+            "getDouble(QString,QString,double,double,double,int)->double "
+            "getDouble(QString,QString,double,double,double)->double "
+            "getDouble(QString,QString,double,double)->double "
+            "getDouble(QString,QString,double)->double "
+            "getDouble(QString,QString)->double "
+            "getItem(QString,QString,QStringList,bool)->QString "
+            "getItem(QString,QString,QStringList)->QString "
+            "getText(QString,QString,QString)->QString "
+            "getText(QString,QString)->QString"
+        ).split(QLatin1Char(' ')));
+        QCOMPARE(DialogMethodContracts(), dialogContracts);
+    }
+
+    void everyViewJavaScriptMethodDispatchesItsPairedAction(){
+        ActionRecordingView view;
+        _View *api = view.GetJsObject();
+
+#define CHECK_JS_ACTION(action, jsName)                              \
+        {                                                           \
+            QString expectedName = QStringLiteral(#action);         \
+            expectedName[0] = expectedName[0].toLower();            \
+            QCOMPARE(QStringLiteral(#jsName), expectedName);        \
+        }                                                           \
+        view.called = Page::_NoAction;                              \
+        QVERIFY(QMetaObject::invokeMethod(api, #jsName,              \
+                                          Qt::DirectConnection));   \
+        QCOMPARE(view.called, Page::_##action);
+        FOR_EACH_VIEW_JS_ACTION(CHECK_JS_ACTION)
+#undef CHECK_JS_ACTION
+    }
+
+    void theVanillaJavaScriptPairsKeepTheirLegacySpellings(){
+#define COLLECT_VANILLA_PAIR(method, jsName) \
+        << QStringLiteral(#method ":" #jsName)
+        const QStringList pairs = QStringList()
+            FOR_EACH_VANILLA_JS_METHOD(COLLECT_VANILLA_PAIR);
+#undef COLLECT_VANILLA_PAIR
+
+        const QStringList expected = QStringLiteral(
+            "Repaint:repaint Reconfigure:reconfigure Up:up Down:down Right:right Left:left "
+            "PageUp:pageUp PageDown:pageDown Home:home End:end AboutVanilla:aboutVanilla "
+            "AboutQt:aboutQt Back:back Forward:forward Rewind:rewind FastForward:fastForward "
+            "UpDirectory:upDirectory Restore:restore NextView:nextView PrevView:previousView "
+            "BuryView:buryView DigView:digView FirstView:firstView SecondView:secondView "
+            "ThirdView:thirdView FourthView:fourthView FifthView:fifthView SixthView:sixthView "
+            "SeventhView:seventhView EighthView:eighthView NinthView:ninthView TenthView:tenthView "
+            "LastView:lastView DisplayViewTree:displayViewtree DisplayAccessKey:displayAccessKey "
+            "OpenTextSeeker:openTextSeeker OpenQueryEditor:openQueryEditor OpenUrlEditor:openUrlEditor "
+            "OpenCommand:openCommand ReleaseHiddenView:releaseHiddenView Load:load Copy:copy Cut:cut "
+            "Paste:paste Undo:undo Redo:redo SelectAll:selectAll Unselect:unselect Reload:reload "
+            "ReloadAndBypassCache:reloadAndBypassCache Stop:stop StopAndUnselect:stopAndUnselect "
+            "Print:print Save:save ClearCookies:clearCookies ClearHttpCache:clearHttpCache "
+            "ClearVisitedLinks:clearVisitedLinks"
+        ).split(QLatin1Char(' '));
+        QCOMPARE(pairs, expected);
     }
 
     void thecommandsWhichTakeArguments(){

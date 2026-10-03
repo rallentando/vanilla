@@ -1,0 +1,20 @@
+--- a/src/3rdparty/chromium/extensions/common/manifest_handlers/csp_info.cc
++++ b/src/3rdparty/chromium/extensions/common/manifest_handlers/csp_info.cc
+@@ -56,7 +56,7 @@
+ // The minimum CSP to be used in isolated worlds. The placeholder is for the
+ // extension's dynamic URL.
+ constexpr char kMinimumMV3IsolatedWorldCSPTemplate[] =
+-    "script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' %s; "
++    "script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' 'inline-speculation-rules' %s; "
+     "object-src 'self';";
+ // For unpacked extensions, we additionally allow the use of localhost files to
+ // aid in rapid local development.
+@@ -66,7 +66,7 @@
+ // The minimum CSP to be used in isolated worlds for unpacked extensions. The
+ // placeholder is for the extension's dynamic URL.
+ constexpr char kMinimumUnpackedMV3IsolatedWorldCSPTemplate[] =
+-    "script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' "
++    "script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' 'inline-speculation-rules' "
+     "http://localhost:* http://127.0.0.1:* %s; object-src 'self';";
+ 
+ #define PLATFORM_APP_LOCAL_CSP_SOURCES "'self' blob: filesystem: data:"

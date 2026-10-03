@@ -5,6 +5,7 @@
 #ifdef WEBENGINEVIEW
 #  include <QtWebEngineQuick>
 #  include "settingspage.hpp"
+#  include "extensionhost.hpp"
 #endif
 
 #ifdef NATIVEWEBVIEW
@@ -33,6 +34,7 @@ static int _main(int argc, char **argv){
 #endif
 #ifdef WEBENGINEVIEW
     SettingsSchemeHandler::RegisterScheme();
+    ExtensionHost::RegisterScheme();
     QtWebEngineQuick::initialize();
 #endif
 #ifdef NATIVEWEBVIEW
@@ -43,7 +45,7 @@ static int _main(int argc, char **argv){
 #endif
     Application a(argc, argv);
     Application::BootApplication(argc, argv, &a);
-    return a.exec();
+    return a.Run();
 }
 
 int main(int argc, char **argv){

@@ -3,6 +3,7 @@
 #include "theme.hpp"
 
 #include "toolbar.hpp"
+#include "extensionbar.hpp"
 
 #include "treebank.hpp"
 #include "receiver.hpp"
@@ -127,6 +128,7 @@ namespace {
             << QStringLiteral("javascript:")
             << QStringLiteral("about:")
             << QStringLiteral("chrome:")
+            << QStringLiteral("edge:")
             << VANILLA_SCHEME + QStringLiteral(":");
         foreach(const QString &prefix, prefixes){
             if(text.startsWith(prefix)) return true;
@@ -174,8 +176,11 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
     m_Completer->setPopup(popup);
 
     m_LineEdit->setCompleter(m_Completer);
+    m_LineEdit->installEventFilter(this);
 
     addWidget(m_LineEdit);
+    m_ExtensionBar = new ExtensionBar(this);
+    addWidget(m_ExtensionBar);
     setObjectName(QStringLiteral("ToolBar"));
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     setAllowedAreas(Qt::TopToolBarArea | Qt::BottomToolBarArea);
@@ -321,6 +326,7 @@ QSize ToolBar::minimumSizeHint() const {
 
 void ToolBar::Connect(SharedView view){
     m_View = view;
+    m_ExtensionBar->SetView(view);
     SetUrl(view->url());
     connect(view->base(), SIGNAL(urlChanged(const QUrl&)),
             this, SLOT(SetUrl(const QUrl&)));
@@ -334,6 +340,7 @@ void ToolBar::Connect(SharedView view){
 
 void ToolBar::Disconnect(SharedView view){
     m_View = SharedView();
+    m_ExtensionBar->SetView({});
     disconnect(view->base(), SIGNAL(urlChanged(const QUrl&)),
                this, SLOT(SetUrl(const QUrl&)));
     disconnect(view->base(), SIGNAL(loadFinished(bool)),
@@ -450,6 +457,12 @@ void ToolBar::mousePressEvent(QMouseEvent *ev){
 
 void ToolBar::mouseReleaseEvent(QMouseEvent *ev){
     QToolBar::mouseReleaseEvent(ev);
+}
+
+bool ToolBar::eventFilter(QObject *watched, QEvent *ev){
+    if(watched == m_LineEdit && ev->type() == QEvent::MouseButtonPress && m_View)
+        m_View->TakeKeyboardBack();
+    return QToolBar::eventFilter(watched, ev);
 }
 
 void ToolBar::DisplaySuggest(const QByteArray &ba){

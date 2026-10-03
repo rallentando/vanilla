@@ -20,20 +20,24 @@
 #include <QStandardPaths>
 #include <QLocale>
 #include <QSslSocket>
-#include <QDomDocument>
-#include <QDomNode>
-#include <QDomElement>
+#include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QAbstractButton>
 #include <QRegularExpression>
 #include <QReadWriteLock>
+#include <QThreadPool>
+#include <QThread>
+#include <QCoreApplication>
+#include <QDateTime>
 #include <QMimeDatabase>
 #ifdef WEBENGINEVIEW
 #  include <QWebEngineProfile>
 #  include <QQuickWebEngineProfile>
 #  include <QQmlEngine>
+#  include "webengineextensions.hpp"
+#  include "extensionhost.hpp"
 #  include <QtWebEngineCore/qtwebenginecoreglobal.h>
 #  include "settingspage.hpp"
 #  include <QWebEngineDownloadRequest>
@@ -59,6 +63,7 @@
 #endif
 
 #include "saver.hpp"
+#include "extensioncontroller.hpp"
 #include "application.hpp"
 #ifdef EDGEWEBVIEW
 #  include "edgewebview.hpp"
@@ -66,13 +71,13 @@
 #include "useragent.hpp"
 #include "downloadname.hpp"
 #include "certificatepolicy.hpp"
+#include "fileexchange.hpp"
 #include "mainwindow.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "dialog.hpp"
 #include "view.hpp"
-
 
 const QList<QEvent::Type> NetworkAccessManager::m_EventTypes =
     QList<QEvent::Type>() << QEvent::KeyPress << QEvent::KeyRelease;
@@ -227,7 +232,7 @@ namespace {
 
     SharedProfile WrapProfile(QWebEngineProfile *profile){
         return SharedProfile(profile,
-                             [](QWebEngineProfile *p){ p->deleteLater();});
+                             [](QWebEngineProfile *p){ ExtensionHost::CloseOffscreenOf(p); p->deleteLater();});
     }
 
 }
@@ -243,15 +248,88 @@ RequestInterceptor *RequestInterceptor::Instance(){
     return instance;
 }
 
+RequestInterceptor *RequestInterceptor::PrivateInstance(){
+    static RequestInterceptor *instance = [](){
+        RequestInterceptor *made = new RequestInterceptor();
+        made->m_AsksExtensionRules = false;
+        return made;
+    }();
+    return instance;
+}
+
+Dnr::ResourceType RequestInterceptor::DnrTypeOf(QWebEngineUrlRequestInfo::ResourceType type){
+    static_assert(QWebEngineUrlRequestInfo::ResourceTypeLast == QWebEngineUrlRequestInfo::ResourceTypeJson,
+                  "a resource type was added: decide what an extension's rule calls it");
+    switch(type){
+    case QWebEngineUrlRequestInfo::ResourceTypeMainFrame:
+    case QWebEngineUrlRequestInfo::ResourceTypeNavigationPreloadMainFrame: return Dnr::MainFrame;
+    case QWebEngineUrlRequestInfo::ResourceTypeSubFrame:
+    case QWebEngineUrlRequestInfo::ResourceTypeNavigationPreloadSubFrame:  return Dnr::SubFrame;
+    case QWebEngineUrlRequestInfo::ResourceTypeStylesheet:   return Dnr::Stylesheet;
+    case QWebEngineUrlRequestInfo::ResourceTypeScript:
+    case QWebEngineUrlRequestInfo::ResourceTypeWorker:
+    case QWebEngineUrlRequestInfo::ResourceTypeSharedWorker:
+    case QWebEngineUrlRequestInfo::ResourceTypeServiceWorker:
+    case QWebEngineUrlRequestInfo::ResourceTypeJson:         return Dnr::Script;
+    case QWebEngineUrlRequestInfo::ResourceTypeImage:
+    case QWebEngineUrlRequestInfo::ResourceTypeFavicon:      return Dnr::Image;
+    case QWebEngineUrlRequestInfo::ResourceTypeFontResource: return Dnr::Font;
+    case QWebEngineUrlRequestInfo::ResourceTypeObject:
+    case QWebEngineUrlRequestInfo::ResourceTypePluginResource: return Dnr::Object;
+    case QWebEngineUrlRequestInfo::ResourceTypeMedia:        return Dnr::Media;
+    case QWebEngineUrlRequestInfo::ResourceTypeXhr:          return Dnr::XmlHttpRequest;
+    case QWebEngineUrlRequestInfo::ResourceTypePing:         return Dnr::Ping;
+    case QWebEngineUrlRequestInfo::ResourceTypeCspReport:    return Dnr::CspReport;
+    case QWebEngineUrlRequestInfo::ResourceTypeWebSocket:    return Dnr::WebSocket;
+    default:                                                 return Dnr::Other;
+    }
+}
+
 void RequestInterceptor::interceptRequest(QWebEngineUrlRequestInfo &info){
+    if(info.requestUrl().scheme() == QStringLiteral("vanilla-extension")) return;
+
     if(UrlBlockRules::SendDoNotTrack()){
         info.setHttpHeader(QByteArrayLiteral("DNT"), QByteArrayLiteral("1"));
         info.setHttpHeader(QByteArrayLiteral("Sec-GPC"), QByteArrayLiteral("1"));
     }
 
+    const QString requested = info.requestUrl().toString();
+
+    if(m_AsksExtensionRules) AskExtensionRules(info);
+
     if(info.resourceType() == QWebEngineUrlRequestInfo::ResourceTypeMainFrame) return;
 
-    if(UrlBlockRules::IsBlocked(info.requestUrl().toString())) info.block(true);
+    if(UrlBlockRules::IsBlocked(requested)) info.block(true);
+}
+
+void RequestInterceptor::AskExtensionRules(QWebEngineUrlRequestInfo &info){
+    Q_ASSERT(!QCoreApplication::instance() ||
+             QThread::currentThread() == QCoreApplication::instance()->thread());
+    quint64 generation = 0;
+    const QSharedPointer<const Dnr::Rules> rules = ExtensionNetRules::Current(&generation);
+    if(rules->IsEmpty()) return;
+
+    Dnr::Request request;
+    request.url = info.requestUrl();
+    request.initiator = info.initiator();
+    request.type = DnrTypeOf(info.resourceType());
+    request.method = info.requestMethod();
+
+    if(request.type != Dnr::MainFrame){
+        const QString key = Dnr::Framed::KeyOf(info.firstPartyUrl());
+        if(!key.isEmpty() && !m_Framed.Find(generation, key, &request.frameAllows)){
+            Dnr::Request document;
+            document.url = info.firstPartyUrl().adjusted(QUrl::RemoveFragment);
+            document.type = Dnr::MainFrame;
+            document.method = QByteArrayLiteral("GET");
+            request.frameAllows = rules->Evaluate(document).frameAllows;
+            m_Framed.Put(generation, key, request.frameAllows);
+        }
+    }
+
+    const Dnr::Decision decision = rules->Evaluate(request);
+    if(decision.kind == Dnr::Decision::Block) info.block(true);
+    else if(decision.kind == Dnr::Decision::Redirect) info.redirect(decision.redirect);
 }
 #endif
 
@@ -301,6 +379,120 @@ void UrlBlockRules::ReloadRules(){
     m_Blocked = compiled;
 }
 
+namespace {
+    struct NetRulesState {
+        QReadWriteLock lock;
+        QSharedPointer<const Dnr::Rules> current{new Dnr::Rules()};
+        QStringList key;
+        quint64 asked = 0;
+        quint64 generation = 0;
+        QThreadPool pool;
+    };
+    NetRulesState &NetRules(){
+        static NetRulesState *state = [](){
+            NetRulesState *made = new NetRulesState();
+            made->pool.setMaxThreadCount(1);
+            qAddPostRoutine([](){ NetRules().pool.waitForDone();});
+            return made;
+        }();
+        return *state;
+    }
+
+    QStringList KeyOf(const QList<ExtensionNetRules::Source> &sources){
+        QStringList key;
+        foreach(const ExtensionNetRules::Source &source, sources){
+            key << QStringLiteral("id:") + source.id;
+            key << QStringLiteral("session:") + QString::fromLatin1(QCryptographicHash::hash(source.session, QCryptographicHash::Sha1).toHex())
+                 << QStringLiteral("dynamic:") + QString::fromLatin1(QCryptographicHash::hash(source.dynamic, QCryptographicHash::Sha1).toHex());
+            foreach(const QString &file, source.files){
+                const QFileInfo info(file);
+                key << file + QLatin1Char('|') + QString::number(info.size())
+                     + QLatin1Char('|') + QString::number(info.lastModified().toMSecsSinceEpoch());
+            }
+        }
+        return key;
+    }
+
+    void ReadAndPublish(const QList<ExtensionNetRules::Source> &sources, quint64 ticket){
+        {
+            QReadLocker locker(&NetRules().lock);
+            if(ticket != NetRules().asked) return;
+        }
+        QSharedPointer<Dnr::Rules> rules(new Dnr::Rules());
+        Dnr::Skipped skipped;
+        foreach(const ExtensionNetRules::Source &source, sources){
+            if(!source.session.isEmpty()) rules->AddRuleset(source.id, source.session, &skipped);
+            if(!source.dynamic.isEmpty()) rules->AddRuleset(source.id, source.dynamic, &skipped);
+            foreach(const QString &path, source.files){
+                QFile file(path);
+                if(!file.open(QIODevice::ReadOnly)){
+                    skipped.malformed++;
+                    continue;
+                }
+                rules->AddRuleset(source.id, file.readAll(), &skipped);
+            }
+        }
+
+        NetRulesState &state = NetRules();
+        QSharedPointer<const Dnr::Rules> replaced;
+        QWriteLocker locker(&state.lock);
+        if(ticket != state.asked) return;
+        replaced = state.current;
+        state.current = rules;
+        state.generation++;
+        locker.unlock();
+        replaced.clear();
+
+        if(QCoreApplication::instance() && (rules->Count() || skipped.Total()))
+            qInfo() << "extension rules:" << rules->Count() << "in force;"
+                    << skipped.Total() << "not evaluated (headers" << skipped.modifyHeaders
+                    << "computed redirects" << skipped.computedRedirect
+                    << "tab bound" << skipped.tabBound << "bad regex" << skipped.badRegex
+                    << "unread conditions" << skipped.unreadCondition
+                    << "unreadable" << skipped.malformed << ")";
+    }
+}
+
+void ExtensionNetRules::Reload(){
+    QList<Source> sources;
+    foreach(const ExtensionRuleFiles &each, ExtensionController::EnabledRuleFiles()){
+        Source source;
+        source.id = each.id;
+        source.files = each.files;
+        source.session = each.session;
+        source.dynamic = each.dynamic;
+        sources << source;
+    }
+    Load(sources);
+}
+
+void ExtensionNetRules::Load(const QList<Source> &sources, bool async){
+    Q_ASSERT(!QCoreApplication::instance() ||
+             QThread::currentThread() == QCoreApplication::instance()->thread());
+    NetRulesState &state = NetRules();
+    const QStringList key = KeyOf(sources);
+    quint64 ticket = 0;
+    {
+        QWriteLocker locker(&state.lock);
+        if(key == state.key) return;
+        state.key = key;
+        ticket = ++state.asked;
+    }
+    if(async) state.pool.start([sources, ticket](){ ReadAndPublish(sources, ticket); });
+    else ReadAndPublish(sources, ticket);
+}
+
+QSharedPointer<const Dnr::Rules> ExtensionNetRules::Current(quint64 *generation){
+    NetRulesState &state = NetRules();
+    QReadLocker locker(&state.lock);
+    if(generation) *generation = state.generation;
+    return state.current;
+}
+
+void ExtensionNetRules::WaitForLoads(){
+    NetRules().pool.waitForDone();
+}
+
 bool UrlBlockRules::SendDoNotTrack(){
     QReadLocker locker(&BlockRulesLock());
     return m_SendDoNotTrack;
@@ -316,6 +508,12 @@ bool UrlBlockRules::IsBlocked(const QString &url){
     return Matches(rules, url);
 }
 
+#ifdef WEBENGINEVIEW
+static void MirrorProfileCookies(QWebEngineCookieStore *store, const QString &id,
+                                 const QString &source, QObject *context,
+                                 QPointer<NetworkAccessManager> owner);
+#endif
+
 NetworkAccessManager::NetworkAccessManager(QString id)
     : QNetworkAccessManager(nullptr)
     , m_Id(id)
@@ -328,7 +526,11 @@ NetworkAccessManager::NetworkAccessManager(QString id)
 #endif
 {
 #ifdef WEBENGINEVIEW
-    SetupProfile();
+    SetupProfile(m_Profile.get());
+
+    MirrorProfileCookies(m_Profile->cookieStore(), m_Id,
+                         QStringLiteral("web:") + m_Profile->storageName(),
+                         this, this);
 #endif
     connect(this, &NetworkAccessManager::authenticationRequired,
             this, &NetworkAccessManager::HandleAuthentication);
@@ -351,7 +553,6 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
     if(!reply){
         return;
     }
-
 
     Application::AskSslErrorPolicyIfNeed();
 
@@ -488,17 +689,15 @@ void NetworkAccessManager::HandleDownload(QObject *object){
     QString filename;
     QString mime;
     QUrl url;
+
+    if(View *w = dynamic_cast<View*>(Application::CurrentWidget()))
+        if(TreeBank *tb = w->GetTreeBank()) tb->GoBackOrCloseForDownload(w);
+
     if(orig_item){
-        if(WebEngineView *w = qobject_cast<WebEngineView*>(Application::CurrentWidget())){
-            if(TreeBank *tb = w->GetTreeBank()) tb->GoBackOrCloseForDownload(w);
-        }
         filename = QDir::cleanPath(QDir(orig_item->downloadDirectory()).filePath(orig_item->downloadFileName()));
         mime = orig_item->mimeType();
         url = orig_item->url();
     } else {
-        if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(Application::CurrentWidget())){
-            if(TreeBank *tb = w->GetTreeBank()) tb->GoBackOrCloseForDownload(w);
-        }
         filename = object->property("path").toString();
         mime = object->property("mimeType").toString();
         url = object->property("url").toUrl();
@@ -685,18 +884,21 @@ void NetworkAccessManager::SetUserAgent(QString ua){
     m_UserAgentFullVersion = full;
 
 #ifdef WEBENGINEVIEW
-    m_Profile->setHttpUserAgent(ua);
-    SetupClientHints(browser, ua, full);
+    foreach(QWebEngineProfile *profile, Profiles()){
+        profile->setHttpUserAgent(ua);
+        SetupClientHints(profile, browser, ua, full);
+    }
 #endif
 }
 
 #ifdef WEBENGINEVIEW
 
-void NetworkAccessManager::SetupClientHints(const QString &browser,
+void NetworkAccessManager::SetupClientHints(QWebEngineProfile *profile,
+                                            const QString &browser,
                                             const QString &ua,
                                             const QString &full){
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    QWebEngineClientHints *hints = m_Profile->clientHints();
+    QWebEngineClientHints *hints = profile->clientHints();
     if(!hints) return;
 
     hints->resetAll();
@@ -720,7 +922,7 @@ void NetworkAccessManager::SetupClientHints(const QString &browser,
         hints->setFullVersionList(list);
     }
 #else
-    Q_UNUSED(browser) Q_UNUSED(ua) Q_UNUSED(full)
+    Q_UNUSED(profile) Q_UNUSED(browser) Q_UNUSED(ua) Q_UNUSED(full)
 #endif
 }
 #endif
@@ -884,18 +1086,6 @@ void NetworkAccessManager::SetSslProtocol(QString sslSet){
     m_SslProtocol = SslProtocolForSetting(sslSet);
 }
 
-void NetworkAccessManager::SetOffTheRecord(QString offTheRecordSet){
-#ifdef WEBENGINEVIEW
-    if       (!m_Profile->isOffTheRecord() && Application::ExactMatch(QStringLiteral( "(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"), offTheRecordSet)){
-        m_Profile = WrapProfile(new QWebEngineProfile());
-        SetupProfile();
-    } else if( m_Profile->isOffTheRecord() && Application::ExactMatch(QStringLiteral("!(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"), offTheRecordSet)){
-        m_Profile = WrapProfile(new QWebEngineProfile(NetworkController::ProfileStorageName(m_Id)));
-        SetupProfile();
-    }
-#endif
-}
-
 #ifdef WEBENGINEVIEW
 
 static void PresentNotification(QWebEngineNotification *notification){
@@ -923,9 +1113,7 @@ static void PresentNotification(QWebEngineNotification *notification){
 
 static void MirrorProfileCookies(QWebEngineCookieStore *store, const QString &id,
                                  const QString &source, QObject *context,
-                                 QPointer<NetworkAccessManager> owner = nullptr,
-                                 QMetaObject::Connection *added = nullptr,
-                                 QMetaObject::Connection *removed = nullptr){
+                                 QPointer<NetworkAccessManager> owner){
     if(!store || !context) return;
 
     const auto reach = [owner, id]() -> NetworkCookieJar* {
@@ -934,50 +1122,46 @@ static void MirrorProfileCookies(QWebEngineCookieStore *store, const QString &id
         return nam ? nam->GetNetworkCookieJar() : nullptr;
     };
 
-    const QMetaObject::Connection a =
-        QObject::connect(store, &QWebEngineCookieStore::cookieAdded, context,
+    QObject::connect(store, &QWebEngineCookieStore::cookieAdded, context,
                          [reach, source](const QNetworkCookie &cookie){
                              if(NetworkCookieJar *jar = reach())
                                  jar->MirrorCookie(source, cookie);
                          });
-    const QMetaObject::Connection r =
-        QObject::connect(store, &QWebEngineCookieStore::cookieRemoved, context,
+    QObject::connect(store, &QWebEngineCookieStore::cookieRemoved, context,
                          [reach, source](const QNetworkCookie &cookie){
                              if(NetworkCookieJar *jar = reach())
                                  jar->UnmirrorCookie(source, cookie);
                          });
-    if(added) *added = a;
-    if(removed) *removed = r;
 }
 
-void NetworkAccessManager::SetupProfile(){
+void NetworkAccessManager::SetupProfile(QWebEngineProfile *profile){
     Settings &s = Application::GlobalSettings();
 
-    m_Profile->setProperty(PROFILE_KEY_PROPERTY,
-                           m_Profile->isOffTheRecord() ? QString() : m_Id);
+    profile->setProperty(PROFILE_KEY_PROPERTY,
+                           profile->isOffTheRecord() ? QString() : m_Id);
 
-    if(!m_Profile->isOffTheRecord()){
-        SetProfileCache(m_Profile.get(), m_Id);
+    if(!profile->isOffTheRecord()){
+        SetProfileCache(profile, m_Id);
 
         if(Application::SaveSessionCookie())
-            m_Profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
+            profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
         else
-            m_Profile->setPersistentCookiesPolicy(QWebEngineProfile::AllowPersistentCookies);
+            profile->setPersistentCookiesPolicy(QWebEngineProfile::AllowPersistentCookies);
 
         const QString cache = s.value(QStringLiteral("network/@HttpCacheType"),
                                       QStringLiteral("DiskHttpCache")).value<QString>();
         if(cache == QStringLiteral("NoCache"))
-            m_Profile->setHttpCacheType(QWebEngineProfile::NoCache);
+            profile->setHttpCacheType(QWebEngineProfile::NoCache);
         else if(cache == QStringLiteral("MemoryHttpCache"))
-            m_Profile->setHttpCacheType(QWebEngineProfile::MemoryHttpCache);
+            profile->setHttpCacheType(QWebEngineProfile::MemoryHttpCache);
         else
-            m_Profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
+            profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
 
         const int megabytes = s.value(QStringLiteral("network/@HttpCacheMaximumSize"), 0).value<int>();
-        m_Profile->setHttpCacheMaximumSize(megabytes > 0 ? megabytes * 1024 * 1024 : 0);
+        profile->setHttpCacheMaximumSize(megabytes > 0 ? megabytes * 1024 * 1024 : 0);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-        m_Profile->setPersistentPermissionsPolicy
+        profile->setPersistentPermissionsPolicy
             (s.value(QStringLiteral("network/@RememberPermissions"), true).value<bool>()
              ? QWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk
              : QWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
@@ -985,29 +1169,33 @@ void NetworkAccessManager::SetupProfile(){
     }
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
     else {
-        m_Profile->setPersistentPermissionsPolicy
+        profile->setPersistentPermissionsPolicy
             (QWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
     }
 #endif
 
-    m_Profile->setDownloadPath(Application::GetDownloadDirectory());
+    profile->setDownloadPath(Application::GetDownloadDirectory());
 
     const QStringList dictionaries =
         s.value(QStringLiteral("network/@SpellCheckLanguages"), QStringList()).value<QStringList>();
-    m_Profile->setSpellCheckLanguages(dictionaries);
-    m_Profile->setSpellCheckEnabled(!dictionaries.isEmpty());
+    profile->setSpellCheckLanguages(dictionaries);
+    profile->setSpellCheckEnabled(!dictionaries.isEmpty());
 
-    m_Profile->setPushServiceEnabled
+    profile->setPushServiceEnabled
         (s.value(QStringLiteral("network/@EnablePushService"), false).value<bool>());
 
-    m_Profile->setNotificationPresenter(
-        [](std::unique_ptr<QWebEngineNotification> notification){
+    profile->setNotificationPresenter(
+        [profile](std::unique_ptr<QWebEngineNotification> notification){
+            if(notification && ExtensionHost::HasOffscreenOf(profile, notification->origin())){
+                notification->close();
+                return;
+            }
             PresentNotification(notification.release());
         });
 
-    SettingsSchemeHandler::Install(m_Profile.get());
+    SettingsSchemeHandler::Install(profile);
 
-    m_Profile->setHttpAcceptLanguage(Application::GetAcceptLanguage());
+    profile->setHttpAcceptLanguage(Application::GetAcceptLanguage());
 
     static QString source;
     if(source.isEmpty()){
@@ -1024,30 +1212,14 @@ void NetworkAccessManager::SetupProfile(){
     }
     QWebEngineScript script;
     script.setInjectionPoint(QWebEngineScript::DocumentReady);
-    script.setWorldId(QWebEngineScript::MainWorld);
+    script.setWorldId(QWebEngineScript::ApplicationWorld);
     script.setRunsOnSubFrames(true);
     script.setSourceCode(source);
-    m_Profile->scripts()->insert(script);
+    profile->scripts()->insert(script);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0) && QT_CONFIG(webengine_extensions)
-
-    if(QWebEngineExtensionManager *extensions = m_Profile->extensionManager()){
-        connect(extensions, &QWebEngineExtensionManager::loadFinished,
-                this, [extensions](const QWebEngineExtensionInfo &info){
-                    if(!info.error().isEmpty()){
-                        qWarning() << "extension" << info.path()
-                                   << "was not loaded:" << info.error();
-                        return;
-                    }
-                    if(!info.isEnabled()) extensions->setExtensionEnabled(info, true);
-                });
-        const QStringList paths =
-            s.value(QStringLiteral("network/@Extensions"), QStringList()).value<QStringList>();
-        foreach(const QString &path, paths){
-            const QString trimmed = path.trimmed();
-            if(trimmed.isEmpty() || trimmed.startsWith(QLatin1Char('#'))) continue;
-            extensions->loadExtension(trimmed);
-        }
+    WebEngineExtensions::Install(profile);
+    if(QWebEngineExtensionManager *extensions = profile->extensionManager()){
 
         if(s.value(QStringLiteral("network/@UnloadHangoutsExtension"), true).value<bool>()){
             static const QString hangouts =
@@ -1060,33 +1232,38 @@ void NetworkAccessManager::SetupProfile(){
 #endif
 
     UrlBlockRules::ReloadRules();
-    m_Profile->setUrlRequestInterceptor(RequestInterceptor::Instance());
+    ExtensionNetRules::Reload();
+    profile->setUrlRequestInterceptor(RequestInterceptor::For(profile->isOffTheRecord()));
 
-    connect(m_Profile.get(), &QWebEngineProfile::downloadRequested,
+    connect(profile, &QWebEngineProfile::downloadRequested,
             this, &NetworkAccessManager::HandleDownload);
 
     if(!m_UserAgent.isEmpty()){
-        m_Profile->setHttpUserAgent(m_UserAgent);
-        SetupClientHints(m_UserAgentBrand, m_UserAgent, m_UserAgentFullVersion);
+        profile->setHttpUserAgent(m_UserAgent);
+        SetupClientHints(profile, m_UserAgentBrand, m_UserAgent, m_UserAgentFullVersion);
     }
-
-    QObject::disconnect(m_CookieMirrorAdded);
-    QObject::disconnect(m_CookieMirrorRemoved);
-    if(!m_Profile->isOffTheRecord())
-        MirrorProfileCookies(m_Profile->cookieStore(), m_Id,
-                             QStringLiteral("web:") + m_Profile->storageName(),
-                             this, this,
-                             &m_CookieMirrorAdded, &m_CookieMirrorRemoved);
 }
 #endif
 
 #ifdef WEBENGINEVIEW
-QWebEngineProfile *NetworkAccessManager::GetProfile() const {
-    return m_Profile.get();
+QWebEngineProfile *NetworkAccessManager::GetProfile(bool offTheRecord){
+    return GetSharedProfile(offTheRecord).get();
 }
 
-SharedProfile NetworkAccessManager::GetSharedProfile() const {
-    return m_Profile;
+SharedProfile NetworkAccessManager::GetSharedProfile(bool offTheRecord){
+    if(!offTheRecord) return m_Profile;
+    if(!m_PrivateProfile){
+        m_PrivateProfile = WrapProfile(new QWebEngineProfile());
+        SetupProfile(m_PrivateProfile.get());
+    }
+    return m_PrivateProfile;
+}
+
+QList<QWebEngineProfile*> NetworkAccessManager::Profiles() const {
+    QList<QWebEngineProfile*> profiles;
+    if(m_Profile) profiles << m_Profile.get();
+    if(m_PrivateProfile) profiles << m_PrivateProfile.get();
+    return profiles;
 }
 #endif
 
@@ -1118,18 +1295,26 @@ DownloadItem::DownloadItem(QNetworkReply *reply, QString defaultfilename)
 DownloadItem::DownloadItem(QObject *object)
     : QObject(nullptr)
 {
-#ifdef WEBENGINEVIEW
+#if defined(WEBENGINEVIEW) || defined(EDGEWEBVIEW)
     m_DefaultFileName = QString();
     m_DownloadItem = object;
     m_DownloadReply = nullptr;
+#ifdef WEBENGINEVIEW
     if(
        QWebEngineDownloadRequest *item = qobject_cast<QWebEngineDownloadRequest*>(object)
        ){
+
         connect(item, &QWebEngineDownloadRequest::stateChanged,
                 this, &DownloadItem::StateChanged);
+        connect(item, &QWebEngineDownloadRequest::receivedBytesChanged,
+                this, &DownloadItem::ReceivedBytesChanged);
+        connect(item, &QWebEngineDownloadRequest::totalBytesChanged,
+                this, &DownloadItem::ReceivedBytesChanged);
         m_RemoteUrl = item->url();
         m_Path = QDir::cleanPath(QDir(item->downloadDirectory()).filePath(item->downloadFileName()));
-    } else if(object){
+    } else
+#endif
+    if(object){
         connect(object, SIGNAL(stateChanged()),
                 this, SLOT(StateChanged()));
         connect(object, SIGNAL(receivedBytesChanged()),
@@ -1137,6 +1322,9 @@ DownloadItem::DownloadItem(QObject *object)
         m_RemoteUrl = object->property("url").toUrl();
         m_Path = object->property("path").toString();
     }
+
+    if(object) connect(object, &QObject::destroyed, this, &DownloadItem::Finished);
+
     m_GettingPath = true;
     m_BAOut = QByteArray();
     m_FinishedFlag = false;
@@ -1237,24 +1425,32 @@ QString DownloadItem::CreateDefaultFromReplyOrRequest(){
                                           m_DownloadReply->url()))));
 }
 
-#ifdef WEBENGINEVIEW
+#if defined(WEBENGINEVIEW) || defined(EDGEWEBVIEW)
+
 void DownloadItem::StateChanged(){
     if(!m_DownloadItem) return;
+#ifdef WEBENGINEVIEW
     if(
-       QWebEngineDownloadRequest *item = qobject_cast<QWebEngineDownloadRequest*>(m_DownloadItem)
+       QWebEngineDownloadRequest *item = qobject_cast<QWebEngineDownloadRequest*>(m_DownloadItem.data())
        ){
 
         QWebEngineDownloadRequest::DownloadState state = item->state();
         QWebEngineDownloadRequest::DownloadInterruptReason reason = item->interruptReason();
 
-        if(state == QWebEngineDownloadRequest::DownloadInterrupted &&
+        if(state == QWebEngineDownloadRequest::DownloadCompleted){
+            Finished();
+        } else if(state == QWebEngineDownloadRequest::DownloadInterrupted &&
            40 > reason && reason >= 20){
 
             ModelessDialog::Information(QString("resumed."), QString("download failure, and resumed."));
 
             item->resume();
+        } else if(state == QWebEngineDownloadRequest::DownloadInterrupted){
+            Finished();
         }
-    } else {
+    } else
+#endif
+    {
         int state = m_DownloadItem->property("state").toInt();
         int reason = m_DownloadItem->property("interruptReason").toInt();
         if(state == 2){
@@ -1265,7 +1461,9 @@ void DownloadItem::StateChanged(){
 
             ModelessDialog::Information(QString("resumed."), QString("download failure, and resumed."));
 
-            QMetaObject::invokeMethod(m_DownloadItem, "resume");
+            QMetaObject::invokeMethod(m_DownloadItem.data(), "resume");
+        } else if(state == 4){
+            Finished();
         }
     }
 }
@@ -1365,7 +1563,7 @@ void DownloadItem::Stop(){
     if(m_FileOut.isOpen()) m_FileOut.close();
     if(m_DownloadReply) m_DownloadReply->abort();
     if(m_DownloadItem){
-        QMetaObject::invokeMethod(m_DownloadItem, "cancel");
+        QMetaObject::invokeMethod(m_DownloadItem.data(), "cancel");
     }
     emit Progress(m_Path, 100, 100);
     disconnect();
@@ -1375,7 +1573,8 @@ void DownloadItem::Stop(){
 
 void DownloadItem::DownloadProgress(qint64 received, qint64 total){
     if(!m_Path.isEmpty()){
-        if(total != -1){
+
+        if(total > 0){
             emit Progress(m_Path, received, total);
         } else {
             qint64 dummy = 10;
@@ -1388,19 +1587,21 @@ void DownloadItem::DownloadProgress(qint64 received, qint64 total){
     if(!received && !total) return;
 
     bool finished = false;
-    if(received == total) finished = true;
-    if(!finished && m_DownloadReply)
-        finished = m_DownloadReply->isFinished();
 
-    if(!finished && m_DownloadItem){
+    if(m_DownloadItem){
+
 #ifdef WEBENGINEVIEW
         if(
-           QWebEngineDownloadRequest *item = qobject_cast<QWebEngineDownloadRequest*>(m_DownloadItem)
+           QWebEngineDownloadRequest *item = qobject_cast<QWebEngineDownloadRequest*>(m_DownloadItem.data())
            )
             finished = item->isFinished();
         else
-            finished = m_DownloadItem->property("state").toInt() == 2;
 #endif
+            finished = m_DownloadItem->property("state").toInt() == 2;
+    } else {
+        if(received == total) finished = true;
+        if(!finished && m_DownloadReply)
+            finished = m_DownloadReply->isFinished();
     }
 
     if(finished){
@@ -1605,12 +1806,6 @@ void NetworkController::SetSslProtocol(NetworkAccessManager *nam, QStringList se
     nam->SetSslProtocol(set[pos]);
 }
 
-void NetworkController::SetOffTheRecord(NetworkAccessManager *nam, QStringList set){
-    int pos = set.indexOf(QRegularExpression(QStringLiteral("\\A!?(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)\\Z")));
-    if(pos == -1) return;
-    nam->SetOffTheRecord(set[pos]);
-}
-
 #ifdef WEBENGINEVIEW
 QWebEngineProfile* NetworkController::InspectorProfile(){
     static QWebEngineProfile *profile = nullptr;
@@ -1687,7 +1882,8 @@ void NetworkController::ApplyQuickPermissionsPolicy(QQuickWebEngineProfile *prof
 void NetworkController::ApplyQuickBlockRules(QQuickWebEngineProfile *profile){
     if(!profile) return;
     UrlBlockRules::ReloadRules();
-    profile->setUrlRequestInterceptor(RequestInterceptor::Instance());
+    ExtensionNetRules::Reload();
+    profile->setUrlRequestInterceptor(RequestInterceptor::For(profile->isOffTheRecord()));
 }
 
 void NetworkController::ApplyQuickCommonSettings(QQuickWebEngineProfile *profile){
@@ -1702,6 +1898,26 @@ void NetworkController::ApplyQuickCommonSettings(QQuickWebEngineProfile *profile
 
     profile->setPushServiceEnabled
         (s.value(QStringLiteral("network/@EnablePushService"), false).value<bool>());
+
+    profile->setHttpAcceptLanguage(Application::GetAcceptLanguage());
+}
+
+void NetworkController::ApplyAcceptLanguage(){
+    const QString language = Application::GetAcceptLanguage();
+    foreach(NetworkAccessManager *nam, AllNetworkAccessManager()){
+        foreach(QWebEngineProfile *profile, nam->Profiles()){
+            if(profile->httpAcceptLanguage() != language)
+                profile->setHttpAcceptLanguage(language);
+        }
+    }
+    foreach(QQuickWebEngineProfile *profile, QuickProfileTable()){
+        if(profile->httpAcceptLanguage() != language)
+            profile->setHttpAcceptLanguage(language);
+    }
+    foreach(QQuickWebEngineProfile *profile, QuickPrivateProfileTable()){
+        if(profile->httpAcceptLanguage() != language)
+            profile->setHttpAcceptLanguage(language);
+    }
 }
 
 QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
@@ -1710,15 +1926,37 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
         Settings &s = Application::GlobalSettings();
         const QString key = QStringLiteral("quick:") + id;
         const QString name = NetworkController::ProfileStorageName(key);
-        QQuickWebEngineProfile *profile =
-            new QQuickWebEngineProfile(Application::GetInstance());
+        const QString cacheType = s.value(QStringLiteral("network/@HttpCacheType"),
+                                          QStringLiteral("DiskHttpCache")).toString();
+        const int maxMB = s.value(QStringLiteral("network/@HttpCacheMaximumSize"), 0).toInt();
+        QQuickWebEngineProfile *profile = WebEngineExtensions::CreateQuickProfile(Application::GetInstance(), {
+            {QStringLiteral("storageName"), name},
+            {QStringLiteral("persistentStoragePath"), Application::DataDirectory() + QStringLiteral("webengine/") + name},
+            {QStringLiteral("cachePath"), Application::DataDirectory() + QStringLiteral("webenginecache/") + name},
+            {QStringLiteral("persistentCookiesPolicy"), static_cast<int>(Application::SaveSessionCookie()
+                ? QQuickWebEngineProfile::ForcePersistentCookies : QQuickWebEngineProfile::AllowPersistentCookies)},
+            {QStringLiteral("httpCacheType"), static_cast<int>(cacheType == QStringLiteral("NoCache")
+                ? QQuickWebEngineProfile::NoCache : cacheType == QStringLiteral("MemoryHttpCache")
+                ? QQuickWebEngineProfile::MemoryHttpCache : QQuickWebEngineProfile::DiskHttpCache)},
+            {QStringLiteral("httpCacheMaximumSize"), maxMB > 0 ? maxMB * 1024 * 1024 : 0},
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+            {QStringLiteral("persistentPermissionsPolicy"), static_cast<int>(
+                s.value(QStringLiteral("network/@RememberPermissions"), true).toBool()
+                ? QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk
+                : QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory)}
+#endif
+        });
         profile->setProperty(PROFILE_KEY_PROPERTY, key);
-        profile->setStorageName(name);
-        profile->setOffTheRecord(false);
-        profile->setPersistentStoragePath(
-            Application::DataDirectory() + QStringLiteral("webengine/") + name);
-        profile->setCachePath(
-            Application::DataDirectory() + QStringLiteral("webenginecache/") + name);
+        WebEngineExtensions::Install(profile);
+        if(profile->isOffTheRecord()){
+            SettingsSchemeHandler::Install(profile);
+            ApplyQuickPermissionsPolicy(profile);
+            ApplyQuickBlockRules(profile);
+            ApplyQuickCommonSettings(profile);
+            ConnectQuickNotifications(profile);
+            profiles[id] = profile;
+            return profile;
+        }
 
         profile->setPersistentCookiesPolicy
             (Application::SaveSessionCookie()
@@ -1748,7 +1986,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
 
         MirrorProfileCookies(profile->cookieStore(), id,
                              QStringLiteral("quick:") + profile->storageName(),
-                             profile);
+                             profile, nullptr);
 
         profiles[id] = profile;
     }
@@ -1804,7 +2042,6 @@ NetworkAccessManager* NetworkController::GetNetworkAccessManager(QString id, QSt
     SetUserAgent(nam, set);
     SetProxy(nam, set);
     SetSslProtocol(nam, set);
-    SetOffTheRecord(nam, set);
     return nam;
 }
 
@@ -1818,7 +2055,6 @@ NetworkAccessManager* NetworkController::CopyNetworkAccessManager(QString bef, Q
     SetUserAgent(nam, set);
     SetProxy(nam, set);
     SetSslProtocol(nam, set);
-    SetOffTheRecord(nam, set);
     return nam;
 }
 
@@ -1833,7 +2069,6 @@ NetworkAccessManager* NetworkController::MoveNetworkAccessManager(QString bef, Q
     SetUserAgent(nam, set);
     SetProxy(nam, set);
     SetSslProtocol(nam, set);
-    SetOffTheRecord(nam, set);
     return nam;
 }
 
@@ -1865,7 +2100,7 @@ void NetworkController::ClearCookies(){
         if(NetworkCookieJar *jar = nam->GetNetworkCookieJar())
             jar->SetAllCookies(QList<QNetworkCookie>());
 #ifdef WEBENGINEVIEW
-        if(QWebEngineProfile *profile = nam->GetProfile())
+        foreach(QWebEngineProfile *profile, nam->Profiles())
             if(QWebEngineCookieStore *store = profile->cookieStore())
                 store->deleteAllCookies();
 #endif
@@ -1878,7 +2113,7 @@ void NetworkController::ClearCookies(){
             store->deleteAllCookies();
     }
 #endif
-    SaveAllCookies();
+    if(AutoSaver *saver = Application::GetAutoSaver()) saver->SaveAllAsync();
 }
 
 void NetworkController::ClearHttpCache(){
@@ -1888,7 +2123,7 @@ void NetworkController::ClearHttpCache(){
 #ifdef WEBENGINEVIEW
     foreach(NetworkAccessManager *nam, m_NetworkAccessManagerTable){
         if(!nam) continue;
-        if(QWebEngineProfile *profile = nam->GetProfile())
+        foreach(QWebEngineProfile *profile, nam->Profiles())
             profile->clearHttpCache();
     }
     foreach(QQuickWebEngineProfile *profile,
@@ -1905,7 +2140,7 @@ void NetworkController::ClearVisitedLinks(){
 #ifdef WEBENGINEVIEW
     foreach(NetworkAccessManager *nam, m_NetworkAccessManagerTable){
         if(!nam) continue;
-        if(QWebEngineProfile *profile = nam->GetProfile())
+        foreach(QWebEngineProfile *profile, nam->Profiles())
             profile->clearAllVisitedLinks();
     }
 #endif
@@ -1940,31 +2175,10 @@ bool NetworkController::LoadCookieFile(QString path){
     return true;
 }
 
-bool NetworkController::LoadLegacyCookieFile(QString path){
-    QFile file(path);
-    if(!file.open(QIODevice::ReadOnly)) return false;
-    QDomDocument doc;
-    bool check = !!doc.setContent(&file);
-    file.close();
-    if(!check) return false;
-
-    QDomNodeList children = doc.documentElement().childNodes();
-    for(int i = 0; i < children.length(); i++){
-        QDomElement child = children.item(i).toElement();
-        InitializeNetworkAccessManager
-            (child.attribute(QStringLiteral("id")),
-             QNetworkCookie::parseCookies(child.attribute(QStringLiteral("body")).replace(QStringLiteral("\\0\\0\\0") , QStringLiteral("\n")).toLatin1()));
-    }
-    return true;
-}
-
 void NetworkController::LoadAllCookies(){
     QString datadir = Application::StateDirectory();
     QString filename = Application::CookieFileName();
-    QString legacy = Application::LegacyFileName(filename);
-
-    if(LoadCookieFile(datadir + filename) ||
-       LoadLegacyCookieFile(datadir + legacy)) return;
+    if(LoadCookieFile(datadir + filename)) return;
 
     QDir dir = QDir(datadir);
     QStringList list =
@@ -1973,15 +2187,11 @@ void NetworkController::LoadAllCookies(){
 
     foreach(QString backup, list){
 
-        bool isLegacy = backup.endsWith(legacy);
-        if(!isLegacy && !backup.endsWith(filename)) continue;
-
-        if(!(isLegacy
-             ? LoadLegacyCookieFile(datadir + backup)
-             : LoadCookieFile(datadir + backup))) continue;
+        if(!backup.endsWith(filename)) continue;
+        if(!LoadCookieFile(datadir + backup)) continue;
 
         ModelessDialog::Information
-            (tr("Restored from a back up file")+ QStringLiteral(" [") + backup + QStringLiteral("]."),
+            (tr("Restored from a back up file")+ QStringLiteral("\n[") + backup + QStringLiteral("]."),
              tr("Because of a failure to read the latest file, it was restored from a backup file."));
         break;
     }
@@ -1995,15 +2205,7 @@ bool NetworkController::ShouldSaveCookie(const QNetworkCookie &cookie,
              cookie.expirationDate().toUTC()       < now);
 }
 
-void NetworkController::SaveAllCookies(){
-
-    QString datadir = Application::StateDirectory();
-
-    QString cookie  = datadir + Application::CookieFileName(false);
-    QString cookieb = datadir + Application::CookieFileName(true);
-
-    if(QFile::exists(cookieb)) QFile::remove(cookieb);
-
+QByteArray NetworkController::CookieSnapshot(){
     const QDateTime now = QDateTime::currentDateTime();
     const bool saveSessionCookie = Application::SaveSessionCookie();
 
@@ -2018,13 +2220,25 @@ void NetworkController::SaveAllCookies(){
         doc[id] = rawdata;
     }
 
-    QFile file(cookieb);
-    if(file.open(QIODevice::WriteOnly)){
-        file.write(QJsonDocument(doc).toJson(QJsonDocument::Indented));
-    }
-    file.close();
-
-    if(QFile::exists(cookie)) QFile::remove(cookie);
-
-    QFile::rename(cookieb, cookie);
+    return QJsonDocument(doc).toJson(QJsonDocument::Indented);
 }
+
+bool NetworkController::SaveCookieSnapshot(const QByteArray &snapshot){
+    const QString datadir = Application::StateDirectory();
+    const QString cookie  = datadir + Application::CookieFileName(false);
+    const QString cookieb = datadir + Application::CookieFileName(true);
+
+    if(QFile::exists(cookieb)) QFile::remove(cookieb);
+
+    QFile file(cookieb);
+    if(!file.open(QIODevice::WriteOnly)) return false;
+    const bool written = file.write(snapshot) == snapshot.size() && file.flush();
+    file.close();
+    if(!written){
+        file.remove();
+        return false;
+    }
+
+    return FileExchange::Replace(cookieb, cookie);
+}
+

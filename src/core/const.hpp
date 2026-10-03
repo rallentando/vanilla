@@ -61,7 +61,6 @@ inline QDateTime NodeDateTimeFromString(const QString &str){
     return QDateTime(date, time);
 }
 
-
 static const QString VANILLA_SCHEME = QStringLiteral("vanilla");
 
 static const char EXTERNAL_COMMAND_PROPERTY[] = "vanilla_external_command";
@@ -72,6 +71,8 @@ inline const QFont &TreeBarTitleFont(){
 }
 
 static const int TREE_BAR_TAB_PADDING = 6;
+
+static const int TREE_BAR_TAB_MINIMUM_HEIGHT = 28;
 
 static const int TREE_BAR_TAB_MINIMUM_IMAGE_HEIGHT = 12;
 
@@ -93,11 +94,23 @@ inline const QFont &ToolBarFieldFont(){
 }
 static const int TOOL_BAR_FIELD_HEIGHT = 26;
 
+static const int EXTENSION_LIST_WIDTH = 430;
+static const int EXTENSION_LIST_ROWS_MAX_HEIGHT = 420;
+static const int EXTENSION_PANEL_PADDING = 12;
+static const int EXTENSION_ROW_NAME_WIDTH = 205;
+static const QSize EXTENSION_POPUP_SIZE = QSize(450, 520);
+static const int POPUP_FIT_TIMES[] = { 250, 700, 1500, 3000 };
+static const int POPUP_FIT_SETTLE_TIMES[] = { 100, 500 };
+inline const QFont &ExtensionListTitleFont(){
+    static const QFont font = ScaledFont(1.0, 2);
+    return font;
+}
+
 static const int MENU_ITEM_EXTRA_HEIGHT = 6;
 static const int MENU_MARGIN = 4;
 
 static const int EDGE_WIDGET_SIZE = 10;
-static const int TITLE_BAR_HEIGHT = 21;
+static const int TITLE_BAR_HEIGHT = 32;
 
 inline const QFont &TitleBarTitleFont(){ return DefaultFont();}
 
@@ -129,9 +142,8 @@ inline const QFont &DialogTitleFont(){
 inline const QFont &DialogTextFont(){ return DefaultFont();}
 
 static const int MINIMUL_DIALOG_WIDTH = 400;
+static const int MODELESS_DIALOG_WIDTH_DIVISOR = 4;
 static const int AUTOCANCEL_DISTANCE = 10000;
-
-static const int QUIT_AFTER_DIALOG_DELAY = 250;
 
 static const QSize SAVING_THUMBNAIL_SIZE   = QSize(400, 300);
 static const QSize RESIDENT_THUMBNAIL_SIZE = QSize(200, 150);
@@ -224,6 +236,5 @@ static const int DEFAULT_LOCALVIEW_MAX_FILEIMAGE = 100;
 static const int MAXIMUM_LOCALVIEW_MAX_FILEIMAGE = 512;
 
 static const int MAX_SAME_ACTION_COUNT = 100;
-
 
 #endif

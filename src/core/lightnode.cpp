@@ -11,7 +11,6 @@
 #include <QUuid>
 #include <QtConcurrent/QtConcurrent>
 
-
 std::atomic<quint64> Node::m_SerialCounter(1);
 QRecursiveMutex Node::m_DataMutex;
 bool Node::m_Booting = false;
@@ -20,6 +19,21 @@ QSet<QString> Node::m_AllHistoryFileName = QSet<QString>();
 Node::AddNodePosition Node::m_AddChildViewNodePosition = RightEnd;
 Node::AddNodePosition Node::m_AddSiblingViewNodePosition = RightOfPrimary;
 
+quint64 Node::SerialStart(const QByteArray &kept){
+    bool ok = false;
+    const quint64 start = kept.trimmed().toULongLong(&ok);
+    return ok && start >= 1 && start < SERIAL_CEILING ? start : 1;
+}
+
+quint64 Node::SerialAfter(quint64 start, quint64 next){
+    const quint64 after = qMax(next, start + SERIAL_SPAN);
+    return after < SERIAL_CEILING ? after : 1;
+}
+
+void Node::SeedSerials(quint64 start){
+    Q_ASSERT(m_SerialCounter.load() == 1);
+    m_SerialCounter.store(qMax<quint64>(start, 1));
+}
 
 Node::Node()
 {

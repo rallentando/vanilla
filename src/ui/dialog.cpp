@@ -358,19 +358,35 @@ QString ModalDialog::GetPass(QString title, QString caption, QString text, bool 
     return QString();
 }
 
+namespace {
+    int fileDialogs = 0;
+    struct FileDialogScope {
+        FileDialogScope(){ fileDialogs++;}
+        ~FileDialogScope(){ fileDialogs--;}
+    };
+}
+
+bool ModalDialog::InFileDialog(){
+    return fileDialogs > 0;
+}
+
 QString ModalDialog::GetExistingDirectory(const QString &caption, const QString &dir, QFileDialog::Options options){
+    FileDialogScope shown;
     return QFileDialog::getExistingDirectory(Application::CurrentWidget(), caption, dir, options);
 }
 
 QString ModalDialog::GetSaveFileName_(const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter, QFileDialog::Options options){
+    FileDialogScope shown;
     return QFileDialog::getSaveFileName(Application::CurrentWidget(), caption, dir, filter, selectedFilter, options);
 }
 
 QString ModalDialog::GetOpenFileName_(const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter, QFileDialog::Options options){
+    FileDialogScope shown;
     return QFileDialog::getOpenFileName(Application::CurrentWidget(), caption, dir, filter, selectedFilter, options);
 }
 
 QStringList ModalDialog::GetOpenFileNames(const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter, QFileDialog::Options options){
+    FileDialogScope shown;
     return QFileDialog::getOpenFileNames(Application::CurrentWidget(), caption, dir, filter, selectedFilter, options);
 }
 
@@ -485,6 +501,8 @@ ModelessDialogFrame::ModelessDialogFrame()
 }
 
 ModelessDialogFrame::~ModelessDialogFrame(){
+    foreach(ModelessDialog *dialog, m_Dialogs) dialog->m_Frame = nullptr;
+    m_Dialogs.clear();
 }
 
 void ModelessDialogFrame::Adjust(){
@@ -492,8 +510,11 @@ void ModelessDialogFrame::Adjust(){
     foreach(ModelessDialog *dialog, m_Dialogs){
         dialog->show();
         dialog->raise();
-        dialog->setGeometry(0, offset, width(), dialog->height());
-        offset += dialog->height();
+        const int height = dialog->hasHeightForWidth()
+            ? qMax(dialog->heightForWidth(width()), dialog->minimumSizeHint().height())
+            : dialog->height();
+        dialog->setGeometry(0, offset, width(), height);
+        offset += height;
     }
     resize(width(), offset);
 }
@@ -510,12 +531,15 @@ void ModelessDialogFrame::RegisterDialog(ModelessDialog *dialog){
     }
 
     dialog->setParent(frame);
+    dialog->m_Frame = frame;
     frame->m_Dialogs.append(dialog);
     frame->Adjust();
 }
 
 void ModelessDialogFrame::DeregisterDialog(ModelessDialog *dialog){
-    ModelessDialogFrame *frame = static_cast<ModelessDialogFrame*>(dialog->parent());
+    ModelessDialogFrame *frame = dialog->m_Frame;
+    if(!frame) return;
+    dialog->m_Frame = nullptr;
 
     frame->m_Dialogs.removeOne(dialog);
     frame->Adjust();
@@ -533,6 +557,7 @@ ModelessDialog::ModelessDialog()
     , m_TimerId(0)
     , m_CallBack([](bool){})
     , m_Finished(false)
+    , m_Frame(nullptr)
 {
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -561,26 +586,23 @@ void ModelessDialog::Discard(){
 }
 
 void ModelessDialog::TakeAway(){
-    if(parent()) ModelessDialogFrame::DeregisterDialog(this);
+    ModelessDialogFrame::DeregisterDialog(this);
 
     disconnect();
     deleteLater();
 }
 
 ModelessDialog::~ModelessDialog(){
+    ModelessDialogFrame::DeregisterDialog(this);
     hide();
 }
 
 void ModelessDialog::Execute(){
     if(m_Finished) return;
 
-    QHBoxLayout *hlayout1 = new QHBoxLayout();
-
     QVBoxLayout *vlayout = new QVBoxLayout();
-    hlayout1->addLayout(vlayout);
-    QHBoxLayout *hlayout2 = new QHBoxLayout();
-    hlayout1->addLayout(hlayout2);
-    hlayout2->setAlignment(Qt::AlignRight);
+    QHBoxLayout *hlayout = new QHBoxLayout();
+    hlayout->setAlignment(Qt::AlignRight);
 
     DialogLabel *titleLabel = new DialogLabel(m_Title, DialogTitleFont(), this);
     titleLabel->setContentsMargins(0, 0, 0, ScaleByDevice(3));
@@ -597,18 +619,22 @@ void ModelessDialog::Execute(){
 
     m_DefaultButton = Dialog::Default(m_Buttons, m_DefaultButton);
 
+    foreach(DialogLabel *label, findChildren<DialogLabel*>())
+        label->setWordWrap(true);
+
     for(const ButtonSpec &spec : ButtonSpecs){
         if(!m_Buttons.testFlag(spec.button)) continue;
 
         QPushButton *button = new QPushButton(Dialog::Text(spec.button), this);
         const Dialog::Button which = spec.button;
         connect(button, &QPushButton::clicked, this, [this, which](){ Answer(which);});
-        hlayout2->addWidget(button);
+        hlayout->addWidget(button);
 
         if(spec.button == m_DefaultButton) button->setDefault(true);
     }
 
-    setLayout(hlayout1);
+    vlayout->addLayout(hlayout);
+    setLayout(vlayout);
 
     ModelessDialogFrame::RegisterDialog(this);
 

@@ -105,7 +105,7 @@ void QuickNativeWebView::ConnectQmlSignals(){
 void QuickNativeWebView::RebuildQmlItem(){
     const QUrl current = url();
 
-    m_History.Release();
+    ReleaseTail();
 
     disconnect(m_QmlNativeWebView, nullptr, this, nullptr);
 
@@ -229,7 +229,7 @@ void QuickNativeWebView::setUrl(const QUrl &url){
 }
 
 void QuickNativeWebView::setHtml(const QString &html, const QUrl &url){
-    m_History.Release();
+    ReleaseTail();
     QMetaObject::invokeMethod(m_QmlNativeWebView, "loadHtml",
                               Q_ARG(QString, html),
                               Q_ARG(QUrl,    url));
@@ -313,7 +313,6 @@ void QuickNativeWebView::Disconnect(TreeBank *tb){
 
 void QuickNativeWebView::OnSetViewNode(ViewNode*){}
 
-
 void QuickNativeWebView::OnSetThis(WeakView){}
 
 void QuickNativeWebView::OnSetMaster(WeakView){}
@@ -325,6 +324,8 @@ void QuickNativeWebView::OnSetJsObject(_View*){}
 void QuickNativeWebView::OnSetJsObject(_Vanilla*){}
 
 void QuickNativeWebView::OnLoadStarted(){
+    m_LoadTail.Started();
+
     if(!GetViewNode()) return;
 
     View::OnLoadStarted();
@@ -343,14 +344,25 @@ void QuickNativeWebView::OnLoadProgress(int progress){
         emit statusBarMessage(tr("Loading ... (%1 percent)").arg(progress));
 }
 
-void QuickNativeWebView::OnLoadFinished(bool ok){
-    m_History.Release();
+bool QuickNativeWebView::EndLoad(bool ok){
+    ReleaseTail();
 
-    if(!GetViewNode()) return;
+    if(!GetViewNode()) return false;
 
     View::OnLoadFinished(ok);
 
     if(!visible() && !m_EverShown) m_LoadedWhileHidden = true;
+    return true;
+}
+
+void QuickNativeWebView::loadStopped(){
+    if(!EndLoad(false)) return;
+
+    emit statusBarMessage(QString());
+}
+
+void QuickNativeWebView::OnLoadFinished(bool ok){
+    if(!EndLoad(ok)) return;
 
     if(!ok){
         emit statusBarMessage(tr("Failed to load."));
@@ -517,15 +529,22 @@ void QuickNativeWebView::TriggerNativeFastForwardAction(){
 }
 
 #ifdef MEDIATIME
-bool QuickNativeWebView::SaveMediaTime(){
-    if(IsLoading()) return false;
+bool QuickNativeWebView::SaveMediaTime(VoidCallBack settled){
+    if(IsLoading()){
+        if(settled) settled();
+        return false;
+    }
     const QUrl source = url();
-    if(source.isEmpty() || source == BLANK_URL) return false;
+    if(source.isEmpty() || source == BLANK_URL){
+        if(settled) settled();
+        return false;
+    }
+    QPointer<QuickNativeWebView> alive(this);
     CallWithEvaluatedJavaScriptResult
-        (GetMediaTimeJsCode(), [this, source](QVariant var){
-            if(!var.isValid() || !GetViewNode()) return;
-            if(url() != source) return;
-            GetViewNode()->SetMediaTime(var.toFloat());
+        (GetMediaTimeJsCode(), [alive, source, settled](QVariant var){
+            if(alive && var.isValid() && alive->GetViewNode() && alive->url() == source)
+                alive->GetViewNode()->SetMediaTime(var.toFloat());
+            if(settled) settled();
         });
     return true;
 }
@@ -600,7 +619,7 @@ void QuickNativeWebView::HandleWindowClose(){
 
 void QuickNativeWebView::HandleJavascriptConsoleMessage(int level, const QString &msg){
     if(level != 0) return;
-    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
@@ -609,7 +628,7 @@ void QuickNativeWebView::HandleJavascriptConsoleMessage(int level, const QString
         if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
         KeyPressEvent(&ke);
-    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventKey()), msg)){
+    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
         Qt::KeyboardModifiers modifiers = Qt::NoModifier;
         if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
@@ -619,7 +638,7 @@ void QuickNativeWebView::HandleJavascriptConsoleMessage(int level, const QString
         QKeyEvent ke = QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
         KeyReleaseEvent(&ke);
     }
-    else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventKey()), msg)){
+    else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventToken()), msg)){
         m_PreventScrollRestoration = true;
     }
 }
@@ -690,7 +709,7 @@ void QuickNativeWebView::HandleRenderProcessTermination(int status, int code){
                                 ? tr("Render process terminated repeatedly.")
                                 : tr("Render process terminated."),
                                 info.arg(code), base());
-    m_History.Release();
+    ReleaseTail();
     if(giveUp) return;
     QTimer::singleShot(0, m_QmlNativeWebView, SLOT(reload()));
 }
@@ -789,7 +808,7 @@ void QuickNativeWebView::Unselect(){
 }
 
 void QuickNativeWebView::Reload(){
-    m_History.Release();
+    ReleaseTail();
     QMetaObject::invokeMethod(m_QmlNativeWebView, "reload");
 }
 
@@ -798,7 +817,7 @@ void QuickNativeWebView::ReloadAndBypassCache(){
 }
 
 void QuickNativeWebView::Stop(){
-    m_History.Release();
+    ReleaseTail();
     QMetaObject::invokeMethod(m_QmlNativeWebView, "stop");
 }
 
@@ -975,7 +994,7 @@ void QuickNativeWebView::mouseMoveEvent(QMouseEvent *ev){
         ev->setAccepted(false);
         return;
     }
-    if(m_EnableMouseGesture &&
+    if(m_EnableRightGestureLocal &&
        ev->buttons() & Qt::RightButton &&
        !m_GestureStartedPos.isNull()){
 
@@ -1074,7 +1093,10 @@ void QuickNativeWebView::mouseMoveEvent(QMouseEvent *ev){
         drag->setMimeData(mime);
         drag->setPixmap(pixmap);
         drag->setHotSpot(pos);
-        drag->exec(Qt::CopyAction | Qt::MoveAction);
+        {
+            View::DragOutScope dragging;
+            drag->exec(Qt::CopyAction | Qt::MoveAction);
+        }
         drag->deleteLater();
         ev->setAccepted(true);
     } else {

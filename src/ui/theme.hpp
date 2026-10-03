@@ -48,6 +48,8 @@ enum Role {
     BarTabHoverOverlay,
     BarTabHoverOverlayTranslucent,
     BarTabHoverOverlayTranslucentFocused,
+    BarTabCurrentBackground,
+    BarTabCurrentAccent,
 
     TitleBarBackground,
     TitleBarBorder,
@@ -125,7 +127,10 @@ enum Role {
     MiniMapViewport,
     MiniMapViewportBorder,
     MiniMapText,
+    MiniMapControl,
     MiniMapMedia,
+    MiniMapFrame,
+    MiniMapPositionedBackground,
 
     ReceiverBackground,
     ReceiverBackgroundContrast,
@@ -195,6 +200,8 @@ inline QPen   Pen(Role role){ return QPen(Color(role));}
 inline QPen   Pen(Role role, int alpha){ return QPen(Color(role, alpha));}
 
 QPixmap Ink(const QPixmap &pixmap, Role role);
+
+QPixmap Fill(const QPixmap &pixmap, Role role);
 
 const QPixmap &Pixmap(const QString &path, Role role);
 

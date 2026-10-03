@@ -9,15 +9,26 @@ Qt
 --
 
 Vanilla uses the Qt libraries under the GNU Lesser General Public License
-version 3. The version shipped here is Qt 6.11.1, in the binaries built and
-published by The Qt Company; they are not modified.
+version 3. The version shipped here is Qt 6.12.0 with Qt WebEngine 6.140.0,
+in the binaries built and published by The Qt Company; they are not modified.
 
   LGPL-3.0-only.txt   the LGPLv3 itself
   GPL-3.0-only.txt    the GPLv3, which the LGPLv3 builds upon
 
 The corresponding source is published at
 
-  https://download.qt.io/archive/qt/6.11/6.11.1/single/
+  https://download.qt.io/archive/qt/6.12/6.12.0/single/
+
+and, for Qt WebEngine, which The Qt Company releases separately from Qt
+since Qt 6.12, at
+
+  https://download.qt.io/development_releases/qtwebengine/6.140.0-rc/
+  https://code.qt.io/cgit/qt/qtwebengine.git/tag/?h=v6.140.0-rc
+    (commit d505fc23640d2bd6345e6483eb73daf4e19f5829)
+
+The Qt WebEngine 6.140.0 binaries were released before its source archive
+appeared under official_releases; the source the Qt installer ships beside
+them is the same as the v6.140.0-rc tag above.
 
 Qt is linked dynamically. Its libraries sit next to 'vanilla.exe' as separate
 DLLs, so they can be replaced with another build of the same Qt version
@@ -27,8 +38,8 @@ without rebuilding vanilla.
 Qt WebEngine and Chromium
 -------------------------
 
-Qt WebEngine 6.11.1 is one of those Qt libraries, and it carries Chromium
-(based on Chromium 140.0.7339.264) together with the third-party code
+Qt WebEngine 6.140.0 is one of those Qt libraries, and it carries Chromium
+(based on Chromium 140.0.7339.225) together with the third-party code
 Chromium itself carries.
 
   LICENSE.Chromium    Chromium's own licence

@@ -4,9 +4,13 @@
 #include <QFile>
 #include <QDirIterator>
 #include <QRegularExpression>
+#include <QMenu>
+#include <QAction>
+#include <QActionGroup>
 
 #include "switch.hpp"
 #include "edgewebviewstate.hpp"
+#include "extensionhostwire.hpp"
 #include "edgeeventsubscriptions.hpp"
 #include "edgeunadoptedcontroller.hpp"
 
@@ -22,6 +26,7 @@ private slots:
     void theEnvironmentLeadsToAController();
     void theLastLoadAskedForBeforeReadyIsTheOneRead();
     void aHeldLoadKeepsItsMethodHeadersAndBody();
+    void aHeldStringDocumentComesOutAsOne();
     void aRetiredViewDoesNotAskForAController();
     void aControllerWhichArrivesForARetiredViewIsClosed();
     void aControllerWhichArrivesForAFailedViewIsClosed();
@@ -29,6 +34,7 @@ private slots:
     void retiringTwiceClosesNothingTwice();
     void aFailedEnvironmentIsReportedOnce();
     void aFailedControllerIsReportedOnce();
+    void aFailureSaysOnlyWhatIsKnown();
     void aFailureAfterRetirementIsNotReported();
 
     void theFirstWaiterStartsCreation();
@@ -55,6 +61,89 @@ private slots:
     void aDownloadOnlyTabWaitsForTheLastDownload();
     void aDownloadNobodyCanWatchStopsTheTabClosingForGood();
 
+    void aDownloadInProgressIsNotOver();
+    void aCompletedDownloadIsOver();
+    void anInterruptionWorthResumingIsNotOverAndAsksForIt();
+    void anInterruptionNothingCanResumeIsOver();
+    void anInterruptionAfterTheOneAttemptIsOver();
+    void aTotalWhichIsNotALengthIsNoLength();
+    void whatTheCallbackWroteBeforeTheRowExistedIsStillThere();
+
+    void whatAnEventMeantIsDecidedWhenItArrives();
+    void askingForAResumeDoesNotTurnThatEventIntoAnEnding();
+    void theInterruptionAfterAResumeIsAnEnding();
+    void anInterruptionArrivingFromInsideResumeIsAnEnding();
+    void progressArrivingAfterAResumeIsNotAnEnding();
+    void aResumeWhichWasRefusedIsAnEnding();
+
+    void aCallIntoTheBackendHoldsEverythingWhereItIs();
+    void aNestedDispatchDuringThatCallIsToldToWait();
+    void callsWithinCallsAreCountedApart();
+
+    void nothingQueuedRunsWhileACallIsOnTheStack();
+    void everythingQueuedRunsOnTheOneTurnAfterwards();
+    void manyRequestsDuringACallAreOneTimer();
+    void anActionWhoseObjectWentIsDropped();
+    void anActionWhichPumpsDoesNotStartASecondDrain();
+    void anActionMayQueueAnotherOne();
+
+    void aDownloadTakesItsAbortAway();
+    void aStopOfItsOwnNavigationSaysNothing();
+    void aStopIsKnownWhicheverStatusItComesBackAs();
+    void aRedirectInsideTheSameNavigationKeepsTheStop();
+    void anAbortNobodyClaimsIsSaidWhenTheWaitIsOver();
+    void anAbortIsNotSaidBeforeTheWaitIsOver();
+    void anAbortLeftBehindByANewNavigationIsNeverSaid();
+    void anAbortLeftBehindByASuccessIsNeverSaid();
+    void anEndingForAnOlderNavigationIsIgnored();
+
+    void aContextMenuDeferralIsCompletedOnce();
+    void aChoiceOnAnOlderMenuWritesNothing();
+    void aRetiredViewTakesNoDeferral();
+    void aSecondDeferralIsRefusedWhileOneIsOutstanding();
+    void retiringWithADeferralOutstandingHandsItOverOnce();
+    void aRetireFromInsideTheCompletionCallWaitsForItToReturn();
+    void aCompletionCallNobodyRetiredInAsksForNothing();
+    void aCompletionInsideACompletionDoesNotEndTheOuterOne();
+    void theDestructorsRetireDoesNotWait();
+    void everyCompletionIsCounted();
+    void aSupersededRequestShowsNoMenu();
+    void aMenuChoiceIsToldToTheHostBeforeTheEngineFiresIt();
+    void aRetiringViewCompletesItsMenuLast();
+    void theDeletionWaitsWithTheRetire();
+    void oneRetrySlotForHoweverManyRequests();
+    void onlyTheLatestRequestIsShown();
+    void everyDeletionPathReachesTheHold();
+    void aRequestIsNumberedBeforeAnyCallIntoTheBackend();
+    void aGoingViewActsOnNoKeyAndShowsNoDialog();
+    void theViewIsCheckedAfterEveryGroupOfCallsIntoTheBackend();
+    void noMenuWhileAHandlerIsOnTheStack();
+    void aDeletionAskedForDuringTheTeardownIsPostedAfterIt();
+    void radioItemsOfOneRunAreExclusive();
+    void anyRequestEndsThePreviousMenuBeforeReadingItsOwnItems();
+    void aMenuReservedForAnEndedEventIsNotShown();
+    void extensionItemsBecomeActionsOfTheirKind();
+    void oneDownloadAndOneRealAbortOfOneUrlSayItOnce();
+    void aDownloadNobodyIsHoldingAnEndingForChangesNothing();
+    void aStopOnAnIdleViewIsNotAStop();
+    void onlyFourEndingsAreHeldAtOnce();
+    void aRetiredLatchSaysNothingEver();
+    void anOrdinaryFailureIsSaidAtOnce();
+
+    void aDrainAskedForNowRunsEverythingWaiting();
+    void aDrainAskedForFromInsideADrainOnlyQueues();
+    void aDrainAskedForDuringABackendCallDoesNotRun();
+    void aDrainAskedForNowNeverArmsASecondTimer();
+    void aTimerWhichFiredEarlyLeavesTheEndingWithSomethingToWaitFor();
+
+    void theCellIsMadeBeforeTheRegistrationWhichWritesToIt();
+    void noRowIsDrawnForADownloadNobodyCanHearTheEndOf();
+    void theRowIsToldTheWholeCellBeforeTheTabIsTakenOut();
+    void aCarrierIsAskedAgainWhetherItMayGoOnceTheListHasIt();
+    void noCarrierIsLetGoOfFromInsideTheCallback();
+    void theListAtTheEndGoesThroughTheQueueToo();
+    void aCarrierShowsNoDocument();
+
     void aProfileWhoseCookiesRemainIsRefusedTheJar();
     void aLaterSuccessfulClearingLetsThatProfileWriteAgain();
 
@@ -78,7 +167,6 @@ private slots:
 
     void theCursorsAPageCanAskForBecomeTheirQtShapes();
     void aCursorWithNoSystemIdIsAnArrow();
-
 
     void aKeyTheScriptWouldSendIsAccepted();
     void anythingWhichIsNotJsonIsRefused();
@@ -132,6 +220,9 @@ private slots:
     void theInsideOfTheSourceAddressIsStillTheSourceAddress();
     void anAddressTheViewWentToAfterwardsIsTaken();
     void anOrdinaryLoadIsNeverMistakenForItsOwnSource();
+    void aStringDocumentKeepsItsAddressWhenTheBackendSaysBlank();
+    void anAddressTheStringDocumentLeftIsTaken();
+    void aStringDocumentIsOverOnceTheViewHasGoneElsewhere();
 
     void everySubscriptionIsUndoneExactlyOnce();
     void subscriptionsAreUndoneInTheOrderTheyWereMade();
@@ -174,6 +265,28 @@ private slots:
     void whatTheBackendSaysAboutACookieIsCarriedOver();
     void anExpiryWhichIsNotOneLeavesASessionCookie();
     void aPathTheBackendDidNotGiveIsNotAPath();
+
+    void theExtensionPageIsNavigatedOnceTheScriptIsIn();
+    void aScriptRegistrationWhichFailedIsReportedOnceAndNavigatesNothing();
+    void aScriptRegistrationAnsweringAfterTheCloseDoesNothing();
+    void aTabAnswerDueAfterTheCloseIsNotSent();
+    void theTabRequestIsParsedInItsOneShapeOnly();
+    void theOneTabAtTheSourceAddressIsTheAnswer();
+    void twoTabsAtTheSourceAddressAreNotToldApart();
+    void noSourceAndNoMatchAnswerNone();
+    void aViewWhichMovedSinceTheRequestArrivedIsNotNamed();
+    void aViewAtAnAddressOutOfTheExtensionsSightIsNotNamed();
+    void theReplyNamesTheSequenceAndTheIdOrNull();
+
+    void anOperationWhichSucceedsIsReportedOnceAndAnswersNothingMore();
+    void aRefusedOperationIsTriedOnceMoreOnTheEnginesFreshObject();
+    void aRetryWhichFailsIsReportedAndNotTriedAgain();
+    void aRemoveOfWhatTheEngineNoLongerHasIsSuccess();
+    void anEnableOfWhatTheEngineNoLongerHasIsGone();
+    void aListWhichCouldNotBeHadReportsTheFirstFailure();
+    void anAnswerOutOfTurnDoesNothing();
+    void theBackendHoldsOnlyWhatTheLedgerKnowsAndAskersGoWithTheirView();
+    void theRelayIsAViewOfItsOwnKindSeenByTheEngineAndNavigatedOnce();
 };
 
 void tst_edgestate::aViewAsksForTheEnvironmentOnce(){
@@ -238,6 +351,32 @@ void tst_edgestate::aHeldLoadKeepsItsMethodHeadersAndBody(){
     EdgePendingLoad plain;
     plain.url = QUrl(QStringLiteral("https://example.com/"));
     QVERIFY(!plain.IsRequest());
+}
+
+void tst_edgestate::aHeldStringDocumentComesOutAsOne(){
+    EdgeControllerState s;
+    s.Start();
+
+    EdgePendingLoad html;
+    html.url = QUrl(QStringLiteral("https://example.com/page"));
+    html.html = QStringLiteral("<p>edited</p>");
+    html.isHtml = true;
+    QVERIFY(html.IsHtml());
+    QVERIFY(!html.IsRequest());
+
+    s.SetPendingLoad(html);
+    const EdgePendingLoad taken = s.TakePendingLoad();
+    QVERIFY(taken.IsHtml());
+    QCOMPARE(taken.url, QUrl(QStringLiteral("https://example.com/page")));
+    QCOMPARE(taken.html, QStringLiteral("<p>edited</p>"));
+
+    EdgePendingLoad empty;
+    empty.url = QUrl(QStringLiteral("about:blank"));
+    empty.isHtml = true;
+    QVERIFY(empty.IsHtml());
+    EdgePendingLoad plain;
+    plain.url = QUrl(QStringLiteral("https://example.com/"));
+    QVERIFY(!plain.IsHtml());
 }
 
 void tst_edgestate::aRetiredViewDoesNotAskForAController(){
@@ -378,7 +517,6 @@ void tst_edgestate::aWaiterWithoutATokenIsNotAWaiter(){
     QCOMPARE(e.WaiterCount(), 0);
 }
 
-
 void tst_edgestate::theControllerIsNotReadyUntilTheScriptIsIn(){
     EdgeControllerState s;
     s.Start();
@@ -465,8 +603,17 @@ void tst_edgestate::aKeyTheScriptWouldNeverSendIsRefused(){
     QVERIFY(!EdgeMessage::Parse
             (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("112"),
                         QStringLiteral("false")), 42).IsValid());
+    QVERIFY(EdgeMessage::Parse
+            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("27"),
+                        QStringLiteral("false")), 42).IsValid());
     QVERIFY(!EdgeMessage::Parse
             (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("27"),
+                        QStringLiteral("true")), 42).IsValid());
+    QVERIFY(!EdgeMessage::Parse
+            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("26"),
+                        QStringLiteral("false")), 42).IsValid());
+    QVERIFY(!EdgeMessage::Parse
+            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("28"),
                         QStringLiteral("false")), 42).IsValid());
     QVERIFY(!EdgeMessage::Parse
             (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("8"),
@@ -1066,6 +1213,64 @@ void tst_edgestate::anOrdinaryLoadIsNeverMistakenForItsOwnSource(){
         QUrl(QStringLiteral("http://127.0.0.1:8091/jsoff.html"))));
     QVERIFY(!EdgeIsOwnViewSource(QUrl(), QUrl()));
     QVERIFY(!EdgeIsOwnViewSource(QUrl(QStringLiteral("view-source:")), QUrl()));
+}
+
+void tst_edgestate::aStringDocumentKeepsItsAddressWhenTheBackendSaysBlank(){
+    const QUrl page(QStringLiteral("https://example.com/page"));
+    const QUrl blank(QStringLiteral("about:blank"));
+
+    QVERIFY(EdgeIsOwnStringDocument(page, page, blank));
+    QVERIFY(EdgeIsOwnStringDocument(blank, blank, blank));
+    QVERIFY(EdgeIsOwnStringDocument(page, page, QUrl(QStringLiteral("about:blank"))));
+}
+
+void tst_edgestate::anAddressTheStringDocumentLeftIsTaken(){
+    const QUrl page(QStringLiteral("https://example.com/page"));
+    const QUrl blank(QStringLiteral("about:blank"));
+
+    QVERIFY(!EdgeIsOwnStringDocument(
+        page, page, QUrl(QStringLiteral("https://example.com/other"))));
+    QVERIFY(!EdgeIsOwnStringDocument(
+        QUrl(QStringLiteral("https://example.com/other")), page, blank));
+    QVERIFY(!EdgeIsOwnStringDocument(page, QUrl(), blank));
+    QVERIFY(!EdgeIsOwnStringDocument(blank, QUrl(), blank));
+    QVERIFY(!EdgeIsOwnStringDocument(QUrl(), QUrl(), QUrl()));
+}
+
+void tst_edgestate::aStringDocumentIsOverOnceTheViewHasGoneElsewhere(){
+    const QUrl x(QStringLiteral("https://example.com/x"));
+    const QUrl y(QStringLiteral("https://example.com/y"));
+    const QUrl blank(QStringLiteral("about:blank"));
+
+    EdgeStringDocument doc;
+    QVERIFY(!doc.IsOwn(x, blank));
+
+    EdgePendingLoad html;
+    html.url = x;
+    html.html = QStringLiteral("<p>x</p>");
+    html.isHtml = true;
+    doc.LoadStarted(html);
+    QCOMPARE(doc.Url(), x);
+    QVERIFY(doc.IsOwn(x, blank));
+
+    QVERIFY(!doc.IsOwn(x, y));
+    doc.ViewWentElsewhere();
+    QVERIFY(doc.Url().isEmpty());
+    QVERIFY(!doc.IsOwn(y, x));
+    QVERIFY(!doc.IsOwn(x, blank));
+
+    doc.LoadStarted(html);
+    QVERIFY(doc.IsOwn(x, blank));
+    EdgePendingLoad plain;
+    plain.url = y;
+    doc.LoadStarted(plain);
+    QVERIFY(doc.Url().isEmpty());
+    QVERIFY(!doc.IsOwn(y, blank));
+    EdgePendingLoad unnamed;
+    unnamed.url = blank;
+    unnamed.isHtml = true;
+    doc.LoadStarted(unnamed);
+    QVERIFY(doc.IsOwn(blank, blank));
 }
 
 void tst_edgestate::theFirstViewOfAPrivateProfileEmptiesIt(){
@@ -1669,7 +1874,7 @@ namespace {
         return QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
     }
 
-    QString EdgeRegistrationSkeletonOf(const QString &name){
+    QString EdgeCodeTextOf(const QString &name){
         QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) +
                    QStringLiteral("/view/edge/") + name);
         if(!file.open(QIODevice::ReadOnly)) return QString();
@@ -1709,6 +1914,13 @@ namespace {
                 break;
             }
         }
+
+        return out;
+    }
+
+    QString EdgeRegistrationSkeletonOf(const QString &name){
+        QString out = EdgeCodeTextOf(name);
+        if(out.isEmpty()) return out;
 
         static const QRegularExpression handler(QStringLiteral("->\\s*HRESULT\\s*\\{"));
         forever {
@@ -1861,7 +2073,7 @@ void tst_edgestate::everyHandlerListComesOffBeforeTheControllerIsClosed(){
     QVERIFY2(!source.isEmpty(), "edgewebview.cpp was not read; check VANILLA_SOURCE_DIR");
 
     static const QRegularExpression opens
-        (QStringLiteral("^void EdgeWebView::Retire\\s*\\(\\s*\\)\\s*\\{"),
+        (QStringLiteral("^void EdgeWebView::Retire\\s*\\([^)]*\\)\\s*\\{"),
          QRegularExpression::MultilineOption);
     const QRegularExpressionMatch entered = opens.match(source);
     QVERIFY(entered.hasMatch());
@@ -2084,6 +2296,17 @@ void tst_edgestate::aPrivateViewIsRefusedRatherThanMadeOrdinary(){
              EdgeControllerOptionsAnswer::RefusePrivate);
     QCOMPARE(EdgeAnswerForControllerOptions(false, false),
              EdgeControllerOptionsAnswer::ShareDefaultProfile);
+}
+
+void tst_edgestate::aFailureSaysOnlyWhatIsKnown(){
+    QVERIFY(EdgeFailureShowsCode(static_cast<long>(0x80004005UL)));
+    QVERIFY(EdgeFailureShowsCode(static_cast<long>(0x8007139FUL)));
+    QVERIFY(!EdgeFailureShowsCode(0));
+    QVERIFY(!EdgeFailureShowsCode(1));
+    QVERIFY(EdgeFailureMayBeFolderClash(static_cast<long>(0x8007139FUL)));
+    QVERIFY(!EdgeFailureMayBeFolderClash(static_cast<long>(0x80004005UL)));
+    QVERIFY(!EdgeFailureMayBeFolderClash(static_cast<long>(0x8007139EUL)));
+    QVERIFY(!EdgeFailureMayBeFolderClash(0));
 }
 
 void tst_edgestate::theHostingFallsBackInOneOrder(){
@@ -2396,6 +2619,1707 @@ void tst_edgestate::aPathTheBackendDidNotGiveIsNotAPath(){
                             -1.0, false, false);
     QVERIFY(made.path().isEmpty());
     QCOMPARE(made.domain(), QStringLiteral("example.com"));
+}
+
+void tst_edgestate::aDownloadInProgressIsNotOver(){
+    EdgeDownloadCell cell;
+    QCOMPARE(cell.ReportedState(), int(EdgeDownloadCell::ReportedInProgress));
+    QCOMPARE(cell.ReportedReason(), int(EdgeDownloadCell::ReasonNone));
+    QVERIFY(!cell.IsTerminal());
+
+    cell.SetState(EdgeDownloadCell::Backend::InProgress, false);
+    QVERIFY(!cell.IsTerminal());
+}
+
+void tst_edgestate::aCompletedDownloadIsOver(){
+    EdgeDownloadCell cell;
+    cell.SetState(EdgeDownloadCell::Backend::Completed, false);
+    QCOMPARE(cell.ReportedState(), int(EdgeDownloadCell::ReportedCompleted));
+    QCOMPARE(cell.ReportedReason(), int(EdgeDownloadCell::ReasonNone));
+    QVERIFY(cell.IsTerminal());
+}
+
+void tst_edgestate::anInterruptionWorthResumingIsNotOverAndAsksForIt(){
+    EdgeDownloadCell cell;
+    cell.SetState(EdgeDownloadCell::Backend::Interrupted, true);
+
+    QCOMPARE(cell.ReportedState(), int(EdgeDownloadCell::ReportedInterrupted));
+    QCOMPARE(cell.ReportedReason(), int(EdgeDownloadCell::ReasonNetworkFailed));
+    QVERIFY(cell.MayResume());
+    QVERIFY(!cell.IsTerminal());
+}
+
+void tst_edgestate::anInterruptionNothingCanResumeIsOver(){
+    EdgeDownloadCell cell;
+    cell.SetState(EdgeDownloadCell::Backend::Interrupted, false);
+
+    QCOMPARE(cell.ReportedState(), int(EdgeDownloadCell::ReportedInterrupted));
+    QCOMPARE(cell.ReportedReason(), int(EdgeDownloadCell::ReasonNone));
+    QVERIFY(!cell.MayResume());
+    QVERIFY(cell.IsTerminal());
+}
+
+void tst_edgestate::anInterruptionAfterTheOneAttemptIsOver(){
+    EdgeDownloadCell cell;
+    cell.SetState(EdgeDownloadCell::Backend::Interrupted, true);
+    QVERIFY(cell.MayResume());
+
+    cell.MarkResumeAttempted();
+
+    cell.SetState(EdgeDownloadCell::Backend::Interrupted, true);
+    QVERIFY(!cell.MayResume());
+    QCOMPARE(cell.ReportedReason(), int(EdgeDownloadCell::ReasonNone));
+    QVERIFY(cell.IsTerminal());
+}
+
+void tst_edgestate::aTotalWhichIsNotALengthIsNoLength(){
+    EdgeDownloadCell cell;
+
+    cell.SetProgress(1024, 0);
+    QCOMPARE(cell.TotalBytes(), qint64(-1));
+    cell.SetProgress(1024, -1);
+    QCOMPARE(cell.TotalBytes(), qint64(-1));
+
+    cell.SetProgress(1024, 4096);
+    QCOMPARE(cell.ReceivedBytes(), qint64(1024));
+    QCOMPARE(cell.TotalBytes(), qint64(4096));
+
+    cell.SetProgress(-1, 4096);
+    QCOMPARE(cell.ReceivedBytes(), qint64(0));
+}
+
+void tst_edgestate::whatTheCallbackWroteBeforeTheRowExistedIsStillThere(){
+    EdgeDownloadCell cell;
+
+    cell.SetProgress(4096, 4096);
+    cell.SetState(EdgeDownloadCell::Backend::Completed, false);
+
+    QCOMPARE(cell.ReceivedBytes(), qint64(4096));
+    QCOMPARE(cell.TotalBytes(), qint64(4096));
+    QCOMPARE(cell.ReportedState(), int(EdgeDownloadCell::ReportedCompleted));
+    QVERIFY(cell.IsTerminal());
+}
+
+void tst_edgestate::theCellIsMadeBeforeTheRegistrationWhichWritesToIt(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const int cell = source.indexOf(QStringLiteral("make_shared<EdgeDownloadCell>"));
+    const int wired = source.indexOf(QStringLiteral("make_shared<QPointer<EdgeDownloadAdapter>>"));
+    const int registration = source.indexOf(QStringLiteral("add_StateChanged"));
+    QVERIFY(cell != -1);
+    QVERIFY(wired != -1);
+    QVERIFY(registration != -1);
+
+    QVERIFY(cell < registration);
+    QVERIFY(wired < registration);
+}
+
+void tst_edgestate::noRowIsDrawnForADownloadNobodyCanHearTheEndOf(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const int failed = source.indexOf(QStringLiteral("if(FAILED(hr))"));
+    const int untracked = source.indexOf(QStringLiteral("m_Downloads.Untracked()"));
+    const int adapter = source.indexOf(QStringLiteral("new EdgeDownloadAdapter"));
+    const int item = source.indexOf(QStringLiteral("new DownloadItem"));
+    QVERIFY(failed != -1);
+    QVERIFY(untracked != -1);
+    QVERIFY(adapter != -1);
+    QVERIFY(item != -1);
+
+    QVERIFY(failed < untracked);
+    QVERIFY(untracked < adapter);
+    QVERIFY(adapter < item);
+
+    const int returns = source.indexOf(QStringLiteral("return S_OK;"), untracked);
+    QVERIFY(returns != -1);
+    QVERIFY(returns < adapter);
+}
+
+void tst_edgestate::theRowIsToldTheWholeCellBeforeTheTabIsTakenOut(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const int item = source.indexOf(QStringLiteral("new DownloadItem"));
+    const int registered = source.indexOf(QStringLiteral("RegisterDownload(item)"));
+    const int snapshot = source.indexOf(QStringLiteral("terminalBeforeReplay = cell->IsTerminal()"));
+    const int replay = source.indexOf(QStringLiteral("adapter->Replay()"));
+    const int decision = source.indexOf(QStringLiteral("terminalBeforeReplay"), replay);
+    const int extract = source.indexOf(QStringLiteral("ExtractDownloadCarrier"));
+    QVERIFY(item != -1);
+    QVERIFY(registered != -1);
+    QVERIFY(snapshot != -1);
+    QVERIFY(replay != -1);
+    QVERIFY(decision != -1);
+    QVERIFY(extract != -1);
+
+    QVERIFY(item < registered);
+    QVERIFY(registered < snapshot);
+
+    QVERIFY(snapshot < replay);
+    QVERIFY(replay < decision);
+    QVERIFY(decision < extract);
+}
+
+void tst_edgestate::aCarrierIsAskedAgainWhetherItMayGoOnceTheListHasIt(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const int added = source.indexOf(QStringLiteral("Add(held)"));
+    QVERIFY(added != -1);
+    const int asked = source.indexOf(QStringLiteral("m_Downloads.MayClose()"), added);
+    QVERIFY(asked != -1);
+    const int released = source.indexOf(QStringLiteral("ReleaseLater(held)"), asked);
+    QVERIFY(released != -1);
+
+}
+
+void tst_edgestate::noCarrierIsLetGoOfFromInsideTheCallback(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    static const QRegularExpression opens
+        (QStringLiteral("^void EdgeDownloadCarriers::ReleaseLater\\s*\\([^)]*\\)\\s*\\{"),
+         QRegularExpression::MultilineOption);
+    const QRegularExpressionMatch entered = opens.match(source);
+    QVERIFY(entered.hasMatch());
+
+    int depth = 0, ends = entered.capturedEnd() - 1;
+    for(; ends < source.length(); ends++){
+        if(source.at(ends) == QLatin1Char('{')) depth++;
+        else if(source.at(ends) == QLatin1Char('}')){
+            depth--;
+            if(!depth) break;
+        }
+    }
+    const QString body = source.mid(entered.capturedStart(), ends - entered.capturedStart());
+
+    QVERIFY(body.contains(QStringLiteral("WhenCallsAreDone")));
+    QVERIFY2(!body.contains(QStringLiteral("singleShot")),
+             "a release with a timer of its own is a release the pump can run");
+    const int contains = body.indexOf(QStringLiteral("Contains(view.get())"));
+    const int mayclose = body.indexOf(QStringLiteral("MayClose()"));
+    const int removed = body.indexOf(QStringLiteral("m_Carriers.removeAll(view)"));
+    QVERIFY(contains != -1);
+    QVERIFY(mayclose != -1);
+    QVERIFY(removed != -1);
+    QVERIFY(contains < removed);
+    QVERIFY(mayclose < removed);
+}
+
+void tst_edgestate::aCarrierShowsNoDocument(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const int registration = source.indexOf(QStringLiteral("add_NavigationStarting"));
+    QVERIFY(registration != -1);
+    const int guard =
+        source.indexOf(QStringLiteral("EdgeDownloadCarriers::Instance()->Contains(this)"),
+                       registration);
+    QVERIFY(guard != -1);
+    const int cancelled = source.indexOf(QStringLiteral("put_Cancel(TRUE)"), guard);
+    QVERIFY(cancelled != -1);
+
+    QVERIFY(cancelled - guard < 200);
+}
+
+void tst_edgestate::whatAnEventMeantIsDecidedWhenItArrives(){
+    EdgeDownloadCell cell;
+
+    const EdgeDownloadReport progress =
+        cell.Arrive(EdgeDownloadCell::Backend::InProgress, false);
+    QCOMPARE(progress.state, int(EdgeDownloadCell::ReportedInProgress));
+    QVERIFY(!progress.terminal);
+
+    const EdgeDownloadReport done =
+        cell.Arrive(EdgeDownloadCell::Backend::Completed, false);
+    QCOMPARE(done.state, int(EdgeDownloadCell::ReportedCompleted));
+    QCOMPARE(done.reason, int(EdgeDownloadCell::ReasonNone));
+    QVERIFY(done.terminal);
+}
+
+void tst_edgestate::askingForAResumeDoesNotTurnThatEventIntoAnEnding(){
+    EdgeDownloadCell cell;
+
+    const EdgeDownloadReport report =
+        cell.Arrive(EdgeDownloadCell::Backend::Interrupted, true);
+    QCOMPARE(report.state, int(EdgeDownloadCell::ReportedInterrupted));
+    QCOMPARE(report.reason, int(EdgeDownloadCell::ReasonNetworkFailed));
+    QVERIFY(report.mayResume);
+    QVERIFY(!report.terminal);
+
+    cell.MarkResumeAttempted();
+
+    QVERIFY(cell.IsTerminal());
+    QVERIFY(!report.terminal);
+}
+
+void tst_edgestate::theInterruptionAfterAResumeIsAnEnding(){
+    EdgeDownloadCell cell;
+    cell.Arrive(EdgeDownloadCell::Backend::Interrupted, true);
+    cell.MarkResumeAttempted();
+
+    const EdgeDownloadReport running =
+        cell.Arrive(EdgeDownloadCell::Backend::InProgress, false);
+    QVERIFY(!running.terminal);
+
+    const EdgeDownloadReport again =
+        cell.Arrive(EdgeDownloadCell::Backend::Interrupted, true);
+    QCOMPARE(again.reason, int(EdgeDownloadCell::ReasonNone));
+    QVERIFY(!again.mayResume);
+    QVERIFY(again.terminal);
+}
+
+void tst_edgestate::anInterruptionArrivingFromInsideResumeIsAnEnding(){
+    EdgeDownloadCell cell;
+    cell.Arrive(EdgeDownloadCell::Backend::Interrupted, true);
+
+    cell.MarkResumeAttempted();
+    const EdgeDownloadReport inside =
+        cell.Arrive(EdgeDownloadCell::Backend::Interrupted, true);
+
+    QVERIFY(inside.terminal);
+    QCOMPARE(inside.reason, int(EdgeDownloadCell::ReasonNone));
+}
+
+void tst_edgestate::progressArrivingAfterAResumeIsNotAnEnding(){
+    EdgeDownloadCell cell;
+    cell.Arrive(EdgeDownloadCell::Backend::Interrupted, true);
+    cell.MarkResumeAttempted();
+
+    const EdgeDownloadReport running =
+        cell.Arrive(EdgeDownloadCell::Backend::InProgress, false);
+    QCOMPARE(running.state, int(EdgeDownloadCell::ReportedInProgress));
+    QVERIFY(!running.terminal);
+    QVERIFY(!cell.IsTerminal());
+
+    const EdgeDownloadReport done =
+        cell.Arrive(EdgeDownloadCell::Backend::Completed, false);
+    QVERIFY(done.terminal);
+}
+
+void tst_edgestate::aResumeWhichWasRefusedIsAnEnding(){
+    EdgeDownloadCell cell;
+    const EdgeDownloadReport report =
+        cell.Arrive(EdgeDownloadCell::Backend::Interrupted, true);
+    QVERIFY(!report.terminal);
+
+    cell.FailResume();
+
+    QVERIFY(cell.ResumeAttempted());
+    QVERIFY(!cell.MayResume());
+    QCOMPARE(cell.ReportedState(), int(EdgeDownloadCell::ReportedInterrupted));
+    QCOMPARE(cell.ReportedReason(), int(EdgeDownloadCell::ReasonNone));
+    QVERIFY(cell.IsTerminal());
+}
+
+void tst_edgestate::aCallIntoTheBackendHoldsEverythingWhereItIs(){
+    EdgeBackendCallLedger ledger;
+    QVERIFY(ledger.MayRelease());
+    QCOMPARE(ledger.InFlight(), 0);
+
+    {
+        EdgeBackendCall call(ledger);
+        QCOMPARE(ledger.InFlight(), 1);
+        QVERIFY(!ledger.MayRelease());
+    }
+
+    QCOMPARE(ledger.InFlight(), 0);
+    QVERIFY(ledger.MayRelease());
+}
+
+void tst_edgestate::aNestedDispatchDuringThatCallIsToldToWait(){
+    EdgeBackendCallLedger ledger;
+    QList<bool> answers;
+
+    {
+        EdgeBackendCall call(ledger);
+
+        QTimer::singleShot(0, [&ledger, &answers](){
+            answers << ledger.MayRelease();
+        });
+        QCoreApplication::processEvents();
+
+        QCOMPARE(answers.length(), 1);
+        QVERIFY2(!answers.first(), "released from inside the backend call");
+    }
+
+    QTimer::singleShot(0, [&ledger, &answers](){
+        answers << ledger.MayRelease();
+    });
+    QCoreApplication::processEvents();
+
+    QCOMPARE(answers.length(), 2);
+    QVERIFY(answers.last());
+}
+
+void tst_edgestate::callsWithinCallsAreCountedApart(){
+    EdgeBackendCallLedger ledger;
+
+    EdgeBackendCall *outer = new EdgeBackendCall(ledger);
+    EdgeBackendCall *inner = new EdgeBackendCall(ledger);
+    QCOMPARE(ledger.InFlight(), 2);
+
+    delete inner;
+    QCOMPARE(ledger.InFlight(), 1);
+    QVERIFY2(!ledger.MayRelease(), "released while the outer call is still running");
+
+    delete outer;
+    QVERIFY(ledger.MayRelease());
+
+    ledger.Leave();
+    QCOMPARE(ledger.InFlight(), 0);
+    ledger.Enter();
+    QVERIFY(!ledger.MayRelease());
+}
+
+void tst_edgestate::nothingQueuedRunsWhileACallIsOnTheStack(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    int ran = 0;
+
+    {
+        EdgeBackendCall call(queue.Calls());
+        queue.WhenCallsAreDone(&context, &context, [&ran](){ ran++;});
+
+        QCoreApplication::processEvents();
+        QCOMPARE(ran, 0);
+        QCoreApplication::processEvents();
+        QCOMPARE(ran, 0);
+        QCOMPARE(queue.Pending(), 1);
+    }
+
+    QCoreApplication::processEvents();
+    QCOMPARE(ran, 1);
+    QCOMPARE(queue.Pending(), 0);
+}
+
+void tst_edgestate::everythingQueuedRunsOnTheOneTurnAfterwards(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    QStringList order;
+
+    {
+        EdgeBackendCall call(queue.Calls());
+        queue.WhenCallsAreDone(&context, &context, [&order](){ order << QStringLiteral("operation");});
+        queue.WhenCallsAreDone(&context, &context, [&order](){ order << QStringLiteral("adapter");});
+        queue.WhenCallsAreDone(&context, &context, [&order](){ order << QStringLiteral("carrier");});
+        QCOMPARE(queue.Pending(), 3);
+        QCoreApplication::processEvents();
+        QVERIFY(order.isEmpty());
+    }
+
+    QCoreApplication::processEvents();
+    QCOMPARE(order, QStringList()
+             << QStringLiteral("operation")
+             << QStringLiteral("adapter")
+             << QStringLiteral("carrier"));
+}
+
+void tst_edgestate::manyRequestsDuringACallAreOneTimer(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    int ran = 0;
+
+    {
+        EdgeBackendCall call(queue.Calls());
+        for(int i = 0; i < 8; i++)
+            queue.WhenCallsAreDone(&context, &context, [&ran](){ ran++;});
+
+        QVERIFY(queue.DrainScheduled());
+        QCoreApplication::processEvents();
+        QCoreApplication::processEvents();
+        QCoreApplication::processEvents();
+        QVERIFY(queue.DrainScheduled());
+        QCOMPARE(queue.Pending(), 8);
+        QCOMPARE(ran, 0);
+        QVERIFY2(queue.DrainAttempts() <= 4,
+                 qPrintable(QStringLiteral("timers fired: %1 for 8 requests")
+                            .arg(queue.DrainAttempts())));
+    }
+
+    QCoreApplication::processEvents();
+    QCOMPARE(ran, 8);
+    QVERIFY(!queue.DrainScheduled());
+    QVERIFY(queue.DrainAttempts() <= 5);
+}
+
+void tst_edgestate::anActionWhoseObjectWentIsDropped(){
+    EdgeReleaseQueue queue;
+    QObject timerContext;
+    QObject *actionContext = new QObject();
+    int ran = 0;
+
+    queue.WhenCallsAreDone(&timerContext, actionContext, [&ran](){ ran++;});
+    delete actionContext;
+
+    QCoreApplication::processEvents();
+    QCOMPARE(ran, 0);
+    QCOMPARE(queue.Pending(), 0);
+}
+
+void tst_edgestate::anActionWhichPumpsDoesNotStartASecondDrain(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    QStringList order;
+    bool insideFirst = false;
+    bool secondRanInsideFirst = false;
+
+    queue.WhenCallsAreDone(&context, &context, [&](){
+        order << QStringLiteral("first");
+        QVERIFY(queue.Draining());
+
+        queue.WhenCallsAreDone(&context, &context, [&order](){
+            order << QStringLiteral("third");
+        });
+
+        insideFirst = true;
+        QCoreApplication::processEvents();
+        insideFirst = false;
+    });
+    queue.WhenCallsAreDone(&context, &context, [&](){
+        order << QStringLiteral("second");
+        if(insideFirst) secondRanInsideFirst = true;
+    });
+
+    QCoreApplication::processEvents();
+    QCoreApplication::processEvents();
+
+    QCOMPARE(order, QStringList()
+             << QStringLiteral("first")
+             << QStringLiteral("second")
+             << QStringLiteral("third"));
+    QVERIFY2(!secondRanInsideFirst, "a drain ran inside a drain");
+    QVERIFY(!queue.Draining());
+}
+
+void tst_edgestate::anActionMayQueueAnotherOne(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    QStringList order;
+
+    queue.WhenCallsAreDone(&context, &context, [&](){
+        order << QStringLiteral("first");
+        queue.WhenCallsAreDone(&context, &context, [&order](){
+            order << QStringLiteral("second");
+        });
+    });
+
+    QCoreApplication::processEvents();
+    QCOMPARE(order, QStringList() << QStringLiteral("first") << QStringLiteral("second"));
+    QCOMPARE(queue.Pending(), 0);
+    QCOMPARE(queue.DrainAttempts(), 1);
+}
+
+namespace {
+
+    const quint64 A = 11;
+    const quint64 B = 22;
+    const qint64 T0 = 1000000;
+
+    QString Address(){ return QStringLiteral("https://example.com/thing.zip");}
+
+    EdgeAbortLatch::Verdict Ends(EdgeAbortLatch &latch, quint64 id, bool success,
+                                 int status, qint64 now, int *generation = nullptr){
+        return latch.Completed(id, success, status, now, generation);
+    }
+
+}
+
+void tst_edgestate::aDownloadTakesItsAbortAway(){
+    EdgeAbortLatch latch;
+    int generation = 0;
+
+    latch.Started(A, Address());
+    QCOMPARE(Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &generation),
+             EdgeAbortLatch::Verdict::Hold);
+    QCOMPARE(latch.Held(), 1);
+
+    latch.DownloadStarted(Address());
+    QCOMPARE(latch.Held(), 0);
+
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Nothing);
+}
+
+void tst_edgestate::aStopOfItsOwnNavigationSaysNothing(){
+    EdgeAbortLatch latch;
+    latch.Started(A, Address());
+    latch.Stopped(true);
+    QVERIFY(latch.HasStop());
+
+    QCOMPARE(Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0),
+             EdgeAbortLatch::Verdict::Nothing);
+    QCOMPARE(latch.Held(), 0);
+    QVERIFY(!latch.HasStop());
+}
+
+void tst_edgestate::aStopIsKnownWhicheverStatusItComesBackAs(){
+    EdgeAbortLatch latch;
+    latch.Started(A, Address());
+    latch.Stopped(true);
+    QCOMPARE(Ends(latch, A, false, LoadEnding::EdgeOperationCanceled, T0),
+             EdgeAbortLatch::Verdict::Nothing);
+    QCOMPARE(latch.Held(), 0);
+}
+
+void tst_edgestate::aRedirectInsideTheSameNavigationKeepsTheStop(){
+    EdgeAbortLatch latch;
+    latch.Started(A, QStringLiteral("https://example.com/first"));
+    latch.Stopped(true);
+
+    latch.Started(A, Address());
+    QVERIFY(latch.HasStop());
+
+    QCOMPARE(Ends(latch, A, false, LoadEnding::EdgeOperationCanceled, T0),
+             EdgeAbortLatch::Verdict::Nothing);
+    QCOMPARE(latch.Held(), 0);
+}
+
+void tst_edgestate::anAbortNobodyClaimsIsSaidWhenTheWaitIsOver(){
+    EdgeAbortLatch latch;
+    int generation = 0;
+
+    latch.Started(A, Address());
+    QCOMPARE(Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &generation),
+             EdgeAbortLatch::Verdict::Hold);
+
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Say);
+    QCOMPARE(latch.Held(), 0);
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Nothing);
+}
+
+void tst_edgestate::anAbortIsNotSaidBeforeTheWaitIsOver(){
+    EdgeAbortLatch latch;
+    int generation = 0;
+    latch.Started(A, Address());
+    Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &generation);
+
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait - 1, generation),
+             EdgeAbortLatch::Verdict::Nothing);
+    QCOMPARE(latch.Held(), 1);
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Say);
+}
+
+void tst_edgestate::anAbortLeftBehindByANewNavigationIsNeverSaid(){
+    EdgeAbortLatch latch;
+    int generation = 0;
+    latch.Started(A, Address());
+    Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &generation);
+
+    latch.Started(B, QStringLiteral("https://example.com/other"));
+
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Nothing);
+    QCOMPARE(latch.Held(), 0);
+}
+
+void tst_edgestate::anAbortLeftBehindByASuccessIsNeverSaid(){
+    EdgeAbortLatch latch;
+    int generation = 0;
+    latch.Started(A, Address());
+    Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &generation);
+
+    latch.Started(B, QStringLiteral("https://example.com/other"));
+    QCOMPARE(Ends(latch, B, true, 0, T0 + 10), EdgeAbortLatch::Verdict::Nothing);
+
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Nothing);
+}
+
+void tst_edgestate::anEndingForAnOlderNavigationIsIgnored(){
+    EdgeAbortLatch latch;
+    latch.Started(A, Address());
+    latch.Started(B, QStringLiteral("https://example.com/other"));
+
+    QCOMPARE(Ends(latch, A, false, LoadEnding::EdgeUnknown, T0),
+             EdgeAbortLatch::Verdict::Nothing);
+    QCOMPARE(Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0),
+             EdgeAbortLatch::Verdict::Nothing);
+    QCOMPARE(latch.Held(), 0);
+}
+
+void tst_edgestate::oneDownloadAndOneRealAbortOfOneUrlSayItOnce(){
+    for(int order = 0; order < 2; order++){
+        EdgeAbortLatch latch;
+        int first = 0, second = 0;
+
+        latch.Started(A, Address());
+        QCOMPARE(Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &first),
+                 EdgeAbortLatch::Verdict::Hold);
+        latch.Started(B, Address());
+        QCOMPARE(Ends(latch, B, false, LoadEnding::EdgeConnectionAborted, T0 + 10, &second),
+                 EdgeAbortLatch::Verdict::Hold);
+
+        latch.DownloadStarted(Address());
+
+        int said = 0;
+        if(order == 0){
+            if(latch.Elapsed(T0 + EdgeAbortLatch::Wait, first) == EdgeAbortLatch::Verdict::Say) said++;
+            if(latch.Elapsed(T0 + 10 + EdgeAbortLatch::Wait, second) == EdgeAbortLatch::Verdict::Say) said++;
+        } else {
+            if(latch.Elapsed(T0 + 10 + EdgeAbortLatch::Wait, second) == EdgeAbortLatch::Verdict::Say) said++;
+            if(latch.Elapsed(T0 + EdgeAbortLatch::Wait, first) == EdgeAbortLatch::Verdict::Say) said++;
+        }
+        QCOMPARE(said, 1);
+        QCOMPARE(latch.Held(), 0);
+    }
+}
+
+void tst_edgestate::aDownloadNobodyIsHoldingAnEndingForChangesNothing(){
+    EdgeAbortLatch latch;
+    int generation = 0;
+    latch.Started(A, Address());
+    Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &generation);
+
+    latch.DownloadStarted(QStringLiteral("https://example.com/somethingelse"));
+
+    QCOMPARE(latch.Held(), 1);
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Say);
+}
+
+void tst_edgestate::aStopOnAnIdleViewIsNotAStop(){
+    EdgeAbortLatch latch;
+    latch.Started(A, Address());
+    QCOMPARE(Ends(latch, A, true, 0, T0), EdgeAbortLatch::Verdict::Nothing);
+
+    latch.Stopped(false);
+    QVERIFY(!latch.HasStop());
+
+    latch.Started(B, Address());
+    int generation = 0;
+    QCOMPARE(Ends(latch, B, false, LoadEnding::EdgeConnectionAborted, T0, &generation),
+             EdgeAbortLatch::Verdict::Hold);
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Say);
+}
+
+void tst_edgestate::onlyFourEndingsAreHeldAtOnce(){
+    EdgeAbortLatch latch;
+    int oldest = 0;
+
+    for(int i = 0; i < EdgeAbortLatch::Capacity + 1; i++){
+        int generation = 0;
+        latch.Started(quint64(100 + i), Address());
+        QCOMPARE(Ends(latch, quint64(100 + i), false,
+                      LoadEnding::EdgeConnectionAborted, T0 + i, &generation),
+                 EdgeAbortLatch::Verdict::Hold);
+        if(!i) oldest = generation;
+    }
+
+    QCOMPARE(latch.Held(), int(EdgeAbortLatch::Capacity));
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, oldest),
+             EdgeAbortLatch::Verdict::Nothing);
+}
+
+void tst_edgestate::aRetiredLatchSaysNothingEver(){
+    EdgeAbortLatch latch;
+    int generation = 0;
+    latch.Started(A, Address());
+    Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &generation);
+
+    latch.Retire();
+
+    QCOMPARE(latch.Held(), 0);
+    QVERIFY(latch.IsRetired());
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Nothing);
+    latch.Started(B, Address());
+    QCOMPARE(Ends(latch, B, false, LoadEnding::EdgeUnknown, T0),
+             EdgeAbortLatch::Verdict::Nothing);
+}
+
+void tst_edgestate::anOrdinaryFailureIsSaidAtOnce(){
+    EdgeAbortLatch latch;
+    latch.Started(A, Address());
+
+    for(const int status : {int(LoadEnding::EdgeUnknown), 2, 7, 12}){
+        latch.Started(A, Address());
+        QCOMPARE(Ends(latch, A, false, status, T0), EdgeAbortLatch::Verdict::Say);
+    }
+    QCOMPARE(latch.Held(), 0);
+}
+
+void tst_edgestate::aDrainAskedForNowNeverArmsASecondTimer(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    int ran = 0;
+
+    {
+        EdgeBackendCall call(queue.Calls());
+
+        queue.WhenCallsAreDone(&context, &context, [&ran](){ ran++;});
+        QCOMPARE(queue.Reservations(), 1);
+
+        queue.DrainNow(&context);
+        QCOMPARE(queue.Reservations(), 1);
+        queue.DrainNow(&context);
+        QCOMPARE(queue.Reservations(), 1);
+        QCOMPARE(ran, 0);
+    }
+
+    QCoreApplication::processEvents();
+    QCOMPARE(ran, 1);
+    QCOMPARE(queue.Reservations(), 0);
+    QCOMPARE(queue.DrainAttempts(), 1);
+
+    queue.WhenCallsAreDone(&context, &context, [&ran](){ ran++;});
+    QCOMPARE(queue.Reservations(), 1);
+    queue.DrainNow(&context);
+    QCOMPARE(ran, 2);
+    QCOMPARE(queue.Reservations(), 1);
+
+    QCoreApplication::processEvents();
+    QCOMPARE(queue.Reservations(), 0);
+    QCOMPARE(ran, 2);
+
+    int reservationsSeen = -1;
+    queue.WhenCallsAreDone(&context, &context, [&](){
+        queue.DrainNow(&context);
+        reservationsSeen = queue.Reservations();
+    });
+    QCoreApplication::processEvents();
+    QCOMPARE(reservationsSeen, 0);
+    QCOMPARE(queue.Reservations(), 0);
+}
+
+void tst_edgestate::aTimerWhichFiredEarlyLeavesTheEndingWithSomethingToWaitFor(){
+    EdgeAbortLatch latch;
+    int generation = 0;
+    latch.Started(A, Address());
+    Ends(latch, A, false, LoadEnding::EdgeConnectionAborted, T0, &generation);
+
+    QCOMPARE(latch.Elapsed(T0 + 500, generation), EdgeAbortLatch::Verdict::Nothing);
+    QCOMPARE(latch.Remaining(T0 + 500, generation), EdgeAbortLatch::Wait - 500);
+
+    QCOMPARE(latch.Remaining(T0 + EdgeAbortLatch::Wait, generation), qint64(0));
+    QCOMPARE(latch.Elapsed(T0 + EdgeAbortLatch::Wait, generation),
+             EdgeAbortLatch::Verdict::Say);
+    QCOMPARE(latch.Remaining(T0 + EdgeAbortLatch::Wait, generation), qint64(-1));
+
+    int other = 0;
+    latch.Started(B, Address());
+    Ends(latch, B, false, LoadEnding::EdgeConnectionAborted, T0, &other);
+    latch.Started(A, Address());
+    QCOMPARE(latch.Remaining(T0, other), qint64(-1));
+}
+
+void tst_edgestate::aDrainAskedForNowRunsEverythingWaiting(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    QStringList order;
+
+    queue.WhenCallsAreDone(&context, &context, [&order](){ order << QStringLiteral("carrier");});
+    queue.WhenCallsAreDone(&context, &context, [&order](){ order << QStringLiteral("list");});
+    QCOMPARE(queue.Pending(), 2);
+
+    queue.DrainNow(&context);
+
+    QCOMPARE(order, QStringList() << QStringLiteral("carrier") << QStringLiteral("list"));
+    QCOMPARE(queue.Pending(), 0);
+    QVERIFY(!queue.Draining());
+}
+
+void tst_edgestate::aDrainAskedForFromInsideADrainOnlyQueues(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    QStringList order;
+    bool insideFirst = false;
+    bool secondRanInsideFirst = false;
+
+    queue.WhenCallsAreDone(&context, &context, [&](){
+        order << QStringLiteral("first");
+        queue.WhenCallsAreDone(&context, &context, [&order](){
+            order << QStringLiteral("re-entered");
+        });
+        insideFirst = true;
+        queue.DrainNow(&context);
+        insideFirst = false;
+    });
+    queue.WhenCallsAreDone(&context, &context, [&](){
+        order << QStringLiteral("second");
+        if(insideFirst) secondRanInsideFirst = true;
+    });
+
+    queue.DrainNow(&context);
+
+    QCOMPARE(order, QStringList()
+             << QStringLiteral("first")
+             << QStringLiteral("second")
+             << QStringLiteral("re-entered"));
+    QVERIFY2(!secondRanInsideFirst, "a drain ran inside a drain");
+    QCOMPARE(queue.Pending(), 0);
+}
+
+void tst_edgestate::aDrainAskedForDuringABackendCallDoesNotRun(){
+    EdgeReleaseQueue queue;
+    QObject context;
+    int ran = 0;
+
+    {
+        EdgeBackendCall call(queue.Calls());
+        queue.WhenCallsAreDone(&context, &context, [&ran](){ ran++;});
+        QVERIFY(queue.DrainScheduled());
+
+        queue.DrainNow(&context);
+
+        QCOMPARE(ran, 0);
+        QCOMPARE(queue.Pending(), 1);
+        QVERIFY(queue.DrainScheduled());
+    }
+
+    QCoreApplication::processEvents();
+    QCOMPARE(ran, 1);
+}
+
+void tst_edgestate::theListAtTheEndGoesThroughTheQueueToo(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const int opens = source.indexOf(QStringLiteral("void EdgeDownloadCarriers::ReleaseAll()"));
+    QVERIFY2(opens != -1, "'ReleaseAll' moved");
+
+    int depth = 0, ends = source.indexOf(QLatin1Char('{'), opens);
+    for(; ends < source.length(); ends++){
+        if(source.at(ends) == QLatin1Char('{')) depth++;
+        else if(source.at(ends) == QLatin1Char('}')){
+            depth--;
+            if(!depth) break;
+        }
+    }
+    const QString body = source.mid(opens, ends - opens);
+
+    QVERIFY2(body.contains(QStringLiteral("WhenCallsAreDone")),
+             "the list at the end does not go through the queue");
+    QVERIFY2(!body.contains(QStringLiteral("MayRelease")),
+             "the list at the end still has a way round the queue");
+    QVERIFY2(!body.contains(QStringLiteral("RetireCarrier")),
+             "the list at the end still retires on this stack");
+
+    const int release = source.indexOf(QStringLiteral("void EdgeWebView::ReleaseDownloadCarriers"));
+    QVERIFY(release != -1);
+    const int queued = source.indexOf(QStringLiteral("ReleaseAll()"), release);
+    const int drained = source.indexOf(QStringLiteral("DrainNow()"), release);
+    QVERIFY(queued != -1);
+    QVERIFY(drained != -1);
+    QVERIFY(queued < drained);
+}
+
+void tst_edgestate::theExtensionPageIsNavigatedOnceTheScriptIsIn(){
+    EdgeExtensionPageState s;
+    QVERIFY(!s.IsClosed());
+    QCOMPARE(s.ScriptRegistered(true), EdgeExtensionPageState::Effect::Navigate);
+    QCOMPARE(s.ScriptRegistered(true), EdgeExtensionPageState::Effect::None);
+    QCOMPARE(s.ScriptRegistered(false), EdgeExtensionPageState::Effect::None);
+    QCOMPARE(s.AnswerDue(), EdgeExtensionPageState::Effect::Answer);
+}
+
+void tst_edgestate::aScriptRegistrationWhichFailedIsReportedOnceAndNavigatesNothing(){
+    EdgeExtensionPageState s;
+    QCOMPARE(s.ScriptRegistered(false), EdgeExtensionPageState::Effect::Fail);
+    QCOMPARE(s.ScriptRegistered(false), EdgeExtensionPageState::Effect::None);
+    QCOMPARE(s.ScriptRegistered(true), EdgeExtensionPageState::Effect::None);
+}
+
+void tst_edgestate::aScriptRegistrationAnsweringAfterTheCloseDoesNothing(){
+    EdgeExtensionPageState s;
+    s.Close();
+    QVERIFY(s.IsClosed());
+    QCOMPARE(s.ScriptRegistered(true), EdgeExtensionPageState::Effect::None);
+    QCOMPARE(s.ScriptRegistered(false), EdgeExtensionPageState::Effect::None);
+}
+
+void tst_edgestate::aTabAnswerDueAfterTheCloseIsNotSent(){
+    EdgeExtensionPageState s;
+    QCOMPARE(s.ScriptRegistered(true), EdgeExtensionPageState::Effect::Navigate);
+    QCOMPARE(s.AnswerDue(), EdgeExtensionPageState::Effect::Answer);
+    s.Close();
+    QCOMPARE(s.AnswerDue(), EdgeExtensionPageState::Effect::None);
+    s.Close();
+    QCOMPARE(s.AnswerDue(), EdgeExtensionPageState::Effect::None);
+}
+
+namespace {
+    EdgeExtensionTabCandidate Tab(int id, const char *url){
+        EdgeExtensionTabCandidate candidate;
+        candidate.id = id;
+        candidate.url = QUrl(QString::fromLatin1(url));
+        return candidate;
+    }
+}
+
+void tst_edgestate::theTabRequestIsParsedInItsOneShapeOnly(){
+    const QString good = QStringLiteral(
+        "{\"vanilla\":\"extension-tab\",\"doc\":\"m1\",\"seq\":3,\"tabs\":["
+        "{\"id\":7,\"url\":\"http://127.0.0.1:1/\",\"title\":\"A\"},"
+        "{\"id\":9,\"url\":\"chrome-extension://abc/popup.html\"}]}");
+    const EdgeExtensionTabRequest request = EdgeExtensionTabRequest::Parse(good);
+    QVERIFY(request.IsValid());
+    QCOMPARE(request.Document(), QStringLiteral("m1"));
+    QCOMPARE(request.Sequence(), 3);
+    QCOMPARE(request.Candidates().size(), 2);
+    QCOMPARE(request.Candidates().at(0).id, 7);
+    QCOMPARE(request.Candidates().at(0).url, QUrl(QStringLiteral("http://127.0.0.1:1/")));
+    QCOMPARE(request.Candidates().at(1).id, 9);
+
+    foreach(const QString &bad, QStringList()
+            << QStringLiteral("not json")
+            << QStringLiteral("{\"vanilla\":\"scroll\",\"doc\":\"m1\",\"seq\":1,\"tabs\":[]}")
+            << QStringLiteral("{\"vanilla\":\"extension-tab\",\"seq\":1,\"tabs\":[]}")
+            << QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":\"\",\"seq\":1,\"tabs\":[]}")
+            << QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":7,\"seq\":1,\"tabs\":[]}")
+            << (QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":\"") + QString(65, QLatin1Char('m'))
+                + QStringLiteral("\",\"seq\":1,\"tabs\":[]}"))
+            << QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":\"m1\",\"tabs\":[]}")
+            << QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":\"m1\",\"seq\":\"1\",\"tabs\":[]}")
+            << QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":\"m1\",\"seq\":1,\"tabs\":{}}")
+            << QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":\"m1\",\"seq\":1,\"tabs\":[{\"url\":\"http://a/\"}]}")
+            << QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":\"m1\",\"seq\":1,\"tabs\":[{\"id\":1,\"url\":5}]}")){
+        QVERIFY2(!EdgeExtensionTabRequest::Parse(bad).IsValid(), qPrintable(bad));
+    }
+    const EdgeExtensionTabRequest empty = EdgeExtensionTabRequest::Parse(
+        QStringLiteral("{\"vanilla\":\"extension-tab\",\"doc\":\"m1\",\"seq\":1,\"tabs\":[]}"));
+    QVERIFY(empty.IsValid());
+    QVERIFY(empty.Candidates().isEmpty());
+}
+
+void tst_edgestate::theOneTabAtTheSourceAddressIsTheAnswer(){
+    QList<EdgeExtensionTabCandidate> tabs;
+    tabs << Tab(7, "http://127.0.0.1:1/")
+         << Tab(9, "chrome-extension://abc/popup.html");
+    QCOMPARE(EdgeExtensionTabRequest::Find(tabs, QUrl(QStringLiteral("http://127.0.0.1:1/"))), 7);
+    QCOMPARE(EdgeExtensionTabRequest::Find(tabs, QUrl(QStringLiteral("chrome-extension://abc/popup.html"))), 9);
+}
+
+void tst_edgestate::twoTabsAtTheSourceAddressAreNotToldApart(){
+    const QUrl source(QStringLiteral("http://127.0.0.1:1/"));
+    QList<EdgeExtensionTabCandidate> tabs;
+    tabs << Tab(7, "http://127.0.0.1:1/")
+         << Tab(8, "http://127.0.0.1:1/")
+         << Tab(9, "chrome-extension://abc/popup.html");
+    QCOMPARE(EdgeExtensionTabRequest::Find(tabs, source), -1);
+    tabs << Tab(10, "http://127.0.0.1:1/");
+    QCOMPARE(EdgeExtensionTabRequest::Find(tabs, source), -1);
+}
+
+void tst_edgestate::noSourceAndNoMatchAnswerNone(){
+    const QUrl source(QStringLiteral("http://127.0.0.1:1/"));
+    QList<EdgeExtensionTabCandidate> tabs;
+    tabs << Tab(7, "http://127.0.0.1:1/");
+    QCOMPARE(EdgeExtensionTabRequest::Find(tabs, QUrl()), -1);
+    QCOMPARE(EdgeExtensionTabRequest::Find(tabs, QUrl(QStringLiteral("http://127.0.0.1:2/"))), -1);
+    QCOMPARE(EdgeExtensionTabRequest::Find(QList<EdgeExtensionTabCandidate>(), source), -1);
+}
+
+void tst_edgestate::aViewWhichMovedSinceTheRequestArrivedIsNotNamed(){
+    const QUrl before(QStringLiteral("http://127.0.0.1:1/"));
+    const QUrl after(QStringLiteral("http://127.0.0.1:2/"));
+    QList<EdgeExtensionTabCandidate> tabs;
+    tabs << Tab(7, "http://127.0.0.1:1/")
+         << Tab(8, "http://127.0.0.1:2/");
+    QCOMPARE(EdgeExtensionTabRequest::Answer(tabs, before, before, true), 7);
+    QCOMPARE(EdgeExtensionTabRequest::Answer(tabs, before, after, true), -1);
+    QCOMPARE(EdgeExtensionTabRequest::Answer(tabs, QUrl(), before, true), -1);
+    QCOMPARE(EdgeExtensionTabRequest::Answer(tabs, before, QUrl(), true), -1);
+}
+
+void tst_edgestate::aViewAtAnAddressOutOfTheExtensionsSightIsNotNamed(){
+    const QUrl view(QStringLiteral("https://secret.example/"));
+    QList<EdgeExtensionTabCandidate> guesses;
+    guesses << Tab(7, "https://secret.example/");
+    QCOMPARE(EdgeExtensionTabRequest::Answer(guesses, view, view, false), -1);
+    QCOMPARE(EdgeExtensionTabRequest::Answer(guesses, view, view, true), 7);
+    const ExtensionHostWire::Sight sight = ExtensionHostWire::Sight::Of(
+        false, QStringLiteral("abc"), QStringList() << QStringLiteral("https://a.example/*"));
+    QCOMPARE(EdgeExtensionTabRequest::Answer(guesses, view, view, sight.Sees(view)), -1);
+    const QUrl covered(QStringLiteral("https://a.example/page"));
+    QList<EdgeExtensionTabCandidate> real;
+    real << Tab(9, "https://a.example/page");
+    QCOMPARE(EdgeExtensionTabRequest::Answer(real, covered, covered, sight.Sees(covered)), 9);
+}
+
+void tst_edgestate::theReplyNamesTheSequenceAndTheIdOrNull(){
+    QCOMPARE(EdgeExtensionTabRequest::Reply(QStringLiteral("m1"), 3, 7),
+             QStringLiteral("{\"doc\":\"m1\",\"id\":7,\"seq\":3,\"vanilla\":\"extension-tab\"}"));
+    QCOMPARE(EdgeExtensionTabRequest::Reply(QStringLiteral("m2"), 4, -1),
+             QStringLiteral("{\"doc\":\"m2\",\"id\":null,\"seq\":4,\"vanilla\":\"extension-tab\"}"));
+}
+
+void tst_edgestate::anOperationWhichSucceedsIsReportedOnceAndAnswersNothingMore(){
+    EdgeExtensionOperation op(EdgeExtensionOperation::Kind::Enable);
+    QVERIFY(!op.IsDone());
+    QCOMPARE(op.First(true), EdgeExtensionOperation::Effect::ReportSuccess);
+    QVERIFY(op.IsDone());
+    QCOMPARE(op.First(true), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.First(false), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.SnapshotResult(true, true), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::None);
+}
+
+void tst_edgestate::aRefusedOperationIsTriedOnceMoreOnTheEnginesFreshObject(){
+    EdgeExtensionOperation op(EdgeExtensionOperation::Kind::Remove);
+    QCOMPARE(op.First(false), EdgeExtensionOperation::Effect::Snapshot);
+    QVERIFY(!op.IsDone());
+    QCOMPARE(op.SnapshotResult(true, true), EdgeExtensionOperation::Effect::Retry);
+    QVERIFY(!op.IsDone());
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::ReportSuccess);
+    QVERIFY(op.IsDone());
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.RetryResult(false), EdgeExtensionOperation::Effect::None);
+}
+
+void tst_edgestate::aRetryWhichFailsIsReportedAndNotTriedAgain(){
+    EdgeExtensionOperation op(EdgeExtensionOperation::Kind::Enable);
+    QCOMPARE(op.First(false), EdgeExtensionOperation::Effect::Snapshot);
+    QCOMPARE(op.SnapshotResult(true, true), EdgeExtensionOperation::Effect::Retry);
+    QCOMPARE(op.RetryResult(false), EdgeExtensionOperation::Effect::ReportFailure);
+    QVERIFY(op.IsDone());
+    QCOMPARE(op.SnapshotResult(true, true), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.RetryResult(false), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.First(false), EdgeExtensionOperation::Effect::None);
+}
+
+void tst_edgestate::aRemoveOfWhatTheEngineNoLongerHasIsSuccess(){
+    EdgeExtensionOperation op(EdgeExtensionOperation::Kind::Remove);
+    QCOMPARE(op.First(false), EdgeExtensionOperation::Effect::Snapshot);
+    QCOMPARE(op.SnapshotResult(true, false), EdgeExtensionOperation::Effect::ReportSuccess);
+    QVERIFY(op.IsDone());
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::None);
+}
+
+void tst_edgestate::anEnableOfWhatTheEngineNoLongerHasIsGone(){
+    EdgeExtensionOperation op(EdgeExtensionOperation::Kind::Enable);
+    QCOMPARE(op.First(false), EdgeExtensionOperation::Effect::Snapshot);
+    QCOMPARE(op.SnapshotResult(true, false), EdgeExtensionOperation::Effect::ReportGone);
+    QVERIFY(op.IsDone());
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::None);
+}
+
+void tst_edgestate::aListWhichCouldNotBeHadReportsTheFirstFailure(){
+    EdgeExtensionOperation op(EdgeExtensionOperation::Kind::Remove);
+    QCOMPARE(op.First(false), EdgeExtensionOperation::Effect::Snapshot);
+    QCOMPARE(op.SnapshotResult(false, true), EdgeExtensionOperation::Effect::ReportFailure);
+    QVERIFY(op.IsDone());
+    QCOMPARE(op.SnapshotResult(true, true), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::None);
+}
+
+void tst_edgestate::anAnswerOutOfTurnDoesNothing(){
+    EdgeExtensionOperation op(EdgeExtensionOperation::Kind::Enable);
+    QCOMPARE(op.SnapshotResult(true, true), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::None);
+    QVERIFY(!op.IsDone());
+    QCOMPARE(op.First(false), EdgeExtensionOperation::Effect::Snapshot);
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::None);
+    QVERIFY(!op.IsDone());
+    QCOMPARE(op.SnapshotResult(true, true), EdgeExtensionOperation::Effect::Retry);
+    QCOMPARE(op.SnapshotResult(true, false), EdgeExtensionOperation::Effect::None);
+    QCOMPARE(op.RetryResult(true), EdgeExtensionOperation::Effect::ReportSuccess);
+}
+
+void tst_edgestate::aContextMenuDeferralIsCompletedOnce(){
+    EdgeContextMenuState state;
+    QVERIFY(!state.HasOutstanding());
+    const int first = state.Take();
+    QVERIFY(first > 0);
+    QVERIFY(state.HasOutstanding());
+    QCOMPARE(state.Generation(), first);
+    QVERIFY(state.Complete(first));
+    QVERIFY(!state.HasOutstanding());
+    QVERIFY(!state.Complete(first));
+}
+
+void tst_edgestate::aChoiceOnAnOlderMenuWritesNothing(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QVERIFY(state.Complete(first));
+    const int second = state.Take();
+    QVERIFY(second > first);
+    QVERIFY(!state.Complete(first));
+    QVERIFY(state.HasOutstanding());
+    QCOMPARE(state.Generation(), second);
+    QVERIFY(state.Complete(second));
+    QVERIFY(!state.HasOutstanding());
+}
+
+void tst_edgestate::aRetiredViewTakesNoDeferral(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QVERIFY(state.Complete(first));
+    state.Retire();
+    QVERIFY(state.IsRetired());
+    QCOMPARE(state.Take(), 0);
+    QVERIFY(!state.HasOutstanding());
+}
+
+void tst_edgestate::aSecondDeferralIsRefusedWhileOneIsOutstanding(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QVERIFY(first > 0);
+    QCOMPARE(state.Take(), 0);
+    QVERIFY(state.HasOutstanding());
+    QCOMPARE(state.Generation(), first);
+    QVERIFY(state.Complete(first));
+    QVERIFY(state.Take() > first);
+}
+
+void tst_edgestate::retiringWithADeferralOutstandingHandsItOverOnce(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::WithDeferral);
+    QVERIFY(state.IsRetired());
+    QVERIFY(!state.HasOutstanding());
+    QVERIFY(!state.Complete(first));
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::Now);
+    QCOMPARE(state.Take(), 0);
+    EdgeContextMenuState idle;
+    QCOMPARE(idle.Retire(), EdgeContextMenuState::Leaving::Now);
+}
+
+void tst_edgestate::aRetireFromInsideTheCompletionCallWaitsForItToReturn(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QVERIFY(state.Complete(first));
+    state.BeginFinish();
+    QVERIFY(state.IsFinishing());
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::AfterFinish);
+    QVERIFY(!state.IsRetired());
+    QVERIFY(state.EndFinish());
+    QVERIFY(!state.IsFinishing());
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::Now);
+    QVERIFY(state.IsRetired());
+    QVERIFY(!state.EndFinish());
+}
+
+void tst_edgestate::aCompletionCallNobodyRetiredInAsksForNothing(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QVERIFY(state.Complete(first));
+    state.BeginFinish();
+    QVERIFY(!state.EndFinish());
+    QVERIFY(!state.IsRetired());
+    const int second = state.Take();
+    QVERIFY(second > first);
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::WithDeferral);
+}
+
+void tst_edgestate::aCompletionInsideACompletionDoesNotEndTheOuterOne(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QVERIFY(state.Complete(first));
+    state.BeginFinish();
+    const int second = state.Take();
+    QVERIFY(second > first);
+    QVERIFY(state.Complete(second));
+    state.BeginFinish();
+    QCOMPARE(state.FinishDepth(), 2);
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::AfterFinish);
+    QVERIFY(!state.EndFinish());
+    QVERIFY(state.IsFinishing());
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::AfterFinish);
+    QVERIFY(!state.IsRetired());
+    QVERIFY(state.EndFinish());
+    QVERIFY(!state.IsFinishing());
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::Now);
+    EdgeContextMenuState idle;
+    QVERIFY(!idle.EndFinish());
+    QCOMPARE(idle.FinishDepth(), 0);
+}
+
+void tst_edgestate::anyRequestEndsThePreviousMenuBeforeReadingItsOwnItems(){
+    const QString source = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY(!source.isEmpty());
+    const int handler = source.indexOf(QStringLiteral("add_ContextMenuRequested"));
+    const int end = source.indexOf(QStringLiteral("ContextMenuRequested, token"), handler);
+    QVERIFY(handler > 0 && end > handler);
+    const int ends = source.indexOf(QStringLiteral("CompleteContextMenu(m_Impl->m_ContextMenu.Generation(), -1)"), handler);
+    const int closes = source.indexOf(QStringLiteral("m_ContextMenuWidget->close()"), handler);
+    const int reads = source.indexOf(QStringLiteral("get_MenuItems(&items)"), handler);
+    const int branch = source.indexOf(QStringLiteral("if(!target.m_ExtensionItems.isEmpty())"), handler);
+    QVERIFY(ends > handler && closes > handler && reads > handler && branch > handler);
+    QVERIFY(branch < end);
+    QVERIFY(ends < closes);
+    QVERIFY(closes < reads);
+    QVERIFY(reads < branch);
+}
+
+void tst_edgestate::aMenuReservedForAnEndedEventIsNotShown(){
+    const QString source = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    QVERIFY(!source.isEmpty());
+    const int function = source.indexOf(QStringLiteral("void EdgeWebView::DisplayContextMenuFor("));
+    const int next = source.indexOf(QStringLiteral("\nvoid EdgeWebView::"), function + 1);
+    const int check = source.indexOf(QStringLiteral("m_Impl->m_ContextMenu.Generation() == generation"), function);
+    const int retired = source.indexOf(QStringLiteral("m_Impl->m_State.IsRetired()"), function);
+    const int shows = source.indexOf(QStringLiteral("page()->DisplayContextMenu("), function);
+    QVERIFY(function >= 0 && next > function);
+    QVERIFY(check > function && retired > function && shows > function && shows < next);
+    QVERIFY(check < shows);
+    QVERIFY(retired < shows);
+}
+
+void tst_edgestate::theDestructorsRetireDoesNotWait(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QVERIFY(state.Complete(first));
+    state.BeginFinish();
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::AfterFinish);
+    QCOMPARE(state.Retire(true), EdgeContextMenuState::Leaving::Now);
+    QVERIFY(state.IsRetired());
+    QVERIFY(!state.EndFinish());
+    EdgeContextMenuState held;
+    QVERIFY(held.Take() > 0);
+    held.BeginFinish();
+    QCOMPARE(held.Retire(true), EdgeContextMenuState::Leaving::WithDeferral);
+    QVERIFY(!held.HasOutstanding());
+}
+
+void tst_edgestate::everyCompletionIsCounted(){
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY(!handlers.isEmpty());
+    const int handler = handlers.indexOf(QStringLiteral("add_ContextMenuRequested"));
+    const int end = handlers.indexOf(QStringLiteral("ContextMenuRequested, token"), handler);
+    QVERIFY(handler > 0 && end > handler);
+    const QString body = handlers.mid(handler, end - handler);
+    QCOMPARE(body.count(QStringLiteral("->Complete()")), 1);
+    const int direct = body.indexOf(QStringLiteral("->Complete()"));
+    const int gone = body.lastIndexOf(QStringLiteral("if(!here){"), direct);
+    QVERIFY(gone > 0 && direct - gone < 200);
+    QVERIFY(body.contains(QStringLiteral("CountedComplete(nullptr, deferral.Get(), -1)")));
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int counted = input.indexOf(QStringLiteral("void EdgeWebView::CountedComplete("));
+    const int nextAfter = input.indexOf(QStringLiteral("\nvoid EdgeWebView::"), counted + 1);
+    QVERIFY(counted > 0 && nextAfter > counted);
+    const QString inside = input.mid(counted, nextAfter - counted);
+    QVERIFY(inside.indexOf(QStringLiteral("BeginFinish()")) < inside.indexOf(QStringLiteral("->Complete()")));
+    QVERIFY(inside.indexOf(QStringLiteral("->Complete()")) < inside.indexOf(QStringLiteral("EndFinish()")));
+    QCOMPARE(input.count(QStringLiteral("->Complete()")), 1);
+
+    const int done = inside.indexOf(QStringLiteral("->Complete()"));
+    const int guard = inside.indexOf(QStringLiteral("if(!alive) return;"), done);
+    const int ended = inside.indexOf(QStringLiteral("EndFinish()"), done);
+    QVERIFY(guard > done && guard < ended);
+    QCOMPARE(body.count(QStringLiteral("CompleteContextMenu(")) + body.count(QStringLiteral("CountedComplete(")), 2);
+    QCOMPARE(body.count(QStringLiteral("if(!still) return S_OK;")), 2);
+    const int firstDone = body.indexOf(QStringLiteral("CompleteContextMenu("));
+    const int firstGuard = body.indexOf(QStringLiteral("if(!still) return S_OK;"));
+    const int reads = body.indexOf(QStringLiteral("get_MenuItems(&items)"));
+    QVERIFY(firstDone < firstGuard && firstGuard < reads);
+    const int secondDone = body.indexOf(QStringLiteral("CountedComplete("));
+    const int secondGuard = body.indexOf(QStringLiteral("if(!still) return S_OK;"), secondDone);
+    QVERIFY(secondDone > reads && secondGuard > secondDone);
+}
+
+void tst_edgestate::aMenuChoiceIsToldToTheHostBeforeTheEngineFiresIt(){
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int counted = input.indexOf(QStringLiteral("void EdgeWebView::CountedComplete("));
+    const int nextAfter = input.indexOf(QStringLiteral("\nvoid EdgeWebView::"), counted + 1);
+    QVERIFY(counted > 0 && nextAfter > counted);
+    const QString inside = input.mid(counted, nextAfter - counted);
+    const int serial = inside.indexOf(QStringLiteral("GetSerial()"));
+    const int taken = inside.indexOf(QStringLiteral("if(SUCCEEDED(args->put_SelectedCommandId(commandId))){"));
+    const int page = inside.indexOf(QStringLiteral("get_PageUri(&uri)"));
+    const int told = inside.indexOf(QStringLiteral("ExtensionHost::MenuPicked("));
+    const int done = inside.indexOf(QStringLiteral("->Complete()"));
+    QVERIFY(serial > 0 && taken > serial && page > taken && told > page && done > told);
+    QCOMPARE(input.count(QStringLiteral("ExtensionHost::MenuPicked(")), 1);
+    QCOMPARE(input.count(QStringLiteral("put_SelectedCommandId(")), 1);
+}
+
+void tst_edgestate::aRetiringViewCompletesItsMenuLast(){
+    const QString source = EdgeSourceTextOf(QStringLiteral("edgewebview.cpp"));
+    QVERIFY(!source.isEmpty());
+    static const QRegularExpression opens
+        (QStringLiteral("^void EdgeWebView::Retire\\s*\\([^)]*\\)\\s*\\{"),
+         QRegularExpression::MultilineOption);
+    const QRegularExpressionMatch entered = opens.match(source);
+    QVERIFY(entered.hasMatch());
+    static const QRegularExpression ends(QStringLiteral("^\\}"), QRegularExpression::MultilineOption);
+    const int end = source.indexOf(ends, entered.capturedEnd());
+    QVERIFY(end > entered.capturedEnd());
+    const QString retire = source.mid(entered.capturedStart(), end - entered.capturedStart());
+    const int finish = retire.indexOf(QStringLiteral("FinishContextMenu(-1)"));
+    const int closed = retire.indexOf(QStringLiteral("m_Controller->Close()"));
+    const int released = retire.indexOf(QStringLiteral("ReleaseCompositionTree()"));
+    QVERIFY(finish > 0 && closed > 0 && released > 0);
+    QVERIFY(closed < finish);
+    QVERIFY(released < finish);
+    const QString after = retire.mid(finish);
+    const int check = after.indexOf(QStringLiteral("if(!alive) return;"));
+    const int touched = after.indexOf(QStringLiteral("m_Impl"));
+    QVERIFY(check > 0 && touched > check);
+    QVERIFY(!after.contains(QStringLiteral("Release")));
+    QVERIFY(!after.contains(QStringLiteral("Close()")));
+}
+
+void tst_edgestate::aSupersededRequestShowsNoMenu(){
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY(handlers.contains(QStringLiteral("target.m_Superseded = deferral &&")));
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int function = input.indexOf(QStringLiteral("void EdgeWebView::DisplayContextMenuFor("));
+    const int drop = input.indexOf(QStringLiteral("if(target.m_Superseded) return;"), function);
+    const int shows = input.indexOf(QStringLiteral("page()->DisplayContextMenu("), function);
+    QVERIFY(function >= 0 && drop > function && shows > drop);
+    const int next = input.indexOf(QStringLiteral("\nvoid EdgeWebView::"), function + 1);
+    const int pointer = input.indexOf(QStringLiteral("QPointer<EdgeWebView> alive(this);"), function);
+    const int guard = input.indexOf(QStringLiteral("if(!alive) return;"), shows);
+    const int finishing = input.indexOf(QStringLiteral("if(m_Impl->m_ContextMenu.IsFinishing() || m_Impl->m_MenuHandlerDepth > 0){"), function);
+    QVERIFY(pointer > function && pointer < shows);
+    QVERIFY(guard > shows && guard < next);
+    QVERIFY(finishing > function && finishing < shows);
+    const QString afterShow = input.mid(shows, next - shows);
+    QVERIFY(!afterShow.contains(QStringLiteral("singleShot(0, this,")));
+}
+
+void tst_edgestate::radioItemsOfOneRunAreExclusive(){
+    QList<EdgeMenuItem> items;
+    EdgeMenuItem a; a.label = QStringLiteral("A"); a.commandId = 1; a.kind = EdgeMenuItem::Kind::Radio; a.checked = true;
+    EdgeMenuItem b; b.label = QStringLiteral("B"); b.commandId = 2; b.kind = EdgeMenuItem::Kind::Radio;
+    EdgeMenuItem box; box.label = QStringLiteral("C"); box.commandId = 3; box.kind = EdgeMenuItem::Kind::CheckBox;
+    EdgeMenuItem c; c.label = QStringLiteral("D"); c.commandId = 4; c.kind = EdgeMenuItem::Kind::Radio;
+    items << a << b << box << c;
+    QMenu menu;
+    AddEdgeMenuItems(&menu, items, [](int){});
+    const QList<QAction*> actions = menu.actions();
+    QCOMPARE(actions.size(), 4);
+    QVERIFY(actions.at(0)->actionGroup());
+    QCOMPARE(actions.at(1)->actionGroup(), actions.at(0)->actionGroup());
+    QVERIFY(actions.at(0)->actionGroup()->isExclusive());
+    QVERIFY(!actions.at(2)->actionGroup());
+    QVERIFY(actions.at(3)->actionGroup());
+    QVERIFY(actions.at(3)->actionGroup() != actions.at(0)->actionGroup());
+    actions.at(1)->setChecked(true);
+    QVERIFY(!actions.at(0)->isChecked());
+}
+
+void tst_edgestate::theDeletionWaitsWithTheRetire(){
+    EdgeContextMenuState state;
+    const int first = state.Take();
+    QVERIFY(state.Complete(first));
+    state.BeginFinish();
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::AfterFinish);
+    QVERIFY(state.IsRetireWanted());
+    state.NoteDeleteLater();
+    QVERIFY(state.EndFinish());
+    QVERIFY(!state.IsRetireWanted());
+    QCOMPARE(state.Retire(), EdgeContextMenuState::Leaving::Now);
+    QVERIFY(state.TakeDeleteLater());
+    QVERIFY(!state.TakeDeleteLater());
+    EdgeContextMenuState plain;
+    QCOMPARE(plain.Retire(), EdgeContextMenuState::Leaving::Now);
+    QVERIFY(!plain.IsRetireWanted());
+    QVERIFY(!plain.TakeDeleteLater());
+
+    const QString view = EdgeSourceTextOf(QStringLiteral("edgewebview.cpp"));
+    const int deleteLater = view.indexOf(QStringLiteral("void EdgeWebView::DeleteLater()"));
+    const int nextFn = view.indexOf(QStringLiteral("\nvoid EdgeWebView::"), deleteLater + 1);
+    const QString body = view.mid(deleteLater, nextFn - deleteLater);
+    const int retire = body.indexOf(QStringLiteral("Retire();"));
+    const int wanted = body.indexOf(QStringLiteral("IsRetireWanted()"), retire);
+    const int orphan = body.indexOf(QStringLiteral("View::Orphan();"), wanted);
+    const int note = body.indexOf(QStringLiteral("NoteDeleteLater();"), wanted);
+    const int held = body.indexOf(QStringLiteral("return;"), note);
+    const int base = body.indexOf(QStringLiteral("View::DeleteLater();"), wanted);
+    QVERIFY(retire > 0 && wanted > retire && orphan > wanted && note > orphan && held > note && base > held);
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int counted = input.indexOf(QStringLiteral("void EdgeWebView::CountedComplete("));
+    const int nextAfter = input.indexOf(QStringLiteral("\nvoid EdgeWebView::"), counted + 1);
+    const QString inside = input.mid(counted, nextAfter - counted);
+    const int carried = inside.indexOf(QStringLiteral("Retire();"));
+    QVERIFY(carried > 0);
+}
+
+void tst_edgestate::oneRetrySlotForHoweverManyRequests(){
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int function = input.indexOf(QStringLiteral("void EdgeWebView::DisplayContextMenuFor("));
+    const int next = input.indexOf(QStringLiteral("\nvoid EdgeWebView::"), function + 1);
+    const QString body = input.mid(function, next - function);
+    const int gate = body.indexOf(QStringLiteral("if(m_Impl->m_ContextMenu.IsFinishing() || m_Impl->m_MenuHandlerDepth > 0){"));
+    const int slot = body.indexOf(QStringLiteral("m_Impl->m_MenuRetry = target;"), gate);
+    const int armed = body.indexOf(QStringLiteral("if(!m_Impl->m_MenuRetryArmed){"), gate);
+    const int timer = body.indexOf(QStringLiteral("singleShot(16,"), gate);
+    QVERIFY(gate > 0 && slot > gate && armed > slot && timer > armed);
+    QCOMPARE(body.count(QStringLiteral("singleShot(16,")), 1);
+    QVERIFY(body.indexOf(QStringLiteral("later->m_Impl->m_MenuRetryArmed = false;"), timer) > timer);
+}
+
+void tst_edgestate::onlyTheLatestRequestIsShown(){
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    const int handler = handlers.indexOf(QStringLiteral("add_ContextMenuRequested"));
+    const int numbered = handlers.indexOf(QStringLiteral("const int sequence = ++m_Impl->m_MenuSequence;"), handler);
+    const int reads = handlers.indexOf(QStringLiteral("get_MenuItems(&items)"), handler);
+    QVERIFY(handler > 0 && numbered > handler && numbered < reads);
+    QVERIFY(handlers.indexOf(QStringLiteral("target.m_Sequence = sequence;"), handler) > numbered);
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int function = input.indexOf(QStringLiteral("void EdgeWebView::DisplayContextMenuFor("));
+    const int latest = input.indexOf(QStringLiteral("if(target.m_Sequence != m_Impl->m_MenuSequence) return;"), function);
+    const int stale = input.indexOf(QStringLiteral("m_Impl->m_ContextMenu.Generation() == generation"), function);
+    const int retry = input.indexOf(QStringLiteral("m_Impl->m_MenuRetry = target;"), function);
+    QVERIFY(function >= 0 && latest > function && latest < stale && latest < retry);
+}
+
+void tst_edgestate::everyDeletionPathReachesTheHold(){
+    QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + QStringLiteral("/view/view.hpp"));
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const QString view = QString::fromUtf8(file.readAll());
+    QVERIFY(view.contains(QStringLiteral("virtual void DeleteLater();")));
+    const QString edge = EdgeSourceTextOf(QStringLiteral("edgewebview.hpp"));
+    QVERIFY(edge.contains(QStringLiteral("void DeleteLater()")));
+}
+
+void tst_edgestate::aRequestIsNumberedBeforeAnyCallIntoTheBackend(){
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    const int handler = handlers.indexOf(QStringLiteral("add_ContextMenuRequested"));
+    const int numbered = handlers.indexOf(QStringLiteral("const int sequence = ++m_Impl->m_MenuSequence;"), handler);
+    const int handled = handlers.indexOf(QStringLiteral("args->put_Handled(TRUE);"), handler);
+    const int guard = handlers.indexOf(QStringLiteral("if(!here) return S_OK;"), handler);
+    QVERIFY(handler > 0 && numbered > handler);
+    QVERIFY(numbered < handled);
+    QVERIFY(handled < guard);
+    const QString before = handlers.mid(handler, numbered - handler);
+    QVERIFY(!before.contains(QStringLiteral("args->")));
+}
+
+void tst_edgestate::aGoingViewActsOnNoKeyAndShowsNoDialog(){
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    const int keys = handlers.indexOf(QStringLiteral("add_AcceleratorKeyPressed"));
+    const int gate = handlers.indexOf(QStringLiteral("if(IsGoing() || !m_TreeBank){"), keys);
+    const int swallowed = handlers.indexOf(QStringLiteral("args->put_Handled(TRUE);"), gate);
+    const int acts = handlers.indexOf(QStringLiteral("HandleAcceleratorKey("), keys);
+    QVERIFY(keys > 0 && gate > keys && swallowed > gate && swallowed < acts);
+    const int certificate = handlers.indexOf(QStringLiteral("add_ServerCertificateErrorDetected"));
+    QVERIFY(handlers.indexOf(QStringLiteral("if(alive && !alive->IsGoing())"), certificate) > certificate);
+    const int permission = handlers.indexOf(QStringLiteral("add_PermissionRequested"));
+    QVERIFY(handlers.indexOf(QStringLiteral("if(alive && !alive->IsGoing()){"), permission) > permission);
+    const int notification = handlers.indexOf(QStringLiteral("add_NotificationReceived"));
+    QVERIFY(handlers.indexOf(QStringLiteral("if(!alive || alive->IsGoing()){"), notification) > notification);
+    const int shows = handlers.indexOf(QStringLiteral("void EdgeWebView::ShowPageNotification("));
+    const int execute = handlers.indexOf(QStringLiteral("dialog->Execute();"), shows);
+    const int refused = handlers.indexOf(QStringLiteral("if(!alive || alive->IsGoing()){ dialog->deleteLater(); return;}"), shows);
+    QVERIFY(shows > 0 && refused > shows && execute > refused);
+    const int page = handlers.indexOf(QStringLiteral("VanillaPage::CompleteUserInteraction(answer)"));
+    const int pageGate = handlers.lastIndexOf(QStringLiteral("if(!alive || alive->IsGoing())"), page);
+    QVERIFY(page > 0 && pageGate > 0 && page - pageGate < 200);
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    QVERIFY(input.contains(QStringLiteral("if(!IsGoing()) HandlePagePrintRequest();")));
+    const QString view = EdgeSourceTextOf(QStringLiteral("edgewebview.cpp"));
+    QVERIFY(view.contains(QStringLiteral("return m_Impl->m_State.IsRetired() || m_Impl->m_ContextMenu.IsRetireWanted();")));
+}
+
+void tst_edgestate::theViewIsCheckedAfterEveryGroupOfCallsIntoTheBackend(){
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    const int handler = handlers.indexOf(QStringLiteral("add_ContextMenuRequested"));
+    const int end = handlers.indexOf(QStringLiteral("ContextMenuRequested, token"), handler);
+    const QString body = handlers.mid(handler, end - handler);
+    const int handled = body.indexOf(QStringLiteral("args->put_Handled(TRUE);"));
+    const int target = body.indexOf(QStringLiteral("args->get_ContextMenuTarget(&hit)"));
+    const int items = body.indexOf(QStringLiteral("args->get_MenuItems(&items)"));
+    const int deferral = body.indexOf(QStringLiteral("args->GetDeferral(&deferral)"));
+    const int take = body.indexOf(QStringLiteral("m_ContextMenu.Take()"));
+    QVERIFY(handled > 0 && target > handled && items > target && deferral > items && take > deferral);
+    auto guardBetween = [&body](int from, int to){
+        const int at = body.indexOf(QStringLiteral("if(!here)"), from);
+        return at > from && at < to;
+    };
+    QVERIFY(guardBetween(handled, target));
+    QVERIFY(guardBetween(target, items));
+    QVERIFY(guardBetween(items, deferral));
+    QVERIFY(guardBetween(deferral, take));
+    const int current = body.indexOf(QStringLiteral("sequence == m_Impl->m_MenuSequence"), deferral);
+    QVERIFY(current > deferral && current < take);
+    const QString view = EdgeSourceTextOf(QStringLiteral("edgewebview.cpp"));
+    const int deleteLater = view.indexOf(QStringLiteral("void EdgeWebView::DeleteLater()"));
+    const int retire = view.indexOf(QStringLiteral("Retire();"), deleteLater);
+    const int pointer = view.indexOf(QStringLiteral("QPointer<EdgeWebView> alive(this);"), deleteLater);
+    const int check = view.indexOf(QStringLiteral("if(!alive) return;"), deleteLater);
+    const int wanted = view.indexOf(QStringLiteral("IsRetireWanted()"), deleteLater);
+    QVERIFY(pointer > deleteLater && pointer < retire && check > retire && check < wanted);
+}
+
+void tst_edgestate::noMenuWhileAHandlerIsOnTheStack(){
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    const int handler = handlers.indexOf(QStringLiteral("add_ContextMenuRequested"));
+    const int up = handlers.indexOf(QStringLiteral("m_Impl->m_MenuHandlerDepth++;"), handler);
+    const int down = handlers.indexOf(QStringLiteral("view->m_Impl->m_MenuHandlerDepth--;"), handler);
+    const int handled = handlers.indexOf(QStringLiteral("args->put_Handled(TRUE);"), handler);
+    QVERIFY(handler > 0 && up > handler && down > up && up < handled);
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int function = input.indexOf(QStringLiteral("void EdgeWebView::DisplayContextMenuFor("));
+    const int gate = input.indexOf(QStringLiteral("if(m_Impl->m_ContextMenu.IsFinishing() || m_Impl->m_MenuHandlerDepth > 0){"), function);
+    const int shows = input.indexOf(QStringLiteral("page()->DisplayContextMenu("), function);
+    QVERIFY(function >= 0 && gate > function && gate < shows);
+}
+
+void tst_edgestate::aDeletionAskedForDuringTheTeardownIsPostedAfterIt(){
+    const QString view = EdgeSourceTextOf(QStringLiteral("edgewebview.cpp"));
+    const int deleteLater = view.indexOf(QStringLiteral("void EdgeWebView::DeleteLater()"));
+    const int held = view.indexOf(QStringLiteral("if(m_Impl->m_Retiring){"), deleteLater);
+    const int retire = view.indexOf(QStringLiteral("Retire();"), deleteLater);
+    QVERIFY(deleteLater > 0 && held > deleteLater && held < retire);
+    const int retireFn = view.indexOf(QStringLiteral("void EdgeWebView::Retire(bool force){"));
+    const int on = view.indexOf(QStringLiteral("m_Impl->m_Retiring = true;"), retireFn);
+    const int finish = view.indexOf(QStringLiteral("FinishContextMenu(-1);"), retireFn);
+    const int off = view.indexOf(QStringLiteral("m_Impl->m_Retiring = false;"), retireFn);
+    const int posted = view.indexOf(QStringLiteral("if(m_Impl->m_ContextMenu.TakeDeleteLater()) View::DeleteLater();"), retireFn);
+    QVERIFY(retireFn > 0 && on > retireFn && finish > on && off > finish && posted > off);
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    QVERIFY(!input.contains(QStringLiteral("TakeDeleteLater()")));
+}
+
+void tst_edgestate::extensionItemsBecomeActionsOfTheirKind(){
+    QList<EdgeMenuItem> items;
+    EdgeMenuItem save;
+    save.label = QStringLiteral("Save & keep");
+    save.commandId = 49001;
+    items.append(save);
+    EdgeMenuItem line;
+    line.kind = EdgeMenuItem::Kind::Separator;
+    items.append(line);
+    EdgeMenuItem off;
+    off.label = QStringLiteral("Off");
+    off.commandId = 49002;
+    off.enabled = false;
+    items.append(off);
+    EdgeMenuItem folder;
+    folder.label = QStringLiteral("More");
+    folder.commandId = 49010;
+    folder.kind = EdgeMenuItem::Kind::Submenu;
+    EdgeMenuItem radio;
+    radio.label = QStringLiteral("A");
+    radio.commandId = 49011;
+    radio.kind = EdgeMenuItem::Kind::Radio;
+    radio.checked = true;
+    folder.children.append(radio);
+    EdgeMenuItem box;
+    box.label = QStringLiteral("B");
+    box.commandId = 49012;
+    box.kind = EdgeMenuItem::Kind::CheckBox;
+    folder.children.append(box);
+    items.append(folder);
+
+    QMenu menu;
+    QList<int> chosen;
+    AddEdgeMenuItems(&menu, items, [&chosen](int id){ chosen.append(id);});
+
+    const QList<QAction*> actions = menu.actions();
+    QCOMPARE(actions.size(), 4);
+    QCOMPARE(actions.at(0)->text(), QStringLiteral("Save && keep"));
+    QVERIFY(!actions.at(0)->isCheckable());
+    QCOMPARE(actions.at(0)->data().toInt(), 49001);
+    QVERIFY(actions.at(1)->isSeparator());
+    QVERIFY(!actions.at(2)->isEnabled());
+    QMenu *sub = actions.at(3)->menu();
+    QVERIFY(sub);
+    QCOMPARE(actions.at(3)->text(), QStringLiteral("More"));
+    QCOMPARE(sub->actions().size(), 2);
+    QVERIFY(sub->actions().at(0)->isCheckable());
+    QVERIFY(sub->actions().at(0)->isChecked());
+    QVERIFY(sub->actions().at(1)->isCheckable());
+    QVERIFY(!sub->actions().at(1)->isChecked());
+
+    actions.at(0)->trigger();
+    sub->actions().at(1)->trigger();
+    QCOMPARE(chosen, (QList<int>{49001, 49012}));
+    actions.at(1)->trigger();
+    actions.at(3)->trigger();
+    QCOMPARE(chosen.size(), 2);
+}
+
+void tst_edgestate::theBackendHoldsOnlyWhatTheLedgerKnowsAndAskersGoWithTheirView(){
+    const QString extensions = EdgeSourceTextOf(QStringLiteral("edgeextensions.cpp"));
+    const QString view = EdgeSourceTextOf(QStringLiteral("edgewebview.cpp"));
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!extensions.isEmpty() && !view.isEmpty() && !handlers.isEmpty(), "the Edge sources were not read; check VANILLA_SOURCE_DIR");
+
+    const int add = extensions.indexOf(QStringLiteral("void Add(const ExtensionManifest &manifest"));
+    QVERIFY2(add >= 0, "'Add' has gone");
+    const int addEnd = extensions.indexOf(QStringLiteral("void Remove(const QString &id"), add);
+    QVERIFY2(addEnd > add, "'Remove' no longer follows 'Add'");
+    const QString addBody = extensions.mid(add, addEnd - add);
+    const int ledger = addBody.indexOf(QStringLiteral("if(!WriteLedger())"));
+    const int given = addBody.indexOf(QStringLiteral("AddBrowserExtension("));
+    QVERIFY2(ledger >= 0 && given > ledger, "the ledger is not written, and checked, before the backend is given the extension");
+    const int branchEnd = addBody.indexOf(QStringLiteral("\n            }"), ledger);
+    QVERIFY2(branchEnd > ledger && branchEnd < given, "the failure's branch has lost its end");
+    QVERIFY2(addBody.mid(ledger, branchEnd - ledger).contains(QStringLiteral("return;")),
+             "a ledger not written no longer stops 'Add': the backend would be given what the ledger does not know");
+
+    const int migrate = extensions.indexOf(QStringLiteral("void Migrate(QList<ExtensionItem> items"));
+    QVERIFY2(migrate >= 0, "'Migrate' has gone");
+    QVERIFY2(extensions.indexOf(QStringLiteral("ExtensionCopy::Stale("), migrate) > migrate, "'Migrate' no longer goes by 'ExtensionCopy::Stale'");
+    const int refresh = extensions.indexOf(QStringLiteral("void Refresh(QList<ExtensionItem> items"));
+    QVERIFY2(refresh > migrate, "'Refresh' no longer follows 'Migrate'");
+    const QString migrateBody = extensions.mid(migrate, refresh - migrate);
+    const int said = migrateBody.indexOf(QStringLiteral("ExtensionCopy::KeylessOfLoaded("));
+    const int skipped = migrateBody.indexOf(QStringLiteral("if(stale.contains(item.id) || !m_Copies.contains(item.id)) continue;"));
+    QVERIFY2(skipped >= 0 && skipped < said, "'Migrate' says anew of registrations it takes out or does not know");
+    QVERIFY2(said >= 0 && migrateBody.indexOf(QStringLiteral("m_Copies[item.id].keyless = keyless;"), said) > said,
+             "'Migrate' no longer says anew whether the copy the backend runs has the key");
+    QVERIFY2(migrateBody.indexOf(QStringLiteral("if(rewritten) WriteLedger();"), said) > said, "'Migrate' no longer writes the ledger it said anew");
+    const QString refreshBody = extensions.mid(refresh, extensions.indexOf(QStringLiteral("self->WriteLedger();"), refresh) - refresh);
+    QVERIFY2(refreshBody.contains(QStringLiteral("entry.loaded = copy;")) && refreshBody.contains(QStringLiteral("entry.keyless = ExtensionCopy::KeylessOfLoaded(")),
+             "'Refresh' no longer says whether the copy it registered again has the key");
+
+    const int shutdown = extensions.indexOf(QStringLiteral("void Shutdown(){"));
+    QVERIFY2(shutdown >= 0, "the page's 'Shutdown' has gone");
+    const int token = extensions.indexOf(QStringLiteral("m_HostToken.reset()"), shutdown);
+    const int closed = extensions.indexOf(QStringLiteral("controller->Close()"), shutdown);
+    QVERIFY2(token > shutdown && closed > token, "the page's token does not go before the engine is called into");
+    QVERIFY2(extensions.contains(QStringLiteral("QPointer<QObject> owner(m_HostToken.data())")), "the page's 'Ask' is not owned by the token");
+
+    const int forget = view.indexOf(QStringLiteral("ExtensionHost::ForgetView(m_Impl->m_HostNumber)"));
+    const int viewToken = view.indexOf(QStringLiteral("m_Impl->m_HostToken.reset()"));
+    const int profiles = view.indexOf(QStringLiteral("s_Profiles.Closed(this)"));
+    QVERIFY2(forget >= 0 && viewToken > forget && profiles > viewToken, "the view's token does not go at the start of the retire");
+    QVERIFY2(handlers.contains(QStringLiteral("m_Impl->m_HostToken.data(), args")), "the view's 'Ask' is not owned by the token");
+}
+
+void tst_edgestate::theRelayIsAViewOfItsOwnKindSeenByTheEngineAndNavigatedOnce(){
+    const QString source = EdgeSourceTextOf(QStringLiteral("edgeextensions.cpp"));
+    QVERIFY2(!source.isEmpty(), "the Edge sources were not read; check VANILLA_SOURCE_DIR");
+
+    const int relay = source.indexOf(QStringLiteral("class EdgeRelayView : public QObject {"));
+    QVERIFY2(relay >= 0, "the relay view has gone, or is no longer a plain QObject");
+    const int end = source.indexOf(QStringLiteral("\n    };"), relay);
+    QVERIFY2(end > relay, "the relay view's class has lost its end");
+    const QString body = source.mid(relay, end - relay);
+    QVERIFY2(!body.contains(QStringLiteral("EdgeWebView")) && !body.contains(QStringLiteral("QWidget")),
+             "the relay view is an EdgeWebView or a widget: 'Suspend' or a hide would reach it");
+    QVERIFY2(body.contains(QStringLiteral("Qt::WindowDoesNotAcceptFocus")) && body.contains(QStringLiteral("Qt::Tool")),
+             "the relay's window may take the focus or show on the taskbar");
+    QVERIFY2(body.contains(QStringLiteral("put_IsVisible(qEnvironmentVariableIsSet(\"VANILLA_RELAY_HIDDEN\") ? FALSE : TRUE)")),
+             "the relay is not seen by the engine: its timers would be throttled");
+    QCOMPARE(body.count(QStringLiteral("->Navigate(")), 1);
+    QVERIFY2(!body.contains(QStringLiteral("Reload(")), "the relay is reloaded: its requests would outlive its page");
+
+    const int shutdown = body.indexOf(QStringLiteral("void Shutdown(){"));
+    QVERIFY2(shutdown >= 0, "the relay's 'Shutdown' has gone");
+    const int token = body.indexOf(QStringLiteral("m_HostToken.reset()"), shutdown);
+    const int closed = body.indexOf(QStringLiteral("controller->Close()"), shutdown);
+    QVERIFY2(token > shutdown && closed > token, "the relay's token does not go before the engine is called into");
+    QVERIFY2(body.contains(QStringLiteral("QPointer<QObject> owner(m_HostToken.data())")), "the relay's 'Ask' is not owned by the token");
+    QVERIFY2(body.contains(QStringLiteral("EdgeAnswerExtensionHost(ControllerOf(profileOf), 0, owner.data()")), "the relay does not ask the host as no tab's page");
+
+    QVERIFY2(source.contains(QStringLiteral("connect(this, &ExtensionController::Changed, this, [this](){ ReconcileRelays(); });")),
+             "the relays no longer follow the rows");
+    const int reconcile = source.indexOf(QStringLiteral("void EdgeExtensions::ReconcileRelays(){"));
+    QVERIFY2(reconcile >= 0, "'ReconcileRelays' has gone");
+    const QString rule = source.mid(reconcile, 1600);
+    QVERIFY2(rule.contains(QStringLiteral("row.loaded && row.enabled && HasKeyedShims(row.manifest.id)")),
+             "a relay is made for a row which is not loaded, enabled and keyed");
+    QVERIFY2(rule.contains(QStringLiteral("if(m_Reconciling){ m_ReconcileAgain = true; return; }")),
+             "a reconciliation from inside a reconciliation (the engine pumps) is not put off");
 }
 
 QTEST_MAIN(tst_edgestate)

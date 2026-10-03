@@ -34,17 +34,35 @@ vanilla_add_test(tst_viewnode)
 vanilla_add_test(tst_inputmapping)
 vanilla_add_test(tst_gadgetsscroll)
 vanilla_add_test(tst_gadgetsframe)
+# 'vanilla.qrc' for the tree glyphs ('folder' / 'folded' / 'unfolded') a
+# directory card falls back to; without it the styles draw no glyph at all.
+target_sources(tst_gadgetsframe PRIVATE ../qrc/vanilla.qrc)
 vanilla_add_test(tst_theme)
 vanilla_add_test(tst_pagetheme)
 vanilla_add_test(tst_uimetrics)
+vanilla_add_test(tst_windowframe)
+vanilla_add_test(tst_receiver)
 vanilla_add_test(tst_settingsschema)
 vanilla_add_test(tst_mediatype)
 vanilla_add_test(tst_thumbnail)
 vanilla_add_test(tst_bookmarkio)
 vanilla_add_test(tst_settingsio)
 vanilla_add_test(tst_inputmap)
+vanilla_add_test(tst_inputmapschema)
 vanilla_add_test(tst_cookiefilter)
 vanilla_add_test(tst_urlblock)
+vanilla_add_test(tst_dnrrules)
+vanilla_add_test(tst_cdpshims)
+# (the shims' tests outgrew the sections an MSVC object may hold: C1128.)
+if(MSVC)
+    target_compile_options(tst_cdpshims PRIVATE /bigobj)
+endif()
+vanilla_add_test(tst_extensioncopy)
+vanilla_add_test(tst_extensionhostwire)
+vanilla_add_test(tst_extensionmainscripts)
+vanilla_add_test(tst_extensionuserscripts)
+vanilla_add_test(tst_extensionui)
+vanilla_add_test(tst_searchengine)
 vanilla_add_test(tst_vanillapage)
 vanilla_add_test(tst_directorypage)
 vanilla_add_test(tst_devicescale)
@@ -61,10 +79,45 @@ vanilla_add_test(tst_nativehistory)
 vanilla_add_test(tst_quickviewbridge)
 vanilla_add_test(tst_jscode)
 vanilla_add_test(tst_edgestate)
+vanilla_add_test(tst_edgehostwindow)
+vanilla_add_test(tst_spentbuttons)
+if(TARGET Qt6::WebEngineWidgets)
+    target_sources(tst_spentbuttons PRIVATE ../qrc/quickwebengineview6.qrc)
+endif()
+# the two profiles of a space, with real views of both kinds (D-428).
+vanilla_add_test(tst_profilepair)
+if(TARGET Qt6::WebEngineWidgets)
+    target_sources(tst_profilepair PRIVATE ../qrc/quickwebengineview6.qrc)
+endif()
+vanilla_add_test(tst_zoomsave)
 vanilla_add_test(tst_minimap)
 vanilla_add_test(tst_downloadname)
 vanilla_add_test(tst_downloaditem)
 vanilla_add_test(tst_sslprotocol)
+vanilla_add_test(tst_treebaritem)
+vanilla_add_test(tst_loadending)
+vanilla_add_test(tst_translationorder)
+# the .qm files the application ships, read where the build puts them.
+target_compile_definitions(tst_translationorder PRIVATE
+    VANILLA_QM_DIR="${VANILLA_QM_DIR}")
+add_dependencies(tst_translationorder vanilla)
+vanilla_add_test(tst_shutdown)
+vanilla_add_test(tst_extensions)
+target_compile_definitions(tst_extensions PRIVATE
+    VANILLA_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/extension")
+
+# Explicit desktop smoke test, not a headless ctest. Its stores live beside
+# its own executable and it serves only loopback HTTP (D-313).
+if(TARGET Qt6::WebEngineWidgets)
+    # 'vanilla.qrc' for the bar's own bitmaps, which the screenshots show.
+    qt_add_executable(extension_smoke extension_smoke.cpp
+        ../qrc/quickwebengineview6.qrc ../qrc/vanilla.qrc)
+    target_link_libraries(extension_smoke PRIVATE vanilla_core Qt6::Test)
+    target_compile_definitions(extension_smoke PRIVATE
+        VANILLA_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/extension")
+    set_target_properties(extension_smoke PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/extension_smoke")
+endif()
 
 # 'tst_settingsschema' reads the sources to check that the defaults in the
 # schema are the ones the code actually asks for, and 'tst_commandmap' reads
@@ -73,7 +126,18 @@ vanilla_add_test(tst_sslprotocol)
 # build tree.
 target_compile_definitions(tst_settingsschema PRIVATE
     VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+# ('tst_extensioncopy': that copies are made where an extension is added and nowhere else.)
+target_compile_definitions(tst_extensioncopy PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
 target_compile_definitions(tst_commandmap PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+# ('tst_extensionhostwire': that 'activeTab' is granted by the user alone, D-439.)
+target_compile_definitions(tst_extensionhostwire PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+# ('tst_inputmapschema': that the labels are the words the menus put on the actions.)
+target_compile_definitions(tst_inputmapschema PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+target_compile_definitions(tst_viewinterface PRIVATE
     VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
 
 # 'tst_cookiefilter' reads 'networkcontroller.cpp' to check that the mirror is
@@ -96,6 +160,19 @@ target_compile_definitions(tst_urlblock PRIVATE
 target_compile_definitions(tst_edgestate PRIVATE
     VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
 
+# 'tst_downloaditem' reads 'networkcontroller.cpp' to check that the tab whose
+# navigation a download took over is asked of 'View' rather than of one kind
+# of view: the quick view's download is a 'QWebEngineDownloadRequest' too, and
+# the cast which was there silently never matched (D-280 追記6).
+target_compile_definitions(tst_downloaditem PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+
+# 'tst_viewnode' reads 'treebank.cpp' to check the order a download carrier is
+# taken out of the tree in, and that it never passes through the trash
+# (D-279). Neither is a compile error when it is wrong.
+target_compile_definitions(tst_viewnode PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+
 # 'tst_pagetheme' reads the two style sheets under 'resources/' to check that
 # they hold no colour of their own, so it needs the same bearing.
 target_compile_definitions(tst_pagetheme PRIVATE
@@ -115,9 +192,13 @@ target_compile_definitions(tst_nativehistory PRIVATE
 # escapes the dropped text before the script does (A-25).
 target_compile_definitions(tst_jscode PRIVATE
     VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+target_compile_definitions(tst_jscode PRIVATE
+    VANILLA_RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../resources")
 
 # 'tst_quickviewbridge' reads 'quickwebengineview6.qml' and the C++ which
 # calls into it, to check that no name on that seam is spelled at nothing and
 # no function on it is empty.
 target_compile_definitions(tst_quickviewbridge PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+target_compile_definitions(tst_shutdown PRIVATE
     VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")

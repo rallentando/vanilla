@@ -5,6 +5,9 @@
 #include "edgewebviewstate.hpp"
 
 #include <QDateTime>
+#include <QMenu>
+#include <QAction>
+#include <QActionGroup>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
@@ -24,6 +27,12 @@ bool EdgeIsOwnViewSource(const QUrl &shown, const QUrl &reported){
     if(!inside.isValid() || inside.isEmpty()) return false;
 
     return EdgeWithRootPath(inside) == EdgeWithRootPath(reported);
+}
+
+bool EdgeIsOwnStringDocument(const QUrl &shown, const QUrl &stringDocument,
+                             const QUrl &reported){
+    if(stringDocument.isEmpty() || shown != stringDocument) return false;
+    return reported == QUrl(QStringLiteral("about:blank"));
 }
 
 QVariant EdgeScriptResultToVariant(const QByteArray &json){
@@ -273,7 +282,8 @@ EdgeMessage EdgeMessage::Parse(const QString &json, int eventKey){
 
     const bool digit = value >= 0x30 && value <= 0x39;
     const bool letter = value >= 0x41 && value <= 0x5A;
-    if(!digit && !letter) return message;
+    const bool escape = value == 0x1B && !shift.toBool();
+    if(!digit && !letter && !escape) return message;
 
     message.m_Kind = Kind::Key;
     message.m_Code = value;
@@ -549,6 +559,99 @@ Qt::CursorShape EdgeCursorShape(unsigned int systemCursorId){
     case 32651: return Qt::WhatsThisCursor;
     default:    return Qt::ArrowCursor;
     }
+}
+
+void AddEdgeMenuItems(QMenu *menu, const QList<EdgeMenuItem> &items,
+                      const std::function<void(int)> &chosen){
+    QActionGroup *radios = nullptr;
+    for(const EdgeMenuItem &item : items){
+        QString text = item.label;
+        text.replace(QLatin1Char('&'), QStringLiteral("&&"));
+        if(item.kind != EdgeMenuItem::Kind::Radio) radios = nullptr;
+        switch(item.kind){
+        case EdgeMenuItem::Kind::Separator:
+            menu->addSeparator();
+            break;
+        case EdgeMenuItem::Kind::Submenu: {
+            QMenu *sub = menu->addMenu(text);
+            sub->menuAction()->setEnabled(item.enabled);
+            AddEdgeMenuItems(sub, item.children, chosen);
+            break;
+        }
+        default: {
+            QAction *action = menu->addAction(text);
+            action->setEnabled(item.enabled);
+            if(item.kind != EdgeMenuItem::Kind::Command){
+                action->setCheckable(true);
+                action->setChecked(item.checked);
+            }
+            if(item.kind == EdgeMenuItem::Kind::Radio){
+                if(!radios){
+                    radios = new QActionGroup(menu);
+                    radios->setExclusive(true);
+                }
+                radios->addAction(action);
+            }
+            action->setData(item.commandId);
+            const int id = item.commandId;
+            QObject::connect(action, &QAction::triggered, menu, [chosen, id](){ chosen(id);});
+            break;
+        }
+        }
+    }
+}
+
+EdgeContextMenuState::EdgeContextMenuState()
+    : m_Generation(0), m_Outstanding(false), m_Retired(false)
+    , m_Finishing(0), m_RetireWanted(false), m_DeleteWanted(false)
+{
+}
+
+void EdgeContextMenuState::NoteDeleteLater(){
+    m_DeleteWanted = true;
+}
+
+bool EdgeContextMenuState::TakeDeleteLater(){
+    const bool wanted = m_DeleteWanted;
+    m_DeleteWanted = false;
+    return wanted;
+}
+
+int EdgeContextMenuState::Take(){
+    if(m_Retired || m_Outstanding) return 0;
+    m_Generation++;
+    m_Outstanding = true;
+    return m_Generation;
+}
+
+bool EdgeContextMenuState::Complete(int generation){
+    if(!m_Outstanding || generation != m_Generation) return false;
+    m_Outstanding = false;
+    return true;
+}
+
+void EdgeContextMenuState::BeginFinish(){
+    m_Finishing++;
+}
+
+bool EdgeContextMenuState::EndFinish(){
+    if(m_Finishing > 0) m_Finishing--;
+    if(m_Finishing > 0) return false;
+    const bool wanted = m_RetireWanted;
+    m_RetireWanted = false;
+    return wanted;
+}
+
+EdgeContextMenuState::Leaving EdgeContextMenuState::Retire(bool force){
+    if(m_Finishing > 0 && !force){
+        m_RetireWanted = true;
+        return Leaving::AfterFinish;
+    }
+    m_Retired = true;
+    m_RetireWanted = false;
+    const bool outstanding = m_Outstanding;
+    m_Outstanding = false;
+    return outstanding ? Leaving::WithDeferral : Leaving::Now;
 }
 
 #endif

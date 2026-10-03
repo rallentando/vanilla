@@ -36,6 +36,7 @@ private slots:
 
     void inkLeavesTheLightPaletteAlone();
     void inkRepaintsForTheDarkPalette();
+    void fillRepaintsForEitherPalette();
     void pixmapCacheFollowsTheScheme();
 
     void emptyThumbnailFillsTheBoxAndSaysWhichKindItIs();
@@ -108,6 +109,8 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
     ROW(BarTabHoverOverlay,                   0,   0,   0,  20);
     ROW(BarTabHoverOverlayTranslucent,        0,   0,   0,  10);
     ROW(BarTabHoverOverlayTranslucentFocused, 255, 255, 255, 50);
+    ROW(BarTabCurrentBackground,             224, 237, 255, 255);
+    ROW(BarTabCurrentAccent,                  23, 100, 192, 255);
 
     ROW(TitleBarBackground,                 255, 255, 255, 200);
     ROW(TitleBarBorder,                     255, 255, 255, 200);
@@ -120,13 +123,13 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
 
     ROW(GlassOverlayBackground,               0,   0,   0, 170);
     ROW(GlassThumbLoaded,                   255, 255, 200,  44);
-    ROW(GlassThumbPrimary,                    0, 100, 255,  77);
+    ROW(GlassThumbPrimary,  23, 100, 192,  77);
     ROW(GlassThumbHovered,                  255, 255, 255,  77);
     ROW(GlassThumbSelected,                 255, 200, 220, 170);
     ROW(GlassSpotLightLoaded,               255, 255, 200,  44);
     ROW(GlassSpotLightLoadedEdge,           255, 255, 200,  30);
-    ROW(GlassSpotLightPrimary,                0, 100, 255,  77);
-    ROW(GlassSpotLightPrimaryEdge,            0, 100, 255,  50);
+    ROW(GlassSpotLightPrimary,  23, 100, 192,  77);
+    ROW(GlassSpotLightPrimaryEdge,  23, 100, 192,  50);
     ROW(GlassSpotLightHovered,              255, 255, 255,  77);
     ROW(GlassSpotLightHoveredEdge,          255, 255, 255,  50);
     ROW(GlassBorder,                        255, 255, 255, 255);
@@ -153,9 +156,9 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
     ROW(FlatPlaceholderPage,                225, 225, 225, 255);
     ROW(FlatSelectedBorder,                 100, 100, 255, 255);
     ROW(FlatSelectedFill,                   100, 100, 255,  50);
-    ROW(FlatPrimaryBorder,                  100, 255, 255, 255);
+    ROW(FlatPrimaryBorder,  23, 100, 192, 255);
     ROW(FlatAccessKeyChip,                  255, 255, 255, 255);
-    ROW(FlatShadowPrimary,                    0,   0, 100, 255);
+    ROW(FlatShadowPrimary,  23, 100, 192, 255);
     ROW(FlatShadow,                         120, 120, 120, 255);
     ROW(FlatShadowSoft,                       0,   0,   0, 127);
     ROW(FlatShadowLight,                    255, 255, 255, 255);
@@ -262,6 +265,8 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
     ROW(BarTabHoverOverlay,                 255, 255, 255,  20);
     ROW(BarTabHoverOverlayTranslucent,      255, 255, 255,  10);
     ROW(BarTabHoverOverlayTranslucentFocused, 0,   0,   0,  50);
+    ROW(BarTabCurrentBackground,              38,  62,  89, 255);
+    ROW(BarTabCurrentAccent,                 123, 183, 255, 255);
 
     ROW(TitleBarBackground,                  40,  40,  40, 200);
     ROW(TitleBarBorder,                      40,  40,  40, 200);
@@ -274,13 +279,13 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
 
     ROW(GlassOverlayBackground,               0,   0,   0, 190);
     ROW(GlassThumbLoaded,                   255, 255, 200,  44);
-    ROW(GlassThumbPrimary,                    0, 140, 255,  90);
+    ROW(GlassThumbPrimary, 123, 183, 255,  90);
     ROW(GlassThumbHovered,                  255, 255, 255,  60);
     ROW(GlassThumbSelected,                 255, 170, 200, 150);
     ROW(GlassSpotLightLoaded,               255, 255, 200,  44);
     ROW(GlassSpotLightLoadedEdge,           255, 255, 200,  30);
-    ROW(GlassSpotLightPrimary,                0, 140, 255,  90);
-    ROW(GlassSpotLightPrimaryEdge,            0, 140, 255,  60);
+    ROW(GlassSpotLightPrimary, 123, 183, 255,  90);
+    ROW(GlassSpotLightPrimaryEdge, 123, 183, 255,  60);
     ROW(GlassSpotLightHovered,              255, 255, 255,  60);
     ROW(GlassSpotLightHoveredEdge,          255, 255, 255,  40);
     ROW(GlassBorder,                        255, 255, 255, 255);
@@ -307,9 +312,9 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
     ROW(FlatPlaceholderPage,                 64,  64,  64, 255);
     ROW(FlatSelectedBorder,                 120, 150, 255, 255);
     ROW(FlatSelectedFill,                   120, 150, 255,  60);
-    ROW(FlatPrimaryBorder,                  120, 230, 230, 255);
+    ROW(FlatPrimaryBorder, 123, 183, 255, 255);
     ROW(FlatAccessKeyChip,                   32,  32,  32, 255);
-    ROW(FlatShadowPrimary,                  120, 170, 255, 255);
+    ROW(FlatShadowPrimary, 123, 183, 255, 255);
     ROW(FlatShadow,                         140, 140, 140, 255);
     ROW(FlatShadowSoft,                       0,   0,   0, 127);
     ROW(FlatShadowLight,                    255, 255, 255, 255);
@@ -398,7 +403,7 @@ void tst_theme::everyRoleHasAValue(){
                      qPrintable(QStringLiteral("role %1 is transparent black; a row is probably missing").arg(i)));
     }
 
-    QCOMPARE(static_cast<int>(Theme::RoleCount), 129);
+    QCOMPARE(static_cast<int>(Theme::RoleCount), 134);
 }
 
 void tst_theme::schemeSurvivesThePropertiesThatMatter(){
@@ -443,6 +448,11 @@ void tst_theme::schemeSurvivesThePropertiesThatMatter(){
     const QString schemes[] = { QStringLiteral("light"), QStringLiteral("dark") };
     for(int s = 0; s < 2; s++){
         Theme::ApplyScheme(schemes[s]);
+        for(Theme::Role role : {Theme::GlassThumbPrimary, Theme::GlassSpotLightPrimary,
+                               Theme::GlassSpotLightPrimaryEdge, Theme::FlatPrimaryBorder,
+                               Theme::FlatShadowPrimary}){
+            QCOMPARE(Theme::Color(role).rgb(), Theme::Color(Theme::BarTabCurrentAccent).rgb());
+        }
         for(unsigned i = 0; i < sizeof(contrasts)/sizeof(contrasts[0]); i++){
             const int ink = Theme::Color(contrasts[i].ink).lightness();
             const int surface = Theme::Color(contrasts[i].surface).lightness();
@@ -453,6 +463,19 @@ void tst_theme::schemeSurvivesThePropertiesThatMatter(){
                                 .arg(static_cast<int>(contrasts[i].surface))
                                 .arg(qAbs(ink - surface))));
         }
+        const int frameAlpha = Theme::Color(Theme::MiniMapFrame).alpha();
+        QVERIFY(frameAlpha > 0);
+        QVERIFY(frameAlpha < Theme::Color(Theme::MiniMapMedia).alpha());
+        const int controlAlpha = Theme::Color(Theme::MiniMapControl).alpha();
+        QVERIFY(controlAlpha > frameAlpha);
+        const int textAlpha = Theme::Color(Theme::MiniMapText).alpha();
+        QVERIFY(controlAlpha * 10 >= textAlpha * 7);
+        QVERIFY(controlAlpha * 4 <= textAlpha * 3);
+        const QColor positioned =
+            Theme::Color(Theme::MiniMapPositionedBackground);
+        QVERIFY(positioned.alpha() > 0);
+        QVERIFY(positioned.hsvHue() >= 90);
+        QVERIFY(positioned.hsvHue() <= 170);
     }
 
     Theme::ApplyScheme(QStringLiteral("light"));
@@ -550,6 +573,20 @@ void tst_theme::inkRepaintsForTheDarkPalette(){
 
     QCOMPARE(after.pixelColor(0, 0), Theme::Color(Theme::BarIcon));
     QCOMPARE(after.pixelColor(1, 0).alpha(), 0);
+}
+
+void tst_theme::fillRepaintsForEitherPalette(){
+    const QImage light = Theme::Fill(Glyph(), Theme::PreviewBackground).toImage();
+    QVERIFY(!Theme::IsDark());
+    QCOMPARE(light.pixelColor(0, 0), Theme::Color(Theme::PreviewBackground));
+    QVERIFY(light.pixelColor(0, 0) != QColor(40, 30, 20, 255));
+    QCOMPARE(light.pixelColor(1, 0).alpha(), 0);
+
+    Theme::ApplyScheme(QStringLiteral("dark"));
+    const QImage dark = Theme::Fill(Glyph(), Theme::PreviewBackground).toImage();
+    QCOMPARE(dark.pixelColor(0, 0), Theme::Color(Theme::PreviewBackground));
+    QVERIFY(dark.pixelColor(0, 0) != light.pixelColor(0, 0));
+    QCOMPARE(dark.pixelColor(1, 0).alpha(), 0);
 }
 
 void tst_theme::pixmapCacheFollowsTheScheme(){

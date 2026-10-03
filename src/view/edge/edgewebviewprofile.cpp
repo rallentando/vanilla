@@ -9,8 +9,10 @@
 
 #include <QTimer>
 #include <QDebug>
-#include <QWebEngineSettings>
-#include <QWebEngineProfile>
+#ifdef WEBENGINEVIEW
+#  include <QWebEngineSettings>
+#  include <QWebEngineProfile>
+#endif
 
 #include "directorypage.hpp"
 #include "page.hpp"
@@ -191,9 +193,7 @@ void EdgeWebView::ApplySpecificSettings(QStringList set){
     ApplyPageSettings();
     ApplyUserAgent();
 
-    const int state = DirectoryPage::StateIn
-        (set, QStringLiteral("(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)"));
-    if(state != -1 && m_Impl->m_PrivateMode != (state == 1))
+    if(m_Impl->m_PrivateMode != DirectoryPage::SaysPrivate(set))
         RebuildForOffTheRecord();
 }
 

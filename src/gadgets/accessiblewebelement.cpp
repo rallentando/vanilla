@@ -290,7 +290,6 @@ QVariant AccessibleWebElement::itemChange(GraphicsItemChange change, const QVari
     return QGraphicsItem::itemChange(change, value);
 }
 
-
 void AccessibleWebElement::mousePressEvent   (QGraphicsSceneMouseEvent *ev){ ev->setAccepted(false);}
 void AccessibleWebElement::mouseReleaseEvent (QGraphicsSceneMouseEvent *ev){ ev->setAccepted(false);}
 void AccessibleWebElement::mouseMoveEvent    (QGraphicsSceneMouseEvent *ev){ ev->setAccepted(false);}

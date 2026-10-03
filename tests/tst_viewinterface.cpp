@@ -3,6 +3,9 @@
 
 #include <QtTest>
 #include <QObject>
+#include <QFile>
+#include <QPainter>
+#include <QWidget>
 
 #include "view.hpp"
 
@@ -24,6 +27,21 @@ public:
     void repaint() Q_DECL_OVERRIDE {}
     bool visible() Q_DECL_OVERRIDE { return false;}
     void setFocus(Qt::FocusReason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {}
+};
+
+class SolidWidget : public QWidget {
+public:
+    explicit SolidWidget(const QColor &color, QWidget *parent = nullptr)
+        : QWidget(parent), m_Color(color) {}
+
+protected:
+    void paintEvent(QPaintEvent*) Q_DECL_OVERRIDE {
+        QPainter painter(this);
+        painter.fillRect(rect(), m_Color);
+    }
+
+private:
+    QColor m_Color;
 };
 
 class tst_viewinterface : public QObject {
@@ -107,6 +125,80 @@ private slots:
         QCOMPARE(View::EngineWheelAngle(QPoint(-120, 120)), QPoint(-200, 200));
         QCOMPARE(View::EngineWheelAngle(QPoint(0, 30)), QPoint(0, 50));
         QCOMPARE(notch, QPoint(0, 120));
+    }
+
+    void aZoomStepStaysWithinWhatTheEngineCanShow(){
+        const QList<float> &levels = View::GetZoomFactorLevels();
+        const float min = View::ChromiumMinimumZoom / 1.25f;
+        const float max = View::ChromiumMaximumZoom / 1.25f;
+        const int one = levels.indexOf(1.0f);
+        QVERIFY(one > 0);
+
+        QCOMPARE(View::StepZoom(1.0f, true, min, max), levels.at(one + 1));
+        QCOMPARE(View::StepZoom(1.0f, false, min, max), levels.at(one - 1));
+
+        QCOMPARE(View::StepZoom(levels.at(levels.indexOf(5.0f) - 4), true, min, max), max);
+        QCOMPARE(View::StepZoom(max, true, min, max), max);
+        QCOMPARE(View::StepZoom(min, false, min, max), min);
+
+        const float below = View::StepZoom(10.0f, false, min, max);
+        QVERIFY(below < max);
+        QVERIFY(below > max - 0.3f);
+
+        BareView view;
+        QCOMPARE(view.MinimumZoom(), levels.first());
+        QCOMPARE(view.MaximumZoom(), levels.last());
+        QCOMPARE(View::StepZoom(5.0f, true, view.MinimumZoom(), view.MaximumZoom()), 10.0f);
+        QCOMPARE(view.FitZoom(20.0f), 10.0f);
+    }
+
+    void theChromiumViewsHoldTheirZoomToChromiumsRange(){
+        const QStringList files = {
+            QStringLiteral("/view/webengine/webengineview.hpp"),
+            QStringLiteral("/view/webengine/quickwebengineview.hpp"),
+            QStringLiteral("/view/edge/edgewebview.hpp"),
+        };
+        foreach(const QString &name, files){
+            QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + name);
+            QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(name));
+            const QString source = QString::fromUtf8(file.readAll());
+            QVERIFY2(source.contains(QStringLiteral("float MinimumZoom() const Q_DECL_OVERRIDE { return ChromiumMinimumZoom")), qPrintable(name));
+            QVERIFY2(source.contains(QStringLiteral("float MaximumZoom() const Q_DECL_OVERRIDE { return ChromiumMaximumZoom")), qPrintable(name));
+        }
+    }
+
+    void widgetRenderKeepsANonOriginClipAtItsWidgetCoordinates(){
+        SolidWidget source(Qt::red);
+        source.resize(24, 20);
+        SolidWidget inset(Qt::green, &source);
+        inset.setGeometry(12, 8, 6, 5);
+        inset.show();
+
+        QImage target(source.size(), QImage::Format_ARGB32);
+        target.fill(Qt::transparent);
+        QPainter painter(&target);
+        const QRegion clip(inset.geometry());
+        source.render(&painter, clip.boundingRect().topLeft(), clip);
+        painter.end();
+
+        QCOMPARE(target.pixelColor(13, 9), QColor(Qt::green));
+        QCOMPARE(target.pixelColor(0, 0), QColor(Qt::transparent));
+    }
+
+    void widgetWebEnginePreservesClipCoordinatesAndSkipsAnEmptyClip(){
+        QFile file(QStringLiteral(VANILLA_SOURCE_DIR "/view/webengine/webengineview.hpp"));
+        QVERIFY2(file.open(QIODevice::ReadOnly),
+                 "webengineview.hpp was not read; check VANILLA_SOURCE_DIR");
+        const QString source = QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
+        const int begin = source.indexOf(QStringLiteral("void Render(QPainter *painter, const QRegion &clip)"));
+        const int end = source.indexOf(QStringLiteral("QSize GetViewportSize()"), begin);
+        QVERIFY(begin != -1);
+        QVERIFY(end != -1);
+        const QString body = source.mid(begin, end - begin);
+
+        QVERIFY(body.contains(QStringLiteral("if(!clip.isEmpty())")));
+        QVERIFY(body.contains(QStringLiteral("render(painter, clip.boundingRect().topLeft(), clip)")));
+        QVERIFY(!body.contains(QStringLiteral("to investigate")));
     }
 
     void theLedgerRecoversUntilTheLimitThenGivesUpOnce(){

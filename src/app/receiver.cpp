@@ -139,6 +139,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
             qWarning() << "Could not listen on the local command server:"
                        << m_LocalServer->errorString();
     }
+    m_Server = m_LocalServer;
     connect(m_LocalServer, &QLocalServer::newConnection,
             this, &Receiver::ForeignCommandReceived);
 
@@ -162,11 +163,16 @@ Receiver::Receiver(TreeBank *parent, bool purge)
 Receiver::~Receiver(){
     m_LineEdit->deleteLater();
 
+    if(!m_Server || m_Server != m_LocalServer) return;
+
     disconnect(m_LocalServer, SIGNAL(newConnection()),
                this, SLOT(ForeignCommandReceived()));
 
-    if(1 > Application::GetMainWindows().size())
+    if(1 > Application::GetMainWindows().size()){
+        m_LocalServer->close();
         m_LocalServer->deleteLater();
+        m_LocalServer = nullptr;
+    }
 }
 
 bool Receiver::IsPurged() const {
@@ -316,10 +322,12 @@ void Receiver::OnAborted(){
 
 void Receiver::ForeignCommandReceived(){
     MainWindow *win = Application::GetCurrentWindow();
-    if(!win || win->GetTreeBank() != m_TreeBank) return;
+    if(!m_Server || !win || win->GetTreeBank() != m_TreeBank) return;
 
-    while(m_LocalServer->hasPendingConnections()){
-        QLocalSocket *clientConnection = m_LocalServer->nextPendingConnection();
+    const QPointer<Receiver> self(this);
+    const QPointer<QLocalServer> server = m_Server;
+    while(server && server->hasPendingConnections()){
+        QLocalSocket *clientConnection = server->nextPendingConnection();
         if(!clientConnection) continue;
 
         connect(clientConnection, &QLocalSocket::readyRead, this,
@@ -327,6 +335,7 @@ void Receiver::ForeignCommandReceived(){
         connect(clientConnection, &QLocalSocket::disconnected,
                 clientConnection, &QLocalSocket::deleteLater);
         ReadForeignCommand(clientConnection);
+        if(!self) return;
     }
 }
 

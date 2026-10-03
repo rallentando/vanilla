@@ -147,10 +147,12 @@ QUrl Page::CreateQueryUrl(QString query, QString key){
         engine = m_SearchEngineMap[key];
     else
         engine = PrimarySearchEngine();
+    return CreateQueryUrl(engine, query);
+}
 
-    QString format = engine[0];
-    QByteArray encode = engine[1].toLatin1();
-
+QUrl Page::CreateQueryUrl(const SearchEngine &engine, QString query){
+    if(engine.isEmpty()) return QUrl();
+    const QString format = engine.at(0);
     query = QString::fromLatin1(query.toUtf8().toPercentEncoding());
     return QUrl::fromEncoded(format.arg(query).toLatin1());
 }
@@ -177,6 +179,7 @@ QUrl Page::StringToUrl(QString str, QUrl baseUrl){
            str.startsWith(QStringLiteral("clsid:"))        ||
            str.startsWith(QStringLiteral("data:"))         ||
            str.startsWith(QStringLiteral("disk:"))         ||
+           str.startsWith(QStringLiteral("edge:"))         ||
            str.startsWith(QStringLiteral("feed:"))         ||
            str.startsWith(QStringLiteral("file:"))         ||
            str.startsWith(QStringLiteral("ftp:"))          ||
@@ -265,6 +268,7 @@ QList<QUrl> Page::ExtractUrlsFromText(QString text, QUrl baseUrl){
         str = str.trimmed();
         if(str.startsWith(QStringLiteral("/")) || str.startsWith(QStringLiteral("./")) || str.startsWith(QStringLiteral("../"))) ;
         else if(str.startsWith(VANILLA_SCHEME + QStringLiteral(":"))) ;
+        else if(str.startsWith(QStringLiteral("edge:"))) ;
         else if(str.contains(QRegularExpression(QStringLiteral("^.*view-source:")))) str = QString       (           ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral("view-source:"))));
         else if(str.contains(QRegularExpression(QStringLiteral( "^.*iew-source:")))) str = QStringLiteral("v"        ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral( "iew-source:"))));
         else if(str.contains(QRegularExpression(QStringLiteral(  "^.*ew-source:")))) str = QStringLiteral("vi"       ) + str.mid(str.indexOf(QRegularExpression(QStringLiteral(  "ew-source:"))));
@@ -406,11 +410,9 @@ SearchEngine Page::PrimarySearchEngine(){
         else if(m_SearchEngineMap[key][2] == QStringLiteral("true"))
             return m_SearchEngineMap[key];
     }
-    if(m_SearchEngineMap[QStringLiteral("google")].isEmpty()){
-        return *m_SearchEngineMap.begin();
-    } else {
-        return m_SearchEngineMap[QStringLiteral("google")];
-    }
+    const SearchEngine google = m_SearchEngineMap.value(QStringLiteral("google"));
+    if(!google.isEmpty()) return google;
+    return m_SearchEngineMap.isEmpty() ? SearchEngine() : m_SearchEngineMap.first();
 }
 
 bool Page::ShiftMod(){
@@ -750,10 +752,15 @@ void Page::Restore(){
 void Page::Recreate(){
     if(m_View->GetDisplayObscured())
         m_View->ExitFullScreen();
-    TreeBank *tb = GetTB();
-    QTimer::singleShot(0, [tb](){
+    WeakView weak = m_View->GetThis();
+    TreeBank::WhenItMayChange([weak](){
+        SharedView view = weak.lock();
+        if(!view) return;
+        ViewNode *vn = view->GetViewNode();
+        TreeBank *tb = view->GetTreeBank();
+        if(!vn || vn->GetView() != view.get() || !TreeBank::IsLive(tb)) return;
         View::SetSwitchingState(true);
-        tb->Recreate();
+        tb->Recreate(vn);
         View::SetSwitchingState(false);
     });
 }
@@ -854,13 +861,11 @@ void Page::NewViewNode(){
     View::SetSwitchingState(false);
 }
 
-
 void Page::CloneViewNode(){
     View::SetSwitchingState(true);
     SuitTB()->CloneViewNode(m_View->GetViewNode());
     View::SetSwitchingState(false);
 }
-
 
 void Page::DisplayAccessKey(){
     GetTB()->DisplayAccessKey();
@@ -869,7 +874,6 @@ void Page::DisplayAccessKey(){
 void Page::DisplayViewTree(){
     GetTB()->DisplayViewTree();
 }
-
 
 void Page::DisplayTrashTree(){
     GetTB()->DisplayTrashTree();
@@ -1311,7 +1315,6 @@ void Page::OpenMediaWithCommand(){
 }
 #undef NAMED_ELEMENT_ACTION
 #undef ELEMENT_ACTION
-
 
 void Page::OpenInNewViewNode                 (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewViewNode  (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
 void Page::OpenInNewDirectory                (){  LinkReq(qobject_cast<QAction*>(sender()),[this](QList<QNetworkRequest> reqs){ SuitTB()->OpenInNewDirectory (reqs, Activate()||ShiftMod(), m_View->GetViewNode());});}
@@ -1954,13 +1957,20 @@ QAction *Page::Action(CustomAction a, QVariant data){
 }
 
 void Page::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
-                              QPoint localPos, QPoint globalPos, MediaType type){
+                              QPoint localPos, QPoint globalPos, MediaType type,
+                              const std::function<void(QMenu*)> &extra){
 
     QMenu *menu = new QMenu(parent);
     menu->setToolTipsVisible(true);
 
     m_View->AddSpellCheckMenu(menu);
     m_View->AddContextMenu(menu, elem, type);
+    m_View->AddExtensionMenu(menu, elem, type);
+
+    if(extra){
+        if(!menu->isEmpty()) menu->addSeparator();
+        extra(menu);
+    }
 
     menu->addSeparator();
     menu->addAction(Action(Page::_InspectElement));

@@ -2,8 +2,17 @@
 #include "const.hpp"
 
 #include <QtTest>
+#include <QRegularExpression>
 
 #include "directorypage.hpp"
+#include "view.hpp"
+#include <QJsonArray>
+#include <QScopeGuard>
+#ifdef WEBENGINEVIEW
+#  include <QWebEngineProfile>
+#  include <QWebEngineSettings>
+#  include <QtWebEngineQuick/qtwebenginequickglobal.h>
+#endif
 
 using namespace DirectoryPage;
 
@@ -22,6 +31,8 @@ class tst_directorypage : public QObject {
 
 private slots:
     void idIsTheFirstToken();
+    void everyDefaultIsResolved();
+    void mouseGesturesComeBeforeSuperDrag();
 
     void takesATitleApart();
     void takesATitleApart_data();
@@ -44,6 +55,10 @@ private slots:
     void acceptsATitleTheRenameDialogWouldAccept();
     void acceptsATitleTheRenameDialogWouldAccept_data();
 
+    void saysWhereAProfileBegins();
+    void saysWhereAProfileBegins_data();
+    void namesWrittenInTheIdSpelling();
+
     void everyTokenExplainsItself();
 
     void namesWhatATokenIsAbout();
@@ -64,8 +79,85 @@ private slots:
     void takesOutOnlyWhatWouldStopTheChange_data();
 };
 
+class DirectoryDefaultsHarness : public View {
+public:
+    static void SetGestures(bool right, bool drag){
+        m_EnableMouseGesture = right;
+        m_EnableDragGesture = drag;
+    }
+};
+
+void tst_directorypage::everyDefaultIsResolved(){
+    const bool oldRight = View::EnableRightGesture();
+    const bool oldDrag = View::EnableDragGesture();
+    const auto restoreGestures = qScopeGuard([=](){
+        DirectoryDefaultsHarness::SetGestures(oldRight, oldDrag);
+    });
+#ifdef WEBENGINEVIEW
+    auto *settings = QWebEngineProfile::defaultProfile()->settings();
+    const bool oldImage = settings->testAttribute(QWebEngineSettings::AutoLoadImages);
+    const bool oldScript = settings->testAttribute(QWebEngineSettings::JavascriptEnabled);
+    const bool oldPlugins = settings->testAttribute(QWebEngineSettings::PluginsEnabled);
+    const auto restoreAttributes = qScopeGuard([=](){
+        settings->setAttribute(QWebEngineSettings::AutoLoadImages, oldImage);
+        settings->setAttribute(QWebEngineSettings::JavascriptEnabled, oldScript);
+        settings->setAttribute(QWebEngineSettings::PluginsEnabled, oldPlugins);
+    });
+#endif
+    for(bool enabled : {false, true}){
+        DirectoryDefaultsHarness::SetGestures(enabled, !enabled);
+#ifdef WEBENGINEVIEW
+        settings->setAttribute(QWebEngineSettings::AutoLoadImages, enabled);
+        settings->setAttribute(QWebEngineSettings::JavascriptEnabled, !enabled);
+        settings->setAttribute(QWebEngineSettings::PluginsEnabled, enabled);
+#endif
+        QMap<QString, int> defaults;
+        for(const QJsonValue &value : Describe().value("switches").toArray()){
+            const auto object = value.toObject();
+            const int absence = object.value("absence").toInt(-1);
+            QVERIFY2(absence == 0 || absence == 1, qPrintable(object.value("key").toString()));
+            defaults[object.value("key").toString()] = absence;
+        }
+        QCOMPARE(defaults.value("private", -1), 0);
+        QCOMPARE(defaults.value("autoload", -1), 0);
+        QCOMPARE(defaults.value("rightgesture", -1), int(enabled));
+        QCOMPARE(defaults.value("draggesture", -1), int(!enabled));
+#ifdef WEBENGINEVIEW
+        QCOMPARE(defaults.value("image", -1), int(enabled));
+        QCOMPARE(defaults.value("javascript", -1), int(!enabled));
+        QCOMPARE(defaults.value("plugins", -1), int(enabled));
+#endif
+    }
+}
+
 void tst_directorypage::idIsTheFirstToken(){
     QCOMPARE(QString::fromLatin1(Tokens().first().key), QStringLiteral("id"));
+}
+
+void tst_directorypage::mouseGesturesComeBeforeSuperDrag(){
+    QStringList keys;
+    foreach(const Token &token, Tokens())
+        keys << QString::fromLatin1(token.key);
+
+    const int mouse = keys.indexOf(QStringLiteral("rightgesture"));
+    const int drag = keys.indexOf(QStringLiteral("draggesture"));
+    QVERIFY(mouse != -1);
+    QVERIFY(drag != -1);
+    QVERIFY(mouse < drag);
+
+    const Token &token = TokenOf("rightgesture");
+    QCOMPARE(TokenState(QStringLiteral("work;RightGesture"), token), 1);
+    QCOMPARE(TokenState(QStringLiteral("work;!RightGesture"), token), 0);
+    QCOMPARE(TokenState(QStringLiteral("work;MouseGesture"), token), 1);
+    QCOMPARE(WithTokenState(QStringLiteral("work;MouseGesture"), token, 0),
+             QStringLiteral("work;!RightGesture"));
+
+    const QString pattern = QString::fromLatin1(token.pattern);
+    const QRegularExpression on(QStringLiteral("^") + pattern + QStringLiteral("$"));
+    const QRegularExpression off(QStringLiteral("^!") + pattern + QStringLiteral("$"));
+    QVERIFY(on.match(QStringLiteral("MouseGesture")).hasMatch());
+    QVERIFY(!off.match(QStringLiteral("MouseGesture")).hasMatch());
+    QVERIFY(off.match(QStringLiteral("!MouseGesture")).hasMatch());
 }
 
 void tst_directorypage::takesATitleApart_data(){
@@ -132,6 +224,9 @@ void tst_directorypage::readsTheStateOfAToken_data(){
     QTest::newRow("negated private")   << "work;!Private"    << "private"    <<  0;
     QTest::newRow("negated")           << "work;!Javascript" << "javascript" <<  0;
     QTest::newRow("short js")          << "work;js"          << "javascript" <<  1;
+    QTest::newRow("right gesture")     << "work;RightGesture" << "rightgesture" << 1;
+    QTest::newRow("mouse gesture spelling")
+        << "work;!MouseGesture" << "rightgesture" << 0;
     QTest::newRow("the id is not an image")
         << "work;ID"    << "image" << -1;
     QTest::newRow("the image is not an id")
@@ -225,8 +320,12 @@ void tst_directorypage::acceptsATitleTheRenameDialogWouldAccept_data(){
 
     QTest::newRow("plain")            << "work"        << true;
     QTest::newRow("with tokens")      << "work;ID"     << true;
-    QTest::newRow("empty")            << ""            << false;
-    QTest::newRow("tokens without a name") << ";ID"    << false;
+    QTest::newRow("empty")            << ""            << true;
+    QTest::newRow("tokens without a name")  << ";edge" << true;
+    QTest::newRow("a nameless negated id")  << ";!ID"  << true;
+    QTest::newRow("a nameless id")          << ";ID"        << false;
+    QTest::newRow("a nameless id, spelled long") << ";Identify" << false;
+    QTest::newRow("a nameless contradiction")    << ";ID;!ID"  << false;
     QTest::newRow("a slash")          << "a/b"         << false;
     QTest::newRow("a backslash")      << "a\\b"        << false;
     QTest::newRow("a question mark")  << "a?"          << false;
@@ -242,6 +341,41 @@ void tst_directorypage::acceptsATitleTheRenameDialogWouldAccept(){
     QFETCH(bool, valid);
 
     QCOMPARE(IsValidTitle(title), valid);
+}
+
+void tst_directorypage::saysWhereAProfileBegins_data(){
+    QTest::addColumn<QString>("title");
+    QTest::addColumn<bool>("says");
+
+    QTest::newRow("empty")                 << ""                     << false;
+    QTest::newRow("a bare name")           << "work"                 << false;
+    QTest::newRow("nameless tokens")       << ";edge"                << false;
+    QTest::newRow("the canonical word")    << "work;ID"              << true;
+    QTest::newRow("a hand-typed spelling") << "work;identification"  << true;
+    QTest::newRow("nameless id")           << ";ID"                  << true;
+    QTest::newRow("negated only")          << "work;!ID"             << false;
+    QTest::newRow("the contradiction is still a boundary")
+        << "work;ID;!ID" << true;
+    QTest::newRow("a value with a colon is not an id")
+        << "work;Proxy 127.0.0.1:8080" << false;
+    QTest::newRow("a directory merely named id") << "id" << false;
+}
+
+void tst_directorypage::saysWhereAProfileBegins(){
+    QFETCH(QString, title);
+    QFETCH(bool, says);
+
+    QCOMPARE(SaysId(title), says);
+}
+
+void tst_directorypage::namesWrittenInTheIdSpelling(){
+    QVERIFY(NameSpellsId(QStringLiteral("id")));
+    QVERIFY(NameSpellsId(QStringLiteral("ID")));
+    QVERIFY(NameSpellsId(QStringLiteral("Identify")));
+    QVERIFY(NameSpellsId(QStringLiteral("identification")));
+    QVERIFY(!NameSpellsId(QStringLiteral("work")));
+    QVERIFY(!NameSpellsId(QStringLiteral("ids")));
+    QVERIFY(!NameSpellsId(QString()));
 }
 
 void tst_directorypage::everyTokenExplainsItself(){
@@ -262,6 +396,9 @@ void tst_directorypage::namesWhatATokenIsAbout_data(){
     QTest::newRow("negated")       << "!JavaScript" << "javascript";
     QTest::newRow("the other name")<< "OffTheRecord"<< "private";
     QTest::newRow("noload short")  << "nl"          << "autoload";
+    QTest::newRow("right gesture") << "RightGesture" << "rightgesture";
+    QTest::newRow("mouse gesture spelling")
+        << "!MouseGesture" << "rightgesture";
 
     QTest::newRow("a proxy")       << "Proxy 127.0.0.1:8080" << "proxy";
     QTest::newRow("another proxy") << "Proxy example:1"      << "proxy";
@@ -436,5 +573,14 @@ void tst_directorypage::takesOutOnlyWhatWouldStopTheChange(){
     QCOMPARE(TitleFollowing(title, changed), after);
 }
 
+#ifdef WEBENGINEVIEW
+int main(int argc, char **argv){
+    QtWebEngineQuick::initialize();
+    QApplication application(argc, argv);
+    tst_directorypage test;
+    return QTest::qExec(&test, argc, argv);
+}
+#else
 QTEST_MAIN(tst_directorypage)
+#endif
 #include "tst_directorypage.moc"

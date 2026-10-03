@@ -63,7 +63,7 @@
         <location line="+10"/>
         <source>This is a searchable index. Enter search keywords: </source>
         <comment>text that appears at the start of nearly-obsolete web pages in the form of a &apos;searchable index&apos;</comment>
-        <translation>検索可能なインデックスです。検索ワードを入力してください: </translation>
+        <translation>検索可能なインデックスです。検索ワードを入力してください：</translation>
     </message>
     <message>
         <location line="+5"/>

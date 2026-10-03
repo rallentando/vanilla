@@ -98,25 +98,35 @@ void EdgeWebView::PullCookiesIntoJar(){
          }).Get());
 }
 
-void EdgeWebView::CallWithScriptResult(const QString &script, VariantCallBack callBack){
-    if(!m_Impl->m_WebView) return;
-    if(!m_Impl->m_Document.HasLiveDocument()) return;
+void EdgeWebView::CallWithScriptResult(const QString &script, VariantCallBack callBack,
+                                       VoidCallBack discarded){
+    if(!m_Impl->m_WebView){
+        if(discarded) discarded();
+        return;
+    }
+    if(!m_Impl->m_Document.HasLiveDocument()){
+        if(discarded) discarded();
+        return;
+    }
 
     const int generation = m_Impl->m_Document.Generation();
     QPointer<EdgeWebView> alive(this);
 
-    m_Impl->m_WebView->ExecuteScript
+    const HRESULT started = m_Impl->m_WebView->ExecuteScript
         (reinterpret_cast<PCWSTR>(script.utf16()),
          Callback<ICoreWebView2ExecuteScriptCompletedHandler>
-         ([alive, generation, callBack](HRESULT result, PCWSTR json) -> HRESULT {
-             if(!alive) return S_OK;
-             if(!alive->m_Impl->m_Document.StillCurrent(generation)) return S_OK;
-             if(FAILED(result) || !json) return S_OK;
+         ([alive, generation, callBack, discarded](HRESULT result, PCWSTR json) -> HRESULT {
+             if(!alive || !alive->m_Impl->m_Document.StillCurrent(generation) ||
+                FAILED(result) || !json){
+                 if(discarded) discarded();
+                 return S_OK;
+             }
 
              callBack(EdgeScriptResultToVariant
                       (QString::fromWCharArray(json).toUtf8()));
              return S_OK;
          }).Get());
+    if(FAILED(started) && discarded) discarded();
 }
 
 qreal EdgeWebView::PageScale() const {
@@ -419,17 +429,31 @@ void EdgeWebView::HandleAudioStateChanged(bool playing){
 
 #ifdef MEDIATIME
 
-bool EdgeWebView::SaveMediaTime(){
-    if(IsLoading()) return false;
+bool EdgeWebView::SaveMediaTime(VoidCallBack settled){
+    if(IsLoading()){
+        if(settled) settled();
+        return false;
+    }
     const QUrl source = url();
-    if(source.isEmpty() || source == BLANK_URL) return false;
+    if(source.isEmpty() || source == BLANK_URL || !m_Impl->m_WebView ||
+       !m_Impl->m_Document.HasLiveDocument()){
+        if(settled) settled();
+        return false;
+    }
 
+    std::shared_ptr<VoidCallBack> settle =
+        std::make_shared<VoidCallBack>([settled](){ if(settled) settled();});
+    const VoidCallBack settleOnce = [settle](){
+        VoidCallBack call = *settle;
+        *settle = VoidCallBack();
+        if(call) call();
+    };
     QPointer<EdgeWebView> alive(this);
-    CallWithScriptResult(GetMediaTimeJsCode(), [alive, source](const QVariant &var){
-        if(!alive || !var.isValid() || !alive->GetViewNode()) return;
-        if(alive->url() != source) return;
-        alive->GetViewNode()->SetMediaTime(var.toFloat());
-    });
+    CallWithScriptResult(GetMediaTimeJsCode(), [alive, source, settleOnce](const QVariant &var){
+        if(alive && var.isValid() && alive->GetViewNode() && alive->url() == source)
+            alive->GetViewNode()->SetMediaTime(var.toFloat());
+        settleOnce();
+    }, settleOnce);
     return true;
 }
 
@@ -541,6 +565,11 @@ void EdgeWebView::Render(QPainter *painter, const QRegion &clip){
 QSize EdgeWebView::GetViewportSize(){
     return visible() ? QWidget::size()
                      : m_Impl->m_GrabbedDisplayData.deviceIndependentSize().toSize();
+}
+
+QImage EdgeWebView::CaptureVisible(){
+    if(!visible() || !window() || window()->isMinimized()) return QImage();
+    return GrabView();
 }
 
 QImage EdgeWebView::GrabView(){

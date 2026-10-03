@@ -4,12 +4,15 @@
 #include "devicescale.hpp"
 
 #include "application.hpp"
+#include "extensioncontroller.hpp"
+#include "extensionbar.hpp"
 #include <VERSION>
 
+#include <algorithm>
+
 #include <QCoreApplication>
-#include <QDomDocument>
-#include <QDomElement>
 #include <QJsonDocument>
+#include <QSaveFile>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QTextStream>
@@ -18,6 +21,7 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QOpenGLContext>
+#include <QQuickWindow>
 #include <QAuthenticator>
 #include <QFileSystemModel>
 #include <QDesktopServices>
@@ -26,7 +30,7 @@
 #include <QLibraryInfo>
 #include <QLocale>
 #include <QRegularExpression>
-#include <QtConcurrent/QtConcurrent>
+#include <QRandomGenerator>
 #include <QScreen>
 #include <QOperatingSystemVersion>
 #include <QStyleHints>
@@ -53,15 +57,24 @@
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "treebank.hpp"
+#include "sidepanels.hpp"
 #include "bookmarkio.hpp"
 #include "settingsio.hpp"
 #include "certificatepolicy.hpp"
 #include "notifier.hpp"
 #include "saver.hpp"
 #include "transmitter.hpp"
+#include "translationorder.hpp"
 #include "receiver.hpp"
 #include "localview.hpp"
 #include "dialog.hpp"
+
+#ifdef Q_OS_WIN
+#include <QtGui/private/qguiapplication_p.h>
+#endif
+#ifdef EDGEWEBVIEW
+#  include "edgewebview.hpp"
+#endif
 
 #ifdef QT_NO_PROCESS
 namespace QProcess {
@@ -82,12 +95,11 @@ int Application::m_DelayFileCount = 0;
 
 static SettingsIO::Hooks SettingsHooks(){
     SettingsIO::Hooks hooks;
-    hooks.LegacyNameOf = [](QString name){ return Application::LegacyFileName(name);};
     hooks.BackUpFiltersOf = [](){ return Application::BackUpFileFilters();};
     hooks.BackUpPrepositionOf = [](){ return Application::BackUpPreposition();};
     hooks.RestoredFromBackUp = [](QString backup){
         ModelessDialog::Information
-            (Application::tr("Restored from a back up file")+ QStringLiteral(" [") + backup + QStringLiteral("]."),
+            (Application::tr("Restored from a back up file")+ QStringLiteral("\n[") + backup + QStringLiteral("]."),
              Application::tr("Because of a failure to read the latest file, it was restored from a backup file."));
     };
     return hooks;
@@ -95,10 +107,9 @@ static SettingsIO::Hooks SettingsHooks(){
 
 NetworkController* Application::m_NetworkController = nullptr;
 AutoSaver*  Application::m_AutoSaver         = nullptr;
+quint64     Application::m_SerialStart       = 1;
 bool        Application::m_Quitting          = false;
-bool        Application::m_TakenDown         = false;
-bool        Application::m_WaitedForDialog   = false;
-quint64     Application::m_QuietGeneration   = 0;
+ShutdownFlow Application::m_ShutdownFlow([](){ Application::QueueTakeDown();});
 Settings    Application::m_GlobalSettings    = Settings();
 Settings    Application::m_IconTable         = Settings();
 
@@ -213,7 +224,6 @@ bool Application::notify(QObject *receiver, QEvent *ev){
 void Application::BootApplication(int &argc, char **argv, Application *instance){
     Q_UNUSED(argc) Q_UNUSED(argv)
 
-
     Transmitter *t = new Transmitter(instance);
     if(t->ServerAlreadyExists()){
         QStringList list;
@@ -241,13 +251,12 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     setQuitOnLastWindowClosed(false);
 
     const QString path = applicationDirPath() + QStringLiteral("/translations");
-    const QStringList locales = QLocale::system().uiLanguages();
+    const QStringList locales = TranslationOrder::Locales(QLocale::system().uiLanguages());
     const QStringList prefixes = QStringList()
         << QStringLiteral("qt")     << QStringLiteral("qtbase")
         << QStringLiteral("custom") << QStringLiteral("vanilla");
 
     foreach(QString locale, locales){
-        locale = QLocale(locale).name();
         foreach(QString prefix, prefixes){
             QTranslator *translator = new QTranslator(instance);
             translator->load(prefix + QStringLiteral("_") + locale, path);
@@ -256,6 +265,12 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     }
     LoadSettingsFile();
     LoadGlobalSettings();
+    ApplyGraphicsApi();
+#ifdef Q_OS_WIN
+    if(QQuickWindow::graphicsApi() == QSGRendererInterface::OpenGL)
+        if(auto *windows = qGuiApp->nativeInterface<QNativeInterface::Private::QWindowsApplication>())
+            windows->setHasBorderInFullScreenDefault(true);
+#endif
     Theme::ApplyScheme(m_ColorScheme);
     connect(styleHints(), &QStyleHints::colorSchemeChanged,
             instance, [](Qt::ColorScheme){
@@ -267,6 +282,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     ApplyChromiumFlags();
     ApplyGlobalWebEngineSettings();
 
+    SeedSerials();
     m_NetworkController = new NetworkController();
     m_AutoSaver = new AutoSaver();
     TreeBar::Initialize();
@@ -324,12 +340,14 @@ void Application::Import(TreeBank *tb){
     const QString chromeBookmarks  = BookmarkIO::ChromeBookmarkFile();
     const QString oprBookmarks     = BookmarkIO::OperaBookmarkFile();
     const QString vivaldiBookmarks = BookmarkIO::VivaldiBookmarkFile();
+    const QString edgeBookmarks    = BookmarkIO::EdgeBookmarkFile();
 
     const bool supportsIE      = !ieFavorites.isEmpty();
     const bool supportsFirefox = QFile::exists(firefoxProfile);
     const bool supportsChrome  = QFile::exists(chromeBookmarks);
     const bool supportsOPR     = QFile::exists(oprBookmarks);
     const bool supportsVivaldi = QFile::exists(vivaldiBookmarks);
+    const bool supportsEdge    = QFile::exists(edgeBookmarks);
 
     std::function<void()> importFromIE = [&](){
         QFileDialog::Options options =
@@ -376,6 +394,7 @@ void Application::Import(TreeBank *tb){
     };
 
     QStringList list;
+    if(supportsEdge) list << QStringLiteral("Edge");
     if(supportsIE) list << QStringLiteral("IE");
     if(supportsFirefox) list << QStringLiteral("Firefox");
     if(supportsChrome) list << QStringLiteral("Chrome");
@@ -392,6 +411,7 @@ void Application::Import(TreeBank *tb){
          tr("Select browser or file format"),
          list, false, &ok);
     if(!ok) return;
+    else if(which == QStringLiteral("Edge")) importFromChromeFamily(edgeBookmarks);
     else if(which == QStringLiteral("IE")) importFromIE();
     else if(which == QStringLiteral("Firefox")) importFromFirefox();
     else if(which == QStringLiteral("Chrome")) importFromChromeFamily(chromeBookmarks);
@@ -473,45 +493,118 @@ void Application::Quit(){
     TakeDown();
 }
 
+void Application::QueueTakeDown(){
+    QTimer::singleShot(0, GetInstance(), [](){ TakeDown();});
+}
+
+int Application::Run(){
+    return ExitHandoff::Run<Application>(this, m_ShutdownFlow);
+}
+
+void Application::RequestExit(){
+    ExitHandoff::RequestExit(GetInstance(), m_ShutdownFlow);
+}
+
+void Application::WaitForPriorSave(){
+    if(!m_AutoSaver->IsSaving()){
+        m_ShutdownFlow.PriorSaveSettled();
+        return;
+    }
+
+    const auto resume = [](){
+        if(m_ShutdownFlow.CurrentStage() != ShutdownFlow::Stage::WaitingForPriorSave) return;
+        m_AutoSaver->disconnect(GetInstance());
+        m_ShutdownFlow.PriorSaveSettled();
+    };
+    connect(m_AutoSaver, &AutoSaver::Finished, GetInstance(), resume);
+    connect(m_AutoSaver, &AutoSaver::Failed,   GetInstance(), resume);
+    if(!m_AutoSaver->IsSaving()) resume();
+}
+
 void Application::TakeDown(){
     if(ModalDialog::AnyRunning()){
-        m_WaitedForDialog = true;
         ModalDialog::AbortAll();
-        QTimer::singleShot(0, GetInstance(), [](){ TakeDown();});
+        QueueTakeDown();
         return;
     }
 
-    if(m_WaitedForDialog && ModalDialog::Generation() != m_QuietGeneration){
-        m_QuietGeneration = ModalDialog::Generation();
-        QTimer::singleShot(QUIT_AFTER_DIALOG_DELAY, GetInstance(), [](){ TakeDown();});
+    if(m_ShutdownFlow.CurrentStage() == ShutdownFlow::Stage::Start){
+        StopAutoLoadTimer();
+        StopAutoSaveTimer();
+
+        foreach(MainWindow *win, Windows().All().values()){
+            win->hide();
+        }
+
+        if(m_ShutdownFlow.Begin() == ShutdownFlow::Action::WaitForPriorSave)
+            WaitForPriorSave();
         return;
     }
 
-    if(m_TakenDown) return;
-    m_TakenDown = true;
-
-    StopAutoLoadTimer();
-    StopAutoSaveTimer();
-
-    foreach(MainWindow *win, Windows().All().values()){
-        win->hide();
+    if(m_ShutdownFlow.CurrentStage() == ShutdownFlow::Stage::ReadyForFinalSave &&
+       m_AutoSaver->IsSaving()){
+        if(m_ShutdownFlow.WaitForAnotherSave()) WaitForPriorSave();
+        return;
     }
+
+    const ShutdownFlow::Action action = m_ShutdownFlow.Continue();
+    if(action == ShutdownFlow::Action::None)
+        return;
+
+    if(action == ShutdownFlow::Action::CaptureMedia){
+#ifdef MEDIATIME
+        TreeBank::SaveMediaTimesForQuit([](){
+            m_ShutdownFlow.MediaSettled();
+        });
+        return;
+#else
+        m_ShutdownFlow.MediaSettled();
+        return;
+#endif
+    }
+
+    if(action != ShutdownFlow::Action::FinalSave) return;
 #ifdef LOCALVIEW
     LocalView::ClearCache();
 #endif
+#ifdef EDGEWEBVIEW
+
+    EdgeWebView::ReleaseDownloadCarriers();
+#endif
+    SidePanels::ShutdownEverywhere();
     TreeBank::ReleaseAllView();
 
     const auto finish = [](){
         m_AutoSaver->disconnect(GetInstance());
-        QTimer::singleShot(0, GetInstance(), &Application::quit);
+        QTimer::singleShot(0, GetInstance(), [](){ RequestExit();});
     };
     connect(m_AutoSaver, &AutoSaver::Finished, GetInstance(), finish);
     connect(m_AutoSaver, &AutoSaver::Failed,   GetInstance(), finish);
 
-    if(!m_AutoSaver->IsSaving()){
-        TreeBank::DoDelete();
-        m_AutoSaver->SaveAll();
+    TreeBank::DoDelete();
+    m_AutoSaver->SaveAll();
+    KeepSerials(Node::SerialAfter(m_SerialStart, Node::NextSerial()));
+}
+
+static QString SerialFile(){
+    return Application::StateDirectory() + QStringLiteral("serial-base");
+}
+
+void Application::SeedSerials(){
+    QByteArray kept;
+    {
+        QFile file(SerialFile());
+        if(file.open(QIODevice::ReadOnly)) kept = file.read(32);
     }
+    m_SerialStart = Node::SerialStart(kept);
+    Node::SeedSerials(m_SerialStart);
+    KeepSerials(Node::SerialAfter(m_SerialStart, m_SerialStart));
+}
+
+void Application::KeepSerials(quint64 next){
+    QSaveFile file(SerialFile());
+    if(!file.open(QIODevice::WriteOnly) || file.write(QByteArray::number(next)) < 0 || !file.commit())
+        qWarning() << "where the next run's serials begin could not be written to" << SerialFile();
 }
 
 Settings &Application::GlobalSettings(){
@@ -571,7 +664,10 @@ void Application::LoadGlobalSettings(){
     m_DownloadDirectory        = s.value(QStringLiteral("application/@FileSaveDirectory"), QString()).value<QString>();
     m_UploadDirectory          = s.value(QStringLiteral("application/@FileOpenDirectory"), QString()).value<QString>();
     m_SaveSessionCookie        = s.value(QStringLiteral("application/@SaveSessionCookie"), false).value<bool>();
-    m_AcceptLanguage           = s.value(QStringLiteral("application/@AcceptLanguage"), tr("en-US")).value<QString>();
+    m_AcceptLanguage           = s.value(QStringLiteral("application/@AcceptLanguage"), QString()).value<QString>();
+    if(m_AcceptLanguage == QStringLiteral("ja,en-US;q=0.8,en;q=0.6") ||
+       m_AcceptLanguage == QStringLiteral("en-US"))
+        m_AcceptLanguage.clear();
     m_AllowedHosts             = s.value(QStringLiteral("application/@AllowedHosts"), QStringList()).value<QStringList>();
     m_BlockedHosts             = s.value(QStringLiteral("application/@BlockedHosts"), QStringList()).value<QStringList>();
     m_AllowedCertificates      = s.value(QStringLiteral("application/@AllowedCertificates"), QStringList()).value<QStringList>();
@@ -595,23 +691,169 @@ void Application::LoadGlobalSettings(){
 }
 
 void Application::ApplyChromiumFlags(){
-    const QString flags =
+    const QStringList lines =
         m_GlobalSettings.value(QStringLiteral("application/@ChromiumFlags"),
-                               QString()).value<QString>();
+                               QStringList()).value<QStringList>();
 
-    QStringList accepted;
-    foreach(const QString &word, flags.split(QRegularExpression(QStringLiteral("\\s+")),
-                                             Qt::SkipEmptyParts)){
-        if(word.startsWith(QStringLiteral("--"))) accepted << word;
-        else qWarning() << "ignoring" << word << "in application/@ChromiumFlags:"
-                        << "not a switch";
+    QStringList ignored;
+    QStringList accepted = ChromiumSwitchesIn(lines, &ignored);
+    foreach(const QString &word, ignored){
+        qWarning() << "ignoring" << word << "in application/@ChromiumFlags:"
+                   << "not a switch";
     }
-    if(accepted.isEmpty()) return;
 
     const QByteArray existing = qgetenv("QTWEBENGINE_CHROMIUM_FLAGS");
-    const QByteArray added = accepted.join(QStringLiteral(" ")).toLocal8Bit();
+
+    if(accepted.isEmpty()) return;
+
+    const QByteArray added = JoinChromiumSwitches(accepted, false).toLocal8Bit();
     qputenv("QTWEBENGINE_CHROMIUM_FLAGS",
             existing.isEmpty() ? added : existing + ' ' + added);
+}
+
+QStringList Application::ChromiumSwitches(const QString &flags, QStringList *ignored){
+    QStringList words;
+    QString word;
+    bool quoted = false;
+    foreach(const QChar c, flags){
+        if(c == QLatin1Char('"')){
+            quoted = !quoted;
+        } else if(c.isSpace() && !quoted){
+            if(!word.isEmpty()) words << word;
+            word.clear();
+        } else {
+            word += c;
+        }
+    }
+    if(!word.isEmpty()) words << word;
+
+    QStringList accepted;
+    foreach(const QString &each, words){
+        if(each.startsWith(QStringLiteral("--"))) accepted << each;
+        else if(ignored) *ignored << each;
+    }
+    return accepted;
+}
+
+QStringList Application::ChromiumSwitchesIn(const QStringList &lines, QStringList *ignored){
+    QStringList accepted;
+    foreach(const QString &line, lines) accepted << ChromiumSwitches(line, ignored);
+    return accepted;
+}
+
+QString Application::JoinChromiumSwitches(const QStringList &switches, bool forWindows){
+    QStringList words;
+    foreach(QString each, switches){
+        each.remove(QLatin1Char('"'));
+        if(std::none_of(each.cbegin(), each.cend(),
+                        [](const QChar c){ return c.isSpace();})){
+            words << each;
+            continue;
+        }
+        int slashes = 0;
+        if(forWindows){
+            while(slashes < each.length() &&
+                  each.at(each.length() - 1 - slashes) == QLatin1Char('\\')) slashes++;
+        }
+        words << QLatin1Char('"') + each + QString(slashes, QLatin1Char('\\')) + QLatin1Char('"');
+    }
+    return words.join(QLatin1Char(' '));
+}
+
+QSGRendererInterface::GraphicsApi Application::GraphicsApiFor(const QString &value){
+    const QString word = value.toLower();
+    if(word == QStringLiteral("software")) return QSGRendererInterface::Software;
+    if(word == QStringLiteral("opengl"))   return QSGRendererInterface::OpenGL;
+    if(word == QStringLiteral("direct3d11") ||
+       word == QStringLiteral("d3d11"))    return QSGRendererInterface::Direct3D11;
+    if(word == QStringLiteral("direct3d12") ||
+       word == QStringLiteral("d3d12"))    return QSGRendererInterface::Direct3D12;
+    if(word == QStringLiteral("vulkan"))   return QSGRendererInterface::Vulkan;
+    if(word == QStringLiteral("metal"))    return QSGRendererInterface::Metal;
+    return QSGRendererInterface::Unknown;
+}
+
+bool Application::GraphicsApiRunsHere(QSGRendererInterface::GraphicsApi api){
+    switch(api){
+    case QSGRendererInterface::Software:
+    case QSGRendererInterface::OpenGL:
+        return true;
+    case QSGRendererInterface::Direct3D11:
+    case QSGRendererInterface::Direct3D12:
+#if defined(Q_OS_WIN)
+        return true;
+#else
+        return false;
+#endif
+    case QSGRendererInterface::Metal:
+#if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
+        return true;
+#else
+        return false;
+#endif
+    case QSGRendererInterface::Vulkan:
+#if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
+        return false;
+#else
+        return true;
+#endif
+    default:
+        return false;
+    }
+}
+
+void Application::ApplyGraphicsApi(){
+    const QString value =
+        m_GlobalSettings.value(QStringLiteral("application/@GraphicsApi"),
+                               QStringLiteral("Auto")).value<QString>();
+    QSGRendererInterface::GraphicsApi api = GraphicsApiFor(value);
+
+    const bool variable = qEnvironmentVariableIsSet("QSG_RHI_BACKEND");
+    if(variable && api != QSGRendererInterface::Unknown){
+        qWarning() << "application/@GraphicsApi" << value
+                   << "ignored: QSG_RHI_BACKEND is set to"
+                   << qgetenv("QSG_RHI_BACKEND");
+        api = QSGRendererInterface::Unknown;
+    }
+    if(api != QSGRendererInterface::Unknown && !GraphicsApiRunsHere(api)){
+        qWarning() << "application/@GraphicsApi" << value
+                   << "ignored: this platform cannot draw with it";
+        api = QSGRendererInterface::Unknown;
+    }
+    if(api != QSGRendererInterface::Unknown)
+        QQuickWindow::setGraphicsApi(api);
+
+    ApplyWidgetsRhi(
+        m_GlobalSettings.value(QStringLiteral("application/@EnableMainWindowRhi"),
+                               false).value<bool>(),
+        api, variable);
+}
+
+void Application::ApplyWidgetsRhi(bool enabled, QSGRendererInterface::GraphicsApi api, bool variable){
+    if(!enabled) return;
+    if(qEnvironmentVariableIsSet("QT_WIDGETS_RHI")) return;
+    if(api == QSGRendererInterface::Software) return;
+    QByteArray backend = WidgetsRhiBackendFor(api);
+    if(api == QSGRendererInterface::Unknown && variable){
+        backend = qgetenv("QSG_RHI_BACKEND").toLower();
+        if(backend == QByteArrayLiteral("software")) return;
+        if(WidgetsRhiBackendFor(GraphicsApiFor(QString::fromLatin1(backend))).isEmpty())
+            backend.clear();
+    }
+    qputenv("QT_WIDGETS_RHI", "1");
+    if(!backend.isEmpty() && !qEnvironmentVariableIsSet("QT_WIDGETS_RHI_BACKEND"))
+        qputenv("QT_WIDGETS_RHI_BACKEND", backend);
+}
+
+QByteArray Application::WidgetsRhiBackendFor(QSGRendererInterface::GraphicsApi api){
+    switch(api){
+    case QSGRendererInterface::OpenGL:     return QByteArrayLiteral("opengl");
+    case QSGRendererInterface::Direct3D11: return QByteArrayLiteral("d3d11");
+    case QSGRendererInterface::Direct3D12: return QByteArrayLiteral("d3d12");
+    case QSGRendererInterface::Vulkan:     return QByteArrayLiteral("vulkan");
+    case QSGRendererInterface::Metal:      return QByteArrayLiteral("metal");
+    default:                               return QByteArray();
+    }
 }
 
 void Application::ApplyGlobalWebEngineSettings(){
@@ -643,16 +885,20 @@ void Application::ApplyGlobalWebEngineSettings(){
 #endif
 }
 
-void Application::SaveSettingsFile(){
-    SettingsIO::Save(StateDirectory(), GlobalSettingsFileName(), m_GlobalSettings, SettingsHooks());
+bool Application::SaveSettingsFile(const Settings &snapshot){
+    return SettingsIO::Save(StateDirectory(), GlobalSettingsFileName(), snapshot, SettingsHooks());
 }
 
 void Application::LoadSettingsFile(){
     SettingsIO::Load(StateDirectory(), GlobalSettingsFileName(), m_GlobalSettings, SettingsHooks());
 }
 
-void Application::SaveIconDatabase(){
-    SettingsIO::Save(StateDirectory(), IconDatabaseFileName(), m_IconTable, SettingsHooks());
+Settings Application::IconDatabaseSnapshot(){
+    return m_IconTable;
+}
+
+bool Application::SaveIconDatabase(const Settings &snapshot){
+    return SettingsIO::Save(StateDirectory(), IconDatabaseFileName(), snapshot, SettingsHooks());
 }
 
 void Application::LoadIconDatabase(){
@@ -681,6 +927,10 @@ void Application::Reconfigure(){
     TreeBar::LoadSettings();
     ToolBar::LoadSettings();
     TreeBank::LoadSettings();
+#ifdef WEBENGINEVIEW
+    NetworkController::ApplyAcceptLanguage();
+#endif
+    ExtensionController::ReloadAll();
     if(schemeChanged) UpdateAllWidgets();
 }
 
@@ -737,6 +987,7 @@ void Application::UpdateAllWidgets(){
     foreach(QWidget *widget, allWidgets()){
         if(LineEdit *edit = qobject_cast<LineEdit*>(widget)) edit->ApplyTheme();
         if(DialogLabel *label = qobject_cast<DialogLabel*>(widget)) label->ApplyTheme();
+        if(ExtensionBar *bar = qobject_cast<ExtensionBar*>(widget)) bar->ApplyTheme();
         widget->update();
     }
     foreach(MainWindow *win, Windows().All().values()){
@@ -876,12 +1127,6 @@ QString Application::IconDatabaseFileName(bool tmp){
     return (tmp ? BackUpPreposition() : QString()) + QStringLiteral("icondata.json");
 }
 
-QString Application::LegacyFileName(QString name){
-    if(name.endsWith(QStringLiteral(".json")))
-        name.chop(5);
-    return name + QStringLiteral(".xml");
-}
-
 void Application::AppendChosenFile(QString file){
     m_ChosenFiles << file;
 }
@@ -899,6 +1144,8 @@ bool Application::SaveSessionCookie(){
 }
 
 QString Application::GetAcceptLanguage(){
+    if(m_AcceptLanguage.isEmpty())
+        return UserAgent::DefaultAcceptLanguage(QLocale::system().uiLanguages());
     return m_AcceptLanguage;
 }
 
@@ -1032,6 +1279,17 @@ int Application::EventKey(){
     return key;
 }
 
+QString Application::EventToken(){
+    static QString token;
+    if(token.isEmpty()){
+        quint32 words[4];
+        QRandomGenerator::system()->fillRange(words);
+        for(quint32 word : words)
+            token += QStringLiteral("%1").arg(word, 8, 16, QLatin1Char('0'));
+    }
+    return token;
+}
+
 QString Application::ProductVersion(){
     static QString version = QString();
     if(version.isNull()){
@@ -1069,11 +1327,12 @@ MainWindow *Application::NewWindow(int id, QPoint pos){
 
 #if defined(Q_OS_MAC)
     if(Windows().Current() && pos.isNull() && ProductVersion().startsWith(QStringLiteral("10.14"))){
-        QTimer::singleShot(16, [win](){ Windows().SetCurrent(win);});
+        QTimer::singleShot(16, [win](){ Windows().SetCurrent(win); TreeBank::SomethingChanged();});
         return win;
     }
 #endif
     Windows().SetCurrent(win);
+    TreeBank::SomethingChanged();
     return win;
 }
 
@@ -1084,7 +1343,9 @@ MainWindow *Application::CloseWindow(MainWindow *win){
 }
 
 MainWindow *Application::SwitchWindow(bool next){
-    return Windows().Switch(next);
+    MainWindow *win = Windows().Switch(next);
+    TreeBank::SomethingChanged();
+    return win;
 }
 
 MainWindow *Application::NextWindow(){
@@ -1097,18 +1358,22 @@ MainWindow *Application::PrevWindow(){
 
 void Application::RemoveWindow(MainWindow *win){
     Windows().Remove(win);
+    TreeBank::SomethingChanged();
 }
 
 void Application::RemoveWindow(int id){
     Windows().Remove(id);
+    TreeBank::SomethingChanged();
 }
 
 void Application::SetCurrentWindow(MainWindow *win){
     Windows().SetCurrent(win);
+    TreeBank::SomethingChanged();
 }
 
 void Application::SetCurrentWindow(int id){
     Windows().SetCurrent(id);
+    TreeBank::SomethingChanged();
 }
 
 int Application::WindowId(MainWindow *win){
@@ -1150,10 +1415,11 @@ ModelessDialogFrame *Application::MakeTemporaryDialogFrame(){
     if(screens().length()){
         QRect rect = primaryScreen()->geometry();
 
+        const int width = rect.width() / MODELESS_DIALOG_WIDTH_DIVISOR;
         m_TemporaryDialogFrame->setGeometry
-            (rect.x() + rect.width()  / 6,
+            (rect.x() + rect.width() - width,
              rect.y() + rect.height() / 6,
-             rect.width() * 2 / 3, rect.height() * 2 / 3);
+             width, rect.height() * 2 / 3);
     }
     m_TemporaryDialogFrame->show();
     return m_TemporaryDialogFrame;
@@ -1215,11 +1481,7 @@ bool Application::RunExternalCommand(QString name, QUrl url){
 
 void Application::timerEvent(QTimerEvent *ev){
     if(ev->timerId() == m_AutoSaveTimerId){
-        if(!m_AutoSaver->IsSaving()){
-            TreeBank::DoDelete();
-            TreeBank::UpdateCurrentThumbnails();
-            QtConcurrent::run(&AutoSaver::SaveAll, m_AutoSaver);
-        }
+        if(!m_AutoSaver->IsSaving()) m_AutoSaver->SaveAllAsync();
     }
     else if(ev->timerId() == m_AutoLoadTimerId)
         TreeBank::AutoLoad();

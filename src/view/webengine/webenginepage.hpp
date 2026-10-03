@@ -50,9 +50,10 @@ class WebEnginePage : public QWebEnginePage {
     Q_OBJECT
 
 public:
-    WebEnginePage(NetworkAccessManager *nam, QObject *parent = 0);
+    WebEnginePage(NetworkAccessManager *nam, bool offTheRecord, QObject *parent);
     ~WebEnginePage();
     View* GetView();
+    SharedProfile GetSharedProfile() const { return m_Profile; }
     WebEnginePage* createWindow(WebWindowType type) Q_DECL_OVERRIDE;
     void triggerAction(WebAction action, bool checked = false) Q_DECL_OVERRIDE;
 

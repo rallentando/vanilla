@@ -26,6 +26,7 @@ QString FirefoxBookmarkBackup();
 QString ChromeBookmarkFile();
 QString OperaBookmarkFile();
 QString VivaldiBookmarkFile();
+QString EdgeBookmarkFile();
 
 int LocalUtcOffset();
 
