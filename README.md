@@ -36,6 +36,7 @@
 
 - [docs/BUILD.md](docs/BUILD.md) — ビルド手順・テスト・配布物の作り方
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 主要クラスと責務、データの置き場
+- [docs/EXTENSIONS.md](docs/EXTENSIONS.md) — Chrome 拡張の対応状況（名前空間ごとの分類と、メソッド単位の表）
 
 ## 配布物について
 

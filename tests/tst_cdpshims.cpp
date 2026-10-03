@@ -287,8 +287,13 @@ private slots:
     void theVisibleTabIsCapturedByTheApplication();
     void theSidePanelIsTheApplications();
     void theNotificationsAreTheApplicationsOnQtAndTheEnginesOnEdge();
+    void theTableOfWhatIsAnsweredIsTheShimsOwn();
 
 private:
+    static QJsonObject Survey(bool edge, bool permitted);
+    static const QStringList &Internal();
+    static const QHash<QString, QString> &EdgeMeasured();
+    static QString CoverageTable(QStringList *unmeasured, QStringList *stale);
     static QString World(){
         return QStringLiteral(R"js(
             var self = this;
@@ -9617,6 +9622,193 @@ void tst_cdpshims::theShimRunAsAWorkerWouldRunIt(){
     QVERIFY(!sealed.evaluate(Cdp::WorkerShim()).isError());
     sealed.evaluate(QStringLiteral("chrome.alarms.get('x', function(){ calledBack = 'called'; });"));
     QCOMPARE(sealed.evaluate(QStringLiteral("calledBack")).toString(), QStringLiteral("not called"));
+}
+
+QJsonObject tst_cdpshims::Survey(bool edge, bool permitted){
+    QJSEngine engine;
+    engine.evaluate(World());
+    engine.evaluate(QStringLiteral("document = undefined;") + Fetching() + (edge ? EdgeBrands() : QString()));
+    engine.evaluate(permitted
+                    ? QStringLiteral("chrome.runtime.getManifest = function(){ return { permissions: ["
+                                     "'tabs', 'bookmarks', 'history', 'sessions', 'search', 'topSites', 'fontSettings',"
+                                     " 'contextMenus', 'notifications', 'downloads', 'offscreen', 'scripting', 'userScripts',"
+                                     " 'declarativeNetRequest', 'webNavigation', 'alarms', 'idle', 'identity', 'sidePanel',"
+                                     " 'storage', 'activeTab'], host_permissions: ['<all_urls>'] }; };"
+                                     "var nothing = function(){ return Promise.resolve(); };"
+                                     "chrome.alarms = { create: nothing, get: nothing, getAll: function(){ return Promise.resolve([]); },"
+                                     "                  clear: nothing, clearAll: nothing };"
+                                     "chrome.idle = { queryState: function(){ return Promise.resolve('active'); }, setDetectionInterval: function(){} };")
+                    : QStringLiteral("chrome.runtime.getManifest = function(){ return {}; };"));
+    QString shim = Cdp::WorkerShim().replace(QLatin1String(ExtensionHostWire::KEY_PLACE), QString(64, QLatin1Char('5')));
+    const QString tail = QStringLiteral("  return made.join(',');\n})()\n");
+    if(!shim.endsWith(tail)) return QJsonObject();
+    shim.chop(tail.size());
+    shim += QStringLiteral("  return JSON.stringify({ made: made, hosted: [...hosted], sounded: [...SOUNDED],"
+                           " own: [...OWN], refused: [...REFUSED] });\n})()\n");
+    const QJSValue result = engine.evaluate(shim);
+    if(result.isError()) return QJsonObject();
+    const QJsonObject sets = QJsonDocument::fromJson(result.toString().toUtf8()).object();
+    static const QRegularExpression api(QStringLiteral("^(?!vanilla\\.)[a-z][A-Za-z]*(\\.[a-z][A-Za-z]*)*\\.[A-Za-z]+$"));
+    QJsonObject names;
+    const auto take = [&](const QString &set, const QString &mark){
+        for(const QJsonValue &name : sets.value(set).toArray())
+            if(api.match(name.toString()).hasMatch() && !Internal().contains(name.toString())
+               && !names.contains(name.toString()))
+                names.insert(name.toString(), mark);
+    };
+    take(QStringLiteral("refused"), QStringLiteral("x"));
+    take(QStringLiteral("hosted"), QStringLiteral("o"));
+    take(QStringLiteral("sounded"), QStringLiteral("o"));
+    take(QStringLiteral("own"), QStringLiteral("o"));
+    take(QStringLiteral("made"), QStringLiteral("o"));
+    return names;
+}
+
+const QStringList &tst_cdpshims::Internal(){
+    static const QStringList names = { QStringLiteral("downloads.expect"), QStringLiteral("offscreen.contexts") };
+    return names;
+}
+
+const QHash<QString, QString> &tst_cdpshims::EdgeMeasured(){
+    static const QHash<QString, QString> marks = {
+        { QStringLiteral("alarms.clear"), QStringLiteral("○") },
+        { QStringLiteral("alarms.clearAll"), QStringLiteral("○") },
+        { QStringLiteral("alarms.create"), QStringLiteral("○") },
+        { QStringLiteral("alarms.onAlarm"), QStringLiteral("○") },
+        { QStringLiteral("commands.getAll"), QStringLiteral("○") },
+        { QStringLiteral("commands.onCommand"), QStringLiteral("△※") },
+        { QStringLiteral("contextMenus.create"), QStringLiteral("○") },
+        { QStringLiteral("contextMenus.onClicked"), QStringLiteral("○") },
+        { QStringLiteral("contextMenus.remove"), QStringLiteral("○") },
+        { QStringLiteral("contextMenus.removeAll"), QStringLiteral("○") },
+        { QStringLiteral("contextMenus.update"), QStringLiteral("○") },
+        { QStringLiteral("declarativeNetRequest.getDynamicRules"), QStringLiteral("○") },
+        { QStringLiteral("declarativeNetRequest.getEnabledRulesets"), QStringLiteral("○") },
+        { QStringLiteral("declarativeNetRequest.getSessionRules"), QStringLiteral("○") },
+        { QStringLiteral("declarativeNetRequest.updateDynamicRules"), QStringLiteral("○") },
+        { QStringLiteral("declarativeNetRequest.updateEnabledRulesets"), QStringLiteral("○") },
+        { QStringLiteral("declarativeNetRequest.updateSessionRules"), QStringLiteral("○") },
+        { QStringLiteral("downloads.cancel"), QStringLiteral("○") },
+        { QStringLiteral("downloads.download"), QStringLiteral("○※") },
+        { QStringLiteral("downloads.erase"), QStringLiteral("○") },
+        { QStringLiteral("downloads.onChanged"), QStringLiteral("○") },
+        { QStringLiteral("downloads.onCreated"), QStringLiteral("○※") },
+        { QStringLiteral("downloads.onErased"), QStringLiteral("○") },
+        { QStringLiteral("downloads.pause"), QStringLiteral("○") },
+        { QStringLiteral("downloads.resume"), QStringLiteral("○") },
+        { QStringLiteral("downloads.search"), QStringLiteral("○") },
+        { QStringLiteral("downloads.show"), QStringLiteral("○") },
+        { QStringLiteral("identity.clearAllCachedAuthTokens"), QStringLiteral("×") },
+        { QStringLiteral("identity.getAuthToken"), QStringLiteral("×") },
+        { QStringLiteral("identity.getProfileUserInfo"), QStringLiteral("○※") },
+        { QStringLiteral("identity.getRedirectURL"), QStringLiteral("○") },
+        { QStringLiteral("identity.launchWebAuthFlow"), QStringLiteral("△※") },
+        { QStringLiteral("identity.removeCachedAuthToken"), QStringLiteral("×") },
+        { QStringLiteral("idle.onStateChanged"), QStringLiteral("○") },
+        { QStringLiteral("idle.setDetectionInterval"), QStringLiteral("○") },
+        { QStringLiteral("notifications.clear"), QStringLiteral("○") },
+        { QStringLiteral("notifications.create"), QStringLiteral("○") },
+        { QStringLiteral("notifications.getAll"), QStringLiteral("○") },
+        { QStringLiteral("notifications.getPermissionLevel"), QStringLiteral("○") },
+        { QStringLiteral("notifications.onClicked"), QStringLiteral("△※") },
+        { QStringLiteral("notifications.onClosed"), QStringLiteral("○") },
+        { QStringLiteral("notifications.update"), QStringLiteral("○") },
+        { QStringLiteral("offscreen.closeDocument"), QStringLiteral("○") },
+        { QStringLiteral("offscreen.createDocument"), QStringLiteral("○") },
+        { QStringLiteral("offscreen.hasDocument"), QStringLiteral("○") },
+        { QStringLiteral("permissions.contains"), QStringLiteral("○") },
+        { QStringLiteral("permissions.getAll"), QStringLiteral("○") },
+        { QStringLiteral("permissions.request"), QStringLiteral("○※") },
+        { QStringLiteral("runtime.getContexts"), QStringLiteral("○") },
+        { QStringLiteral("runtime.onInstalled"), QStringLiteral("○") },
+        { QStringLiteral("runtime.onStartup"), QStringLiteral("○") },
+        { QStringLiteral("runtime.onUserScriptMessage"), QStringLiteral("×※") },
+        { QStringLiteral("scripting.getRegisteredContentScripts"), QStringLiteral("○") },
+        { QStringLiteral("scripting.insertCSS"), QStringLiteral("○") },
+        { QStringLiteral("scripting.registerContentScripts"), QStringLiteral("○") },
+        { QStringLiteral("scripting.removeCSS"), QStringLiteral("○") },
+        { QStringLiteral("scripting.unregisterContentScripts"), QStringLiteral("○") },
+        { QStringLiteral("storage.onChanged"), QStringLiteral("○") },
+        { QStringLiteral("storage.sync"), QStringLiteral("○") },
+        { QStringLiteral("userScripts.configureWorld"), QStringLiteral("×") },
+        { QStringLiteral("userScripts.getScripts"), QStringLiteral("×") },
+        { QStringLiteral("userScripts.getWorldConfigurations"), QStringLiteral("×") },
+        { QStringLiteral("userScripts.register"), QStringLiteral("×") },
+        { QStringLiteral("userScripts.resetWorldConfiguration"), QStringLiteral("×") },
+        { QStringLiteral("userScripts.unregister"), QStringLiteral("×") },
+        { QStringLiteral("userScripts.update"), QStringLiteral("×") },
+    };
+    return marks;
+}
+
+QString tst_cdpshims::CoverageTable(QStringList *unmeasured, QStringList *stale){
+    const QJsonObject qt = Survey(false, true), qtBare = Survey(false, false);
+    const QJsonObject edge = Survey(true, true), edgeBare = Survey(true, false);
+    if(qt.isEmpty() || qtBare.isEmpty() || edge.isEmpty() || edgeBare.isEmpty()) return QString();
+    const auto cell = [](const QJsonObject &full, const QJsonObject &bare, const QString &name){
+        const QString mark = full.value(name).toString();
+        if(mark == QLatin1String("x")) return QStringLiteral("×");
+        if(mark != QLatin1String("o")) return QStringLiteral("―");
+        return bare.value(name).toString() == QLatin1String("o") ? QStringLiteral("○") : QStringLiteral("△");
+    };
+    QStringList all = qt.keys() + edge.keys();
+    all.removeDuplicates();
+    std::sort(all.begin(), all.end());
+    QStringList lines;
+    lines << QStringLiteral("| 名前空間 | メンバー | Qt WebEngine | Edge WebView2 |")
+          << QStringLiteral("|---|---|---|---|");
+    QString last;
+    QSet<QString> used;
+    for(const QString &name : std::as_const(all)){
+        const int dot = name.indexOf(QLatin1Char('.'));
+        const QString ns = name.left(dot);
+        QString onEdge = cell(edge, edgeBare, name);
+        if(onEdge == QStringLiteral("―")){
+            onEdge = EdgeMeasured().value(name);
+            if(onEdge.isEmpty()){ unmeasured->append(name); onEdge = QStringLiteral("?"); }
+            used.insert(name);
+        }
+        lines << QStringLiteral("| %1 | `%2` | %3 | %4 |")
+                     .arg(ns == last ? QString() : QStringLiteral("`%1`").arg(ns), name.mid(dot + 1),
+                          cell(qt, qtBare, name), onEdge);
+        last = ns;
+    }
+    for(auto it = EdgeMeasured().cbegin(); it != EdgeMeasured().cend(); ++it)
+        if(!used.contains(it.key())) stale->append(it.key());
+    stale->sort();
+    return lines.join(QLatin1Char('\n'));
+}
+
+void tst_cdpshims::theTableOfWhatIsAnsweredIsTheShimsOwn(){
+    QStringList unmeasured, stale;
+    const QString table = CoverageTable(&unmeasured, &stale);
+    QVERIFY2(!table.isEmpty(), "the shim ran with an error, or no longer ends with 'return made.join(',')'");
+    QVERIFY2(unmeasured.isEmpty(), qPrintable(QStringLiteral("left to WebView2 and not measured there (EdgeMeasured): ")
+                                              + unmeasured.join(QStringLiteral(", "))));
+    QVERIFY2(stale.isEmpty(), qPrintable(QStringLiteral("measured on WebView2 but no longer left to it (EdgeMeasured): ")
+                                         + stale.join(QStringLiteral(", "))));
+    const QString begin = QStringLiteral("<!-- BEGIN: tst_cdpshims::theTableOfWhatIsAnsweredIsTheShimsOwn -->");
+    const QString end = QStringLiteral("<!-- END -->");
+    QFile file(QDir::cleanPath(QStringLiteral(VANILLA_DOCS_DIR "/EXTENSIONS.md")));
+    QVERIFY2(file.open(QIODevice::ReadOnly), "check VANILLA_DOCS_DIR");
+    QString document = QString::fromUtf8(file.readAll());
+    file.close();
+    document.replace(QLatin1String("\r\n"), QLatin1String("\n"));
+    const int from = document.indexOf(begin), to = document.indexOf(end, from);
+    QVERIFY2(from >= 0 && to > from, "the document has lost its markers");
+    const QString wanted = begin + QLatin1Char('\n') + table + QLatin1Char('\n') + end;
+    const QString there = document.mid(from, to + end.size() - from);
+    if(qEnvironmentVariableIntValue("VANILLA_WRITE_COVERAGE") == 1){
+        document.replace(from, there.size(), wanted);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        file.write(QString(document).replace(QLatin1String("\n"), QLatin1String("\r\n")).toUtf8());
+    }
+    QVERIFY(table.contains(QStringLiteral("| `getFontList` | ○ | ○ |")));
+    QVERIFY(table.contains(QStringLiteral("| `onCommand` | ○ | △※ |")));
+    QVERIFY(table.contains(QStringLiteral("| `sendMessage` | ○ | ○ |")));
+    QVERIFY(table.contains(QStringLiteral("| `uninstall` | × | × |")));
+    if(qEnvironmentVariableIntValue("VANILLA_WRITE_COVERAGE") == 1) return;
+    QVERIFY2(there == wanted, "docs/EXTENSIONS.md is not the shims' own: run this test with VANILLA_WRITE_COVERAGE=1 to write it");
 }
 
 QTEST_MAIN(tst_cdpshims)

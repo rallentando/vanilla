@@ -1126,7 +1126,7 @@ Chromeの完全な代替APIではなく、`action.onClicked` の発火、activeT
 「行ごとの注」に一行ずつある。**Chrome 列は仕様どおりの印で、こちらの実機確認ではない。**
 **セルには印と D 番号だけを置く。**Qt への報告は保留、Qt 側の互換層は見送り（D-314）。
 **Qt 2 列の `―` / `？` は素のエンジンの印のまま**で、その後 D-350 以降の互換レイヤーが `action`・badge・context menu・`tabs.query`・`notifications`（D-418b）・`commands`（D-416）ほかを埋めた。
-互換レイヤーでの到達点は下の「拡張の互換レイヤー」の項と「Chrome拡張 API の名前空間の分類」を見る（この表の印は実機の確認を伴うので、行ごとに測るまで書き換えない）。
+互換レイヤーでの到達点は下の「拡張の互換レイヤー」の項と [EXTENSIONS.md](EXTENSIONS.md) を見る（この表の印は実機の確認を伴うので、行ごとに測るまで書き換えない）。
 
 | 機能 | Chrome | WebEngine | QuickWebEngine | Edge |
 |---|---|---|---|---|
@@ -1281,29 +1281,10 @@ Chromeの完全な代替APIではなく、`action.onClicked` の発火、activeT
 拡張を実用する経路はEdge。Edge ビューも同じコピーを読み（D-378、E-2a）、拡張自身のページ（ポップアップ・オプション）のシムはホストに尋ねるが、worker もコピーの中継ページを通してホストに尋ねる（D-379、E-2b）。Qt2種は、素のエンジンでは登録とcontent scriptまでで、静的DNRの遮断はVanillaが肩代わりする（D-347）。
 WebEngineビューは互換レイヤー（D-350〜D-373）で、Vimium のキー操作・タブ操作・リンクヒント・タブのイベント・SPA の見直し・オプションページの読み書きと保存・ポップアップ（D-363 / D-364 / D-366）・vomnibar の候補（D-367）・平文の検索（D-369）・拡張のページの文言（`i18n`、D-373）と、Stands の content script と worker のやりとりまでが動く（Edge ビューの無い環境のための経路。動く範囲は上の「拡張の互換レイヤー」の項）。`extension_smoke` のQt i18n XFAILは素のエンジン（fixture は `key` が無くコピーを作らない）の既知の欠落の検知器として維持する。
 
-#### Chrome拡張 API の名前空間の分類（2026-09-27）
+#### Chrome拡張 API の名前空間の分類
 
-[Chrome の API リファレンス](https://developer.chrome.com/docs/extensions/reference/api)の 85 名前空間から、ChromeOS 専用 17・Dev チャンネル 2・型だけの 3（`events` / `types` / `extensionTypes`）を除いた **63** を母数に、互換レイヤーの Qt ビューで数える。
-中身の有無はシムの `hosted` / `SOUNDED` / `OWN`（[src/core/cdpshims.cpp](../src/core/cdpshims.cpp)）と上の「拡張の互換レイヤー」の項による。
-Edge は WebView2 自身が持つものが多く、名前空間ごとには測っていない。Qt のエンジンが素で持つものは 2026-09-26 に測った（D-442。探針 `a31-measure/gen_ns.py`）。
-
-**中身がある（27）**
-- ほぼ一通り: `action` / `contextMenus` / `commands` / `i18n` / `offscreen` / `declarativeNetRequest` / `storage` / `extension` / `sidePanel`（D-440a / D-440b / D-441）
-- 一部だけ: `tabs` / `windows` / `bookmarks`（読むだけ）/ `history` / `sessions`（`restore` だけ）/ `search` / `fontSettings`（`getFontList` だけ）/ `topSites`（最後に見た順: D-450a）/ `idle`（エンジンの物に `onStateChanged` をシムが足す: D-450b）/ `downloads`（`open` 無し）/ `webNavigation`（`onCommitted` / `onDOMContentLoaded` / `onCompleted` / 文書の中の遷移の 2 つと `getAllFrames`。`onBeforeNavigate` / `onErrorOccurred` / `onCreatedNavigationTarget` と URL フィルタと `getFrame` は無い: D-452）/ `scripting`（MAIN の `executeScript` 無し）/ `permissions`（manifest から答えるだけ）/ `runtime`（大部分はエンジンの物）/ `identity`（`launchWebAuthFlow` と未サインインの答え: D-437）/ `alarms`（エンジンの物に `onAlarm` をシムが足す: D-442）/ `userScripts`（`register` / `update` / `unregister` / `getScripts`、world の設定と `sendMessage`: D-443〜D-445。`connect` と `execute` は無い）/ `notifications`（Qt はモードレスダイアログ: D-418a / D-418b。Edge は未計測）。残りは凍結（D-388・D-474）
-- 寝ている worker は、右クリック・ボタン・ショートカット・user script のメッセージ・タブ / 履歴 / ダウンロードのイベントで起こす（D-446 / D-447 / D-451。Qt の widgets のビューだけ）
-
-**Qt のエンジンが素で持つ（6）**: `management`（変えるものは断る。イベントは届かない: D-450a）/ `power`（効く: D-450）/ `system.cpu` / `system.memory` / `system.display` / `system.storage`（manifest に権限があれば。呼び出しは答える。`system.*` のイベントが届くかは未測定。`alarms`・`idle`・`management` はエンジンのイベントが届かなかった: D-442・D-450）
-
-未実装の 30 を、方針で 4 つに分ける。
-
-| 分類 | 名前空間 | 理由 |
-|---|---|---|
-| やる意味がある | `omnibox` / `tts` / `publicSuffix` | ホストか Qt の部品で答えられ、バックエンドに依らない。`omnibox` はアドレス欄のキーワード、`tts` は QTextToSpeech（追加モジュール）が要る |
-| 思想にそぐわない | `tabGroups` / `readingList` / `privacy` / `contentSettings` / `declarativeContent` | 木がブックマークと履歴を兼ねる（D-367）ところへ別の構造や保管庫を持ち込む、または Vanilla の設定を拡張が書き換える。`declarativeContent` は MV3 では `action.enable` / `disable` で足りる |
-| 複数バックエンドなので触れない | `cookies` / `browsingData` / `webRequest` / `proxy` / `debugger` / `pageCapture` / `tabCapture` / `desktopCapture` / `devtools.*`（5）/ `dom` | 持ち主がエンジンごとにいる（cookie jar のミラーをやらない D-077 と同じ理由）。Edge では WebView2 自身のものが動き得る |
-| 前提が無い | `gcm` / `instanceID` / `enterprise.hardwarePlatform` / `accessibilityFeatures` / `mimeHandler` / `webAuthenticationProxy` / `printerProvider` / `ttsEngine` | Google のサービス・Chrome 内部・特定の用途が前提（`identity` は未サインインとして答えて D-437 で入れた） |
-
-着手は「やる意味がある」の需要の多い順（`omnibox` …）。エンジンが素で持つもののイベントが届くかも、要る拡張が出たら測る。
+名前空間ごとの対応とメソッド単位の表は [EXTENSIONS.md](EXTENSIONS.md) にある（2026-10-03）。分類の理由と Edge の確認結果の詳細は D-476。
+メソッド単位の表は `tst_cdpshims::theTableOfWhatIsAnsweredIsTheShimsOwn` がシムの `hosted` / `SOUNDED` / `OWN` / `REFUSED` から作り、文書とずれると落ちる（シムの名前を変えたら、そのテストを `VANILLA_WRITE_COVERAGE=1` で走らせて表を書き直す）。
 
 ---
 
