@@ -1,5 +1,5 @@
 #ifndef VANILLA_VERSION
-#define VANILLA_VERSION "0.3.0"
+#define VANILLA_VERSION "0.3.1"
 // the same version for VERSIONINFO in 'vanilla.rc', which wants four numbers.
-#define VANILLA_VERSION_RC 0,3,0,0
+#define VANILLA_VERSION_RC 0,3,1,0
 #endif
