@@ -16,6 +16,8 @@
 #include "gadgets.hpp"
 #include <QMenu>
 #include "gadgetsstyle.hpp"
+#include "thumbnail.hpp"
+#include "nodetitle.hpp"
 
 #include "testsupport.hpp"
 
@@ -101,6 +103,8 @@ private slots:
     void recursivePrimaryTracksTheDisplayedPage_data();
     void recursivePrimaryTracksTheDisplayedPage();
     void initTestCase();
+    void theTableLetsGoOfEverythingAboutALeavingNode();
+    void anInactiveTableLetsGoAsWell();
 
     void zoomingOutDoesNotDivideByZero_data();
     void zoomingOutDoesNotDivideByZero();
@@ -108,6 +112,9 @@ private slots:
     void aScreenfulOfNodesHoldsTwentyFramesASecond();
     void scrollingAScreenful_data();
     void scrollingAScreenful();
+
+private:
+    static QString KeptAbout(GraphicsTableView *table, const QSet<Node*> &going);
 };
 
 static void StyleData(){
@@ -748,6 +755,102 @@ void tst_gadgetsframe::collectionMenuAndCycle(){
         QCOMPARE(static_cast<int>(table.type), action->data().toInt());
     }
     QCOMPARE(table.refreshes, 9);
+}
+
+namespace {
+    void TakeOutOfTree(Node *nd){
+        nd->GetParent()->RemoveChild(nd);
+        nd->SetParent(nullptr);
+    }
+}
+
+QString tst_gadgetsframe::KeptAbout(GraphicsTableView *table, const QSet<Node*> &going){
+        QStringList found;
+        for(Node *nd : table->m_ThumbnailCache.keys()) if(going.contains(nd)) found << QStringLiteral("thumbnail cache");
+        for(Node *nd : table->m_NodeTitleCache.keys()) if(going.contains(nd)) found << QStringLiteral("title cache");
+        for(Thumbnail *t : table->m_DisplayThumbnails) if(going.contains(t->GetNode())) found << QStringLiteral("display");
+        for(NodeTitle *t : table->m_DisplayNodeTitles) if(going.contains(t->GetNode())) found << QStringLiteral("display titles");
+        for(Node *nd : GraphicsTableView::m_NodesRegister) if(going.contains(nd)) found << QStringLiteral("register");
+        if(going.contains(table->m_CurrentNode)) found << QStringLiteral("current");
+        if(going.contains(table->m_DummyViewNode->GetParent())) found << QStringLiteral("empty place");
+        if(going.contains(table->m_CloseButton->GetNode())) found << QStringLiteral("close button");
+        if(going.contains(table->m_CloneButton->GetNode())) found << QStringLiteral("clone button");
+        if(going.contains(table->m_SoundButton->GetNode())) found << QStringLiteral("sound button");
+        if(going.contains(table->m_InPlaceNotifier->GetNode())) found << QStringLiteral("notifier");
+        return found.join(QStringLiteral(", "));
+}
+
+void tst_gadgetsframe::theTableLetsGoOfEverythingAboutALeavingNode(){
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(0, 0), QSizeF(SCREEN)));
+    GraphicsTableView *table = new GraphicsTableView(nullptr);
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+
+    ViewNode *root = MakeDirectory(6);
+    Node *folder = root->GetChildAt(0);
+    Node *current = folder->GetChildAt(2);
+    Node *hovered = folder->GetChildAt(3);
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(current);
+
+    Thumbnail *thumb = table->m_ThumbnailCache.value(hovered);
+    QVERIFY(thumb);
+    table->m_CloseButton->SetItem(thumb);
+    table->m_CloneButton->SetItem(thumb);
+    table->m_SoundButton->SetItem(thumb);
+    table->m_InPlaceNotifier->SetNode(hovered);
+    GraphicsTableView::m_NodesRegister << current << hovered;
+
+    const QSet<Node*> going = QSet<Node*>() << current << hovered;
+    TakeOutOfTree(current);
+    TakeOutOfTree(hovered);
+    const int stays = folder->ChildrenLength();
+
+    table->LetGoOf(going, folder);
+    QCOMPARE(KeptAbout(table, going), QString());
+    QVERIFY(table->m_CurrentNode == table->m_DummyViewNode);
+    QVERIFY(table->m_DummyViewNode->GetParent() == folder);
+    QCOMPARE(table->m_DisplayThumbnails.length(), stays);
+
+    delete current;
+    delete hovered;
+    QImage image(SCREEN, QImage::Format_ARGB32_Premultiplied);
+    QPainter painter(&image);
+    scene.render(&painter);
+    painter.end();
+
+    table->Deactivate();
+    GraphicsTableView::m_NodesRegister.clear();
+    delete root;
+}
+
+void tst_gadgetsframe::anInactiveTableLetsGoAsWell(){
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(0, 0), QSizeF(SCREEN)));
+    GraphicsTableView *table = new GraphicsTableView(nullptr);
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+
+    ViewNode *root = MakeDirectory(4);
+    Node *folder = root->GetChildAt(0);
+    Node *leaving = folder->GetChildAt(1);
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(folder->GetChildAt(0));
+    table->Deactivate();
+    QVERIFY(table->m_ThumbnailCache.contains(leaving));
+
+    const QSet<Node*> going = QSet<Node*>() << leaving;
+    TakeOutOfTree(leaving);
+    table->LetGoOf(going, folder);
+    QCOMPARE(KeptAbout(table, going), QString());
+    delete leaving;
+
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(folder->GetChildAt(0));
+    QCOMPARE(table->m_DisplayThumbnails.length(), folder->ChildrenLength());
+    table->Deactivate();
+    delete root;
 }
 
 void tst_gadgetsframe::zoomingOutDoesNotDivideByZero(){

@@ -4,8 +4,10 @@
 #include "devicescale.hpp"
 
 #include "application.hpp"
+#include "downloadhistory.hpp"
 #include "extensioncontroller.hpp"
 #include "extensionbar.hpp"
+#include "downloadbar.hpp"
 #include <VERSION>
 
 #include <algorithm>
@@ -38,6 +40,7 @@
 #include <QStyleOptionMenuItem>
 
 #ifdef WEBENGINEVIEW
+#  include <QtWebEngineCore/qtwebenginecoreglobal.h>
 #  if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
 #    include <QWebEngineGlobalSettings>
 #  endif
@@ -65,6 +68,7 @@
 #include "saver.hpp"
 #include "transmitter.hpp"
 #include "translationorder.hpp"
+#include "qtlog.hpp"
 #include "receiver.hpp"
 #include "localview.hpp"
 #include "dialog.hpp"
@@ -91,6 +95,7 @@ namespace QProcess {
 #endif
 
 Application *Application::m_Instance = nullptr;
+bool Application::m_RestoringWindows = false;
 int Application::m_DelayFileCount = 0;
 
 static SettingsIO::Hooks SettingsHooks(){
@@ -99,7 +104,7 @@ static SettingsIO::Hooks SettingsHooks(){
     hooks.BackUpPrepositionOf = [](){ return Application::BackUpPreposition();};
     hooks.RestoredFromBackUp = [](QString backup){
         ModelessDialog::Information
-            (Application::tr("Restored from a back up file")+ QStringLiteral("\n[") + backup + QStringLiteral("]."),
+            (Application::tr("Restored from a backup file")+ QStringLiteral("\n[") + backup + QStringLiteral("]."),
              Application::tr("Because of a failure to read the latest file, it was restored from a backup file."));
     };
     return hooks;
@@ -211,6 +216,7 @@ Application::~Application(){
 }
 
 bool Application::notify(QObject *receiver, QEvent *ev){
+    if(SwallowsDuringRestore(receiver, ev)) return true;
     try{
         return QApplication::notify(receiver, ev);
     } catch(std::exception &e){
@@ -249,6 +255,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     setApplicationName(QStringLiteral("vanilla"));
     setApplicationVersion(VANILLA_VERSION);
     setQuitOnLastWindowClosed(false);
+    QtLog::Install(StateDirectory() + QStringLiteral("qt-warnings.log"));
 
     const QString path = applicationDirPath() + QStringLiteral("/translations");
     const QStringList locales = TranslationOrder::Locales(QLocale::system().uiLanguages());
@@ -283,34 +290,26 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     ApplyGlobalWebEngineSettings();
 
     SeedSerials();
-    m_NetworkController = new NetworkController();
-    m_AutoSaver = new AutoSaver();
     TreeBar::Initialize();
     ToolBar::Initialize();
     TreeBank::Initialize();
-    TreeBank::LoadTree();
-    if(Windows().IsEmpty()){
-        MainWindow * win = NewWindow();
-        win->GetTreeBank()->OpenOnSuitableNode(QUrl(QStringLiteral("https://google.com")), true);
-    } else {
-        Settings &s = GlobalSettings();
-        QStringList keys = s.allKeys(QStringLiteral("mainwindow"));
-
-        QList<int> ids = Windows().Ids();
-        foreach(int id, ids){
-            keys.removeOne(QStringLiteral("mainwindow/tableview%1").arg(id));
-            keys.removeOne(QStringLiteral("mainwindow/geometry%1").arg(id));
-            keys.removeOne(QStringLiteral("mainwindow/notifier%1").arg(id));
-            keys.removeOne(QStringLiteral("mainwindow/receiver%1").arg(id));
-            keys.removeOne(QStringLiteral("mainwindow/menubar%1").arg(id));
-            keys.removeOne(QStringLiteral("mainwindow/toolbar%1").arg(id));
-            keys.removeOne(QStringLiteral("mainwindow/treebar%1").arg(id));
-            keys.removeOne(QStringLiteral("mainwindow/status%1").arg(id));
-        }
-        foreach(QString key, keys){
-            s.remove(key);
-        }
+    m_AutoSaver = new AutoSaver();
+    SetRestoringWindows(true);
+    foreach(int id, SavedWindowIds(GlobalSettings())){
+        MainWindow *win = NewWindow(id, QPoint(), false);
+        win->ShowWithFirstFrame();
     }
+    m_NetworkController = new NetworkController();
+    const TreeBank::Restoration restored = TreeBank::LoadTree();
+    DropIdleShells(restored.windowIds, restored.lastWindow);
+    SetRestoringWindows(false);
+    if(restored.windowIds.isEmpty()){
+        MainWindow *win = Windows().Current();
+        if(!win) win = NewWindow(0, QPoint(), TreeBank::PurgeView());
+        win->GetTreeBank()->OpenOnSuitableNode(QUrl(QStringLiteral("https://google.com")), true);
+        win->ShowWithFirstFrame();
+    }
+    SweepWindowSettings(GlobalSettings(), Windows().Ids());
 
     QTimer::singleShot(0, [=](){
 
@@ -477,8 +476,38 @@ void Application::Export(TreeBank *tb){
 
 void Application::AboutVanilla(QWidget *parent){
     Q_UNUSED(parent)
-    QString text = tr("Vanilla is a simple web browser.");
-    QMessageBox::about(CurrentWidget(), QStringLiteral("Vanilla"), text);
+    QStringList lines;
+    lines << tr("Version %1").arg(QStringLiteral(VANILLA_VERSION));
+    lines << tr("Qt %1").arg(QString::fromLatin1(qVersion()));
+#ifdef WEBENGINEVIEW
+    lines << tr("Qt WebEngine %1 (Chromium %2)")
+        .arg(QString::fromLatin1(qWebEngineVersion()),
+             QString::fromLatin1(qWebEngineChromiumVersion()));
+#endif
+#ifdef EDGEWEBVIEW
+    const QString runtime = EdgeWebView::RuntimeVersion();
+    lines << (runtime.isEmpty() ? tr("WebView2 runtime: not installed")
+                                : tr("WebView2 runtime %1").arg(runtime));
+#endif
+    lines << tr("Data folder: %1").arg(QDir::toNativeSeparators(StateDirectory()));
+
+    QMessageBox box(CurrentWidget());
+    box.setWindowTitle(QStringLiteral("vanilla"));
+    box.setIconPixmap(windowIcon().pixmap(64, 64));
+    box.setText(tr("vanilla is a simple web browser."));
+    box.setInformativeText(lines.join(QLatin1Char('\n')));
+    box.setTextInteractionFlags(Qt::TextSelectableByMouse);
+    box.setStandardButtons(QMessageBox::Ok);
+
+    const QFontMetrics metrics(box.font());
+    int widest = 0;
+    foreach(const QString &line, lines)
+        widest = qMax(widest, metrics.horizontalAdvance(line));
+    const QScreen *screen = CurrentWidget() ? CurrentWidget()->screen() : primaryScreen();
+    const int limit = screen ? screen->availableGeometry().width() * 3 / 4 : 1200;
+    box.setStyleSheet(QStringLiteral("QLabel{min-width:%1px;}")
+                      .arg(qMin(widest + 48, limit)));
+    box.exec();
 }
 
 void Application::AboutQt(QWidget *parent){
@@ -522,6 +551,8 @@ void Application::WaitForPriorSave(){
 }
 
 void Application::TakeDown(){
+    DownloadHistory::Instance()->SetClosing();
+
     if(ModalDialog::AnyRunning()){
         ModalDialog::AbortAll();
         QueueTakeDown();
@@ -920,6 +951,16 @@ QIcon Application::GetIcon(QString host){
     return QIcon();
 }
 
+QIcon Application::GetIcon(const QUrl &url){
+    if(url.scheme() == QStringLiteral("vanilla") && url.host() == QStringLiteral("settings")){
+        QIcon icon;
+        icon.addPixmap(Theme::Pixmap(QStringLiteral(":/resources/settings/settings.png"), Theme::BarIcon));
+        icon.addPixmap(Theme::Pixmap(QStringLiteral(":/resources/settings/settings@2x.png"), Theme::BarIcon));
+        return icon;
+    }
+    return GetIcon(url.host());
+}
+
 void Application::Reconfigure(){
     LoadGlobalSettings();
     const bool schemeChanged = Theme::ApplyScheme(m_ColorScheme);
@@ -986,8 +1027,11 @@ void Application::ReassertColorSchemeForWeb(){
 void Application::UpdateAllWidgets(){
     foreach(QWidget *widget, allWidgets()){
         if(LineEdit *edit = qobject_cast<LineEdit*>(widget)) edit->ApplyTheme();
-        if(DialogLabel *label = qobject_cast<DialogLabel*>(widget)) label->ApplyTheme();
+        if(ModalDialog *dialog = qobject_cast<ModalDialog*>(widget)) dialog->ApplyTheme();
+        if(ModelessDialog *dialog = qobject_cast<ModelessDialog*>(widget)) dialog->ApplyTheme();
         if(ExtensionBar *bar = qobject_cast<ExtensionBar*>(widget)) bar->ApplyTheme();
+        if(DownloadBar *bar = qobject_cast<DownloadBar*>(widget)) bar->ApplyTheme();
+        if(DownloadPanel *panel = qobject_cast<DownloadPanel*>(widget)) panel->ApplyTheme();
         widget->update();
     }
     foreach(MainWindow *win, Windows().All().values()){
@@ -1209,8 +1253,8 @@ void Application::AskSslErrorPolicyIfNeed(){
         bool ok;
 
         QString policy = ModalDialog::GetItem
-            (tr("Ssl error policy"),
-             tr("Select ssl error policy."),
+            (tr("SSL error policy"),
+             tr("Select an SSL error policy."),
              policies, false, &ok);
 
         if(!ok) return;
@@ -1263,6 +1307,10 @@ void Application::AskDownloadPolicyIfNeed(){
     }
 }
 
+bool Application::IsQuitting(){
+    return m_Quitting || m_ShutdownFlow.CurrentStage() != ShutdownFlow::Stage::Start;
+}
+
 QString Application::LocalServerName(){
     return VANILLA_LOCAL_SERVER_NAME_PREFIX +
         QString::fromLatin1(QCryptographicHash::hash(applicationDirPath().toUtf8(), QCryptographicHash::Md5).toHex());
@@ -1279,14 +1327,24 @@ int Application::EventKey(){
     return key;
 }
 
-QString Application::EventToken(){
-    static QString token;
-    if(token.isEmpty()){
+namespace {
+    QString RandomToken(){
+        QString token;
         quint32 words[4];
         QRandomGenerator::system()->fillRange(words);
         for(quint32 word : words)
             token += QStringLiteral("%1").arg(word, 8, 16, QLatin1Char('0'));
+        return token;
     }
+}
+
+QString Application::EventToken(){
+    static const QString token = RandomToken();
+    return token;
+}
+
+QString Application::EdgeEventToken(){
+    static const QString token = RandomToken();
     return token;
 }
 
@@ -1317,23 +1375,109 @@ MainWindow *Application::UnshadeWindow(MainWindow *win){
     return win;
 }
 
-MainWindow *Application::NewWindow(int id, QPoint pos){
+MainWindow *Application::NewWindow(int id, QPoint pos, bool showNow){
     if(id == 0) id = Windows().UnusedId();
 
     TreeBank::LiftMaxViewCountIfNeed(Windows().Count());
 
-    MainWindow *win = new MainWindow(id, pos);
+    MainWindow *win = new MainWindow(id, pos, showNow);
     Windows().Insert(id, win);
 
 #if defined(Q_OS_MAC)
     if(Windows().Current() && pos.isNull() && ProductVersion().startsWith(QStringLiteral("10.14"))){
-        QTimer::singleShot(16, [win](){ Windows().SetCurrent(win); TreeBank::SomethingChanged();});
+        QTimer::singleShot(16, win, [win](){
+            if(IsRestoringWindows()) return;
+            Windows().SetCurrent(win);
+            TreeBank::SomethingChanged();
+        });
         return win;
     }
 #endif
     Windows().SetCurrent(win);
     TreeBank::SomethingChanged();
     return win;
+}
+
+bool Application::SwallowsDuringRestore(QObject *receiver, QEvent *ev){
+    if(!m_RestoringWindows) return false;
+    switch(ev->type()){
+    case QEvent::MouseButtonPress:
+    case QEvent::MouseButtonRelease:
+    case QEvent::MouseButtonDblClick:
+    case QEvent::Wheel:
+    case QEvent::KeyPress:
+    case QEvent::KeyRelease:
+    case QEvent::ShortcutOverride:
+    case QEvent::Shortcut:
+    case QEvent::ContextMenu:
+    case QEvent::TabletPress:
+    case QEvent::TabletRelease:
+    case QEvent::TouchBegin:
+    case QEvent::TouchUpdate:
+    case QEvent::TouchEnd:
+    case QEvent::NativeGesture:
+    case QEvent::DragEnter:
+    case QEvent::DragMove:
+    case QEvent::DragLeave:
+    case QEvent::Drop:
+        break;
+    default:
+        return false;
+    }
+    QWidget *widget = qobject_cast<QWidget*>(receiver);
+    if(!widget) return false;
+    QWidget *window = widget->window();
+    return qobject_cast<MainWindow*>(window) ||
+           qobject_cast<TitleBar*>(window) ||
+           qobject_cast<MainWindowEdgeWidget*>(window);
+}
+
+void Application::SweepWindowSettings(Settings &s, const QList<int> &ids){
+    QStringList keys = s.allKeys(QStringLiteral("mainwindow"));
+    foreach(int id, ids){
+        keys.removeOne(QStringLiteral("mainwindow/tableview%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/geometry%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/notifier%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/receiver%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/menubar%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/toolbar%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/treebar%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/status%1").arg(id));
+    }
+    foreach(QString key, keys){
+        s.remove(key);
+    }
+}
+
+QList<int> Application::SavedWindowIds(const Settings &s){
+    static const QRegularExpression key
+        (QStringLiteral("^mainwindow/(?:tableview|geometry|notifier|receiver|menubar|toolbar|treebar|status)(\\d+)$"));
+    QSet<int> ids;
+    for(auto it = s.constBegin(); it != s.constEnd(); ++it){
+        const QRegularExpressionMatch m = key.match(it.key());
+        if(!m.hasMatch()) continue;
+        const int id = m.captured(1).toInt();
+        if(id > 0) ids << id;
+    }
+    QList<int> list = ids.values();
+    std::sort(list.begin(), list.end());
+    return list;
+}
+
+void Application::DropIdleShells(const QSet<int> &restored, MainWindow *lastRestored){
+    if(lastRestored) Windows().SetCurrent(lastRestored);
+    MainWindow *keep = restored.isEmpty() ? Windows().Current() : nullptr;
+    foreach(MainWindow *win, Windows().All().values()){
+        if(win == keep) continue;
+        if(restored.contains(Windows().IdOf(win))) continue;
+        if(win->GetTreeBank()->GetCurrentViewNode()) continue;
+        RemoveWindow(win);
+        foreach(ModelessDialog *dialog, win->DialogFrame()->Dialogs()){
+            ModelessDialogFrame::DeregisterDialog(dialog);
+            ModelessDialogFrame::RegisterDialog(dialog);
+        }
+        delete win;
+    }
 }
 
 MainWindow *Application::CloseWindow(MainWindow *win){
@@ -1437,8 +1581,27 @@ QString Application::UserAgentFor(const QString &name){
     return m_UserAgents.value(name);
 }
 
+bool Application::MayOpenWithDefaultBrowser(const QUrl &url){
+    if(!url.isValid() || url.isEmpty()) return false;
+    const QString scheme = url.scheme().toLower();
+    if(scheme == QStringLiteral("http") || scheme == QStringLiteral("https") ||
+       scheme == QStringLiteral("ftp")) return true;
+    if(scheme != QStringLiteral("file") || !url.host().isEmpty()) return false;
+    const QString path = url.toLocalFile();
+    if(path.isEmpty() || path.startsWith(QStringLiteral("//")) ||
+       path.contains(QLatin1Char('\\'))) return false;
+    foreach(const QChar c, path)
+        if(c.unicode() < 0x20 || c.unicode() == 0x7f) return false;
+#if defined(Q_OS_WIN)
+    if(path.indexOf(QLatin1Char(':'), 2) >= 0) return false;
+    foreach(const QString &segment, path.split(QLatin1Char('/')))
+        if(segment.endsWith(QLatin1Char('.')) || segment.endsWith(QLatin1Char(' '))) return false;
+#endif
+    return !DownloadHistory::IsRunnable(path);
+}
+
 bool Application::OpenUrlWithDefaultBrowser(QUrl url){
-    if(url.isEmpty()) return false;
+    if(!MayOpenWithDefaultBrowser(url)) return false;
     return QDesktopServices::openUrl(url);
 }
 

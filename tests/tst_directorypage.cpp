@@ -6,6 +6,8 @@
 
 #include "directorypage.hpp"
 #include "view.hpp"
+#include "treebank.hpp"
+#include "lightnode.hpp"
 #include <QJsonArray>
 #include <QScopeGuard>
 #ifdef WEBENGINEVIEW
@@ -77,6 +79,9 @@ private slots:
 
     void takesOutOnlyWhatWouldStopTheChange();
     void takesOutOnlyWhatWouldStopTheChange_data();
+
+    void theSectionShowsASubjectAndTheWayDown();
+    void whatWasLeftToShowIsTakenOnce();
 };
 
 class DirectoryDefaultsHarness : public View {
@@ -571,6 +576,60 @@ void tst_directorypage::takesOutOnlyWhatWouldStopTheChange(){
     QFETCH(QString, after);
 
     QCOMPARE(TitleFollowing(title, changed), after);
+}
+
+void tst_directorypage::theSectionShowsASubjectAndTheWayDown(){
+    TreeBank::Initialize();
+    ViewNode *a = TreeBank::GetViewRoot()->MakeChild();
+    a->SetTitle(QStringLiteral("a"));
+    ViewNode *b = a->MakeChild();
+    b->SetTitle(QStringLiteral("b;!Images"));
+    ViewNode *tab = b->MakeChild();
+    tab->SetHoldView(true);
+
+    const QJsonObject aboutA = Describe(a);
+    const QJsonArray chainA = aboutA.value(QStringLiteral("chain")).toArray();
+    QCOMPARE(chainA.last().toObject().value(QStringLiteral("name")).toString(), QStringLiteral("a"));
+    QCOMPARE(aboutA.value(QStringLiteral("current")).toString(),
+             chainA.last().toObject().value(QStringLiteral("id")).toString());
+    const QJsonArray children = aboutA.value(QStringLiteral("children")).toArray();
+    QCOMPARE(children.size(), 1);
+    QCOMPARE(children.first().toObject().value(QStringLiteral("name")).toString(), QStringLiteral("b"));
+
+    const QJsonObject aboutTab = Describe(tab);
+    QCOMPARE(aboutTab.value(QStringLiteral("chain")).toArray().last().toObject()
+             .value(QStringLiteral("name")).toString(), QStringLiteral("b"));
+    QVERIFY(aboutTab.value(QStringLiteral("children")).toArray().isEmpty());
+
+    QStringList outline;
+    for(const QJsonValue &value : aboutTab.value(QStringLiteral("tree")).toArray()){
+        const QJsonObject entry = value.toObject();
+        outline << QString::number(entry.value(QStringLiteral("depth")).toInt()) +
+                   entry.value(QStringLiteral("name")).toString();
+    }
+    QVERIFY(outline.size() >= 3);
+    QVERIFY(outline.contains(QStringLiteral("1a")));
+    QVERIFY(outline.contains(QStringLiteral("2b")));
+    QCOMPARE(outline.indexOf(QStringLiteral("2b")), outline.indexOf(QStringLiteral("1a")) + 1);
+
+    const QString idOfB = children.first().toObject().value(QStringLiteral("id")).toString();
+    QCOMPARE(FindDirectory(idOfB), b);
+    QVERIFY(!FindDirectory(Describe(TreeBank::GetTrashRoot()).value(QStringLiteral("current")).toString()));
+    QVERIFY(!FindDirectory(QStringLiteral("ffffffff")));
+}
+
+void tst_directorypage::whatWasLeftToShowIsTakenOnce(){
+    TreeBank::Initialize();
+    ViewNode *a = TreeBank::GetViewRoot()->MakeChild();
+    a->SetTitle(QStringLiteral("a"));
+
+    SetPendingSubject(a);
+    QCOMPARE(TakePendingSubject(), a);
+    QVERIFY(!TakePendingSubject());
+
+    SetPendingSubject(a);
+    ClearPendingSubject();
+    QVERIFY(!TakePendingSubject());
 }
 
 #ifdef WEBENGINEVIEW

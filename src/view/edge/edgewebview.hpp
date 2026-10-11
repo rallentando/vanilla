@@ -12,6 +12,7 @@ class QPainter;
 struct ICoreWebView2Controller;
 struct ICoreWebView2ContextMenuRequestedEventArgs;
 struct ICoreWebView2Deferral;
+struct ICoreWebView2DownloadOperation;
 template <class Controller> class EdgeUnadoptedControllerOf;
 
 #include "view.hpp"
@@ -39,7 +40,7 @@ public:
     Page *page() Q_DECL_OVERRIDE;
     ExtensionController *Extensions() const override;
     QString ExtensionStatus() const override;
-    QWidget *CreateExtensionView(const QUrl &url, ExtensionPage page, QWidget *parent,
+    QWidget *CreateExtensionView(const QUrl &url, ExtensionPage page, QWidget *parent,
                                  const std::function<void()> &closed = std::function<void()>()) override;
     void SetupExtensions();
     QUrl ReportedSource() const;
@@ -135,10 +136,12 @@ public:
     static void ClearCookies();
     static void ClearHttpCache();
     static void ClearVisitedLinks();
+    static void ClearPasswords();
 
     static void ReleaseDownloadCarriers();
 
     static bool RuntimeAvailable();
+    static QString RuntimeVersion();
 
 private:
     void AskAgainAboutAbort(int generation, qint64 after);
@@ -293,6 +296,8 @@ private:
                               const QUrl &origin,
                               std::function<void(bool)> answer);
     void HandleFullScreen(bool on);
+    void WireDownload(ICoreWebView2DownloadOperation *operation,
+                      const QString &name, const QString &path);
 
     void RemoveCompositionHandlers();
     void RegisterDropTarget();

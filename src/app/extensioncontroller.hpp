@@ -45,9 +45,15 @@ struct ExtensionManifest {
 
     static QString NormalizePath(const QString &path);
     static QString PathKey(const QString &path);
+    static QString KeyOfNormalized(const QString &normalized);
     static ExtensionManifest Read(const QString &path);
+    static ExtensionManifest ReadWithBytes(const QString &path, QByteArray *bytesRead);
+    static ExtensionManifest ReadCached(const QString &path);
+    static void ForgetCached();
+    static void ForgetCached(const QString &path);
     static QString CurrentFolder(const QString &path);
-    static QString Resource(const QString &root, const QString &relative);
+    static QString Resource(const QString &root, const QString &relative,
+                            QSet<QString> *verified = nullptr);
 };
 
 struct ExtensionRuleFiles {
@@ -55,6 +61,8 @@ struct ExtensionRuleFiles {
     QStringList files;
     QByteArray session;
     QByteArray dynamic;
+    QStringList hostPermissions;
+    bool hostAccessAlways = true;
 };
 
 struct ExtensionItem {

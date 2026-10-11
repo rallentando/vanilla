@@ -232,7 +232,7 @@ private slots:
                 elements++;
             }
         }
-        QCOMPARE(signals_,  168);
+        QCOMPARE(signals_,  172);
         QCOMPARE(elements,   71);
     }
 

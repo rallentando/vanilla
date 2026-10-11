@@ -147,10 +147,6 @@ namespace {
 
         QColor(255, 255, 255, 255),
 
-        QColor(240, 240, 240, 150),
-        QColor(150, 150, 150, 255),
-        QColor(  0,   0,   0, 255),
-
         QColor(250, 250, 250, 255),
         QColor(150, 150, 150, 255),
         QColor( 28,  28,  28, 255),
@@ -302,10 +298,6 @@ namespace {
 
         QColor( 32,  32,  32, 255),
 
-        QColor( 32,  32,  32, 180),
-        QColor( 90,  90,  90, 255),
-        QColor(255, 255, 255, 255),
-
         QColor( 44,  44,  44, 255),
         QColor( 90,  90,  90, 255),
         QColor(230, 230, 230, 255),
@@ -424,6 +416,17 @@ QColor Color(Scheme scheme, Role role){
 
 QString StyleSheetColor(Role role){
     return Color(role).name(QColor::HexRgb);
+}
+
+QPalette PanelPalette(const QPalette &base){
+    QPalette palette = base;
+    palette.setColor(QPalette::Window,     Color(PreviewBackground));
+    palette.setColor(QPalette::WindowText, Color(PreviewText));
+    palette.setColor(QPalette::Base,       Color(PreviewBackground));
+    palette.setColor(QPalette::Text,       Color(PreviewText));
+    palette.setColor(QPalette::Button,     Color(PreviewBackground));
+    palette.setColor(QPalette::ButtonText, Color(PreviewText));
+    return palette;
 }
 
 QByteArray PageFontVariables(){

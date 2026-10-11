@@ -451,10 +451,6 @@ void Page::Download(const QNetworkRequest &req,
         item = NetworkController::Download(nam, navigation, NetworkController::SelectedDirectory);
         if(item) item->SetPathAndReady(file);
     }
-
-    if(item && GetTB() && GetTB()->GetNotifier()){
-        GetTB()->GetNotifier()->RegisterDownload(item);
-    }
 }
 
 void Page::Download(const QUrl &target,
@@ -641,6 +637,24 @@ void Page::ClearVisitedLinks(){
 #ifdef WEBENGINEVIEW
     NetworkController::ClearVisitedLinks();
 #endif
+}
+
+void Page::OpenPasswords(){
+    if(TreeBank *tb = GetTB()) tb->OpenPasswords();
+}
+
+void Page::OpenDownloads(){
+    if(TreeBank *tb = GetTB()) tb->OpenDownloads();
+}
+
+void Page::ShowDownloads(){
+    if(TreeBank *tb = GetTB()) tb->ShowDownloads();
+}
+
+void Page::ClearPasswords(){
+    if(!ModalDialog::Question(tr("Clear saved passwords."),
+                              tr("Every saved password is deleted."))) return;
+    NetworkController::ClearPasswords();
 }
 
 void Page::ToggleNotifier(){
@@ -1598,6 +1612,24 @@ QAction *Page::Action(CustomAction a, QVariant data){
     default: break;
     }
 
+    if(create){
+        QKeySequence::StandardKey key = QKeySequence::UnknownKey;
+        switch(a){
+        case _Undo:      key = QKeySequence::Undo;      break;
+        case _Redo:      key = QKeySequence::Redo;      break;
+        case _Cut:       key = QKeySequence::Cut;       break;
+        case _Copy:      key = QKeySequence::Copy;      break;
+        case _Paste:     key = QKeySequence::Paste;     break;
+        case _SelectAll: key = QKeySequence::SelectAll; break;
+        default: break;
+        }
+        if(key != QKeySequence::UnknownKey){
+            webaction->setShortcut(QKeySequence(key));
+            webaction->setShortcutContext(Qt::WidgetShortcut);
+            webaction->setShortcutVisibleInContextMenu(true);
+        }
+    }
+
     if(!create){
         switch(a){
         case _ToggleNotifier: webaction->setChecked(GetTB()->GetNotifier()); break;
@@ -1650,6 +1682,10 @@ QAction *Page::Action(CustomAction a, QVariant data){
         DEFINE_ACTION(ClearCookies,      tr("ClearCookies"));
         DEFINE_ACTION(ClearHttpCache,    tr("ClearHttpCache"));
         DEFINE_ACTION(ClearVisitedLinks, tr("ClearVisitedLinks"));
+        DEFINE_ACTION(ClearPasswords,    tr("ClearPasswords"));
+        DEFINE_ACTION(OpenPasswords,     tr("OpenPasswords"));
+        DEFINE_ACTION(OpenDownloads,     tr("OpenDownloads"));
+        DEFINE_ACTION(ShowDownloads,     tr("ShowDownloads"));
 
         DEFINE_ACTION(ToggleNotifier,        tr("ToggleNotifier"));
         DEFINE_ACTION(ToggleReceiver,        tr("ToggleReceiver"));
@@ -1892,9 +1928,9 @@ QAction *Page::Action(CustomAction a, QVariant data){
         webaction->setToolTip(webaction->toolTip() +
                               (View::ActivateNewViewDefault()
                                ? tr("\n Shift+Click: InNewWindow"
-                                    "\n Ctrl +Click: InBackground")
+                                    "\n Ctrl+Click: InBackground")
                                : tr("\n Shift+Click: InNewWindow"
-                                    "\n Ctrl +Click: InForeground")));
+                                    "\n Ctrl+Click: InForeground")));
         break;
     case _OpenInNewViewNodeForeground:
     case _OpenInNewDirectoryForeground:

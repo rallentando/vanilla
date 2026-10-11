@@ -11,7 +11,8 @@
     F(Home) F(End) F(PageUp) F(PageDown) \
     F(Import) F(Export) F(AboutVanilla) F(AboutQt) \
     F(OpenDirectorySettings) F(OpenSettings) F(Quit) F(ToggleNotifier) \
-    F(ClearCookies) F(ClearHttpCache) F(ClearVisitedLinks) \
+    F(ClearCookies) F(ClearHttpCache) F(ClearVisitedLinks) F(ClearPasswords) \
+    F(OpenPasswords) F(OpenDownloads) F(ShowDownloads) \
     F(PasteAndMatchStyle) F(ToggleBold) F(ToggleItalic) F(ToggleUnderline) \
     F(ToggleStrikethrough) F(AlignLeft) F(AlignCenter) F(AlignRight) \
     F(AlignJustified) F(Indent) F(Outdent) F(InsertOrderedList) \

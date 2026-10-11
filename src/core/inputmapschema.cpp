@@ -470,9 +470,13 @@ QJsonObject Describe(const SettingsIO::Map &settings){
     strings[QStringLiteral("unknown")] =
         QCoreApplication::translate("InputMapSchema", "Not an input or action this version knows. Kept as it is.");
     strings[QStringLiteral("singleKeyOff")] =
-        QCoreApplication::translate("InputMapSchema", "Not used while single key shortcuts are off (Pages).");
+        QCoreApplication::translate("InputMapSchema", "Not used while 'Shortcuts on a single key' is off.");
     strings[QStringLiteral("diagonalOff")] =
-        QCoreApplication::translate("InputMapSchema", "Not used while gestures are four way (Pages).");
+        QCoreApplication::translate("InputMapSchema", "Not used while gestures are four way.");
+    strings[QStringLiteral("dimmed")] =
+        QCoreApplication::translate("InputMapSchema", "Dimmed rows do nothing at the moment: %1");
+    strings[QStringLiteral("openSetting")] =
+        QCoreApplication::translate("InputMapSchema", "Open that setting");
     strings[QStringLiteral("LeftButton")] =
         QCoreApplication::translate("InputMapSchema", "Left button");
     strings[QStringLiteral("RightButton")] =

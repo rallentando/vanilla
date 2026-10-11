@@ -36,7 +36,7 @@ const double LINEAR_SLACK = 2.0;
 
 const int SHALLOW = 8;
 
-const double READ_OVER_WRITE = 6.0;
+const double READ_OVER_WRITE = 3.0;
 
 const QDateTime &Created(){
     static const QDateTime date =

@@ -18,8 +18,13 @@
 #include <QNetworkRequest>
 #include <QQmlEngine>
 #include <QQuickWidget>
+#include <QHash>
+#include <QPointer>
+
+#include <functional>
 
 class QWebEngineHistory;
+class WebEnginePasswords;
 
 class QuickWebEngineView : public QQuickWidget, public View {
     Q_OBJECT
@@ -301,6 +306,7 @@ public slots:
     void HandleRenderProcessTermination(int, int);
     void HandleFullScreen(bool);
     void HandleContextMenu(QObject*, bool);
+    void HandleJavaScriptDialog(QObject*);
     void HandleDownload(QObject*);
     void HandleContentsSizeChange(const QSizeF &size);
     void HandleScrollPositionChange(const QPointF &pos);
@@ -414,6 +420,9 @@ public slots:
         return source;
     }
 
+    QString passwordScript();
+    void applicationWorldResult(int id, const QVariant &result);
+
     ExtensionController *Extensions() const override;
     bool DeferExtensionNavigation(const QUrl &url);
     QString ExtensionStatus() const override;
@@ -442,6 +451,7 @@ signals:
     void renderProcessTerminated(int, int);
     void fullScreenRequested(bool);
     void contextMenuRequested(QObject*, bool);
+    void javaScriptDialogRequested(QObject*);
     void downloadRequested(QObject*);
     void contentsSizeChanged(const QSizeF &size);
     void scrollPositionChanged(const QPointF &pos);
@@ -488,6 +498,13 @@ private:
     QMap<Page::CustomAction, QAction*> m_ActionTable;
 
     int m_RequestId;
+
+#ifdef VANILLA_QUICK_PASSWORDS
+    QPointer<WebEnginePasswords> m_Passwords;
+    int m_ApplicationWorldSerial;
+    QHash<int, std::function<void(const QVariant&)>> m_ApplicationWorldWaiting;
+    void InstallPasswords();
+#endif
 
     inline void SetPreference(QWebEngineSettings::WebAttribute item, const char *text){
         QMetaObject::invokeMethod

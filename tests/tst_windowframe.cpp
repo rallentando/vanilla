@@ -257,6 +257,21 @@ private slots:
         QCoreApplication::processEvents();
         QCOMPARE(window.contentsMargins(), QMargins());
     }
+    void aWindowMadeHiddenWaitsForItsCallerToShowIt(){
+        Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
+        std::unique_ptr<MainWindow> waiting(Application::NewWindow(905, QPoint(), false));
+        std::unique_ptr<MainWindow> shown(Application::NewWindow(906));
+        const auto unregister = qScopeGuard([&]{
+            Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
+            Application::RemoveWindow(905);
+            Application::RemoveWindow(906);
+        });
+        QVERIFY(!waiting->isVisible());
+        QVERIFY(waiting->internalWinId() != 0);
+        QVERIFY(shown->isVisible());
+        waiting->show();
+        QVERIFY(waiting->isVisible());
+    }
     void settingsCollectionReachesEveryWindow(){
         const QString key = QStringLiteral("gadgets/thumblist/@NodeCollectionType");
         Application::GlobalSettings().setValue(key, "Foldable");

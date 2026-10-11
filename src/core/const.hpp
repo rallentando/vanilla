@@ -34,6 +34,8 @@ static const int MAX_DRAGGING_PIXMAP_HEIGHT = 600;
 
 static const int OPEN_LINK_WARNING_THRESHOLD = 10;
 
+static const int AUTO_LOAD_WALK_BUDGET = 1000;
+
 static const QSize DEFAULT_WINDOW_SIZE = QSize(1280, 720);
 
 static const QString EMPTY_FRAME_HTML = QStringLiteral("<html><head></head><body></body></html>");
@@ -45,7 +47,7 @@ static const QString DISABLE_FILENAME = "???";
 
 static const QString NODE_DATETIME_FORMAT = QStringLiteral("yyyyMMddhhmmss");
 
-inline QDateTime NodeDateTimeFromString(const QString &str){
+inline QDateTime NodeDateTimeFromString(const QString &str, const QTimeZone &zone){
     if(str.length() != 14) return QDateTime();
     for(int i = 0; i < 14; i++){
         if(str.at(i) < QLatin1Char('0') || str.at(i) > QLatin1Char('9')) return QDateTime();
@@ -54,11 +56,16 @@ inline QDateTime NodeDateTimeFromString(const QString &str){
     const QDate date(view.mid(0, 4).toInt(), view.mid(4, 2).toInt(), view.mid(6, 2).toInt());
     const QTime time(view.mid(8, 2).toInt(), view.mid(10, 2).toInt(), view.mid(12, 2).toInt());
     if(!date.isValid() || !time.isValid()) return QDateTime();
-#if defined(Q_OS_LINUX)
-    const QTimeZone local = QTimeZone::systemTimeZone();
-    if(local.isValid()) return QDateTime(date, time, local);
-#endif
+    if(zone.isValid()) return QDateTime(date, time, zone);
     return QDateTime(date, time);
+}
+
+inline QDateTime NodeDateTimeFromString(const QString &str){
+#if defined(Q_OS_LINUX)
+    return NodeDateTimeFromString(str, QTimeZone::systemTimeZone());
+#else
+    return NodeDateTimeFromString(str, QTimeZone());
+#endif
 }
 
 static const QString VANILLA_SCHEME = QStringLiteral("vanilla");
@@ -82,7 +89,11 @@ static const int FIELD_CORNER_RADIUS = 4;
 static const int FIELD_PADDING = 3;
 static const int FIELD_PADDING_X = 8;
 static const int PAGE_FIELD_CORNER_RADIUS = 6;
-static const int DIALOG_CORNER_RADIUS = 6;
+static const int DIALOG_CORNER_RADIUS = 8;
+static const int DIALOG_PADDING = 12;
+static const int DIALOG_TOP_MARGIN = 12;
+static const int DIALOG_APPEAR_SLIDE = 24;
+static const int DIALOG_APPEAR_DURATION = 150;
 static const int PAGE_PILL_CORNER_RADIUS = 999;
 
 static const int TOOL_BAR_PADDING = 6;
@@ -97,6 +108,21 @@ static const int TOOL_BAR_FIELD_HEIGHT = 26;
 static const int EXTENSION_LIST_WIDTH = 430;
 static const int EXTENSION_LIST_ROWS_MAX_HEIGHT = 420;
 static const int EXTENSION_PANEL_PADDING = 12;
+
+static const int DOWNLOAD_PANEL_WIDTH = 360;
+static const int DOWNLOAD_PANEL_PADDING = 12;
+static const int DOWNLOAD_PANEL_MAX_HEIGHT = 420;
+static const int DOWNLOAD_PANEL_ROWS = 20;
+static const int DOWNLOAD_PANEL_MARGIN = 8;
+static const int DOWNLOAD_PANEL_SCROLL_ROOM = 16;
+static const int DOWNLOAD_PANEL_PROGRESS_HEIGHT = 4;
+static const int DOWNLOAD_PANEL_PROGRESS_STEPS = 1000;
+static const int DOWNLOAD_PANEL_REBUILD_DELAY = 150;
+static const int DOWNLOAD_PANEL_PRESS_POLL = 50;
+static const int DOWNLOAD_BUTTON_LINGER = 60 * 1000;
+static const double DOWNLOAD_PANEL_QUIET_ALPHA = 0.65;
+static const double DOWNLOAD_PANEL_HOVER_ALPHA = 0.08;
+static const int DOWNLOAD_PANEL_ROW_RADIUS = 4;
 static const int EXTENSION_ROW_NAME_WIDTH = 205;
 static const QSize EXTENSION_POPUP_SIZE = QSize(450, 520);
 static const int POPUP_FIT_TIMES[] = { 250, 700, 1500, 3000 };

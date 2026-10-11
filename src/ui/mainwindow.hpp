@@ -35,7 +35,7 @@ class MainWindow : public
     Q_OBJECT
 
 public:
-    MainWindow(int id, QPoint pos = QPoint(), QWidget *parent = nullptr);
+    MainWindow(int id, QPoint pos = QPoint(), bool showNow = true, QWidget *parent = nullptr);
     ~MainWindow() Q_DECL_OVERRIDE;
 
     template <class T> T ScaleByDevice(T v) const {
@@ -99,6 +99,7 @@ public slots:
 
 public:
     void ActivateIfNeeded();
+    void ShowWithFirstFrame();
     static void ActivateWindowIfNeeded(QWidget *window);
     static void ActivateWindowIfNeeded(QWidget *window, WId front);
 

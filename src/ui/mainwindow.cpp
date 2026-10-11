@@ -16,13 +16,12 @@
 #include <QMenuBar>
 #include <QScreen>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QCursor>
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
-#  ifdef EDGEWEBVIEW
-#    include <dwmapi.h>
-#  endif
+#  include <dwmapi.h>
 #endif
 
 #include "view.hpp"
@@ -42,9 +41,11 @@
 #include "treebar.hpp"
 #include "toolbar.hpp"
 
-MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
+MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
     :
     QMainWindow(parent)
+    , m_TreeBank(nullptr)
+    , m_TreeBar(nullptr)
     , m_ContentFullScreen(false)
     , m_StateBeforeFullScreen(Qt::WindowNoState)
     , m_MenuBarVisibleBeforeFullScreen(false)
@@ -139,13 +140,18 @@ MainWindow::MainWindow(int id, QPoint pos, QWidget *parent)
     m_InspectorDock->hide();
     for(QDockWidget *dock : m_SidePanels->Docks()) dock->hide();
 
+    if(!showNow){
+        createWinId();
+        return;
+    }
+
 #if defined(Q_OS_MAC)
     QSize s = size();
     show();
     if(Application::ProductVersion().startsWith(QStringLiteral("10.14")))
         resize(s);
 #else
-    show();
+    ShowWithFirstFrame();
 #endif
 
 }
@@ -933,6 +939,28 @@ void MainWindow::ActivateIfNeeded(){
     ActivateWindowIfNeeded(this);
 }
 
+void MainWindow::ShowWithFirstFrame(){
+    if(isVisible()) return;
+#if defined(Q_OS_WIN)
+    const HWND hwnd = reinterpret_cast<HWND>(winId());
+    BOOL cloak = TRUE;
+    const bool cloaked = SUCCEEDED(::DwmSetWindowAttribute(hwnd, 13, &cloak, sizeof(cloak)));
+    show();
+    if(cloaked && Application::IsRestoringWindows()){
+        QElapsedTimer waiting;
+        waiting.start();
+        while(!(windowHandle() && windowHandle()->isExposed()) && waiting.elapsed() < 150)
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents | QEventLoop::WaitForMoreEvents, 20);
+    }
+    if(cloaked){
+        cloak = FALSE;
+        ::DwmSetWindowAttribute(hwnd, 13, &cloak, sizeof(cloak));
+    }
+#else
+    show();
+#endif
+}
+
 void MainWindow::changeEvent(QEvent *ev){
     QMainWindow::changeEvent(ev);
     if(ev->type() == QEvent::WindowStateChange){
@@ -952,6 +980,10 @@ void MainWindow::paintEvent(QPaintEvent *ev){
 }
 
 void MainWindow::closeEvent(QCloseEvent *ev){
+    if(Application::IsRestoringWindows()){
+        ev->ignore();
+        return;
+    }
     if(m_SidePanels) m_SidePanels->ShutdownPages();
 
     if(Application::GetMainWindows().count() == 1){

@@ -6,8 +6,9 @@
 # What it draws and what it leaves alone:
 #   - drawn: the chevrons (menu back/forward/rewind/fastforward, tree bar
 #     up/down/left/right), the crosses, the speakers, clone, trash, plus,
-#     reload, the tool bar's command and search, and the extension bar's
-#     puzzle piece and pin. Thin strokes (1px at base size), corners
+#     reload, the tool bar's command, search and download, the downloads
+#     panel's document and folder, and the extension bar's puzzle piece
+#     and pin. Thin strokes (1px at base size), corners
 #     square and circles round, near-opaque black ink
 #     (alpha 230 -- Theme::Ink recolours through the alpha, so the ink is
 #     the shape and the colour arrives at paint time).
@@ -263,6 +264,72 @@ def icon_pin(size=16):
     return im
 
 
+def icon_download(size=16):
+    # an arrow down into a tray: the tool bar's button for the downloads
+    # (D-506), the glyph Edge and Chrome use. The shaft and the tray sit on
+    # half pixels, where a 1px stroke comes out crisp.
+    im = canvas(size)
+    d = ImageDraw.Draw(im)
+    stroke(d, [(7.5, 2.5), (7.5, 10.0)])
+    chevron_v(d, apex=(7.5, 10.5), arm_y=7.0, arm_dx=3.5)
+    stroke(d, [(2.5, 13.5), (12.5, 13.5)])
+    return im
+
+
+def icon_open(size=16):
+    # a sheet with its corner turned down: "open the file" in the downloads
+    # panel's row (D-506). The fold is drawn as the two edges it makes.
+    im = canvas(size)
+    d = ImageDraw.Draw(im)
+    poly_outline(d, [(3.5, 2.5), (9.5, 2.5), (12.5, 5.5), (12.5, 13.5), (3.5, 13.5)])
+    stroke(d, [(9.5, 2.5), (9.5, 5.5), (12.5, 5.5)])
+    return im
+
+
+def icon_folder(size=16):
+    # a folder with its tab: "show in folder" in the same row.
+    im = canvas(size)
+    d = ImageDraw.Draw(im)
+    poly_outline(d, [(2.5, 3.5), (6.5, 3.5), (8.0, 5.5), (13.5, 5.5),
+                     (13.5, 12.5), (2.5, 12.5)])
+    return im
+
+
+def icon_site(size=16):
+    # a globe, the glyph a page's dialog is headed with (D-524): Firefox's
+    # form -- the circle, one meridian seen edge on, and the equator -- since
+    # at the title's height the parallels of a fuller globe run together
+    # (the user's eye). Not the site's own icon.
+    import math
+    im = canvas(size)
+    d = ImageDraw.Draw(im)
+    cx, cy, r = 8.0, 8.0, 6.5
+    poly_outline(d, arc_points(cx, cy, r, 0, 360, 64))
+    poly_outline(d, [(cx + 3.0 * math.cos(math.radians(a)), cy + r * math.sin(math.radians(a)))
+                     for a in range(0, 360, 6)])
+    stroke(d, [(cx - r, cy), (cx + r, cy)])
+    return im
+
+
+def icon_settings(size=16):
+    # a gear: the settings page's own icon in the tree and the tabs (D-525).
+    # Six teeth on a ring -- eight ran together at tab size (the user's eye,
+    # D-525 追記 2) -- and the hole in the middle.
+    import math
+    im = canvas(size)
+    d = ImageDraw.Draw(im)
+    cx, cy = 8.0, 8.0
+    pts = []
+    for i in range(6):
+        b = i * 60.0 - 90.0
+        # the flat top of a tooth, then the gap down to the ring
+        pts += arc_points(cx, cy, 6.8, b - 12, b + 12, 3)
+        pts += arc_points(cx, cy, 4.8, b + 20, b + 40, 3)
+    poly_outline(d, pts)
+    poly_outline(d, arc_points(cx, cy, 2.2, 0, 360, 24))
+    return im
+
+
 ICONS = {
     "menu/back.png":            icon_back,
     "menu/forward.png":         icon_forward,
@@ -289,6 +356,11 @@ ICONS = {
     "toolbar/search.png":       icon_search,
     "toolbar/extension.png":    icon_extension,
     "toolbar/pin.png":          icon_pin,
+    "toolbar/download.png":     icon_download,
+    "toolbar/open.png":         icon_open,
+    "toolbar/folder.png":       icon_folder,
+    "toolbar/site.png":         icon_site,
+    "settings/settings.png":    icon_settings,
 }
 
 

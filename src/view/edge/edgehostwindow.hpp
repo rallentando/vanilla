@@ -17,11 +17,18 @@ public:
     void GiveQtFocusOnPress(QWidget *widget);
     bool TakeQtFocus();
 
+    void QuietContainerFocusIn(QWidget *container);
+
+signals:
+    void ReactivatedWithFocus();
+
 protected:
     bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
+    bool eventFilter(QObject *watched, QEvent *ev) override;
 
 private:
     QPointer<QWidget> m_FocusOnPress;
+    QPointer<QWidget> m_Container;
 };
 
 #endif

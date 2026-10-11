@@ -3,9 +3,6 @@
     <file>../resources/settings/settings.html</file>
     <file>../resources/settings/settings.css</file>
     <file>../resources/settings/settings.js</file>
-    <file>../resources/directory/directory.html</file>
-    <file>../resources/directory/directory.css</file>
-    <file>../resources/directory/directory.js</file>
     <file>../resources/blank.png</file>
     <file>../resources/blank@2x.png</file>
     <file>../resources/blankw.png</file>
@@ -64,6 +61,16 @@
     <file>../resources/toolbar/extension@2x.png</file>
     <file>../resources/toolbar/pin.png</file>
     <file>../resources/toolbar/pin@2x.png</file>
+    <file>../resources/toolbar/download.png</file>
+    <file>../resources/toolbar/download@2x.png</file>
+    <file>../resources/toolbar/open.png</file>
+    <file>../resources/toolbar/open@2x.png</file>
+    <file>../resources/toolbar/folder.png</file>
+    <file>../resources/toolbar/folder@2x.png</file>
+    <file>../resources/toolbar/site.png</file>
+    <file>../resources/toolbar/site@2x.png</file>
+    <file>../resources/settings/settings.png</file>
+    <file>../resources/settings/settings@2x.png</file>
     <file>../resources/menu/back.png</file>
     <file>../resources/menu/back@2x.png</file>
     <file>../resources/menu/forward.png</file>

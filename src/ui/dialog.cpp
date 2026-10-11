@@ -16,6 +16,8 @@
 #include <QAuthenticator>
 #include <QScreen>
 #include <QCoreApplication>
+#include <QParallelAnimationGroup>
+#include <QPropertyAnimation>
 
 #include "application.hpp"
 #include "mainwindow.hpp"
@@ -130,6 +132,22 @@ ModalDialog::ModalDialog()
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_ShowModal);
     setAttribute(Qt::WA_TranslucentBackground);
+    ApplyTheme();
+}
+
+void ModalDialog::ApplyTheme(){
+    setPalette(Theme::PanelPalette(palette()));
+    RefreshIcon();
+    update();
+}
+
+void ModalDialog::RefreshIcon(){
+    if(!m_IconLabel || m_Icon.isEmpty()) return;
+    QIcon icon;
+    icon.addPixmap(Theme::Pixmap(m_Icon, Theme::PreviewText));
+    const int dot = m_Icon.lastIndexOf(QLatin1Char('.'));
+    if(dot > 0) icon.addPixmap(Theme::Pixmap(m_Icon.left(dot) + QStringLiteral("@2x") + m_Icon.mid(dot), Theme::PreviewText));
+    m_IconLabel->setPixmap(icon.pixmap(m_IconLabel->size(), devicePixelRatio()));
 }
 
 ModalDialog::~ModalDialog(){
@@ -143,13 +161,22 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     bool result = false;
     QEventLoop loop;
 
+    const int padding = ScaleByDevice(DIALOG_PADDING);
     QVBoxLayout *vlayout = new QVBoxLayout();
-    vlayout->setContentsMargins(ScaleByDevice(10), ScaleByDevice(7),
-                                ScaleByDevice(10), ScaleByDevice(7));
+    vlayout->setContentsMargins(padding, padding, padding, padding);
 
+    QHBoxLayout *head = new QHBoxLayout();
+    head->setContentsMargins(0, 0, 0, padding / 2);
+    head->setSpacing(padding / 2);
     DialogLabel *titleLabel = new DialogLabel(m_Title, DialogTitleFont(), this);
-    titleLabel->setContentsMargins(0, 0, 0, ScaleByDevice(3));
-    vlayout->addWidget(titleLabel);
+    if(!m_Icon.isEmpty()){
+        m_IconLabel = new QLabel(this);
+        const int side = titleLabel->fontMetrics().height();
+        m_IconLabel->setFixedSize(side, side);
+        head->addWidget(m_IconLabel, 0, Qt::AlignVCenter);
+    }
+    head->addWidget(titleLabel, 1);
+    vlayout->addLayout(head);
 
     if(!m_Caption.isEmpty()){
         DialogLabel *captionLabel = new DialogLabel(m_Caption, DialogTextFont(), this);
@@ -218,53 +245,77 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     connect(this, &ModalDialog::Returned, [&](){ result = true;  loop.quit(); });
     connect(this, &ModalDialog::Aborted,  [&](){ result = false; loop.quit(); });
 
-    show();
-
     Application *instance = Application::GetInstance();
     QPoint p;
     QSize s;
+    QScreen *screen = nullptr;
 
     if(QWidget *w = Application::CurrentWidget()){
         p = w->mapToGlobal(QPoint(0, 0));
         s = w->size();
+        screen = w->screen();
     } else if(instance->screens().length()){
-        QRect rect = instance->screens()[0]->geometry();
+        screen = instance->screens()[0];
+        QRect rect = screen->geometry();
         p = rect.topLeft();
         s = rect.size();
     } else {
+        deleteLater();
         return false;
     }
+    if(screen) setScreen(screen);
+    RefreshIcon();
 
+    setWindowOpacity(0.0);
+    show();
+
+    auto heightAt = [this](int width, int room){
+        return layout() && layout()->hasHeightForWidth()
+            ? qMin(qMax(height(), layout()->totalHeightForWidth(width)), qMax(height(), room))
+            : height();
+    };
+    const int margin = ScaleByDevice(DIALOG_TOP_MARGIN);
     int w = qMin(s.width(), qMax(width(), ScaleByDevice(MINIMUL_DIALOG_WIDTH)));
-    int h = height();
-    int x = p.x() + (s.width()  - w) / 2;
-    int y = p.y() + (s.height() - h) / 2;
+    int h = heightAt(w, qMax(0, s.height() - margin));
+    QRect place = Placement(QRect(p, s), QSize(w, h), margin);
 
     bool contains = false;
     for(int i = 0; i < instance->screens().length(); i++){
-        if(instance->screens()[i]->geometry().intersects(QRect(x, y, w, h))){
+        if(instance->screens()[i]->geometry().intersects(place)){
             contains = true;
             break;
         }
     }
 
     if(!contains){
-        if(instance->screens().length()){
-            QRect rect = instance->screens()[0]->geometry();
-            p = rect.topLeft();
-            s = rect.size();
-            w = qMin(s.width(), qMax(width(), ScaleByDevice(MINIMUL_DIALOG_WIDTH)));
-            h = height();
-            x = p.x() + (s.width()  - w) / 2;
-            y = p.y() + (s.height() - h) / 2;
-        } else {
-            return false;
-        }
+        QRect rect = instance->screens()[0]->geometry();
+        p = rect.topLeft();
+        s = rect.size();
+        w = qMin(s.width(), qMax(width(), ScaleByDevice(MINIMUL_DIALOG_WIDTH)));
+        h = heightAt(w, qMax(0, s.height() - margin));
+        place = Placement(QRect(p, s), QSize(w, h), margin);
     }
 
-    setGeometry(x, y, w, h);
+    setGeometry(place);
     raise();
     if(focusWidget) focusWidget->setFocus();
+
+    {
+        QParallelAnimationGroup *appear = new QParallelAnimationGroup(this);
+        m_Appear = appear;
+        QPropertyAnimation *slide = new QPropertyAnimation(this, "pos", appear);
+        slide->setStartValue(place.topLeft() - QPoint(0, ScaleByDevice(DIALOG_APPEAR_SLIDE)));
+        slide->setEndValue(place.topLeft());
+        QPropertyAnimation *fade = new QPropertyAnimation(this, "windowOpacity", appear);
+        fade->setStartValue(0.0);
+        fade->setEndValue(1.0);
+        foreach(QPropertyAnimation *animation, QList<QPropertyAnimation*>() << slide << fade){
+            animation->setDuration(DIALOG_APPEAR_DURATION);
+            animation->setEasingCurve(QEasingCurve::OutCubic);
+            appear->addAnimation(animation);
+        }
+        appear->start(QAbstractAnimation::DeleteWhenStopped);
+    }
 
     {
         Running running(this);
@@ -313,6 +364,7 @@ QString ModalDialog::GetItem(QString title, QString caption, QStringList items, 
     ModalDialog *dialog = new ModalDialog();
     DialogComboBox *comboBox = new DialogComboBox(dialog);
     comboBox->setEditable(editable);
+    if(editable) EditMenu::Install(comboBox->lineEdit());
     comboBox->addItems(items);
     dialog->m_InputWidget = comboBox;
     dialog->m_Title = title;
@@ -325,8 +377,9 @@ QString ModalDialog::GetItem(QString title, QString caption, QStringList items, 
     return QString();
 }
 
-QString ModalDialog::GetText(QString title, QString caption, QString text, bool *ok){
+QString ModalDialog::GetText(QString title, QString caption, QString text, bool *ok, const QString &icon){
     ModalDialog *dialog = new ModalDialog();
+    dialog->m_Icon = icon;
     DialogLineEdit *lineEdit = new DialogLineEdit(dialog);
     lineEdit->setText(text);
     lineEdit->selectAll();
@@ -390,16 +443,18 @@ QStringList ModalDialog::GetOpenFileNames(const QString &caption, const QString 
     return QFileDialog::getOpenFileNames(Application::CurrentWidget(), caption, dir, filter, selectedFilter, options);
 }
 
-void ModalDialog::Information(const QString &title, const QString &text){
+void ModalDialog::Information(const QString &title, const QString &text, const QString &icon){
     ModalDialog *dialog = new ModalDialog();
+    dialog->m_Icon = icon;
     dialog->m_Title = title;
     dialog->m_Caption = text;
     dialog->m_Buttons = Dialog::Ok;
     dialog->Execute();
 }
 
-bool ModalDialog::Question(const QString &title, const QString &text){
+bool ModalDialog::Question(const QString &title, const QString &text, const QString &icon){
     ModalDialog *dialog = new ModalDialog();
+    dialog->m_Icon = icon;
     dialog->m_Title = title;
     dialog->m_Caption = text;
     dialog->m_Buttons = Dialog::Yes | Dialog::No;
@@ -407,25 +462,61 @@ bool ModalDialog::Question(const QString &title, const QString &text){
     return dialog->Execute();
 }
 
-void ModalDialog::Authentication(QAuthenticator *authenticator){
+QString ModalDialog::SiteTitle(const QUrl &origin){
+    const QString host = origin.host();
+    return host.isEmpty() ? tr("This page") : host;
+}
+
+QString ModalDialog::SiteIcon(){
+    return QStringLiteral(":/resources/toolbar/site.png");
+}
+
+QUrl ModalDialog::SiteOrigin(const QUrl &securityOrigin, const QUrl &pageUrl){
+    return securityOrigin.isEmpty() ? pageUrl : securityOrigin;
+}
+
+QRect ModalDialog::Placement(const QRect &room, const QSize &size, int margin){
+    return QRect(QPoint(room.x() + (room.width() - size.width()) / 2, room.y() + margin), size);
+}
+
+QString ModalDialog::AuthenticationCaption(const QUrl &url, const QString &proxyHost){
+    auto breakable = [](QString host){
+        return host.replace(QLatin1Char('.'), QStringLiteral(".") + QChar(0x200B));
+    };
+    if(!proxyHost.isEmpty())
+        return tr("The proxy %1 asks for a user name and password.").arg(breakable(proxyHost));
+    const QString origin = url.adjusted(QUrl::RemoveUserInfo | QUrl::RemovePath |
+                                        QUrl::RemoveQuery | QUrl::RemoveFragment)
+        .toString(QUrl::FullyEncoded);
+    return tr("%1 asks for a user name and password.").arg(breakable(origin));
+}
+
+DialogLabel *ModalDialog::AuthenticationLabel(const QString &caption, QWidget *parent){
+    DialogLabel *label = new DialogLabel(caption, DialogTextFont(), parent);
+    label->setWordWrap(true);
+    return label;
+}
+
+void ModalDialog::Authentication(QAuthenticator *authenticator, const QString &caption){
     ModalDialog *dialog = new ModalDialog();
     QWidget *widget = new QWidget();
     QGridLayout *layout = new QGridLayout();
     layout->setContentsMargins(dialog->ScaleByDevice(5), dialog->ScaleByDevice(3),
                                dialog->ScaleByDevice(5), dialog->ScaleByDevice(3));
-    DialogLabel *userNameLabel = new DialogLabel(tr("UserName:"), DialogTextFont(), dialog);
-    layout->addWidget(userNameLabel, 0, 0);
+    layout->addWidget(AuthenticationLabel(caption, dialog), 0, 0, 1, 2);
+    DialogLabel *userNameLabel = new DialogLabel(tr("User name:"), DialogTextFont(), dialog);
+    layout->addWidget(userNameLabel, 1, 0);
     DialogLabel *passwordLabel = new DialogLabel(tr("Password:"), DialogTextFont(), dialog);
-    layout->addWidget(passwordLabel, 1, 0);
+    layout->addWidget(passwordLabel, 2, 0);
     DialogLineEdit *userNameEdit = new DialogLineEdit(dialog);
-    layout->addWidget(userNameEdit, 0, 1);
+    layout->addWidget(userNameEdit, 1, 1);
     DialogLineEdit *passwordEdit = new DialogLineEdit(dialog);
     passwordEdit->setEchoMode(QLineEdit::Password);
-    layout->addWidget(passwordEdit, 1, 1);
+    layout->addWidget(passwordEdit, 2, 1);
 
     widget->setLayout(layout);
     dialog->m_InputWidget = widget;
-    dialog->m_Title = tr("User authentication.");
+    dialog->m_Title = tr("User authentication");
     connect(userNameEdit, &DialogLineEdit::Returned, dialog, &ModalDialog::Returned);
     connect(userNameEdit, &DialogLineEdit::Aborted,  dialog, &ModalDialog::Aborted);
     connect(passwordEdit, &DialogLineEdit::Returned, dialog, &ModalDialog::Returned);
@@ -466,8 +557,8 @@ void ModalDialog::paintEvent(QPaintEvent *ev){
     {
         const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
         painter.setRenderHint(QPainter::Antialiasing, true);
-        painter.setPen(Theme::Pen(Theme::DialogBorder));
-        painter.setBrush(Theme::Brush(Theme::DialogShadow));
+        painter.setPen(Theme::Pen(Theme::PreviewBorder));
+        painter.setBrush(Theme::Brush(Theme::PreviewBackground));
         painter.drawRoundedRect(card, ScaleByDevice(DIALOG_CORNER_RADIUS),
                                 ScaleByDevice(DIALOG_CORNER_RADIUS));
     }
@@ -475,6 +566,10 @@ void ModalDialog::paintEvent(QPaintEvent *ev){
 
 void ModalDialog::mousePressEvent(QMouseEvent *ev){
     if(ev->button() == Qt::LeftButton){
+        if(m_Appear){
+            m_Appear->stop();
+            setWindowOpacity(1.0);
+        }
         m_HotSpot = ev->pos();
         ev->setAccepted(true);
     }
@@ -516,6 +611,7 @@ void ModelessDialogFrame::Adjust(){
         dialog->setGeometry(0, offset, width(), height);
         offset += height;
     }
+    setUpdatesEnabled(offset > 0);
     resize(width(), offset);
 }
 
@@ -561,9 +657,15 @@ ModelessDialog::ModelessDialog()
 {
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
+    ApplyTheme();
 
     connect(this, &ModelessDialog::Returned, this, [this](){ Finish(true);});
     connect(this, &ModelessDialog::Aborted,  this, [this](){ Finish(false);});
+}
+
+void ModelessDialog::ApplyTheme(){
+    setPalette(Theme::PanelPalette(palette()));
+    update();
 }
 
 void ModelessDialog::Answer(Dialog::Button button){
@@ -600,12 +702,14 @@ ModelessDialog::~ModelessDialog(){
 void ModelessDialog::Execute(){
     if(m_Finished) return;
 
+    const int padding = ScaleByDevice(DIALOG_PADDING);
     QVBoxLayout *vlayout = new QVBoxLayout();
+    vlayout->setContentsMargins(padding, padding, padding, padding);
     QHBoxLayout *hlayout = new QHBoxLayout();
     hlayout->setAlignment(Qt::AlignRight);
 
     DialogLabel *titleLabel = new DialogLabel(m_Title, DialogTitleFont(), this);
-    titleLabel->setContentsMargins(0, 0, 0, ScaleByDevice(3));
+    titleLabel->setContentsMargins(0, 0, 0, padding / 2);
     vlayout->addWidget(titleLabel);
 
     if(!m_Caption.isEmpty()){
@@ -650,7 +754,7 @@ void ModelessDialog::Information(const QString &title, const QString &text, QObj
     QTimer::singleShot(0, dialog, &ModelessDialog::Execute);
 }
 
-void ModelessDialog::Question(const QString &title, const QString &text, BoolCallBack callBack, QObject *caller){
+ModelessDialog *ModelessDialog::Question(const QString &title, const QString &text, BoolCallBack callBack, QObject *caller){
     ModelessDialog *dialog = new ModelessDialog();
     if(caller) connect(caller, &QObject::destroyed, dialog, &ModelessDialog::Discard);
     dialog->m_Title = title;
@@ -659,6 +763,7 @@ void ModelessDialog::Question(const QString &title, const QString &text, BoolCal
     dialog->m_DefaultButton = Dialog::Yes;
     dialog->m_CallBack = callBack;
     QTimer::singleShot(0, dialog, &ModelessDialog::Execute);
+    return dialog;
 }
 
 void ModelessDialog::enterEvent(QEnterEvent *ev)
@@ -709,8 +814,8 @@ void ModelessDialog::paintEvent(QPaintEvent *ev){
     {
         const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
         painter.setRenderHint(QPainter::Antialiasing, true);
-        painter.setPen(Theme::Pen(Theme::DialogBorder));
-        painter.setBrush(Theme::Brush(Theme::DialogShadow));
+        painter.setPen(Theme::Pen(Theme::PreviewBorder));
+        painter.setBrush(Theme::Brush(Theme::PreviewBackground));
         painter.drawRoundedRect(card, ScaleByDevice(DIALOG_CORNER_RADIUS),
                                 ScaleByDevice(DIALOG_CORNER_RADIUS));
     }

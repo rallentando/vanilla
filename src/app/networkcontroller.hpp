@@ -110,6 +110,8 @@ public:
         QStringList files;
         QByteArray session;
         QByteArray dynamic;
+        QStringList hostPermissions;
+        bool hostAccessAlways = true;
     };
 
     static void Reload();
@@ -199,6 +201,8 @@ public:
     void SetPath(QString name);
     void SetPathAndReady(QString name);
 
+    void Record(bool hideUrl = false);
+
 private:
     friend class tst_downloaditem;
 
@@ -219,6 +223,9 @@ private:
     QByteArray m_BAOut;
     QUrl       m_RemoteUrl;
     bool       m_FinishedFlag = false;
+
+    int        m_HistoryId = 0;
+    void EndRecord(int state);
 
 private slots:
 #if defined(WEBENGINEVIEW) || defined(EDGEWEBVIEW)
@@ -310,10 +317,13 @@ public:
 
     static QString ProfileKey(const QObject *profile);
 
+    static QString CredentialSpace(const QObject *profile);
+
 #endif
     static void ClearCookies();
     static void ClearHttpCache();
     static void ClearVisitedLinks();
+    static void ClearPasswords();
 
     static QString ProfileStorageName(const QString &id);
     static QString ProfileStorageName(const QString &applicationDir, const QString &id);

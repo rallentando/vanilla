@@ -350,7 +350,7 @@ namespace {
                 QHash<QString, QString> current, copies;
                 m_CopyKeyless.clear();
                 foreach(const QString &path, Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList()){
-                    const ExtensionManifest manifest = ExtensionManifest::Read(path);
+                    const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
                     if(!manifest.error.isEmpty()) continue;
                     QString copy;
                     bool keyless = false;
@@ -1241,7 +1241,7 @@ HRESULT EdgeAnswerExtensionHost(ExtensionController *controller, quint64 viewNum
 void EdgeEnvironment::PinExtensionCopies(){
     if(!ExtensionHost::ShimsOn()) return;
     foreach(const QString &path, Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList()){
-        const ExtensionManifest manifest = ExtensionManifest::Read(path);
+        const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
         if(manifest.error.isEmpty()) PinnedCopy(manifest);
     }
 }

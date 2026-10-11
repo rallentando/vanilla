@@ -6,6 +6,9 @@
 #include "devicescale.hpp"
 
 #include <QWidget>
+#include <QIcon>
+#include <QPointer>
+#include <QUrl>
 #include <QInputDialog>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -22,6 +25,7 @@
 #include <float.h>
 
 #include "callback.hpp"
+#include "editmenu.hpp"
 
 class MainWindow;
 class ModelessDialog;
@@ -107,18 +111,28 @@ public:
     static int     GetInt   (QString title, QString caption, int    val = 0, int    min = INT_MIN, int    max = INT_MAX, int     step = 1, bool *ok = nullptr);
     static double  GetDouble(QString title, QString caption, double val = 0, double min = DBL_MIN, double max = DBL_MAX, int decimals = 1, bool *ok = nullptr);
     static QString GetItem  (QString title, QString caption, QStringList items, bool editable = true, bool *ok = nullptr);
-    static QString GetText  (QString title, QString caption, QString text = QString(), bool *ok = nullptr);
+    static QString GetText  (QString title, QString caption, QString text = QString(), bool *ok = nullptr, const QString &icon = QString());
     static QString GetPass  (QString title, QString caption, QString text = QString(), bool *ok = nullptr);
     static QString GetExistingDirectory(const QString &caption = QString(), const QString &dir = QString(), QFileDialog::Options options = QFileDialog::ShowDirsOnly);
     static QString GetSaveFileName_(const QString &caption = QString(), const QString &dir = QString(), const QString &filter = QString(), QString *selectedFilter = nullptr, QFileDialog::Options options = QFileDialog::Options());
     static QString GetOpenFileName_(const QString &caption = QString(), const QString &dir = QString(), const QString &filter = QString(), QString *selectedFilter = nullptr, QFileDialog::Options options = QFileDialog::Options());
     static QStringList GetOpenFileNames(const QString &caption = QString(), const QString &dir = QString(), const QString &filter = QString(), QString *selectedFilter = nullptr, QFileDialog::Options options = QFileDialog::Options());
-    static void Information(const QString &title, const QString &text);
-    static bool Question(const QString &title, const QString &text);
-    static void Authentication(QAuthenticator *authenticator);
+    static void Information(const QString &title, const QString &text, const QString &icon = QString());
+    static bool Question(const QString &title, const QString &text, const QString &icon = QString());
+
+    static QUrl SiteOrigin(const QUrl &securityOrigin, const QUrl &pageUrl);
+    static QString SiteTitle(const QUrl &origin);
+    static QString SiteIcon();
+    static void Authentication(QAuthenticator *authenticator, const QString &caption);
+    static QString AuthenticationCaption(const QUrl &url, const QString &proxyHost = QString());
+    static QRect Placement(const QRect &room, const QSize &size, int margin);
+    static class DialogLabel *AuthenticationLabel(const QString &caption, QWidget *parent = nullptr);
+
+    void ApplyTheme();
 
     Dialog::Button ClickedButton(){ return m_ClickedButton;}
     void SetTitle(QString title){ m_Title = title;}
+    void SetIcon(const QString &icon){ m_Icon = icon;}
     void SetCaption(QString caption){ m_Caption = caption;}
     void SetInformativeText(QString information){ m_InformativeText = information;}
     void SetDetailedText(QString detail){ m_DetailedText = detail;}
@@ -141,6 +155,7 @@ private:
     static QList<ModalDialog*> m_Unwinding;
     static quint64 m_Generation;
 
+    void RefreshIcon();
     void Answer(Dialog::Button button);
 
     Type m_Type;
@@ -149,10 +164,13 @@ private:
     Dialog::Button m_ClickedButton;
     Dialog::Button m_DefaultButton;
     QString m_Title;
+    QString m_Icon;
+    QPointer<QLabel> m_IconLabel;
     QString m_Caption;
     QString m_InformativeText;
     QString m_DetailedText;
     QWidget *m_InputWidget;
+    QPointer<class QParallelAnimationGroup> m_Appear;
 };
 
 class ModelessDialogFrame : public QWidget {
@@ -195,9 +213,11 @@ public slots:
 
 public:
     static void Information(const QString &title, const QString &text, QObject *caller = nullptr);
-    static void Question(const QString &title, const QString &text, BoolCallBack callBack, QObject *caller = nullptr);
+    static ModelessDialog *Question(const QString &title, const QString &text, BoolCallBack callBack, QObject *caller = nullptr);
 
     void Discard();
+
+    void ApplyTheme();
 
     Dialog::Button ClickedButton(){ return m_ClickedButton;}
     void SetTitle(QString title){ m_Title = title;}
@@ -251,14 +271,8 @@ public:
         setTextFormat(Qt::PlainText);
         setText(text);
         setFont(font);
-        ApplyTheme();
     }
     ~DialogLabel() Q_DECL_OVERRIDE {}
-
-    void ApplyTheme(){
-        setStyleSheet(QStringLiteral("QLabel{ color: %1;}")
-                      .arg(Theme::StyleSheetColor(Theme::DialogText)));
-    }
 };
 
 class DialogLineEdit : public QLineEdit {
@@ -268,6 +282,7 @@ public:
     DialogLineEdit(QWidget *parent = nullptr)
         : QLineEdit(parent)
     {
+        EditMenu::Install(this);
     }
     ~DialogLineEdit() Q_DECL_OVERRIDE {}
 
@@ -364,6 +379,7 @@ public:
     DialogIntSpinBox(QWidget *parent = nullptr)
         : QSpinBox(parent)
     {
+        EditMenu::Install(lineEdit());
     }
     ~DialogIntSpinBox() Q_DECL_OVERRIDE {}
 
@@ -408,6 +424,7 @@ public:
     DialogDoubleSpinBox(QWidget *parent = nullptr)
         : QDoubleSpinBox(parent)
     {
+        EditMenu::Install(lineEdit());
     }
     ~DialogDoubleSpinBox() Q_DECL_OVERRIDE{}
 

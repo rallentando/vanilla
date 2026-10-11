@@ -28,6 +28,10 @@ static const Entry TheEntries[] = {
     { "[cC]lear[cC]ookies?",                       "ClearCookies",          Signal },
     { "[cC]lear(?:[hH]ttp)?[cC]ache",              "ClearHttpCache",        Signal },
     { "[cC]lear(?:[vV]isited)?[lL]inks?",          "ClearVisitedLinks",     Signal },
+    { "[cC]lear[pP]asswords?",                     "ClearPasswords",        Signal },
+    { "(?:[oO]pen)?[pP]asswords?",                 "OpenPasswords",         Signal },
+    { "[sS]how[dD]ownloads",                       "ShowDownloads",         Signal },
+    { "(?:[oO]pen)?[dD]ownloads",                  "OpenDownloads",         Signal },
 
     { "(?:[tT]oggle)?[nN]otifier",                  "ToggleNotifier",   Signal },
     { "(?:[tT]oggle)?[rR]eceiver",                  "ToggleReceiver",   Signal },

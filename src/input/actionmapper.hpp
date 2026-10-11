@@ -15,6 +15,10 @@
     F(ClearCookies)                             \
     F(ClearHttpCache)                           \
     F(ClearVisitedLinks)                        \
+    F(ClearPasswords)                           \
+    F(OpenPasswords)                            \
+    F(OpenDownloads)                            \
+    F(ShowDownloads)                            \
     F(ToggleNotifier)                           \
     F(ToggleReceiver)                           \
     F(ToggleMenuBar)                            \

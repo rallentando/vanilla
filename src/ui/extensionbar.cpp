@@ -30,6 +30,7 @@
 #include "sidepanels.hpp"
 #include "mainwindow.hpp"
 #include "settingsschema.hpp"
+#include "plaintooltip.hpp"
 #ifdef EDGEWEBVIEW
 #  include "edgewebview.hpp"
 #endif
@@ -48,14 +49,7 @@ public:
     ~ExtensionWindow() Q_DECL_OVERRIDE {}
 
     void ApplyTheme(){
-        QPalette palette = this->palette();
-        palette.setColor(QPalette::Window,     Theme::Color(Theme::PreviewBackground));
-        palette.setColor(QPalette::WindowText, Theme::Color(Theme::PreviewText));
-        palette.setColor(QPalette::Base,       Theme::Color(Theme::PreviewBackground));
-        palette.setColor(QPalette::Text,       Theme::Color(Theme::PreviewText));
-        palette.setColor(QPalette::Button,     Theme::Color(Theme::PreviewBackground));
-        palette.setColor(QPalette::ButtonText, Theme::Color(Theme::PreviewText));
-        setPalette(palette);
+        setPalette(Theme::PanelPalette(palette()));
         update();
     }
 
@@ -347,8 +341,8 @@ void ExtensionBar::Decorate(QToolButton *button, const ExtensionRow &row){
     if(row.manifest.popup.isEmpty() && !shimmed)
         button->setToolTip(tr("This extension has no popup. Browser action clicks are not exposed by this engine."));
     else
-        button->setToolTip(shown.hasTitle ? shown.title
-                           : !row.manifest.title.isEmpty() ? row.manifest.title : row.manifest.name);
+        button->setToolTip(PlainToolTip(shown.hasTitle ? shown.title
+                           : !row.manifest.title.isEmpty() ? row.manifest.title : row.manifest.name));
 }
 
 void ExtensionBar::Execute(const QString &id, qint64 serial){
@@ -710,7 +704,7 @@ void ExtensionBar::More(const QString &path, QToolButton *button, const QPoint &
             });
         retry->setEnabled(!m_Controller->IsBusy() && m_Controller->Error().isEmpty());
 
-        menu->addAction(tr("Remove from Vanilla"), this, [path](){
+        menu->addAction(tr("Remove from vanilla"), this, [path](){
                 ExtensionController::UnregisterPath(path);
             });
         const bool pinned = row.pinned;

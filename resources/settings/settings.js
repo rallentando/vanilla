@@ -14,6 +14,14 @@ const state = {
     inputs: null,
     inputEditing: false,
     inputBusy: false,
+    passwords: null,
+    downloads: null,
+    directory: null,
+    directoryId: null,
+    directoryAboveOpen: false,
+    directoryTreeOpen: false,
+    directoryTreeHeight: '',
+    jumpTo: null,
 };
 
 const el = {
@@ -78,12 +86,12 @@ const controls = {
     choice: {
         make: (item) => {
             const node = document.createElement('select');
-            for (const choice of item.choices) {
+            item.choices.forEach((choice, i) => {
                 const option = document.createElement('option');
                 option.value = choice;
-                option.textContent = choice;
+                option.textContent = (item.choiceLabels && item.choiceLabels[i]) || choice;
                 node.appendChild(option);
-            }
+            });
             return node;
         },
         read: (node) => node.value,
@@ -98,6 +106,13 @@ const controls = {
         wide: true,
     },
 };
+
+function noticeLine(text) {
+    const line = document.createElement('p');
+    line.className = 'notice';
+    line.textContent = text;
+    return line;
+}
 
 function buildRow(item) {
     const control = controls[item.type];
@@ -131,6 +146,14 @@ function buildRow(item) {
         note.className = 'hint note';
         note.hidden = true;
         text.appendChild(note);
+    }
+    if (item.key === 'webview/@SavePasswords' &&
+        state.categories.some(category => category.name === 'passwords')) {
+        const link = document.createElement('a');
+        link.className = 'hint link';
+        link.href = '#passwords';
+        link.textContent = state.strings.openPasswords;
+        text.appendChild(link);
     }
     row.appendChild(text);
 
@@ -644,6 +667,26 @@ function inputSection(table, query) {
         section.appendChild(hint);
     }
 
+    const why = shown.map(({entry}) => heldBack(table, entry)).find(Boolean);
+    if (why) {
+        const legend = document.createElement('p');
+        legend.className = 'hint';
+        legend.textContent = words.dimmed.replace('%1', why) + ' ';
+        const key = table.kind === 'keys' ? 'webview/@EnableSingleKeyShortcut' : null;
+        if (key && state.items.some(i => i.key === key)) {
+            const link = document.createElement('a');
+            link.className = 'link';
+            link.href = '#page';
+            link.textContent = words.openSetting;
+            link.addEventListener('click', (event) => {
+                event.preventDefault();
+                jumpToSetting(key);
+            });
+            legend.appendChild(link);
+        }
+        section.appendChild(legend);
+    }
+
     if (state.inputEditing && !query) section.appendChild(addRow(table));
 
     const list = document.createElement('div');
@@ -752,6 +795,585 @@ async function refreshInputs() {
     }
 }
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function shownOrigin(origin) {
+    return origin.replace(/^(https:\/\/.*):443$/, '$1').replace(/^(http:\/\/.*):80$/, '$1');
+}
+
+async function refreshPasswords() {
+    try {
+        state.passwords = await api('passwords');
+        render();
+    } catch (e) {
+    }
+}
+
+async function settlePasswords() {
+    for (let i = 0; i < 40; i++) {
+        await sleep(i ? 500 : 150);
+        try {
+            state.passwords = await api('passwords');
+        } catch (e) {
+            break;
+        }
+        if (!state.passwords.pending) break;
+    }
+    render();
+}
+
+function sameEntry(a, b) {
+    return a.space === b.space && a.origin === b.origin && a.username === b.username;
+}
+
+async function removePassword(entry, button) {
+    const words = state.passwords.strings;
+    button.disabled = true;
+    button.textContent = words.removing;
+    try {
+        await api('passwords-remove', entry);
+    } catch (e) {
+        toast(words.removeFailed);
+        render();
+        return;
+    }
+    await settlePasswords();
+    if (state.passwords.entries.some(e => sameEntry(e, entry))) toast(words.removeFailed);
+}
+
+async function removeAllPasswords() {
+    const words = state.passwords.strings;
+    if (!window.confirm(words.confirmAll)) return;
+    try {
+        await api('passwords-remove-all', {});
+    } catch (e) {
+        toast(words.removeFailed);
+        return;
+    }
+    await settlePasswords();
+}
+
+function passwordMatches(entry, query, label) {
+    if (!query) return true;
+    const haystack = (entry.origin + ' ' + entry.username + ' ' + label).toLowerCase();
+    return query.split(/\s+/).every(word => haystack.includes(word));
+}
+
+function renderPasswords(query, searching, label) {
+    const data = state.passwords;
+    if (!data) return 0;
+    const words = data.strings;
+    const entries = data.entries.filter(e => passwordMatches(e, query, label));
+    if (searching && !entries.length) return 0;
+
+    const section = document.createElement('section');
+    if (searching) {
+        const heading = document.createElement('h2');
+        heading.textContent = label;
+        section.appendChild(heading);
+    }
+
+    const notes = [];
+    if (!data.available) notes.push(words.unavailable);
+    if (!searching && data.available && !data.entries.length) notes.push(words.none);
+    for (const note of notes) section.appendChild(noticeLine(note));
+
+    const spaces = new Set(data.entries.map(e => e.space));
+    for (const entry of entries) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const text = document.createElement('div');
+        text.className = 'text';
+        const site = document.createElement('span');
+        site.className = 'label';
+        site.textContent = shownOrigin(entry.origin);
+        text.appendChild(site);
+        const who = document.createElement('span');
+        who.className = 'hint';
+        who.textContent = (entry.username || words.noUsername) +
+            (spaces.size > 1 ? '  (' + words.space + ': ' + entry.space + ')' : '');
+        text.appendChild(who);
+        row.appendChild(text);
+
+        const holder = document.createElement('div');
+        holder.className = 'control';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'browse';
+        button.textContent = words.remove;
+        button.addEventListener('click', () => removePassword(entry, button));
+        holder.appendChild(button);
+        row.appendChild(holder);
+        section.appendChild(row);
+    }
+
+    if (!searching && (data.edge || data.entries.length)) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const text = document.createElement('div');
+        text.className = 'text';
+        if (data.edge) {
+            const hint = document.createElement('span');
+            hint.className = 'hint';
+            hint.textContent = words.edge;
+            text.appendChild(hint);
+        }
+        row.appendChild(text);
+        const holder = document.createElement('div');
+        holder.className = 'control';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'browse';
+        button.textContent = words.removeAll;
+        button.addEventListener('click', removeAllPasswords);
+        holder.appendChild(button);
+        row.appendChild(holder);
+        section.appendChild(row);
+    }
+
+    el.main.appendChild(section);
+    return Math.max(entries.length, 1);
+}
+
+let downloadsTimer = 0;
+
+async function refreshDownloads() {
+    clearTimeout(downloadsTimer);
+    try {
+        state.downloads = await api('downloads');
+        render();
+    } catch (e) {
+    }
+    if (state.current === 'downloads' && !state.query.trim() &&
+        state.downloads && state.downloads.entries.some(e => e.state === 'running'))
+        downloadsTimer = setTimeout(refreshDownloads, 1000);
+}
+
+async function downloadAction(endpoint, id) {
+    try {
+        await api(endpoint, {id: id});
+    } catch (e) {
+        toast(state.strings.failed);
+    }
+    refreshDownloads();
+}
+
+function size(bytes) {
+    if (!(bytes > 0)) return '';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = bytes, unit = 0;
+    while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++; }
+    return (unit ? value.toFixed(value < 10 ? 1 : 0) : value) + ' ' + units[unit];
+}
+
+function downloadMatches(entry, query, label) {
+    if (!query) return true;
+    const haystack = (entry.name + ' ' + entry.url + ' ' + label).toLowerCase();
+    return query.split(/\s+/).every(word => haystack.includes(word));
+}
+
+function actionButton(text, handler) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'browse';
+    button.textContent = text;
+    button.addEventListener('click', handler);
+    return button;
+}
+
+function renderDownloads(query, searching, label) {
+    const data = state.downloads;
+    if (!data) return 0;
+    const words = data.strings;
+    const entries = data.entries.filter(e => downloadMatches(e, query, label));
+    if (searching && !entries.length) return 0;
+
+    const section = document.createElement('section');
+    if (searching) {
+        const heading = document.createElement('h2');
+        heading.textContent = label;
+        section.appendChild(heading);
+    }
+
+    if (!data.entries.length && !searching) section.appendChild(noticeLine(words.none));
+
+    for (const entry of entries) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const text = document.createElement('div');
+        text.className = 'text';
+        const name = document.createElement('span');
+        name.className = 'label';
+        name.textContent = entry.name;
+        text.appendChild(name);
+
+        const sizes = entry.state === 'running'
+            ? size(entry.received) + (entry.total > 0 ? ' / ' + size(entry.total) : '')
+            : size(entry.state === 'completed' && entry.total > 0 ? entry.total : entry.received);
+        const parts = [words[entry.state] || entry.state];
+        if (sizes) parts.push(sizes);
+        if (entry.state !== 'running' && !entry.exists) parts.push(words.missing);
+        const status = document.createElement('span');
+        status.className = 'hint';
+        status.textContent = parts.join('  ·  ');
+        text.appendChild(status);
+
+        if (entry.url) {
+            const from = document.createElement('span');
+            from.className = 'hint';
+            from.textContent = entry.url;
+            text.appendChild(from);
+        }
+        row.appendChild(text);
+
+        const holder = document.createElement('div');
+        holder.className = 'control';
+        if (entry.state === 'running') {
+            holder.appendChild(actionButton(words.cancel,
+                () => downloadAction('downloads-cancel', entry.id)));
+        } else {
+            if (entry.canOpen)
+                holder.appendChild(actionButton(words.open,
+                    () => downloadAction('downloads-open', entry.id)));
+            if (entry.exists)
+                holder.appendChild(actionButton(words.show,
+                    () => downloadAction('downloads-show', entry.id)));
+            holder.appendChild(actionButton(words.remove,
+                () => downloadAction('downloads-remove', entry.id)));
+        }
+        row.appendChild(holder);
+        section.appendChild(row);
+    }
+
+    if (!searching && data.entries.some(e => e.state !== 'running')) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const text = document.createElement('div');
+        text.className = 'text';
+        row.appendChild(text);
+        const holder = document.createElement('div');
+        holder.className = 'control';
+        holder.appendChild(actionButton(words.clear,
+            () => downloadAction('downloads-clear', 0)));
+        row.appendChild(holder);
+        section.appendChild(row);
+    }
+
+    el.main.appendChild(section);
+    return Math.max(entries.length, 1);
+}
+
+let directoryLoading = false;
+
+async function refreshDirectory(id) {
+    if (directoryLoading) return;
+    directoryLoading = true;
+    try {
+        const query = id ? 'directory?node=' + encodeURIComponent(id) : 'directory';
+        const data = await api(query);
+        if (data.fallback && state.directory) toast(data.strings.gone);
+        state.directory = data;
+        state.directoryId = data.current || null;
+        render();
+    } catch (e) {
+    } finally {
+        directoryLoading = false;
+    }
+}
+
+function directoryTokenState(tokens, sw) {
+    const on = new RegExp('^' + sw.pattern + '$');
+    const off = new RegExp('^!' + sw.pattern + '$');
+    let st = -1;
+    if (tokens.some(t => off.test(t))) st = 0;
+    else if (tokens.some(t => on.test(t))) st = 1;
+    return (sw.inverted && st !== -1) ? 1 - st : st;
+}
+
+function directoryUnclaimed(tokens) {
+    return tokens.filter(t =>
+        !state.directory.switches.some(sw =>
+            new RegExp('^!?' + sw.pattern + '$').test(t)));
+}
+
+function directoryRow(labelText, control, hintText) {
+    const row = document.createElement('div');
+    row.className = 'row' + (control.type === 'text' ? ' wide' : '');
+    const text = document.createElement('div');
+    text.className = 'text';
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = labelText;
+    text.appendChild(label);
+    if (hintText) {
+        const hint = document.createElement('span');
+        hint.className = 'hint';
+        hint.textContent = hintText;
+        text.appendChild(hint);
+    }
+    row.appendChild(text);
+    const holder = document.createElement('div');
+    holder.className = 'control';
+    holder.appendChild(control);
+    row.appendChild(holder);
+    return row;
+}
+
+function directoryCard(node, depth, current) {
+    const data = state.directory;
+    const strings = data.strings;
+
+    const card = document.createElement('div');
+    card.className = 'dir';
+    card.style.setProperty('--depth', depth);
+
+    const head = document.createElement('div');
+    head.className = 'head';
+    const profile = document.createElement('span');
+    profile.className = 'profile';
+    profile.textContent = strings.profile + ' ' + node.profile;
+
+    if (node.root) {
+        const name = document.createElement('strong');
+        name.textContent = node.name;
+        head.appendChild(name);
+        head.appendChild(profile);
+        card.appendChild(head);
+        const note = document.createElement('p');
+        note.className = 'note';
+        note.textContent = strings.rootLocked;
+        card.appendChild(note);
+        return card;
+    }
+
+    const controls = [];
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.spellcheck = false;
+    name.value = node.name;
+    name.setAttribute('aria-label', strings.name);
+    head.appendChild(name);
+    head.appendChild(profile);
+    if (!current) {
+        const show = document.createElement('button');
+        show.type = 'button';
+        show.className = 'browse';
+        show.textContent = strings.showThis;
+        show.addEventListener('click', () => refreshDirectory(node.id));
+        head.appendChild(show);
+    }
+    card.appendChild(head);
+
+    for (const sw of data.switches) {
+        const st = directoryTokenState(node.tokens, sw);
+        const inherited = (node.inherited && sw.key in node.inherited)
+            ? node.inherited[sw.key] : -1;
+        const settled = inherited !== -1 ? inherited
+            : (typeof sw.absence === 'number' ? sw.absence : -1);
+        let control;
+        let borrowed = false;
+        if (sw.off) {
+            control = document.createElement('select');
+            const dflt = strings.stateDefault.replace('%1',
+                settled === 1 ? strings.stateOn : strings.stateOff);
+            for (const [value, label] of [['default', dflt],
+                                          ['on', strings.stateOn],
+                                          ['off', strings.stateOff]]) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                control.appendChild(option);
+            }
+            control.value = st === 1 ? 'on' : st === 0 ? 'off' : 'default';
+        } else {
+            control = document.createElement('input');
+            control.type = 'checkbox';
+            borrowed = st === -1 && settled === 1;
+            control.checked = st === 1 || borrowed;
+            control.disabled = borrowed;
+        }
+        if (sw.blocked) control.disabled = true;
+        controls.push({sw: sw, node: control, borrowed: borrowed});
+        card.appendChild(directoryRow(sw.label, control, sw.hint));
+    }
+
+    const id = controls.find(c => c.sw.key === 'id');
+    if (id) {
+        const follow = () => {
+            if (!id.node.checked)
+                id.node.disabled = id.borrowed || name.value.trim() === '';
+        };
+        follow();
+        name.addEventListener('input', follow);
+    }
+
+    const extra = document.createElement('input');
+    extra.type = 'text';
+    extra.spellcheck = false;
+    extra.value = directoryUnclaimed(node.tokens).join('; ');
+    card.appendChild(directoryRow(strings.otherTokens, extra, strings.otherTokensHint));
+
+    const agents = document.createElement('p');
+    agents.className = 'agents';
+    agents.textContent = strings.userAgentNames + '\n ' + data.useragents.join(', ');
+    card.appendChild(agents);
+
+    const warning = document.createElement('p');
+    warning.className = 'warning';
+    warning.textContent = strings.userAgentWarning;
+    card.appendChild(warning);
+
+    const submit = async () => {
+        const tokens = [];
+        for (const {sw, node: control, borrowed} of controls) {
+            if (sw.off) {
+                if (control.value === 'on') tokens.push(sw.on);
+                else if (control.value === 'off') tokens.push(sw.off);
+            } else if (control.checked && !borrowed) {
+                tokens.push(sw.on);
+            }
+        }
+        for (const token of extra.value.split(';')) {
+            const trimmed = token.trim();
+            if (trimmed !== '') tokens.push(trimmed);
+        }
+        try {
+            const reply = await api('directory-set',
+                {node: node.id, name: name.value.trim(), tokens: tokens});
+            if (reply.error) throw new Error(reply.error);
+            await refreshDirectory(state.directoryId);
+            toast(reply.followed
+                  ? strings.followed.replace('%1', reply.followed)
+                  : strings.saved);
+        } catch (e) {
+            card.classList.add('invalid');
+            toast(strings.failed);
+        }
+    };
+    name.addEventListener('change', submit);
+    extra.addEventListener('change', submit);
+    for (const {node: control} of controls) control.addEventListener('change', submit);
+
+    return card;
+}
+
+function toggleAnimated(details, summary) {
+    const opening = !details.open || details.dataset.closing === '1';
+    const from = details.getBoundingClientRect().height;
+    details.getAnimations().forEach(a => a.cancel());
+    delete details.dataset.closing;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        details.open = opening;
+        return;
+    }
+    details.open = true;
+    const style = getComputedStyle(details);
+    const border = parseFloat(style.borderTopWidth)
+        + parseFloat(style.borderBottomWidth);
+    const to = opening ? details.getBoundingClientRect().height
+        : summary.getBoundingClientRect().height + border;
+    if (!opening) details.dataset.closing = '1';
+    const animation = details.animate(
+        { height: [from + 'px', to + 'px'] },
+        { duration: Math.min(300, 150 + Math.abs(to - from) / 4),
+          easing: 'ease-in-out' });
+    animation.onfinish = () => {
+        if (details.dataset.closing === '1') {
+            delete details.dataset.closing;
+            details.open = false;
+        }
+    };
+}
+
+function renderDirectory() {
+    const data = state.directory;
+    if (!data) return 0;
+    const strings = data.strings;
+    const section = document.createElement('section');
+    const panel = document.createElement('div');
+    panel.className = 'directory-panel';
+    section.appendChild(panel);
+
+    if (data.tree && data.tree.length) {
+        const outline = document.createElement('details');
+        outline.className = 'dir-tree';
+        outline.open = state.directoryTreeOpen || data.tree.length === 1;
+        outline.addEventListener('toggle', () => { state.directoryTreeOpen = outline.open; });
+        const heading = document.createElement('summary');
+        heading.textContent = strings.tree;
+        outline.appendChild(heading);
+        heading.addEventListener('click', e => {
+            e.preventDefault();
+            toggleAnimated(outline, heading);
+        });
+        const list = document.createElement('nav');
+        list.className = 'dir-tree-list';
+        list.setAttribute('aria-label', strings.tree);
+        if (state.directoryTreeHeight) list.style.height = state.directoryTreeHeight;
+        new ResizeObserver(() => {
+            if (outline.open && list.style.height) state.directoryTreeHeight = list.style.height;
+        }).observe(list);
+        outline.appendChild(list);
+        const above = new Set((data.chain || []).map(node => node.id));
+        for (const entry of data.tree) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.style.setProperty('--depth', entry.depth);
+            button.textContent = entry.name || strings.unnamed;
+            if (entry.id === data.current) {
+                button.className = 'current';
+                button.setAttribute('aria-current', 'true');
+            } else if (above.has(entry.id)) {
+                button.className = 'above';
+            }
+            button.addEventListener('click', () => refreshDirectory(entry.id));
+            list.appendChild(button);
+        }
+        panel.appendChild(outline);
+    }
+
+    const intro = document.createElement('p');
+    intro.className = 'intro';
+    intro.textContent = strings.inheritance;
+    panel.appendChild(intro);
+
+    const chain = data.chain || [];
+    if (chain.length > 1) {
+        const above = document.createElement('details');
+        above.open = state.directoryAboveOpen || false;
+        above.addEventListener('toggle', () => { state.directoryAboveOpen = above.open; });
+        const summary = document.createElement('summary');
+        for (const [className, text] of [['when-closed', strings.ancestorsShow],
+                                          ['when-open', strings.ancestorsHide]]) {
+            const label = document.createElement('span');
+            label.className = className;
+            label.textContent = text.replace('%1', chain.length - 1);
+            summary.appendChild(label);
+        }
+        above.appendChild(summary);
+        summary.addEventListener('click', e => {
+            e.preventDefault();
+            toggleAnimated(above, summary);
+        });
+        chain.slice(0, -1).forEach((node, depth) => {
+            above.appendChild(directoryCard(node, depth, false));
+        });
+        panel.appendChild(above);
+    }
+    if (chain.length) {
+        const current = directoryCard(chain[chain.length - 1], chain.length - 1, true);
+        current.classList.add('current');
+        const heading = document.createElement('h2');
+        heading.className = 'current-label';
+        heading.textContent = strings.currentDirectory;
+        current.prepend(heading);
+        panel.appendChild(current);
+    }
+
+    el.main.appendChild(section);
+    return 1;
+}
+
 function refreshApplicability() {
     for (const row of el.main.querySelectorAll('.row')) {
         const item = state.items.find(i => i.key === row.dataset.key);
@@ -777,6 +1399,7 @@ function refreshApplicability() {
 function matches(item, query, categoryLabel) {
     if (!query) return true;
     const haystack = (item.label + ' ' + (item.hint || '') + ' ' +
+                      (item.choiceLabels || []).join(' ') + ' ' +
                       categoryLabel + ' ' + item.key).toLowerCase();
     return query.split(/\s+/).every(word => haystack.includes(word));
 }
@@ -789,12 +1412,27 @@ function render() {
 
     el.main.querySelectorAll('section').forEach(s => s.remove());
 
+    document.body.classList.toggle('wide',
+        !searching && !!state.inputs && state.current === state.inputs.category);
+
     let shown = 0;
     for (const category of state.categories) {
         if (!searching && category.name !== state.current) continue;
 
         if (state.inputs && category.name === state.inputs.category) {
             shown += renderInputs(query, searching, category.label);
+            continue;
+        }
+        if (category.name === 'passwords') {
+            shown += renderPasswords(query, searching, category.label);
+            continue;
+        }
+        if (category.name === 'downloads') {
+            shown += renderDownloads(query, searching, category.label);
+            continue;
+        }
+        if (category.name === 'directory') {
+            if (!searching) shown += renderDirectory();
             continue;
         }
 
@@ -822,13 +1460,33 @@ function render() {
         button.setAttribute('aria-current', String(!searching && button.dataset.name === state.current));
 }
 
+function jumpToSetting(key) {
+    const item = state.items.find(i => i.key === key);
+    if (!item) return;
+    state.jumpTo = key;
+    if (window.location.hash.slice(1) === item.category) showCategory(item.category);
+    else window.location.hash = item.category;
+}
+
 function showCategory(name) {
     state.current = name;
     state.query = '';
     el.search.value = '';
     window.scrollTo(0, 0);
     render();
+    if (state.jumpTo) {
+        const row = el.main.querySelector('.row[data-key="' + CSS.escape(state.jumpTo) + '"]');
+        state.jumpTo = null;
+        if (row) {
+            row.scrollIntoView({block: 'center'});
+            row.classList.add('spot');
+            setTimeout(() => row.classList.remove('spot'), 1800);
+        }
+    }
     if (state.inputs && name === state.inputs.category) refreshInputs();
+    if (name === 'passwords') refreshPasswords();
+    if (name === 'downloads') refreshDownloads();
+    if (name === 'directory') refreshDirectory(state.directoryId);
 }
 
 function buildNav() {
@@ -865,6 +1523,9 @@ async function main() {
 
     buildNav();
     render();
+    if (state.categories.some(category => category.name === 'passwords')) refreshPasswords();
+    if (state.categories.some(category => category.name === 'downloads')) refreshDownloads();
+    if (state.current === 'directory') refreshDirectory(null);
 
     window.addEventListener('hashchange', () => {
         const name = categoryOfFragment();

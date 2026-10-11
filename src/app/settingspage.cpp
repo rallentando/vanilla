@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPointer>
@@ -25,6 +26,9 @@
 #include "dialog.hpp"
 #include "extensioncontroller.hpp"
 #include "theme.hpp"
+#include "networkcontroller.hpp"
+#include "passwordstore.hpp"
+#include "downloadhistory.hpp"
 
 namespace {
 
@@ -107,9 +111,172 @@ namespace {
         return Json(Compact(InputMapSchema::DescribeTable(settings, *table)));
     }
 
+    VanillaPageResponse Deferred(std::function<QByteArray()> work){
+        VanillaPageResponse response = Json(QByteArrayLiteral("{}"));
+        response.m_UserInteraction = VanillaPageResponse::UserInteraction::Deferred;
+        response.m_Deferred = work;
+        return response;
+    }
+
+    QJsonObject DescribePasswords(){
+        QJsonObject strings;
+        strings[QStringLiteral("origin")]       = QCoreApplication::translate("SettingsPage", "Site");
+        strings[QStringLiteral("username")]     = QCoreApplication::translate("SettingsPage", "Username");
+        strings[QStringLiteral("space")]        = QCoreApplication::translate("SettingsPage", "Profile");
+        strings[QStringLiteral("noUsername")]   = QCoreApplication::translate("SettingsPage", "(no username)");
+        strings[QStringLiteral("remove")]       = QCoreApplication::translate("SettingsPage", "Remove");
+        strings[QStringLiteral("removeAll")]    = QCoreApplication::translate("SettingsPage", "Remove all");
+        strings[QStringLiteral("confirmAll")]   = QCoreApplication::translate("SettingsPage", "Remove every saved password?");
+        strings[QStringLiteral("removing")]     = QCoreApplication::translate("SettingsPage", "Removing...");
+        strings[QStringLiteral("removeFailed")] = QCoreApplication::translate("SettingsPage", "The password could not be removed.");
+        strings[QStringLiteral("none")]         = QCoreApplication::translate("SettingsPage", "No passwords are saved.");
+        strings[QStringLiteral("edge")]         =
+            QCoreApplication::translate("SettingsPage", "Passwords an Edge view saved are not listed here. "
+                   "\"Remove all\" removes them too.");
+        strings[QStringLiteral("unavailable")]  =
+            QCoreApplication::translate("SettingsPage", "This build does not save passwords in a WebEngine view.");
+
+        QJsonArray entries;
+        bool available = false;
+        int pending = 0;
+#ifdef VANILLA_PASSWORDS
+        if(PasswordStore *store = PasswordStore::Instance()){
+            available = true;
+            pending = store->PendingRemovals();
+            foreach(const PasswordStore::Entry &entry, store->Entries()){
+                QJsonObject obj;
+                obj[QStringLiteral("space")]    = entry.space;
+                obj[QStringLiteral("origin")]   = entry.origin;
+                obj[QStringLiteral("username")] = entry.username;
+                entries.append(obj);
+            }
+        }
+#endif
+        QJsonObject reply;
+        reply[QStringLiteral("strings")] = strings;
+        reply[QStringLiteral("entries")] = entries;
+        reply[QStringLiteral("available")] = available;
+        reply[QStringLiteral("pending")] = pending;
+#ifdef EDGEWEBVIEW
+        reply[QStringLiteral("edge")] = true;
+#else
+        reply[QStringLiteral("edge")] = false;
+#endif
+        return reply;
+    }
+
+    VanillaPageResponse PasswordsApi(const QString &endpoint,
+                                     const QByteArray &method,
+                                     const QByteArray &body){
+        if(endpoint == QStringLiteral("passwords")){
+            if(method != QByteArrayLiteral("GET")) return Failure(403);
+            return Json(Compact(DescribePasswords()));
+        }
+
+        if(method != QByteArrayLiteral("POST")) return Failure(403);
+
+        if(endpoint == QStringLiteral("passwords-remove-all")){
+            return Deferred([](){
+                NetworkController::ClearPasswords();
+                return QByteArrayLiteral("{\"queued\":true}");
+            });
+        }
+
+        const QJsonObject request = QJsonDocument::fromJson(body).object();
+        const QString space    = request[QStringLiteral("space")].toString();
+        const QString origin   = request[QStringLiteral("origin")].toString();
+        const QString username = request[QStringLiteral("username")].toString();
+        if(origin.isEmpty()) return Json(Error(QStringLiteral("no origin")));
+        return Deferred([space, origin, username](){
+#ifdef VANILLA_PASSWORDS
+            if(PasswordStore *store = PasswordStore::Instance())
+                store->Remove(space, origin, username, nullptr);
+#else
+            Q_UNUSED(space) Q_UNUSED(origin) Q_UNUSED(username)
+#endif
+            return QByteArrayLiteral("{\"queued\":true}");
+        });
+    }
+
+    QJsonObject DescribeDownloads(){
+        QJsonObject strings;
+        strings[QStringLiteral("running")]     = QCoreApplication::translate("SettingsPage", "Downloading");
+        strings[QStringLiteral("completed")]   = QCoreApplication::translate("SettingsPage", "Completed");
+        strings[QStringLiteral("cancelled")]   = QCoreApplication::translate("SettingsPage", "Cancelled");
+        strings[QStringLiteral("failed")]      = QCoreApplication::translate("SettingsPage", "Failed");
+        strings[QStringLiteral("interrupted")] = QCoreApplication::translate("SettingsPage", "Interrupted");
+        strings[QStringLiteral("open")]        = QCoreApplication::translate("SettingsPage", "Open");
+        strings[QStringLiteral("show")]        = QCoreApplication::translate("SettingsPage", "Show in folder");
+        strings[QStringLiteral("cancel")]      = QCoreApplication::translate("SettingsPage", "Cancel");
+        strings[QStringLiteral("remove")]      = QCoreApplication::translate("SettingsPage", "Remove from list");
+        strings[QStringLiteral("clear")]       = QCoreApplication::translate("SettingsPage", "Clear list");
+        strings[QStringLiteral("none")]        = QCoreApplication::translate("SettingsPage", "Nothing has been downloaded.");
+        strings[QStringLiteral("missing")]     = QCoreApplication::translate("SettingsPage", "The file is not there any more.");
+
+        QJsonArray entries;
+        foreach(const DownloadHistory::Entry &entry, DownloadHistory::Instance()->Entries()){
+            const QFileInfo info(entry.path);
+            QJsonObject obj;
+            obj[QStringLiteral("id")]       = entry.id;
+            obj[QStringLiteral("name")]     = info.fileName();
+            obj[QStringLiteral("url")]      = entry.url.toString();
+            obj[QStringLiteral("state")]    = DownloadHistory::StateName(entry.state);
+            obj[QStringLiteral("received")] = static_cast<double>(entry.received);
+            obj[QStringLiteral("total")]    = static_cast<double>(entry.total);
+            obj[QStringLiteral("started")]  = entry.started.toString(Qt::ISODate);
+            obj[QStringLiteral("exists")]   = info.isFile();
+            obj[QStringLiteral("canOpen")]  = DownloadHistory::CanOpen(entry);
+            entries.append(obj);
+        }
+        QJsonObject reply;
+        reply[QStringLiteral("strings")] = strings;
+        reply[QStringLiteral("entries")] = entries;
+        return reply;
+    }
+
+    QByteArray Done(bool ok){
+        return ok ? QByteArrayLiteral("{\"ok\":true}") : QByteArrayLiteral("{\"ok\":false}");
+    }
+
+    QByteArray DownloadAction(const QString &endpoint, int id){
+        DownloadHistory *history = DownloadHistory::Instance();
+        if(endpoint == QStringLiteral("downloads-clear")){
+            history->Clear();
+            return Done(true);
+        }
+        const DownloadHistory::Entry *entry = history->Find(id);
+        if(!entry) return Done(false);
+        if(endpoint == QStringLiteral("downloads-remove")) return Done(history->Remove(id));
+        if(endpoint == QStringLiteral("downloads-cancel")) return Done(history->Cancel(id));
+
+        if(endpoint == QStringLiteral("downloads-open")) return Done(history->Open(id));
+        if(endpoint == QStringLiteral("downloads-show")) return Done(history->ShowInFolder(id));
+        return Done(false);
+    }
+
+    VanillaPageResponse DownloadsApi(const QString &endpoint,
+                                     const QByteArray &method,
+                                     const QByteArray &body){
+        if(endpoint == QStringLiteral("downloads")){
+            if(method != QByteArrayLiteral("GET")) return Failure(403);
+            return Json(Compact(DescribeDownloads()));
+        }
+        if(method != QByteArrayLiteral("POST")) return Failure(403);
+        const int id = QJsonDocument::fromJson(body).object()[QStringLiteral("id")].toInt();
+        return Deferred([endpoint, id](){ return DownloadAction(endpoint, id);});
+    }
+
+    VanillaPageResponse DirectorySectionApi(const QString &endpoint, const QByteArray &method,
+                                            const QByteArray &body, const QString &node);
+
     VanillaPageResponse SettingsApi(const QString &endpoint,
                                     const QByteArray &method,
-                                    const QByteArray &body){
+                                    const QByteArray &body,
+                                    const QString &node){
+        if(endpoint == QStringLiteral("directory") ||
+           endpoint == QStringLiteral("directory-set"))
+            return DirectorySectionApi(endpoint, method, body, node);
+
         if(endpoint == QStringLiteral("schema")){
             if(method != QByteArrayLiteral("GET")) return Failure(403);
             QJsonObject schema = SettingsSchema::Describe();
@@ -122,6 +289,19 @@ namespace {
            endpoint == QStringLiteral("input-set") ||
            endpoint == QStringLiteral("input-reset"))
             return InputApi(endpoint, method, body);
+
+        if(endpoint == QStringLiteral("passwords") ||
+           endpoint == QStringLiteral("passwords-remove") ||
+           endpoint == QStringLiteral("passwords-remove-all"))
+            return PasswordsApi(endpoint, method, body);
+
+        if(endpoint == QStringLiteral("downloads") ||
+           endpoint == QStringLiteral("downloads-open") ||
+           endpoint == QStringLiteral("downloads-show") ||
+           endpoint == QStringLiteral("downloads-cancel") ||
+           endpoint == QStringLiteral("downloads-remove") ||
+           endpoint == QStringLiteral("downloads-clear"))
+            return DownloadsApi(endpoint, method, body);
 
         const bool set   = endpoint == QStringLiteral("set");
         const bool reset = endpoint == QStringLiteral("reset");
@@ -176,37 +356,45 @@ namespace {
         return Json(Compact(reply));
     }
 
-    VanillaPageResponse DirectoryApi(const QString &endpoint,
-                                     const QByteArray &method,
-                                     const QByteArray &body){
-        if(endpoint == QStringLiteral("tree")){
+    VanillaPageResponse DirectorySectionApi(const QString &endpoint, const QByteArray &method,
+                                            const QByteArray &body, const QString &node){
+        if(endpoint == QStringLiteral("directory")){
             if(method != QByteArrayLiteral("GET")) return Failure(403);
-            return Json(Compact(DirectoryPage::Describe()));
+            ViewNode *pending = DirectoryPage::TakePendingSubject();
+            ViewNode *subject = nullptr;
+            bool fallback = false;
+            if(!node.isEmpty()){
+                subject = DirectoryPage::FindDirectory(node);
+                fallback = !subject;
+            } else {
+                subject = pending;
+            }
+            QJsonObject reply = subject ? DirectoryPage::Describe(subject)
+                                        : DirectoryPage::Describe();
+            reply[QStringLiteral("requested")] = node;
+            reply[QStringLiteral("fallback")] = fallback;
+            return Json(Compact(reply));
         }
 
-        if(endpoint != QStringLiteral("set")) return Failure(404);
         if(method != QByteArrayLiteral("POST")) return Failure(403);
-
-        return Json(DirectoryPage::HandleSet(QJsonDocument::fromJson(body).object()));
+        return Deferred([body](){
+            const QJsonObject request = QJsonDocument::fromJson(body).object();
+            ViewNode *target = DirectoryPage::FindDirectory(request[QStringLiteral("node")].toString());
+            const QByteArray reply = DirectoryPage::HandleSet(request);
+            if(target && !QJsonDocument::fromJson(reply).object().contains(QStringLiteral("error")))
+                DirectoryPage::SetPendingSubject(target);
+            return reply;
+        });
     }
 
-    VanillaPageResponse Directory(const QUrl &url, const QByteArray &method,
-                                  const QByteArray &body, const QUrl &initiator){
+    VanillaPageResponse Directory(const QUrl &url){
         const QString path = url.path();
-
-        if(path.startsWith(QStringLiteral("/api/"))){
-            if(!initiator.isEmpty() && !DirectoryPage::IsPageUrl(initiator))
-                return Failure(403);
-            return DirectoryApi(path.mid(5), method, body);
+        if(path.isEmpty() || path == QStringLiteral("/")){
+            return Ok(QByteArrayLiteral("text/html"), QByteArrayLiteral(
+                "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">"
+                "<meta http-equiv=\"refresh\" content=\"0; url=vanilla://settings/#directory\">"
+                "</head><body></body></html>\n"));
         }
-
-        if(path.isEmpty() || path == QStringLiteral("/"))
-            return ResourcePage(QStringLiteral(":/resources/directory/directory.html"));
-        if(path == QStringLiteral("/directory.css"))
-            return StyleSheet(QStringLiteral(":/resources/directory/directory.css"));
-        if(path == QStringLiteral("/directory.js"))
-            return Resource(QStringLiteral(":/resources/directory/directory.js"),
-                            QByteArrayLiteral("text/javascript"));
         return Failure(404);
     }
 }
@@ -257,7 +445,7 @@ QUrl VanillaPage::InitiatorFromHeaders(const QString &origin, const QString &ref
 bool VanillaPage::ReadsBody(const QUrl &url, const QByteArray &method, const QUrl &initiator){
     if(method != QByteArrayLiteral("POST")) return false;
     if(!url.path().startsWith(QStringLiteral("/api/"))) return false;
-    if(DirectoryPage::IsPageUrl(url)) return DirectoryPage::IsPageUrl(initiator);
+    if(DirectoryPage::IsPageUrl(url)) return false;
     return IsSettingsUrl(url) && IsSettingsUrl(initiator);
 }
 
@@ -266,7 +454,7 @@ VanillaPageResponse VanillaPage::Answer(const QUrl &url, const QByteArray &metho
     if(!initiator.isEmpty() && !IsPageUrl(initiator)) return Failure(403);
 
     if(DirectoryPage::IsPageUrl(url))
-        return Directory(url, method, body, initiator);
+        return Directory(url);
 
     if(!IsSettingsUrl(url)) return Failure(400);
 
@@ -275,7 +463,8 @@ VanillaPageResponse VanillaPage::Answer(const QUrl &url, const QByteArray &metho
     if(path.startsWith(QStringLiteral("/api/"))){
         if(!initiator.isEmpty() && !IsSettingsUrl(initiator))
             return Failure(403);
-        return SettingsApi(path.mid(5), method, body);
+        return SettingsApi(path.mid(5), method, body,
+                           QUrlQuery(url).queryItemValue(QStringLiteral("node")));
     }
 
     if(path.isEmpty() || path == QStringLiteral("/"))
@@ -306,6 +495,9 @@ VanillaPageResponse VanillaPage::CompleteUserInteraction
             ? QString() : QDir::toNativeSeparators(QDir::cleanPath(path));
         return Json(Compact(reply));
     }
+    case VanillaPageResponse::UserInteraction::Deferred:
+        response.m_Deferred = nullptr;
+        return pending.m_Deferred ? Json(pending.m_Deferred()) : Failure(500);
     case VanillaPageResponse::UserInteraction::None:
         break;
     }

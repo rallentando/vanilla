@@ -17,6 +17,8 @@
 #include <QDir>
 
 #include "networkcontroller.hpp"
+#include "application.hpp"
+#include "downloadhistory.hpp"
 
 namespace {
 
@@ -218,6 +220,28 @@ private slots:
 
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         QVERIFY(item.isNull());
+    }
+
+    void aReplyWhichEndedBeforeAnyDataIsRecordedAsEnded(){
+        QTemporaryDir dir;
+        Settings &s = Application::GlobalSettings();
+        s.setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("FixedLocale"));
+        s.setValue(QStringLiteral("application/@FileSaveDirectory"), dir.path() + QStringLiteral("/"));
+        Application::LoadGlobalSettings();
+
+        AbortingReply *reply =
+            new AbortingReply(QUrl(QStringLiteral("https://example.com/empty.zip")));
+        QPointer<DownloadItem> item = new DownloadItem(reply, QStringLiteral("empty.zip"));
+        QMetaObject::invokeMethod(item, "Finished");
+
+        const QList<DownloadHistory::Entry> entries = DownloadHistory::Instance()->Entries();
+        QVERIFY(!entries.isEmpty());
+        QVERIFY(entries.first().path.startsWith(dir.path()));
+        QCOMPARE(entries.first().state, DownloadHistory::Completed);
+
+        s.remove(QStringLiteral("application/@DownloadPolicy"));
+        s.remove(QStringLiteral("application/@FileSaveDirectory"));
+        Application::LoadGlobalSettings();
     }
 
     void aReplyWhichFinishedInsideTheDialogStillGoesWhenCancelled(){

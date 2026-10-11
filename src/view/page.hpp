@@ -155,6 +155,10 @@ public slots:
     void ClearCookies();
     void ClearHttpCache();
     void ClearVisitedLinks();
+    void ClearPasswords();
+    void OpenPasswords();
+    void OpenDownloads();
+    void ShowDownloads();
 
     void ToggleNotifier();
     void ToggleReceiver();

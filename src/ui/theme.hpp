@@ -5,6 +5,7 @@
 
 #include <QColor>
 #include <QBrush>
+#include <QPalette>
 #include <QPen>
 #include <QPixmap>
 #include <QIcon>
@@ -143,10 +144,6 @@ enum Role {
 
     PageBackground,
 
-    DialogShadow,
-    DialogBorder,
-    DialogText,
-
     PreviewBackground,
     PreviewBorder,
     PreviewText,
@@ -198,6 +195,8 @@ inline QBrush Brush(Role role){ return QBrush(Color(role));}
 inline QBrush Brush(Role role, int alpha){ return QBrush(Color(role, alpha));}
 inline QPen   Pen(Role role){ return QPen(Color(role));}
 inline QPen   Pen(Role role, int alpha){ return QPen(Color(role, alpha));}
+
+QPalette PanelPalette(const QPalette &base);
 
 QPixmap Ink(const QPixmap &pixmap, Role role);
 

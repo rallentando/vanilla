@@ -62,6 +62,14 @@ bool IsPageUrl(const QUrl &url);
 
 QJsonObject Describe();
 
+QJsonObject Describe(ViewNode *subject);
+
+ViewNode *FindDirectory(const QString &id);
+
+void SetPendingSubject(ViewNode *directory);
+void ClearPendingSubject();
+ViewNode *TakePendingSubject();
+
 QByteArray HandleSet(const QJsonObject &request);
 
 QMenu *CreateSettingsMenu(ViewNode *vn, std::function<void()> openPage,

@@ -16,8 +16,6 @@ namespace {
 
 const QString SETTINGS_CSS =
     QStringLiteral(VANILLA_SOURCE_DIR "/../resources/settings/settings.css");
-const QString DIRECTORY_CSS =
-    QStringLiteral(VANILLA_SOURCE_DIR "/../resources/directory/directory.css");
 
 QString Read(const QString &path){
     QFile file(path);
@@ -72,7 +70,7 @@ class tst_pagetheme : public QObject {
 
 private:
     static QStringList StyleSheets(){
-        return QStringList() << SETTINGS_CSS << DIRECTORY_CSS;
+        return QStringList() << SETTINGS_CSS;
     }
 
 private slots:
@@ -113,7 +111,6 @@ void tst_pagetheme::theStyleSheetsAreWhereTheyAreSaid(){
 void tst_pagetheme::neitherStyleSheetHoldsAColour_data(){
     QTest::addColumn<QString>("path");
     QTest::newRow("settings")  << SETTINGS_CSS;
-    QTest::newRow("directory") << DIRECTORY_CSS;
 }
 
 void tst_pagetheme::neitherStyleSheetHoldsAColour(){

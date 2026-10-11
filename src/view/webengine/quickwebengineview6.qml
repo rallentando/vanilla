@@ -22,14 +22,42 @@ WebEngineView {
         return script
     }
 
+    // the main frame only, in the application world, beside the channel the
+    // C++ side put there (D-492).
+    function makePasswordScript(source){
+        var script = WebEngine.script()
+        script.name = "vanilla-passwords"
+        script.injectionPoint = WebEngineScript.DocumentReady
+        script.worldId = WebEngineScript.ApplicationWorld
+        script.runsOnSubFrames = false
+        script.sourceCode = source
+        return script
+    }
+
+    // called by the C++ side as soon as 'viewInterface' is there, before
+    // the profile and the first address (R-321).
+    function installScripts(){
+        if(userScripts.collection.length != 0) return
+        var scripts = [makeDefaultScript()]
+        var passwords = viewInterface.passwordScript()
+        if(passwords.length != 0) scripts.push(makePasswordScript(passwords))
+        userScripts.collection = scripts
+    }
+
+    // a script in the application world, its answer handed back by number.
+    function runInApplicationWorld(id, code){
+        runJavaScript(code, WebEngineScript.ApplicationWorld, function(result){
+            viewInterface.applicationWorldResult(id, result)
+        })
+    }
+
     onNavigationRequested: function(request) {
         if(request.isMainFrame && viewInterface.DeferExtensionNavigation(request.url)){
             request.reject()
             return
         }
-        if(userScripts.collection.length == 0){
-            userScripts.collection = [makeDefaultScript()]
-        }
+        // (only in case the call from the C++ side found nothing yet.)
+        installScripts()
     }
 
     onLoadingChanged: function(loadingInfo) {
@@ -111,6 +139,14 @@ WebEngineView {
 
     onWindowCloseRequested: {
         viewInterface.windowCloseRequested()
+    }
+
+    // the page's alert, confirm and prompt: the application's dialog, headed
+    // by the site, as the widgets view shows them (D-524) -- not the
+    // engine's own QML ones.
+    onJavaScriptDialogRequested: function(request) {
+        request.accepted = true
+        viewInterface.javaScriptDialogRequested(request)
     }
 
     onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {

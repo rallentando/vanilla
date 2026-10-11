@@ -8,9 +8,13 @@
 #include "loadending.hpp"
 #include "page.hpp"
 
-#ifdef USE_WEBCHANNEL
+#if defined(USE_WEBCHANNEL) || defined(VANILLA_PASSWORDS)
 #  include <QWebChannel>
 #endif
+#include <QPointer>
+#include <QWebEngineProfile>
+#include <QWebEngineScript>
+#include <QWebEngineView>
 
 #include <QTimer>
 #include <QNetworkReply>
@@ -32,6 +36,7 @@
 
 #include "view.hpp"
 #include "webengineview.hpp"
+#include "webenginepasswords.hpp"
 #include "quickwebengineview.hpp"
 #include "application.hpp"
 #include "mainwindow.hpp"
@@ -108,6 +113,40 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, bool offTheRecord, QObje
             this, &WebEnginePage::HandleLoading);
     connect(this, &QWebEnginePage::findTextFinished,
             this, &WebEnginePage::HandleFindTextFinished);
+
+#ifdef VANILLA_PASSWORDS
+    {
+        QPointer<WebEnginePage> page(this);
+        WebEnginePasswords::Host host;
+        host.current = [page](){
+            WebEnginePasswords::Snapshot now;
+            if(!page) return now;
+            now.alive = true;
+            now.url = page->url();
+            now.space = NetworkController::CredentialSpace(page->profile());
+            now.profile = page->profile();
+            now.isPrivate = page->profile()->isOffTheRecord();
+            now.zoom = page->zoomFactor();
+            return now;
+        };
+        host.runInApplicationWorld = [page](const QString &code,
+                                            std::function<void(const QVariant&)> done){
+            if(page) page->runJavaScript(code, QWebEngineScript::ApplicationWorld, done);
+        };
+        host.mapToGlobal = [page](const QPoint &pos){
+            QWebEngineView *view = page ? QWebEngineView::forPage(page) : nullptr;
+            return view ? view->mapToGlobal(pos) : QCursor::pos();
+        };
+        host.message = [page](const QString &text){
+            if(page) emit page->statusBarMessage(text);
+        };
+        WebEnginePasswords *passwords = new WebEnginePasswords(this, host);
+        QWebChannel *channel = new QWebChannel(passwords);
+        channel->registerObject(QStringLiteral("vanillaPasswords"), passwords->Bridge());
+        setWebChannel(channel, QWebEngineScript::ApplicationWorld);
+        connect(this, &QWebEnginePage::loadStarted, passwords, &WebEnginePasswords::Forget);
+    }
+#endif
 
     if(parent){
         if(WebEngineView *w = qobject_cast<WebEngineView*>(parent))
@@ -348,18 +387,13 @@ void WebEnginePage::HandleFeaturePermission(const QUrl &securityOrigin,
 
 void WebEnginePage::HandleAuthentication(const QUrl &requestUrl,
                                          QAuthenticator *authenticator){
-    Q_UNUSED(requestUrl)
-
-    ModalDialog::Authentication(authenticator);
+    ModalDialog::Authentication(authenticator, ModalDialog::AuthenticationCaption(requestUrl));
 }
 
 void WebEnginePage::HandleProxyAuthentication(const QUrl &requestUrl,
                                               QAuthenticator *authenticator,
                                               const QString &proxyHost){
-    Q_UNUSED(requestUrl)
-    Q_UNUSED(proxyHost)
-
-    ModalDialog::Authentication(authenticator);
+    ModalDialog::Authentication(authenticator, ModalDialog::AuthenticationCaption(requestUrl, proxyHost));
 }
 
 void WebEnginePage::HandleFullScreen(QWebEngineFullScreenRequest request){
@@ -392,9 +426,9 @@ void WebEnginePage::HandleProcessTermination(RenderProcessTerminationStatus stat
     const bool giveUp = verdict == RenderProcessLedger::Verdict::GiveUp;
 
     QString info = giveUp
-        ? tr("A page is left as it is, because that's process is terminated "
+        ? tr("A page is left as it is, because its process was terminated "
              "%1 times in a row.\n").arg(RenderProcessLedger::Limit)
-        : tr("A page is reloaded, because that's process is terminated.\n");
+        : tr("A page is reloaded, because its process was terminated.\n");
     switch(status){
     case QWebEnginePage::NormalTerminationStatus:
         info += tr("Normal termination. (code: %1)");   break;
@@ -506,8 +540,8 @@ void WebEnginePage::HandleCertificateError(QWebEngineCertificateError error){
         return;
     case Application::AskForEachAccess:{
         ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("Ssl errors."));
-        dialog->SetCaption(tr("Ssl errors."));
+        dialog->SetTitle(tr("SSL errors."));
+        dialog->SetCaption(tr("SSL errors."));
         dialog->SetInformativeText(tr("Ignore errors in this access?"));
         dialog->SetDetailedText(tr("Url: %1\nSsl error : %2")
                                 .arg(error.url().toString(), error.description()));
@@ -528,8 +562,8 @@ void WebEnginePage::HandleCertificateError(QWebEngineCertificateError error){
             return;
         }
         ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("Ssl errors on host:%1").arg(host));
-        dialog->SetCaption(tr("Ssl errors on host:%1").arg(host));
+        dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
+        dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
         dialog->SetInformativeText(tr("Allow or Block this host?"));
         dialog->SetDetailedText(tr("Url: %1\nSsl error : %2")
                                 .arg(error.url().toString(), error.description()));
@@ -565,8 +599,8 @@ void WebEnginePage::HandleCertificateError(QWebEngineCertificateError error){
         }
 
         ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("Ssl errors on host:%1").arg(host));
-        dialog->SetCaption(tr("Ssl errors on host:%1").arg(host));
+        dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
+        dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
         dialog->SetInformativeText(tr("Allow or Block this certificate?"));
         QString detail = tr("Url: %1\nSsl error : %2")
             .arg(error.url().toString(), error.description());

@@ -59,6 +59,7 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
     setAcceptDrops(true);
     setEnabled(true);
     setFlag(QGraphicsItem::ItemIsFocusable);
+    setFlag(QGraphicsItem::ItemContainsChildrenInShape);
 
     setZValue(MAIN_CONTENTS_LAYER);
 
@@ -544,6 +545,61 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
 
     if(!StatusBarMessageIsSuspended())
         emit statusBarMessage(tr("Displaying %1 nodes.").arg(m_DisplayThumbnails.length()));
+}
+
+void GraphicsTableView::LetGoOf(const QSet<Node*> &going, Node *formerParent){
+    if(going.isEmpty()) return;
+
+    m_NodesRegister.removeIf([&going](Node *nd){ return going.contains(nd);});
+
+    Node *landing = formerParent ? formerParent : TreeBank::GetViewRoot();
+    bool moved = false;
+    if(m_DummyViewNode && going.contains(m_DummyViewNode->GetParent())){
+        m_DummyViewNode->SetParent(landing);
+        moved = true;
+    }
+    if(m_CurrentNode && going.contains(m_CurrentNode)){
+        if(m_DummyViewNode){
+            m_DummyViewNode->SetParent(landing);
+            m_CurrentNode = m_DummyViewNode;
+        } else {
+            m_CurrentNode = nullptr;
+        }
+        moved = true;
+    }
+
+    if(m_CloseButton && going.contains(m_CloseButton->GetNode())) m_CloseButton->UnsetItem();
+    if(m_CloneButton && going.contains(m_CloneButton->GetNode())) m_CloneButton->UnsetItem();
+    if(m_SoundButton && going.contains(m_SoundButton->GetNode())) m_SoundButton->UnsetItem();
+    if(m_InPlaceNotifier && going.contains(m_InPlaceNotifier->GetNode())){
+        m_InPlaceNotifier->SetNode(nullptr);
+        m_InPlaceNotifier->hide();
+    }
+
+    QSet<QGraphicsItem*> dead;
+    for(auto it = m_ThumbnailCache.begin(); it != m_ThumbnailCache.end();){
+        if(going.contains(it.key())){ dead << it.value(); it = m_ThumbnailCache.erase(it);}
+        else ++it;
+    }
+    for(auto it = m_NodeTitleCache.begin(); it != m_NodeTitleCache.end();){
+        if(going.contains(it.key())){ dead << it.value(); it = m_NodeTitleCache.erase(it);}
+        else ++it;
+    }
+    if(!dead.isEmpty() || moved) FinishFoldAnimation();
+
+    const int shown = m_DisplayThumbnails.length() + m_DisplayNodeTitles.length();
+    m_DisplayThumbnails.removeIf([&dead](Thumbnail *t){ return dead.contains(t);});
+    m_DisplayNodeTitles.removeIf([&dead](NodeTitle *t){ return dead.contains(t);});
+    const bool displayed = shown != m_DisplayThumbnails.length() + m_DisplayNodeTitles.length();
+
+    if(displayed || moved){
+        if(IsDisplayingNode()){
+            ThumbList_RefreshNoScroll();
+        } else {
+            m_HoveredItemIndex = -1;
+        }
+    }
+    qDeleteAll(dead);
 }
 
 bool GraphicsTableView::DeleteNodes(NodeList list){
@@ -3192,7 +3248,7 @@ bool GraphicsTableView::ThumbList_SetNodeCollectionType(NodeCollectionType type)
             switch(candidate){
             case Flat:      label = tr("Normal"); break;
             case Recursive: label = tr("Recursive"); break;
-            case Foldable:  label = tr("Foldable"); break;
+            case Foldable:  label = tr("Expandable"); break;
             }
             types << (candidate == GetNodeCollectionType()
                       ? QStringLiteral("[%1]").arg(label) : label);
@@ -3237,7 +3293,7 @@ QMenu *GraphicsTableView::CreateNodeCollectionTypeMenu(QWidget *parent){
         { Recursive, QT_TR_NOOP("Recursive"),
                      QT_TR_NOOP("Everything below, however deep. A large tree puts a "
                                 "great many thumbnails on the screen at once.")},
-        { Foldable,  QT_TR_NOOP("Foldable"),
+        { Foldable,  QT_TR_NOOP("Expandable"),
                      QT_TR_NOOP("As above, but a folded directory hides what is under "
                                 "it. Opening a directory folds and unfolds it instead "
                                 "of entering it.")},

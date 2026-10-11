@@ -425,6 +425,174 @@ namespace {
     }
 }
 
+namespace {
+    EdgeDownloadAskQueue &DownloadAsks(){
+        static EdgeDownloadAskQueue asks;
+        return asks;
+    }
+    bool g_DownloadAsksDraining = false;
+    void RunNextDownloadAsk(){
+        static const bool drained = [](){
+            if(QCoreApplication *app = QCoreApplication::instance())
+                QObject::connect(app, &QCoreApplication::aboutToQuit, app, [](){
+                    g_DownloadAsksDraining = true;
+                    while(std::function<void()> job = DownloadAsks().TakeNext()) job();
+                });
+            return true;
+        }();
+        Q_UNUSED(drained)
+        if(g_DownloadAsksDraining) return;
+        QTimer::singleShot(0, EdgeEnvironment::Instance(), [](){
+            if(std::function<void()> job = DownloadAsks().TakeNext()) job();
+        });
+    }
+}
+
+void EdgeWebView::WireDownload(ICoreWebView2DownloadOperation *rawOperation,
+                               const QString &shownName, const QString &path){
+    ComPtr<ICoreWebView2DownloadOperation> operation(rawOperation);
+    QString name = shownName;
+    QString file = path;
+
+    file = QDir::cleanPath(QDir::fromNativeSeparators(file));
+
+    emit statusBarMessage(tr("Downloading %1").arg(name));
+
+    const bool downloadOnly = m_Impl->m_History.IsEmpty();
+    if(downloadOnly) m_Impl->m_Downloads.Started();
+
+    auto settled = std::make_shared<bool>(false);
+
+    auto cell = std::make_shared<EdgeDownloadCell>();
+    auto wired = std::make_shared<QPointer<EdgeDownloadAdapter>>();
+
+    QPointer<EdgeWebView> alive(this);
+    EventRegistrationToken stateToken = {};
+    const HRESULT hr = operation->add_StateChanged
+        (Callback<ICoreWebView2StateChangedEventHandler>
+         ([alive, name, downloadOnly, settled, cell, wired]
+          (ICoreWebView2DownloadOperation *sender, IUnknown*) -> HRESULT {
+             if(!sender) return S_OK;
+
+             COREWEBVIEW2_DOWNLOAD_STATE state =
+                 COREWEBVIEW2_DOWNLOAD_STATE_IN_PROGRESS;
+             sender->get_State(&state);
+
+             BOOL resumable = FALSE;
+             if(state == COREWEBVIEW2_DOWNLOAD_STATE_INTERRUPTED &&
+                FAILED(sender->get_CanResume(&resumable)))
+                 resumable = FALSE;
+
+             const EdgeDownloadReport report =
+                 cell->Arrive(static_cast<EdgeDownloadCell::Backend>(state),
+                              resumable != FALSE);
+             if(EdgeDownloadAdapter *adapter = wired->data()){
+                 adapter->NotifyState();
+                 if(report.terminal) adapter->ReleaseAfterUnwind();
+             }
+
+             if(!alive) return S_OK;
+
+             if(state == COREWEBVIEW2_DOWNLOAD_STATE_COMPLETED)
+                 emit alive->statusBarMessage(tr("Downloaded %1").arg(name));
+             else if(state == COREWEBVIEW2_DOWNLOAD_STATE_INTERRUPTED)
+                 emit alive->statusBarMessage(tr("Download of %1 was interrupted").arg(name));
+             else
+                 return S_OK;
+
+             if(!report.terminal) return S_OK;
+
+             if(!downloadOnly || *settled) return S_OK;
+             *settled = true;
+             alive->m_Impl->m_Downloads.Settled();
+
+             if(!alive->m_Impl->m_Downloads.MayClose()) return S_OK;
+
+             EdgeDownloadCarriers::Instance()->ReleaseLater(alive->GetThis());
+
+             if(!alive->m_Impl->m_History.IsEmpty()) return S_OK;
+
+             QPointer<EdgeWebView> waiting(alive);
+             View::CloseLater(alive->GetThis(), [waiting](){
+                 return waiting && !waiting->m_Impl->m_State.IsRetired() &&
+                     waiting->m_Impl->m_Downloads.MayClose() &&
+                     waiting->m_Impl->m_History.IsEmpty();
+             });
+             return S_OK;
+         }).Get(), &stateToken);
+
+    if(FAILED(hr)){
+        if(downloadOnly){
+            qWarning() << "edge: a download cannot be watched;"
+                       << "this tab will not close itself";
+            m_Impl->m_Downloads.Untracked();
+        }
+        return;
+    }
+
+    EventRegistrationToken bytesToken = {};
+    operation->add_BytesReceivedChanged
+        (Callback<ICoreWebView2BytesReceivedChangedEventHandler>
+         ([cell, wired]
+          (ICoreWebView2DownloadOperation *sender, IUnknown*) -> HRESULT {
+             if(!sender) return S_OK;
+             INT64 received = 0;
+             INT64 total = -1;
+             if(FAILED(sender->get_BytesReceived(&received))) received = 0;
+             if(FAILED(sender->get_TotalBytesToReceive(&total))) total = -1;
+             cell->SetProgress(received, total);
+             if(EdgeDownloadAdapter *adapter = wired->data())
+                 adapter->NotifyReceivedBytes();
+             return S_OK;
+         }).Get(), &bytesToken);
+
+    {
+        INT64 received = 0;
+        INT64 total = -1;
+        if(FAILED(operation->get_BytesReceived(&received))) received = 0;
+        if(FAILED(operation->get_TotalBytesToReceive(&total))) total = -1;
+        cell->SetProgress(received, total);
+    }
+
+    QUrl remote;
+    {
+        LPWSTR uri = nullptr;
+        if(SUCCEEDED(operation->get_Uri(&uri)) && uri){
+            const QString address = QString::fromWCharArray(uri);
+            remote = QUrl(address);
+            CoTaskMemFree(uri);
+            m_Impl->m_Aborts.DownloadStarted(address);
+        }
+    }
+
+    EdgeDownloadAdapter *adapter =
+        new EdgeDownloadAdapter(this, operation, cell, remote, file);
+    *wired = adapter;
+
+    DownloadItem *item = new DownloadItem(adapter);
+    item->Record(m_Impl->m_PrivateMode);
+
+    const bool terminalBeforeReplay = cell->IsTerminal();
+
+    adapter->Replay();
+    if(terminalBeforeReplay) adapter->ReleaseAfterUnwind();
+
+    if(!downloadOnly || terminalBeforeReplay) return;
+
+    ViewNode *vn = GetViewNode();
+    TreeBank *tb = GetTreeBank();
+    if(!vn || !tb) return;
+
+    SharedView held = tb->ExtractDownloadCarrier(vn);
+    if(!held) return;
+
+    EdgeDownloadCarriers::Instance()->Add(held);
+
+    if(m_Impl->m_Downloads.MayClose())
+        EdgeDownloadCarriers::Instance()->ReleaseLater(held);
+
+}
+
 void EdgeWebView::RegisterDocumentHandlers(){
     if(!m_Impl->m_WebView || m_Impl->m_State.IsRetired()) return;
 
@@ -488,14 +656,18 @@ void EdgeWebView::RegisterDocumentHandlers(){
                  name = QFileInfo(file).fileName();
                  CoTaskMemFree(path);
              }
-             if(name.isEmpty()) return S_OK;
+             const Application::DownloadPolicy policy = Application::GetDownloadPolicy();
+             const bool policyAsks = policy == Application::Undefined_ ||
+                 policy == Application::AskForEachDownload;
+             if(name.isEmpty() && !policyAsks) return S_OK;
 
-             const QString target = DownloadName::Unique
+             const QString target = name.isEmpty() ? QString()
+                 : DownloadName::Unique
                  (QDir::cleanPath
                   (QDir(Application::GetDownloadDirectory())
                    .filePath(DownloadName::Sanitize(name))));
 
-             if(!target.isEmpty()){
+             if(!EdgeDownloadNeedsAsking(policyAsks, !target.isEmpty())){
                  const QString native = QDir::toNativeSeparators(target);
 
                  if(SUCCEEDED(args->put_ResultFilePath
@@ -503,146 +675,80 @@ void EdgeWebView::RegisterDocumentHandlers(){
                      file = native;
                      name = QFileInfo(native).fileName();
                  }
-             }
-             file = QDir::cleanPath(QDir::fromNativeSeparators(file));
-
-             emit statusBarMessage(tr("Downloading %1").arg(name));
-
-             const bool downloadOnly = m_Impl->m_History.IsEmpty();
-             if(downloadOnly) m_Impl->m_Downloads.Started();
-
-             auto settled = std::make_shared<bool>(false);
-
-             auto cell = std::make_shared<EdgeDownloadCell>();
-             auto wired = std::make_shared<QPointer<EdgeDownloadAdapter>>();
-
-             QPointer<EdgeWebView> alive(this);
-             EventRegistrationToken stateToken = {};
-             const HRESULT hr = operation->add_StateChanged
-                 (Callback<ICoreWebView2StateChangedEventHandler>
-                  ([alive, name, downloadOnly, settled, cell, wired]
-                   (ICoreWebView2DownloadOperation *sender, IUnknown*) -> HRESULT {
-                      if(!sender) return S_OK;
-
-                      COREWEBVIEW2_DOWNLOAD_STATE state =
-                          COREWEBVIEW2_DOWNLOAD_STATE_IN_PROGRESS;
-                      sender->get_State(&state);
-
-                      BOOL resumable = FALSE;
-                      if(state == COREWEBVIEW2_DOWNLOAD_STATE_INTERRUPTED &&
-                         FAILED(sender->get_CanResume(&resumable)))
-                          resumable = FALSE;
-
-                      const EdgeDownloadReport report =
-                          cell->Arrive(static_cast<EdgeDownloadCell::Backend>(state),
-                                       resumable != FALSE);
-                      if(EdgeDownloadAdapter *adapter = wired->data()){
-                          adapter->NotifyState();
-                          if(report.terminal) adapter->ReleaseAfterUnwind();
-                      }
-
-                      if(!alive) return S_OK;
-
-                      if(state == COREWEBVIEW2_DOWNLOAD_STATE_COMPLETED)
-                          emit alive->statusBarMessage(tr("Downloaded %1").arg(name));
-                      else if(state == COREWEBVIEW2_DOWNLOAD_STATE_INTERRUPTED)
-                          emit alive->statusBarMessage(tr("Download of %1 was interrupted").arg(name));
-                      else
-                          return S_OK;
-
-                      if(!report.terminal) return S_OK;
-
-                      if(!downloadOnly || *settled) return S_OK;
-                      *settled = true;
-                      alive->m_Impl->m_Downloads.Settled();
-
-                      if(!alive->m_Impl->m_Downloads.MayClose()) return S_OK;
-
-                      EdgeDownloadCarriers::Instance()->ReleaseLater(alive->GetThis());
-
-                      if(!alive->m_Impl->m_History.IsEmpty()) return S_OK;
-
-                      QPointer<EdgeWebView> waiting(alive);
-                      View::CloseLater(alive->GetThis(), [waiting](){
-                          return waiting && !waiting->m_Impl->m_State.IsRetired() &&
-                              waiting->m_Impl->m_Downloads.MayClose() &&
-                              waiting->m_Impl->m_History.IsEmpty();
-                      });
-                      return S_OK;
-                  }).Get(), &stateToken);
-
-             if(FAILED(hr)){
-                 if(downloadOnly){
-                     qWarning() << "edge: a download cannot be watched;"
-                                << "this tab will not close itself";
-                     m_Impl->m_Downloads.Untracked();
-                 }
+                 WireDownload(operation.Get(), name, file);
                  return S_OK;
              }
 
-             EventRegistrationToken bytesToken = {};
-             operation->add_BytesReceivedChanged
-                 (Callback<ICoreWebView2BytesReceivedChangedEventHandler>
-                  ([cell, wired]
-                   (ICoreWebView2DownloadOperation *sender, IUnknown*) -> HRESULT {
-                      if(!sender) return S_OK;
-                      INT64 received = 0;
-                      INT64 total = -1;
-                      if(FAILED(sender->get_BytesReceived(&received))) received = 0;
-                      if(FAILED(sender->get_TotalBytesToReceive(&total))) total = -1;
-                      cell->SetProgress(received, total);
-                      if(EdgeDownloadAdapter *adapter = wired->data())
-                          adapter->NotifyReceivedBytes();
-                      return S_OK;
-                  }).Get(), &bytesToken);
-
-             {
-                 INT64 received = 0;
-                 INT64 total = -1;
-                 if(FAILED(operation->get_BytesReceived(&received))) received = 0;
-                 if(FAILED(operation->get_TotalBytesToReceive(&total))) total = -1;
-                 cell->SetProgress(received, total);
+             ComPtr<ICoreWebView2Deferral> deferral;
+             if(FAILED(args->GetDeferral(&deferral)) || !deferral){
+                 args->put_Cancel(TRUE);
+                 return S_OK;
              }
-
-             QUrl remote;
-             {
-                 LPWSTR uri = nullptr;
-                 if(SUCCEEDED(operation->get_Uri(&uri)) && uri){
-                     const QString address = QString::fromWCharArray(uri);
-                     remote = QUrl(address);
-                     CoTaskMemFree(uri);
-                     m_Impl->m_Aborts.DownloadStarted(address);
+             ComPtr<ICoreWebView2DownloadStartingEventArgs> held(args);
+             QPointer<EdgeWebView> alive(this);
+             const QString offered = name;
+             m_Impl->m_Downloads.Started();
+             const bool start = DownloadAsks().Push
+                 ([alive, held, deferral, operation, offered](){
+                 auto usable = [&alive](){
+                     return alive && !alive->IsGoing() && !Application::IsQuitting() &&
+                         !g_DownloadAsksDraining;
+                 };
+                 QString chosen;
+                 if(usable()) Application::AskDownloadPolicyIfNeed();
+                 if(usable()){
+                     const QString directory = Application::GetDownloadDirectory();
+                     const QString sanitized = DownloadName::Sanitize(offered);
+                     const QString target = sanitized.isEmpty() ? QString()
+                         : DownloadName::Unique(QDir::cleanPath(QDir(directory).filePath(sanitized)));
+                     const Application::DownloadPolicy now = Application::GetDownloadPolicy();
+                     const bool asks = now == Application::Undefined_ ||
+                         now == Application::AskForEachDownload;
+                     if(EdgeDownloadNeedsAsking(asks, !target.isEmpty())){
+                         chosen = ModalDialog::GetSaveFileName_
+                             (QString(), target.isEmpty()
+                              ? QDir::cleanPath(QDir(directory).filePath(sanitized)) : target);
+                         if(!usable()) chosen.clear();
+                     } else {
+                         chosen = target;
+                     }
                  }
-             }
 
-             EdgeDownloadAdapter *adapter =
-                 new EdgeDownloadAdapter(this, operation, cell, remote, file);
-             *wired = adapter;
+                 bool wired = false;
+                 bool pathTaken = false;
+                 if(!chosen.isEmpty()){
+                     chosen = QDir::cleanPath(QDir::fromNativeSeparators(chosen));
+                     const QString native = QDir::toNativeSeparators(chosen);
+                     pathTaken = SUCCEEDED(held->put_ResultFilePath
+                                           (reinterpret_cast<PCWSTR>(native.utf16())));
+                 }
+                 if(alive) alive->m_Impl->m_Downloads.Settled();
+                 if(pathTaken){
+                     if(usable()){
+                         alive->WireDownload(operation.Get(), QFileInfo(chosen).fileName(), chosen);
+                         Application::SetDownloadDirectory(QFileInfo(chosen).absolutePath() + QStringLiteral("/"));
+                         wired = true;
+                     }
+                 }
+                 if(!wired) held->put_Cancel(TRUE);
+                 if(!wired && alive && alive->m_Impl->m_Downloads.MayClose())
+                     EdgeDownloadCarriers::Instance()->ReleaseLater(alive->GetThis());
+                 if(!wired && usable() && alive->m_Impl->m_History.IsEmpty()){
+                     QPointer<EdgeWebView> waiting(alive);
+                     View::CloseLater(alive->GetThis(), [waiting](){
+                         return waiting && !waiting->m_Impl->m_State.IsRetired() &&
+                             waiting->m_Impl->m_Downloads.MayClose() &&
+                             waiting->m_Impl->m_History.IsEmpty();
+                     });
+                 }
 
-             DownloadItem *item = new DownloadItem(adapter);
-             MainWindow *win = Application::GetCurrentWindow();
-             if(win && win->GetTreeBank() && win->GetTreeBank()->GetNotifier())
-                 win->GetTreeBank()->GetNotifier()->RegisterDownload(item);
-
-             const bool terminalBeforeReplay = cell->IsTerminal();
-
-             adapter->Replay();
-             if(terminalBeforeReplay) adapter->ReleaseAfterUnwind();
-
-             if(!downloadOnly || terminalBeforeReplay) return S_OK;
-
-             ViewNode *vn = GetViewNode();
-             TreeBank *tb = GetTreeBank();
-             if(!vn || !tb) return S_OK;
-
-             SharedView held = tb->ExtractDownloadCarrier(vn);
-             if(!held) return S_OK;
-
-             EdgeDownloadCarriers::Instance()->Add(held);
-
-             if(m_Impl->m_Downloads.MayClose())
-                 EdgeDownloadCarriers::Instance()->ReleaseLater(held);
-
+                 {
+                     EdgeBackendCall call(EdgeDownloadCarriers::Instance()->Calls());
+                     deferral->Complete();
+                 }
+                 RunNextDownloadAsk();
+             });
+             if(start) RunNextDownloadAsk();
              return S_OK;
          }).Get(), &token))){
         VANILLA_KEEP_WEBVIEW_EVENT(webview4.Get(), DownloadStarting, token);
@@ -1373,8 +1479,8 @@ int EdgeWebView::DecideCertificateError(const QUrl &url, const QString &descript
 
     case Application::AskForEachAccess: {
         ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("Ssl errors."));
-        dialog->SetCaption(tr("Ssl errors."));
+        dialog->SetTitle(tr("SSL errors."));
+        dialog->SetCaption(tr("SSL errors."));
         dialog->SetInformativeText(tr("Ignore errors in this access?"));
         dialog->SetDetailedText(detail);
         dialog->SetButtons(Dialog::Allow | Dialog::Block);
@@ -1390,8 +1496,8 @@ int EdgeWebView::DecideCertificateError(const QUrl &url, const QString &descript
             return COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_ALWAYS_ALLOW;
 
         ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("Ssl errors on host:%1").arg(host));
-        dialog->SetCaption(tr("Ssl errors on host:%1").arg(host));
+        dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
+        dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
         dialog->SetInformativeText(tr("Allow or Block this host?"));
         dialog->SetDetailedText(detail);
         dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
@@ -1423,8 +1529,8 @@ int EdgeWebView::DecideCertificateError(const QUrl &url, const QString &descript
         }
 
         ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("Ssl errors on host:%1").arg(host));
-        dialog->SetCaption(tr("Ssl errors on host:%1").arg(host));
+        dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
+        dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
         dialog->SetInformativeText(tr("Allow or Block this certificate?"));
         dialog->SetDetailedText(detail + QStringLiteral("\nSHA-256: ") + fingerprint);
         dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
@@ -1463,7 +1569,7 @@ int EdgeWebView::DecidePermission(const QUrl &origin, int kind, bool *remember){
 
     const Dialog::Button clicked = dialog->ClickedButton();
     if(clicked != Dialog::Yes && clicked != Dialog::No)
-        return COREWEBVIEW2_PERMISSION_STATE_DEFAULT;
+        return COREWEBVIEW2_PERMISSION_STATE_DENY;
 
     if(remember)
         *remember = !m_Impl->m_PrivateMode &&

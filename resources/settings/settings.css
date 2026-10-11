@@ -54,13 +54,18 @@ h1 {
 
 #layout {
     flex: 1;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(0, 1100px) minmax(0, 1fr);
 }
+
+body.wide #layout { grid-template-columns: 200px minmax(0, 1fr); }
+body.wide #main { max-width: none; }
 
 #nav {
     position: sticky;
     top: 66px;
-    align-self: flex-start;
+    align-self: start;
+    justify-self: start;
     height: calc(100vh - 66px);
     flex: none;
     width: 200px;
@@ -94,6 +99,8 @@ h1 {
     flex: 1;
     padding: 8px 24px 48px;
     min-width: 0;
+    max-width: 1100px;
+    width: 100%;
 }
 
 section > h2 {
@@ -126,6 +133,98 @@ section > h2 {
 }
 
 .row .hint[hidden] { display: none; }
+#main a.link { color: var(--accent); text-decoration: none; }
+#main a.link:hover { text-decoration: underline; }
+.row.spot { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.row { transition: background .5s; }
+.row .control .browse + .browse { margin-left: 6px; }
+.row .text .hint { overflow-wrap: anywhere; }
+
+.directory-panel .intro { color: var(--fg-dim); margin: 0 0 12px; }
+.directory-panel > details {
+    margin: 12px 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.directory-panel > details > summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    font-weight: 600;
+    background: var(--bg-sunken);
+}
+.directory-panel > details[open] { background: var(--bg-sunken); border-color: var(--accent); }
+.directory-panel > details[open] > summary { border-bottom: 1px solid var(--line); }
+.directory-panel > details:not([open]) .when-open,
+.directory-panel > details[open]:not([data-closing]) .when-closed,
+.directory-panel > details[data-closing] .when-open { display: none; }
+.directory-panel > details > .dir {
+    background: var(--bg);
+    margin-right: 16px;
+    margin-left: calc(16px + min(var(--depth, 0), 4) * 16px);
+}
+.directory-panel .dir {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin: 12px 0;
+}
+.directory-panel .dir.current { margin-left: 0; border-left: 3px solid var(--accent); }
+.directory-panel .current-label { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+.directory-panel .dir > .head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.directory-panel .dir .profile { color: var(--fg-dim); font-size: 13px; }
+.directory-panel .dir .note { color: var(--fg-dim); font-size: 13px; margin: 4px 0 0; }
+.directory-panel .row .hint { white-space: pre-line; }
+.directory-panel .dir .agents { margin: 8px 0 0; white-space: pre-wrap; color: var(--fg-dim); font-size: 13px; }
+.directory-panel .dir .warning {
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    border-left: 3px solid var(--accent);
+    color: var(--fg-dim);
+    font-size: 13px;
+}
+.directory-panel .dir.invalid input[type="text"] { border-color: var(--invalid); }
+.directory-panel .dir-tree {
+    margin: 0 0 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.directory-panel .dir-tree > summary {
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+.directory-panel .dir-tree > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.directory-panel .dir-tree[open] > summary { border-bottom: 1px solid var(--line); }
+.directory-panel .dir-tree-list {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 8px 12px;
+    height: auto;
+    min-height: 4em;
+    max-height: 60vh;
+    overflow: auto;
+    resize: vertical;
+}
+.directory-panel .dir-tree button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    border-radius: var(--radius);
+    padding: 3px 8px;
+    margin-left: calc(var(--depth, 0) * 18px);
+    cursor: pointer;
+    text-align: left;
+}
+.directory-panel .dir-tree button:hover { background: var(--bg-sunken); }
+.directory-panel .dir-tree button:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.directory-panel .dir-tree button.above { color: var(--fg-dim); }
+.directory-panel .dir-tree button.current { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
 
 .row .restart,
 .input-head .restart {
@@ -159,8 +258,15 @@ input[type="text"], input[type="number"], select, textarea {
     min-width: 0;
 }
 
-input[type="text"], select { width: 260px; }
+input[type="text"], select { width: 260px; max-width: 100%; }
 input[type="number"] { width: 120px; }
+.row.wide input[type="text"] { width: 100%; }
+
+#main .notice {
+    color: var(--fg-dim);
+    margin: 0;
+    padding: 12px 4px;
+}
 
 textarea {
     width: 100%;
@@ -413,6 +519,47 @@ kbd {
 .builder { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .builder label { display: inline-flex; align-items: center; gap: 4px; }
 .builder .preview { min-width: 80px; font-size: 16px; }
+
+@media (max-width: 900px) {
+    .row:not(:has(input[type="checkbox"], input[type="number"])) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .row:not(:has(input[type="checkbox"], input[type="number"])) > .control {
+        width: 100%;
+    }
+    .row:not(:has(input[type="checkbox"], input[type="number"])) > .control > select,
+    .row:not(:has(input[type="checkbox"], input[type="number"])) > .control > input[type="text"] {
+        flex: 1;
+        width: auto;
+    }
+    .binding select.action { width: auto; flex: 1; }
+}
+
+@media (max-width: 640px) {
+    .row:has(input[type="number"]) { flex-direction: column; align-items: stretch; }
+    header { padding: 14px 16px; gap: 10px; }
+    #nav { width: 150px; padding: 16px 4px; }
+    #nav button { padding: 8px 8px; }
+    #main { padding: 8px 16px 40px; }
+}
+
+@media (max-width: 480px) {
+    #layout, body.wide #layout { display: flex; flex-direction: column; }
+    #nav {
+        position: static;
+        width: auto;
+        height: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        padding: 8px;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+        overflow: visible;
+    }
+    #nav button { width: auto; margin: 0; }
+}
 
 @media print {
     header, #nav, .input-toolbar, #input-toggle, #toast { display: none; }

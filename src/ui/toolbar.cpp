@@ -4,10 +4,12 @@
 
 #include "toolbar.hpp"
 #include "extensionbar.hpp"
+#include "downloadbar.hpp"
 
 #include "treebank.hpp"
 #include "receiver.hpp"
 
+#include <QLayout>
 #include <QLineEdit>
 #include <QTableView>
 #include <QHeaderView>
@@ -181,6 +183,13 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
     addWidget(m_LineEdit);
     m_ExtensionBar = new ExtensionBar(this);
     addWidget(m_ExtensionBar);
+    m_DownloadBar = new DownloadBar(this);
+    QAction *downloads = addWidget(m_DownloadBar);
+    downloads->setVisible(m_DownloadBar->IsNeeded());
+    connect(m_DownloadBar, &DownloadBar::NeededChanged, downloads, [this, downloads](bool needed){
+        downloads->setVisible(needed);
+        if(needed) layout()->activate();
+    });
     setObjectName(QStringLiteral("ToolBar"));
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     setAllowedAreas(Qt::TopToolBarArea | Qt::BottomToolBarArea);
@@ -256,7 +265,7 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
                 foreach(QString url, m_InputUrlHistory){
                     if(url.startsWith(text, Qt::CaseInsensitive)){
                         QStandardItem *item = new QStandardItem(url);
-                        QIcon icon = Application::GetIcon(QUrl(url).host());
+                        QIcon icon = Application::GetIcon(QUrl(url));
                         if(icon.isNull() || icon.availableSizes().first().width() <= 2)
                             icon = blank;
                         item->setIcon(icon);
@@ -268,7 +277,7 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
                         QString url = nd->GetUrl().toString();
                         if(url.startsWith(text, Qt::CaseInsensitive)){
                             QStandardItem *item = new QStandardItem(url);
-                            QIcon icon = Application::GetIcon(QUrl(url).host());
+                            QIcon icon = Application::GetIcon(QUrl(url));
                             if(icon.isNull() || icon.availableSizes().first().width() <= 2)
                                 icon = blank;
                             item->setIcon(icon);

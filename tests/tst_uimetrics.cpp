@@ -39,8 +39,7 @@ QStringList StyleSheetSources(){
 
 QStringList StyleSheets(){
     return QStringList()
-        << RESOURCES + QStringLiteral("/settings/settings.css")
-        << RESOURCES + QStringLiteral("/directory/directory.css");
+        << RESOURCES + QStringLiteral("/settings/settings.css");
 }
 
 QString Read(const QString &path){
@@ -175,7 +174,6 @@ void tst_uimetrics::noStyleSheetInTheSourcesNamesAColourOrAFace(){
 void tst_uimetrics::neitherPageRoundsByALiteral_data(){
     QTest::addColumn<QString>("path");
     QTest::newRow("settings.css")  << StyleSheets().at(0);
-    QTest::newRow("directory.css") << StyleSheets().at(1);
 }
 
 void tst_uimetrics::neitherPageRoundsByALiteral(){

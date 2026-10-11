@@ -18,6 +18,7 @@ class QStandardItemModel;
 class QPaintEvent;
 class QResizeEvent;
 class ExtensionBar;
+class DownloadBar;
 
 class ToolBar : public QToolBar {
     Q_OBJECT
@@ -42,6 +43,7 @@ public:
     void Disconnect(SharedView view);
 
     QMenu *ToolBarMenu();
+    DownloadBar *GetDownloadBar() const { return m_DownloadBar;}
 
 public slots:
     void SetUrl(const QUrl&);
@@ -66,6 +68,7 @@ private:
     TreeBank *m_TreeBank;
     LineEdit *m_LineEdit;
     ExtensionBar *m_ExtensionBar;
+    DownloadBar *m_DownloadBar;
     QCompleter *m_Completer;
     QStandardItemModel *m_Model;
     QAction *m_BackAction;

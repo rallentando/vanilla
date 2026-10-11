@@ -8,6 +8,9 @@
 #include "settingspage.hpp"
 #include "directorypage.hpp"
 #include "treebank.hpp"
+#include "lightnode.hpp"
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "testsupport.hpp"
 
@@ -93,6 +96,99 @@ void tst_vanillapage::everyEndpointTakesOneMethodAndNoOther(){
     QCOMPARE(noPicker.m_Status, 200);
     QVERIFY(!noPicker.NeedsUserInteraction());
     QVERIFY(noPicker.m_Body.contains("no directory picker"));
+
+    QCOMPARE(Post(Settings(QStringLiteral("/api/passwords")), QByteArray(),
+                  VanillaPage::SettingsUrl()).m_Status, 403);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/passwords-remove")),
+                 VanillaPage::SettingsUrl()).m_Status, 403);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/passwords-remove-all")),
+                 VanillaPage::SettingsUrl()).m_Status, 403);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/passwords-remove-all"))).m_Status, 403);
+
+    const VanillaPageResponse list = Get(Settings(QStringLiteral("/api/passwords")),
+                                         VanillaPage::SettingsUrl());
+    QCOMPARE(list.m_Status, 200);
+    QVERIFY(list.m_Body.contains("\"entries\""));
+    QVERIFY(!list.m_Body.contains("\"password\""));
+
+    const VanillaPageResponse remove = Post
+        (Settings(QStringLiteral("/api/passwords-remove")),
+         QByteArrayLiteral("{\"space\":\"s\",\"origin\":\"https://a.example:443\",\"username\":\"u\"}"),
+         VanillaPage::SettingsUrl());
+    QCOMPARE(remove.m_Status, 200);
+    QVERIFY(remove.m_UserInteraction == VanillaPageResponse::UserInteraction::Deferred);
+    const VanillaPageResponse removeAll = Post
+        (Settings(QStringLiteral("/api/passwords-remove-all")), QByteArrayLiteral("{}"),
+         VanillaPage::SettingsUrl());
+    QVERIFY(removeAll.m_UserInteraction == VanillaPageResponse::UserInteraction::Deferred);
+
+    QCOMPARE(Post(Settings(QStringLiteral("/api/downloads")), QByteArray(),
+                  VanillaPage::SettingsUrl()).m_Status, 403);
+    for(const char *endpoint : {"/api/downloads-open", "/api/downloads-show",
+                                "/api/downloads-cancel", "/api/downloads-remove",
+                                "/api/downloads-clear"}){
+        QCOMPARE(Get(Settings(QString::fromLatin1(endpoint)),
+                     VanillaPage::SettingsUrl()).m_Status, 403);
+        QCOMPARE(Get(Settings(QString::fromLatin1(endpoint))).m_Status, 403);
+        const VanillaPageResponse post = Post(Settings(QString::fromLatin1(endpoint)),
+                                              QByteArrayLiteral("{\"id\":1}"),
+                                              VanillaPage::SettingsUrl());
+        QCOMPARE(post.m_Status, 200);
+        QVERIFY(post.m_UserInteraction == VanillaPageResponse::UserInteraction::Deferred);
+    }
+    const VanillaPageResponse downloads = Get(Settings(QStringLiteral("/api/downloads")),
+                                              VanillaPage::SettingsUrl());
+    QCOMPARE(downloads.m_Status, 200);
+    QVERIFY(downloads.m_Body.contains("\"entries\""));
+
+    QCOMPARE(Post(Settings(QStringLiteral("/api/directory")), QByteArray(),
+                  VanillaPage::SettingsUrl()).m_Status, 403);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/directory-set")),
+                 VanillaPage::SettingsUrl()).m_Status, 403);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/directory-set"))).m_Status, 403);
+    const VanillaPageResponse directorySet = Post
+        (Settings(QStringLiteral("/api/directory-set")),
+         QByteArrayLiteral("{\"node\":\"1\",\"name\":\"x\",\"tokens\":[]}"),
+         VanillaPage::SettingsUrl());
+    QCOMPARE(directorySet.m_Status, 200);
+    QVERIFY(directorySet.m_UserInteraction == VanillaPageResponse::UserInteraction::Deferred);
+
+    const VanillaPageResponse old = Get(DirectoryPageUrl());
+    QCOMPARE(old.m_Status, 200);
+    QVERIFY(old.m_Body.contains("vanilla://settings/#directory"));
+    QVERIFY(!old.m_Body.contains("<script"));
+    QCOMPARE(Get(QUrl(DirectoryPageUrl().toString() + QStringLiteral("api/tree")),
+                 DirectoryPageUrl()).m_Status, 404);
+    QCOMPARE(Post(QUrl(DirectoryPageUrl().toString() + QStringLiteral("api/set")),
+                  QByteArrayLiteral("{}"), DirectoryPageUrl()).m_Status, 404);
+
+    TreeBank::Initialize();
+    ViewNode *a = TreeBank::GetViewRoot()->MakeChild();
+    a->SetTitle(QStringLiteral("a"));
+    ViewNode *b = TreeBank::GetViewRoot()->MakeChild();
+    b->SetTitle(QStringLiteral("b"));
+    const QString idOfB = DirectoryPage::Describe(b).value(QStringLiteral("current")).toString();
+    DirectoryPage::SetPendingSubject(a);
+    const QJsonObject asked = QJsonDocument::fromJson
+        (Get(Settings(QStringLiteral("/api/directory?node=") + idOfB),
+             VanillaPage::SettingsUrl()).m_Body).object();
+    QCOMPARE(asked.value(QStringLiteral("current")).toString(), idOfB);
+    QVERIFY(!asked.value(QStringLiteral("fallback")).toBool());
+    QVERIFY(!DirectoryPage::TakePendingSubject());
+
+    const QJsonObject gone = QJsonDocument::fromJson
+        (Get(Settings(QStringLiteral("/api/directory?node=ffffffff")),
+             VanillaPage::SettingsUrl()).m_Body).object();
+    QVERIFY(gone.value(QStringLiteral("fallback")).toBool());
+
+    DirectoryPage::SetPendingSubject(a);
+    const QString idOfA = DirectoryPage::Describe(a).value(QStringLiteral("current")).toString();
+    QCOMPARE(QJsonDocument::fromJson(Get(Settings(QStringLiteral("/api/directory")),
+                                         VanillaPage::SettingsUrl()).m_Body)
+             .object().value(QStringLiteral("current")).toString(), idOfA);
+    QVERIFY(QJsonDocument::fromJson(Get(Settings(QStringLiteral("/api/directory")),
+                                        VanillaPage::SettingsUrl()).m_Body)
+            .object().value(QStringLiteral("current")).toString() != idOfA);
 }
 
 void tst_vanillapage::anEndpointWhichDoesNotExistIsNotFound(){
@@ -110,6 +206,26 @@ void tst_vanillapage::aRequestFromSomewhereElseIsRefused(){
     QCOMPARE(Post(Settings(QStringLiteral("/api/pick-directory")),
                   QByteArrayLiteral("{\"key\":\"network/@Extensions\"}"),
                   QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/passwords")),
+                 QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/passwords-remove")), QByteArrayLiteral("{}"),
+                  QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/passwords-remove-all")), QByteArrayLiteral("{}"),
+                  QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/passwords-remove-all")), QByteArrayLiteral("{}"),
+                  DirectoryPage::PageUrl()).m_Status, 403);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/downloads")),
+                 QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/downloads-open")), QByteArrayLiteral("{\"id\":1}"),
+                  QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/downloads-open")), QByteArrayLiteral("{\"id\":1}"),
+                  DirectoryPage::PageUrl()).m_Status, 403);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/directory")),
+                 QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/directory-set")), QByteArrayLiteral("{}"),
+                  QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/directory-set")), QByteArrayLiteral("{}"),
+                  DirectoryPage::PageUrl()).m_Status, 403);
 
     QCOMPARE(Get(Settings(QStringLiteral("/api/schema"))).m_Status, 200);
 
@@ -134,7 +250,8 @@ void tst_vanillapage::onlyWhatThePageItselfSentIsRead(){
 
     QVERIFY(VanillaPage::ReadsBody(set, post, page));
     QVERIFY(VanillaPage::ReadsBody(set, post, Settings(QStringLiteral("/#appearance"))));
-    QVERIFY(VanillaPage::ReadsBody(directorySet, post, directory));
+    QVERIFY(!VanillaPage::ReadsBody(directorySet, post, directory));
+    QVERIFY(VanillaPage::ReadsBody(Settings(QStringLiteral("/api/directory-set")), post, page));
 
     QVERIFY(!VanillaPage::ReadsBody(set, post, QUrl(QStringLiteral("https://evil.example"))));
     QVERIFY(!VanillaPage::ReadsBody(set, post, QUrl(QStringLiteral("null"))));

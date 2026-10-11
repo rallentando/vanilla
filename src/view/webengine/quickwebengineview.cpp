@@ -28,6 +28,13 @@
 #include "settingspage.hpp"
 #include "extensioncontroller.hpp"
 #include "webengineextensions.hpp"
+#include "webenginepasswords.hpp"
+
+#include <QCursor>
+#include <QWebEngineScript>
+#ifdef VANILLA_QUICK_PASSWORDS
+#  include <QQmlWebChannel>
+#endif
 
 #include <memory>
 
@@ -40,6 +47,11 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
     rootContext()->setContextProperty(QStringLiteral("viewInterface"), this);
 
     m_QmlWebEngineView = rootObject();
+
+#ifdef VANILLA_QUICK_PASSWORDS
+    InstallPasswords();
+#endif
+    QMetaObject::invokeMethod(m_QmlWebEngineView, "installScripts");
 
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
 
@@ -98,6 +110,8 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
             this, SLOT(HandleFullScreen(bool)));
     connect(this, SIGNAL(contextMenuRequested(QObject*, bool)),
             this, SLOT(HandleContextMenu(QObject*, bool)));
+    connect(this, SIGNAL(javaScriptDialogRequested(QObject*)),
+            this, SLOT(HandleJavaScriptDialog(QObject*)));
     connect(this, SIGNAL(downloadRequested(QObject*)),
             this, SLOT(HandleDownload(QObject*)));
     connect(this, SIGNAL(contentsSizeChanged(const QSizeF&)),
@@ -113,6 +127,70 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
     connect(m_QmlWebEngineView, SIGNAL(scrollChanged(QPointF)),
             this,               SIGNAL(ScrollChanged(QPointF)));
 
+}
+
+#ifdef VANILLA_QUICK_PASSWORDS
+
+void QuickWebEngineView::InstallPasswords(){
+    m_ApplicationWorldSerial = 0;
+
+    QPointer<QuickWebEngineView> view(this);
+    WebEnginePasswords::Host host;
+    host.current = [view](){
+        WebEnginePasswords::Snapshot now;
+        if(!view || !view->m_QmlWebEngineView) return now;
+        QObject *profile = view->m_QmlWebEngineView->property("profile").value<QObject*>();
+        now.alive = true;
+        now.url = view->m_QmlWebEngineView->property("url").toUrl();
+        now.space = NetworkController::CredentialSpace(profile);
+        now.profile = profile;
+        now.isPrivate = profile && profile->property("offTheRecord").toBool();
+        now.zoom = view->m_QmlWebEngineView->property("zoomFactor").toReal();
+        return now;
+    };
+    host.runInApplicationWorld = [view](const QString &code,
+                                        std::function<void(const QVariant&)> done){
+        if(!view) return;
+        const int id = ++view->m_ApplicationWorldSerial;
+        view->m_ApplicationWorldWaiting.insert(id, done);
+        QMetaObject::invokeMethod(view->m_QmlWebEngineView, "runInApplicationWorld",
+                                  Q_ARG(QVariant, QVariant(id)),
+                                  Q_ARG(QVariant, QVariant(code)));
+    };
+    host.mapToGlobal = [view](const QPoint &pos){
+        return view ? view->mapToGlobal(pos) : QCursor::pos();
+    };
+    host.message = [view](const QString &text){
+        if(view) emit view->statusBarMessage(text);
+    };
+
+    m_Passwords = new WebEnginePasswords(this, host);
+    QQmlWebChannel *channel = new QQmlWebChannel(this);
+    channel->registerObject(QStringLiteral("vanillaPasswords"), m_Passwords->Bridge());
+    m_QmlWebEngineView->setProperty("webChannelWorld",
+                                    QVariant(uint(QWebEngineScript::ApplicationWorld)));
+    m_QmlWebEngineView->setProperty("webChannel", QVariant::fromValue(channel));
+
+    connect(this, &QuickWebEngineView::loadStarted,
+            m_Passwords.data(), &WebEnginePasswords::Forget);
+}
+#endif
+
+QString QuickWebEngineView::passwordScript(){
+#ifdef VANILLA_QUICK_PASSWORDS
+    if(m_Passwords) return WebEnginePasswords::ScriptSource();
+#endif
+    return QString();
+}
+
+void QuickWebEngineView::applicationWorldResult(int id, const QVariant &result){
+#ifdef VANILLA_QUICK_PASSWORDS
+    std::function<void(const QVariant&)> done = m_ApplicationWorldWaiting.take(id);
+    if(done) done(result);
+#else
+    Q_UNUSED(id)
+    Q_UNUSED(result)
+#endif
 }
 
 QuickWebEngineView::~QuickWebEngineView(){
@@ -142,6 +220,10 @@ void QuickWebEngineView::ApplySpecificSettings(QStringList set){
                 ? NetworkController::QuickPrivateProfile(id)
                 : NetworkController::QuickProfile(id);
             if(wanted != current){
+#ifdef VANILLA_QUICK_PASSWORDS
+                m_ApplicationWorldWaiting.clear();
+                if(m_Passwords) m_Passwords->Forget();
+#endif
                 emit ExtensionContextChanged();
                 ExtensionNavigation::Of(this)->Cancel();
                 ExtensionController *controller = ExtensionController::Of(wanted);
@@ -727,9 +809,9 @@ void QuickWebEngineView::HandleRenderProcessTermination(int status, int code){
     const bool giveUp = verdict == RenderProcessLedger::Verdict::GiveUp;
 
     QString info = giveUp
-        ? tr("A page is left as it is, because that's process is terminated "
+        ? tr("A page is left as it is, because its process was terminated "
              "%1 times in a row.\n").arg(RenderProcessLedger::Limit)
-        : tr("A page is reloaded, because that's process is terminated.\n");
+        : tr("A page is reloaded, because its process was terminated.\n");
     switch(status){
     case 0:
         info += tr("Normal termination. (code: %1)");   break;
@@ -798,6 +880,35 @@ void QuickWebEngineView::HandleFullScreen(bool on){
         dialog->SetCallBack([this](bool ok){ if(!ok) ExitFullScreen();});
         QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
     }
+}
+
+void QuickWebEngineView::HandleJavaScriptDialog(QObject *request){
+    enum { Alert = 0, Confirm = 1, Prompt = 2, Unload = 3 };
+    const int type = request->property("type").toInt();
+    const QString message = request->property("message").toString();
+    const QUrl origin = ModalDialog::SiteOrigin(request->property("securityOrigin").toUrl(), url());
+    const QString title = ModalDialog::SiteTitle(origin);
+    const QString icon = ModalDialog::SiteIcon();
+    QPointer<QObject> guard(request);
+    bool accept = true;
+    QString text;
+    switch(type){
+    case Alert:
+        ModalDialog::Information(title, message, icon);
+        break;
+    case Prompt: {
+        bool ok = true;
+        text = ModalDialog::GetText(title, message, request->property("defaultText").toString(), &ok, icon);
+        accept = ok;
+        break;
+    }
+    default:
+        accept = ModalDialog::Question(title, message, icon);
+        break;
+    }
+    if(!guard) return;
+    if(accept) QMetaObject::invokeMethod(request, "dialogAccept", Q_ARG(QString, text));
+    else       QMetaObject::invokeMethod(request, "dialogReject");
 }
 
 void QuickWebEngineView::HandleContextMenu(QObject *object, bool isMedia){

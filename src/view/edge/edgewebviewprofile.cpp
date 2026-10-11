@@ -187,6 +187,10 @@ void EdgeWebView::ClearVisitedLinks(){
     ClearOncePerProfile(COREWEBVIEW2_BROWSING_DATA_KINDS_BROWSING_HISTORY);
 }
 
+void EdgeWebView::ClearPasswords(){
+    ClearOncePerProfile(COREWEBVIEW2_BROWSING_DATA_KINDS_PASSWORD_AUTOSAVE);
+}
+
 void EdgeWebView::ApplySpecificSettings(QStringList set){
     View::ApplySpecificSettings(set);
     m_Impl->m_SpecificSet = set;
@@ -218,6 +222,10 @@ void EdgeWebView::ApplyPageSettings(){
     settings->put_IsScriptEnabled(script ? TRUE : FALSE);
     settings->put_IsBuiltInErrorPageEnabled(errorPage ? TRUE : FALSE);
     settings->put_AreDevToolsEnabled(TRUE);
+
+    ComPtr<ICoreWebView2Settings4> settings4;
+    if(SUCCEEDED(settings.As(&settings4)) && settings4)
+        settings4->put_IsPasswordAutosaveEnabled(SavePasswords() ? TRUE : FALSE);
 
 }
 

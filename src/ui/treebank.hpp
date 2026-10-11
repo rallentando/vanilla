@@ -11,6 +11,7 @@
 
 #include <QList>
 #include <QMap>
+#include <QSet>
 #include <QGraphicsView>
 
 #include <functional>
@@ -85,13 +86,13 @@ public:
 
     inline SharedView GetCurrentView()     const { return m_CurrentView;}
     inline ViewNode *GetCurrentViewNode()  const { return m_CurrentViewNode;}
-    inline ViewNode *GetViewIterForward()  const { return m_ViewIterForward;}
-    inline ViewNode *GetViewIterBackward() const { return m_ViewIterBackward;}
+    static ViewNode *GetViewIterForward()  { return m_ViewIterForward;}
+    static ViewNode *GetViewIterBackward() { return m_ViewIterBackward;}
 
     inline void SetCurrentView(SharedView view){ m_CurrentView = view;}
     inline void SetCurrentViewNode(ViewNode *vn){ m_CurrentViewNode = vn;}
-    inline void SetViewIterForward(ViewNode *vn){ m_ViewIterForward = vn;}
-    inline void SetViewIterBackward(ViewNode *vn){ m_ViewIterBackward = vn;}
+    static void SetViewIterForward(ViewNode *vn){ m_ViewIterForward = vn;}
+    static void SetViewIterBackward(ViewNode *vn){ m_ViewIterBackward = vn;}
 
 signals:
     void TreeStructureChanged();
@@ -126,19 +127,28 @@ private:
 private:
     static void DoUpdate();
 public:
+
+    static void Discard(Node *nd, Node *formerParent);
     static void DoDelete();
+    static void PassDeleteBarrier(bool mayFree);
+    static int FreshDeleteCount(){ return m_FreshDeleteBox.length();}
+    static int RipeDeleteCount(){ return m_NodeDeleteBox.length();}
     static void AddToUpdateBox(SharedView);
-    static void AddToDeleteBox(Node*);
     static void RemoveFromUpdateBox(SharedView);
-    static void RemoveFromDeleteBox(Node*);
 
 public:
     static void AutoLoad();
-    static void WalkToAutoLoad(ViewNode *&iter, bool forward,
-                               const std::function<bool(ViewNode*)> &load);
+    enum AutoLoadWalk { AutoLoadLoaded, AutoLoadExhausted, AutoLoadBudgetSpent };
+    static AutoLoadWalk WalkToAutoLoad(ViewNode *&iter, bool forward,
+                                       const std::function<bool(ViewNode*)> &load,
+                                       int budget);
+    static bool AutoLoadStops(bool forwardLeft, bool backwardLeft, int views, int maxViews);
+    static int AutoLoadNextCondition(AutoLoadWalk walk, int condition);
+    static void ReleaseAutoLoadIterators(ViewNode *vn);
 private:
-    static void LoadViewForward();
-    static void LoadViewBackward();
+    static AutoLoadWalk LoadViewForward();
+    static AutoLoadWalk LoadViewBackward();
+    void OpenDirectorySection(ViewNode *directory, std::function<void(const QUrl&)> place);
 
 public:
     static Node* GetRoot(Node*);
@@ -154,7 +164,12 @@ public:
     static void LiftMaxViewCountIfNeed(int now);
 
     typedef QMap<ViewNode*, int> WindowIndexMap;
-    static void LoadTree();
+    struct Restoration {
+        QSet<int> windowIds;
+        MainWindow *lastWindow = nullptr;
+    };
+    static Restoration LoadTree();
+    static MainWindow *RestoreIntoWindow(ViewNode *nd, int id);
     static WindowIndexMap WindowIndexSnapshot();
     static bool SaveTree(const WindowIndexMap &windowIndices);
 #ifdef MEDIATIME
@@ -306,6 +321,10 @@ public slots:
     void ClearCookies();
     void ClearHttpCache();
     void ClearVisitedLinks();
+    void ClearPasswords();
+    void OpenPasswords();
+    void OpenDownloads();
+    void ShowDownloads();
 
     void ToggleNotifier();
     void ToggleReceiver();
@@ -443,6 +462,9 @@ private:
     static SharedViewList m_AllViews;
     static SharedViewList m_ViewUpdateBox;
     static NodeList m_NodeDeleteBox;
+    static NodeList m_FreshDeleteBox;
+    static QList<QPair<NodeList, Node*>> m_Leaving;
+    static bool m_DeleteBarrierBooked;
 
     static int m_TraverseCondition;
     static ViewNode *m_ViewIterForward;

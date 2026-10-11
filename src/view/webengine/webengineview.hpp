@@ -12,6 +12,7 @@
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
 #include "settingspage.hpp"
+#include "referrer.hpp"
 
 #include <stdlib.h>
 
@@ -181,8 +182,15 @@ public:
              ? QWebEngineHttpRequest::Post
              : QWebEngineHttpRequest::Get);
 
-        foreach(const QByteArray &name, req.rawHeaderList())
-            request.setHeader(name, req.rawHeader(name));
+        foreach(const QByteArray &name, req.rawHeaderList()){
+            if(name.compare("Referer", Qt::CaseInsensitive) != 0){
+                request.setHeader(name, req.rawHeader(name));
+                continue;
+            }
+            const QByteArray referer = Referrer::ForNavigation
+                (QUrl::fromEncoded(req.rawHeader(name)), req.url());
+            if(!referer.isEmpty()) request.setHeader(name, referer);
+        }
 
         if(operation == QNetworkAccessManager::PostOperation)
             request.setPostData(body);

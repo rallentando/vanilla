@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDateTime>
+#include <QTimeZone>
 #include <QUrl>
 
 #include <charconv>
@@ -27,16 +28,62 @@ void ResetReadCounters(){
     m_ReadViewCount = 0;
 }
 
-static void ReadDates(ViewNode *vn, QString create, QString lastUpdate, QString lastAccess){
-    vn->SetCreateDate    (create.isEmpty()     ? QDateTime::currentDateTime() : NodeDateTimeFromString(create));
-    vn->SetLastUpdateDate(lastUpdate.isEmpty() ? QDateTime::currentDateTime() : NodeDateTimeFromString(lastUpdate));
+static void ReadDates(ViewNode *vn, QString create, QString lastUpdate, QString lastAccess,
+                      StampReader &stamps){
+    vn->SetCreateDate    (create.isEmpty()     ? QDateTime::currentDateTime() : stamps.Stamp(create));
+    vn->SetLastUpdateDate(lastUpdate.isEmpty() ? QDateTime::currentDateTime() : stamps.Stamp(lastUpdate));
 
     if(lastAccess.isEmpty())
         vn->SetLastAccessDate(QDateTime::currentDateTime());
     else if(create == lastAccess)
-        vn->SetLastAccessDate(NodeDateTimeFromString(lastAccess).addSecs(1));
+        vn->SetLastAccessDate(stamps.Stamp(lastAccess).addSecs(1));
     else
-        vn->SetLastAccessDate(NodeDateTimeFromString(lastAccess));
+        vn->SetLastAccessDate(stamps.Stamp(lastAccess));
+}
+
+StampReader::StampReader(const QTimeZone &zone)
+    : m_Zone(zone)
+    , m_Fixed(zone.isValid() && zone.isUtcOrFixedOffset())
+    , m_Listable(zone.isValid() && zone.hasTransitions())
+{
+}
+
+const StampReader::Day &StampReader::Resolve(const QDate &day){
+    const qint64 key = day.toJulianDay();
+    auto it = m_Days.find(key);
+    if(it != m_Days.end()) return *it;
+    Day entry;
+    entry.midnight = day.startOfDay(m_Zone);
+    const QDateTime next = day.addDays(1).startOfDay(m_Zone);
+    const bool framed =
+        entry.midnight.isValid() && entry.midnight.date() == day && entry.midnight.time() == QTime(0, 0) &&
+        next.isValid() && next.date() == day.addDays(1) && next.time() == QTime(0, 0) &&
+        entry.midnight < next;
+    if(framed){
+        if(m_Fixed) entry.plain = true;
+        else if(m_Listable) entry.plain = m_Zone.transitions(entry.midnight, next).isEmpty();
+    }
+    return *m_Days.insert(key, entry);
+}
+
+bool StampReader::PlainDay(const QDate &day){
+    return day.isValid() && Resolve(day).plain;
+}
+
+QDateTime StampReader::Stamp(const QString &str){
+    if(str.length() != 14) return QDateTime();
+    for(int i = 0; i < 14; i++){
+        if(str.at(i) < QLatin1Char('0') || str.at(i) > QLatin1Char('9')) return QDateTime();
+    }
+    const QStringView view(str);
+    const QDate date(view.mid(0, 4).toInt(), view.mid(4, 2).toInt(), view.mid(6, 2).toInt());
+    const QTime time(view.mid(8, 2).toInt(), view.mid(10, 2).toInt(), view.mid(12, 2).toInt());
+    if(!date.isValid() || !time.isValid()) return QDateTime();
+    if(m_Zone.isValid()){
+        const Day &day = Resolve(date);
+        if(day.plain) return day.midnight.addMSecs(time.msecsSinceStartOfDay());
+    }
+    return NodeDateTimeFromString(str, m_Zone);
 }
 
 namespace {
@@ -79,6 +126,8 @@ private:
 
     QIODevice *m_Device;
     const Hooks &m_Hooks;
+    const QTimeZone m_Zone = QTimeZone::systemTimeZone();
+    StampReader m_Stamps{m_Zone};
     QByteArray m_Buffer;
     QByteArray m_Utf8;
     int m_Pos = 0;
@@ -262,7 +311,8 @@ bool JsonTreeReader::ParseNode(ViewNode *parent){
     ReadDates(vn,
               create.ToString(),
               lastUpdate.ToString(),
-              lastAccess.ToString());
+              lastAccess.ToString(),
+              m_Stamps);
 
     if(holdView.ToBool(false)){
         m_ReadViewCount++;

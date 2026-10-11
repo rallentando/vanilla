@@ -42,6 +42,13 @@ const Item *Find(const QString &key);
 
 QList<QPair<QString, QString> > Categories();
 
+struct ChoiceLabel {
+    const char *key;
+    const char *choice;
+    const char *label;
+};
+const QList<ChoiceLabel> &ChoiceLabels();
+
 QVariant Fallback(const Item &item);
 QVariant FromJson(const Item &item, const QJsonValue &value);
 QJsonValue ToJson(const Item &item, const QVariant &value);

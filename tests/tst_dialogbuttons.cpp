@@ -7,6 +7,9 @@
 
 #include "application.hpp"
 #include "dialog.hpp"
+#include "plaintooltip.hpp"
+
+#include <memory>
 
 class tst_dialogbuttons : public QObject {
     Q_OBJECT
@@ -20,11 +23,16 @@ private slots:
     void quittingRefusesEveryRunningDialogAndWaitsForAllOfThem();
     void aDialogStopsCountingOnlyWhenItIsDeleted();
     void aDialogThatCameAndWentLeavesAMarkBehindIt();
+    void aDialogSitsAtTheTopOfItsViewAcrossTheMiddle();
+    void aPagesDialogIsHeadedByItsHost();
     void nothingIsNotAButton();
     void theWordsOnADialogAreNotReadAsMarkup();
+    void aTitleInAToolTipIsNotReadAsMarkup();
+    void aPasswordIsAskedForInTheNameOfWhoAsks();
     void aDiscardedModelessDialogIsNeverAnsweredAndLeavesItsFrame();
     void aModelessDialogDeletedByAnotherHandLeavesItsFrame();
     void aFrameGoingFirstTakesItsDialogsWithoutReachingBack();
+    void anEmptyFrameDrawsNothingUntilTheNextDialog();
 
 private:
     static ModelessDialogFrame *TakeTemporaryFrame(){
@@ -246,6 +254,34 @@ void tst_dialogbuttons::aDialogStopsCountingOnlyWhenItIsDeleted(){
              "a deleted dialog was left counting, and quitting would wait for ever");
 }
 
+void tst_dialogbuttons::aPagesDialogIsHeadedByItsHost(){
+    QCOMPARE(ModalDialog::SiteTitle(QUrl(QStringLiteral("https://www.youtube.com/watch?v=1"))),
+             QStringLiteral("www.youtube.com"));
+    QCOMPARE(ModalDialog::SiteTitle(QUrl(QStringLiteral("http://127.0.0.1:8520/x"))),
+             QStringLiteral("127.0.0.1"));
+    QCOMPARE(ModalDialog::SiteTitle(QUrl(QStringLiteral("data:text/html,<script>alert(1)</script>"))),
+             ModalDialog::tr("This page"));
+    QCOMPARE(ModalDialog::SiteTitle(QUrl()), ModalDialog::tr("This page"));
+
+    const QUrl page(QStringLiteral("https://top.example/"));
+    const QUrl frame(QStringLiteral("https://frame.example"));
+    QCOMPARE(ModalDialog::SiteOrigin(frame, page), frame);
+    QCOMPARE(ModalDialog::SiteOrigin(QUrl(), page), page);
+    const QUrl opaque(QStringLiteral("data:,"));
+    QCOMPARE(ModalDialog::SiteOrigin(opaque, page), opaque);
+    QCOMPARE(ModalDialog::SiteTitle(ModalDialog::SiteOrigin(opaque, page)), ModalDialog::tr("This page"));
+
+    QVERIFY(Application::GetIcon(QUrl(QStringLiteral("http://settings/"))).isNull());
+}
+
+void tst_dialogbuttons::aDialogSitsAtTheTopOfItsViewAcrossTheMiddle(){
+    const QRect room(100, 200, 800, 600);
+    QCOMPARE(ModalDialog::Placement(room, QSize(400, 150), 12), QRect(300, 212, 400, 150));
+    QCOMPARE(ModalDialog::Placement(room, QSize(800, 900), 0), QRect(100, 200, 800, 900));
+    QCOMPARE(ModalDialog::Placement(QRect(0, 0, 100, 100), QSize(50, 10), 30).top(), 30);
+    QCOMPARE(ModalDialog::Placement(room, QSize(400, 600 - 12), 12).bottom(), room.bottom());
+}
+
 void tst_dialogbuttons::aDialogThatCameAndWentLeavesAMarkBehindIt(){
     QVERIFY(!ModalDialog::AnyRunning());
     const quint64 before = ModalDialog::Generation();
@@ -283,6 +319,62 @@ void tst_dialogbuttons::theWordsOnADialogAreNotReadAsMarkup(){
     DialogLabel label(page, QFont());
     QCOMPARE(label.textFormat(), Qt::PlainText);
     QCOMPARE(label.text(), page);
+}
+
+void tst_dialogbuttons::aTitleInAToolTipIsNotReadAsMarkup(){
+    const QString page = QStringLiteral("<img src=\"file:///C:/Users/Public/x.png\"><b>Bank</b> & \"co\"");
+    const QString tip = PlainToolTip(page);
+    QVERIFY(Qt::mightBeRichText(tip));
+    QTextDocument shown;
+    shown.setHtml(tip);
+    QCOMPARE(shown.toPlainText(), page);
+    QCOMPARE(PlainToolTip(QStringLiteral("Example Domain")), QStringLiteral("Example Domain"));
+    QCOMPARE(PlainToolTip(QStringLiteral("a < b")), QStringLiteral("a < b"));
+}
+
+void tst_dialogbuttons::aPasswordIsAskedForInTheNameOfWhoAsks(){
+    auto unbroken = [](QString text){ return text.remove(QChar(0x200B)); };
+    const QString site = unbroken(ModalDialog::AuthenticationCaption(
+        QUrl(QStringLiteral("https://someone:secret@bank.example:8443/login?x=1#f"))));
+    QVERIFY2(site.contains(QStringLiteral("https://bank.example:8443")), qPrintable(site));
+    QVERIFY(!site.contains(QStringLiteral("someone")));
+    QVERIFY(!site.contains(QStringLiteral("secret")));
+    QVERIFY(!site.contains(QStringLiteral("login")));
+
+    const QString lookalike = ModalDialog::AuthenticationCaption(
+        QUrl(QString::fromUtf8("https://\xd0\xb0pple.com/")));
+    QVERIFY2(lookalike.contains(QStringLiteral("https://xn--")), qPrintable(lookalike));
+
+    QString labels = QStringLiteral("login.bank.example");
+    for(int i = 0; i < 12; i++) labels += QStringLiteral(".aaaaaaaaaa");
+    const QString longHost = ModalDialog::AuthenticationCaption(
+        QUrl(QStringLiteral("https://") + labels + QStringLiteral(".attacker.example/")));
+    QVERIFY2(unbroken(longHost).contains(QStringLiteral("https://") + labels + QStringLiteral(".attacker.example")),
+             qPrintable(longHost));
+    QVERIFY(!longHost.contains(QChar(0x2026)));
+    foreach(const QString &run, longHost.split(QRegularExpression(QStringLiteral("[ \\x{200B}]"))))
+        QVERIFY2(run.size() <= 64, qPrintable(run));
+    const QString a = QString(40, QLatin1Char('a')), b = QString(40, QLatin1Char('b'));
+    QVERIFY(ModalDialog::AuthenticationCaption(QUrl(QStringLiteral("https://x") + a + QStringLiteral("y.example/")))
+         != ModalDialog::AuthenticationCaption(QUrl(QStringLiteral("https://x") + b + QStringLiteral("y.example/"))));
+    std::unique_ptr<DialogLabel> label(ModalDialog::AuthenticationLabel(longHost));
+    QVERIFY(label->wordWrap());
+    QCOMPARE(label->text(), longHost);
+    QCOMPARE(label->textFormat(), Qt::PlainText);
+    QVERIFY(label->heightForWidth(200) > label->heightForWidth(4000));
+
+    const QString plain = ModalDialog::AuthenticationCaption(QUrl(QStringLiteral("http://intranet.example/")));
+    QVERIFY(unbroken(plain).contains(QStringLiteral("http://intranet.example")));
+
+    const QString proxy = ModalDialog::AuthenticationCaption(
+        QUrl(QStringLiteral("https://bank.example/")), QStringLiteral("proxy.corp.example"));
+    QVERIFY(unbroken(proxy).contains(QStringLiteral("proxy.corp.example")));
+    const QString longProxy = ModalDialog::AuthenticationCaption(QUrl(), labels + QStringLiteral(".attacker.example"));
+    QVERIFY(unbroken(longProxy).contains(labels + QStringLiteral(".attacker.example")));
+    foreach(const QString &run, longProxy.split(QRegularExpression(QStringLiteral("[ \\x{200B}]"))))
+        QVERIFY2(run.size() <= 64, qPrintable(run));
+    QVERIFY(!proxy.contains(QStringLiteral("bank.example")));
+    QVERIFY(proxy != ModalDialog::AuthenticationCaption(QUrl(QStringLiteral("https://proxy.corp.example/"))));
 }
 
 void tst_dialogbuttons::aDiscardedModelessDialogIsNeverAnsweredAndLeavesItsFrame(){
@@ -350,6 +442,29 @@ void tst_dialogbuttons::aFrameGoingFirstTakesItsDialogsWithoutReachingBack(){
     QVERIFY(discardedAlive.isNull());
     QTest::qWait(0);
     QCOMPARE(answered, 0);
+}
+
+void tst_dialogbuttons::anEmptyFrameDrawsNothingUntilTheNextDialog(){
+    ModelessDialog *first = new ModelessDialog();
+    first->Execute();
+    ModelessDialogFrame *frame = TakeTemporaryFrame();
+    QVERIFY(frame);
+    QVERIFY(frame->height() > 0);
+    QVERIFY(frame->updatesEnabled());
+
+    first->Discard();
+    QCOMPARE(frame->height(), 0);
+    QVERIFY2(!frame->updatesEnabled(), "an empty frame still draws");
+
+    Application::SetTemporaryDialogFrame(frame);
+    ModelessDialog *second = new ModelessDialog();
+    second->Execute();
+    QCOMPARE(TakeTemporaryFrame(), frame);
+    QVERIFY(frame->Dialogs().contains(second));
+    QVERIFY(frame->height() > 0);
+    QVERIFY2(frame->updatesEnabled(), "the next dialog was not drawn");
+    QVERIFY(second->updatesEnabled());
+    delete frame;
 }
 
 QTEST_MAIN(tst_dialogbuttons)

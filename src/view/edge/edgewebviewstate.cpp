@@ -218,7 +218,7 @@ EdgeMessage::EdgeMessage()
 {
 }
 
-EdgeMessage EdgeMessage::Parse(const QString &json, int eventKey){
+EdgeMessage EdgeMessage::Parse(const QString &json, const QString &token){
     EdgeMessage message;
 
     if(json.isEmpty() || json.length() > MaxLength) return message;
@@ -231,8 +231,9 @@ EdgeMessage EdgeMessage::Parse(const QString &json, int eventKey){
     if(!object.value(QStringLiteral("v")).isDouble()) return message;
     if(object.value(QStringLiteral("v")).toInt() != 1) return message;
 
-    if(!object.value(QStringLiteral("tag")).isDouble()) return message;
-    if(object.value(QStringLiteral("tag")).toInt() != eventKey) return message;
+    if(token.isEmpty()) return message;
+    if(!object.value(QStringLiteral("tag")).isString()) return message;
+    if(object.value(QStringLiteral("tag")).toString() != token) return message;
 
     const QJsonValue kind = object.value(QStringLiteral("kind"));
     if(!kind.isString()) return message;

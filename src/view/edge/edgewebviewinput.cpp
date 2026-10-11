@@ -129,7 +129,7 @@ void EdgeWebView::RegisterInputBridge(){
 
              if(FAILED(result))
                  emit statusBarMessage
-                     (tr("The page cannot report keys to Vanilla in this view."));
+                     (tr("The page cannot report keys to vanilla in this view."));
 
              ApplyPendingState();
              return S_OK;
@@ -140,7 +140,7 @@ void EdgeWebView::RegisterInputBridge(){
             if(m_Impl->m_State.ScriptFailed() != EdgeControllerState::Effect::ApplyPending)
                 return;
             emit statusBarMessage
-                (tr("The page cannot report keys to Vanilla in this view."));
+                (tr("The page cannot report keys to vanilla in this view."));
             ApplyPendingState();
         });
     }
@@ -153,7 +153,7 @@ void EdgeWebView::HandleWebMessage(const QString &json, const QString &source){
        !m_Impl->m_StringDocument.IsOwn(m_Impl->m_Url, QUrl(source)))
         return;
 
-    const EdgeMessage message = EdgeMessage::Parse(json, Application::EventKey());
+    const EdgeMessage message = EdgeMessage::Parse(json, Application::EdgeEventToken());
 
     if(message.GetKind() == EdgeMessage::Kind::Scroll){
         m_Impl->m_PageScroll = message.GetScrollPosition();

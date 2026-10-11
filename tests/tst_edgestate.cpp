@@ -176,6 +176,8 @@ private slots:
     void aKeyWithTheWrongTypesIsRefused();
     void aMessageLongerThanTheCapIsRefused();
     void theScrollHintCarriesNothingElse();
+    void aDownloadIsHeldOnlyWhenTheUserIsToBeAsked();
+    void downloadsAreAskedAboutOneAtATime();
     void aScrollReportIsParsedAndSifted();
     void thePrintRequestIsItsOwnKind();
     void aHiddenViewIsSuspendedOnlyWhenAllFiveAgree();
@@ -214,6 +216,7 @@ private slots:
 
     void aReportIsOfTheDocumentWhateverTheSpellingOfItsUrl();
     void aBareHostAndThatHostWithASlashAreOneAddress();
+    void aReportStaysTheDocumentsAcrossAFragmentChange();
     void theDocumentWhichArrivesCorrectsTheAddressWhichWasGuessed();
     void nothingHereWritesIntoTheBackendsCookieStore();
 
@@ -556,18 +559,50 @@ void tst_edgestate::theScriptAnswerAfterRetirementDoesNothing(){
     QCOMPARE(s.ScriptFailed(), EdgeControllerState::Effect::None);
 }
 
-static QString KeyMessage(int version, int tag, const QString &kind,
+static QString KeyMessage(int version, const QString &tag, const QString &kind,
                           const QString &code, const QString &shift){
-    return QStringLiteral("{" QUOTE "v" QUOTE ":%1," QUOTE "tag" QUOTE ":%2,"
+    return QStringLiteral("{" QUOTE "v" QUOTE ":%1," QUOTE "tag" QUOTE ":" QUOTE "%2" QUOTE ","
                           QUOTE "kind" QUOTE ":" QUOTE "%3" QUOTE ","
                           QUOTE "code" QUOTE ":%4," QUOTE "shift" QUOTE ":%5}")
         .arg(version).arg(tag).arg(kind).arg(code).arg(shift);
 }
 
+void tst_edgestate::aDownloadIsHeldOnlyWhenTheUserIsToBeAsked(){
+    QVERIFY(!EdgeDownloadNeedsAsking(false, true));
+    QVERIFY(EdgeDownloadNeedsAsking(true, true));
+    QVERIFY(EdgeDownloadNeedsAsking(false, false));
+    QVERIFY(EdgeDownloadNeedsAsking(true, false));
+}
+
+void tst_edgestate::downloadsAreAskedAboutOneAtATime(){
+    EdgeDownloadAskQueue asks;
+    QStringList ran;
+    QVERIFY(!asks.IsRunning());
+    QVERIFY(!asks.TakeNext());
+    QVERIFY(!asks.IsRunning());
+
+    QVERIFY(asks.Push([&](){ ran << QStringLiteral("a"); }));
+    QVERIFY(asks.IsRunning());
+    QVERIFY(!asks.Push([&](){ ran << QStringLiteral("b"); }));
+    std::function<void()> job = asks.TakeNext();
+    QVERIFY(job);
+    job();
+    QVERIFY(!asks.Push([&](){ ran << QStringLiteral("c"); }));
+    QCOMPARE(asks.Waiting(), 2);
+    QVERIFY(asks.IsRunning());
+
+    while((job = asks.TakeNext())) job();
+    QCOMPARE(ran, QStringList() << QStringLiteral("a") << QStringLiteral("b") << QStringLiteral("c"));
+    QVERIFY(!asks.IsRunning());
+    QCOMPARE(asks.Waiting(), 0);
+
+    QVERIFY(asks.Push([](){}));
+}
+
 void tst_edgestate::aKeyTheScriptWouldSendIsAccepted(){
     const EdgeMessage m = EdgeMessage::Parse
-        (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("81"),
-                    QStringLiteral("false")), 42);
+        (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("81"),
+                    QStringLiteral("false")), QStringLiteral("k42"));
     QVERIFY(m.IsValid());
     QCOMPARE(m.GetKind(), EdgeMessage::Kind::Key);
     QCOMPARE(m.GetCode(), 81);
@@ -575,100 +610,106 @@ void tst_edgestate::aKeyTheScriptWouldSendIsAccepted(){
 }
 
 void tst_edgestate::anythingWhichIsNotJsonIsRefused(){
-    QVERIFY(!EdgeMessage::Parse(QString(), 42).IsValid());
-    QVERIFY(!EdgeMessage::Parse(QStringLiteral("keyPressEvent42,81"), 42).IsValid());
-    QVERIFY(!EdgeMessage::Parse(QStringLiteral("[1,2,3]"), 42).IsValid());
-    QVERIFY(!EdgeMessage::Parse(QStringLiteral("{"), 42).IsValid());
+    QVERIFY(!EdgeMessage::Parse(QString(), QStringLiteral("k42")).IsValid());
+    QVERIFY(!EdgeMessage::Parse(QStringLiteral("keyPressEvent42,81"), QStringLiteral("k42")).IsValid());
+    QVERIFY(!EdgeMessage::Parse(QStringLiteral("[1,2,3]"), QStringLiteral("k42")).IsValid());
+    QVERIFY(!EdgeMessage::Parse(QStringLiteral("{"), QStringLiteral("k42")).IsValid());
 }
 
 void tst_edgestate::theWrongVersionOrTagIsRefused(){
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(2, 42, QStringLiteral("key"), QStringLiteral("81"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(2, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("81"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 43, QStringLiteral("key"), QStringLiteral("81"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k43"), QStringLiteral("key"), QStringLiteral("81"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
+    QVERIFY(!EdgeMessage::Parse
+            (QStringLiteral("{\"v\":1,\"tag\":42,\"kind\":\"print\"}"), QStringLiteral("42")).IsValid());
+    QVERIFY(EdgeMessage::Parse
+            (QStringLiteral("{\"v\":1,\"tag\":\"42\",\"kind\":\"print\"}"), QStringLiteral("42")).IsValid());
+    QVERIFY(!EdgeMessage::Parse
+            (QStringLiteral("{\"v\":1,\"tag\":\"\",\"kind\":\"print\"}"), QString()).IsValid());
 }
 
 void tst_edgestate::anUnknownKindIsRefused(){
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("mouse"), QStringLiteral("81"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("mouse"), QStringLiteral("81"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("action"), QStringLiteral("81"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("action"), QStringLiteral("81"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
 }
 
 void tst_edgestate::aKeyTheScriptWouldNeverSendIsRefused(){
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("112"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("112"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("27"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("27"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("27"),
-                        QStringLiteral("true")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("27"),
+                        QStringLiteral("true")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("26"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("26"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("28"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("28"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("8"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("8"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
 
     QVERIFY(EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("48"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("48"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("90"),
-                        QStringLiteral("true")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("90"),
+                        QStringLiteral("true")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("47"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("47"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("91"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("91"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
 }
 
 void tst_edgestate::aKeyWithTheWrongTypesIsRefused(){
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("\"81\""),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("\"81\""),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("81"),
-                        QStringLiteral("1")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("81"),
+                        QStringLiteral("1")), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("81.5"),
-                        QStringLiteral("false")), 42).IsValid());
+            (KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("81.5"),
+                        QStringLiteral("false")), QStringLiteral("k42")).IsValid());
 }
 
 void tst_edgestate::aMessageLongerThanTheCapIsRefused(){
-    QString padded = KeyMessage(1, 42, QStringLiteral("key"), QStringLiteral("81"),
+    QString padded = KeyMessage(1, QStringLiteral("k42"), QStringLiteral("key"), QStringLiteral("81"),
                                 QStringLiteral("false"));
     padded.chop(1);
     padded += QStringLiteral(",\"pad\":\"") +
               QString(EdgeMessage::MaxLength, QLatin1Char('x')) +
               QStringLiteral("\"}");
     QVERIFY(padded.length() > EdgeMessage::MaxLength);
-    QVERIFY(!EdgeMessage::Parse(padded, 42).IsValid());
+    QVERIFY(!EdgeMessage::Parse(padded, QStringLiteral("k42")).IsValid());
 }
 
 void tst_edgestate::theScrollHintCarriesNothingElse(){
     QVERIFY(EdgeMessage::Parse
-            (QStringLiteral("{\"v\":1,\"tag\":42,\"kind\":\"preventScrollRestoration\"}"),
-             42).IsValid());
+            (QStringLiteral("{\"v\":1,\"tag\":\"k42\",\"kind\":\"preventScrollRestoration\"}"),
+             QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (QStringLiteral("{\"v\":1,\"tag\":42,\"kind\":\"preventScrollRestoration\","
-                            "\"code\":81}"), 42).IsValid());
+            (QStringLiteral("{\"v\":1,\"tag\":\"k42\",\"kind\":\"preventScrollRestoration\","
+                            "\"code\":81}"), QStringLiteral("k42")).IsValid());
 }
 
 static QString ScrollMessage(const QString &x, const QString &y,
                              const QString &w, const QString &h,
                              const QString &vw, const QString &vh){
-    return QStringLiteral("{\"v\":1,\"tag\":42,\"kind\":\"scroll\","
+    return QStringLiteral("{\"v\":1,\"tag\":\"k42\",\"kind\":\"scroll\","
                           "\"x\":%1,\"y\":%2,\"w\":%3,\"h\":%4,"
                           "\"vw\":%5,\"vh\":%6}")
         .arg(x, y, w, h, vw, vh);
@@ -678,7 +719,7 @@ void tst_edgestate::aScrollReportIsParsedAndSifted(){
     const EdgeMessage m = EdgeMessage::Parse
         (ScrollMessage(QStringLiteral("10"), QStringLiteral("2500"),
                        QStringLiteral("980"), QStringLiteral("24000"),
-                       QStringLiteral("980"), QStringLiteral("640")), 42);
+                       QStringLiteral("980"), QStringLiteral("640")), QStringLiteral("k42"));
     QVERIFY(m.IsValid());
     QCOMPARE(m.GetKind(), EdgeMessage::Kind::Scroll);
     QCOMPARE(m.GetScrollPosition(), QPointF(10, 2500));
@@ -689,61 +730,61 @@ void tst_edgestate::aScrollReportIsParsedAndSifted(){
             (ScrollMessage(QStringLiteral("0.5"), QStringLiteral("0"),
                            QStringLiteral("980.25"), QStringLiteral("100"),
                            QStringLiteral("980"), QStringLiteral("640")),
-             42).IsValid());
+             QStringLiteral("k42")).IsValid());
 
     QVERIFY(!EdgeMessage::Parse
             (ScrollMessage(QStringLiteral("0"), QStringLiteral("0"),
                            QStringLiteral("980"), QStringLiteral("100"),
                            QStringLiteral("980"), QStringLiteral("640"))
-             .replace(QStringLiteral("\"tag\":42"),
-                      QStringLiteral("\"tag\":43")), 42).IsValid());
+             .replace(QStringLiteral("\"tag\":\"k42\""),
+                      QStringLiteral("\"tag\":\"k43\"")), QStringLiteral("k42")).IsValid());
 
     QVERIFY(!EdgeMessage::Parse
-            (QStringLiteral("{\"v\":1,\"tag\":42,\"kind\":\"scroll\","
+            (QStringLiteral("{\"v\":1,\"tag\":\"k42\",\"kind\":\"scroll\","
                             "\"x\":0,\"y\":0,\"w\":980,\"h\":100,"
-                            "\"vw\":980}"), 42).IsValid());
+                            "\"vw\":980}"), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
             (ScrollMessage(QStringLiteral("0"), QStringLiteral("\"0\""),
                            QStringLiteral("980"), QStringLiteral("100"),
                            QStringLiteral("980"), QStringLiteral("640")),
-             42).IsValid());
+             QStringLiteral("k42")).IsValid());
 
     QVERIFY(!EdgeMessage::Parse
             (ScrollMessage(QStringLiteral("-1"), QStringLiteral("0"),
                            QStringLiteral("980"), QStringLiteral("100"),
                            QStringLiteral("980"), QStringLiteral("640")),
-             42).IsValid());
+             QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
             (ScrollMessage(QStringLiteral("0"), QStringLiteral("0"),
                            QStringLiteral("0"), QStringLiteral("100"),
                            QStringLiteral("980"), QStringLiteral("640")),
-             42).IsValid());
+             QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
             (ScrollMessage(QStringLiteral("0"), QStringLiteral("0"),
                            QStringLiteral("980"), QStringLiteral("100"),
                            QStringLiteral("980"), QStringLiteral("-640")),
-             42).IsValid());
+             QStringLiteral("k42")).IsValid());
 
     QVERIFY(!EdgeMessage::Parse
-            (QStringLiteral("{\"v\":1,\"tag\":42,\"kind\":\"scroll\","
+            (QStringLiteral("{\"v\":1,\"tag\":\"k42\",\"kind\":\"scroll\","
                             "\"x\":0,\"y\":0,\"w\":980,\"h\":100,"
                             "\"vw\":980,\"vh\":640,\"code\":81}"),
-             42).IsValid());
+             QStringLiteral("k42")).IsValid());
 }
 
 void tst_edgestate::thePrintRequestIsItsOwnKind(){
     const EdgeMessage m = EdgeMessage::Parse
-        (QStringLiteral("{\"v\":1,\"tag\":42,\"kind\":\"print\"}"), 42);
+        (QStringLiteral("{\"v\":1,\"tag\":\"k42\",\"kind\":\"print\"}"), QStringLiteral("k42"));
     QVERIFY(m.IsValid());
     QCOMPARE(m.GetKind(), EdgeMessage::Kind::Print);
 
     QVERIFY(!EdgeMessage::Parse
-            (QStringLiteral("{\"v\":1,\"tag\":43,\"kind\":\"print\"}"), 42).IsValid());
+            (QStringLiteral("{\"v\":1,\"tag\":\"k43\",\"kind\":\"print\"}"), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (QStringLiteral("{\"v\":2,\"tag\":42,\"kind\":\"print\"}"), 42).IsValid());
+            (QStringLiteral("{\"v\":2,\"tag\":\"k42\",\"kind\":\"print\"}"), QStringLiteral("k42")).IsValid());
     QVERIFY(!EdgeMessage::Parse
-            (QStringLiteral("{\"v\":1,\"tag\":42,\"kind\":\"print\",\"code\":81}"),
-             42).IsValid());
+            (QStringLiteral("{\"v\":1,\"tag\":\"k42\",\"kind\":\"print\",\"code\":81}"),
+             QStringLiteral("k42")).IsValid());
 }
 
 void tst_edgestate::aHiddenViewIsSuspendedOnlyWhenAllFiveAgree(){
@@ -1175,6 +1216,31 @@ void tst_edgestate::aBareHostAndThatHostWithASlashAreOneAddress(){
              QUrl(QStringLiteral("https://example.com/dir")));
     QCOMPARE(EdgeWithRootPath(QUrl(QStringLiteral("https://example.com?a=b"))),
              QUrl(QStringLiteral("https://example.com/?a=b")));
+}
+
+void tst_edgestate::aReportStaysTheDocumentsAcrossAFragmentChange(){
+    QVERIFY(EdgeMessage::IsFromDocument(
+        QStringLiteral("vanilla://settings/"),
+        QUrl(QStringLiteral("vanilla://settings/#tabs"))));
+    QVERIFY(EdgeMessage::IsFromDocument(
+        QStringLiteral("vanilla://settings/#page"),
+        QUrl(QStringLiteral("vanilla://settings/#tabs"))));
+    QVERIFY(EdgeMessage::IsFromDocument(
+        QStringLiteral("https://example.com/doc#top"),
+        QUrl(QStringLiteral("https://example.com/doc"))));
+    QVERIFY(EdgeMessage::IsFromDocument(
+        QStringLiteral("https://example.com/"),
+        QUrl(QStringLiteral("https://example.com#top"))));
+
+    QVERIFY(!EdgeMessage::IsFromDocument(
+        QStringLiteral("vanilla://settings/frame#tabs"),
+        QUrl(QStringLiteral("vanilla://settings/#tabs"))));
+    QVERIFY(!EdgeMessage::IsFromDocument(
+        QStringLiteral("https://example.com/doc?a=1#x"),
+        QUrl(QStringLiteral("https://example.com/doc?a=2#x"))));
+    QVERIFY(!EdgeMessage::IsFromDocument(
+        QStringLiteral("https://other.com/doc#x"),
+        QUrl(QStringLiteral("https://example.com/doc#x"))));
 }
 
 void tst_edgestate::theInsideOfTheSourceAddressIsStillTheSourceAddress(){
@@ -2745,7 +2811,7 @@ void tst_edgestate::theRowIsToldTheWholeCellBeforeTheTabIsTakenOut(){
     QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
 
     const int item = source.indexOf(QStringLiteral("new DownloadItem"));
-    const int registered = source.indexOf(QStringLiteral("RegisterDownload(item)"));
+    const int registered = source.indexOf(QStringLiteral("item->Record("));
     const int snapshot = source.indexOf(QStringLiteral("terminalBeforeReplay = cell->IsTerminal()"));
     const int replay = source.indexOf(QStringLiteral("adapter->Replay()"));
     const int decision = source.indexOf(QStringLiteral("terminalBeforeReplay"), replay);

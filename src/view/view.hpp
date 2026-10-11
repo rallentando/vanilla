@@ -134,6 +134,7 @@ public:
     virtual void DeleteLater();
 
     void Orphan();
+    void ForgetViewNode(ViewNode *vn){ if(m_ViewNode == vn) m_ViewNode = nullptr;}
 
     TreeBank  *GetTreeBank() const;
     ViewNode  *GetViewNode() const;
@@ -195,6 +196,8 @@ public:
         return m_SuspendHiddenViews != QStringLiteral("Frozen") &&
                m_SuspendHiddenViews != QStringLiteral("Discarded");
     }
+
+    static bool SavePasswords(){ return m_SavePasswords;}
 
     static QString GetLinkMenu(){ return m_LinkMenu;}
     static QString GetImageMenu(){ return m_ImageMenu;}
@@ -1548,6 +1551,10 @@ public:
                 "};\n");
     }
 
+    static inline QString EdgeBridgeTag(){
+        return QLatin1Char('"') + Application::EdgeEventToken() + QLatin1Char('"');
+    }
+
     static inline QString EdgeInputBridgeJsCode(const QList<int> &plain,
                                                 const QList<int> &shifted){
         const QString plainSet = JsKeyCodeSet(plain);
@@ -1587,13 +1594,24 @@ public:
                 "        }\n"
                 "        // where the caret is decides what the key means.\n"
                 "        var el = focusedElement(e, d);\n"
-                "        if(el && (el.isContentEditable ||\n"
-                "                  el.tagName == \"INPUT\" ||\n"
+                "        var typed = el && (el.isContentEditable ||\n"
                 "                  el.tagName == \"TEXTAREA\" ||\n"
                 "                  el.tagName == \"SELECT\" ||\n"
-                "                  el.tagName == \"BUTTON\" ||\n"
                 "                  el.tagName == \"FRAME\" ||\n"
-                "                  el.tagName == \"IFRAME\")) return;\n"
+                "                  el.tagName == \"IFRAME\" ||\n"
+                "                  (el.tagName == \"INPUT\" &&\n"
+                "                   !/^(button|submit|reset|checkbox|radio|image|file|color|range)$/i\n"
+                "                       .test(el.type || \"\")));\n"
+                "        if(typed) return;\n"
+                "        if(el && (el.tagName == \"BUTTON\" || el.tagName == \"INPUT\")){\n"
+                "            later(function(){\n"
+                "                if(e.defaultPrevented) return;\n"
+                "                wv.postMessage({\n"
+                "                    v: 1, tag: tag, kind: \"key\",\n"
+                "                    code: c, shift: !!e.shiftKey});\n"
+                "            }, 0);\n"
+                "            return;\n"
+                "        }\n"
                 "        wv.postMessage({\n"
                 "            v: 1, tag: tag, kind: \"key\",\n"
                 "            code: c, shift: !!e.shiftKey});\n"
@@ -1605,7 +1623,7 @@ public:
                 "            v: 1, tag: tag, kind: \"print\"});\n"
                 "    };\n"
                 "})();\n"
-            )).arg(Application::EventKey()).arg(shiftedSet, plainSet);
+            )).arg(EdgeBridgeTag()).arg(shiftedSet, plainSet);
     }
 
     static inline QString EdgeScrollReportJsCode(){
@@ -1642,7 +1660,7 @@ public:
                 "    document.addEventListener(\"DOMContentLoaded\", schedule);\n"
                 "    setInterval(schedule, 500);\n"
                 "})();\n"
-            ).arg(Application::EventKey());
+            ).arg(EdgeBridgeTag());
     }
 
     static inline QString EdgeHideWebViewJsCode(){
@@ -1997,6 +2015,7 @@ protected:
     static bool m_EnableScrollGesture;
     static bool m_InspectorInMainWindow;
     static QString m_SuspendHiddenViews;
+    static bool m_SavePasswords;
     bool m_EnableDragGestureLocal;
     bool m_EnableRightGestureLocal;
 

@@ -227,15 +227,19 @@ QString EdgeEnvironment::UserDataFolder(){
         (Application::DataDirectory() + QStringLiteral("edgewebview"));
 }
 
-bool EdgeWebView::RuntimeAvailable(){
-    static const bool available = [](){
-        LPWSTR version = nullptr;
-        const HRESULT hr = GetAvailableCoreWebView2BrowserVersionString(nullptr, &version);
-        const bool found = SUCCEEDED(hr) && version;
-        if(version) CoTaskMemFree(version);
+QString EdgeWebView::RuntimeVersion(){
+    static const QString version = [](){
+        LPWSTR text = nullptr;
+        const HRESULT hr = GetAvailableCoreWebView2BrowserVersionString(nullptr, &text);
+        const QString found = SUCCEEDED(hr) && text ? QString::fromWCharArray(text) : QString();
+        if(text) CoTaskMemFree(text);
         return found;
     }();
-    return available;
+    return version;
+}
+
+bool EdgeWebView::RuntimeAvailable(){
+    return !RuntimeVersion().isEmpty();
 }
 
 void EdgeEnvironment::Request(int token, EdgeWebView *view){

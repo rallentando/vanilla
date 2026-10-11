@@ -33,6 +33,7 @@ class ToggleTrashButton;
 class GraphicsTableView : public QGraphicsObject {
     Q_OBJECT
     Q_PROPERTY(qreal scroll READ GetScroll WRITE SetScroll NOTIFY ScrollChanged)
+    friend class tst_gadgetsframe;
 
 public:
     GraphicsTableView(TreeBank *parent = 0);
@@ -160,6 +161,8 @@ public:
     QRectF ComputeRect(const NodeTitle*, const int) const;
     void RelocateContents();
     void FinishFoldAnimation();
+
+    void LetGoOf(const QSet<Node*> &going, Node *formerParent);
     void RelocateScrollBar();
     void AppendToSelection(Node*);
     void RemoveFromSelection(Node*);
@@ -624,6 +627,8 @@ public:
     CloseButton(QGraphicsItem *parent = 0);
     ~CloseButton();
 
+    Node *GetNode() const { return m_Node;}
+
     void UnsetItem();
     void SetItem(Thumbnail *thumb);
     void SetItem(NodeTitle *title);
@@ -643,6 +648,8 @@ class CloneButton : public GraphicsButton {
 public:
     CloneButton(QGraphicsItem *parent = 0);
     ~CloneButton();
+
+    Node *GetNode() const { return m_Node;}
 
     void UnsetItem();
     void SetItem(Thumbnail *thumb);

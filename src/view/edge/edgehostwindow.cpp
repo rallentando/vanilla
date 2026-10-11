@@ -2,6 +2,8 @@
 #include "edgehostwindow.hpp"
 
 #include <QWidget>
+#include <QGuiApplication>
+#include <QTimer>
 
 #ifdef Q_OS_WIN
 #  include <windows.h>
@@ -11,6 +13,16 @@ EdgeHostWindow::EdgeHostWindow(QWindow *parent)
     : QWindow(parent)
 {
     setFlag(Qt::WindowDoesNotAcceptFocus, true);
+
+    connect(qGuiApp, &QGuiApplication::focusWindowChanged, this, [this](QWindow *window){
+        if(!window || !m_Container || window != m_Container->window()->windowHandle()) return;
+        QPointer<QWidget> container = m_Container;
+        QTimer::singleShot(0, this, [this, container](){
+            if(container && container == m_Container && container->hasFocus() &&
+               QGuiApplication::focusWindow() == container->window()->windowHandle())
+                emit ReactivatedWithFocus();
+        });
+    });
 }
 
 bool EdgeHostWindow::AnswerMouseActivate(unsigned int message, qintptr *result){
@@ -33,6 +45,17 @@ bool EdgeHostWindow::TakeQtFocus(){
     if(!m_FocusOnPress || m_FocusOnPress->hasFocus()) return false;
     m_FocusOnPress->setFocus(Qt::MouseFocusReason);
     return true;
+}
+
+void EdgeHostWindow::QuietContainerFocusIn(QWidget *container){
+    if(m_Container) m_Container->removeEventFilter(this);
+    m_Container = container;
+    if(m_Container) m_Container->installEventFilter(this);
+}
+
+bool EdgeHostWindow::eventFilter(QObject *watched, QEvent *ev){
+    if(watched == m_Container && ev->type() == QEvent::FocusIn) return true;
+    return QWindow::eventFilter(watched, ev);
 }
 
 bool EdgeHostWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result){

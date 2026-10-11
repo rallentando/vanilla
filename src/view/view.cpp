@@ -49,6 +49,7 @@ bool View::m_EnableMouseGesture = true;
 bool View::m_EnableScrollGesture = false;
 bool View::m_InspectorInMainWindow = true;
 QString View::m_SuspendHiddenViews = QStringLiteral("Active");
+bool View::m_SavePasswords = true;
 
 QMap<QKeySequence, QString> View::m_KeyMap = QMap<QKeySequence, QString>();
 QMap<QString, QString> View::m_MouseMap = QMap<QString, QString>();
@@ -407,7 +408,7 @@ void View::GoBackToInferedUrl(){
     QList<int> currentHighValidityDistance = QList<int>();
 
     QRegularExpression reg =
-        QRegularExpression(QObject::tr("(?:<<.*|.*<<|<|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*reer.*|.*behind.*|.*before.*)"));
+        QRegularExpression(QObject::tr("(?:<<.*|.*<<|<|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*rear.*|.*behind.*|.*before.*)"));
 
     foreach(SharedWebElement elem, elements){
         QString text = elem->InnerText();
@@ -740,7 +741,7 @@ QMenu *View::SearchMenu(){
         foreach(QString key, Page::GetSearchEngineMap().keys()){
             QAction *action = menu->addAction(key, page, SLOT(SearchWith()));
             QUrl url = QUrl::fromEncoded(Page::GetSearchEngine(key).first().toLatin1());
-            action->setIcon(Application::GetIcon(url.host()));
+            action->setIcon(Application::GetIcon(url));
         }
     }
     return menu;
@@ -1008,6 +1009,25 @@ void View::AddRegularMenu(QMenu *menu, SharedWebElement elem){
     menu->addAction(action);
 }
 
+#ifdef WEBENGINEVIEW
+
+static bool EngineDefault(QWebEngineSettings *g, QWebEngineSettings::WebAttribute a){
+    g->resetAttribute(a);
+    return g->testAttribute(a);
+}
+
+static int EngineDefault(QWebEngineSettings *g, QWebEngineSettings::FontSize size){
+    g->resetFontSize(size);
+    return g->fontSize(size);
+}
+
+static void ApplyFontFamily(QWebEngineSettings *g, QWebEngineSettings::FontFamily family,
+                            const QString &name){
+    if(name.isEmpty()) g->resetFontFamily(family);
+    else               g->setFontFamily(family, name);
+}
+#endif
+
 void View::LoadSettings(){
     Settings &s = Application::GlobalSettings();
 
@@ -1026,6 +1046,7 @@ void View::LoadSettings(){
     m_DragToStartDownload       = s.value(QStringLiteral("webview/@DragToStartDownload"), false).value<bool>();
     m_InspectorInMainWindow     = s.value(QStringLiteral("webview/@InspectorInMainWindow"), true).value<bool>();
     m_SuspendHiddenViews        = s.value(QStringLiteral("webview/@SuspendHiddenViews"), QStringLiteral("Active")).value<QString>();
+    m_SavePasswords             = s.value(QStringLiteral("webview/@SavePasswords"), true).value<bool>();
 
     UrlBlockRules::ReloadRules();
 
@@ -1043,55 +1064,57 @@ void View::LoadSettings(){
     if(operation == QStringLiteral("OnRootNewWindow"))         Page::SetOpenCommandOperation(Page::OnRootNewWindow);
 
 #ifdef WEBENGINEVIEW
-    gwes->setAttribute(QWebEngineSettings::AutoLoadImages,                    s.value(QStringLiteral("webview/preferences/AutoLoadImages"),                    gwes->testAttribute(QWebEngineSettings::AutoLoadImages)                   ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard,      s.value(QStringLiteral("webview/preferences/JavascriptCanAccessClipboard"),      gwes->testAttribute(QWebEngineSettings::JavascriptCanAccessClipboard)     ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::AutoLoadImages,                    s.value(QStringLiteral("webview/preferences/AutoLoadImages"),                    EngineDefault(gwes, QWebEngineSettings::AutoLoadImages)                   ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard,      s.value(QStringLiteral("webview/preferences/JavascriptCanAccessClipboard"),      EngineDefault(gwes, QWebEngineSettings::JavascriptCanAccessClipboard)     ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows,          s.value(QStringLiteral("webview/preferences/JavascriptCanOpenWindows"),          true ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::JavascriptEnabled,                 s.value(QStringLiteral("webview/preferences/JavascriptEnabled"),                 gwes->testAttribute(QWebEngineSettings::JavascriptEnabled)                ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::LinksIncludedInFocusChain,         s.value(QStringLiteral("webview/preferences/LinksIncludedInFocusChain"),         gwes->testAttribute(QWebEngineSettings::LinksIncludedInFocusChain)        ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls,     s.value(QStringLiteral("webview/preferences/LocalContentCanAccessFileUrls"),     gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls)    ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls,   s.value(QStringLiteral("webview/preferences/LocalContentCanAccessRemoteUrls"),   gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls)  ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::LocalStorageEnabled,               s.value(QStringLiteral("webview/preferences/LocalStorageEnabled"),               gwes->testAttribute(QWebEngineSettings::LocalStorageEnabled)              ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::JavascriptEnabled,                 s.value(QStringLiteral("webview/preferences/JavascriptEnabled"),                 EngineDefault(gwes, QWebEngineSettings::JavascriptEnabled)                ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::LinksIncludedInFocusChain,         s.value(QStringLiteral("webview/preferences/LinksIncludedInFocusChain"),         EngineDefault(gwes, QWebEngineSettings::LinksIncludedInFocusChain)        ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls,     s.value(QStringLiteral("webview/preferences/LocalContentCanAccessFileUrls"),     EngineDefault(gwes, QWebEngineSettings::LocalContentCanAccessFileUrls)    ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls,   s.value(QStringLiteral("webview/preferences/LocalContentCanAccessRemoteUrls"),   EngineDefault(gwes, QWebEngineSettings::LocalContentCanAccessRemoteUrls)  ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::LocalStorageEnabled,               s.value(QStringLiteral("webview/preferences/LocalStorageEnabled"),               EngineDefault(gwes, QWebEngineSettings::LocalStorageEnabled)              ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::PluginsEnabled,                    s.value(QStringLiteral("webview/preferences/PluginsEnabled"),                              true ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::SpatialNavigationEnabled,          s.value(QStringLiteral("webview/preferences/SpatialNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::SpatialNavigationEnabled)         ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::XSSAuditingEnabled,                s.value(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                gwes->testAttribute(QWebEngineSettings::XSSAuditingEnabled)               ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled,          s.value(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          gwes->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled)         ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::SpatialNavigationEnabled,          s.value(QStringLiteral("webview/preferences/SpatialNavigationEnabled"),          EngineDefault(gwes, QWebEngineSettings::SpatialNavigationEnabled)         ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::XSSAuditingEnabled,                s.value(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                EngineDefault(gwes, QWebEngineSettings::XSSAuditingEnabled)               ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled,          s.value(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          EngineDefault(gwes, QWebEngineSettings::HyperlinkAuditingEnabled)         ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled,             s.value(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             true).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::ScreenCaptureEnabled,              s.value(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              gwes->testAttribute(QWebEngineSettings::ScreenCaptureEnabled)             ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::WebGLEnabled,                      s.value(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                     ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::AutoLoadIconsForPage,              s.value(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)             ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::TouchIconsEnabled,                 s.value(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled,          s.value(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled)         ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::PrintElementBackgrounds,           s.value(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)          ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::AllowRunningInsecureContent,       s.value(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gwes->testAttribute(QWebEngineSettings::AllowRunningInsecureContent)      ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, s.value(QStringLiteral("webview/preferences/AllowGeolocationOnInsecureOrigins"), gwes->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins)).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, s.value(QStringLiteral("webview/preferences/AllowWindowActivationFromJavaScript"), gwes->testAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript)).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::ShowScrollBars,                    s.value(QStringLiteral("webview/preferences/ShowScrollBars"),                    gwes->testAttribute(QWebEngineSettings::ShowScrollBars)                   ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::ScreenCaptureEnabled,              s.value(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              EngineDefault(gwes, QWebEngineSettings::ScreenCaptureEnabled)             ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::WebGLEnabled,                      s.value(QStringLiteral("webview/preferences/WebGLEnabled"),                      EngineDefault(gwes, QWebEngineSettings::WebGLEnabled)                     ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled,        s.value(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        EngineDefault(gwes, QWebEngineSettings::Accelerated2dCanvasEnabled)       ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::AutoLoadIconsForPage,              s.value(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              EngineDefault(gwes, QWebEngineSettings::AutoLoadIconsForPage)             ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::TouchIconsEnabled,                 s.value(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 EngineDefault(gwes, QWebEngineSettings::TouchIconsEnabled)                ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled,          s.value(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          EngineDefault(gwes, QWebEngineSettings::FocusOnNavigationEnabled)         ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::PrintElementBackgrounds,           s.value(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           EngineDefault(gwes, QWebEngineSettings::PrintElementBackgrounds)          ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::AllowRunningInsecureContent,       s.value(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       EngineDefault(gwes, QWebEngineSettings::AllowRunningInsecureContent)      ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins, s.value(QStringLiteral("webview/preferences/AllowGeolocationOnInsecureOrigins"), EngineDefault(gwes, QWebEngineSettings::AllowGeolocationOnInsecureOrigins)).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, s.value(QStringLiteral("webview/preferences/AllowWindowActivationFromJavaScript"), EngineDefault(gwes, QWebEngineSettings::AllowWindowActivationFromJavaScript)).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::ShowScrollBars,                    s.value(QStringLiteral("webview/preferences/ShowScrollBars"),                    EngineDefault(gwes, QWebEngineSettings::ShowScrollBars)                   ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture,       s.value(QStringLiteral("webview/preferences/PlaybackRequiresUserGesture"),       true).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly,        s.value(QStringLiteral("webview/preferences/WebRTCPublicInterfacesOnly"),        gwes->testAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly)       ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::JavascriptCanPaste,                s.value(QStringLiteral("webview/preferences/JavascriptCanPaste"),                gwes->testAttribute(QWebEngineSettings::JavascriptCanPaste)               ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::DnsPrefetchEnabled,                s.value(QStringLiteral("webview/preferences/DnsPrefetchEnabled"),                gwes->testAttribute(QWebEngineSettings::DnsPrefetchEnabled)               ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::PdfViewerEnabled,                  s.value(QStringLiteral("webview/preferences/PdfViewerEnabled"),                  gwes->testAttribute(QWebEngineSettings::PdfViewerEnabled)                 ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly,        s.value(QStringLiteral("webview/preferences/WebRTCPublicInterfacesOnly"),        EngineDefault(gwes, QWebEngineSettings::WebRTCPublicInterfacesOnly)       ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::JavascriptCanPaste,                s.value(QStringLiteral("webview/preferences/JavascriptCanPaste"),                EngineDefault(gwes, QWebEngineSettings::JavascriptCanPaste)               ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::DnsPrefetchEnabled,                s.value(QStringLiteral("webview/preferences/DnsPrefetchEnabled"),                EngineDefault(gwes, QWebEngineSettings::DnsPrefetchEnabled)               ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::PdfViewerEnabled,                  s.value(QStringLiteral("webview/preferences/PdfViewerEnabled"),                  EngineDefault(gwes, QWebEngineSettings::PdfViewerEnabled)                 ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::ErrorPageEnabled,                  s.value(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  EngineDefault(gwes, QWebEngineSettings::ErrorPageEnabled)                 ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::FullScreenSupportEnabled,          s.value(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),          true ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::NavigateOnDropEnabled,             s.value(QStringLiteral("webview/preferences/NavigateOnDropEnabled"),             gwes->testAttribute(QWebEngineSettings::NavigateOnDropEnabled)            ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::NavigateOnDropEnabled,             s.value(QStringLiteral("webview/preferences/NavigateOnDropEnabled"),             EngineDefault(gwes, QWebEngineSettings::NavigateOnDropEnabled)            ).value<bool>());
 #if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
-    gwes->setAttribute(QWebEngineSettings::ReadingFromCanvasEnabled,          s.value(QStringLiteral("webview/preferences/ReadingFromCanvasEnabled"),          gwes->testAttribute(QWebEngineSettings::ReadingFromCanvasEnabled)         ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::ReadingFromCanvasEnabled,          s.value(QStringLiteral("webview/preferences/ReadingFromCanvasEnabled"),          EngineDefault(gwes, QWebEngineSettings::ReadingFromCanvasEnabled)         ).value<bool>());
 #endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    gwes->setAttribute(QWebEngineSettings::ForceDarkMode,                     s.value(QStringLiteral("webview/preferences/ForceDarkMode"),                     gwes->testAttribute(QWebEngineSettings::ForceDarkMode)                    ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::ForceDarkMode,                     s.value(QStringLiteral("webview/preferences/ForceDarkMode"),                     EngineDefault(gwes, QWebEngineSettings::ForceDarkMode)                    ).value<bool>());
 #endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
-    gwes->setAttribute(QWebEngineSettings::PrintHeaderAndFooter,              s.value(QStringLiteral("webview/preferences/PrintHeaderAndFooter"),              gwes->testAttribute(QWebEngineSettings::PrintHeaderAndFooter)             ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::PreferCSSMarginsForPrinting,       s.value(QStringLiteral("webview/preferences/PreferCSSMarginsForPrinting"),       gwes->testAttribute(QWebEngineSettings::PreferCSSMarginsForPrinting)      ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::PrintHeaderAndFooter,              s.value(QStringLiteral("webview/preferences/PrintHeaderAndFooter"),              EngineDefault(gwes, QWebEngineSettings::PrintHeaderAndFooter)             ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::PreferCSSMarginsForPrinting,       s.value(QStringLiteral("webview/preferences/PreferCSSMarginsForPrinting"),       EngineDefault(gwes, QWebEngineSettings::PreferCSSMarginsForPrinting)      ).value<bool>());
     if(s.contains(QStringLiteral("webview/preferences/TouchEventsApiEnabled")))
-        gwes->setAttribute(QWebEngineSettings::TouchEventsApiEnabled,         s.value(QStringLiteral("webview/preferences/TouchEventsApiEnabled"),             gwes->testAttribute(QWebEngineSettings::TouchEventsApiEnabled)            ).value<bool>());
+        gwes->setAttribute(QWebEngineSettings::TouchEventsApiEnabled,         s.value(QStringLiteral("webview/preferences/TouchEventsApiEnabled"),             EngineDefault(gwes, QWebEngineSettings::TouchEventsApiEnabled)            ).value<bool>());
+    else
+        gwes->resetAttribute(QWebEngineSettings::TouchEventsApiEnabled);
 #endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
-    gwes->setAttribute(QWebEngineSettings::BackForwardCacheEnabled,           s.value(QStringLiteral("webview/preferences/BackForwardCacheEnabled"),           gwes->testAttribute(QWebEngineSettings::BackForwardCacheEnabled)          ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::BackForwardCacheEnabled,           s.value(QStringLiteral("webview/preferences/BackForwardCacheEnabled"),           EngineDefault(gwes, QWebEngineSettings::BackForwardCacheEnabled)          ).value<bool>());
 #endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0)
-    gwes->setAttribute(QWebEngineSettings::TrimAccessibilityIdentifiers,      s.value(QStringLiteral("webview/preferences/TrimAccessibilityIdentifiers"),      gwes->testAttribute(QWebEngineSettings::TrimAccessibilityIdentifiers)     ).value<bool>());
+    gwes->setAttribute(QWebEngineSettings::TrimAccessibilityIdentifiers,      s.value(QStringLiteral("webview/preferences/TrimAccessibilityIdentifiers"),      EngineDefault(gwes, QWebEngineSettings::TrimAccessibilityIdentifiers)     ).value<bool>());
 #endif
 #endif
 
@@ -1117,17 +1140,17 @@ void View::LoadSettings(){
 #endif
 
 #ifdef WEBENGINEVIEW
-    gwes->setFontFamily(QWebEngineSettings::StandardFont,         s.value(QStringLiteral("webview/font/StandardFont"),           gwes->fontFamily(QWebEngineSettings::StandardFont)         ).value<QString>());
-    gwes->setFontFamily(QWebEngineSettings::SansSerifFont,        s.value(QStringLiteral("webview/font/SansSerifFont"),          gwes->fontFamily(QWebEngineSettings::SansSerifFont)        ).value<QString>());
-    gwes->setFontFamily(QWebEngineSettings::SerifFont,            s.value(QStringLiteral("webview/font/SerifFont"),              gwes->fontFamily(QWebEngineSettings::SerifFont)            ).value<QString>());
-    gwes->setFontFamily(QWebEngineSettings::FixedFont,            s.value(QStringLiteral("webview/font/FixedFont"),              gwes->fontFamily(QWebEngineSettings::FixedFont)            ).value<QString>());
-    gwes->setFontFamily(QWebEngineSettings::CursiveFont,          s.value(QStringLiteral("webview/font/CursiveFont"),            gwes->fontFamily(QWebEngineSettings::CursiveFont)          ).value<QString>());
-    gwes->setFontFamily(QWebEngineSettings::FantasyFont,          s.value(QStringLiteral("webview/font/FantasyFont"),            gwes->fontFamily(QWebEngineSettings::FantasyFont)          ).value<QString>());
-    gwes->setFontFamily(QWebEngineSettings::PictographFont,       s.value(QStringLiteral("webview/font/PictographFont"),         gwes->fontFamily(QWebEngineSettings::PictographFont)       ).value<QString>());
-    gwes->setFontSize(QWebEngineSettings::MinimumFontSize,        s.value(QStringLiteral("webview/font/MinimumFontSize"),        gwes->fontSize(QWebEngineSettings::MinimumFontSize)        ).value<int>());
-    gwes->setFontSize(QWebEngineSettings::MinimumLogicalFontSize, s.value(QStringLiteral("webview/font/MinimumLogicalFontSize"), gwes->fontSize(QWebEngineSettings::MinimumLogicalFontSize) ).value<int>());
-    gwes->setFontSize(QWebEngineSettings::DefaultFontSize,        s.value(QStringLiteral("webview/font/DefaultFontSize"),        gwes->fontSize(QWebEngineSettings::DefaultFontSize)        ).value<int>());
-    gwes->setFontSize(QWebEngineSettings::DefaultFixedFontSize,   s.value(QStringLiteral("webview/font/DefaultFixedFontSize"),   gwes->fontSize(QWebEngineSettings::DefaultFixedFontSize)   ).value<int>());
+    ApplyFontFamily(gwes, QWebEngineSettings::StandardFont,   s.value(QStringLiteral("webview/font/StandardFont")).value<QString>());
+    ApplyFontFamily(gwes, QWebEngineSettings::SansSerifFont,  s.value(QStringLiteral("webview/font/SansSerifFont")).value<QString>());
+    ApplyFontFamily(gwes, QWebEngineSettings::SerifFont,      s.value(QStringLiteral("webview/font/SerifFont")).value<QString>());
+    ApplyFontFamily(gwes, QWebEngineSettings::FixedFont,      s.value(QStringLiteral("webview/font/FixedFont")).value<QString>());
+    ApplyFontFamily(gwes, QWebEngineSettings::CursiveFont,    s.value(QStringLiteral("webview/font/CursiveFont")).value<QString>());
+    ApplyFontFamily(gwes, QWebEngineSettings::FantasyFont,    s.value(QStringLiteral("webview/font/FantasyFont")).value<QString>());
+    ApplyFontFamily(gwes, QWebEngineSettings::PictographFont, s.value(QStringLiteral("webview/font/PictographFont")).value<QString>());
+    gwes->setFontSize(QWebEngineSettings::MinimumFontSize,        s.value(QStringLiteral("webview/font/MinimumFontSize"),        EngineDefault(gwes, QWebEngineSettings::MinimumFontSize)        ).value<int>());
+    gwes->setFontSize(QWebEngineSettings::MinimumLogicalFontSize, s.value(QStringLiteral("webview/font/MinimumLogicalFontSize"), EngineDefault(gwes, QWebEngineSettings::MinimumLogicalFontSize) ).value<int>());
+    gwes->setFontSize(QWebEngineSettings::DefaultFontSize,        s.value(QStringLiteral("webview/font/DefaultFontSize"),        EngineDefault(gwes, QWebEngineSettings::DefaultFontSize)        ).value<int>());
+    gwes->setFontSize(QWebEngineSettings::DefaultFixedFontSize,   s.value(QStringLiteral("webview/font/DefaultFixedFontSize"),   EngineDefault(gwes, QWebEngineSettings::DefaultFixedFontSize)   ).value<int>());
 #endif
 
     m_LinkMenu = s.value(QStringLiteral("webview/menu/LinkMenu"), QStringLiteral(
@@ -1267,40 +1290,6 @@ void View::SaveSettings(){
     if(operation == Page::OnRootNewWindow)         s.setValue(QStringLiteral("webview/@OpenCommandOperation"), QStringLiteral("OnRootNewWindow"));
 
 #ifdef WEBENGINEVIEW
-    s.setValue(QStringLiteral("webview/preferences/AutoLoadImages"),                    gwes->testAttribute(QWebEngineSettings::AutoLoadImages)                    );
-    s.setValue(QStringLiteral("webview/preferences/JavascriptCanAccessClipboard"),      gwes->testAttribute(QWebEngineSettings::JavascriptCanAccessClipboard)      );
-    s.setValue(QStringLiteral("webview/preferences/JavascriptCanOpenWindows"),          gwes->testAttribute(QWebEngineSettings::JavascriptCanOpenWindows)          );
-    s.setValue(QStringLiteral("webview/preferences/JavascriptEnabled"),                 gwes->testAttribute(QWebEngineSettings::JavascriptEnabled)                 );
-    s.setValue(QStringLiteral("webview/preferences/LinksIncludedInFocusChain"),         gwes->testAttribute(QWebEngineSettings::LinksIncludedInFocusChain)         );
-    s.setValue(QStringLiteral("webview/preferences/LocalContentCanAccessFileUrls"),     gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls)     );
-    s.setValue(QStringLiteral("webview/preferences/LocalContentCanAccessRemoteUrls"),   gwes->testAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls)   );
-    s.setValue(QStringLiteral("webview/preferences/LocalStorageEnabled"),               gwes->testAttribute(QWebEngineSettings::LocalStorageEnabled)               );
-    s.setValue(QStringLiteral("webview/preferences/PluginsEnabled"),                    gwes->testAttribute(QWebEngineSettings::PluginsEnabled)                    );
-    s.setValue(QStringLiteral("webview/preferences/SpatialNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::SpatialNavigationEnabled)          );
-    s.setValue(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                gwes->testAttribute(QWebEngineSettings::XSSAuditingEnabled)                );
-    s.setValue(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          gwes->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled)          );
-    s.setValue(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             gwes->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled)             );
-    s.setValue(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              gwes->testAttribute(QWebEngineSettings::ScreenCaptureEnabled)              );
-    s.setValue(QStringLiteral("webview/preferences/WebGLEnabled"),                      gwes->testAttribute(QWebEngineSettings::WebGLEnabled)                      );
-    s.setValue(QStringLiteral("webview/preferences/Accelerated2dCanvasEnabled"),        gwes->testAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled)        );
-    s.setValue(QStringLiteral("webview/preferences/AutoLoadIconsForPage"),              gwes->testAttribute(QWebEngineSettings::AutoLoadIconsForPage)              );
-    s.setValue(QStringLiteral("webview/preferences/TouchIconsEnabled"),                 gwes->testAttribute(QWebEngineSettings::TouchIconsEnabled)                 );
-    s.setValue(QStringLiteral("webview/preferences/FocusOnNavigationEnabled"),          gwes->testAttribute(QWebEngineSettings::FocusOnNavigationEnabled)          );
-    s.setValue(QStringLiteral("webview/preferences/PrintElementBackgrounds"),           gwes->testAttribute(QWebEngineSettings::PrintElementBackgrounds)           );
-    s.setValue(QStringLiteral("webview/preferences/AllowRunningInsecureContent"),       gwes->testAttribute(QWebEngineSettings::AllowRunningInsecureContent)       );
-    s.setValue(QStringLiteral("webview/preferences/AllowGeolocationOnInsecureOrigins"), gwes->testAttribute(QWebEngineSettings::AllowGeolocationOnInsecureOrigins) );
-    s.setValue(QStringLiteral("webview/preferences/AllowWindowActivationFromJavaScript"), gwes->testAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript) );
-    s.setValue(QStringLiteral("webview/preferences/ShowScrollBars"),                    gwes->testAttribute(QWebEngineSettings::ShowScrollBars)                    );
-    s.setValue(QStringLiteral("webview/preferences/PlaybackRequiresUserGesture"),       gwes->testAttribute(QWebEngineSettings::PlaybackRequiresUserGesture)       );
-    s.setValue(QStringLiteral("webview/preferences/WebRTCPublicInterfacesOnly"),        gwes->testAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly)        );
-    s.setValue(QStringLiteral("webview/preferences/JavascriptCanPaste"),                gwes->testAttribute(QWebEngineSettings::JavascriptCanPaste)                );
-    s.setValue(QStringLiteral("webview/preferences/DnsPrefetchEnabled"),                gwes->testAttribute(QWebEngineSettings::DnsPrefetchEnabled)                );
-    s.setValue(QStringLiteral("webview/preferences/PdfViewerEnabled"),                  gwes->testAttribute(QWebEngineSettings::PdfViewerEnabled)                  );
-    s.setValue(QStringLiteral("webview/preferences/ErrorPageEnabled"),                  gwes->testAttribute(QWebEngineSettings::ErrorPageEnabled)                  );
-    s.setValue(QStringLiteral("webview/preferences/FullScreenSupportEnabled"),          gwes->testAttribute(QWebEngineSettings::FullScreenSupportEnabled)          );
-#endif
-
-#ifdef WEBENGINEVIEW
     s.setValue(QStringLiteral("webview/detail/DefaultTextEncoding"),             gwes->defaultTextEncoding());
 #endif
 
@@ -1315,20 +1304,6 @@ void View::SaveSettings(){
         s.setValue(QStringLiteral("webview/detail/UnknownUrlSchemePolicy"), QStringLiteral("AllowUnknownUrlSchemesFromUserInteraction"));
     if(schemePolicy == QWebEngineSettings::AllowAllUnknownUrlSchemes)
         s.setValue(QStringLiteral("webview/detail/UnknownUrlSchemePolicy"), QStringLiteral("AllowAllUnknownUrlSchemes"));
-#endif
-
-#ifdef WEBENGINEVIEW
-    s.setValue(QStringLiteral("webview/font/StandardFont"),           gwes->fontFamily(QWebEngineSettings::StandardFont)         );
-    s.setValue(QStringLiteral("webview/font/FixedFont"),              gwes->fontFamily(QWebEngineSettings::FixedFont)            );
-    s.setValue(QStringLiteral("webview/font/SerifFont"),              gwes->fontFamily(QWebEngineSettings::SerifFont)            );
-    s.setValue(QStringLiteral("webview/font/SansSerifFont"),          gwes->fontFamily(QWebEngineSettings::SansSerifFont)        );
-    s.setValue(QStringLiteral("webview/font/CursiveFont"),            gwes->fontFamily(QWebEngineSettings::CursiveFont)          );
-    s.setValue(QStringLiteral("webview/font/FantasyFont"),            gwes->fontFamily(QWebEngineSettings::FantasyFont)          );
-    s.setValue(QStringLiteral("webview/font/PictographFont"),         gwes->fontFamily(QWebEngineSettings::PictographFont)       );
-    s.setValue(QStringLiteral("webview/font/MinimumFontSize"),        gwes->fontSize(QWebEngineSettings::MinimumFontSize)        );
-    s.setValue(QStringLiteral("webview/font/MinimumLogicalFontSize"), gwes->fontSize(QWebEngineSettings::MinimumLogicalFontSize) );
-    s.setValue(QStringLiteral("webview/font/DefaultFontSize"),        gwes->fontSize(QWebEngineSettings::DefaultFontSize)        );
-    s.setValue(QStringLiteral("webview/font/DefaultFixedFontSize"),   gwes->fontSize(QWebEngineSettings::DefaultFixedFontSize)   );
 #endif
 
     s.setValue(QStringLiteral("webview/menu/LinkMenu"),      m_LinkMenu);
@@ -1432,6 +1407,27 @@ void View::ApplySpecificSettings(QStringList set){
         s->setAttribute(QWebEngineSettings::PdfViewerEnabled, g->testAttribute(QWebEngineSettings::PdfViewerEnabled));
         s->setAttribute(QWebEngineSettings::ErrorPageEnabled, g->testAttribute(QWebEngineSettings::ErrorPageEnabled));
         s->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, g->testAttribute(QWebEngineSettings::FullScreenSupportEnabled));
+        s->setAttribute(QWebEngineSettings::NavigateOnDropEnabled, g->testAttribute(QWebEngineSettings::NavigateOnDropEnabled));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+        s->setAttribute(QWebEngineSettings::ReadingFromCanvasEnabled, g->testAttribute(QWebEngineSettings::ReadingFromCanvasEnabled));
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+        s->setAttribute(QWebEngineSettings::ForceDarkMode, g->testAttribute(QWebEngineSettings::ForceDarkMode));
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+        s->setAttribute(QWebEngineSettings::PrintHeaderAndFooter, g->testAttribute(QWebEngineSettings::PrintHeaderAndFooter));
+        s->setAttribute(QWebEngineSettings::PreferCSSMarginsForPrinting, g->testAttribute(QWebEngineSettings::PreferCSSMarginsForPrinting));
+        if(Application::GlobalSettings().contains(QStringLiteral("webview/preferences/TouchEventsApiEnabled")))
+            s->setAttribute(QWebEngineSettings::TouchEventsApiEnabled, g->testAttribute(QWebEngineSettings::TouchEventsApiEnabled));
+        else
+            s->resetAttribute(QWebEngineSettings::TouchEventsApiEnabled);
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+        s->setAttribute(QWebEngineSettings::BackForwardCacheEnabled, g->testAttribute(QWebEngineSettings::BackForwardCacheEnabled));
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0)
+        s->setAttribute(QWebEngineSettings::TrimAccessibilityIdentifiers, g->testAttribute(QWebEngineSettings::TrimAccessibilityIdentifiers));
+#endif
 
         s->setFontFamily(QWebEngineSettings::StandardFont, g->fontFamily(QWebEngineSettings::StandardFont));
         s->setFontFamily(QWebEngineSettings::FixedFont, g->fontFamily(QWebEngineSettings::FixedFont));
@@ -1610,8 +1606,8 @@ QString View::ExtensionStatus() const {
 void View::Load(){
     bool ok;
     QString str =
-        ModalDialog::GetText(QObject::tr("Url or Javascript"),
-                             QObject::tr("Input Url or Javascript"),
+        ModalDialog::GetText(QObject::tr("URL or JavaScript"),
+                             QObject::tr("Enter a URL or JavaScript"),
                              url().toString(), &ok);
     if(!str.isEmpty()) Load(str);
 }

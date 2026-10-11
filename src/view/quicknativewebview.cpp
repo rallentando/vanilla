@@ -692,9 +692,9 @@ void QuickNativeWebView::HandleRenderProcessTermination(int status, int code){
     const bool giveUp = verdict == RenderProcessLedger::Verdict::GiveUp;
 
     QString info = giveUp
-        ? tr("A page is left as it is, because that's process is terminated "
+        ? tr("A page is left as it is, because its process was terminated "
              "%1 times in a row.\n").arg(RenderProcessLedger::Limit)
-        : tr("A page is reloaded, because that's process is terminated.\n");
+        : tr("A page is reloaded, because its process was terminated.\n");
     switch(status){
     case 0:
         info += tr("Normal termination. (code: %1)");   break;

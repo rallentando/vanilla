@@ -69,6 +69,10 @@ QDateTime DateOrNow(const QString &str){
     return str.isEmpty() ? QDateTime::currentDateTime() : NodeDateTimeFromString(str);
 }
 
+QDateTime DateOrNow(const QString &str, const QTimeZone &zone){
+    return str.isEmpty() ? QDateTime::currentDateTime() : NodeDateTimeFromString(str, zone);
+}
+
 QDateTime DateOrNow(const QString &str, Qt::DateFormat format){
     return str.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromString(str, format);
 }
@@ -227,6 +231,7 @@ int LocalUtcOffset(){
 bool ReadInternalXml(const QByteArray &xml, ViewNode *root){
     QDomDocument doc;
     if(!ParseXml(xml, doc)) return false;
+    const QTimeZone zone = QTimeZone::systemTimeZone();
 
     std::function<void(QDomElement elem, ViewNode *parent)> collect;
 
@@ -240,9 +245,9 @@ bool ReadInternalXml(const QByteArray &xml, ViewNode *root){
         QString create = elem.attribute(QStringLiteral("create"), QString());
         QString lastAccess = elem.attribute(QStringLiteral("lastaccess"), QString());
         QString lastUpdate = elem.attribute(QStringLiteral("lastupdate"), QString());
-        vn->SetCreateDate    (DateOrNow(create));
-        vn->SetLastAccessDate(DateOrNow(lastAccess));
-        vn->SetLastUpdateDate(DateOrNow(lastUpdate));
+        vn->SetCreateDate    (DateOrNow(create, zone));
+        vn->SetLastAccessDate(DateOrNow(lastAccess, zone));
+        vn->SetLastUpdateDate(DateOrNow(lastUpdate, zone));
 
         if(elem.attribute(QStringLiteral("holdview"), QStringLiteral("false")) == QStringLiteral("true")){
             vn->SetHoldView(true);

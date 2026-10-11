@@ -187,7 +187,7 @@ QImage Node::VisibleLargeImage(){
 
 QIcon Node::GetIcon(){
     if(GetUrl().isEmpty()) return QIcon();
-    return Application::GetIcon(GetUrl().host());
+    return Application::GetIcon(GetUrl());
 }
 
 ViewNode::ViewNode()

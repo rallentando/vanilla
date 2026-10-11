@@ -65,6 +65,9 @@ set(VANILLA_HEADERS
     src/core/extensionui.hpp
     src/core/dnrrules.hpp
     src/core/downloadname.hpp
+    src/core/referrer.hpp
+    src/core/passwordpolicy.hpp
+    src/core/qtlog.hpp
     src/core/loadending.hpp
     src/core/translationorder.hpp
     src/core/nativehistory.hpp
@@ -72,9 +75,13 @@ set(VANILLA_HEADERS
     src/ui/treebar.hpp
     src/ui/toolbar.hpp
     src/ui/notifier.hpp
+    src/ui/plaintooltip.hpp
+    src/ui/downloadbar.hpp
     src/ui/minimap.hpp
     src/ui/nodepreview.hpp
     src/app/networkcontroller.hpp
+    src/app/passwordstore.hpp
+    src/app/downloadhistory.hpp
     src/core/switch.hpp
     src/core/callback.hpp
     src/core/const.hpp
@@ -94,6 +101,7 @@ set(VANILLA_HEADERS
     src/view/mediatype.hpp
     src/view/localview.hpp
     src/view/webengine/webenginepage.hpp
+    src/view/webengine/webenginepasswords.hpp
     src/view/webengine/webengineview.hpp
     src/view/webengine/quickwebengineview.hpp
     src/view/quicknativewebview.hpp
@@ -143,14 +151,20 @@ set(VANILLA_SOURCES
     src/core/extensionui.cpp
     src/core/dnrrules.cpp
     src/core/downloadname.cpp
+    src/core/referrer.cpp
+    src/core/passwordpolicy.cpp
+    src/core/qtlog.cpp
     src/core/nativehistory.cpp
     src/ui/treebank.cpp
     src/ui/treebar.cpp
     src/ui/toolbar.cpp
     src/ui/notifier.cpp
+    src/ui/downloadbar.cpp
     src/ui/minimap.cpp
     src/ui/nodepreview.cpp
     src/app/networkcontroller.cpp
+    src/app/passwordstore.cpp
+    src/app/downloadhistory.cpp
     src/ui/theme.cpp
     src/core/settingsschema.cpp
     src/app/settingspage.cpp
@@ -158,12 +172,14 @@ set(VANILLA_SOURCES
     src/app/receiver.cpp
     src/app/transmitter.cpp
     src/ui/dialog.cpp
+    src/ui/editmenu.cpp
     src/view/view.cpp
     src/view/page.cpp
     src/view/webelement.cpp
     src/view/mediatype.cpp
     src/view/localview.cpp
     src/view/webengine/webenginepage.cpp
+    src/view/webengine/webenginepasswords.cpp
     src/view/webengine/webengineview.cpp
     src/view/webengine/quickwebengineview.cpp
     src/view/quicknativewebview.cpp
@@ -248,6 +264,90 @@ else()
     message(WARNING "Qt WebEngine was not found. building without the default view.")
 endif()
 
+# where a WebEngine view keeps the passwords it saves (D-491): the OS's own
+# store, through QtKeychain. It is vendored unmodified and built from this
+# file rather than from its own 'CMakeLists.txt', which would add its
+# headers, its library and its package files to this one's install. The
+# sources and definitions per platform are the ones that file uses.
+set(VANILLA_QTKEYCHAIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/qtkeychain")
+if(TARGET Qt6::WebEngineWidgets AND EXISTS "${VANILLA_QTKEYCHAIN_DIR}/keychain.cpp")
+    set(VANILLA_QTKEYCHAIN_SOURCES
+        "${VANILLA_QTKEYCHAIN_DIR}/keychain.cpp"
+        "${VANILLA_QTKEYCHAIN_DIR}/keychain.h"
+        "${VANILLA_QTKEYCHAIN_DIR}/keychain_p.h")
+    set(VANILLA_QTKEYCHAIN_DEFINITIONS)
+    set(VANILLA_QTKEYCHAIN_LIBRARIES)
+    set(VANILLA_QTKEYCHAIN_OK TRUE)
+
+    if(WIN32)
+        # the credential store, not the registry file encrypted with DPAPI.
+        list(APPEND VANILLA_QTKEYCHAIN_SOURCES "${VANILLA_QTKEYCHAIN_DIR}/keychain_win.cpp")
+        list(APPEND VANILLA_QTKEYCHAIN_DEFINITIONS USE_CREDENTIAL_STORE=1)
+    elseif(APPLE)
+        enable_language(OBJCXX)
+        list(APPEND VANILLA_QTKEYCHAIN_SOURCES "${VANILLA_QTKEYCHAIN_DIR}/keychain_apple.mm")
+        list(APPEND VANILLA_QTKEYCHAIN_LIBRARIES "-framework Foundation" "-framework Security")
+    elseif(UNIX AND NOT ANDROID)
+        find_package(Qt6 QUIET COMPONENTS DBus)
+        find_package(PkgConfig QUIET)
+        if(PkgConfig_FOUND)
+            pkg_check_modules(VANILLA_LIBSECRET QUIET IMPORTED_TARGET libsecret-1)
+        endif()
+        if(TARGET Qt6::DBus)
+            list(APPEND VANILLA_QTKEYCHAIN_SOURCES
+                "${VANILLA_QTKEYCHAIN_DIR}/keychain_unix.cpp"
+                "${VANILLA_QTKEYCHAIN_DIR}/gnomekeyring.cpp"
+                "${VANILLA_QTKEYCHAIN_DIR}/gnomekeyring_p.h"
+                "${VANILLA_QTKEYCHAIN_DIR}/libsecret.cpp"
+                "${VANILLA_QTKEYCHAIN_DIR}/libsecret_p.h"
+                "${VANILLA_QTKEYCHAIN_DIR}/plaintextstore.cpp")
+            qt_add_dbus_interface(VANILLA_QTKEYCHAIN_SOURCES
+                "${VANILLA_QTKEYCHAIN_DIR}/org.kde.KWallet.xml" kwallet_interface)
+            list(APPEND VANILLA_QTKEYCHAIN_DEFINITIONS KEYCHAIN_DBUS=1)
+            list(APPEND VANILLA_QTKEYCHAIN_LIBRARIES Qt6::DBus)
+            if(TARGET PkgConfig::VANILLA_LIBSECRET)
+                list(APPEND VANILLA_QTKEYCHAIN_DEFINITIONS HAVE_LIBSECRET=1)
+                list(APPEND VANILLA_QTKEYCHAIN_LIBRARIES PkgConfig::VANILLA_LIBSECRET)
+            endif()
+        else()
+            set(VANILLA_QTKEYCHAIN_OK FALSE)
+        endif()
+    else()
+        set(VANILLA_QTKEYCHAIN_OK FALSE)
+    endif()
+
+    if(VANILLA_QTKEYCHAIN_OK)
+        qt_add_library(vanilla_qtkeychain STATIC ${VANILLA_QTKEYCHAIN_SOURCES})
+        include(GenerateExportHeader)
+        generate_export_header(vanilla_qtkeychain
+            EXPORT_FILE_NAME qkeychain_export.h
+            EXPORT_MACRO_NAME QKEYCHAIN_EXPORT)
+        target_compile_definitions(vanilla_qtkeychain
+            PUBLIC VANILLA_QTKEYCHAIN_STATIC_DEFINE
+            PRIVATE ${VANILLA_QTKEYCHAIN_DEFINITIONS})
+        target_include_directories(vanilla_qtkeychain PUBLIC
+            "${VANILLA_QTKEYCHAIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
+        target_link_libraries(vanilla_qtkeychain PUBLIC Qt6::Core ${VANILLA_QTKEYCHAIN_LIBRARIES})
+        # nothing a translator here should see: the job's messages are not shown.
+        set_property(TARGET vanilla_qtkeychain PROPERTY QT_EXCLUDE_FROM_TRANSLATION ON)
+
+        target_compile_definitions(vanilla_core PUBLIC VANILLA_PASSWORDS)
+        target_link_libraries(vanilla_core PUBLIC vanilla_qtkeychain)
+
+        # the Quick view's channel is a 'QQmlWebChannel', made in C++ so that
+        # the QML needs no 'import QtWebChannel' (D-492).
+        find_package(Qt6 QUIET COMPONENTS WebChannelQuick)
+        if(TARGET Qt6::WebChannelQuick)
+            target_compile_definitions(vanilla_core PUBLIC VANILLA_QUICK_PASSWORDS)
+            target_link_libraries(vanilla_core PUBLIC Qt6::WebChannelQuick)
+        else()
+            message(STATUS "Qt WebChannelQuick was not found. a Quick view will not save passwords.")
+        endif()
+    else()
+        message(STATUS "no store for passwords on this platform. a WebEngine view will not save them.")
+    endif()
+endif()
+
 # 'WebView' is the platform's own web view -- the system one on Android and
 # iOS, and Qt WebEngine underneath on the desktop. It used to be built only
 # for the two mobile targets, which meant the desktop had no second engine to
@@ -279,8 +379,7 @@ if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND
     # visual hosting composes the page into a DirectComposition tree of
     # this side's own (C-7 e). 'shlwapi' comes with it for the stream the
     # backend writes its own screenshot into.
-    # 'dwmapi' for the floating inspector dock's title bar colour (A-26).
-    target_link_libraries(vanilla_core PUBLIC dcomp shlwapi dwmapi)
+    target_link_libraries(vanilla_core PUBLIC dcomp shlwapi)
 else()
     message(STATUS "the WebView2 SDK was not found. building without EdgeWebView.")
 endif()
@@ -290,6 +389,10 @@ if(WIN32)
     # such as <QtConcurrent> ('std::max' -> 'std::(...)').
     # PUBLIC: the headers of this project include 'windows.h' too.
     target_compile_definitions(vanilla_core PUBLIC NOMINMAX)
+    # 'dwmapi' for the main window's cloak while its first frame is drawn
+    # (D-513) and the floating inspector dock's title bar colour (A-26):
+    # the window is built whether or not the Edge view is (R-354 中 1).
+    target_link_libraries(vanilla_core PUBLIC dwmapi)
 endif()
 
 if(APPLE)
@@ -447,6 +550,13 @@ if(VANILLA_WEBVIEW2_LOADER)
     install(FILES "${VANILLA_WEBVIEW2_DIR}/LICENSE.txt"
                   "${VANILLA_WEBVIEW2_DIR}/NOTICE.txt"
         DESTINATION ${VANILLA_INSTALL_RUNTIME_DIR}/licenses/webview2)
+endif()
+
+# QtKeychain is linked in when a WebEngine view saves passwords (D-491). Its
+# licence asks for the copyright notice to travel with a binary.
+if(TARGET vanilla_qtkeychain)
+    install(FILES "${VANILLA_QTKEYCHAIN_DIR}/COPYING"
+        DESTINATION ${VANILLA_INSTALL_RUNTIME_DIR}/licenses/qtkeychain)
 endif()
 
 # the Qt libraries and Qt WebEngine travel with the package under the LGPLv3,

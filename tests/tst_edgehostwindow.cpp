@@ -20,6 +20,10 @@ private slots:
     void theHostAnswersMouseActivateWithActivate();
     void theContainerOfTheHostCanHoldQtsFocus();
     void aPressGivesQtsFocusToTheWidgetAskedFor();
+    void theContainersFocusDoesNotAskTheHostToActivate();
+    void comingBackToTheWindowSaysSoOnce();
+    void aWidgetTakingTheFocusOnActivationIsNotOverridden();
+    void comingBackFromTheBackendsWindowSaysSoWithoutAFocusIn();
 };
 
 void tst_edgehostwindow::aPlainWindowTakesTheFocusWhenAskedToActivate(){
@@ -110,6 +114,150 @@ void tst_edgehostwindow::aPressGivesQtsFocusToTheWidgetAskedFor(){
 
     QVERIFY(!host->TakeQtFocus());
     QVERIFY(view->hasFocus());
+}
+
+void tst_edgehostwindow::theContainersFocusDoesNotAskTheHostToActivate(){
+    QWidget top;
+    QLineEdit *edit = new QLineEdit(&top);
+    EdgeHostWindow *host = new EdgeHostWindow();
+    QWidget *container = QWidget::createWindowContainer(host, &top);
+    container->setFocusPolicy(Qt::StrongFocus);
+    container->resize(100, 100);
+    container->move(0, 40);
+    host->QuietContainerFocusIn(container);
+    top.show();
+    QVERIFY(QTest::qWaitForWindowActive(&top));
+
+    QTest::failOnWarning(QRegularExpression(QStringLiteral("WindowDoesNotAcceptFocus")));
+    container->setFocus(Qt::MouseFocusReason);
+    QTRY_VERIFY(container->hasFocus());
+    edit->setFocus();
+    QTRY_VERIFY(edit->hasFocus());
+    QVERIFY(!container->hasFocus());
+    container->setFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(container->hasFocus());
+    QCOMPARE(QApplication::focusWidget(), container);
+    QTest::qWait(50);
+    QVERIFY(QGuiApplication::focusWindow() != host);
+}
+
+void tst_edgehostwindow::comingBackToTheWindowSaysSoOnce(){
+    QWidget top;
+    QLineEdit *edit = new QLineEdit(&top);
+    EdgeHostWindow *host = new EdgeHostWindow();
+    QWidget *container = QWidget::createWindowContainer(host, &top);
+    container->setFocusPolicy(Qt::StrongFocus);
+    container->resize(100, 100);
+    container->move(0, 40);
+    host->QuietContainerFocusIn(container);
+    top.show();
+    QVERIFY(QTest::qWaitForWindowActive(&top));
+    QTest::qWait(50);
+    QSignalSpy spy(host, &EdgeHostWindow::ReactivatedWithFocus);
+
+    edit->setFocus();
+    QTRY_VERIFY(edit->hasFocus());
+    container->setFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(container->hasFocus());
+    QTest::qWait(50);
+    QCOMPARE(spy.count(), 0);
+
+    QWidget other;
+    other.show();
+    other.activateWindow();
+    QVERIFY(QTest::qWaitForWindowActive(&other));
+    QVERIFY(!container->hasFocus());
+    QCOMPARE(spy.count(), 0);
+
+    top.activateWindow();
+    QVERIFY(QTest::qWaitForWindowActive(&top));
+    QTRY_COMPARE(spy.count(), 1);
+    QVERIFY(container->hasFocus());
+    QTest::qWait(50);
+    QCOMPARE(spy.count(), 1);
+}
+
+void tst_edgehostwindow::aWidgetTakingTheFocusOnActivationIsNotOverridden(){
+    QWidget top;
+    QLineEdit *edit = new QLineEdit(&top);
+    EdgeHostWindow *host = new EdgeHostWindow();
+    QWidget *container = QWidget::createWindowContainer(host, &top);
+    container->setFocusPolicy(Qt::StrongFocus);
+    container->resize(100, 100);
+    container->move(0, 40);
+    host->QuietContainerFocusIn(container);
+    top.show();
+    QVERIFY(QTest::qWaitForWindowActive(&top));
+    container->setFocus();
+    QTRY_VERIFY(container->hasFocus());
+
+    QWidget other;
+    other.show();
+    other.activateWindow();
+    QVERIFY(QTest::qWaitForWindowActive(&other));
+
+    struct TakeOnActivation : QObject {
+        QWidget *taker;
+        bool fired = false;
+        bool eventFilter(QObject *, QEvent *ev) override {
+            if(ev->type() == QEvent::FocusIn &&
+               static_cast<QFocusEvent*>(ev)->reason() == Qt::ActiveWindowFocusReason){
+                taker->setFocus();
+                fired = true;
+            }
+            return false;
+        }
+    } take;
+    take.taker = edit;
+    container->installEventFilter(&take);
+
+    QSignalSpy spy(host, &EdgeHostWindow::ReactivatedWithFocus);
+    top.activateWindow();
+    QVERIFY(QTest::qWaitForWindowActive(&top));
+    QTRY_VERIFY(edit->hasFocus());
+    QVERIFY(take.fired);
+    QTest::qWait(50);
+    QCOMPARE(spy.count(), 0);
+    container->removeEventFilter(&take);
+}
+
+void tst_edgehostwindow::comingBackFromTheBackendsWindowSaysSoWithoutAFocusIn(){
+    QWidget top;
+    EdgeHostWindow *host = new EdgeHostWindow();
+    QWidget *container = QWidget::createWindowContainer(host, &top);
+    container->setFocusPolicy(Qt::StrongFocus);
+    container->resize(100, 100);
+    host->QuietContainerFocusIn(container);
+    top.show();
+    QVERIFY(QTest::qWaitForWindowActive(&top));
+    container->setFocus();
+    QTRY_VERIFY(container->hasFocus());
+
+    QWindow *backend = new QWindow(top.windowHandle());
+    backend->resize(10, 10);
+    backend->show();
+    backend->requestActivate();
+    QTRY_COMPARE(QGuiApplication::focusWindow(), backend);
+    QTest::qWait(50);
+
+    int focusIns = 0;
+    struct CountFocusIn : QObject {
+        int *count;
+        bool eventFilter(QObject *, QEvent *ev) override {
+            if(ev->type() == QEvent::FocusIn) ++*count;
+            return false;
+        }
+    } counter;
+    counter.count = &focusIns;
+    container->installEventFilter(&counter);
+
+    QSignalSpy spy(host, &EdgeHostWindow::ReactivatedWithFocus);
+    top.windowHandle()->requestActivate();
+    QTRY_COMPARE(QGuiApplication::focusWindow(), top.windowHandle());
+    QTRY_COMPARE(spy.count(), 1);
+    QCOMPARE(focusIns, 0);
+    QVERIFY(container->hasFocus());
+    container->removeEventFilter(&counter);
 }
 
 QTEST_MAIN(tst_edgehostwindow)

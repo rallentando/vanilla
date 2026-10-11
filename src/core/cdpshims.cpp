@@ -158,8 +158,14 @@ const char *HOST = R"js(
   // 'sender.tab' is read from (R-138 mid 1). Nothing a page or a content
   // script says reaches this table: it is written from the host's own
   // answers and from nowhere else. The oldest goes when the room runs out,
-  // as the worker's tabs do.
-  const indexes = new Map(), INDEXES_KEPT = 4096;
+  // as the worker's tabs do -- and the room is for every tab of any tree
+  // the application can carry, not a cache of the latest few: a 'tabs.query'
+  // names the WHOLE tree, and a tab thrown out to make room for the rest
+  // reads 0, which is where Vimium's J and K went from (a tree of 20,116
+  // tabs and a room of 4,096: D-528). The bound is against a runaway only,
+  // and is far above a tree the application could hold (that one is 7 MB
+  // on disk; a million tabs would be hundreds).
+  const indexes = new Map(), INDEXES_KEPT = 1 << 20;
   const note = (tab) => {
     if (!isTab(tab)) return;
     if (indexes.has(tab.id)) indexes.delete(tab.id);
@@ -441,10 +447,10 @@ const char *EVENTS = R"js(
     // off it would put a tab where nobody said it was (R-145 low 2) -- so
     // the table is left exactly as it was, all of it or none.
     //
-    // The head of a long order is what is looked at and what is kept, the
-    // table being bounded: a place there is no room for is no worse than one
-    // the table never had. (Which is why what lies beyond the head is
-    // neither read nor answered for: nothing of it is written down.)
+    // The whole of the order is looked at and kept: it is the tree, and the
+    // room is for all of it (INDEXES_KEPT, above: D-528). Only past the
+    // runaway bound is nothing read or written -- a place there is no room
+    // for is no worse than one the table never had.
     const place = (order) => {
       const kept = Math.min(order.length, INDEXES_KEPT);
       const seen = new Set();
@@ -494,7 +500,7 @@ const char *EVENTS = R"js(
         going = false;
         if (!warned) {
           warned = true;
-          try { console.warn('Vanilla: the compatibility layer could not ask this browser what happens to the tabs; this extension will not be told of tabs opening, closing or changing'); } catch (e) {}
+          try { console.warn('vanilla: the compatibility layer could not ask this browser what happens to the tabs; this extension will not be told of tabs opening, closing or changing'); } catch (e) {}
         }
         return;
       }
@@ -1020,7 +1026,7 @@ const char *GRANTS = R"js(
       if (!optional) return true;
       if (!toldOptional) {
         toldOptional = true;
-        try { console.warn('Vanilla: the compatibility layer cannot grant an optional permission; it answers as if you declined'); } catch (e) {}
+        try { console.warn('vanilla: the compatibility layer cannot grant an optional permission; it answers as if you declined'); } catch (e) {}
       }
       return false;
     }));
@@ -3171,7 +3177,7 @@ const char *ENVELOPE_WORKER_NAV = R"js(
           if (filters !== undefined && filters !== null) {
             if (!filtered) {
               filtered = true;
-              try { console.warn('Vanilla: the compatibility layer cannot evaluate a URL filter, so a listener of chrome.' + name + ' was not registered'); } catch (e) {}
+              try { console.warn('vanilla: the compatibility layer cannot evaluate a URL filter, so a listener of chrome.' + name + ' was not registered'); } catch (e) {}
             }
             return;
           }
@@ -4255,7 +4261,7 @@ const char *ENVELOPE_CONTENT_LINK_REST = R"js(
       if (failures > TRIES) {
         if (!warned) {
           warned = true;
-          try { console.warn('Vanilla: the compatibility layer could not reach this extension\'s worker from ' + location.href + '; what it sends to this frame will not arrive'); } catch (e) {}
+          try { console.warn('vanilla: the compatibility layer could not reach this extension\'s worker from ' + location.href + '; what it sends to this frame will not arrive'); } catch (e) {}
         }
         return;
       }
@@ -4838,7 +4844,7 @@ const char *RELAY = R"js(
 )js";
 
 const char *REPORT = R"js(
-  if (refused.length) { try { console.warn('Vanilla: the compatibility layer could not put in ' + refused.join(', ')); } catch (e) {} }
+  if (refused.length) { try { console.warn('vanilla: the compatibility layer could not put in ' + refused.join(', ')); } catch (e) {} }
 )js";
 
 }

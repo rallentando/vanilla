@@ -15,6 +15,7 @@
 #include <QWheelEvent>
 #include <QCryptographicHash>
 #include <QRegularExpression>
+#include <QSet>
 
 class QIODevice;
 
@@ -110,6 +111,7 @@ public:
     static void LoadIconDatabase();
     static void RegisterIcon(QString, QIcon);
     static QIcon GetIcon(QString);
+    static QIcon GetIcon(const QUrl &url);
     static void Reconfigure();
     static bool EnableGoogleSuggest();
     static bool EnableFramelessWindow();
@@ -180,10 +182,12 @@ public:
     static void AskSslErrorPolicyIfNeed();
     static DownloadPolicy GetDownloadPolicy();
     static void AskDownloadPolicyIfNeed();
+    static bool IsQuitting();
     static QString LocalServerName();
     static QString SharedMemoryKey();
     static int EventKey();
     static QString EventToken();
+    static QString EdgeEventToken();
     static QString ProductVersion();
 private:
     static bool m_SaveSessionCookie;
@@ -198,7 +202,7 @@ private:
 public:
     static MainWindow *ShadeWindow(MainWindow *win = nullptr);
     static MainWindow *UnshadeWindow(MainWindow *win = nullptr);
-    static MainWindow *NewWindow(int id = 0, QPoint pos = QPoint());
+    static MainWindow *NewWindow(int id = 0, QPoint pos = QPoint(), bool showNow = true);
     static MainWindow *CloseWindow(MainWindow *win = nullptr);
     static MainWindow *SwitchWindow(bool next = true);
     static MainWindow *NextWindow();
@@ -219,7 +223,15 @@ public:
     static ModelessDialogFrame *MakeTemporaryDialogFrame();
     static ModelessDialogFrame *GetTemporaryDialogFrame();
     static void SetTemporaryDialogFrame(ModelessDialogFrame *);
+
+    static bool IsRestoringWindows(){ return m_RestoringWindows;}
+    static void SetRestoringWindows(bool on){ m_RestoringWindows = on;}
+    static bool SwallowsDuringRestore(QObject *receiver, QEvent *ev);
+    static QList<int> SavedWindowIds(const Settings &s);
+    static void SweepWindowSettings(Settings &s, const QList<int> &ids);
+    static void DropIdleShells(const QSet<int> &restored, MainWindow *lastRestored);
 private:
+    static bool m_RestoringWindows;
     static WindowLedger<MainWindow> &Windows();
 
     static ModelessDialogFrame *m_TemporaryDialogFrame;
@@ -271,6 +283,7 @@ private:
     static UserAgent::Map m_UserAgents;
 
 public:
+    static bool MayOpenWithDefaultBrowser(const QUrl &url);
     static bool OpenUrlWithDefaultBrowser(QUrl url);
 
     static QList<QPair<QString, QString> > ExternalCommands();

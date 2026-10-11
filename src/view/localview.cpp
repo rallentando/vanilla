@@ -775,6 +775,10 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(ClearCookies,      tr("ClearCookies"));
         DEFINE_ACTION(ClearHttpCache,    tr("ClearHttpCache"));
         DEFINE_ACTION(ClearVisitedLinks, tr("ClearVisitedLinks"));
+        DEFINE_ACTION(ClearPasswords,    tr("ClearPasswords"));
+        DEFINE_ACTION(OpenPasswords,     tr("OpenPasswords"));
+        DEFINE_ACTION(OpenDownloads,     tr("OpenDownloads"));
+        DEFINE_ACTION(ShowDownloads,     tr("ShowDownloads"));
 
         DEFINE_ACTION(ToggleNotifier,   tr("ToggleNotifier"));
         DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));

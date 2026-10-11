@@ -31,6 +31,7 @@ private slots:
     void applySchemeOnlyReportsARealChange();
 
     void alphaOverloadKeepsTheColorAndReplacesTheAlpha();
+    void panelPaletteCarriesThePanelsSurfaceAndInk();
     void brushAndPenCarryTheColor();
     void anOutOfRangeRoleIsInvalidRatherThanACrash();
 
@@ -195,10 +196,6 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
 
     ROW(PageBackground,                     255, 255, 255, 255);
 
-    ROW(DialogShadow,                       240, 240, 240, 150);
-    ROW(DialogBorder,                       150, 150, 150, 255);
-    ROW(DialogText,                           0,   0,   0, 255);
-
     ROW(PreviewBackground,                  250, 250, 250, 255);
     ROW(PreviewBorder,                      150, 150, 150, 255);
     ROW(PreviewText,                         28,  28,  28, 255);
@@ -351,10 +348,6 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
 
     ROW(PageBackground,                      32,  32,  32, 255);
 
-    ROW(DialogShadow,                        32,  32,  32, 180);
-    ROW(DialogBorder,                        90,  90,  90, 255);
-    ROW(DialogText,                         255, 255, 255, 255);
-
     ROW(PreviewBackground,                   44,  44,  44, 255);
     ROW(PreviewBorder,                       90,  90,  90, 255);
     ROW(PreviewText,                        230, 230, 230, 255);
@@ -403,7 +396,7 @@ void tst_theme::everyRoleHasAValue(){
                      qPrintable(QStringLiteral("role %1 is transparent black; a row is probably missing").arg(i)));
     }
 
-    QCOMPARE(static_cast<int>(Theme::RoleCount), 134);
+    QCOMPARE(static_cast<int>(Theme::RoleCount), 131);
 }
 
 void tst_theme::schemeSurvivesThePropertiesThatMatter(){
@@ -439,7 +432,7 @@ void tst_theme::schemeSurvivesThePropertiesThatMatter(){
         { Theme::GlassText,        Theme::GlassPlaceholderPage },
         { Theme::PreviewText,      Theme::PreviewPlaceholderPage },
         { Theme::ReceiverText,     Theme::ReceiverBackground },
-        { Theme::DialogText,       Theme::DialogShadow },
+        { Theme::PreviewText,      Theme::PreviewBackground },
         { Theme::NotifierText,     Theme::NotifierBackground },
         { Theme::TitleBarText,     Theme::TitleBarBackground },
         { Theme::VanillaPageAccentText, Theme::VanillaPageAccent },
@@ -523,6 +516,31 @@ void tst_theme::applySchemeOnlyReportsARealChange(){
     Theme::ApplyScheme(QStringLiteral("nonsense"));
     QVERIFY(Theme::CurrentScheme() == Theme::Light ||
             Theme::CurrentScheme() == Theme::Dark);
+}
+
+void tst_theme::panelPaletteCarriesThePanelsSurfaceAndInk(){
+    const Theme::Scheme before = Theme::CurrentScheme();
+    QPalette base;
+    base.setColor(QPalette::Window, QColor(1, 2, 3));
+    base.setColor(QPalette::Highlight, QColor(4, 5, 6));
+    base.setColor(QPalette::ButtonText, QColor(7, 8, 9));
+
+    auto check = [&base](Theme::Scheme scheme){
+        QVERIFY(Theme::SetScheme(scheme) || Theme::CurrentScheme() == scheme);
+        const QPalette palette = Theme::PanelPalette(base);
+        const QColor surface = Theme::Color(scheme, Theme::PreviewBackground);
+        const QColor ink = Theme::Color(scheme, Theme::PreviewText);
+        QCOMPARE(palette.color(QPalette::Window), surface);
+        QCOMPARE(palette.color(QPalette::Base), surface);
+        QCOMPARE(palette.color(QPalette::Button), surface);
+        QCOMPARE(palette.color(QPalette::WindowText), ink);
+        QCOMPARE(palette.color(QPalette::Text), ink);
+        QCOMPARE(palette.color(QPalette::ButtonText), ink);
+        QCOMPARE(palette.color(QPalette::Highlight), QColor(4, 5, 6));
+    };
+    check(Theme::Light);
+    check(Theme::Dark);
+    Theme::SetScheme(before);
 }
 
 void tst_theme::alphaOverloadKeepsTheColorAndReplacesTheAlpha(){

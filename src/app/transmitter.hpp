@@ -16,6 +16,7 @@ public:
     ~Transmitter();
 
     bool ServerAlreadyExists();
+    static bool ServerIsSameUser(QLocalSocket *socket);
     void SendCommand(QString);
     void SendCommandAndQuit(QString);
 

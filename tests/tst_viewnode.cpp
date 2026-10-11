@@ -7,12 +7,16 @@
 #include <QFile>
 #include <QRegularExpression>
 
+#include <limits>
+
 #include "lightnode.hpp"
 #include "treebank.hpp"
 
 #include "testsupport.hpp"
 
 namespace {
+
+const int Unbounded = std::numeric_limits<int>::max();
 
 ViewNode *MakeFolder(ViewNode *parent, const QString &title){
     ViewNode *vn = parent->MakeChild();
@@ -59,6 +63,12 @@ private slots:
 
     void theAutoLoadWalkStopsAtTheFirstTabItLoads();
     void theAutoLoadWalkStepsOverRefusedTabsWithoutGrowingTheStack();
+    void theAutoLoadWalkCountsEveryNodeItStepsTo();
+    void theAutoLoadWalkResumedTickByTickOffersWhatOneWalkOffers();
+    void theAutoLoadWalkStopsOnTheTabItLoadsWithinItsBudget();
+    void theAutoLoadTimerStopsOnlyAtTheEndsOrTheLimit();
+    void aWalkCutShortGoesOnInTheSameDirection();
+    void aNodeLeavingTheTreeIsLetGoOfByBothWalks();
 
     void ancestorsAndDescendants();
     void primaryPath();
@@ -83,7 +93,13 @@ private slots:
     void theDownloadCarrierIsTakenApartInOneOrder();
     void nothingAboutADownloadCarrierGoesThroughTheTrash();
     void quarantineLetsGoOfAllThreePointers();
+    void theClosedNodeIsStrippedBeforeTheTrashIsTrimmed();
+    void aDiscardedNodeIsNeverFreedInTheTurnItWasBoxed();
+    void aDiscardedNodeIsFreedPastTheBarrier();
+    void whileTheTreeIsWalkedTheBarrierOnlyRipens();
+    void aStrippedViewLetsGoOfItsNode();
     void treeLoadOnlyConsidersJsonGenerations();
+    void theRestoreGivesTheWindowOfTheIdItsNode();
 
     void overviewSharesTheWebViewAreaAndLeavesCompanionsAlone();
     void showingAnAlreadyVisibleEngineViewDoesNotJiggleItsSize();
@@ -276,7 +292,7 @@ void tst_viewnode::theAutoLoadWalkStopsAtTheFirstTabItLoads(){
     TreeBank::WalkToAutoLoad(iter, true, [&](ViewNode *vn){
         offered << vn->GetTitle();
         return vn == two;
-    });
+    }, Unbounded);
     QCOMPARE(offered, QStringList() << QStringLiteral("1-3") << QStringLiteral("2"));
     QVERIFY(iter == two);
 
@@ -285,7 +301,7 @@ void tst_viewnode::theAutoLoadWalkStopsAtTheFirstTabItLoads(){
     TreeBank::WalkToAutoLoad(iter, false, [&](ViewNode *vn){
         offered << vn->GetTitle();
         return false;
-    });
+    }, Unbounded);
     QCOMPARE(offered, QStringList() << QStringLiteral("1-3") << QStringLiteral("1-1"));
     QVERIFY(!iter);
 
@@ -306,14 +322,180 @@ void tst_viewnode::theAutoLoadWalkStepsOverRefusedTabsWithoutGrowingTheStack(){
 
     int offered = 0;
     ViewNode *iter = start;
-    TreeBank::WalkToAutoLoad(iter, true, [&](ViewNode *){
+    QCOMPARE(TreeBank::WalkToAutoLoad(iter, true, [&](ViewNode *){
         offered++;
         return false;
-    });
+    }, Unbounded), TreeBank::AutoLoadExhausted);
     QCOMPARE(offered, Folders * TabsPerFolder);
     QVERIFY(!iter);
 
+    offered = 0;
+    iter = start;
+    int ticks = 0;
+    TreeBank::AutoLoadWalk walk;
+    do {
+        const int before = offered;
+        walk = TreeBank::WalkToAutoLoad(iter, true, [&](ViewNode *){
+            offered++;
+            return false;
+        }, AUTO_LOAD_WALK_BUDGET);
+        QVERIFY(offered - before <= AUTO_LOAD_WALK_BUDGET);
+        ticks++;
+        QVERIFY(ticks <= Folders * (TabsPerFolder + 1) / AUTO_LOAD_WALK_BUDGET + 2);
+    } while(walk == TreeBank::AutoLoadBudgetSpent);
+    QCOMPARE(walk, TreeBank::AutoLoadExhausted);
+    QCOMPARE(offered, Folders * TabsPerFolder);
+    QVERIFY(ticks > 1);
+    QVERIFY(!iter);
+
     delete root;
+}
+
+void tst_viewnode::theAutoLoadWalkCountsEveryNodeItStepsTo(){
+    ViewNode *root = new ViewNode();
+    ViewNode *start = MakeTab(root, QStringLiteral("start"), QStringLiteral("https://start.test/"));
+    ViewNode *folder = MakeFolder(root, QStringLiteral("folder"));
+    ViewNode *blank = MakeTab(folder, QStringLiteral("blank"));
+    ViewNode *a = MakeTab(folder, QStringLiteral("a"), QStringLiteral("https://a.test/"));
+    MakeTab(root, QStringLiteral("b"), QStringLiteral("https://b.test/"));
+
+    QStringList offered;
+    auto refuse = [&](ViewNode *vn){ offered << vn->GetTitle(); return false;};
+
+    ViewNode *iter = start;
+    QCOMPARE(TreeBank::WalkToAutoLoad(iter, true, refuse, 2), TreeBank::AutoLoadBudgetSpent);
+    QVERIFY(offered.isEmpty());
+    QVERIFY(iter == blank);
+
+    QCOMPARE(TreeBank::WalkToAutoLoad(iter, true, refuse, 1), TreeBank::AutoLoadBudgetSpent);
+    QCOMPARE(offered, QStringList() << QStringLiteral("a"));
+    QVERIFY(iter == a);
+
+    QCOMPARE(TreeBank::WalkToAutoLoad(iter, true, refuse, 0), TreeBank::AutoLoadBudgetSpent);
+    QVERIFY(iter == a);
+
+    QCOMPARE(TreeBank::WalkToAutoLoad(iter, true, refuse, 1), TreeBank::AutoLoadBudgetSpent);
+    QCOMPARE(TreeBank::WalkToAutoLoad(iter, true, refuse, 1), TreeBank::AutoLoadExhausted);
+    QCOMPARE(offered, QStringList() << QStringLiteral("a") << QStringLiteral("b"));
+    QVERIFY(!iter);
+
+    delete root;
+}
+
+void tst_viewnode::theAutoLoadWalkResumedTickByTickOffersWhatOneWalkOffers(){
+    ViewNode *root = new ViewNode();
+    QList<ViewNode*> all;
+    ViewNode *parent = root;
+    for(int i = 0; i < 60; i++){
+        ViewNode *vn = nullptr;
+        switch(i % 5){
+        case 0: vn = MakeFolder(parent, QStringLiteral("f%1").arg(i)); break;
+        case 3: vn = MakeTab(parent, QStringLiteral("blank%1").arg(i)); break;
+        default: vn = MakeTab(parent, QStringLiteral("t%1").arg(i),
+                              QStringLiteral("https://t%1.test/").arg(i)); break;
+        }
+        all << vn;
+        if(i % 10 == 0) parent = vn;
+        else if(i % 13 == 0) parent = root;
+    }
+
+    for(int pass = 0; pass < 2; pass++){
+        const bool forward = pass == 0;
+        ViewNode *from = forward ? all.first() : all.last();
+
+        QStringList whole;
+        ViewNode *iter = from;
+        TreeBank::WalkToAutoLoad(iter, forward, [&](ViewNode *vn){
+            whole << vn->GetTitle();
+            return false;
+        }, Unbounded);
+        QVERIFY(!whole.isEmpty());
+
+        for(int budget = 1; budget <= 7; budget++){
+            QStringList ticked;
+            iter = from;
+            TreeBank::AutoLoadWalk walk;
+            int ticks = 0;
+            do {
+                walk = TreeBank::WalkToAutoLoad(iter, forward, [&](ViewNode *vn){
+                    ticked << vn->GetTitle();
+                    return false;
+                }, budget);
+                QVERIFY(++ticks < 1000);
+            } while(walk == TreeBank::AutoLoadBudgetSpent);
+            QCOMPARE(walk, TreeBank::AutoLoadExhausted);
+            QCOMPARE(ticked, whole);
+            QVERIFY(!iter);
+        }
+    }
+
+    delete root;
+}
+
+void tst_viewnode::theAutoLoadWalkStopsOnTheTabItLoadsWithinItsBudget(){
+    ViewNode *root = new ViewNode();
+    ViewNode *start = MakeTab(root, QStringLiteral("start"), QStringLiteral("https://start.test/"));
+    MakeTab(root, QStringLiteral("a"), QStringLiteral("https://a.test/"));
+    ViewNode *b = MakeTab(root, QStringLiteral("b"), QStringLiteral("https://b.test/"));
+    MakeTab(root, QStringLiteral("c"), QStringLiteral("https://c.test/"));
+
+    QStringList offered;
+    auto takeB = [&](ViewNode *vn){ offered << vn->GetTitle(); return vn == b;};
+    ViewNode *iter = start;
+    QCOMPARE(TreeBank::WalkToAutoLoad(iter, true, takeB, 100), TreeBank::AutoLoadLoaded);
+    QVERIFY(iter == b);
+    QCOMPARE(TreeBank::WalkToAutoLoad(iter, true, takeB, 100), TreeBank::AutoLoadExhausted);
+    QCOMPARE(offered, QStringList() << QStringLiteral("a") << QStringLiteral("b") << QStringLiteral("c"));
+
+    delete root;
+}
+
+void tst_viewnode::theAutoLoadTimerStopsOnlyAtTheEndsOrTheLimit(){
+    QVERIFY( TreeBank::AutoLoadStops(false, false, 0, 0));
+    QVERIFY( TreeBank::AutoLoadStops(false, false, 0, 10));
+    QVERIFY(!TreeBank::AutoLoadStops(true,  false, 3, 10));
+    QVERIFY(!TreeBank::AutoLoadStops(false, true,  9, 10));
+    QVERIFY( TreeBank::AutoLoadStops(true,  false, 10, 10));
+    QVERIFY( TreeBank::AutoLoadStops(true,  true,  11, 10));
+    QVERIFY(!TreeBank::AutoLoadStops(true,  false, 0, 0));
+    QVERIFY(!TreeBank::AutoLoadStops(true,  true,  500, 0));
+    QVERIFY( TreeBank::AutoLoadStops(true,  true,  0, -2));
+}
+
+void tst_viewnode::aNodeLeavingTheTreeIsLetGoOfByBothWalks(){
+    ViewNode *root = new ViewNode();
+    ViewNode *folder = MakeFolder(root, QStringLiteral("folder"));
+    ViewNode *refused = MakeTab(folder, QStringLiteral("refused"), QStringLiteral("https://r.test/"));
+    ViewNode *other = MakeTab(root, QStringLiteral("other"), QStringLiteral("https://o.test/"));
+    QVERIFY(!folder->GetView() && !refused->GetView());
+
+    TreeBank::SetViewIterForward(folder);
+    TreeBank::SetViewIterBackward(refused);
+    TreeBank::ReleaseAutoLoadIterators(other);
+    QVERIFY(TreeBank::GetViewIterForward() == folder);
+    QVERIFY(TreeBank::GetViewIterBackward() == refused);
+
+    TreeBank::ReleaseAutoLoadIterators(folder);
+    QVERIFY(!TreeBank::GetViewIterForward());
+    QVERIFY(TreeBank::GetViewIterBackward() == refused);
+    TreeBank::ReleaseAutoLoadIterators(refused);
+    QVERIFY(!TreeBank::GetViewIterBackward());
+
+    TreeBank::SetViewIterForward(other);
+    TreeBank::SetViewIterBackward(other);
+    TreeBank::ReleaseAutoLoadIterators(other);
+    QVERIFY(!TreeBank::GetViewIterForward() && !TreeBank::GetViewIterBackward());
+
+    delete root;
+}
+
+void tst_viewnode::aWalkCutShortGoesOnInTheSameDirection(){
+    QCOMPARE(TreeBank::AutoLoadNextCondition(TreeBank::AutoLoadBudgetSpent, 0), 0);
+    QCOMPARE(TreeBank::AutoLoadNextCondition(TreeBank::AutoLoadBudgetSpent, 1), 1);
+    QCOMPARE(TreeBank::AutoLoadNextCondition(TreeBank::AutoLoadLoaded, 0), 1);
+    QCOMPARE(TreeBank::AutoLoadNextCondition(TreeBank::AutoLoadLoaded, 1), 0);
+    QCOMPARE(TreeBank::AutoLoadNextCondition(TreeBank::AutoLoadExhausted, 0), 1);
+    QCOMPARE(TreeBank::AutoLoadNextCondition(TreeBank::AutoLoadExhausted, 1), 0);
 }
 
 void tst_viewnode::ancestorsAndDescendants(){
@@ -590,7 +772,7 @@ void tst_viewnode::theDownloadCarrierIsTakenApartInOneOrder(){
         << QStringLiteral("DisownNode(vn)")
         << QStringLiteral("EmitNodeDeleted(deleted)")
         << QStringLiteral("ForgetNodeItems(deleted)")
-        << QStringLiteral("vn->Delete()")
+        << QStringLiteral("Discard(vn, prevparent)")
         << QStringLiteral("SetCurrent(next)");
 
     int at = -1;
@@ -605,6 +787,7 @@ void tst_viewnode::theDownloadCarrierIsTakenApartInOneOrder(){
             body.indexOf(QStringLiteral("QuarantineViewNode(vn)")));
 
     QVERIFY(body.contains(QStringLiteral("HasNoChildren()")));
+    QVERIFY(!body.contains(QStringLiteral("->Delete()")));
 }
 
 void tst_viewnode::nothingAboutADownloadCarrierGoesThroughTheTrash(){
@@ -628,15 +811,135 @@ void tst_viewnode::quarantineLetsGoOfAllThreePointers(){
     QVERIFY(!body.isEmpty());
 
     QVERIFY(body.contains(QStringLiteral("SetCurrentViewNode(nullptr)")));
-    QVERIFY(body.contains(QStringLiteral("SetViewIterForward(nullptr)")));
-    QVERIFY(body.contains(QStringLiteral("SetViewIterBackward(nullptr)")));
+    const int release = body.indexOf(QStringLiteral("ReleaseAutoLoadIterators(vn)"));
+    QVERIFY(release >= 0);
+    QVERIFY(release < body.indexOf(QStringLiteral("if(!tb) return;")));
+}
+
+void tst_viewnode::theClosedNodeIsStrippedBeforeTheTrashIsTrimmed(){
+    const QString source = TreeBankSource();
+    QVERIFY2(!source.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const QString body = BodyOf(source, QStringLiteral("bool TreeBank::MoveToTrash"));
+    QVERIFY(!body.isEmpty());
+
+    const int strip = body.indexOf(QStringLiteral("StripSubTree(vn);"));
+    const int trim = body.indexOf(QStringLiteral("while(m_TrashRoot->ChildrenLength()"));
+    QVERIFY(strip >= 0 && trim >= 0);
+    QVERIFY(strip < trim);
+    QCOMPARE(body.count(QStringLiteral("StripSubTree(vn);")), 1);
+    QVERIFY(body.contains(QStringLiteral("qMax(0, m_MaxTrashEntryCount)")));
+    QVERIFY(body.contains(QStringLiteral("ChildrenLength() > keep")));
+
+    const int forget = body.indexOf(QStringLiteral("ForgetNodeItems(forgotten);"));
+    QVERIFY(forget > trim);
+    QVERIFY(forget < body.indexOf(QStringLiteral("Discard(needless, m_TrashRoot);")));
+    QVERIFY(!body.contains(QStringLiteral("->Delete()")));
+}
+
+namespace {
+    int g_Freed = 0;
+    class CountedNode : public ViewNode {
+    public:
+        ~CountedNode() Q_DECL_OVERRIDE { g_Freed++;}
+    };
+    CountedNode *MakeCounted(ViewNode *parent){
+        CountedNode *nd = new CountedNode();
+        nd->SetParent(parent);
+        parent->AppendChild(nd);
+        return nd;
+    }
+    void TakeOut(Node *nd){
+        nd->GetParent()->RemoveChild(nd);
+        nd->SetParent(nullptr);
+    }
+}
+
+void tst_viewnode::aDiscardedNodeIsNeverFreedInTheTurnItWasBoxed(){
+    ViewNode *root = new ViewNode();
+    CountedNode *leaving = MakeCounted(root);
+    MakeCounted(leaving);
+    TakeOut(leaving);
+    g_Freed = 0;
+
+    TreeBank::Discard(leaving, root);
+    QCOMPARE(TreeBank::FreshDeleteCount(), 1);
+    TreeBank::DoDelete();
+    QCOMPARE(g_Freed, 0);
+    QCOMPARE(TreeBank::FreshDeleteCount(), 1);
+
+    TreeBank::Discard(leaving, root);
+    QCOMPARE(TreeBank::FreshDeleteCount(), 1);
+
+    TreeBank::PassDeleteBarrier(true);
+    QCOMPARE(g_Freed, 2);
+    QCOMPARE(TreeBank::FreshDeleteCount(), 0);
+    QCOMPARE(TreeBank::RipeDeleteCount(), 0);
+    delete root;
+}
+
+void tst_viewnode::aDiscardedNodeIsFreedPastTheBarrier(){
+    ViewNode *root = new ViewNode();
+    CountedNode *leaving = MakeCounted(root);
+    TakeOut(leaving);
+    g_Freed = 0;
+
+    TreeBank::Discard(leaving, root);
+    QCOMPARE(g_Freed, 0);
+    QTRY_COMPARE(g_Freed, 1);
+    QCOMPARE(TreeBank::FreshDeleteCount(), 0);
+    QCOMPARE(TreeBank::RipeDeleteCount(), 0);
+    delete root;
+}
+
+void tst_viewnode::whileTheTreeIsWalkedTheBarrierOnlyRipens(){
+    ViewNode *root = new ViewNode();
+    CountedNode *leaving = MakeCounted(root);
+    TakeOut(leaving);
+    g_Freed = 0;
+
+    TreeBank::Discard(leaving, root);
+    TreeBank::PassDeleteBarrier(false);
+    QCOMPARE(g_Freed, 0);
+    QCOMPARE(TreeBank::FreshDeleteCount(), 0);
+    QCOMPARE(TreeBank::RipeDeleteCount(), 1);
+
+    TreeBank::DoDelete();
+    QCOMPARE(g_Freed, 1);
+    QCOMPARE(TreeBank::RipeDeleteCount(), 0);
+
+    QCoreApplication::processEvents();
+    QCOMPARE(g_Freed, 1);
+    delete root;
+}
+
+void tst_viewnode::aStrippedViewLetsGoOfItsNode(){
+    const QString source = TreeBankSource();
+    QVERIFY2(!source.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+    const QString body = BodyOf(source, QStringLiteral("void TreeBank::StripSubTree"));
+    QVERIFY(!body.isEmpty());
+    const int held = body.indexOf(QStringLiteral("GetThis().lock()"));
+    const int dislink = body.indexOf(QStringLiteral("DislinkView(vn);"));
+    const int forget = body.indexOf(QStringLiteral("held->ForgetViewNode(vn);"));
+    QVERIFY(held >= 0 && dislink > held && forget > dislink);
+}
+
+void tst_viewnode::theRestoreGivesTheWindowOfTheIdItsNode(){
+    const QString source = TreeBankSource();
+    QVERIFY2(!source.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const QString body = BodyOf(source, QStringLiteral("MainWindow *TreeBank::RestoreIntoWindow"));
+    QVERIFY(!body.isEmpty());
+    QVERIFY(body.contains(QStringLiteral("Application::Window(id)")));
+    QVERIFY(body.contains(QStringLiteral("SetCurrent(nd)")));
+    QVERIFY(body.indexOf(QStringLiteral("LoadWithLink(nd)")) < body.indexOf(QStringLiteral("SetCurrent(nd)")));
 }
 
 void tst_viewnode::treeLoadOnlyConsidersJsonGenerations(){
     const QString source = TreeBankSource();
     QVERIFY2(!source.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
 
-    const QString body = BodyOf(source, QStringLiteral("void TreeBank::LoadTree"));
+    const QString body = BodyOf(source, QStringLiteral("TreeBank::Restoration TreeBank::LoadTree"));
     QVERIFY(!body.isEmpty());
     QVERIFY(body.contains(QStringLiteral("backup.endsWith(filename)")));
     QVERIFY(!body.contains(QStringLiteral("Legacy")));

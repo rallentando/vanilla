@@ -83,6 +83,9 @@ public:
     void AddRuleset(const QString &extensionId, const QByteArray &json,
                     Skipped *skipped = nullptr);
 
+    void SetHostAccess(const QString &extensionId, const QStringList &hostPermissions,
+                       bool always);
+
     bool IsEmpty() const { return m_Rules.isEmpty(); }
     int Count() const { return m_Rules.size(); }
 
@@ -118,6 +121,13 @@ private:
     QHash<QString, QVector<int>> m_ByToken;
     QVector<int> m_Unindexed;
     QStringList m_Extensions;
+    struct Access {
+        QRegularExpression hosts{QStringLiteral("(?!)")};
+        bool always = false;
+    };
+    QVector<Access> m_Access;
+    int ExtensionIndex(const QString &extensionId);
+    bool NeedsAccess(const Rule &rule) const;
 };
 
 class Framed {

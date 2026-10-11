@@ -76,6 +76,7 @@ private slots:
     void withoutAKeyNobodyIsAsked();
     void theTreeTheApplicationKeepsIsAskedOfIt();
     void aNodeOfTheTreeIsNoTabHoweverItLooks();
+    void everyTabOfALargeTreeKeepsItsPlace();
     void theTreeIsReadByIdAndByWordOverTheSameWire();
     void theVisitsAreToldAndTheBookmarksEventsAreNot();
     void theFontsAreAskedOfTheApplication();
@@ -290,7 +291,7 @@ private slots:
     void theTableOfWhatIsAnsweredIsTheShimsOwn();
 
 private:
-    static QJsonObject Survey(bool edge, bool permitted);
+    static QJsonObject Survey(bool edge);
     static const QStringList &Internal();
     static const QHash<QString, QString> &EdgeMeasured();
     static QString CoverageTable(QStringList *unmeasured, QStringList *stale);
@@ -3806,6 +3807,38 @@ void tst_cdpshims::aNodeOfTheTreeIsNoTabHoweverItLooks(){
     QTRY_COMPARE(Value(&worker, QStringLiteral("out")), QStringLiteral("query saw 7"));
 }
 
+void tst_cdpshims::everyTabOfALargeTreeKeepsItsPlace(){
+    QJSEngine worker;
+    MakeAsking(&worker, Fetching(), Saying());
+    worker.evaluate(QStringLiteral(
+        "var senders = [];"
+        "chrome.runtime.onMessage.addListener(function(m, s){ senders.push(s); return false; });"
+        "answers.push('HELD');"
+        "chrome.tabs.onCreated.addListener(function(){});"
+        "answers.push({ ok: true, value: { id: 555, index: 10 } });"
+        "listeners[0]({ __vanillaEnvelope: 1, from: { nonce: 'f7000000000000000000000000000000', frameId: 0, tabUrl: 'u' }, message: {} },"
+        "             { id: chrome.runtime.id, url: 'u' }, function(){});"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("senders.length")), QStringLiteral("1"));
+    QCOMPARE(Value(&worker, QStringLiteral("senders[0].tab.index")), QStringLiteral("10"));
+
+    worker.evaluate(QStringLiteral(
+        "var out = 'pending', all = [];"
+        "for (var i = 0; i < 20116; i++) all.push({ id: 1000 + i, index: i });"
+        "all[10].id = 555;"
+        "answers.push({ ok: true, value: all });"
+        "chrome.tabs.query({ currentWindow: true }).then(function(tabs){ out = tabs.length + ' saw ' + senders[0].tab.index; },"
+        "                                                function(e){ out = 'rejected: ' + e.message; });"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("out")), QStringLiteral("20116 saw 10"));
+
+    worker.evaluate(QStringLiteral(
+        "var order = all.map(function(t){ return t.id; });"
+        "order[10] = 1010; order[15000] = 555;"
+        "answers.push({ ok: true, value: { events: [{ name: 'tabs.onActivated', args: [{ tabId: 555, windowId: 1 }] }], order: order } }, 'HELD');"
+        "held.pop()();"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("senders[0].tab.index")), QStringLiteral("15000"));
+}
+
 void tst_cdpshims::theVisitsAreToldAndTheBookmarksEventsAreNot(){
     QJSEngine worker;
     MakeAsking(&worker, Fetching(), Saying() + Calls());
@@ -4371,7 +4404,7 @@ void tst_cdpshims::theTryingIsBoundedAndComesBackOnlyByTheRules(){
         page.evaluate(QStringLiteral("runNextTimer();"));
     }
     QTRY_COMPARE(Value(&page, QStringLiteral("timers.length + '/' + sent.length + '/' + warned.length")), QStringLiteral("0/6/1"));
-    QVERIFY2(Value(&page, QStringLiteral("warned[0]")).startsWith(QStringLiteral("Vanilla:")), qPrintable(Value(&page, QStringLiteral("warned[0]"))));
+    QVERIFY2(Value(&page, QStringLiteral("warned[0]")).startsWith(QStringLiteral("vanilla:")), qPrintable(Value(&page, QStringLiteral("warned[0]"))));
 
     page.evaluate(QStringLiteral("document.onVisibility();"));
     QCOMPARE(Value(&page, QStringLiteral("timers.length + ' in ' + (timers[0].ms >= 200 && timers[0].ms <= 1000)")), QStringLiteral("1 in true"));
@@ -5311,21 +5344,30 @@ void tst_cdpshims::theOrderOfAnAnswerWritesOverTheTableOfIndexes(){
 
     worker.evaluate(QStringLiteral(
         "var big = []; for (var i = 0; i < 5000; i++) big.push(1000 + i);"
-        "big[10] = 777; big[4500] = 555; big[4600] = 0; big[4700] = 777;"
+        "big[10] = 777; big[4500] = 555;"
         "answers.push({ ok: true, value: { events: [{ name: 'tabs.onActivated', args: [{ tabId: 777, windowId: 1 }] }], order: big } }, 'HELD');"
         "held.pop()();"));
     Settle(&worker);
-    QCOMPARE(Value(&worker, where), QStringLiteral("555@0,777@10"));
+    QCOMPARE(Value(&worker, where), QStringLiteral("555@4500,777@10"));
+    worker.evaluate(QStringLiteral(
+        "var bad = big.slice(); bad[4600] = 0;"
+        "var twice = big.slice(); twice[4700] = 777;"
+        "answers.push({ ok: true, value: { events: [], order: bad } }, 'HELD'); held.pop()();"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, where), QStringLiteral("555@4500,777@10"));
+    worker.evaluate(QStringLiteral("answers.push({ ok: true, value: { events: [], order: twice } }, 'HELD'); held.pop()();"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, where), QStringLiteral("555@4500,777@10"));
 
     worker.evaluate(QStringLiteral(
         "answers.push({ ok: true, value: { events: [{ name: 'tabs.onActivated', args: [{ tabId: 555, windowId: 1 }] }] } }, 'HELD');"
         "held.pop()();"));
     Settle(&worker);
-    QCOMPARE(Value(&worker, where), QStringLiteral("555@0,777@10"));
+    QCOMPARE(Value(&worker, where), QStringLiteral("555@4500,777@10"));
 
     worker.evaluate(QStringLiteral("answers.push({ ok: true, value: { events: [], stale: true } }); held.pop()();"));
     Settle(&worker);
-    QCOMPARE(Value(&worker, where), QStringLiteral("555@0,777@10"));
+    QCOMPARE(Value(&worker, where), QStringLiteral("555@4500,777@10"));
 }
 
 void tst_cdpshims::aStaleAnswerEndsThatLoopAndIsNoFailure(){
@@ -5409,7 +5451,7 @@ void tst_cdpshims::theAskingIsBoundedAndComesBackWithASuccess(){
         worker.evaluate(QStringLiteral("runNextTimer();"));
     }
     QTRY_COMPARE(Value(&worker, QStringLiteral("timers.length + '/' + fetched.length + '/' + warned.length")), QStringLiteral("0/6/1"));
-    QVERIFY2(Value(&worker, QStringLiteral("warned[0]")).startsWith(QStringLiteral("Vanilla:")), qPrintable(Value(&worker, QStringLiteral("warned[0]"))));
+    QVERIFY2(Value(&worker, QStringLiteral("warned[0]")).startsWith(QStringLiteral("vanilla:")), qPrintable(Value(&worker, QStringLiteral("warned[0]"))));
 
     worker.evaluate(QStringLiteral(
         "answers.push({ value: 'no ok' }, { value: 'no ok' }, { ok: true, value: { events: [], order: [] } }, { value: 'no ok' }, 'HELD');"
@@ -6421,7 +6463,7 @@ void tst_cdpshims::aListenerWithAUrlFilterIsNotRegistered(){
                                            " + '/' + chrome.webNavigation.onReferenceFragmentUpdated.hasListeners()")),
              QStringLiteral("false,true,true/false"));
     QCOMPARE(Value(&worker, QStringLiteral("warned.length")), QStringLiteral("1"));
-    QVERIFY2(Value(&worker, QStringLiteral("warned[0]")).startsWith(QStringLiteral("Vanilla:")),
+    QVERIFY2(Value(&worker, QStringLiteral("warned[0]")).startsWith(QStringLiteral("vanilla:")),
              qPrintable(Value(&worker, QStringLiteral("warned[0]"))));
     worker.evaluate(QStringLiteral("p.say({ nav: { kind: 'history', url: 'https://a.example/next' } });"
                                    "p.say({ nav: { kind: 'fragment', url: 'https://a.example/next#x' } });"));
@@ -9624,12 +9666,11 @@ void tst_cdpshims::theShimRunAsAWorkerWouldRunIt(){
     QCOMPARE(sealed.evaluate(QStringLiteral("calledBack")).toString(), QStringLiteral("not called"));
 }
 
-QJsonObject tst_cdpshims::Survey(bool edge, bool permitted){
+QJsonObject tst_cdpshims::Survey(bool edge){
     QJSEngine engine;
     engine.evaluate(World());
     engine.evaluate(QStringLiteral("document = undefined;") + Fetching() + (edge ? EdgeBrands() : QString()));
-    engine.evaluate(permitted
-                    ? QStringLiteral("chrome.runtime.getManifest = function(){ return { permissions: ["
+    engine.evaluate(QStringLiteral("chrome.runtime.getManifest = function(){ return { permissions: ["
                                      "'tabs', 'bookmarks', 'history', 'sessions', 'search', 'topSites', 'fontSettings',"
                                      " 'contextMenus', 'notifications', 'downloads', 'offscreen', 'scripting', 'userScripts',"
                                      " 'declarativeNetRequest', 'webNavigation', 'alarms', 'idle', 'identity', 'sidePanel',"
@@ -9637,8 +9678,7 @@ QJsonObject tst_cdpshims::Survey(bool edge, bool permitted){
                                      "var nothing = function(){ return Promise.resolve(); };"
                                      "chrome.alarms = { create: nothing, get: nothing, getAll: function(){ return Promise.resolve([]); },"
                                      "                  clear: nothing, clearAll: nothing };"
-                                     "chrome.idle = { queryState: function(){ return Promise.resolve('active'); }, setDetectionInterval: function(){} };")
-                    : QStringLiteral("chrome.runtime.getManifest = function(){ return {}; };"));
+                                     "chrome.idle = { queryState: function(){ return Promise.resolve('active'); }, setDetectionInterval: function(){} };"));
     QString shim = Cdp::WorkerShim().replace(QLatin1String(ExtensionHostWire::KEY_PLACE), QString(64, QLatin1Char('5')));
     const QString tail = QStringLiteral("  return made.join(',');\n})()\n");
     if(!shim.endsWith(tail)) return QJsonObject();
@@ -9742,14 +9782,12 @@ const QHash<QString, QString> &tst_cdpshims::EdgeMeasured(){
 }
 
 QString tst_cdpshims::CoverageTable(QStringList *unmeasured, QStringList *stale){
-    const QJsonObject qt = Survey(false, true), qtBare = Survey(false, false);
-    const QJsonObject edge = Survey(true, true), edgeBare = Survey(true, false);
-    if(qt.isEmpty() || qtBare.isEmpty() || edge.isEmpty() || edgeBare.isEmpty()) return QString();
-    const auto cell = [](const QJsonObject &full, const QJsonObject &bare, const QString &name){
-        const QString mark = full.value(name).toString();
+    const QJsonObject qt = Survey(false), edge = Survey(true);
+    if(qt.isEmpty() || edge.isEmpty()) return QString();
+    const auto cell = [](const QJsonObject &survey, const QString &name){
+        const QString mark = survey.value(name).toString();
         if(mark == QLatin1String("x")) return QStringLiteral("×");
-        if(mark != QLatin1String("o")) return QStringLiteral("―");
-        return bare.value(name).toString() == QLatin1String("o") ? QStringLiteral("○") : QStringLiteral("△");
+        return mark == QLatin1String("o") ? QStringLiteral("○") : QStringLiteral("―");
     };
     QStringList all = qt.keys() + edge.keys();
     all.removeDuplicates();
@@ -9762,7 +9800,7 @@ QString tst_cdpshims::CoverageTable(QStringList *unmeasured, QStringList *stale)
     for(const QString &name : std::as_const(all)){
         const int dot = name.indexOf(QLatin1Char('.'));
         const QString ns = name.left(dot);
-        QString onEdge = cell(edge, edgeBare, name);
+        QString onEdge = cell(edge, name);
         if(onEdge == QStringLiteral("―")){
             onEdge = EdgeMeasured().value(name);
             if(onEdge.isEmpty()){ unmeasured->append(name); onEdge = QStringLiteral("?"); }
@@ -9770,7 +9808,7 @@ QString tst_cdpshims::CoverageTable(QStringList *unmeasured, QStringList *stale)
         }
         lines << QStringLiteral("| %1 | `%2` | %3 | %4 |")
                      .arg(ns == last ? QString() : QStringLiteral("`%1`").arg(ns), name.mid(dot + 1),
-                          cell(qt, qtBare, name), onEdge);
+                          cell(qt, name), onEdge);
         last = ns;
     }
     for(auto it = EdgeMeasured().cbegin(); it != EdgeMeasured().cend(); ++it)
@@ -9807,6 +9845,7 @@ void tst_cdpshims::theTableOfWhatIsAnsweredIsTheShimsOwn(){
     QVERIFY(table.contains(QStringLiteral("| `onCommand` | ○ | △※ |")));
     QVERIFY(table.contains(QStringLiteral("| `sendMessage` | ○ | ○ |")));
     QVERIFY(table.contains(QStringLiteral("| `uninstall` | × | × |")));
+    QVERIFY(table.contains(QStringLiteral("| `alarms` | `clear` | ○ | ○ |")));
     if(qEnvironmentVariableIntValue("VANILLA_WRITE_COVERAGE") == 1) return;
     QVERIFY2(there == wanted, "docs/EXTENSIONS.md is not the shims' own: run this test with VANILLA_WRITE_COVERAGE=1 to write it");
 }

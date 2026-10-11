@@ -4,7 +4,10 @@
 
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
+#include <QHash>
+#include <QMutex>
 #include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
@@ -46,16 +49,15 @@ namespace {
 
     QStringList Normalized(const QStringList &paths){
         QStringList result;
+        QSet<QString> keys;
         foreach(const QString &path, paths){
             const QString trimmed = path.trimmed();
             if(trimmed.isEmpty() || trimmed.startsWith(QLatin1Char('#'))) continue;
             const QString clean = ExtensionManifest::NormalizePath(path);
-            bool duplicate = false;
-            foreach(const QString &old, result){
-                if(ExtensionManifest::PathKey(old) == ExtensionManifest::PathKey(clean))
-                    duplicate = true;
-            }
-            if(!duplicate) result.append(clean);
+            const QString key = ExtensionManifest::KeyOfNormalized(clean);
+            if(keys.contains(key)) continue;
+            keys.insert(key);
+            result.append(clean);
         }
         return result;
     }
@@ -132,7 +134,10 @@ QString ExtensionManifest::NormalizePath(const QString &path){
 }
 
 QString ExtensionManifest::PathKey(const QString &path){
-    const QString normalized = NormalizePath(path);
+    return KeyOfNormalized(NormalizePath(path));
+}
+
+QString ExtensionManifest::KeyOfNormalized(const QString &normalized){
 #ifdef Q_OS_WIN
     return normalized.toCaseFolded();
 #else
@@ -140,15 +145,28 @@ QString ExtensionManifest::PathKey(const QString &path){
 #endif
 }
 
-QString ExtensionManifest::Resource(const QString &root, const QString &relative){
+QString ExtensionManifest::Resource(const QString &root, const QString &relative, QSet<QString> *verified){
     const QUrl url(relative);
     if(relative.isEmpty() || !url.isRelative() || relative.startsWith(QLatin1Char('/')) ||
        relative.contains(QLatin1Char('\\')) || !url.query().isEmpty() || !url.fragment().isEmpty())
         return QString();
     const QString path =
         NormalizePath(root + QLatin1Char('/') + QUrl::fromPercentEncoding(relative.toUtf8()));
-    if(!PathKey(path).startsWith(PathKey(root) + QLatin1Char('/')) || !QFileInfo(path).isFile())
+    if(!KeyOfNormalized(path).startsWith(KeyOfNormalized(root) + QLatin1Char('/')) || !QFileInfo(path).isFile())
         return QString();
+    const QFileInfo file(path);
+    if(file.isSymLink()) return QString();
+    const QString rootKey = KeyOfNormalized(root);
+    QStringList walked;
+    QDir dir = file.dir();
+    for(int depth = 0;; depth++){
+        const QString key = KeyOfNormalized(dir.absolutePath());
+        if(key == rootKey || (verified && verified->contains(key))) break;
+        const QFileInfo step(dir.absolutePath());
+        if(depth > 64 || step.isJunction() || step.isSymLink() || !dir.cdUp()) return QString();
+        walked << key;
+    }
+    if(verified) foreach(const QString &key, walked) verified->insert(key);
     return path;
 }
 
@@ -175,6 +193,11 @@ QString ExtensionManifest::CurrentFolder(const QString &path){
 }
 
 ExtensionManifest ExtensionManifest::Read(const QString &input){
+    return ReadWithBytes(input, nullptr);
+}
+
+ExtensionManifest ExtensionManifest::ReadWithBytes(const QString &input, QByteArray *bytesRead){
+    if(bytesRead) bytesRead->clear();
     ExtensionManifest m;
     m.path = NormalizePath(input);
     m.folder = CurrentFolder(m.path);
@@ -195,7 +218,9 @@ ExtensionManifest ExtensionManifest::Read(const QString &input){
         return m;
     }
     QJsonParseError parse;
-    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parse);
+    const QByteArray bytes = file.readAll();
+    if(bytesRead) *bytesRead = bytes;
+    const QJsonDocument doc = QJsonDocument::fromJson(bytes, &parse);
     if(parse.error != QJsonParseError::NoError || !doc.isObject()){
         m.error = ExtensionController::tr("Invalid manifest.json.");
         return m;
@@ -264,8 +289,9 @@ ExtensionManifest ExtensionManifest::Read(const QString &input){
     }
 
     const QJsonObject action = json.value(QStringLiteral("action")).toObject();
-    auto resourceUrl = [&m](const QString &relative){
-        if(Resource(m.folder, relative).isEmpty()) return QUrl();
+    QSet<QString> verified;
+    auto resourceUrl = [&m, &verified](const QString &relative){
+        if(Resource(m.folder, relative, &verified).isEmpty()) return QUrl();
         return QUrl(QStringLiteral("chrome-extension://") + m.id + QLatin1Char('/') + relative);
     };
     m.popup = resourceUrl(action.value(QStringLiteral("default_popup")).toString());
@@ -313,7 +339,7 @@ ExtensionManifest ExtensionManifest::Read(const QString &input){
         one.enabled = resource.value(QStringLiteral("enabled")).toBool(true);
         QString path = resource.value(QStringLiteral("path")).toString();
         if(path.startsWith(QLatin1Char('/')) && !path.startsWith(QStringLiteral("//"))) path = path.mid(1);
-        one.file = Resource(m.folder, path);
+        one.file = Resource(m.folder, path, &verified);
         if(!one.id.isEmpty()) m.ruleResources << one;
     }
 
@@ -331,7 +357,7 @@ ExtensionManifest ExtensionManifest::Read(const QString &input){
             }
         }
     }
-    const QString iconPath = Resource(m.folder, icon);
+    const QString iconPath = Resource(m.folder, icon, &verified);
     if(!iconPath.isEmpty() && QFileInfo(iconPath).size() <= 4 * MAX_MANIFEST_SIZE){
         QImageReader reader(iconPath);
         const QSize size = reader.size();
@@ -341,6 +367,69 @@ ExtensionManifest ExtensionManifest::Read(const QString &input){
         }
     }
     return m;
+}
+
+namespace {
+    struct CachedManifest {
+        QString folder;
+        QByteArray digest;
+        ExtensionManifest manifest;
+    };
+    QMutex g_ManifestCacheMutex;
+    quint64 g_ManifestCacheGeneration = 0;
+    QHash<QString, CachedManifest> &ManifestCache(){
+        static QHash<QString, CachedManifest> cache;
+        return cache;
+    }
+}
+
+ExtensionManifest ExtensionManifest::ReadCached(const QString &input){
+    quint64 generation = 0;
+    {
+        QMutexLocker lock(&g_ManifestCacheMutex);
+        generation = g_ManifestCacheGeneration;
+    }
+    const QString path = NormalizePath(input);
+    const QString folder = CurrentFolder(path);
+    QByteArray bytes;
+    {
+        QFile file(folder + QStringLiteral("/manifest.json"));
+        if(file.open(QIODevice::ReadOnly) && file.size() <= MAX_MANIFEST_SIZE) bytes = file.readAll();
+    }
+    if(bytes.isEmpty()) return Read(path);
+    const QByteArray digest = QCryptographicHash::hash(bytes, QCryptographicHash::Sha1);
+    const QString key = KeyOfNormalized(path);
+    {
+        QMutexLocker lock(&g_ManifestCacheMutex);
+        const auto it = ManifestCache().constFind(key);
+        if(it != ManifestCache().constEnd() && it->folder == folder && it->digest == digest)
+            return it->manifest;
+    }
+    QByteArray parsed;
+    const ExtensionManifest manifest = ReadWithBytes(path, &parsed);
+    if(!manifest.error.isEmpty() || parsed.isEmpty()) return manifest;
+    QMutexLocker lock(&g_ManifestCacheMutex);
+    if(generation == g_ManifestCacheGeneration){
+        CachedManifest entry;
+        entry.folder = manifest.folder;
+        entry.digest = QCryptographicHash::hash(parsed, QCryptographicHash::Sha1);
+        entry.manifest = manifest;
+        ManifestCache().insert(key, entry);
+    }
+    return manifest;
+}
+
+void ExtensionManifest::ForgetCached(){
+    QMutexLocker lock(&g_ManifestCacheMutex);
+    ManifestCache().clear();
+    g_ManifestCacheGeneration++;
+}
+
+void ExtensionManifest::ForgetCached(const QString &path){
+    const QString key = KeyOfNormalized(NormalizePath(path));
+    QMutexLocker lock(&g_ManifestCacheMutex);
+    ManifestCache().remove(key);
+    g_ManifestCacheGeneration++;
 }
 
 QList<Dnr::Held::Ruleset> ExtensionManifest::Rulesets() const {
@@ -474,13 +563,16 @@ namespace {
         const Settings &s = Application::GlobalSettings();
         QSet<QString> disabled;
         foreach(const QString &path, Normalized(s.value(DISABLED_KEY).toStringList()))
-            disabled.insert(ExtensionManifest::PathKey(path));
+            disabled.insert(ExtensionManifest::KeyOfNormalized(path));
 
         QList<ExtensionManifest> result;
+        QSet<QString> ids;
         foreach(const QString &path, Normalized(s.value(PATHS_KEY).toStringList())){
-            if(disabled.contains(ExtensionManifest::PathKey(path))) continue;
-            const ExtensionManifest manifest = ExtensionManifest::Read(path);
+            const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
             if(!manifest.error.isEmpty() || manifest.id.isEmpty()) continue;
+            if(ids.contains(manifest.id)) continue;
+            ids.insert(manifest.id);
+            if(disabled.contains(ExtensionManifest::KeyOfNormalized(path))) continue;
             result << manifest;
         }
         return result;
@@ -905,7 +997,7 @@ QString ExtensionController::CopyNote(const QString &note, const QString &detail
     }
     if(withheld)
         return tr("Runs with part of the compatibility layer: its web_accessible_resources let web pages "
-                  "read a file the layer's key would be in, so it cannot ask Vanilla for tabs, bookmarks, "
+                  "read a file the layer's key would be in, so it cannot ask vanilla for tabs, bookmarks, "
                   "downloads and the like.");
     return QString();
 }
@@ -932,6 +1024,8 @@ QList<ExtensionRuleFiles> ExtensionController::EnabledRuleFiles(){
 
         ExtensionRuleFiles each;
         each.id = manifest.id;
+        each.hostPermissions = manifest.hostPermissions;
+        each.hostAccessAlways = !manifest.permissions.contains(QStringLiteral("declarativeNetRequest"));
         foreach(const ExtensionManifest::RuleResource &resource, manifest.ruleResources)
             if(chosen.contains(resource.id) && !resource.file.isEmpty()) each.files << resource.file;
         QJsonArray session, dynamic;
@@ -948,6 +1042,7 @@ QList<ExtensionRuleFiles> ExtensionController::EnabledRuleFiles(){
 }
 
 void ExtensionController::RegisterPath(const QString &path){
+    ExtensionManifest::ForgetCached(path);
     ChangeList(PATHS_KEY, path, true);
 }
 
@@ -969,9 +1064,9 @@ void ExtensionController::Reconcile(const QStringList &paths, const QStringList 
                                     const QStringList &pinned){
     const QStringList sourcePaths = Normalized(paths);
     QStringList order, disabledList, pinnedList;
-    foreach(const QString &path, sourcePaths) order.append(ExtensionManifest::PathKey(path));
-    foreach(const QString &path, Normalized(disabled)) disabledList.append(ExtensionManifest::PathKey(path));
-    foreach(const QString &path, Normalized(pinned)) pinnedList.append(ExtensionManifest::PathKey(path));
+    foreach(const QString &path, sourcePaths) order.append(ExtensionManifest::KeyOfNormalized(path));
+    foreach(const QString &path, Normalized(disabled)) disabledList.append(ExtensionManifest::KeyOfNormalized(path));
+    foreach(const QString &path, Normalized(pinned)) pinnedList.append(ExtensionManifest::KeyOfNormalized(path));
     const QSet<QString> disabledSet(disabledList.begin(), disabledList.end());
 
     if(order != m_Order || disabledSet != m_Disabled) emit InvalidatePopups();
@@ -981,7 +1076,7 @@ void ExtensionController::Reconcile(const QStringList &paths, const QStringList 
     for(qsizetype i = 0; i < order.size(); ++i){
         const QString path = order.at(i);
         if(!m_Manifests.contains(path))
-            m_Manifests.insert(path, ExtensionManifest::Read(sourcePaths.at(i)));
+            m_Manifests.insert(path, ExtensionManifest::ReadCached(sourcePaths.at(i)));
         ExtensionManifest m = m_Manifests.value(path);
         if(m.error.isEmpty() && ids.contains(m.id))
             m.error = tr("Another registered directory has the same extension ID.");
@@ -1214,10 +1309,12 @@ void ExtensionController::Retry(const QString &input){
     emit InvalidatePopups();
     m_Errors.remove(path);
     if(m_Desired.contains(path)){
-        m_Manifests.insert(path, ExtensionManifest::Read(m_Desired.value(path).path));
+        ExtensionManifest::ForgetCached();
+        m_Manifests.insert(path, ExtensionManifest::ReadCached(m_Desired.value(path).path));
         QStringList sources;
         foreach(const QString &key, m_Order) sources.append(m_Desired.value(key).path);
         Reconcile(sources, m_Disabled.values(), m_Pinned.values());
+        ExtensionNetRules::Reload();
     }
     Schedule();
 }
@@ -1231,7 +1328,7 @@ QList<ExtensionRow> ExtensionController::Rows() const {
     foreach(const QString &path, paths){
         ExtensionRow row;
         row.registered = m_Desired.contains(path);
-        row.manifest = row.registered ? m_Desired.value(path) : ExtensionManifest::Read(path);
+        row.manifest = row.registered ? m_Desired.value(path) : ExtensionManifest::ReadCached(path);
         row.error = m_Errors.value(path, row.manifest.error);
         row.note = m_Notes.value(ExtensionManifest::PathKey(path));
         const QString id = m_Owned.value(path);

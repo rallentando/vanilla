@@ -28,6 +28,7 @@
 #include "view.hpp"
 #include "commandmap.hpp"
 #include "commandframe.hpp"
+#include "editmenu.hpp"
 
 QLocalServer *Receiver::m_LocalServer = nullptr;
 
@@ -36,6 +37,7 @@ LineEdit::LineEdit(QWidget *parent)
 {
     ApplyTheme();
     setDragEnabled(true);
+    EditMenu::Install(this);
 }
 
 LineEdit::~LineEdit(){}
@@ -106,7 +108,7 @@ void LineEdit::inputMethodEvent(QInputMethodEvent *ev){
 }
 
 void LineEdit::mousePressEvent(QMouseEvent *ev){
-    if(selectedText() == text()) deselect();
+    if(ev->button() == Qt::LeftButton && selectedText() == text()) deselect();
     QLineEdit::mousePressEvent(ev);
 }
 
@@ -686,7 +688,7 @@ void Receiver::paintEvent(QPaintEvent *ev){
         switch(m_Mode){
         case Command  : painter.drawText(text_rect, flags, tr("Command Mode.")); break;
         case Query    : painter.drawText(text_rect, flags, tr("Input Query.")); break;
-        case UrlEdit  : painter.drawText(text_rect, flags, tr("Input Url.")); break;
+        case UrlEdit  : painter.drawText(text_rect, flags, tr("Enter a URL.")); break;
         case Search   : painter.drawText(text_rect, flags,
                                          Elided(tr("Incremental Search") + QStringLiteral(" : \"")
                                                 + m_LineString + QStringLiteral("\"."),

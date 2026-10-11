@@ -174,6 +174,7 @@ void tst_urlblock::theExtensionRulesInForceAreTheLastOnesAskedFor(){
 
     ExtensionNetRules::Source first;  first.id = QStringLiteral("one");  first.files << slow;
     ExtensionNetRules::Source second; second.id = QStringLiteral("two"); second.files << quick;
+    first.hostAccessAlways = second.hostAccessAlways = false;
 
     QVERIFY(ExtensionNetRules::Current());
 
@@ -215,6 +216,10 @@ void tst_urlblock::whatAnExtensionPutInIsInForceAheadOfItsFiles(){
     ExtensionNetRules::Source source;
     source.id = QStringLiteral("one");
     source.files << file.fileName();
+    source.hostAccessAlways = false;
+    ExtensionNetRules::Load(QList<ExtensionNetRules::Source>() << source, false);
+    QCOMPARE(whereTo(), QString());
+    source.hostPermissions << QStringLiteral("<all_urls>");
     ExtensionNetRules::Load(QList<ExtensionNetRules::Source>() << source, false);
     QCOMPARE(whereTo(), QStringLiteral("file.example"));
     source.dynamic = redirect("dynamic");

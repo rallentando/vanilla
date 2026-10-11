@@ -15,6 +15,7 @@
 #include <QToolBar>
 
 #include "lightnode.hpp"
+#include "theme.hpp"
 #include "treebar.hpp"
 
 #include "testsupport.hpp"
@@ -54,6 +55,8 @@ private slots:
     void foldingSurvivesLayerDestruction();
     void nodesCreatedTogetherArePlacedByTheirOwnNeighbours();
     void aNodeCreatedInAFoldedDirectoryStaysHidden();
+    void aNodeCreatedAfterADirectoryKeepsTheNestOfItsSiblings_data();
+    void aNodeCreatedAfterADirectoryKeepsTheNestOfItsSiblings();
     void aCurrentNodeBelowTheLastLayerGetsALayerBuilt();
 
     void anItemLetGoOfItsNodeIsOutOfTheSceneAtOnce();
@@ -64,8 +67,14 @@ private slots:
     void theBarLetsGoOfTheItemsBelowADirectory();
     void theBarKeepsTheItemsItWasNotAskedAbout();
 
+    void theBarSaysWhenAnythingOnItPointsAtALeavingNode();
+    void aLetGoItemIsNoLongerTheDropTarget();
+
     void anItemDetachedFromItsLayerOutlivesItSafely();
     void anItemDetachedFromItsLayerOutlivesItSafely_data();
+
+    void aLayerTakesTheExitHandlersOfItsLeavingItemsWithIt();
+    void aLayerTakesTheExitHandlersOfItsLeavingItemsWithIt_data();
 
     void theExitHandlersBelongToTheLayerTheyReachInto();
     void forgettingTheNodeTakesTheExitHandlersWithIt();
@@ -74,6 +83,7 @@ private slots:
     void aSceneWithoutTheItemDrawsNothingOfTheFreedNode_data();
 
     void theHandleUsesTheToolBarsCrossAxisMargin();
+    void theScrollButtonFollowsTheColourScheme();
     void theMinimumTabHeightKeepsCompactBreathingRoom();
     void anIconIsCentredInAnEvenHeightThumbnailTitleBand();
     void aThumbnailTooThinToShowKeepsEveryControlOnTheTitleBand();
@@ -671,6 +681,55 @@ void tst_treebaritem::aNodeCreatedInAFoldedDirectoryStaysHidden(){
     TearDown();
 }
 
+void tst_treebaritem::aNodeCreatedAfterADirectoryKeepsTheNestOfItsSiblings_data(){
+    QTest::addColumn<qreal>("sight");
+    QTest::newRow("in sight") << 640.0;
+    QTest::newRow("out of sight") << 24.0;
+}
+
+void tst_treebaritem::aNodeCreatedAfterADirectoryKeepsTheNestOfItsSiblings(){
+    QFETCH(qreal, sight);
+    Build();
+    TreeBar::m_EnableAnimation = true;
+    { QSignalBlocker blocker(m_Bar); m_Bar->setOrientation(Qt::Vertical); }
+    m_Bar->m_VerticalNodeHeight = 24;
+    m_Bar->m_Scene->setSceneRect(0, 0, 320, sight);
+
+    ViewNode *outer = m_Root->MakeChild();
+    ViewNode *inner = outer->MakeChild();
+    ViewNode *deep = inner->MakeChild();
+    ViewNode *page = deep->MakeChild();
+    page->SetHoldView(true);
+    for(ViewNode *nd : {outer, inner, deep}) nd->SetFolded(false);
+    ViewNode *tail = m_Root->MakeChild();
+    tail->SetHoldView(true);
+    m_Layer->CreateNodeItem(outer, 0, 0, 0, 300);
+    m_Layer->CreateNodeItem(inner, 1, 0, 1, 300);
+    NodeItem *deepItem = m_Layer->CreateNodeItem(deep, 2, 0, 2, 300);
+    m_Layer->CreateNodeItem(page, 3, 0, 3, 300);
+    m_Layer->CreateNodeItem(tail, 4, 0, 0, 300);
+
+    ViewNode *created = inner->MakeChild();
+    created->SetHoldView(true);
+    NodeList nds{created};
+    m_Bar->OnNodeCreated(nds);
+
+    NodeList displayed;
+    NodeItem *createdItem = nullptr;
+    for(NodeItem *item : m_Layer->GetNodeItems()){
+        displayed.append(item->GetNode());
+        if(item->GetNode() == created) createdItem = item;
+    }
+    QCOMPARE(displayed, (NodeList{outer, inner, deep, page, created, tail}));
+    QVERIFY(createdItem);
+    QCOMPARE(createdItem->GetNest(), deepItem->GetNest());
+    QPropertyAnimation *animation = createdItem->GetAnimation();
+    if(animation->state() == QAbstractAnimation::Running)
+        animation->setCurrentTime(animation->totalDuration());
+    QCOMPARE(createdItem->GetRect().left(), deepItem->GetRect().left());
+    TearDown();
+}
+
 void tst_treebaritem::aCurrentNodeBelowTheLastLayerGetsALayerBuilt(){
     Build();
     m_Bar->m_HorizontalNodeWidth = 150;
@@ -722,6 +781,49 @@ NodeItem *tst_treebaritem::AddItem(Node *nd){
     m_Layer->GetNodeItems() << item;
     item->SetRect(QRectF(0, 0, 100, 24));
     return item;
+}
+
+void tst_treebaritem::theBarSaysWhenAnythingOnItPointsAtALeavingNode(){
+    Build();
+    ViewNode *a = m_Root->MakeChild();
+    ViewNode *b = m_Root->MakeChild();
+    ViewNode *c = m_Root->MakeChild();
+    AddItem(a);
+
+    QVERIFY(!m_Bar->RefersToAny(QSet<Node*>()));
+    QVERIFY(!m_Bar->RefersToAny(QSet<Node*>() << b));
+    QVERIFY( m_Bar->RefersToAny(QSet<Node*>() << a));
+    QVERIFY( m_Bar->RefersToAny(QSet<Node*>() << m_Root));
+
+    LayerItem *empty = new LayerItem(nullptr, m_Bar, nullptr, c, nullptr);
+    m_Bar->m_Scene->addItem(empty);
+    m_Bar->m_LayerList << empty;
+    QVERIFY( m_Bar->RefersToAny(QSet<Node*>() << c));
+    QVERIFY(!m_Bar->RefersToAny(QSet<Node*>() << b));
+
+    ViewNode *d = m_Root->MakeChild();
+    NodeItem *leaving = AddItem(d);
+    m_Layer->RemoveFromNodeItems(leaving);
+    QVERIFY(!m_Layer->GetNodeItems().contains(leaving));
+    QVERIFY(m_Bar->m_Scene->items().contains(leaving));
+    QVERIFY( m_Bar->RefersToAny(QSet<Node*>() << d));
+
+    TearDown();
+}
+
+void tst_treebaritem::aLetGoItemIsNoLongerTheDropTarget(){
+    Build();
+    ViewNode *a = m_Root->MakeChild();
+    NodeItem *item = AddItem(a);
+    m_Bar->setOrientation(Qt::Vertical);
+    m_Layer->SetInsertTarget(item);
+    QVERIFY(m_Layer->InsertTarget() == item);
+
+    NodeList list = NodeList() << a;
+    m_Bar->ForgetNodes(list);
+    QVERIFY(!m_Layer->InsertTarget());
+
+    TearDown();
 }
 
 void tst_treebaritem::anItemLetGoOfItsNodeIsOutOfTheSceneAtOnce(){
@@ -952,6 +1054,70 @@ void tst_treebaritem::anItemDetachedFromItsLayerOutlivesItSafely_data(){
     QTest::newRow("plain") << false;
 }
 
+namespace {
+
+class WatchingItem : public NodeItem {
+public:
+    WatchingItem(TreeBar *bar, Node *nd, LayerItem *layer)
+        : NodeItem(nullptr, bar, nd, layer), m_Layer(layer) {}
+    bool DestroyedIsHooked() const { return receivers(SIGNAL(destroyed(QObject*))) > 0;}
+    ~WatchingItem() Q_DECL_OVERRIDE {
+        s_Died = true;
+        s_DestroyedHooked = QObject::disconnect(this, &QObject::destroyed, m_Layer, nullptr);
+        s_FinishedHooked = QObject::disconnect(GetAnimation(), &QPropertyAnimation::finished,
+                                               m_Layer, nullptr);
+    }
+    static bool s_Died;
+    static bool s_DestroyedHooked;
+    static bool s_FinishedHooked;
+private:
+    LayerItem *m_Layer;
+};
+bool WatchingItem::s_Died = false;
+bool WatchingItem::s_DestroyedHooked = false;
+bool WatchingItem::s_FinishedHooked = false;
+
+}
+
+void tst_treebaritem::aLayerTakesTheExitHandlersOfItsLeavingItemsWithIt(){
+    QFETCH(bool, animated);
+
+    Build();
+    TreeBar::m_EnableAnimation = animated;
+
+    ViewNode *leaf = m_Root->MakeChild();
+    leaf->SetHoldView(true);
+    WatchingItem *item = new WatchingItem(m_Bar, leaf, m_Layer);
+    m_Layer->GetNodeItems() << item;
+    item->SetRect(QRectF(0, 0, 100, 24));
+
+    QRectF rect = item->GetRect();
+    rect.setWidth(0);
+    item->OnDeleted(rect);
+    QCOMPARE(item->parentItem(), static_cast<QGraphicsItem*>(m_Layer));
+    if(!animated) QVERIFY(item->DestroyedIsHooked());
+
+    WatchingItem::s_Died = false;
+    m_Bar->m_LayerList.removeAll(m_Layer);
+    delete m_Layer;
+    m_Layer = nullptr;
+
+    QVERIFY(WatchingItem::s_Died);
+    QVERIFY2(!WatchingItem::s_DestroyedHooked,
+             "the layer went with an item's 'destroyed' still hooked to it");
+    QVERIFY2(!WatchingItem::s_FinishedHooked,
+             "the layer went with an item's exit animation still hooked to it");
+
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    TearDown();
+}
+
+void tst_treebaritem::aLayerTakesTheExitHandlersOfItsLeavingItemsWithIt_data(){
+    QTest::addColumn<bool>("animated");
+    QTest::newRow("animated") << true;
+    QTest::newRow("plain") << false;
+}
+
 void tst_treebaritem::aSceneWithoutTheItemDrawsNothingOfTheFreedNode(){
     QFETCH(bool, animated);
 
@@ -987,6 +1153,44 @@ void tst_treebaritem::aSceneWithoutTheItemDrawsNothingOfTheFreedNode_data(){
     QTest::addColumn<bool>("animated");
     QTest::newRow("animated") << true;
     QTest::newRow("plain") << false;
+}
+
+void tst_treebaritem::theScrollButtonFollowsTheColourScheme(){
+    Build();
+    TreeBar::m_EnableAnimation = false;
+    { QSignalBlocker blocker(m_Bar); m_Bar->setOrientation(Qt::Vertical); }
+    m_Bar->m_VerticalNodeHeight = 24;
+    m_Bar->m_Scene->setSceneRect(0, 0, 320, 640);
+    for(int i = 0; i < 60; i++){
+        ViewNode *leaf = m_Root->MakeChild();
+        leaf->SetHoldView(true);
+        m_Layer->CreateNodeItem(leaf, i, 0, 0, 300);
+    }
+    QVERIFY(m_Layer->MaxScroll() > m_Layer->MinScroll());
+    m_Layer->SetScroll(m_Layer->MaxScroll());
+    m_Layer->OnScrolled();
+    QVERIFY(m_Layer->m_PrevScrollButton);
+    const QPoint at = (m_Layer->m_PrevScrollButton->sceneBoundingRect().topLeft()
+                       + QPointF(3, 2)).toPoint();
+
+    auto band = [&]() -> QColor {
+        QImage image(320, 640, QImage::Format_ARGB32);
+        image.fill(Qt::transparent);
+        { QPainter painter(&image); m_Bar->m_Scene->render(&painter); }
+        return image.pixelColor(at);
+    };
+
+    Theme::ApplyScheme(QStringLiteral("Dark"));
+    const QColor dark = Theme::Color(Theme::BarScrollFade);
+    QCOMPARE(band(), dark);
+
+    Theme::ApplyScheme(QStringLiteral("Light"));
+    const QColor light = Theme::Color(Theme::BarScrollFade);
+    QVERIFY(light != dark);
+    QCOMPARE(band(), light);
+
+    Theme::ApplyScheme(QStringLiteral("Auto"));
+    TearDown();
 }
 
 void tst_treebaritem::theHandleUsesTheToolBarsCrossAxisMargin(){

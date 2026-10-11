@@ -5,6 +5,8 @@
 #include <QTemporaryDir>
 #include <QFile>
 #include <QDateTime>
+#include <QLocale>
+#include <QTimeZone>
 #include <QUrl>
 
 #include "lightnode.hpp"
@@ -119,6 +121,10 @@ private slots:
 
     void trashLeavesOutTheSideFiles();
     void windowIdsGoThroughTheHooks();
+    void theTickIsSpacedOutInTime();
+
+    void stampsWithTheZoneAgreeWithThePlainForm();
+    void theStampReaderAgreesWithTheZoneForm();
 
 };
 
@@ -466,6 +472,161 @@ void tst_treeserializer::windowIdsGoThroughTheHooks(){
 
     delete reread;
     delete root;
+}
+
+void tst_treeserializer::theTickIsSpacedOutInTime(){
+    const int count = 2000;
+    ViewNode *root = new ViewNode();
+    {
+        Booting booting;
+        for(int i = 0; i < count; i++)
+            MakeTab(root, QStringLiteral("tab %1").arg(i), QStringLiteral("https://example.com/%1").arg(i));
+    }
+    const QString path = Path(QStringLiteral("ticks.json"));
+    QVERIFY(TreeSerializer::WriteJsonFile(path, root));
+
+    int everyNode = 0;
+    TreeSerializer::Hooks perNode;
+    perNode.TickIntervalMs = 0;
+    perNode.Tick = [&](){ everyNode++; };
+    ViewNode *first = new ViewNode();
+    {
+        Booting booting;
+        QVERIFY(TreeSerializer::ReadJsonFile(path, first, perNode));
+    }
+    QCOMPARE(everyNode, count);
+
+    int spaced = 0;
+    TreeSerializer::Hooks timed;
+    timed.TickIntervalMs = 1000;
+    timed.Tick = [&](){ spaced++; };
+    ViewNode *second = new ViewNode();
+    {
+        Booting booting;
+        QVERIFY(TreeSerializer::ReadJsonFile(path, second, timed));
+    }
+    QCOMPARE(spaced, 1);
+
+    delete second;
+    delete first;
+    delete root;
+}
+
+void tst_treeserializer::theStampReaderAgreesWithTheZoneForm(){
+    const QString format = QStringLiteral("yyyyMMddhhmmss");
+    const QLocale locale;
+    auto same = [&](const QDateTime &fast, const QDateTime &slow, const QString &what){
+        QVERIFY2(fast.isValid() == slow.isValid(), qPrintable(what));
+        if(!slow.isValid()) return;
+        QVERIFY2(fast.toMSecsSinceEpoch() == slow.toMSecsSinceEpoch(), qPrintable(what));
+        QCOMPARE(fast.date(), slow.date());
+        QCOMPARE(fast.time(), slow.time());
+        QCOMPARE(fast.offsetFromUtc(), slow.offsetFromUtc());
+        QCOMPARE(fast.toString(NODE_DATETIME_FORMAT), slow.toString(NODE_DATETIME_FORMAT));
+        QCOMPARE(locale.toString(fast, QLocale::LongFormat), locale.toString(slow, QLocale::LongFormat));
+        QCOMPARE(fast.addSecs(1).toMSecsSinceEpoch(), slow.addSecs(1).toMSecsSinceEpoch());
+    };
+    const QTime times[] = { QTime(0, 0), QTime(0, 30), QTime(2, 30), QTime(12, 0), QTime(23, 59, 59) };
+
+    {
+        const QTimeZone zone = QTimeZone::systemTimeZone();
+        QVERIFY(zone.isValid());
+        TreeSerializer::StampReader reader(zone);
+        int plain = 0;
+        for(QDate day(2024, 1, 1); day <= QDate(2025, 12, 31); day = day.addDays(1)){
+            if(reader.PlainDay(day)) plain++;
+            for(const QTime &time : times){
+                const QString stamp = QDateTime(day, time).toString(format);
+                same(reader.Stamp(stamp), NodeDateTimeFromString(stamp, zone), stamp);
+            }
+        }
+        QVERIFY(plain >= 731 - 8);
+    }
+    struct Case { const char *zone; QDate day; };
+    const Case cases[] = {
+        { "Europe/Berlin",    QDate(2024, 3, 31) },
+        { "Europe/Berlin",    QDate(2024, 10, 27) },
+        { "America/Santiago", QDate(2024, 9, 8) },
+        { "America/Santiago", QDate(2024, 4, 6) },
+        { "Pacific/Apia",     QDate(2011, 12, 30) },
+    };
+    for(const Case &c : cases){
+        const QTimeZone zone(QByteArray(c.zone));
+        if(!zone.isValid()) continue;
+        TreeSerializer::StampReader reader(zone);
+        if(c.day.year() != 2011) QVERIFY2(!reader.PlainDay(c.day), c.zone);
+        for(int offset = -1; offset <= 1; offset++){
+            const QDate day = c.day.addDays(offset);
+            for(const QTime &time : times){
+                const QString stamp = QDateTime(day, time).toString(format);
+                same(reader.Stamp(stamp), NodeDateTimeFromString(stamp, zone), QString::fromLatin1(c.zone) + QLatin1Char(' ') + stamp);
+            }
+        }
+    }
+    {
+        const QTimeZone light = QTimeZone::fromSecondsAheadOfUtc(9 * 3600);
+        QVERIFY(light.isUtcOrFixedOffset());
+        TreeSerializer::StampReader reader(light);
+        QVERIFY(reader.PlainDay(QDate(2024, 3, 31)));
+        same(reader.Stamp(QStringLiteral("20240331120000")), NodeDateTimeFromString(QStringLiteral("20240331120000"), light), QStringLiteral("light"));
+        const QTimeZone named(9 * 3600);
+        QVERIFY(named.isValid() && !named.hasTransitions());
+        TreeSerializer::StampReader slow(named);
+        QVERIFY(!slow.PlainDay(QDate(2024, 3, 31)));
+        same(slow.Stamp(QStringLiteral("20240331120000")), NodeDateTimeFromString(QStringLiteral("20240331120000"), named), QStringLiteral("named"));
+    }
+    {
+        const QTimeZone zone = QTimeZone::systemTimeZone();
+        TreeSerializer::StampReader reader(zone);
+        const QString bad[] = {
+            QStringLiteral("2024010112000"), QStringLiteral("202401011200000"), QStringLiteral("2024010112000a"),
+            QStringLiteral("20240230120000"), QStringLiteral("20240101250000"), QString() };
+        for(const QString &stamp : bad){
+            QVERIFY2(!reader.Stamp(stamp).isValid(), qPrintable(stamp));
+            QVERIFY2(!NodeDateTimeFromString(stamp, zone).isValid(), qPrintable(stamp));
+        }
+        TreeSerializer::StampReader bare((QTimeZone()));
+        QCOMPARE(bare.Stamp(BASE_DATE).toMSecsSinceEpoch(), NodeDateTimeFromString(BASE_DATE, QTimeZone()).toMSecsSinceEpoch());
+    }
+}
+
+void tst_treeserializer::stampsWithTheZoneAgreeWithThePlainForm(){
+    const QTimeZone zone = QTimeZone::systemTimeZone();
+    QVERIFY(zone.isValid());
+    const QLocale locale;
+    const QTime times[] = { QTime(0, 30), QTime(2, 30), QTime(12, 0), QTime(23, 30) };
+    int checked = 0;
+    for(QDate day(2024, 1, 1); day <= QDate(2025, 12, 31); day = day.addDays(1)){
+        for(const QTime &time : times){
+            const QString stamp = day.toString(QStringLiteral("yyyyMMdd")) + time.toString(QStringLiteral("hhmmss"));
+            const QDateTime fast = NodeDateTimeFromString(stamp, zone);
+            const QDateTime plain(day, time);
+            QVERIFY2(fast.isValid() == plain.isValid(), qPrintable(stamp));
+            if(!plain.isValid()) continue;
+            QCOMPARE(fast.toMSecsSinceEpoch(), plain.toMSecsSinceEpoch());
+            QCOMPARE(fast.date(), plain.date());
+            QCOMPARE(fast.time(), plain.time());
+            QCOMPARE(fast.offsetFromUtc(), plain.offsetFromUtc());
+            QCOMPARE(fast.toString(NODE_DATETIME_FORMAT), plain.toString(NODE_DATETIME_FORMAT));
+            QCOMPARE(locale.toString(fast, QLocale::LongFormat), locale.toString(plain, QLocale::LongFormat));
+            QCOMPARE(fast.addSecs(1).toMSecsSinceEpoch(), plain.addSecs(1).toMSecsSinceEpoch());
+            checked++;
+        }
+    }
+    QVERIFY(checked > 2900);
+    QCOMPARE(NodeDateTimeFromString(BASE_DATE).toMSecsSinceEpoch(), Date(0).toMSecsSinceEpoch());
+    const QDateTime bare = NodeDateTimeFromString(BASE_DATE, QTimeZone());
+    QCOMPARE(bare.timeSpec(), Qt::LocalTime);
+    QCOMPARE(bare.toMSecsSinceEpoch(), QDateTime(QDate(2026, 1, 1), QTime(12, 0)).toMSecsSinceEpoch());
+    const QTimeZone berlin(QByteArrayLiteral("Europe/Berlin"));
+    if(berlin.isValid()){
+        const QDateTime gap = NodeDateTimeFromString(QStringLiteral("20240331023000"), berlin);
+        QCOMPARE(gap.time(), QTime(3, 30));
+        QCOMPARE(gap.offsetFromUtc(), 7200);
+        const QDateTime fold = NodeDateTimeFromString(QStringLiteral("20241027023000"), berlin);
+        QCOMPARE(fold.time(), QTime(2, 30));
+        QCOMPARE(fold.offsetFromUtc(), 7200);
+    }
 }
 
 QTEST_MAIN(tst_treeserializer)

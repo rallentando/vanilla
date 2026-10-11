@@ -5,6 +5,8 @@
 #include <QObject>
 #include <QJSEngine>
 
+#include <algorithm>
+
 #include "minimap.hpp"
 
 #include "testsupport.hpp"
@@ -376,6 +378,84 @@ private slots:
         QVERIFY(indexOf(MiniMap::TextBlock, 65, true) > fixed);
     }
 
+    void collectionSkipsContentsTheEngineHides(){
+        const QString fixture = QStringLiteral(R"JS(
+(function(){
+    var document = {};
+    document.documentElement = { scrollWidth: 1000, scrollHeight: 1000 };
+    var window = document.defaultView = {
+        pageXOffset: 0, pageYOffset: 0,
+        getComputedStyle: function(el){ return el.style; }
+    };
+    document.createRange = function(){
+        var selected;
+        return {
+            selectNodeContents: function(n){ selected = n; },
+            getClientRects: function(){ return selected.rects; }
+        };
+    };
+    function element(tag, top, shown){
+        var el = {
+            nodeType: 1, ownerDocument: document, tagName: tag,
+            style: { display: 'block', visibility: 'visible', position: 'static',
+                     contentVisibility: 'visible' },
+            getBoundingClientRect: function(){
+                return { left: 0, top: top, width: 100, height: 20 };
+            }
+        };
+        if(shown !== undefined) el.checkVisibility = function(){ return shown; };
+        return el;
+    }
+    function text(top){
+        return { nodeType: 3, ownerDocument: document, data: 'text',
+                 rects: [{ left: 0, top: top, width: 50, height: 10 }] };
+    }
+    var body = document.body = element('BODY', 0, true);
+    var details = element('DETAILS', 10, true);
+    var summary = element('SUMMARY', 10, true);
+    summary.firstChild = text(10);
+    var folded = element('DIV', 50, false);
+    folded.firstChild = text(50);
+    folded.firstChild.nextSibling = element('IMG', 60, false);
+    summary.nextSibling = folded;
+    details.firstChild = summary;
+    var locked = element('DIV', 100, true);
+    locked.style.position = 'sticky';
+    locked.style.contentVisibility = 'hidden';
+    locked.firstChild = text(105);
+    var plain = element('P', 200);
+    plain.firstChild = text(200);
+    // display:contents has no box, so checkVisibility() says false for it;
+    // what it wraps is shown all the same (D-483 追記 1).
+    var wrapper = element('DIV', 0, false);
+    wrapper.style.display = 'contents';
+    var wrapped = element('P', 300, true);
+    wrapped.firstChild = text(300);
+    wrapper.firstChild = wrapped;
+    body.firstChild = details;
+    details.nextSibling = locked;
+    locked.nextSibling = plain;
+    plain.nextSibling = wrapper;
+    return %1;
+})()
+)JS").arg(MiniMap::CollectBlocksJsCode());
+        QJSEngine engine;
+        const QJSValue result = engine.evaluate(fixture);
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+        QSizeF size;
+        bool over = true;
+        const auto blocks = MiniMap::ParseBlocks(result.toVariant(), &size, &over);
+        QVERIFY(!over);
+        QList<QPair<int, qreal>> found;
+        foreach(const MiniMap::Block &block, blocks)
+            found << qMakePair(int(block.kind), block.rect.top());
+        QCOMPARE(found, (QList<QPair<int, qreal>>{
+                     {MiniMap::PositionedBackgroundBlock, 100},
+                     {MiniMap::TextBlock, 200},
+                     {MiniMap::TextBlock, 10},
+                     {MiniMap::TextBlock, 300}}));
+    }
+
     void collectionBoundsDiscoveryWithoutCollectingRectangles_data(){
         QTest::addColumn<int>("nodeType");
         QTest::addColumn<bool>("shadow");
@@ -537,6 +617,275 @@ private slots:
         QVERIFY(MiniMap::ParseBlocks(noSize, &pageSize, &overflowed)
                 .isEmpty());
         QVERIFY(pageSize.isEmpty());
+    }
+
+    static QString InnerScrollerFixture(int docHeight, int innerHeight,
+                                        const QString &tail,
+                                        const QString &setup = QString()){
+        return QStringLiteral(R"JS(
+(function(){
+    var document = {};
+    document.documentElement = { scrollWidth: 1000, scrollHeight: %1 };
+    var window = document.defaultView = {
+        pageXOffset: 0, pageYOffset: 0, innerWidth: 1000, innerHeight: 800,
+        getComputedStyle: function(el){ return el.style; }
+    };
+    document.createRange = function(){
+        var selected;
+        return {
+            selectNodeContents: function(n){ selected = n; },
+            getClientRects: function(){ return selected.rects; }
+        };
+    };
+    function element(tag, left, top, width, height){
+        return {
+            nodeType: 1, ownerDocument: document, tagName: tag,
+            isConnected: true, parentElement: null,
+            clientLeft: 0, clientTop: 0,
+            style: { display: 'block', visibility: 'visible',
+                     position: 'static', overflowY: 'visible',
+                     contentVisibility: 'visible' },
+            getBoundingClientRect: function(){
+                return { left: left, top: top, width: width, height: height };
+            }
+        };
+    }
+    function text(left, top){
+        return { nodeType: 3, ownerDocument: document, data: 'text',
+                 rects: [{ left: left, top: top, width: 50, height: 10 }] };
+    }
+    var body = document.body = element('BODY', 0, 0, 1000, 800);
+    body.scrollWidth = 1000; body.scrollHeight = 800;
+    var header = element('HEADER', 0, 0, 1000, 40);
+    header.style.position = 'fixed';
+    header.firstChild = text(0, 10);
+    var scroller = element('DIV', 100, 50, 600, %2);
+    scroller.parentElement = body;
+    scroller.style.overflowY = 'auto';
+    scroller.clientWidth = 600; scroller.clientHeight = %2;
+    scroller.scrollWidth = 600; scroller.scrollHeight = 3000;
+    scroller.scrollLeft = 0; scroller.scrollTop = 300;
+    // wider than the element: cut to its visible box.
+    var sticky = element('DIV', 100, 50, 800, 20);
+    sticky.parentElement = scroller;
+    sticky.style.position = 'sticky';
+    var line = element('P', 100, 60, 600, 10);
+    line.parentElement = scroller;
+    line.firstChild = text(110, 60);
+    scroller.firstChild = sticky;
+    sticky.nextSibling = line;
+    body.firstChild = header;
+    header.nextSibling = scroller;
+    %5
+    var middle = line;
+    document.elementFromPoint = function(){ return middle; };
+    var collected = %3;
+    var then = %4;
+    return { collected: collected, then: then };
+})()
+)JS").arg(docHeight).arg(innerHeight)
+     .arg(MiniMap::CollectBlocksJsCode(), tail, setup);
+    }
+
+    void aStillDocumentIsDrawnFromItsInnerScroller(){
+        QJSEngine engine;
+        const QJSValue result = engine.evaluate(
+            InnerScrollerFixture(800, 700, MiniMap::PollScrollerJsCode()));
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+        const QVariantMap map = result.toVariant().toMap();
+        const QVariant collected = map.value(QStringLiteral("collected"));
+
+        QSizeF size;
+        bool over = true;
+        const auto blocks = MiniMap::ParseBlocks(collected, &size, &over);
+        QCOMPARE(size, QSizeF(600, 3000));
+        const MiniMap::Scroller scroller = MiniMap::ParseScroller(collected);
+        QVERIFY(scroller.fixed);
+        QCOMPARE(scroller.id, qint64(1));
+        QCOMPARE(scroller.viewport, QRectF(0, 300, 600, 700));
+
+        QList<QPair<int, QRectF>> found;
+        QList<bool> follows;
+        foreach(const MiniMap::Block &block, blocks){
+            found << qMakePair(int(block.kind), block.rect);
+            follows << block.followsViewport;
+        }
+        QCOMPARE(found, (QList<QPair<int, QRectF>>{
+                     {MiniMap::PositionedBackgroundBlock, QRectF(0, 0, 600, 20)},
+                     {MiniMap::TextBlock, QRectF(10, 310, 50, 10)}}));
+        QCOMPARE(follows, (QList<bool>{true, false}));
+
+        const MiniMap::Poll poll =
+            MiniMap::ParsePoll(map.value(QStringLiteral("then")));
+        QVERIFY(poll.valid);
+        QVERIFY(poll.fixed);
+        QCOMPARE(poll.pick, qint64(1));
+        QCOMPARE(poll.id, qint64(1));
+        QCOMPARE(poll.viewport, QRectF(0, 300, 600, 700));
+        QCOMPARE(poll.contents, QSizeF(600, 3000));
+    }
+
+    void anElementScrolledFromItsBottomIsMeasuredFromItsTop(){
+        const QString setup = QStringLiteral(
+            "scroller.style.display = 'flex';\n"
+            "    scroller.style.flexDirection = 'column-reverse';\n"
+            "    scroller.scrollTop = -300;");
+        const QString tail = QStringLiteral(
+            "(function(){ var polled = %1;\n"
+            "  %2;\n"
+            "  var top = scroller.scrollTop;\n"
+            "  scroller.scrollTop = 0;\n"
+            "  return { polled: polled, top: top, bottom: %1 }; })()")
+            .arg(MiniMap::PollScrollerJsCode(),
+                 MiniMap::SetScrollerJsCode(1, 0.5));
+        QJSEngine engine;
+        const QJSValue result =
+            engine.evaluate(InnerScrollerFixture(800, 700, tail, setup));
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+        const QVariantMap map = result.toVariant().toMap();
+        const QVariant collected = map.value(QStringLiteral("collected"));
+
+        const MiniMap::Scroller scroller = MiniMap::ParseScroller(collected);
+        QCOMPARE(scroller.viewport, QRectF(0, 2000, 600, 700));
+        QSizeF size;
+        bool over = true;
+        const auto blocks = MiniMap::ParseBlocks(collected, &size, &over);
+        QVERIFY(std::any_of(blocks.cbegin(), blocks.cend(),
+                            [](const MiniMap::Block &block){
+                                return block.kind == MiniMap::TextBlock &&
+                                    block.rect.top() == 2010;}));
+
+        const QVariantMap then = map.value(QStringLiteral("then")).toMap();
+        const MiniMap::Poll poll = MiniMap::ParsePoll(then.value(QStringLiteral("polled")));
+        QVERIFY(poll.valid);
+        QCOMPARE(poll.viewport.top(), 2000.0);
+        QCOMPARE(then.value(QStringLiteral("top")).toDouble(), -1150.0);
+        const MiniMap::Poll bottom =
+            MiniMap::ParsePoll(then.value(QStringLiteral("bottom")));
+        QVERIFY(bottom.valid);
+        QCOMPARE(bottom.viewport.top(), 2300.0);
+    }
+
+    void aScrollingDocumentKeepsBeingDrawnAsItself(){
+        QJSEngine engine;
+        const QJSValue result = engine.evaluate(
+            InnerScrollerFixture(2000, 700, QStringLiteral("null")));
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+        const QVariant collected =
+            result.toVariant().toMap().value(QStringLiteral("collected"));
+        const MiniMap::Scroller scroller = MiniMap::ParseScroller(collected);
+        QVERIFY(!scroller.fixed);
+        QCOMPARE(scroller.id, qint64(0));
+        QSizeF size;
+        bool over = true;
+        const auto blocks = MiniMap::ParseBlocks(collected, &size, &over);
+        QCOMPARE(size, QSizeF(1000, 2000));
+        QVERIFY(std::any_of(blocks.cbegin(), blocks.cend(),
+                            [](const MiniMap::Block &block){
+                                return block.kind ==
+                                    MiniMap::PositionedBackgroundBlock &&
+                                    block.rect.width() == 1000;}));
+    }
+
+    void aShortInnerElementIsNotChosen(){
+        QJSEngine engine;
+        const QJSValue result = engine.evaluate(
+            InnerScrollerFixture(800, 300, MiniMap::PollScrollerJsCode()));
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+        const QVariantMap map = result.toVariant().toMap();
+        const MiniMap::Scroller scroller =
+            MiniMap::ParseScroller(map.value(QStringLiteral("collected")));
+        QVERIFY(scroller.fixed);
+        QCOMPARE(scroller.id, qint64(0));
+        const MiniMap::Poll poll =
+            MiniMap::ParsePoll(map.value(QStringLiteral("then")));
+        QVERIFY(poll.valid);
+        QCOMPARE(poll.pick, qint64(0));
+        QCOMPARE(poll.id, qint64(0));
+    }
+
+    void anotherElementInTheMiddleIsSeenByThePoll(){
+        QJSEngine engine;
+        const QJSValue result = engine.evaluate(InnerScrollerFixture(
+            800, 700, QStringLiteral(
+                "(function(){ var other = element('DIV', 0, 0, 1000, 800);\n"
+                "  other.style.overflowY = 'scroll';\n"
+                "  other.clientHeight = 800; other.parentElement = body;\n"
+                "  middle = other; return %1; })()")
+                .arg(MiniMap::PollScrollerJsCode())));
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+        const MiniMap::Poll poll = MiniMap::ParsePoll(
+            result.toVariant().toMap().value(QStringLiteral("then")));
+        QVERIFY(poll.valid);
+        QCOMPARE(poll.pick, qint64(-1));
+        QCOMPARE(poll.id, qint64(1));
+    }
+
+    void thePollFollowsTheDrawnElement(){
+        MiniMap map(nullptr);
+        map.m_PageSize = QSizeF(600, 3000);
+        map.m_Scroller.fixed = true;
+        map.m_Scroller.id = 4;
+        map.m_Scroller.viewport = QRectF(0, 300, 600, 700);
+
+        MiniMap::Poll poll;
+        poll.valid = true;
+        poll.fixed = true;
+        poll.pick = 4;
+        poll.id = 4;
+        poll.viewport = QRectF(0, 900, 600, 700);
+        poll.contents = QSizeF(600, 3000);
+        map.TakePoll(poll);
+        QCOMPARE(map.m_Scroller.viewport, poll.viewport);
+        QVERIFY(map.m_RecollectTimer.isActive());
+
+        map.m_RecollectTimer.stop();
+        poll.contents = QSizeF(600, 3500);
+        map.TakePoll(poll);
+        QCOMPARE(map.m_PageSize, QSizeF(600, 3500));
+        QVERIFY(map.m_RecollectTimer.isActive());
+        map.m_RecollectTimer.stop();
+        map.TakePoll(poll);
+        QVERIFY(!map.m_RecollectTimer.isActive());
+
+        map.m_PollTimer.start();
+        poll.pick = -1;
+        map.TakePoll(poll);
+        QVERIFY(!map.m_PollTimer.isActive());
+        QCOMPARE(map.m_Scroller.id, qint64(4));
+    }
+
+    void aDocumentWhichScrollsAgainStopsThePoll(){
+        MiniMap map(nullptr);
+        map.m_Scroller.fixed = true;
+        map.m_PollTimer.start();
+        MiniMap::Poll poll;
+        poll.valid = true;
+        poll.fixed = false;
+        map.TakePoll(poll);
+        QVERIFY(!map.m_PollTimer.isActive());
+    }
+
+    void clearingTheStripForgetsTheInnerElementAndItsPolls(){
+        MiniMap map(nullptr);
+        map.m_Scroller.fixed = true;
+        map.m_Scroller.id = 2;
+        map.m_PollTimer.start();
+        map.m_PollIssued = 7;
+        map.m_PollApplied = 3;
+        map.ClearStrip();
+        QVERIFY(!map.m_PollTimer.isActive());
+        QCOMPARE(map.m_Scroller.id, qint64(0));
+        QVERIFY(!map.m_Scroller.fixed);
+        QCOMPARE(map.m_PollApplied, map.m_PollIssued);
+    }
+
+    void aStripWithoutAViewDoesNotPoll(){
+        MiniMap map(nullptr);
+        MiniMap::Scroller scroller;
+        scroller.fixed = true;
+        map.TakeScroller(scroller);
+        QVERIFY(!map.m_PollTimer.isActive());
     }
 
     void scrolledBooksOneSettledCollection(){

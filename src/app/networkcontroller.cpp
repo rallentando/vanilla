@@ -2,6 +2,7 @@
 #include "const.hpp"
 
 #include "networkcontroller.hpp"
+#include "downloadhistory.hpp"
 
 #include <QPointer>
 
@@ -78,6 +79,8 @@
 #include "receiver.hpp"
 #include "dialog.hpp"
 #include "view.hpp"
+#include "passwordstore.hpp"
+#include "webenginepasswords.hpp"
 
 const QList<QEvent::Type> NetworkAccessManager::m_EventTypes =
     QList<QEvent::Type>() << QEvent::KeyPress << QEvent::KeyRelease;
@@ -223,6 +226,8 @@ bool NetworkCookieJar::deleteCookie(const QNetworkCookie &cookie){
 namespace {
 
     const char PROFILE_KEY_PROPERTY[] = "vanillaProfileKey";
+
+    const char CREDENTIAL_SPACE_PROPERTY[] = "vanillaCredentialSpace";
 
     void SetProfileCache(QWebEngineProfile *profile, const QString &id){
         profile->setCachePath(Application::DataDirectory()
@@ -402,6 +407,8 @@ namespace {
         QStringList key;
         foreach(const ExtensionNetRules::Source &source, sources){
             key << QStringLiteral("id:") + source.id;
+            key << QStringLiteral("hosts:") + QString::number(source.hostAccessAlways)
+                   + QLatin1Char('|') + source.hostPermissions.join(QLatin1Char(' '));
             key << QStringLiteral("session:") + QString::fromLatin1(QCryptographicHash::hash(source.session, QCryptographicHash::Sha1).toHex())
                  << QStringLiteral("dynamic:") + QString::fromLatin1(QCryptographicHash::hash(source.dynamic, QCryptographicHash::Sha1).toHex());
             foreach(const QString &file, source.files){
@@ -421,6 +428,7 @@ namespace {
         QSharedPointer<Dnr::Rules> rules(new Dnr::Rules());
         Dnr::Skipped skipped;
         foreach(const ExtensionNetRules::Source &source, sources){
+            rules->SetHostAccess(source.id, source.hostPermissions, source.hostAccessAlways);
             if(!source.session.isEmpty()) rules->AddRuleset(source.id, source.session, &skipped);
             if(!source.dynamic.isEmpty()) rules->AddRuleset(source.id, source.dynamic, &skipped);
             foreach(const QString &path, source.files){
@@ -461,6 +469,8 @@ void ExtensionNetRules::Reload(){
         source.files = each.files;
         source.session = each.session;
         source.dynamic = each.dynamic;
+        source.hostPermissions = each.hostPermissions;
+        source.hostAccessAlways = each.hostAccessAlways;
         sources << source;
     }
     Load(sources);
@@ -565,8 +575,8 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
     case Application::AskForEachAccess:{
 
         ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("Ssl errors."));
-        dialog->SetCaption(tr("Ssl errors."));
+        dialog->SetTitle(tr("SSL errors."));
+        dialog->SetCaption(tr("SSL errors."));
         dialog->SetInformativeText(tr("Ignore errors in this access?"));
 
         QString detail;
@@ -589,8 +599,8 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
             reply->ignoreSslErrors();
         } else {
             ModalDialog *dialog = new ModalDialog();
-            dialog->SetTitle(tr("Ssl errors on host:%1").arg(host));
-            dialog->SetCaption(tr("Ssl errors on host:%1").arg(host));
+            dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
+            dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
             dialog->SetInformativeText(tr("Allow or Block this host?"));
 
             QString detail;
@@ -629,8 +639,8 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
             break;
         case CertificatePolicy::Ask:{
             ModalDialog *dialog = new ModalDialog();
-            dialog->SetTitle(tr("Ssl errors on host:%1").arg(host));
-            dialog->SetCaption(tr("Ssl errors on host:%1").arg(host));
+            dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
+            dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
             dialog->SetInformativeText(tr("Allow or Block this certificate?"));
 
             QString detail;
@@ -662,15 +672,13 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
 
 void NetworkAccessManager::HandleAuthentication(QNetworkReply *reply,
                                                 QAuthenticator *authenticator){
-    Q_UNUSED(reply)
-    ModalDialog::Authentication(authenticator);
+    ModalDialog::Authentication(authenticator, ModalDialog::AuthenticationCaption(reply->url()));
 }
 
 #ifndef QT_NO_NETWORKPROXY
 void NetworkAccessManager::HandleProxyAuthentication(const QNetworkProxy &proxy,
                                                      QAuthenticator *authenticator){
-    Q_UNUSED(proxy)
-    ModalDialog::Authentication(authenticator);
+    ModalDialog::Authentication(authenticator, ModalDialog::AuthenticationCaption(QUrl(), proxy.hostName()));
 }
 #endif
 
@@ -750,10 +758,17 @@ void NetworkAccessManager::HandleDownload(QObject *object){
     } else {
         object->setProperty("path", filename);
     }
+    {
+        bool offTheRecord = false;
+        if(orig_item && orig_item->page()){
+            offTheRecord = orig_item->page()->profile()->isOffTheRecord();
+        } else if(QObject *view = object->property("view").value<QObject*>()){
+            if(QObject *profile = view->property("profile").value<QObject*>())
+                offTheRecord = profile->property("offTheRecord").toBool();
+        }
+        item->Record(offTheRecord);
+    }
     QMetaObject::invokeMethod(object, "accept");
-    MainWindow *win = Application::GetCurrentWindow();
-    if(win && win->GetTreeBank()->GetNotifier())
-        win->GetTreeBank()->GetNotifier()->RegisterDownload(item);
 
     QStringList path = filename.split(QStringLiteral("/"));
     path.removeLast();
@@ -777,8 +792,8 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op,
 
     QNetworkReply *rep = QNetworkAccessManager::createRequest(op, newreq, out);
 
-    connect(rep,  SIGNAL(error(QNetworkReply::NetworkError)),
-            this, SLOT(HandleError(QNetworkReply::NetworkError)));
+    connect(rep,  &QNetworkReply::errorOccurred,
+            this, &NetworkAccessManager::HandleError);
     connect(rep,  &QNetworkReply::sslErrors,
             this, &NetworkAccessManager::HandleSslErrors);
 
@@ -1139,6 +1154,7 @@ void NetworkAccessManager::SetupProfile(QWebEngineProfile *profile){
 
     profile->setProperty(PROFILE_KEY_PROPERTY,
                            profile->isOffTheRecord() ? QString() : m_Id);
+    profile->setProperty(CREDENTIAL_SPACE_PROPERTY, m_Id);
 
     if(!profile->isOffTheRecord()){
         SetProfileCache(profile, m_Id);
@@ -1216,6 +1232,10 @@ void NetworkAccessManager::SetupProfile(QWebEngineProfile *profile){
     script.setRunsOnSubFrames(true);
     script.setSourceCode(source);
     profile->scripts()->insert(script);
+
+#ifdef VANILLA_PASSWORDS
+    WebEnginePasswords::InstallScript(profile);
+#endif
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0) && QT_CONFIG(webengine_extensions)
     WebEngineExtensions::Install(profile);
@@ -1376,6 +1396,8 @@ void DownloadItem::SetPathAndReady(QString path){
 
     if(m_Path == DISABLE_FILENAME) return;
 
+    Record();
+
     m_FileOut.setFileName(m_Path);
     bool opened = m_FileOut.open(QIODevice::WriteOnly);
     if(!opened){
@@ -1438,6 +1460,7 @@ void DownloadItem::StateChanged(){
         QWebEngineDownloadRequest::DownloadInterruptReason reason = item->interruptReason();
 
         if(state == QWebEngineDownloadRequest::DownloadCompleted){
+            EndRecord(DownloadHistory::Completed);
             Finished();
         } else if(state == QWebEngineDownloadRequest::DownloadInterrupted &&
            40 > reason && reason >= 20){
@@ -1446,6 +1469,7 @@ void DownloadItem::StateChanged(){
 
             item->resume();
         } else if(state == QWebEngineDownloadRequest::DownloadInterrupted){
+            EndRecord(DownloadHistory::Failed);
             Finished();
         }
     } else
@@ -1454,6 +1478,7 @@ void DownloadItem::StateChanged(){
         int state = m_DownloadItem->property("state").toInt();
         int reason = m_DownloadItem->property("interruptReason").toInt();
         if(state == 2){
+            EndRecord(DownloadHistory::Completed);
             Finished();
         } else if(
             state == 4 &&
@@ -1463,6 +1488,7 @@ void DownloadItem::StateChanged(){
 
             QMetaObject::invokeMethod(m_DownloadItem.data(), "resume");
         } else if(state == 4){
+            EndRecord(DownloadHistory::Failed);
             Finished();
         }
     }
@@ -1528,6 +1554,8 @@ void DownloadItem::ReadyRead(){
         m_FileOut.write(m_DownloadReply->readAll());
     }
     if(m_FinishedFlag){
+        EndRecord(m_DownloadReply && m_DownloadReply->error() == QNetworkReply::NoError
+                  ? DownloadHistory::Completed : DownloadHistory::Failed);
         deleteLater();
     }
 }
@@ -1536,6 +1564,11 @@ void DownloadItem::Finished(){
     if(m_FinishedFlag) return;
 
     ReadyRead();
+
+    EndRecord(m_DownloadReply
+              ? (m_DownloadReply->error() == QNetworkReply::NoError
+                 ? DownloadHistory::Completed : DownloadHistory::Failed)
+              : DownloadHistory::Failed);
 
     if(m_FileOut.isOpen()){
         m_FileOut.close();
@@ -1558,6 +1591,7 @@ void DownloadItem::Stop(){
         deleteLater();
         return;
     }
+    EndRecord(DownloadHistory::Cancelled);
     m_FinishedFlag = true;
 
     if(m_FileOut.isOpen()) m_FileOut.close();
@@ -1571,7 +1605,23 @@ void DownloadItem::Stop(){
     deleteLater();
 }
 
+void DownloadItem::Record(bool hideUrl){
+    if(m_HistoryId || m_Path.isEmpty() || m_Path == DISABLE_FILENAME) return;
+    const QString temporary = QDir::cleanPath(Application::TemporaryDirectory()) + QStringLiteral("/");
+    if(QDir::cleanPath(m_Path).startsWith(temporary, Qt::CaseInsensitive)) return;
+    const QUrl url = hideUrl ? QUrl()
+        : m_DownloadReply ? m_DownloadReply->url() : m_RemoteUrl;
+    m_HistoryId = DownloadHistory::Instance()->Started(url, m_Path, this);
+}
+
+void DownloadItem::EndRecord(int state){
+    if(m_HistoryId)
+        DownloadHistory::Instance()->Ended(m_HistoryId, static_cast<DownloadHistory::State>(state));
+}
+
 void DownloadItem::DownloadProgress(qint64 received, qint64 total){
+    if(m_HistoryId) DownloadHistory::Instance()->Progress(m_HistoryId, received, total);
+
     if(!m_Path.isEmpty()){
 
         if(total > 0){
@@ -1947,6 +1997,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
 #endif
         });
         profile->setProperty(PROFILE_KEY_PROPERTY, key);
+        profile->setProperty(CREDENTIAL_SPACE_PROPERTY, id);
         WebEngineExtensions::Install(profile);
         if(profile->isOffTheRecord()){
             SettingsSchemeHandler::Install(profile);
@@ -2000,6 +2051,7 @@ QQuickWebEngineProfile* NetworkController::QuickPrivateProfile(const QString &id
             new QQuickWebEngineProfile(Application::GetInstance());
         profile->setProperty(PROFILE_KEY_PROPERTY,
                              QStringLiteral("quick-private:") + id);
+        profile->setProperty(CREDENTIAL_SPACE_PROPERTY, id);
         profile->setOffTheRecord(true);
         SettingsSchemeHandler::Install(profile);
         ApplyQuickPermissionsPolicy(profile);
@@ -2009,6 +2061,11 @@ QQuickWebEngineProfile* NetworkController::QuickPrivateProfile(const QString &id
         profiles[id] = profile;
     }
     return profiles[id];
+}
+
+QString NetworkController::CredentialSpace(const QObject *profile){
+    if(!profile) return QString();
+    return profile->property(CREDENTIAL_SPACE_PROPERTY).toString();
 }
 
 QString NetworkController::ProfileKey(const QObject *profile){
@@ -2146,6 +2203,19 @@ void NetworkController::ClearVisitedLinks(){
 #endif
 }
 
+void NetworkController::ClearPasswords(){
+#ifdef EDGEWEBVIEW
+    EdgeWebView::ClearPasswords();
+#endif
+#ifdef VANILLA_PASSWORDS
+    if(PasswordStore *store = PasswordStore::Instance()){
+        store->RemoveAll([](int failed){
+            if(failed) qWarning() << "passwords:" << failed << "could not be removed from the store";
+        });
+    }
+#endif
+}
+
 void NetworkController::InitializeNetworkAccessManager(QString id, const QList<QNetworkCookie> &cookies){
     NetworkCookieJar *ncj = new NetworkCookieJar();
     NetworkAccessManager *nam = new NetworkAccessManager(id);
@@ -2191,7 +2261,7 @@ void NetworkController::LoadAllCookies(){
         if(!LoadCookieFile(datadir + backup)) continue;
 
         ModelessDialog::Information
-            (tr("Restored from a back up file")+ QStringLiteral("\n[") + backup + QStringLiteral("]."),
+            (tr("Restored from a backup file")+ QStringLiteral("\n[") + backup + QStringLiteral("]."),
              tr("Because of a failure to read the latest file, it was restored from a backup file."));
         break;
     }

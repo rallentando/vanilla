@@ -129,6 +129,8 @@ public slots:
     void OnNodeDeleted(NodeList &nds);
 
     void ForgetNodes(NodeList &nds);
+    bool RefersToAny(const QSet<Node*> &going) const;
+    void LetGoOf(const QSet<Node*> &going);
     void OnFoldedChanged(NodeList &nds);
     void OnCurrentChanged(Node *nd);
 
@@ -199,6 +201,11 @@ public:
     void ApplyTheme();
 
     int Index() const;
+
+    Node *RawNode() const { return m_Node;}
+    Node *EmptyPlaceParent() const;
+    NodeItem *InsertTarget() const;
+    void SetInsertTarget(NodeItem *item);
 
     int GetNest() const;
     void SetNest(int);
@@ -276,6 +283,7 @@ private:
     int m_ScrollDownTimerId;
     qreal m_CurrentScroll;
     qreal m_TargetScroll;
+    friend class tst_treebaritem;
     QGraphicsItem *m_PrevScrollButton;
     QGraphicsItem *m_NextScrollButton;
     QGraphicsItem *m_InsertPosition;

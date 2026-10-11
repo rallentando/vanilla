@@ -40,11 +40,11 @@ const QString PAGE_SHIM = QStringLiteral("vanilla_page_shim.js");
 const QString PAGE_SHIM_OPEN = QStringLiteral("vanilla_page_shim_open.js");
 const QString RELAY_PAGE = QStringLiteral("vanilla_relay.html");
 const QString RELAY_SCRIPT = QStringLiteral("vanilla_relay.js");
-const char RELAY_HTML[] = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Vanilla relay</title></head>"
+const char RELAY_HTML[] = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>vanilla relay</title></head>"
                           "<body><script src=\"/vanilla_relay.js\"></script></body></html>\n";
 const QString WAKE_PAGE = QStringLiteral("vanilla_wake.html");
 const QString WAKE_SCRIPT = QStringLiteral("vanilla_wake.js");
-const char WAKE_HTML[] = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Vanilla wake</title></head>"
+const char WAKE_HTML[] = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>vanilla wake</title></head>"
                          "<body><script src=\"/vanilla_wake.js\"></script></body></html>\n";
 const QString COMPLETE = QStringLiteral(".vanilla-copy-complete");
 const int PAGE_LIMIT = 8 * 1024 * 1024;
@@ -162,7 +162,7 @@ QByteArray CompleteMark(int stamp){
 }
 
 const char KEYLESS_NOTE[] =
-    "try { console.warn('Vanilla: the shims of this extension were written without their key, because its"
+    "try { console.warn('vanilla: the shims of this extension were written without their key, because its"
     " web_accessible_resources let the web read a file which would carry it; it asks the application for nothing'); } catch (e) {}\n";
 
 bool Completed(const QString &copy, int stamp){
@@ -238,7 +238,7 @@ bool CopyTree(const QString &from, const QString &to, QString *why, QString *det
             return false;
         }
         if(info.fileName().startsWith(SHIM_PREFIX, Qt::CaseInsensitive)){
-            *why = QString::fromLatin1(QT_TRANSLATE_NOOP("ExtensionCopy", "it has a file named like the ones Vanilla adds (%1)"));
+            *why = QString::fromLatin1(QT_TRANSLATE_NOOP("ExtensionCopy", "it has a file named like the ones vanilla adds (%1)"));
             *detail = relative;
             return false;
         }
@@ -561,7 +561,7 @@ Made Make(const QString &source, const QString &root, const QString &id, const Q
         return answer(QT_TRANSLATE_NOOP("ExtensionCopy", "it has no usable id"));
     const QString fromKey = Key(from) + QLatin1Char('/'), rootKey = Key(root) + QLatin1Char('/');
     if(fromKey.startsWith(rootKey) || rootKey.startsWith(fromKey))
-        return answer(QT_TRANSLATE_NOOP("ExtensionCopy", "it is in the folder Vanilla keeps its copies in, or that folder is in it"));
+        return answer(QT_TRANSLATE_NOOP("ExtensionCopy", "it is in the folder vanilla keeps its copies in, or that folder is in it"));
 
     const int stamp = Stamp(from, bytes, key, locale);
     const Rewritten rewritten = Rewrite(manifest, stamp);

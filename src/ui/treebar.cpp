@@ -8,6 +8,7 @@
 #include "directorypage.hpp"
 #include "gadgets.hpp"
 #include "nodepreview.hpp"
+#include "plaintooltip.hpp"
 #include "webengineview.hpp"
 
 #include <QPainter>
@@ -439,6 +440,10 @@ namespace {
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE {
             Q_UNUSED(option) Q_UNUSED(widget)
+            SetFade(m_Gradient,        Theme::BarScrollFade);
+            SetFade(m_HoveredGradient, Theme::BarScrollFadeHovered);
+            SetFade(m_PressedGradient, Theme::BarScrollFadePressed);
+
             const QRectF bound = boundingRect();
             const bool horizontal = m_TreeBar->orientation() == Qt::Horizontal;
 
@@ -1433,6 +1438,26 @@ void TreeBar::ForgetNodes(NodeList &nds){
     }
 }
 
+bool TreeBar::RefersToAny(const QSet<Node*> &going) const {
+    if(going.isEmpty()) return false;
+    foreach(LayerItem *layer, m_LayerList){
+        if(going.contains(layer->RawNode()) || going.contains(layer->EmptyPlaceParent()))
+            return true;
+        foreach(NodeItem *item, layer->GetNodeItems())
+            if(going.contains(item->GetNode())) return true;
+    }
+    if(m_Scene){
+        foreach(QGraphicsItem *gi, m_Scene->items())
+            if(NodeItem *item = dynamic_cast<NodeItem*>(gi))
+                if(going.contains(item->GetNode())) return true;
+    }
+    return false;
+}
+
+void TreeBar::LetGoOf(const QSet<Node*> &going){
+    if(RefersToAny(going)) CollectNodes();
+}
+
 void TreeBar::OnFoldedChanged(NodeList &nds){
     if(orientation() == Qt::Horizontal) return;
     if(m_LayerList.isEmpty()) return;
@@ -1858,6 +1883,12 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
 }
 
 LayerItem::~LayerItem(){
+    foreach(QGraphicsItem *child, childItems()){
+        if(NodeItem *item = dynamic_cast<NodeItem*>(child)){
+            QObject::disconnect(item, nullptr, this, nullptr);
+            QObject::disconnect(item->GetAnimation(), nullptr, this, nullptr);
+        }
+    }
     m_DummyNode->Delete();
 }
 
@@ -2420,7 +2451,22 @@ void LayerItem::PrependToNodeItems(NodeItem *item){
 
 void LayerItem::RemoveFromNodeItems(NodeItem *item){
     if(m_FocusedNode == item) m_FocusedNode = nullptr;
+    if(InsertTarget() == item) SetInsertTarget(nullptr);
     m_NodeItems.removeOne(item);
+}
+
+Node *LayerItem::EmptyPlaceParent() const {
+    return m_DummyNode ? m_DummyNode->GetParent() : nullptr;
+}
+
+NodeItem *LayerItem::InsertTarget() const {
+    InsertPosition *position = static_cast<InsertPosition*>(m_InsertPosition);
+    return position ? position->GetTarget() : nullptr;
+}
+
+void LayerItem::SetInsertTarget(NodeItem *item){
+    if(InsertPosition *position = static_cast<InsertPosition*>(m_InsertPosition))
+        position->SetTarget(item, item ? InsertPosition::LeftOfTarget : InsertPosition::NoWhere);
 }
 
 void LayerItem::SwapWithNext(int index){
@@ -2468,7 +2514,7 @@ QMenu *LayerItem::MakeNodeMenu(){
             QAction *restore = new QAction(restoreMenu);
             QString title = t->ReadableTitle();
 
-            restore->setToolTip(title);
+            restore->setToolTip(PlainToolTip(title));
 
             if(title.length() > 25)
                 title = title.left(25) + QStringLiteral("...");
@@ -3272,6 +3318,7 @@ void NodeItem::OnCreated(QRectF target, QRectF start){
         m_Animation->start();
         m_Animation->setCurrentTime(16);
     } else {
+        m_Animation->stop();
         SetRect(target);
     }
 }

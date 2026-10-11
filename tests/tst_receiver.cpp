@@ -2,6 +2,7 @@
 #include "mainwindow.hpp"
 #include "treebank.hpp"
 #include "receiver.hpp"
+#include "transmitter.hpp"
 #include "testsupport.hpp"
 
 #include <QtTest>
@@ -35,6 +36,7 @@ class tst_receiver : public QObject {
             keys.first().first().toString() == command;
     }
 private slots:
+    void onlyTheSameUsersServerIsTold();
     void initTestCase(){
         TestSupport::SilenceDebugOutput();
         TestSupport::DisableWidgetAnimation();
@@ -184,6 +186,21 @@ private slots:
         QVERIFY(server.isNull());
     }
 };
+
+void tst_receiver::onlyTheSameUsersServerIsTold(){
+    QLocalServer server;
+    const QString name = QStringLiteral("vanilla_tst_receiver_same_user_%1").arg(QCoreApplication::applicationPid());
+    QLocalServer::removeServer(name);
+    QVERIFY(server.listen(name));
+    QLocalSocket client;
+    QVERIFY(!Transmitter::ServerIsSameUser(&client));
+    QVERIFY(!Transmitter::ServerIsSameUser(nullptr));
+    client.connectToServer(name);
+    QVERIFY(client.waitForConnected(2000));
+    QVERIFY(Transmitter::ServerIsSameUser(&client));
+    client.abort();
+    QVERIFY(!Transmitter::ServerIsSameUser(&client));
+}
 
 int main(int argc, char **argv){
     Application app(argc, argv);

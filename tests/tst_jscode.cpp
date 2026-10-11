@@ -5,6 +5,9 @@
 #include <QJSEngine>
 #include <QJSValue>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QPoint>
 #include <QPointF>
 #include <QRegularExpression>
@@ -125,6 +128,17 @@ private slots:
     }
 
 #ifdef EDGEWEBVIEW
+
+    void theEdgeBridgesTagTheirReportsWithTheirOwnToken(){
+        const QString token = Application::EdgeEventToken();
+        QVERIFY(QRegularExpression(QStringLiteral("^[0-9a-f]{32}$")).match(token).hasMatch());
+        QVERIFY(token != Application::EventToken());
+        QCOMPARE(Application::EdgeEventToken(), token);
+        const QString tagged = QStringLiteral("\"") + token + QStringLiteral("\"");
+        QVERIFY(View::EdgeInputBridgeJsCode(QList<int>() << 81, QList<int>())
+                .contains(QStringLiteral("var tag = ") + tagged + QStringLiteral(";")));
+        QVERIFY(View::EdgeScrollReportJsCode().contains(QStringLiteral("tag: ") + tagged));
+    }
 
     void theInputBridgeTakesKeysOnlyInTheTopDocument(){
         QJSEngine engine;
@@ -451,34 +465,59 @@ private slots:
     void theInputBridgeSeesTheCaretThroughAShadowRoot_data(){
         QTest::addColumn<QString>("focus");
         QTest::addColumn<int>("reported");
+        QTest::addColumn<int>("prevented");
 
         QTest::newRow("body")
-            << QStringLiteral("({ active: { tagName: 'BODY' } })") << 1;
+            << QStringLiteral("({ active: { tagName: 'BODY' } })") << 1 << 1;
         QTest::newRow("input")
-            << QStringLiteral("({ active: { tagName: 'INPUT' } })") << 0;
+            << QStringLiteral("({ active: { tagName: 'INPUT' } })") << 0 << 0;
+        QTest::newRow("button")
+            << QStringLiteral("({ active: { tagName: 'BUTTON' } })") << 1 << 0;
+        QTest::newRow("checkbox")
+            << QStringLiteral("({ active: { tagName: 'INPUT', type: 'checkbox' } })") << 1 << 0;
+        QTest::newRow("radio")
+            << QStringLiteral("({ active: { tagName: 'INPUT', type: 'radio' } })") << 1 << 0;
+        QTest::newRow("submit")
+            << QStringLiteral("({ active: { tagName: 'INPUT', type: 'submit' } })") << 1 << 0;
+        QTest::newRow("checkbox in a shadow root")
+            << QStringLiteral("({ active: { tagName: 'X-ROW', shadowRoot: {\n"
+                              "    activeElement: { tagName: 'INPUT', type: 'checkbox' } } } })") << 1 << 0;
+        QTest::newRow("button, key taken by the page")
+            << QStringLiteral("({ active: { tagName: 'BUTTON' }, taken: true })") << 0 << 0;
+        QTest::newRow("text input")
+            << QStringLiteral("({ active: { tagName: 'INPUT', type: 'text' } })") << 0 << 0;
+        QTest::newRow("search input")
+            << QStringLiteral("({ active: { tagName: 'INPUT', type: 'search' } })") << 0 << 0;
+        QTest::newRow("number input")
+            << QStringLiteral("({ active: { tagName: 'INPUT', type: 'number' } })") << 0 << 0;
+        QTest::newRow("input of an unknown kind")
+            << QStringLiteral("({ active: { tagName: 'INPUT', type: 'whatever' } })") << 0 << 0;
+        QTest::newRow("select")
+            << QStringLiteral("({ active: { tagName: 'SELECT' } })") << 0 << 0;
         QTest::newRow("input in a shadow root")
             << QStringLiteral("({ active: { tagName: 'GR-APP', shadowRoot: {\n"
-                              "    activeElement: { tagName: 'INPUT' } } } })") << 0;
+                              "    activeElement: { tagName: 'INPUT' } } } })") << 0 << 0;
         QTest::newRow("input two shadow roots deep")
             << QStringLiteral("({ active: { tagName: 'GR-APP', shadowRoot: {\n"
                               "    activeElement: { tagName: 'GR-SEARCH-BAR', shadowRoot: {\n"
-                              "        activeElement: { tagName: 'INPUT' } } } } } })") << 0;
+                              "        activeElement: { tagName: 'INPUT' } } } } } })") << 0 << 0;
         QTest::newRow("div in a shadow root")
             << QStringLiteral("({ active: { tagName: 'GR-APP', shadowRoot: {\n"
-                              "    activeElement: { tagName: 'DIV' } } } })") << 1;
+                              "    activeElement: { tagName: 'DIV' } } } })") << 1 << 1;
         QTest::newRow("target named by the composed path")
             << QStringLiteral("({ active: { tagName: 'GR-APP' },\n"
-                              "   path: [ { tagName: 'INPUT' } ] })") << 0;
+                              "   path: [ { tagName: 'INPUT' } ] })") << 0 << 0;
         QTest::newRow("input behind a closed root")
             << QStringLiteral("({ active: { tagName: 'GR-APP' },\n"
-                              "   path: [ { tagName: 'GR-APP' } ] })") << 1;
+                              "   path: [ { tagName: 'GR-APP' } ] })") << 1 << 1;
         QTest::newRow("path without an element")
-            << QStringLiteral("({ active: { tagName: 'BODY' }, path: [ {} ] })") << 1;
+            << QStringLiteral("({ active: { tagName: 'BODY' }, path: [ {} ] })") << 1 << 1;
     }
 
     void theInputBridgeSeesTheCaretThroughAShadowRoot(){
         QFETCH(QString, focus);
         QFETCH(int, reported);
+        QFETCH(int, prevented);
 
         QJSEngine engine;
         const QString script =
@@ -492,17 +531,21 @@ private slots:
             "  document = { activeElement: focus.active,\n"
             "               addEventListener: function(t, f){\n"
             "                   if(t === 'keydown') handler = f; } };\n"
+            "  var timers = [];\n"
             "  window = { chrome: { webview: {\n"
-            "                 postMessage: function(m){ out.reported++; } } } };\n"
+            "                 postMessage: function(m){ out.reported++; } } },\n"
+            "             setTimeout: function(f){ timers.push(f); } };\n"
             "  window.top = window;\n"
             "%1\n"
             "  var e = { keyCode: 81, shiftKey: false, repeat: false,\n"
-            "            isTrusted: true,\n"
+            "            isTrusted: true, defaultPrevented: false,\n"
             "            isComposing: false, ctrlKey: false,\n"
             "            altKey: false, metaKey: false,\n"
-            "            preventDefault: function(){ out.prevented++; } };\n"
+            "            preventDefault: function(){ out.prevented++; e.defaultPrevented = true; } };\n"
             "  if(focus.path) e.composedPath = function(){ return focus.path; };\n"
             "  handler(e);\n"
+            "  if(focus.taken) e.defaultPrevented = true;\n"
+            "  while(timers.length) timers.shift()();\n"
             "  return out;\n"
             "})").arg(script);
 
@@ -516,7 +559,7 @@ private slots:
         QVERIFY2(!out.isError(),
                  qPrintable(out.property(QStringLiteral("message")).toString()));
         QCOMPARE(out.property(QStringLiteral("reported")).toInt(), reported);
-        QCOMPARE(out.property(QStringLiteral("prevented")).toInt(), reported);
+        QCOMPARE(out.property(QStringLiteral("prevented")).toInt(), prevented);
     }
 
     void theBridgesOutliveTheHiddenWebview(){
@@ -934,7 +977,9 @@ private slots:
                  qPrintable(file.fileName()));
         const QString source = QString::fromUtf8(file.readAll());
 
-        const int click = source.indexOf(QStringLiteral("button.addEventListener('click'"));
+        const int nav = source.indexOf(QStringLiteral("function buildNav()"));
+        QVERIFY(nav >= 0);
+        const int click = source.indexOf(QStringLiteral("button.addEventListener('click'"), nav);
         const int same = source.indexOf
             (QStringLiteral("if (window.location.hash.slice(1) === category.name) showCategory(category.name);"), click);
         const int write = source.indexOf
@@ -999,6 +1044,143 @@ private slots:
         QVERIFY(reapply < finallyEnd);
         QVERIFY(source.contains(QStringLiteral(
             "node.disabled = !applies || node.dataset.busy === 'true';")));
+    }
+
+    void settingsAncestorsSlideOpenAndShut(){
+        QFile file(QStringLiteral(VANILLA_RESOURCE_DIR "/settings/settings.js"));
+        QVERIFY2(file.open(QFile::ReadOnly | QFile::Text),
+                 qPrintable(file.fileName()));
+        const QString source = QString::fromUtf8(file.readAll());
+
+        const int render = source.indexOf(QStringLiteral("function renderDirectory() {"));
+        const int summary = source.indexOf(QStringLiteral("above.appendChild(summary);"), render);
+        const int handler = source.indexOf(QStringLiteral("summary.addEventListener('click'"), summary);
+        const int refuse = source.indexOf(QStringLiteral("e.preventDefault();"), handler);
+        const int slide = source.indexOf(QStringLiteral("toggleAnimated(above, summary);"), refuse);
+        const int clickEnd = source.indexOf(QStringLiteral("});"), handler);
+        QVERIFY(render >= 0);
+        QVERIFY(summary > render);
+        QVERIFY(handler > summary);
+        QVERIFY(refuse > handler);
+        QVERIFY(slide > refuse);
+        QVERIFY(slide < clickEnd);
+        const int tree = source.indexOf(QStringLiteral("outline.className = 'dir-tree';"), render);
+        const int treeHandler = source.indexOf(QStringLiteral("heading.addEventListener('click'"), tree);
+        const int treeRefuse = source.indexOf(QStringLiteral("e.preventDefault();"), treeHandler);
+        const int treeSlide = source.indexOf(QStringLiteral("toggleAnimated(outline, heading);"), treeRefuse);
+        const int treeEnd = source.indexOf(QStringLiteral("});"), treeHandler);
+        QVERIFY(tree > render);
+        QVERIFY(treeHandler > tree);
+        QVERIFY(treeHandler < summary);
+        QVERIFY(treeRefuse > treeHandler);
+        QVERIFY(treeSlide > treeRefuse);
+        QVERIFY(treeSlide < treeEnd);
+        QFile css(QStringLiteral(VANILLA_RESOURCE_DIR "/settings/settings.css"));
+        QVERIFY2(css.open(QFile::ReadOnly | QFile::Text), qPrintable(css.fileName()));
+        const QString sheet = QString::fromUtf8(css.readAll());
+        QVERIFY(sheet.contains(QStringLiteral(".directory-panel > details[open]:not([data-closing]) .when-closed,")));
+        QVERIFY(sheet.contains(QStringLiteral(".directory-panel > details[data-closing] .when-open { display: none; }")));
+        const int treeRule = sheet.indexOf(QStringLiteral(".directory-panel .dir-tree {"));
+        const int treeRuleEnd = sheet.indexOf(QStringLiteral("}"), treeRule);
+        QVERIFY(treeRule >= 0);
+        QVERIFY(sheet.mid(treeRule, treeRuleEnd - treeRule).contains(QStringLiteral("overflow: hidden;")));
+
+        const int begin = source.indexOf(QStringLiteral("function toggleAnimated(details, summary) {"));
+        const int end = source.indexOf(QStringLiteral("\n}"), begin);
+        QVERIFY(begin >= 0);
+        QVERIFY(end > begin);
+        const QString fn = source.mid(begin, end + 2 - begin);
+
+        QJSEngine engine;
+        const QJSValue harness = engine.evaluate(
+            QStringLiteral(
+                "(function(){\n"
+                " var reduced = false;\n"
+                " var window = { matchMedia: function(){ return { matches: reduced }; } };\n"
+                " var getComputedStyle = function(){ return { borderTopWidth: '1px', borderBottomWidth: '1px' }; };\n"
+                " var summary = { getBoundingClientRect: function(){ return { height: 40 }; } };\n"
+                " var running = [];\n"
+                " var log = [];\n"
+                " var tall = 400;\n"
+                " var details = {\n"
+                "   open: false, dataset: {}, reached: null,\n"
+                "   getBoundingClientRect: function(){\n"
+                "     return { height: this.reached !== null ? this.reached : (this.open ? tall : 42) }; },\n"
+                "   getAnimations: function(){ return running.slice(); },\n"
+                "   animate: function(frames, options){\n"
+                "     var a = { frames: frames, options: options, cancelled: false,\n"
+                "               cancel: function(){ this.cancelled = true; details.reached = null; running = running.filter(function(x){ return x !== a; }); } };\n"
+                "     running.push(a); log.push(a); return a; }\n"
+                " };\n")
+            + fn +
+            QStringLiteral(
+                "\n return {\n"
+                "   click: function(){ toggleAnimated(details, summary); },\n"
+                "   finish: function(){ var a = running.pop(); a.onfinish(); },\n"
+                "   state: function(){ return JSON.stringify({ open: details.open, closing: details.dataset.closing === '1',\n"
+                "                       running: running.length, last: log.length ? log[log.length - 1].frames.height : null,\n"
+                "                       duration: log.length ? log[log.length - 1].options.duration : null,\n"
+                "                       lastCancelled: log.length ? log[log.length - 1].cancelled : null }); },\n"
+                "   reduce: function(on){ reduced = on; },\n"
+                "   reach: function(h){ details.reached = h; },\n"
+                "   grow: function(h){ tall = h; }\n"
+                " }; })()"));
+        QVERIFY2(!harness.isError(), qPrintable(harness.toString()));
+        auto state = [&](){
+            return QJsonDocument::fromJson(harness.property(QStringLiteral("state")).call().toString().toUtf8()).object();
+        };
+        auto click = [&](){ harness.property(QStringLiteral("click")).call(); };
+
+        click();
+        QJsonObject s = state();
+        QCOMPARE(s.value(QStringLiteral("open")).toBool(), true);
+        QCOMPARE(s.value(QStringLiteral("closing")).toBool(), false);
+        QCOMPARE(s.value(QStringLiteral("running")).toInt(), 1);
+        QCOMPARE(s.value(QStringLiteral("last")).toArray(), QJsonArray({QStringLiteral("42px"), QStringLiteral("400px")}));
+        QCOMPARE(s.value(QStringLiteral("duration")).toDouble(), 150 + (400 - 42) / 4.0);
+        harness.property(QStringLiteral("finish")).call();
+        QCOMPARE(state().value(QStringLiteral("open")).toBool(), true);
+
+        click();
+        s = state();
+        QCOMPARE(s.value(QStringLiteral("open")).toBool(), true);
+        QCOMPARE(s.value(QStringLiteral("closing")).toBool(), true);
+        QCOMPARE(s.value(QStringLiteral("last")).toArray(), QJsonArray({QStringLiteral("400px"), QStringLiteral("42px")}));
+        harness.property(QStringLiteral("finish")).call();
+        s = state();
+        QCOMPARE(s.value(QStringLiteral("open")).toBool(), false);
+        QCOMPARE(s.value(QStringLiteral("closing")).toBool(), false);
+
+        click();
+        harness.property(QStringLiteral("finish")).call();
+        click();
+        harness.property(QStringLiteral("reach")).call({QJSValue(200)});
+        click();
+        s = state();
+        QCOMPARE(s.value(QStringLiteral("open")).toBool(), true);
+        QCOMPARE(s.value(QStringLiteral("closing")).toBool(), false);
+        QCOMPARE(s.value(QStringLiteral("running")).toInt(), 1);
+        QCOMPARE(s.value(QStringLiteral("last")).toArray(), QJsonArray({QStringLiteral("200px"), QStringLiteral("400px")}));
+        harness.property(QStringLiteral("reach")).call({QJSValue::NullValue});
+        harness.property(QStringLiteral("finish")).call();
+        QCOMPARE(state().value(QStringLiteral("open")).toBool(), true);
+
+        click();
+        harness.property(QStringLiteral("finish")).call();
+        harness.property(QStringLiteral("grow")).call({QJSValue(4000)});
+        click();
+        QCOMPARE(state().value(QStringLiteral("duration")).toDouble(), 300.0);
+        harness.property(QStringLiteral("finish")).call();
+        QCOMPARE(state().value(QStringLiteral("open")).toBool(), true);
+
+        harness.property(QStringLiteral("reduce")).call({QJSValue(true)});
+        const int before = state().value(QStringLiteral("running")).toInt();
+        click();
+        s = state();
+        QCOMPARE(s.value(QStringLiteral("open")).toBool(), false);
+        QCOMPARE(s.value(QStringLiteral("running")).toInt(), before);
+        click();
+        QCOMPARE(state().value(QStringLiteral("open")).toBool(), true);
     }
 
     void eventFilterInstallsWhatWasAsked_data(){
@@ -1238,7 +1420,6 @@ private slots:
         QTest::addColumn<QString>("name");
         QTest::addColumn<QString>("firstDeclaration");
         QTest::newRow("settings") << QStringLiteral("/settings/settings.js") << QStringLiteral("const state");
-        QTest::newRow("directory") << QStringLiteral("/directory/directory.js") << QStringLiteral("\nconst ");
     }
 
     void theApplicationsPagesDrawNothingInAFrame(){

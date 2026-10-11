@@ -799,7 +799,7 @@ void tst_extensioncopy::whatTheWebMayReadGetsNoKey(){
     QCOMPARE(page.contains(key), !keyless);
     QCOMPARE(worker.contains(place), keyless);
     QCOMPARE(page.contains(place), keyless);
-    QCOMPARE(worker.startsWith("try { console.warn('Vanilla: the shims of this extension were written without their key"), keyless);
+    QCOMPARE(worker.startsWith("try { console.warn('vanilla: the shims of this extension were written without their key"), keyless);
     QVERIFY(worker.endsWith(Cdp::WorkerShim().toUtf8().replace(place, keyless ? place : key) + ";\n"));
     ExtensionCopy::ForgetForTesting();
     const ExtensionCopy::Made unkeyed = ExtensionCopy::Make(source, dir.filePath(QStringLiteral("copies2")), QStringLiteral("idid"));

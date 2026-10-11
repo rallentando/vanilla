@@ -226,7 +226,7 @@ void Notifier::AutoSaveFailed(){
 
 void Notifier::AutoSaveFinished(const QString &info){
     m_UseLinkText = false;
-    m_UpperText = tr("Auto save finished(%1).").arg(info);
+    m_UpperText = tr("Auto save finished (%1).").arg(info);
     repaint();
 }
 

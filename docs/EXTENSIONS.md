@@ -1,21 +1,21 @@
 # 拡張機能の対応状況
 
-Vanilla で Chrome 拡張（Manifest V3）がどこまで動くかを、拡張の作者と利用者が期待値を合わせるためにまとめる。
+vanilla で Chrome 拡張（Manifest V3）がどこまで動くかを、拡張の作者と利用者が期待値を合わせるためにまとめる。
 仕組みは [ARCHITECTURE.md](ARCHITECTURE.md)「拡張機能」にある。
 
 ## 前提
 
 - **導入できるのは展開済みのフォルダーだけ。** Chrome ウェブストアや CRX からは入れられない。アドレスバー右のパズルのボタンから登録・有効 / 無効・ピン留めをする
 - 拡張が動くのは、ページを表示するエンジンが用意する仕組みの上。エンジンは 2 つあり、拡張 API の出どころが違う
-  - **Edge WebView2**（Windows の既定）: API の大部分は WebView2 自身のもの。Vanilla が答えるのは、アプリの木構造に関わる部分（タブ・ウィンドウ・ブックマーク・履歴）と、ボタンやサイドパネルなどアプリの画面に出るもの
-  - **Qt WebEngine**（Windows 以外の既定。Windows でもディレクトリ単位で選べる）: エンジンが素で持つ API が少ないため、Vanilla は拡張のコピーに互換レイヤー（シム）を入れて足りない API を埋める（設定 `network/@ExtensionShims`）。Windows 以外の OS の分はビルドも確認もしていない
+  - **Edge WebView2**（Windows の既定）: API の大部分は WebView2 自身のもの。vanilla が答えるのは、アプリの木構造に関わる部分（タブ・ウィンドウ・ブックマーク・履歴）と、ボタンやサイドパネルなどアプリの画面に出るもの
+  - **Qt WebEngine**（Windows 以外の既定。Windows でもディレクトリ単位で選べる）: エンジンが素で持つ API が少ないため、vanilla は拡張のコピーに互換レイヤー（シム）を入れて足りない API を埋める（設定 `network/@ExtensionShims`）。Windows 以外の OS の分はビルドも確認もしていない
 - Qt WebEngine では、ページから拡張のリソース（`web_accessible_resources`）を読む機能に Qt WebEngine へのパッチが要る（[README](../README.md)「Qt WebEngine へのパッチ」）
 - private（OTR）のプロファイルでは拡張を動かさない
 - 開発中に実機で使って確かめてきた拡張は Vimium、uBlock Origin Lite、Stands、SingleFile、Dark Reader。どこまで動くかは拡張の版とエンジンによる
 
 ## 方針: 仕様には追従しない
 
-足りない API を Chrome の仕様に合わせて埋め続けることはしない。下の表にある範囲で止めていて、残りは**実際に使う拡張で不具合が出たときに**、その拡張が要る分だけ足す。
+足りない API を Chrome の仕様に合わせて埋め続けることはしない。下の表にある範囲で止めていて、残りは**実際に使う拡張で不具合が出たときに**、その拡張が要る分だけ足す（下の「足さない」に挙げたものは足さない）。
 
 ## 名前空間ごとの対応（Qt WebEngine）
 
@@ -23,14 +23,18 @@ Chrome の拡張 API の名前空間のうち、ChromeOS 専用・Dev チャン�
 
 - **対応（27）**: `action` / `alarms` / `bookmarks` / `commands` / `contextMenus` / `declarativeNetRequest` / `downloads` / `extension` / `fontSettings` / `history` / `i18n` / `identity` / `idle` / `notifications` / `offscreen` / `permissions` / `runtime` / `scripting` / `search` / `sessions` / `sidePanel` / `storage` / `tabs` / `topSites` / `userScripts` / `webNavigation` / `windows`。多くは一部のメンバーだけで、どれが動くかは下の表にある
 - **エンジンが素で持つ（6）**: `management` / `power` / `system.cpu` / `system.memory` / `system.display` / `system.storage`
-- **未対応（30）**: `accessibilityFeatures` / `browsingData` / `contentSettings` / `cookies` / `debugger` / `declarativeContent` / `desktopCapture` / `devtools.*`（5）/ `dom` / `enterprise.hardwarePlatform` / `gcm` / `instanceID` / `mimeHandler` / `omnibox` / `pageCapture` / `printerProvider` / `privacy` / `proxy` / `publicSuffix` / `readingList` / `tabCapture` / `tabGroups` / `tts` / `ttsEngine` / `webAuthenticationProxy` / `webRequest`
+- **未対応（30）**:
+  - 足さない（27）: `accessibilityFeatures` / `browsingData` / `contentSettings` / `cookies` / `debugger` / `declarativeContent` / `desktopCapture` / `devtools.*`（5）/ `dom` / `enterprise.hardwarePlatform` / `gcm` / `instanceID` / `mimeHandler` / `pageCapture` / `printerProvider` / `privacy` / `proxy` / `readingList` / `tabCapture` / `tabGroups` / `ttsEngine` / `webAuthenticationProxy` / `webRequest`
+  - 使う拡張が出たら足す（3）: `omnibox` / `publicSuffix` / `tts`
+  - `webRequest` と `cookies` は、遮断を含めてどの機能も無い。広告やリクエストの遮断は `declarativeNetRequest` で動く
 
 Edge WebView2 では、WebView2 自身が持つものが多く、名前空間ごとには数えていない。
 
 ## メソッド単位の表
 
-印: **○** = 答える / **△** = 条件つきで答える（Qt 列は manifest にその権限があるときだけ。Edge 列は一部しか確かめていない）/ **×** = 答えない（呼ぶと失敗する）/ **※** = 制限や注意がある。
-表に出すのは、Vanilla が答えるか、Vanilla が答えずにエンジンへ任せるメンバー。Edge 列は、Vanilla が答えるものと WebView2 自身が答えるものを区別しない。
+印: **○** = 答える / **△** = 一部だけ答える、または確かめきれていない / **×** = 答えない（呼ぶと失敗する）/ **※** = 制限や注意がある。
+Chrome で権限の要る名前空間（`alarms` / `scripting` / `userScripts` など）は、Chrome と同じく manifest にその権限があるときだけ使える。
+表に出すのは、vanilla が答えるか、vanilla が答えずにエンジンへ任せるメンバー。Edge 列は、vanilla が答えるものと WebView2 自身が答えるものを区別しない。
 
 <!-- BEGIN: tst_cdpshims::theTableOfWhatIsAnsweredIsTheShimsOwn -->
 | 名前空間 | メンバー | Qt WebEngine | Edge WebView2 |
@@ -50,10 +54,10 @@ Edge WebView2 では、WebView2 自身が持つものが多く、名前空間ご
 |  | `setBadgeTextColor` | ○ | ○ |
 |  | `setIcon` | ○ | ○ |
 |  | `setTitle` | ○ | ○ |
-| `alarms` | `clear` | △ | ○ |
-|  | `clearAll` | △ | ○ |
-|  | `create` | △ | ○ |
-|  | `onAlarm` | △ | ○ |
+| `alarms` | `clear` | ○ | ○ |
+|  | `clearAll` | ○ | ○ |
+|  | `create` | ○ | ○ |
+|  | `onAlarm` | ○ | ○ |
 | `bookmarks` | `get` | ○ | ○ |
 |  | `getChildren` | ○ | ○ |
 |  | `getSubTree` | ○ | ○ |
@@ -86,14 +90,14 @@ Edge WebView2 では、WebView2 自身が持つものが多く、名前空間ご
 | `history` | `onVisitRemoved` | ○ | ○ |
 |  | `onVisited` | ○ | ○ |
 |  | `search` | ○ | ○ |
-| `identity` | `clearAllCachedAuthTokens` | △ | × |
-|  | `getAuthToken` | △ | × |
-|  | `getProfileUserInfo` | △ | ○※ |
-|  | `getRedirectURL` | △ | ○ |
-|  | `launchWebAuthFlow` | △ | △※ |
-|  | `removeCachedAuthToken` | △ | × |
-| `idle` | `onStateChanged` | △ | ○ |
-|  | `setDetectionInterval` | △ | ○ |
+| `identity` | `clearAllCachedAuthTokens` | ○ | × |
+|  | `getAuthToken` | ○ | × |
+|  | `getProfileUserInfo` | ○ | ○※ |
+|  | `getRedirectURL` | ○ | ○ |
+|  | `launchWebAuthFlow` | ○ | △※ |
+|  | `removeCachedAuthToken` | ○ | × |
+| `idle` | `onStateChanged` | ○ | ○ |
+|  | `setDetectionInterval` | ○ | ○ |
 | `management` | `createAppShortcut` | × | × |
 |  | `generateAppForLink` | × | × |
 |  | `installReplacementWebApp` | × | × |
@@ -109,25 +113,25 @@ Edge WebView2 では、WebView2 自身が持つものが多く、名前空間ご
 |  | `onClicked` | ○ | △※ |
 |  | `onClosed` | ○ | ○ |
 |  | `update` | ○ | ○ |
-| `offscreen` | `closeDocument` | △ | ○ |
-|  | `createDocument` | △ | ○ |
-|  | `hasDocument` | △ | ○ |
+| `offscreen` | `closeDocument` | ○ | ○ |
+|  | `createDocument` | ○ | ○ |
+|  | `hasDocument` | ○ | ○ |
 | `permissions` | `contains` | ○ | ○ |
 |  | `getAll` | ○ | ○ |
 |  | `request` | ○ | ○※ |
-| `runtime` | `getContexts` | △ | ○ |
+| `runtime` | `getContexts` | ○ | ○ |
 |  | `onConnect` | ○ | ○ |
 |  | `onInstalled` | ○ | ○ |
 |  | `onMessage` | ○ | ○ |
 |  | `onStartup` | ○ | ○ |
-|  | `onUserScriptMessage` | △ | ×※ |
+|  | `onUserScriptMessage` | ○ | ×※ |
 |  | `openOptionsPage` | ○ | ○ |
-| `scripting` | `executeScript` | △ | △ |
-|  | `getRegisteredContentScripts` | △ | ○ |
-|  | `insertCSS` | △ | ○ |
-|  | `registerContentScripts` | △ | ○ |
-|  | `removeCSS` | △ | ○ |
-|  | `unregisterContentScripts` | △ | ○ |
+| `scripting` | `executeScript` | ○ | ○ |
+|  | `getRegisteredContentScripts` | ○ | ○ |
+|  | `insertCSS` | ○ | ○ |
+|  | `registerContentScripts` | ○ | ○ |
+|  | `removeCSS` | ○ | ○ |
+|  | `unregisterContentScripts` | ○ | ○ |
 | `search` | `query` | ○ | ○ |
 | `sessions` | `restore` | ○ | ○ |
 | `sidePanel` | `close` | ○ | ○ |
@@ -160,13 +164,13 @@ Edge WebView2 では、WebView2 自身が持つものが多く、名前空間ご
 |  | `setZoom` | ○ | ○ |
 |  | `update` | ○ | ○ |
 | `topSites` | `get` | ○ | ○ |
-| `userScripts` | `configureWorld` | △ | × |
-|  | `getScripts` | △ | × |
-|  | `getWorldConfigurations` | △ | × |
-|  | `register` | △ | × |
-|  | `resetWorldConfiguration` | △ | × |
-|  | `unregister` | △ | × |
-|  | `update` | △ | × |
+| `userScripts` | `configureWorld` | ○ | × |
+|  | `getScripts` | ○ | × |
+|  | `getWorldConfigurations` | ○ | × |
+|  | `register` | ○ | × |
+|  | `resetWorldConfiguration` | ○ | × |
+|  | `unregister` | ○ | × |
+|  | `update` | ○ | × |
 | `webNavigation` | `getAllFrames` | ○ | ○ |
 |  | `onCommitted` | ○ | ○ |
 |  | `onCompleted` | ○ | ○ |

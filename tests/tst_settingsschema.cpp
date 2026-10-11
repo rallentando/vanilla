@@ -24,6 +24,7 @@ private slots:
     void everyItemIsInAKnownCategory();
     void everyCategoryHasARowAndTheTableKeepsTheirOrder();
     void everyChoiceDefaultIsOneOfTheChoices();
+    void everyChoiceHasALabelAndEveryLabelNamesAChoice();
     void everyLabelIsPresent();
     void everyDependencyNamesABooleanInTheTable();
     void chromeExtensionsOfferADirectoryPicker();
@@ -38,6 +39,7 @@ private slots:
     void findOnlyKnowsTheKeysInTheTable();
     void everySettingReachesTheProfilesItIsMeantFor();
     void everyPreferenceRowIsAppliedByTheView();
+    void everyAttributeTheViewAppliesReachesThePage();
     void aTabListItemMadeWithTheWindowAsksForARestart();
 
     void fromJsonRefusesTheWrongShape();
@@ -110,6 +112,9 @@ void tst_settingsschema::everyCategoryHasARowAndTheTableKeepsTheirOrder(){
     }
     QStringList expected = order;
     expected.removeOne(QStringLiteral("input"));
+    expected.removeOne(QStringLiteral("passwords"));
+    expected.removeOne(QStringLiteral("downloads"));
+    expected.removeOne(QStringLiteral("directory"));
     QCOMPARE(seen, expected);
 }
 
@@ -132,6 +137,49 @@ void tst_settingsschema::everyChoiceDefaultIsOneOfTheChoices(){
         if(item.type == SettingsSchema::Choice) continue;
         QCOMPARE(QString::fromLatin1(item.choices), QString());
     }
+}
+
+void tst_settingsschema::everyChoiceHasALabelAndEveryLabelNamesAChoice(){
+    QSet<QString> offered;
+    foreach(const SettingsSchema::Item &item, SettingsSchema::Items()){
+        if(item.type != SettingsSchema::Choice) continue;
+        foreach(const QString &choice,
+                QString::fromLatin1(item.choices).split(QLatin1Char('|')))
+            offered.insert(QString::fromLatin1(item.key) + QLatin1Char('|') + choice);
+    }
+    QVERIFY(offered.size() > 20);
+
+    QSet<QString> labelled;
+    foreach(const SettingsSchema::ChoiceLabel &line, SettingsSchema::ChoiceLabels()){
+        const QString id = QString::fromLatin1(line.key) + QLatin1Char('|') +
+                           QString::fromLatin1(line.choice);
+        QVERIFY2(offered.contains(id),
+                 qPrintable(QStringLiteral("%1 is labelled, but no row offers it").arg(id)));
+        QVERIFY2(!labelled.contains(id),
+                 qPrintable(QStringLiteral("%1 is labelled twice").arg(id)));
+        QVERIFY2(line.label && line.label[0],
+                 qPrintable(QStringLiteral("%1 has an empty label").arg(id)));
+        labelled.insert(id);
+    }
+    foreach(const QString &id, offered)
+        QVERIFY2(labelled.contains(id),
+                 qPrintable(QStringLiteral("%1 has no label; add one to 'ChoiceLabels'").arg(id)));
+
+    const QJsonArray described =
+        SettingsSchema::Describe()[QStringLiteral("items")].toArray();
+    int rows = 0;
+    for(const QJsonValue &value : described){
+        const QJsonObject object = value.toObject();
+        if(object[QStringLiteral("type")].toString() != QStringLiteral("choice")) continue;
+        const QJsonArray choices = object[QStringLiteral("choices")].toArray();
+        const QJsonArray labels  = object[QStringLiteral("choiceLabels")].toArray();
+        QCOMPARE(labels.size(), choices.size());
+        for(int i = 0; i < labels.size(); i++){
+            QVERIFY(!labels[i].toString().isEmpty());
+        }
+        rows++;
+    }
+    QVERIFY(rows > 10);
 }
 
 void tst_settingsschema::everyLabelIsPresent(){
@@ -353,6 +401,42 @@ void tst_settingsschema::everyPreferenceRowIsAppliedByTheView(){
                             .arg(key)));
     }
     QVERIFY2(rows > 20, qPrintable(QStringLiteral("only %1 preference rows were checked").arg(rows)));
+}
+
+void tst_settingsschema::everyAttributeTheViewAppliesReachesThePage(){
+    QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) +
+               QStringLiteral("/view/view.cpp"));
+    QVERIFY2(file.open(QIODevice::ReadOnly),
+             "'view.cpp' was not read; check VANILLA_SOURCE_DIR");
+    const QString source = QString::fromUtf8(file.readAll());
+
+    const int from = source.indexOf(QStringLiteral("void View::ApplySpecificSettings("));
+    QVERIFY2(from != -1, "'View::ApplySpecificSettings' was not found");
+    const int to = source.indexOf(QStringLiteral("\nvoid View::"), from + 1);
+    const QString copy = source.mid(from, to == -1 ? -1 : to - from);
+
+    QSet<QString> applied, copied;
+    const QRegularExpression setter
+        (QStringLiteral("^\\s*gwes->setAttribute\\(QWebEngineSettings::(\\w+),"));
+    const QRegularExpression copier
+        (QStringLiteral("^\\s*s->(?:setAttribute|resetAttribute)\\(QWebEngineSettings::(\\w+)[,)]"));
+    foreach(const QString &line, source.split(QLatin1Char('\n'))){
+        const QRegularExpressionMatch match = setter.match(line);
+        if(match.hasMatch()) applied << match.captured(1);
+    }
+    foreach(const QString &line, copy.split(QLatin1Char('\n'))){
+        const QRegularExpressionMatch match = copier.match(line);
+        if(match.hasMatch()) copied << match.captured(1);
+    }
+    QVERIFY2(applied.size() > 20 && copied.size() > 20,
+             qPrintable(QStringLiteral("%1 applied, %2 copied; the patterns no longer match")
+                        .arg(applied.size()).arg(copied.size())));
+    foreach(const QString &attribute, applied){
+        QVERIFY2(copied.contains(attribute),
+                 qPrintable(QStringLiteral("%1 is set on the default profile, but "
+                                           "'View::ApplySpecificSettings' never copies it to a page")
+                            .arg(attribute)));
+    }
 }
 
 void tst_settingsschema::aTabListItemMadeWithTheWindowAsksForARestart(){

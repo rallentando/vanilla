@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QFile>
 #include <QFileInfo>
+#include <QProcess>
 #include "extensioncontroller.hpp"
 #include "extensioncopy.hpp"
 #include "application.hpp"
@@ -206,6 +207,39 @@ private slots:
         QCOMPARE(files.first().files.size(), 2);
         QVERIFY(files.first().files.first().endsWith("/rules/a.json"));
         QVERIFY(files.first().files.last().endsWith("/rules/e.json"));
+        QVERIFY(files.first().hostAccessAlways);
+        QVERIFY(files.first().hostPermissions.isEmpty());
+        QByteArray named = manifest;
+        named.replace("\"version\":\"1\",",
+                      "\"version\":\"1\",\"permissions\":[\"declarativeNetRequest\"],"
+                      "\"host_permissions\":[\"https://a.example/*\"],"
+                      "\"optional_host_permissions\":[\"<all_urls>\"],");
+        Write(on + "/manifest.json", named);
+        const QList<ExtensionRuleFiles> granted = ExtensionController::EnabledRuleFiles();
+        QCOMPARE(granted.size(), 1);
+        QVERIFY(!granted.first().hostAccessAlways);
+        QCOMPARE(granted.first().hostPermissions, QStringList{"https://a.example/*"});
+
+        const QString twin = dir.filePath("twin");
+        QVERIFY(QDir().mkpath(twin + "/rules"));
+        QByteArray keyed = named;
+        keyed.replace("\"version\":\"1\",", "\"version\":\"1\",\"key\":\"YWJj\",");
+        Write(on + "/manifest.json", keyed);
+        QByteArray twinManifest = manifest;
+        twinManifest.replace("\"version\":\"1\",", "\"version\":\"1\",\"key\":\"YWJj\","
+                             "\"permissions\":[\"declarativeNetRequest\"],\"host_permissions\":[\"<all_urls>\"],");
+        Write(twin + "/manifest.json", twinManifest);
+        Write(twin + "/rules/a.json", "[]");
+        QCOMPARE(ExtensionManifest::Read(twin).id, ExtensionManifest::Read(on).id);
+        s.setValue("network/@Extensions", QStringList{on, twin, off});
+        const QList<ExtensionRuleFiles> once = ExtensionController::EnabledRuleFiles();
+        QCOMPARE(once.size(), 1);
+        QCOMPARE(once.first().hostPermissions, QStringList{"https://a.example/*"});
+        QVERIFY(once.first().files.first().endsWith("/on/rules/a.json"));
+        s.setValue("network/@DisabledExtensions", QStringList{off, on});
+        QVERIFY(ExtensionController::EnabledRuleFiles().isEmpty());
+        s.setValue("network/@Extensions", QStringList{on, off});
+        s.setValue("network/@DisabledExtensions", QStringList{off});
 
         s.setValue("network/@DisabledExtensions", QStringList{off, on});
         QVERIFY(ExtensionController::EnabledRuleFiles().isEmpty());
@@ -544,9 +578,29 @@ private slots:
         QVERIFY(QDir().mkdir(outside.filePath("extension")));
         Write(outside.filePath("secret.txt"), "outside");
         QVERIFY(ExtensionManifest::Resource(ExtensionManifest::NormalizePath(outside.filePath("extension")), "../secret.txt").isEmpty());
+#ifdef Q_OS_WIN
+        {
+            const QString root = ExtensionManifest::NormalizePath(outside.filePath("extension"));
+            QVERIFY(QDir().mkdir(outside.filePath("elsewhere")));
+            Write(outside.filePath("elsewhere/secret.txt"), "outside");
+            QProcess::execute(QStringLiteral("cmd"), QStringList()
+                              << QStringLiteral("/c") << QStringLiteral("mklink") << QStringLiteral("/J")
+                              << QDir::toNativeSeparators(root + QStringLiteral("/link"))
+                              << QDir::toNativeSeparators(outside.filePath("elsewhere")));
+            if(!QFileInfo(root + QStringLiteral("/link")).isJunction()) QSKIP("the junction could not be made here");
+            QVERIFY(QFileInfo(root + QStringLiteral("/link/secret.txt")).isFile());
+            QVERIFY(ExtensionManifest::Resource(root, "link/secret.txt").isEmpty());
+        }
+#endif
         QCOMPARE(ExtensionManifest::PathKey(Fixture() + "/./"), ExtensionManifest::PathKey(Fixture()));
+        QCOMPARE(ExtensionManifest::KeyOfNormalized(ExtensionManifest::NormalizePath(Fixture() + "/./")),
+                 ExtensionManifest::PathKey(Fixture()));
+        QCOMPARE(ExtensionManifest::KeyOfNormalized(ExtensionManifest::NormalizePath(Fixture() + "/nowhere/./x")),
+                 ExtensionManifest::PathKey(Fixture() + "/nowhere/x"));
 #ifdef Q_OS_WIN
         QCOMPARE(ExtensionManifest::PathKey(Fixture().toUpper()), ExtensionManifest::PathKey(Fixture()));
+        QCOMPARE(ExtensionManifest::KeyOfNormalized(ExtensionManifest::NormalizePath(Fixture().toUpper())),
+                 ExtensionManifest::PathKey(Fixture()));
         const QString native = QDir::toNativeSeparators(m.path);
         const QByteArray hash = QCryptographicHash::hash(
             QByteArray(reinterpret_cast<const char*>(native.utf16()), native.size() * 2),
@@ -556,6 +610,62 @@ private slots:
             chromium += QString(QChar('a' + (static_cast<unsigned char>(c) >> 4))) + QChar('a' + (c & 15));
         QCOMPARE(m.id, chromium);
 #endif
+    }
+    void cachedReadFollowsTheManifestFile() {
+        QTemporaryDir dir;
+        const QString folder = dir.filePath("ext");
+        QVERIFY(QDir().mkpath(folder));
+        const QString manifest = folder + "/manifest.json";
+        auto named = [](const QByteArray &name) {
+            return QByteArray(R"({"manifest_version":3,"name":")") + name +
+                QByteArray(R"(","version":"1","key":"YWJj","action":{"default_popup":"popup.html"}})");
+        };
+        auto stamp = [&](const QDateTime &when) {
+            QFile f(manifest); QVERIFY(f.open(QIODevice::ReadWrite)); QVERIFY(f.setFileTime(when, QFileDevice::FileModificationTime));
+        };
+        ExtensionManifest::ForgetCached();
+        Write(manifest, named("one"));
+        Write(folder + "/popup.html", "");
+        const QDateTime first = QFileInfo(manifest).lastModified();
+        QCOMPARE(ExtensionManifest::ReadCached(folder).name, QStringLiteral("one"));
+        QVERIFY(!ExtensionManifest::ReadCached(folder).popup.isEmpty());
+        Write(manifest, named("two"));
+        stamp(first);
+        QCOMPARE(QFileInfo(manifest).lastModified(), first);
+        QCOMPARE(QFileInfo(manifest).size(), qint64(named("one").size()));
+        QCOMPARE(ExtensionManifest::ReadCached(folder).name, QStringLiteral("two"));
+        QVERIFY(QFile::remove(folder + "/popup.html"));
+        QVERIFY(!ExtensionManifest::ReadCached(folder).popup.isEmpty());
+        QVERIFY(ExtensionManifest::Read(folder).popup.isEmpty());
+        ExtensionManifest::ForgetCached();
+        QVERIFY(ExtensionManifest::ReadCached(folder).popup.isEmpty());
+        QVERIFY(QFile::remove(manifest));
+        QVERIFY(!ExtensionManifest::ReadCached(folder).error.isEmpty());
+        Write(manifest, named("three"));
+        QCOMPARE(ExtensionManifest::ReadCached(folder).name, QStringLiteral("three"));
+        Write(manifest, "{");
+        QVERIFY(!ExtensionManifest::ReadCached(folder).error.isEmpty());
+        Write(manifest, named("four"));
+        QCOMPARE(ExtensionManifest::ReadCached(folder).name, QStringLiteral("four"));
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        QVERIFY(QDir().mkpath(home + "/1.0.0_0"));
+        Write(home + "/1.0.0_0/manifest.json", named("versioned"));
+        const QString registered = home + "/0.1.0_0";
+        QCOMPARE(ExtensionManifest::ReadCached(registered).folder, ExtensionManifest::NormalizePath(home + "/1.0.0_0"));
+        QVERIFY(QDir().mkpath(home + "/2.0.0_0"));
+        Write(home + "/2.0.0_0/manifest.json", named("versioned"));
+        QCOMPARE(ExtensionManifest::ReadCached(registered).folder, ExtensionManifest::NormalizePath(home + "/2.0.0_0"));
+        Write(folder + "/popup.html", "");
+        Write(home + "/2.0.0_0/popup.html", "");
+        ExtensionManifest::ForgetCached();
+        QVERIFY(!ExtensionManifest::ReadCached(folder).popup.isEmpty());
+        QVERIFY(!ExtensionManifest::ReadCached(registered).popup.isEmpty());
+        QVERIFY(QFile::remove(folder + "/popup.html"));
+        QVERIFY(QFile::remove(home + "/2.0.0_0/popup.html"));
+        ExtensionManifest::ForgetCached(folder);
+        QVERIFY(ExtensionManifest::ReadCached(folder).popup.isEmpty());
+        QVERIFY(!ExtensionManifest::ReadCached(registered).popup.isEmpty());
+        ExtensionManifest::ForgetCached();
     }
     void chromeVersionFolderFollowsAnUpdate() {
         QTemporaryDir dir;
@@ -1006,6 +1116,23 @@ private slots:
         QTemporaryDir dir; Write(dir.filePath("blocker"), "file");
         Desired(); auto e = std::make_shared<Engine>(); Deferred c(e, dir.filePath("blocker/owned.json")); c.Start(); Finish(e);
         QTRY_VERIFY(c.IsReady()); QVERIFY(!c.Error().isEmpty()); QCOMPARE(e->calls, QStringList{"snapshot"});
+    }
+    void registrationSpellingsAreOneExtension() {
+        Settings &s = Application::GlobalSettings();
+        const QStringList before = s.value("network/@Extensions").toStringList();
+        const QStringList disabledBefore = s.value("network/@DisabledExtensions").toStringList();
+        s.setValue("network/@Extensions", QStringList{QStringLiteral("# comment"), QString(), Fixture(),
+                                                     QDir::toNativeSeparators(Fixture()), Fixture() + "/./"});
+        s.setValue("network/@DisabledExtensions", QStringList());
+        QCOMPARE(ExtensionController::EnabledIds().size(), 1);
+#ifdef Q_OS_WIN
+        s.setValue("network/@DisabledExtensions", QStringList{Fixture().toUpper()});
+#else
+        s.setValue("network/@DisabledExtensions", QStringList{Fixture() + "/./"});
+#endif
+        QVERIFY(ExtensionController::EnabledIds().isEmpty());
+        s.setValue("network/@Extensions", before);
+        s.setValue("network/@DisabledExtensions", disabledBefore);
     }
     void settingsEditsPreserveUnrelatedRows() {
         Settings &s = Application::GlobalSettings();

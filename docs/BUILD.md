@@ -128,7 +128,7 @@ node はユーザーのホームの `.local/node`（`%USERPROFILE%\.local\node`�
 （[Qt Forum](https://forum.qt.io/topic/156183/qwebengineview-and-opengl-rendering-problem)、
 [anki #4470](https://github.com/ankitects/anki/issues/4470)）。公式ビルドで出にくい理由は
 未特定（コード生成の差でタイミングが変わる、までは言えるが確認していない）。
-回避策は設定にした: `application/@GraphicsApi`（設定画面「描画とエンジン」の「描画 API (WebEngineView)」、
+回避策は設定にした: `application/@GraphicsApi`（設定画面「描画とエンジン」の「描画 API（WebEngineView）」、
 `Auto|Software|OpenGL|Direct3D11|Direct3D12|Vulkan|Metal`、既定 `Auto`、再起動で反映。D-340 / D-342）。
 この機械の自前ビルドでは `OpenGL` にしておく。環境変数 `QSG_RHI_BACKEND` があればそちらが勝つ。
 
@@ -334,6 +334,9 @@ cmake -S . -B ../vanilla-build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build ../vanilla-build/release
 ```
 
+WebEngine のビューのパスワードの保存は Qt D-Bus があれば入り、GNOME Keyring か KWallet に置く。
+libsecret を使わせるなら `sudo apt install libsecret-1-dev` も入れる（無くてもビルドは通る）。
+
 `qt6-l10n-tools` は `lupdate` を持っている。Qt を自分で入れた場合は
 `-DCMAKE_PREFIX_PATH=$HOME/Qt/6.12.0/gcc_64` を足す。
 
@@ -435,7 +438,7 @@ cmake --install ..\vanilla-build\release --prefix %BUILDROOT%\package
 > `.\scripts\swap-webengine.ps1 -To official` を通し、`Qt6WebEngineCore.dll` の
 > SHA256 が上の表の公式バイナリ（Qt 6.12.0 / QtWebEngine 6.140.0 では `475A605D…`）であることを確かめる。
 > 表の値は Qt か QtWebEngine を上げるたびに変わる（6.11.2 の公式は `D6995CE6…`、6.11.1 は `02FFF5F4…` だった）。
-> **自前ビルドには 2026-09-22 から Vanilla のパッチ（`tools/patches/`）が入っている。配布物にパッチ済みの
+> **自前ビルドには 2026-09-22 から vanilla のパッチ（`tools/patches/`）が入っている。配布物にパッチ済みの
 > QtWebEngine を入れない**（ユーザー方針 2026-09-22）: 配るのは差分だけで、リリースノートに
 > 「拡張の `web_accessible_resources`（Vimium の vomnibar・HUD）を出すには QtWebEngine にこのパッチが要る」と書く。
 > IME のパッチ（D-432）も同じ扱いで、「別プロセスの iframe（vomnibar など）で IME を使うにはこのパッチが要る」と書く。
@@ -494,6 +497,10 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
     再生できない形式もこちらで動く）。**キャッシュに残るので、配布物を作る前に
     OFF へ戻すこと**（下の「リリース手順」0.）。エンジンの対応表:
     ローカル = 自前 WebEngine ＋ FFmpeg あり、配布 = 公式 WebEngine ＋ FFmpeg なし。
+  - **置き場所の名前で種類が分かるようにする**（2026-10-08）: 配布用は `packageanilla-<版>`、
+    ローカル用は `packageanilla-<版>-patched-encoder-enabled-ffmpeg`（パッチ入りの自前 WebEngine と
+    H.264 / AAC、FFmpeg）。`package` の直下には入れない。ローカル用を作ったら、
+    `swap-webengine.ps1 -To official` と `-DVANILLA_PACKAGE_FFMPEG=OFF` で配布用の状態へ戻しておく
 - **`vc_redist.x64.exe` が入るのは vcvars を通した環境だけ。** windeployqt は
   既定でコンパイラランタイムを配るが、置き場を `VCINSTALLDIR` から探すので、
   **素のシェルで install すると警告も出さずに落とす**（`--compiler-runtime` を
@@ -512,7 +519,7 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
 
 配布の方針は D-241（zip、コード署名は保留で SHA-256 公開）。**0.3.0 は 2026-08-30 に
 この手順で公開した** —— 通しの手順は次の「リリース手順」。次版へ向けた課題は
-ROADMAP.md D。CI は当面入れない（D-016）。
+ROADMAP.md の「D」の印の項目。CI は当面入れない（D-016）。
 
 ## Windows Sandbox で smoke test（2026-09-28）
 
@@ -549,7 +556,7 @@ DirectComposition の使えない環境は作れない。
 - **release ツリーの `VANILLA_PACKAGE_FFMPEG` が OFF であること**（ローカル package 用に
   ON にしてあることがある。`cmake --preset release -DVANILLA_PACKAGE_FFMPEG=OFF` で戻す。
   D-241 追記6）
-- ROADMAP D に、その版で片づけると決めた項目が残っていないこと
+- ROADMAP の「D」の印の項目に、その版で片づけると決めた項目が残っていないこと
 
 ### 1. 私有側: タグと push
 
@@ -604,7 +611,7 @@ python scripts\make-public-snapshot.py --dest ..\vanilla-gh --ref 0.3.0 ^
 レポートの **`needs a human` と `must not ship` が 0** であること、除外一覧が想定どおり
 （AGENTS / CLAUDE / 内部 docs / `docs/relay/` / リリースノート / このスクリプト /
 WebView2 のヘッダ）であることを見る。`third_party/qt/` と `third_party/webview2/` の
-通知、`docs/deodorant.zip` は出る。
+通知、`third_party/qtkeychain/`（ソースごと）、`docs/deodorant.zip` は出る。
 
 vanilla-gh のコミット作者は公開の履歴に合わせて `rallentando <materialismyearnings@gmail.com>`
 （vanilla-gh の `.git/config` に local で設定済み。0.3.0 の 2 コミットはマシン名のまま出た）。
@@ -617,7 +624,7 @@ vanilla-gh では**コミットを2つに分ける**（0.2.2 までの作法）:
 2. **リリースコミット** —— `VERSION` だけ。メッセージは版番号だけ（`0.3.0`）。
    `RELEASE_NOTES.md` はリポジトリに置かない（ノートは Release の本文だけ）。
 
-どちらにも `Co-Authored-By:` を3行（Claude Opus / Claude Fable / Codex CLI）。
+どちらにも `Co-Authored-By:` を、その版に関わったモデルの数だけ（Claude Opus / Claude Fable / Codex CLI、日本語の校正に使ったなら Gemini も: `Gemini (gemini-3.1-pro, gemini-3.8-flash) <noreply@google.com>`）。
 Codex の行は上流の既定に合わせ `Codex CLI (<model>) <noreply@openai.com>`
 （このアドレスが GitHub 上の Codex bot に対応する）。
 
@@ -651,7 +658,7 @@ gh release create 0.3.0 -R rallentando/vanilla --verify-tag `
 
 ### 5. あとに
 
-- ROADMAP D を次版に向けたものへ書き換え、決定の記録（D-241 / D-242）に結果を追記する
+- ROADMAP の「D」の印の項目を次版に向けたものへ書き換え、決定の記録（D-241 / D-242）に結果を追記する
 - `vanilla-build\package` と zip は次に作り直すまで残しておく（配った実物）
 - 引継ぎ資料の「まだ確かめていないこと」に、その版で見ていないもの（別環境の起動など）を書く
 

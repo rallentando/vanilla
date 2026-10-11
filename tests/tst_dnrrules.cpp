@@ -29,6 +29,7 @@ private slots:
     void theHigherPriorityWinsAndAnAllowWinsATie();
     void anAllowSpeaksForItsOwnExtensionOnly();
     void aRedirectGoesWhereTheRuleSays();
+    void aRedirectNeedsTheHostPermissions();
 
     void whatIsNotEvaluatedIsCountedNotPretended();
     void aRuleNotFullyReadIsLeftOutNotWidened();
@@ -295,6 +296,7 @@ void tst_dnrrules::anAllowSpeaksForItsOwnExtensionOnly(){
     redirect[QStringLiteral("action")] = action;
     Dnr::Rules mixed;
     mixed.AddRuleset(QStringLiteral("one"), Json(QJsonArray() << redirect));
+    mixed.SetHostAccess(QStringLiteral("one"), QStringList() << QStringLiteral("<all_urls>"), false);
     mixed.AddRuleset(QStringLiteral("two"), Json(QJsonArray() << Rule(1, QStringLiteral("block"), filter, 1)));
     QCOMPARE(Kind(mixed, Ask(QStringLiteral("https://cdn.example/a.js"))), Dnr::Decision::Block);
 }
@@ -316,6 +318,7 @@ void tst_dnrrules::aRedirectGoesWhereTheRuleSays(){
     rules.AddRuleset(QStringLiteral("abc"), Json(QJsonArray()
         << redirectRule(1, page, toUrl)
         << redirectRule(2, Filter(QStringLiteral("||lib.example/tracker.js")), toPath)));
+    rules.SetHostAccess(QStringLiteral("abc"), QStringList() << QStringLiteral("<all_urls>"), false);
 
     Dnr::Decision first = rules.Evaluate(Ask(QStringLiteral("https://malware.example/"), Dnr::MainFrame, QString()));
     QCOMPARE(first.kind, Dnr::Decision::Redirect);
@@ -332,6 +335,70 @@ void tst_dnrrules::aRedirectGoesWhereTheRuleSays(){
     QCOMPARE(up.kind, Dnr::Decision::Redirect);
     QCOMPARE(up.redirect, QUrl(QStringLiteral("https://plain.example/a.js?x=1")));
     QCOMPARE(Kind(upgrade, Ask(QStringLiteral("https://plain.example/a.js"))), Dnr::Decision::None);
+}
+
+void tst_dnrrules::aRedirectNeedsTheHostPermissions(){
+    const QJsonObject filter = Filter(QStringLiteral("app.js"));
+    QJsonObject redirect = Rule(1, QStringLiteral("redirect"), filter, 2);
+    {
+        QJsonObject action = redirect[QStringLiteral("action")].toObject();
+        QJsonObject to; to[QStringLiteral("url")] = QStringLiteral("https://attacker.example/evil.js");
+        action[QStringLiteral("redirect")] = to;
+        redirect[QStringLiteral("action")] = action;
+    }
+    const QByteArray both = Json(QJsonArray() << redirect << Rule(2, QStringLiteral("block"), filter, 1));
+    const QString bank = QStringLiteral("https://bank.example/static/app.js");
+
+    Dnr::Rules untold;
+    untold.AddRuleset(QStringLiteral("ext"), both);
+    QCOMPARE(Kind(untold, Ask(bank, Dnr::Script, QStringLiteral("https://bank.example"))), Dnr::Decision::Block);
+
+    Dnr::Rules some;
+    some.AddRuleset(QStringLiteral("ext"), both);
+    some.SetHostAccess(QStringLiteral("ext"), QStringList() << QStringLiteral("https://*.bank.example/*")
+                       << QStringLiteral("not a pattern"), false);
+    QCOMPARE(Kind(some, Ask(bank, Dnr::Script, QStringLiteral("https://bank.example"))), Dnr::Decision::Redirect);
+    QCOMPARE(Kind(some, Ask(QStringLiteral("https://www.bank.example/app.js"), Dnr::Script,
+                           QStringLiteral("https://www.bank.example:8443"))), Dnr::Decision::Redirect);
+    QCOMPARE(Kind(some, Ask(bank, Dnr::Script, QStringLiteral("https://other.example/"))), Dnr::Decision::Block);
+    QCOMPARE(Kind(some, Ask(QStringLiteral("https://other.example/app.js"), Dnr::Script,
+                           QStringLiteral("https://bank.example"))), Dnr::Decision::Block);
+    QCOMPARE(Kind(some, Ask(QStringLiteral("http://bank.example/app.js"), Dnr::Script,
+                           QStringLiteral("http://bank.example"))), Dnr::Decision::Block);
+    QCOMPARE(Kind(some, Ask(bank, Dnr::Script, QString())), Dnr::Decision::Redirect);
+    QCOMPARE(Kind(some, Ask(bank, Dnr::Script, QStringLiteral("null"))), Dnr::Decision::Redirect);
+    QCOMPARE(Kind(some, Ask(bank, Dnr::Script, QStringLiteral("file:///C:/page.html"))), Dnr::Decision::Redirect);
+    QJsonObject frames = filter;
+    frames[QStringLiteral("resourceTypes")] = QJsonArray() << QStringLiteral("main_frame") << QStringLiteral("sub_frame");
+    QJsonObject navigation = redirect;
+    navigation[QStringLiteral("condition")] = frames;
+    Dnr::Rules pages;
+    pages.AddRuleset(QStringLiteral("ext"), Json(QJsonArray() << navigation));
+    pages.SetHostAccess(QStringLiteral("ext"), QStringList() << QStringLiteral("https://bank.example/*"), false);
+    QCOMPARE(Kind(pages, Ask(QStringLiteral("https://bank.example/app.js"), Dnr::MainFrame,
+                            QStringLiteral("https://other.example"))), Dnr::Decision::Redirect);
+    QCOMPARE(Kind(pages, Ask(QStringLiteral("https://bank.example/app.js"), Dnr::SubFrame,
+                            QStringLiteral("https://other.example"))), Dnr::Decision::Redirect);
+    QCOMPARE(Kind(pages, Ask(QStringLiteral("https://other.example/app.js"), Dnr::MainFrame,
+                            QStringLiteral("https://bank.example"))), Dnr::Decision::None);
+
+    some.SetHostAccess(QStringLiteral("ext"), QStringList(), false);
+    QCOMPARE(Kind(some, Ask(bank, Dnr::Script, QStringLiteral("https://bank.example"))), Dnr::Decision::Block);
+
+    Dnr::Rules always;
+    always.AddRuleset(QStringLiteral("ext"), Json(QJsonArray() << Rule(1, QStringLiteral("block"), Filter(QStringLiteral("||ads.example^")))));
+    always.SetHostAccess(QStringLiteral("ext"), QStringList(), true);
+    QCOMPARE(Kind(always, Ask(QStringLiteral("https://ads.example/a.js"))), Dnr::Decision::None);
+    always.SetHostAccess(QStringLiteral("ext"), QStringList() << QStringLiteral("<all_urls>"), true);
+    QCOMPARE(Kind(always, Ask(QStringLiteral("https://ads.example/a.js"))), Dnr::Decision::Block);
+    QCOMPARE(Kind(always, Ask(QStringLiteral("wss://ads.example/socket"), Dnr::WebSocket)), Dnr::Decision::Block);
+    always.SetHostAccess(QStringLiteral("ext"), QStringList() << QStringLiteral("https://page.example/*"), true);
+    QCOMPARE(Kind(always, Ask(QStringLiteral("https://ads.example/a.js"))), Dnr::Decision::None);
+    Dnr::Rules two;
+    two.AddRuleset(QStringLiteral("granted"), Json(QJsonArray() << Rule(1, QStringLiteral("block"), Filter(QStringLiteral("||ads.example^")))));
+    two.SetHostAccess(QStringLiteral("granted"), QStringList() << QStringLiteral("<all_urls>"), false);
+    two.AddRuleset(QStringLiteral("other"), both);
+    QCOMPARE(Kind(two, Ask(bank, Dnr::Script, QStringLiteral("https://bank.example"))), Dnr::Decision::Block);
 }
 
 void tst_dnrrules::whatIsNotEvaluatedIsCountedNotPretended(){
@@ -458,12 +525,14 @@ void tst_dnrrules::aRedirectNeverComesBackToItself(){
     Dnr::Rules rules;
     rules.AddRuleset(QStringLiteral("ext"), Json(QJsonArray()
         << redirectTo(QStringLiteral("shim.js"), QStringLiteral("script"), QStringLiteral("https://cdn.example/shim.js"))));
+    rules.SetHostAccess(QStringLiteral("ext"), QStringList() << QStringLiteral("<all_urls>"), false);
     QCOMPARE(Kind(rules, Ask(QStringLiteral("https://ads.example/shim.js"))), Dnr::Decision::Redirect);
     QCOMPARE(Kind(rules, Ask(QStringLiteral("https://cdn.example/shim.js"))), Dnr::Decision::None);
 
     Dnr::Rules sockets;
     sockets.AddRuleset(QStringLiteral("ext"), Json(QJsonArray()
         << redirectTo(QStringLiteral("||s.example^"), QStringLiteral("websocket"), QStringLiteral("wss://elsewhere.example/"))));
+    sockets.SetHostAccess(QStringLiteral("ext"), QStringList() << QStringLiteral("<all_urls>"), false);
     QCOMPARE(Kind(sockets, Ask(QStringLiteral("wss://s.example/socket"), Dnr::WebSocket)), Dnr::Decision::None);
 }
 
@@ -480,6 +549,7 @@ void tst_dnrrules::twoRulesOfOneRankAreSettledByWhichWasWritten(){
     rules.AddRuleset(QStringLiteral("ext"), Json(QJsonArray()
         << redirectTo(1, QStringLiteral("/alpha/"), QStringLiteral("https://first.example/"))
         << redirectTo(2, QStringLiteral("/beta/"), QStringLiteral("https://second.example/"))));
+    rules.SetHostAccess(QStringLiteral("ext"), QStringList() << QStringLiteral("<all_urls>"), false);
     QCOMPARE(rules.Evaluate(Ask(QStringLiteral("https://a.example/alpha/beta/x.js"))).redirect,
              QUrl(QStringLiteral("https://first.example/")));
     QCOMPARE(rules.Evaluate(Ask(QStringLiteral("https://a.example/beta/alpha/x.js"))).redirect,
@@ -514,6 +584,7 @@ void tst_dnrrules::anAllowAllRequestsOnTheDocumentShieldsItsRequests(){
         }
         Dnr::Rules rules;
         rules.AddRuleset(QStringLiteral("ext"), Json(QJsonArray() << rule << Rule(2, QStringLiteral("allowAllRequests"), site, 5)));
+        rules.SetHostAccess(QStringLiteral("ext"), QStringList() << QStringLiteral("<all_urls>"), false);
         return rules;
     };
     const quint64 allowAllOfFive = (quint64(5) << 8) | 4;

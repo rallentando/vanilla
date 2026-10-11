@@ -45,6 +45,12 @@ EdgeWebView::EdgeWebView(TreeBank *parent, QString id, QStringList set)
     m_Impl->m_HostWindow = host;
     m_Impl->m_Container = QWidget::createWindowContainer(m_Impl->m_HostWindow, this);
     host->GiveQtFocusOnPress(m_Impl->m_Container);
+    host->QuietContainerFocusIn(m_Impl->m_Container);
+    connect(host, &EdgeHostWindow::ReactivatedWithFocus, this, [this](){
+        if(m_Impl->m_State.IsRetired() || !visible()) return;
+        const ComPtr<ICoreWebView2Controller> controller = m_Impl->m_Controller;
+        if(controller) controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+    });
     m_Impl->m_Container->setGeometry(rect());
     m_Impl->m_Container->setFocusPolicy(Qt::StrongFocus);
     m_Impl->m_HostWindow->installEventFilter(this);

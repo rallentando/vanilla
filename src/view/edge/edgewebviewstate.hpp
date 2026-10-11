@@ -15,6 +15,7 @@
 #include <QSet>
 #include <QSizeF>
 #include <QString>
+#include <deque>
 #include <functional>
 #include "edgemenuitem.hpp"
 #include <QString>
@@ -495,6 +496,35 @@ private:
     qint64 m_Total;
 };
 
+inline bool EdgeDownloadNeedsAsking(bool policyAsks, bool haveTarget){
+    return policyAsks || !haveTarget;
+}
+
+class EdgeDownloadAskQueue {
+public:
+    bool Push(std::function<void()> job){
+        m_Jobs.push_back(std::move(job));
+        if(m_Running) return false;
+        m_Running = true;
+        return true;
+    }
+    std::function<void()> TakeNext(){
+        if(m_Jobs.empty()){
+            m_Running = false;
+            return std::function<void()>();
+        }
+        std::function<void()> job = std::move(m_Jobs.front());
+        m_Jobs.pop_front();
+        return job;
+    }
+    bool IsRunning() const { return m_Running;}
+    int Waiting() const { return int(m_Jobs.size());}
+
+private:
+    std::deque<std::function<void()>> m_Jobs;
+    bool m_Running = false;
+};
+
 class EdgeBackendCallLedger {
 public:
     EdgeBackendCallLedger() : m_InFlight(0) {}
@@ -927,10 +957,11 @@ public:
     QSizeF GetContentsSize() const { return m_ContentsSize;}
     QSizeF GetViewportSize() const { return m_ViewportSize;}
 
-    static EdgeMessage Parse(const QString &json, int eventKey);
+    static EdgeMessage Parse(const QString &json, const QString &token);
 
     static bool IsFromDocument(const QString &source, const QUrl &document){
-        return EdgeWithRootPath(QUrl(source)) == EdgeWithRootPath(document);
+        return EdgeWithRootPath(QUrl(source)).adjusted(QUrl::RemoveFragment)
+            == EdgeWithRootPath(document).adjusted(QUrl::RemoveFragment);
     }
 
 private:

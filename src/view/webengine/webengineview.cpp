@@ -52,6 +52,7 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
     ExtensionHost::StampRequestsOf(page(), this);
     ApplySpecificSettings(set);
     setPage(page());
+    page()->history()->count();
     ApplyTheme();
 
     if(TreeBank::PurgeView()){

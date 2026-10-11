@@ -62,18 +62,20 @@ public:
                             const QStringList &acceptedMimeTypes) Q_DECL_OVERRIDE;
 
     void javaScriptAlert(const QUrl &securityOrigin, const QString &msg) Q_DECL_OVERRIDE {
-        Q_UNUSED(securityOrigin)
-        ModalDialog::Information(QStringLiteral("Javascript Alert"), msg);
+        const QUrl origin = ModalDialog::SiteOrigin(securityOrigin, url());
+        ModalDialog::Information(ModalDialog::SiteTitle(origin), msg, ModalDialog::SiteIcon());
     }
     bool javaScriptConfirm(const QUrl &securityOrigin, const QString &msg) Q_DECL_OVERRIDE {
-        Q_UNUSED(securityOrigin)
-        return ModalDialog::Question(QStringLiteral("Javascript Confirm"), msg);
+        const QUrl origin = ModalDialog::SiteOrigin(securityOrigin, url());
+        return ModalDialog::Question(ModalDialog::SiteTitle(origin), msg, ModalDialog::SiteIcon());
     }
     bool javaScriptPrompt(const QUrl &securityOrigin, const QString &msg,
                           const QString &defaultValue, QString *result) Q_DECL_OVERRIDE {
-        Q_UNUSED(securityOrigin)
+        const QUrl origin = ModalDialog::SiteOrigin(securityOrigin, url());
         bool ok = true;
-        if(result) *result = ModalDialog::GetText(QStringLiteral("Javascript Prompt"), msg, defaultValue, &ok);
+        const QString text = ModalDialog::GetText(ModalDialog::SiteTitle(origin), msg,
+                                                  defaultValue, &ok, ModalDialog::SiteIcon());
+        if(result) *result = text;
         return ok;
     }
     void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,

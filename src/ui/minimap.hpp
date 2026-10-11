@@ -55,11 +55,35 @@ public:
     static QList<Block> ParseBlocks(const QVariant &answer, QSizeF *pageSize,
                                     bool *overflowed);
 
+    struct Scroller {
+        bool fixed = false;
+        qint64 id = 0;
+        QRectF viewport;
+    };
+    static Scroller ParseScroller(const QVariant &answer);
+    struct Poll {
+        bool valid = false;
+        bool fixed = false;
+        qint64 pick = 0;
+        qint64 id = 0;
+        QRectF viewport;
+        QSizeF contents;
+    };
+    static Poll ParsePoll(const QVariant &answer);
+
 private slots:
     void OnViewDestroyed(QObject *base);
 
 private:
     static QString CollectBlocksJsCode();
+    static QString ScrollerJsPrelude();
+    static QString PollScrollerJsCode();
+    static QString SetScrollerJsCode(qint64 id, qreal ratio);
+    void StartPoll();
+    void StopPoll();
+    void RequestPoll();
+    void TakePoll(const Poll &poll);
+    void TakeScroller(const Scroller &scroller);
     static QRectF PaintedBlockRect(const Block &block, qreal conversion,
                                    qreal scale, qreal offset,
                                    qreal indicatorTop);
@@ -68,6 +92,7 @@ private:
         QSizeF pageSize;
         bool overflowed;
         QUrl url;
+        Scroller scroller;
     };
 
     static QObject *SupportedBase(View *view);
@@ -108,6 +133,11 @@ private:
     QSizeF m_LastGeometryContents;
     QHash<QObject*, Snapshot> m_Cache;
 
+    Scroller m_Scroller;
+    QTimer m_PollTimer;
+    quint64 m_PollIssued;
+    quint64 m_PollApplied;
+
 protected:
     void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
     void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
@@ -115,6 +145,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
     void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
+    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
 };
 
 #endif

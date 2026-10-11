@@ -7,16 +7,20 @@
 #include <QString>
 #include <QUrl>
 
+#include <functional>
+
 struct VanillaPageResponse {
     enum class UserInteraction {
         None,
-        PickChromeExtensionDirectory
+        PickChromeExtensionDirectory,
+        Deferred
     };
 
     int m_Status;
     QByteArray m_ContentType;
     QByteArray m_Body;
     UserInteraction m_UserInteraction;
+    std::function<QByteArray()> m_Deferred;
 
     VanillaPageResponse()
         : m_Status(404), m_ContentType(QByteArrayLiteral("text/plain"))

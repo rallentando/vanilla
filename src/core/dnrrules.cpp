@@ -1,6 +1,7 @@
 #include "switch.hpp"
 
 #include "dnrrules.hpp"
+#include "extensionmainscripts.hpp"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -254,6 +255,34 @@ struct Rules::Asked {
     bool http = true;
 };
 
+int Rules::ExtensionIndex(const QString &extensionId){
+    int extension = m_Extensions.indexOf(extensionId);
+    if(extension < 0){
+        extension = m_Extensions.size();
+        m_Extensions << extensionId;
+        m_Access << Access();
+    }
+    return extension;
+}
+
+void Rules::SetHostAccess(const QString &extensionId, const QStringList &hostPermissions, bool always){
+    Access &access = m_Access[ExtensionIndex(extensionId)];
+    access = Access();
+    access.always = always;
+    QStringList each;
+    foreach(const QString &p, hostPermissions){
+        const QString re = ExtensionMainScripts::PatternRegex(p, true);
+        if(!re.isEmpty()) each << QStringLiteral("(?:") + re + QLatin1Char(')');
+    }
+    if(!each.isEmpty())
+        access.hosts = QRegularExpression(QStringLiteral("^(?:") + each.join(QLatin1Char('|')) + QLatin1Char(')'),
+                                          QRegularExpression::CaseInsensitiveOption);
+}
+
+bool Rules::NeedsAccess(const Rule &rule) const {
+    return rule.action == RedirectTo || m_Access.at(rule.extension).always;
+}
+
 void Rules::AddRuleset(const QString &extensionId, const QByteArray &json, Skipped *skipped){
     Skipped none;
     Skipped &left = skipped ? *skipped : none;
@@ -264,11 +293,7 @@ void Rules::AddRuleset(const QString &extensionId, const QByteArray &json, Skipp
         return;
     }
 
-    int extension = m_Extensions.indexOf(extensionId);
-    if(extension < 0){
-        extension = m_Extensions.size();
-        m_Extensions << extensionId;
-    }
+    const int extension = ExtensionIndex(extensionId);
 
     foreach(const QJsonValue &value, document.array()){
         const QJsonObject object = value.toObject();
@@ -478,8 +503,30 @@ Decision Rules::Evaluate(const Request &request) const {
     QVector<quint64> under(m_Extensions.size(), 0);
     if(!request.frameAllows.isEmpty())
         for(int i = 0; i < m_Extensions.size(); i++) under[i] = request.frameAllows.value(m_Extensions.at(i), 0);
+    QVector<qint8> access(m_Extensions.size(), -1);
+    const QString address = scheme == QStringLiteral("ws") ? QStringLiteral("http") + asked.url.mid(2)
+        : scheme == QStringLiteral("wss") ? QStringLiteral("https") + asked.url.mid(3)
+        : asked.url;
+    const QString initiatorScheme = request.initiator.scheme().toLower();
+    const QString initiator =
+        document || (initiatorScheme != QStringLiteral("http") && initiatorScheme != QStringLiteral("https"))
+        ? QString()
+        : request.initiator.path().isEmpty()
+        ? request.initiator.toString(QUrl::FullyEncoded) + QLatin1Char('/')
+        : request.initiator.toString(QUrl::FullyEncoded);
+    auto mayTouch = [&](int extension){
+        qint8 &known = access[extension];
+        if(known < 0){
+            const QRegularExpression &hosts = m_Access.at(extension).hosts;
+            known = hosts.match(address).hasMatch() &&
+                (initiator.isEmpty() || hosts.match(initiator).hasMatch()) ? 1 : 0;
+        }
+        return known == 1;
+    };
+
     auto consider = [&](int index){
         const Rule &rule = m_Rules.at(index);
+        if(NeedsAccess(rule) && !mayTouch(rule.extension)) return;
         const bool shielded = under[rule.extension] && rule.rank <= under[rule.extension] &&
             (rule.action == Block || rule.action == RedirectTo || rule.action == UpgradeScheme);
         const bool aimed = document && rule.action == AllowAllRequests && rule.rank > allowAll[rule.extension];

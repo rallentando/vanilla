@@ -6,6 +6,7 @@
 #include <QCheckBox>
 #include <QCoreApplication>
 #include <QGridLayout>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLabel>
@@ -51,7 +52,7 @@ namespace {
           QT_TRANSLATE_NOOP("DirectoryPage",
               "On, the tabs around the one being looked at are loaded "
               "without waiting to be opened. It cannot be turned on unless "
-              "\"Hidden tabs\" is \"Active\". Off, a tab under this "
+              "\"Hidden tabs\" is \"Keep running\". Off, a tab under this "
               "directory is loaded only when it is opened. (Default: off)"),
           "[nN](?:o)?(?:[aA](?:uto)?)?[lL](?:oad)?", "!NoAutoLoad", "NoAutoLoad",
           0, true, false },
@@ -65,9 +66,8 @@ namespace {
         { "draggesture",
           QT_TRANSLATE_NOOP("DirectoryPage", "Super drag"),
           QT_TRANSLATE_NOOP("DirectoryPage",
-              "Dragging a link, an image or selected text inside a page is a "
-              "gesture which opens it, instead of handing it to whatever the "
-              "drop lands on."),
+              "Dragging a link, an image or selected text inside a page "
+              "performs a gesture."),
           "[dD](?:rag)?[gG](?:esture)?", "DragGesture", "!DragGesture",
           -1, false, false },
         { "image",
@@ -78,7 +78,7 @@ namespace {
               "misshapen."),
           "[iI]mage", "Image", "!Image", -1, false, false },
         { "javascript",
-          QT_TRANSLATE_NOOP("DirectoryPage", "Enable javascript"),
+          QT_TRANSLATE_NOOP("DirectoryPage", "Enable JavaScript"),
           QT_TRANSLATE_NOOP("DirectoryPage",
               "Off, scripts do not run under this directory. Pages which "
               "need one do not work properly."),
@@ -370,7 +370,27 @@ namespace {
         strings[QStringLiteral("loadFailed")] =
             QCoreApplication::translate("DirectoryPage",
                 "Could not load the directories: ");
+        strings[QStringLiteral("showThis")] =
+            QCoreApplication::translate("DirectoryPage", "Show this directory");
+        strings[QStringLiteral("gone")] =
+            QCoreApplication::translate("DirectoryPage",
+                "That directory is not there any more.");
+        strings[QStringLiteral("unnamed")] =
+            QCoreApplication::translate("DirectoryPage", "(no name)");
+        strings[QStringLiteral("tree")] =
+            QCoreApplication::translate("DirectoryPage", "All directories");
         return strings;
+    }
+
+    QString &PendingSubject(){
+        static QString id;
+        return id;
+    }
+
+    bool InTrash(Node *nd){
+        for(; nd; nd = nd->GetParent())
+            if(nd == TreeBank::GetTrashRoot()) return true;
+        return false;
     }
 
     int DefaultState(const DirectoryPage::Token &token){
@@ -418,19 +438,26 @@ QString TokenSubject(const QString &token){
     if(word.startsWith(QStringLiteral("!"))) word = word.mid(1);
     if(word.isEmpty()) return QString();
 
-    foreach(const Token &t, Tokens()){
-        if(QRegularExpression(QStringLiteral("\\A%1\\Z")
-                              .arg(QLatin1String(t.pattern)))
-           .match(word).hasMatch())
-            return QLatin1String(t.key);
-    }
+    struct Compiled { QList<QRegularExpression> tokens, families; };
+    thread_local const Compiled compiled = [](){
+        Compiled c;
+        foreach(const Token &t, Tokens())
+            c.tokens << QRegularExpression(QStringLiteral("\\A%1\\Z")
+                                           .arg(QLatin1String(t.pattern)));
+        for(const Family &family : FAMILIES)
+            c.families << QRegularExpression(QStringLiteral("\\A(?:%1)\\Z")
+                                             .arg(QLatin1String(family.pattern)));
+        return c;
+    }();
+
+    const QList<Token> &tokens = Tokens();
+    for(int i = 0; i < tokens.size(); i++)
+        if(compiled.tokens.at(i).match(word).hasMatch())
+            return QLatin1String(tokens.at(i).key);
     const int count = sizeof(FAMILIES) / sizeof(FAMILIES[0]);
-    for(int i = 0; i < count; i++){
-        if(QRegularExpression(QStringLiteral("\\A(?:%1)\\Z")
-                              .arg(QLatin1String(FAMILIES[i].pattern)))
-           .match(word).hasMatch())
+    for(int i = 0; i < count; i++)
+        if(compiled.families.at(i).match(word).hasMatch())
             return QLatin1String(FAMILIES[i].subject);
-    }
 
     return word.section(QStringLiteral(" "), 0, 0).toLower();
 }
@@ -463,8 +490,15 @@ QString ComposeTitle(const QString &name, const QStringList &tokens){
 }
 
 int StateIn(const QStringList &set, const QString &pattern){
-    const QRegularExpression on (QStringLiteral("\\A(?:%1)\\Z").arg(pattern));
-    const QRegularExpression off(QStringLiteral("\\A!(?:%1)\\Z").arg(pattern));
+    struct Compiled { QRegularExpression on, off; };
+    thread_local QHash<QString, Compiled> cache;
+    auto it = cache.constFind(pattern);
+    if(it == cache.constEnd())
+        it = cache.insert(pattern, Compiled{
+                QRegularExpression(QStringLiteral("\\A(?:%1)\\Z").arg(pattern)),
+                QRegularExpression(QStringLiteral("\\A!(?:%1)\\Z").arg(pattern))});
+    const QRegularExpression &on  = it->on;
+    const QRegularExpression &off = it->off;
     foreach(const QString &token, set) if(off.match(token).hasMatch()) return 0;
     foreach(const QString &token, set) if(on .match(token).hasMatch()) return 1;
     return -1;
@@ -548,6 +582,35 @@ bool IsPageUrl(const QUrl &url){
 }
 
 QJsonObject Describe(){
+    MainWindow *win = Application::GetCurrentWindow();
+    TreeBank *tb = win ? win->GetTreeBank() : nullptr;
+    ViewNode *subject = tb ? tb->GetCurrentViewNode() : nullptr;
+    if(!subject) subject = TreeBank::GetViewRoot();
+    return Describe(subject);
+}
+
+ViewNode *FindDirectory(const QString &id){
+    ViewNode *vn = Find(id, true);
+    if(!vn || InTrash(vn)) return nullptr;
+    return vn;
+}
+
+void SetPendingSubject(ViewNode *directory){
+    PendingSubject() = directory ? IdOf(directory) : QString();
+}
+
+void ClearPendingSubject(){
+    PendingSubject().clear();
+}
+
+ViewNode *TakePendingSubject(){
+    const QString id = PendingSubject();
+    PendingSubject().clear();
+    return FindDirectory(id);
+}
+
+QJsonObject Describe(ViewNode *subject){
+    if(!subject) subject = TreeBank::GetViewRoot();
     QJsonArray switches;
     foreach(const Token &token, Tokens()){
         QJsonObject object;
@@ -574,15 +637,43 @@ QJsonObject Describe(){
     root[QStringLiteral("useragents")] = agents;
     root[QStringLiteral("strings")]   = PageStrings();
 
-    MainWindow *win = Application::GetCurrentWindow();
-    TreeBank *tb = win ? win->GetTreeBank() : nullptr;
-    ViewNode *subject = tb ? tb->GetCurrentViewNode() : nullptr;
-    if(!subject) subject = TreeBank::GetViewRoot();
-
+    const QList<ViewNode*> directories = ChainOf(subject);
     QJsonArray chain;
-    foreach(ViewNode *vn, ChainOf(subject))
+    foreach(ViewNode *vn, directories)
         chain.append(DescribeEntry(vn));
     root[QStringLiteral("chain")] = chain;
+
+    QJsonArray children;
+    if(!directories.isEmpty()){
+        ViewNode *last = directories.last();
+        root[QStringLiteral("current")] = IdOf(last);
+        if(!InTrash(last)){
+            foreach(Node *child, last->GetChildren()){
+                ViewNode *vn = child->ToViewNode();
+                if(!vn || !vn->IsDirectory()) continue;
+                QJsonObject entry;
+                entry[QStringLiteral("id")]   = IdOf(vn);
+                entry[QStringLiteral("name")] = DirectoryPage::TitleName(vn->GetTitle());
+                children.append(entry);
+            }
+        }
+    }
+    root[QStringLiteral("children")] = children;
+
+    QJsonArray tree;
+    std::function<void(ViewNode*, int)> walk = [&](ViewNode *vn, int depth){
+        QJsonObject entry;
+        entry[QStringLiteral("id")]    = IdOf(vn);
+        entry[QStringLiteral("name")]  = DirectoryPage::TitleName(vn->GetTitle());
+        entry[QStringLiteral("depth")] = depth;
+        tree.append(entry);
+        foreach(Node *child, vn->GetChildren()){
+            ViewNode *below = child->ToViewNode();
+            if(below && below->IsDirectory()) walk(below, depth + 1);
+        }
+    };
+    if(ViewNode *top = TreeBank::GetViewRoot()) walk(top, 0);
+    root[QStringLiteral("tree")] = tree;
     return root;
 }
 
