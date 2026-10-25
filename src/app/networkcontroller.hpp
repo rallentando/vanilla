@@ -3,6 +3,7 @@
 
 #include "switch.hpp"
 #include "dnrrules.hpp"
+#include "permissiontable.hpp"
 #include <QSharedPointer>
 #include "const.hpp"
 
@@ -144,6 +145,8 @@ public:
     };
     static void SetRequestPurpose(QNetworkRequest &request, RequestPurpose purpose);
     static RequestPurpose PurposeOf(const QNetworkRequest &request);
+    static void SetRequestOffTheRecord(QNetworkRequest &request, bool offTheRecord);
+    static bool IsOffTheRecord(const QNetworkRequest &request);
     void SetProxy(QString proxySet);
     void SetSslProtocol(QString sslSet);
     static QSsl::SslProtocol SslProtocolForSetting(const QString &sslSet);
@@ -202,6 +205,7 @@ public:
     void SetPathAndReady(QString name);
 
     void Record(bool hideUrl = false);
+    void SetSource(const QUrl &page, bool offTheRecord);
 
 private:
     friend class tst_downloaditem;
@@ -226,6 +230,8 @@ private:
 
     int        m_HistoryId = 0;
     void EndRecord(int state);
+    QUrl       m_SourcePage;
+    bool       m_SourceOffTheRecord = false;
 
 private slots:
 #if defined(WEBENGINEVIEW) || defined(EDGEWEBVIEW)
@@ -287,9 +293,11 @@ public:
         ToVariable
     };
 
+    static bool MadeOffTheRecord(QObject *request);
+
     static DownloadItem* Download(NetworkAccessManager *nam, const QUrl &url,
-                                  const QUrl &referer = EMPTY_URL,
-                                  DownloadType type = SelectedDirectory);
+                                  const QUrl &referer, DownloadType type,
+                                  bool offTheRecord);
     static DownloadItem* Download(NetworkAccessManager *nam,
                                   const QNetworkRequest &request,
                                   DownloadType type = SelectedDirectory);
@@ -309,7 +317,6 @@ public:
 
     static QQuickWebEngineProfile* QuickProfile(const QString &id);
     static QQuickWebEngineProfile* QuickPrivateProfile(const QString &id);
-    static void ApplyQuickPermissionsPolicy(QQuickWebEngineProfile *profile);
     static void ApplyQuickBlockRules(QQuickWebEngineProfile *profile);
     static void ApplyQuickCommonSettings(QQuickWebEngineProfile *profile);
     static void ApplyAcceptLanguage();
@@ -324,6 +331,14 @@ public:
     static void ClearHttpCache();
     static void ClearVisitedLinks();
     static void ClearPasswords();
+
+    static void MirrorPermissions(const QList<PermissionTable::Row> &delta);
+#ifdef WEBENGINEVIEW
+    static void AdoptPermissions(QWebEngineProfile *profile);
+    static void AdoptPermissions(QQuickWebEngineProfile *profile);
+    static QStringList PermissionKindsOfType(int type);
+    static QStringList PermissionKindsOfFeature(int feature);
+#endif
 
     static QString ProfileStorageName(const QString &id);
     static QString ProfileStorageName(const QString &applicationDir, const QString &id);

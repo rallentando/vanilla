@@ -70,6 +70,7 @@ private:
     QPointer<ExtensionWindow> m_Popup;
     QPointer<QScrollArea> m_Rows;
     QList<QToolButton*> m_Pins;
+    QStringList m_PinKeys;
 };
 
 #endif

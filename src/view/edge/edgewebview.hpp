@@ -33,6 +33,7 @@ public:
     ~EdgeWebView();
 
     void ApplySpecificSettings(QStringList set) Q_DECL_OVERRIDE;
+    bool IsOffTheRecord() Q_DECL_OVERRIDE;
 
     void ApplyTheme() Q_DECL_OVERRIDE;
 
@@ -138,10 +139,15 @@ public:
     static void ClearVisitedLinks();
     static void ClearPasswords();
 
+    static void MirrorPermissions();
+    static QString TablePermissionKind(int kind);
+
     static void ReleaseDownloadCarriers();
 
     static bool RuntimeAvailable();
     static QString RuntimeVersion();
+    static void StartExtensionCopiesAhead();
+    static void HurryExtensionCopiesAhead();
 
 private:
     void AskAgainAboutAbort(int generation, qint64 after);
@@ -150,8 +156,6 @@ public:
 
     static bool CanCompleteAction(const QString &action);
 
-    int GetToken() const;
-    QString GetProfileName() const;
     bool IsPrivateMode() const;
 
 signals:
@@ -223,6 +227,8 @@ public:
     void Print() Q_DECL_OVERRIDE;
     void InspectElement() Q_DECL_OVERRIDE;
     QWidget *InspectorPane() Q_DECL_OVERRIDE;
+    void AddSearchEngine(QPoint pos) Q_DECL_OVERRIDE;
+    void AddBookmarklet(QPoint pos) Q_DECL_OVERRIDE;
     void ExitFullScreen() Q_DECL_OVERRIDE;
 
     void ToggleMediaControls() Q_DECL_OVERRIDE;
@@ -296,8 +302,10 @@ private:
                               const QUrl &origin,
                               std::function<void(bool)> answer);
     void HandleFullScreen(bool on);
+    bool KeepForDownloads() override;
     void WireDownload(ICoreWebView2DownloadOperation *operation,
-                      const QString &name, const QString &path);
+                      const QString &name, const QString &path,
+                      const QUrl &source, bool offTheRecord);
 
     void RemoveCompositionHandlers();
     void RegisterDropTarget();
@@ -328,6 +336,7 @@ private:
         bool m_Editable;
         int m_MediaType;
         QList<EdgeMenuItem> m_ExtensionItems;
+        int m_PasteCommandId;
         int m_Generation;
         bool m_Superseded;
         int m_Sequence;
@@ -335,14 +344,14 @@ private:
         ContextTarget()
             : m_Position(QPoint()), m_LinkUrl(QUrl()), m_SourceUrl(QUrl())
             , m_SelectedText(QString()), m_Editable(false), m_MediaType(0)
-            , m_ExtensionItems(QList<EdgeMenuItem>()), m_Generation(0)
+            , m_ExtensionItems(QList<EdgeMenuItem>()), m_PasteCommandId(-1), m_Generation(0)
             , m_Superseded(false), m_Sequence(0) {}
     };
     void DisplayContextMenuFor(const ContextTarget &target);
-    void CompleteContextMenu(int generation, int commandId);
-    void FinishContextMenu(int commandId);
+    void CompleteContextMenu(int generation, int commandId, bool extension);
+    void FinishContextMenu(int commandId, bool extension);
     void CountedComplete(ICoreWebView2ContextMenuRequestedEventArgs *args,
-                         ICoreWebView2Deferral *deferral, int commandId);
+                         ICoreWebView2Deferral *deferral, int commandId, bool extension);
 
     void PullCookiesIntoJar();
 
@@ -401,6 +410,9 @@ private:
                         QString *name, bool *isPrivate);
     void ReportPrivateWipeFailure();
     static void SettlePrivateWipe(const QString &key, bool ok);
+    void EnterPermissionSync();
+    static void RunPermissionSync(const QString &key, int run);
+    static void SettlePermissionSync(const QString &key, int run, bool ok);
     void RegisterResourceFilter();
 
     long AnswerVanillaPage(struct ICoreWebView2WebResourceRequestedEventArgs *args,
@@ -411,7 +423,7 @@ private:
     void PerformHistoryMove(const NativeHistory::Request &request);
     void ReportCreationFailure(long result);
     void ShowFailure(const QString &text);
-    void PaintHostWindow();
+    void PaintHostWindow(bool leavingClear = false);
 
     bool BuildControllerOptions(struct ICoreWebView2Environment *environment,
                                 struct ICoreWebView2Environment10 **environment10,

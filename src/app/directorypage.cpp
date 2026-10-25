@@ -31,29 +31,26 @@ namespace {
 
     const DirectoryPage::Token TOKENS[] = {
         { "id",
-          QT_TRANSLATE_NOOP("DirectoryPage", "Use folder name as profile ID"),
+          QT_TRANSLATE_NOOP("DirectoryPage", "Use directory name as profile ID"),
           QT_TRANSLATE_NOOP("DirectoryPage",
-              "On, this directory's name is given a profile of its own: its "
-              "cookies, its storage and its cache. Different names hold "
-              "different data; the same name shares it. Renaming loses what "
-              "the old name held."),
+              "This directory's name becomes a profile of its own: cookies, "
+              "storage and cache. Directories with the same name share it; "
+              "renaming loses what the old name held."),
           "[iI][dD](?:entif(?:y|ier|ication))?", "ID", "", -1, false, true },
         { "private",
           QT_TRANSLATE_NOOP("DirectoryPage", "Private mode"),
           QT_TRANSLATE_NOOP("DirectoryPage",
-              "On, nothing under this directory is kept on this machine: no "
-              "cookies, no history, no cache, no session. What the sites "
-              "themselves see is unchanged. The private directories of one "
-              "profile share one private session, which lasts until the "
-              "application quits."),
+              "Nothing under this directory is kept on this machine: no cookies, "
+              "no history, no cache, no session. The private directories of one "
+              "profile share one session, which lasts until the application "
+              "quits."),
           "(?:[pP]rivate|[oO]ff[tT]he[rR]ecord)", "Private", "!Private", -1, false, false },
         { "autoload",
           QT_TRANSLATE_NOOP("DirectoryPage", "Auto load"),
           QT_TRANSLATE_NOOP("DirectoryPage",
-              "On, the tabs around the one being looked at are loaded "
-              "without waiting to be opened. It cannot be turned on unless "
-              "\"Hidden tabs\" is \"Keep running\". Off, a tab under this "
-              "directory is loaded only when it is opened. (Default: off)"),
+              "The tabs around the one being looked at are loaded before they are "
+              "opened. Needs 'Hidden tabs' set to 'Keep running' and 'Load tabs "
+              "ahead in the background' on."),
           "[nN](?:o)?(?:[aA](?:uto)?)?[lL](?:oad)?", "!NoAutoLoad", "NoAutoLoad",
           0, true, false },
         { "rightgesture",
@@ -71,21 +68,18 @@ namespace {
           "[dD](?:rag)?[gG](?:esture)?", "DragGesture", "!DragGesture",
           -1, false, false },
         { "image",
-          QT_TRANSLATE_NOOP("DirectoryPage", "Show images"),
+          QT_TRANSLATE_NOOP("DirectoryPage", "Images"),
           QT_TRANSLATE_NOOP("DirectoryPage",
-              "Off, pages under this directory are shown without their "
-              "images. Pages which do not allow for that come out "
-              "misshapen."),
+              "Off, pages under this directory are shown without their images."),
           "[iI]mage", "Image", "!Image", -1, false, false },
         { "javascript",
-          QT_TRANSLATE_NOOP("DirectoryPage", "Enable JavaScript"),
+          QT_TRANSLATE_NOOP("DirectoryPage", "JavaScript"),
           QT_TRANSLATE_NOOP("DirectoryPage",
-              "Off, scripts do not run under this directory. Pages which "
-              "need one do not work properly."),
+              "Off, scripts do not run under this directory."),
           "[jJ](?:ava)?[sS](?:cript)?", "Javascript", "!Javascript",
           -1, false, false },
         { "plugins",
-          QT_TRANSLATE_NOOP("DirectoryPage", "Enable plugins"),
+          QT_TRANSLATE_NOOP("DirectoryPage", "Plugins"),
           QT_TRANSLATE_NOOP("DirectoryPage",
               "The engine's built-in plugins, the PDF viewer above all"),
           "[pP]lugins?", "Plugins", "!Plugins", -1, false, false },
@@ -102,7 +96,7 @@ namespace {
         { "ssl",       "[sS][sS][lL] [^ ]+" },
         { "viewkind",
           "(?:[gG](?:raphics)?|[qQ](?:uick)?)?[wW](?:eb)?(?:[eE](?:ngine)?|[kK](?:it)?)?(?:[vV](?:iew)?)?|"
-          "(?:[qQ](?:uick)?)?[nN](?:ative)?[wW](?:ev)?(?:[vV](?:iew)?)?|"
+          "(?:[qQ](?:uick)?)?[nN](?:ative)?[wW](?:eb)?(?:[vV](?:iew)?)?|"
           "[eE](?:dge)?(?:[vV](?:iew)?)?|"
           "[eE](?:dge)?[wW](?:eb)?(?:[vV](?:iew)?)?|"
           "[lL](?:ocal)?(?:[vV](?:iew)?)?|"
@@ -245,6 +239,32 @@ namespace {
         return states;
     }
 
+    struct KindWord { TreeBank::ViewKind kind; const char *word; };
+    const QList<KindWord> &KindWords(){
+        static const QList<KindWord> words = {
+#ifdef WEBENGINEVIEW
+            { TreeBank::WebEngineKind,      "WebEngine" },
+            { TreeBank::QuickWebEngineKind, "QuickWebEngine" },
+#endif
+#ifdef NATIVEWEBVIEW
+            { TreeBank::QuickNativeKind,    "NativeWeb" },
+#endif
+#ifdef EDGEWEBVIEW
+            { TreeBank::EdgeKind,           "Edge" },
+#endif
+#ifdef LOCALVIEW
+            { TreeBank::LocalKind,          "Local" },
+#endif
+        };
+        return words;
+    }
+
+    QString WordOfKind(TreeBank::ViewKind kind){
+        for(const KindWord &word : KindWords())
+            if(word.kind == kind) return QLatin1String(word.word);
+        return QString();
+    }
+
     QJsonObject DescribeEntry(ViewNode *vn){
         QJsonObject object;
         object[QStringLiteral("id")]      = IdOf(vn);
@@ -253,6 +273,11 @@ namespace {
             QJsonArray::fromStringList(DirectoryPage::TitleTokens(vn->GetTitle()));
         object[QStringLiteral("profile")] = ProfileOf(vn);
         object[QStringLiteral("inherited")] = InheritedStates(vn);
+        const QStringList own = DirectoryPage::TitleTokens(vn->GetTitle());
+        object[QStringLiteral("kind")]          = DirectoryPage::ViewKindWordIn(own);
+        object[QStringLiteral("kindToken")]     = DirectoryPage::ViewKindTokenIn(own);
+        object[QStringLiteral("inheritedKind")] =
+            WordOfKind(TreeBank::ViewKindFor(QUrl(), SettingsAbove(vn)));
         if(vn == TreeBank::GetTrashRoot()) object[QStringLiteral("root")] = true;
         return object;
     }
@@ -319,7 +344,6 @@ namespace {
         strings[QStringLiteral("otherTokens")] =
             QCoreApplication::translate("DirectoryPage", "Other tokens");
         strings[QStringLiteral("otherTokensHint")] =
-#ifdef EDGEWEBVIEW
             QCoreApplication::translate("DirectoryPage",
                 "Separated by ';'. Everything without a control here:\n"
                 "\n"
@@ -327,23 +351,13 @@ namespace {
                 "Encoding <name> -- the fallback text encoding.\n"
                 "Proxy <address> -- a proxy for this directory alone.\n"
                 "Ssl <protocol> -- which SSL protocol to offer: TLSv1.2, Any or Secure.\n"
-                "WebEngine / QuickWebEngine / NativeWeb / Edge / Local -- "
-                "which kind of view a new node here opens with.\n"
                 "\n"
                 "A name can be turned off by writing it with a '!' in front.");
-#else
+        strings[QStringLiteral("viewKind")] =
+            QCoreApplication::translate("DirectoryPage", "Kind of view");
+        strings[QStringLiteral("viewKindHint")] =
             QCoreApplication::translate("DirectoryPage",
-                "Separated by ';'. Everything without a control here:\n"
-                "\n"
-                "UserAgent <browser> -- claim to be another browser.\n"
-                "Encoding <name> -- the fallback text encoding.\n"
-                "Proxy <address> -- a proxy for this directory alone.\n"
-                "Ssl <protocol> -- which SSL protocol to offer: TLSv1.2, Any or Secure.\n"
-                "WebEngine / QuickWebEngine / NativeWeb / Local -- which kind "
-                "of view a new node here opens with.\n"
-                "\n"
-                "A name can be turned off by writing it with a '!' in front.");
-#endif
+                "Which kind of view a new node here opens with.");
         strings[QStringLiteral("userAgentNames")] =
             QCoreApplication::translate("DirectoryPage",
                 "Browsers to name, or a whole user agent written out with its "
@@ -462,6 +476,24 @@ QString TokenSubject(const QString &token){
     return word.section(QStringLiteral(" "), 0, 0).toLower();
 }
 
+QStringList ViewKindWords(){
+    QStringList words;
+    for(const KindWord &word : KindWords()) words << QLatin1String(word.word);
+    return words;
+}
+
+QString ViewKindWordIn(const QStringList &tokens){
+    return WordOfKind(TreeBank::ViewKindNamedIn(tokens));
+}
+
+QString ViewKindTokenIn(const QStringList &tokens){
+    const TreeBank::ViewKind kind = TreeBank::ViewKindNamedIn(tokens);
+    if(kind == TreeBank::NoView) return QString();
+    foreach(const QString &token, tokens)
+        if(TreeBank::ViewKindNamedIn(QStringList(token)) == kind) return token;
+    return QString();
+}
+
 QStringList InheritTokens(const QStringList &titlesNearestFirst){
     QStringList kept;
     QSet<QString> settled;
@@ -540,7 +572,7 @@ int TokenState(const QString &title, const Token &token){
 
 bool TokenBlocked(const Token &token){
     return QLatin1String(token.key) == QLatin1String("autoload") &&
-           !View::HiddenViewsStayActive();
+           (!View::HiddenViewsStayActive() || !Application::EnableAutoLoad());
 }
 
 QString WithTokenState(const QString &title, const Token &token, int state){
@@ -635,6 +667,10 @@ QJsonObject Describe(ViewNode *subject){
     QJsonObject root;
     root[QStringLiteral("switches")]  = switches;
     root[QStringLiteral("useragents")] = agents;
+    root[QStringLiteral("kinds")] = QJsonArray::fromStringList(ViewKindWords());
+    for(const Family &family : FAMILIES)
+        if(QLatin1String(family.subject) == QLatin1String("viewkind"))
+            root[QStringLiteral("kindPattern")] = QLatin1String(family.pattern);
     root[QStringLiteral("strings")]   = PageStrings();
 
     const QList<ViewNode*> directories = ChainOf(subject);

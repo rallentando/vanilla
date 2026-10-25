@@ -146,6 +146,8 @@ struct EdgeWebView::Private {
 
     EdgeDownloadCloseLedger m_Downloads;
 
+    bool m_KeptAfterRelease;
+
     EdgeAbortLatch m_Aborts;
 
     EdgeDocumentCoordinator m_Document;
@@ -169,6 +171,9 @@ struct EdgeWebView::Private {
 
     QWindow *m_HostWindow;
     QWidget *m_Container;
+
+    QPointer<QWidget> m_WatchedTopLevel;
+    bool m_PositionNoticePending = false;
 
     QWidget *m_InspectorPane;
     WId m_InspectorWinId;
@@ -219,6 +224,7 @@ struct EdgeWebView::Private {
         , m_Token(0)
         , m_HasFocus(false)
         , m_Downloads(EdgeDownloadCloseLedger())
+        , m_KeptAfterRelease(false)
         , m_ProfileName(QString())
         , m_PrivateMode(false)
         , m_ActualProfileName(QString())

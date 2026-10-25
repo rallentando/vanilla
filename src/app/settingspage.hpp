@@ -37,6 +37,11 @@ namespace VanillaPage {
 
     QByteArray WithInlinePalette(const QByteArray &html);
 
+    QByteArray WithEmbeddedSchema(const QByteArray &html, const QByteArray &schemaJson);
+
+    QByteArray WithInlineResources(const QByteArray &html, const QByteArray &css,
+                                   const QByteArray &js);
+
     VanillaPageResponse Answer(const QUrl &url, const QByteArray &method,
                                const QByteArray &body, const QUrl &initiator);
 
@@ -49,8 +54,13 @@ namespace VanillaPage {
     QUrl InitiatorFromHeaders(const QString &origin, const QString &referer,
                               const QUrl &viewUrl, bool documentPost = false);
 
+    QUrl StartUrl();
+    bool IsStartUrl(const QUrl &url);
+
     QUrl SettingsUrl();
     bool IsSettingsUrl(const QUrl &url);
+
+    bool IsTranslucentPage(const QUrl &url);
     bool SameDocument(const QUrl &a, const QUrl &b);
 }
 

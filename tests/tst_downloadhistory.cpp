@@ -1,6 +1,9 @@
 #include "switch.hpp"
 
 #include <QtTest>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
 #include <QTemporaryDir>
 
 #include "const.hpp"
@@ -9,6 +12,8 @@
 #include "downloadbar.hpp"
 
 #include <QToolButton>
+#include <QDir>
+#include <QFile>
 
 class tst_downloadhistory : public QObject {
     Q_OBJECT
@@ -71,6 +76,45 @@ private slots:
         QCOMPARE(again.Find(done)->path, Path(1));
 
         QVERIFY(again.Started(Url(3), Path(3), nullptr) > last);
+    }
+
+    void theSourcePageIsKeptAndComesBack(){
+        Fresh();
+        const QUrl page(QStringLiteral("https://example.com/files.html"));
+        int with, without;
+        {
+            DownloadHistory history(FilePath());
+            with = history.Started(Url(1), Path(1), nullptr, page);
+            without = history.Started(Url(2), Path(2), nullptr);
+            QCOMPARE(history.Find(with)->page, page);
+            QVERIFY(history.Find(without)->page.isEmpty());
+        }
+        QFile file(FilePath());
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QJsonArray entries =
+            QJsonDocument::fromJson(file.readAll()).object()[QStringLiteral("entries")].toArray();
+        QCOMPARE(entries.size(), 2);
+        for(const QJsonValue &value : entries){
+            const QJsonObject obj = value.toObject();
+            QCOMPARE(obj.contains(QStringLiteral("page")), obj[QStringLiteral("id")].toInt() == with);
+        }
+        file.close();
+
+        DownloadHistory again(FilePath());
+        QCOMPARE(again.Find(with)->page, page);
+        QVERIFY(again.Find(without)->page.isEmpty());
+    }
+
+    void onlyAPageATabCanGoBackToIsKept(){
+        const QUrl url(QStringLiteral("https://example.com/a.zip"));
+        for(const char *kept : {"https://example.com/", "http://example.com/x",
+                                "ftp://example.com/", "file:///C:/Users/a/index.html"})
+            QCOMPARE(DownloadHistory::SourcePageWorthKeeping(QUrl(QString::fromLatin1(kept)), url),
+                     QUrl(QString::fromLatin1(kept)));
+        for(const char *refused : {"", "about:blank", "data:text/html,a", "vanilla://settings/",
+                                   "blob:https://example.com/1", "https://example.com/a.zip"})
+            QVERIFY2(DownloadHistory::SourcePageWorthKeeping(QUrl(QString::fromLatin1(refused)), url).isEmpty(),
+                     refused);
     }
 
     void newestFirst(){
@@ -351,6 +395,32 @@ private slots:
         entries.prepend(older);
         QCOMPARE(DownloadBar::NewestEnding(entries), now.addSecs(-20));
         QVERIFY(!DownloadBar::NewestEnding(QList<DownloadHistory::Entry>() << interrupted << running).isValid());
+    }
+
+    void thePanelNeverTakesTheActivation(){
+        QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) + QStringLiteral("/ui/downloadbar.cpp"));
+        QVERIFY2(file.open(QIODevice::ReadOnly), "the panel's source was not read; check VANILLA_SOURCE_DIR");
+        const QString source = QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
+
+        const int ctor = source.indexOf(QStringLiteral("DownloadPanel::DownloadPanel(MainWindow *window)"));
+        QVERIFY2(ctor >= 0, "the panel's constructor has gone");
+        const int body = source.indexOf(QStringLiteral("\n{"), ctor);
+        QVERIFY2(body > ctor, "the panel's constructor has lost its body");
+        const QString initialisers = source.mid(ctor, body - ctor);
+        const int flags = initialisers.indexOf(QStringLiteral("QWidget(window, "));
+        QVERIFY2(flags >= 0, "the panel is no longer made as a widget of its window");
+        const QString made = initialisers.mid(flags, initialisers.indexOf(QLatin1Char(')'), flags) - flags);
+        QVERIFY2(made.contains(QStringLiteral("Qt::Tool")) && made.contains(QStringLiteral("Qt::WindowDoesNotAcceptFocus")),
+                 qPrintable(QStringLiteral("the panel's window may take the activation: ") + made));
+        QVERIFY2(!source.contains(QStringLiteral("activateWindow(")),
+                 "something activates a download window: the main window's blur would go flat");
+        QVERIFY2(!source.contains(QStringLiteral("setFocus(")),
+                 "something gives the focus to a download window");
+        const int shown = source.indexOf(QStringLiteral("void DownloadPanel::ShowFor("));
+        QVERIFY2(shown >= 0, "'ShowFor' has gone");
+        const QString showFor = source.mid(shown, source.indexOf(QStringLiteral("\n}"), shown) - shown);
+        QVERIFY2(showFor.contains(QStringLiteral("setAttribute(Qt::WA_ShowWithoutActivating);")),
+                 "the panel is not always shown without activating");
     }
 };
 

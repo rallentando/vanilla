@@ -39,7 +39,6 @@
 #include "mainwindow.hpp"
 #include "application.hpp"
 #include "networkcontroller.hpp"
-#include "jsobject.hpp"
 #include "dialog.hpp"
 #include "directorypage.hpp"
 
@@ -50,6 +49,8 @@ bool View::m_EnableScrollGesture = false;
 bool View::m_InspectorInMainWindow = true;
 QString View::m_SuspendHiddenViews = QStringLiteral("Active");
 bool View::m_SavePasswords = true;
+QString View::m_TrackingPrevention = QStringLiteral("Balanced");
+bool View::m_SmartScreen = true;
 
 QMap<QKeySequence, QString> View::m_KeyMap = QMap<QKeySequence, QString>();
 QMap<QString, QString> View::m_MouseMap = QMap<QString, QString>();
@@ -179,7 +180,6 @@ View::View(TreeBank *parent, QString id, QStringList set){
     m_Page = 0;
     m_EnableDragGestureLocal = m_EnableDragGesture;
     m_EnableRightGestureLocal = m_EnableMouseGesture;
-    m_JsObject = new _View(this);
     m_LoadProgress = 0;
     m_IsLoading = false;
     m_DisplayObscured = false;
@@ -261,10 +261,6 @@ WeakView View::GetMaster() const {
 
 WeakView View::GetSlave() const {
     return m_Slave;
-}
-
-_View *View::GetJsObject() const {
-    return m_JsObject;
 }
 
 void View::SetTreeBank(TreeBank* t){
@@ -653,10 +649,11 @@ QMimeData *View::CreateMimeDataFromElement(NetworkAccessManager *nam){
 
     QList<QUrl> urls;
 
+    const bool offTheRecord = Page::OffTheRecord(this);
     if(!imageUrl.isEmpty()){
         DownloadItem *item = m_DragToStartDownload
             ? NetworkController::Download
-              (nam, imageUrl, url(), NetworkController::TemporaryDirectory)
+              (nam, imageUrl, url(), NetworkController::TemporaryDirectory, offTheRecord)
             : nullptr;
 
         if(item) urls << item->GetUrls();
@@ -668,7 +665,7 @@ QMimeData *View::CreateMimeDataFromElement(NetworkAccessManager *nam){
     if(!linkUrl.isEmpty()){
         DownloadItem *item = m_DragToStartDownload
             ? NetworkController::Download
-              (nam, linkUrl, url(), NetworkController::TemporaryDirectory)
+              (nam, linkUrl, url(), NetworkController::TemporaryDirectory, offTheRecord)
             : nullptr;
 
         if(item) urls << item->GetUrls();
@@ -786,6 +783,21 @@ QMenu *View::OpenMediaWithOtherBrowserMenu(QVariant data){
     return menu;
 }
 
+QWidgetAction *View::MenuCaption(QMenu *menu, const QString &text, Qt::Alignment align){
+    QWidgetAction *action = new QWidgetAction(menu);
+    QWidget *widget = new QWidget(menu);
+    QHBoxLayout *layout = new QHBoxLayout();
+    QLabel *label = new QLabel(text);
+    label->setAlignment(align);
+    label->setForegroundRole(QPalette::PlaceholderText);
+    layout->setContentsMargins(DeviceScale::Primary(15), DeviceScale::Primary(3),
+                               DeviceScale::Primary(15), DeviceScale::Primary(3));
+    layout->addWidget(label);
+    widget->setLayout(layout);
+    action->setDefaultWidget(widget);
+    return action;
+}
+
 void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type){
     QVariant data = QVariant::fromValue(elem);
 
@@ -827,17 +839,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
 
         foreach(QString str, View::GetLinkMenu().split(comma)){
             if(str == QStringLiteral("LinkUrl")){
-                QWidgetAction *action = new QWidgetAction(menu);
-                QWidget *widget = new QWidget(menu);
-                QHBoxLayout *layout = new QHBoxLayout();
-                QLabel *label = new QLabel(name);
-                label->setAlignment(Qt::AlignLeft);
-                layout->setContentsMargins(DeviceScale::Primary(15), DeviceScale::Primary(3),
-                                           DeviceScale::Primary(15), DeviceScale::Primary(3));
-                layout->addWidget(label);
-                widget->setLayout(layout);
-                action->setDefaultWidget(widget);
-                menu->addAction(action);
+                menu->addAction(MenuCaption(menu, name, Qt::AlignLeft));
             }
             else if(str == QStringLiteral("Separator")) menu->addSeparator();
             else if(str == QStringLiteral("OpenLinkWithOtherBrowser"))
@@ -862,17 +864,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
 
         foreach(QString str, type == Page::MediaTypePlayable ? View::GetMediaMenu().split(comma) : View::GetImageMenu().split(comma)){
             if(str == QStringLiteral("ImageUrl") || str == QStringLiteral("MediaUrl")){
-                QWidgetAction *action = new QWidgetAction(menu);
-                QWidget *widget = new QWidget(menu);
-                QHBoxLayout *layout = new QHBoxLayout();
-                QLabel *label = new QLabel(name);
-                label->setAlignment(Qt::AlignLeft);
-                layout->setContentsMargins(DeviceScale::Primary(15), DeviceScale::Primary(3),
-                                           DeviceScale::Primary(15), DeviceScale::Primary(3));
-                layout->addWidget(label);
-                widget->setLayout(layout);
-                action->setDefaultWidget(widget);
-                menu->addAction(action);
+                menu->addAction(MenuCaption(menu, name, Qt::AlignLeft));
             }
             else if(str == QStringLiteral("Separator")) menu->addSeparator();
             else if(str == QStringLiteral("OpenImageWithOtherBrowser"))
@@ -996,17 +988,7 @@ void View::AddRegularMenu(QMenu *menu, SharedWebElement elem){
     }
     QString name = QStringLiteral("(") + GetViewTypeName() + QStringLiteral(")");
 
-    QWidgetAction *action = new QWidgetAction(menu);
-    QWidget *widget = new QWidget(menu);
-    QHBoxLayout *layout = new QHBoxLayout();
-    QLabel *label = new QLabel(name);
-    label->setAlignment(Qt::AlignRight);
-    layout->setContentsMargins(DeviceScale::Primary(15), DeviceScale::Primary(3),
-                               DeviceScale::Primary(15), DeviceScale::Primary(3));
-    layout->addWidget(label);
-    widget->setLayout(layout);
-    action->setDefaultWidget(widget);
-    menu->addAction(action);
+    menu->addAction(MenuCaption(menu, name, Qt::AlignRight));
 }
 
 #ifdef WEBENGINEVIEW
@@ -1047,6 +1029,8 @@ void View::LoadSettings(){
     m_InspectorInMainWindow     = s.value(QStringLiteral("webview/@InspectorInMainWindow"), true).value<bool>();
     m_SuspendHiddenViews        = s.value(QStringLiteral("webview/@SuspendHiddenViews"), QStringLiteral("Active")).value<QString>();
     m_SavePasswords             = s.value(QStringLiteral("webview/@SavePasswords"), true).value<bool>();
+    m_TrackingPrevention        = s.value(QStringLiteral("webview/@TrackingPrevention"), QStringLiteral("Balanced")).value<QString>();
+    m_SmartScreen               = s.value(QStringLiteral("webview/@SmartScreen"), true).value<bool>();
 
     UrlBlockRules::ReloadRules();
 
@@ -1364,6 +1348,15 @@ void View::RebuildForOffTheRecord(){
     });
 }
 
+bool View::IsOffTheRecord(){
+    return DirectoryPage::SaysPrivate(m_SpecificSettings);
+}
+
+bool View::KeepsOffDisk(){
+    return Page::OffTheRecord(this) ||
+        (m_ViewNode && TreeBank::IsOffTheRecord(m_ViewNode));
+}
+
 void View::ApplySpecificSettings(QStringList set){
     m_SpecificSettings = set;
 
@@ -1539,7 +1532,7 @@ void View::UpdateThumbnail(){
                 image.
                 scaled(SAVING_THUMBNAIL_SIZE,
                        Qt::KeepAspectRatioByExpanding,
-                       Qt::SmoothTransformation));
+                       Qt::SmoothTransformation), KeepsOffDisk());
         } else {
             m_ViewNode->SetImage(
                 image.
@@ -1548,7 +1541,7 @@ void View::UpdateThumbnail(){
                        Qt::SmoothTransformation).
                 copy(width_diff / 2, height_diff / 2,
                      SAVING_THUMBNAIL_SIZE.width(),
-                     SAVING_THUMBNAIL_SIZE.height()));
+                     SAVING_THUMBNAIL_SIZE.height()), KeepsOffDisk());
         }
     }
 }
@@ -1859,6 +1852,17 @@ QString View::KeyAction(const QKeySequence &seq){
     return m_KeyMap.value(seq);
 }
 
+InputMap::KeyLayers View::KeyLayers(){
+    const bool single = EnableSingleKeyShortcut();
+    InputMap::KeyLayer views;
+    views.map = m_KeyMap;
+    views.singleKeys = single;
+    InputMap::KeyLayer application;
+    application.map = TreeBank::GetKeyMap();
+    application.singleKeys = single;
+    return InputMap::KeyLayers() << views << application;
+}
+
 bool View::TriggerKeyEvent(QKeyEvent *ev){
     QKeySequence seq = Application::MakeKeySequence(ev);
     if(seq.isEmpty()) return false;
@@ -1883,6 +1887,7 @@ bool View::TriggerKeyEvent(QKeyEvent *ev){
 }
 
 bool View::TriggerKeyEvent(QString str){
+    Application::InputScope key(true);
     QKeySequence seq = Application::MakeKeySequence(str);
     if(seq.isEmpty()) return false;
     str = m_KeyMap.value(seq);

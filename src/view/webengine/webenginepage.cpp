@@ -8,7 +8,7 @@
 #include "loadending.hpp"
 #include "page.hpp"
 
-#if defined(USE_WEBCHANNEL) || defined(VANILLA_PASSWORDS)
+#ifdef VANILLA_PASSWORDS
 #  include <QWebChannel>
 #endif
 #include <QPointer>
@@ -39,12 +39,13 @@
 #include "webenginepasswords.hpp"
 #include "quickwebengineview.hpp"
 #include "application.hpp"
+#include "networkcontroller.hpp"
+#include "sitepermissions.hpp"
 #include "mainwindow.hpp"
 #include "gadgets.hpp"
 #include "networkcontroller.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
-#include "jsobject.hpp"
 #include "dialog.hpp"
 #include "certificatepolicy.hpp"
 
@@ -160,16 +161,9 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, bool offTheRecord, QObje
     m_Page->SetView(m_View);
 
     connect(this, SIGNAL(windowCloseRequested()), m_Page, SLOT(Close()));
-
-#ifdef USE_WEBCHANNEL
-    AddJsObject();
-#endif
 }
 
 WebEnginePage::~WebEnginePage(){
-#ifdef USE_WEBCHANNEL
-    if(webChannel()) delete webChannel();
-#endif
     setNetworkAccessManager(nullptr);
 }
 
@@ -198,8 +192,6 @@ void WebEnginePage::triggerAction(WebAction action, bool checked){
 }
 
 bool WebEnginePage::acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame){
-#ifdef USE_WEBCHANNEL
-#endif
     return QWebEnginePage::acceptNavigationRequest(url, type, isMainFrame);
 }
 
@@ -247,6 +239,7 @@ void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
         if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+        Application::InputScope key(true);
         m_View->KeyPressEvent(&ke);
         return;
     } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
@@ -298,6 +291,16 @@ void WebEnginePage::OnLinkHovered(const QString &url){
 void WebEnginePage::HandlePermission(QWebEnginePermission permission){
     if(!permission.isValid()) return;
 
+    const QStringList kinds = NetworkController::PermissionKindsOfType
+        (static_cast<int>(permission.permissionType()));
+    if(!kinds.isEmpty()){
+        PermissionTable::State known = SitePermissions::Lookup(permission.origin(), kinds.first());
+        if(kinds.length() == 2)
+            known = PermissionTable::Both(known, SitePermissions::Lookup(permission.origin(), kinds.last()));
+        if(known == PermissionTable::Allow){ permission.grant(); return;}
+        if(known == PermissionTable::Block){ permission.deny();  return;}
+    }
+
     QString typeString;
     switch(permission.permissionType()){
     case QWebEnginePermission::PermissionType::Notifications:
@@ -336,8 +339,13 @@ void WebEnginePage::HandlePermission(QWebEnginePermission permission){
     dialog->Execute();
 
     const Dialog::Button clicked = dialog->ClickedButton();
-    if     (clicked == Dialog::Yes) permission.grant();
-    else if(clicked == Dialog::No)  permission.deny();
+    if(clicked != Dialog::Yes && clicked != Dialog::No) return;
+
+    if(clicked == Dialog::Yes) permission.grant();
+    else permission.deny();
+    SitePermissions::Remember(permission.origin(), kinds,
+                              clicked == Dialog::Yes ? PermissionTable::Allow : PermissionTable::Block,
+                              profile()->isOffTheRecord());
 }
 #else
 void WebEnginePage::HandleFeaturePermission(const QUrl &securityOrigin,
@@ -533,6 +541,7 @@ void WebEnginePage::HandleCertificateError(QWebEngineCertificateError error){
     Application::AskSslErrorPolicyIfNeed();
 
     const QString host = error.url().host();
+    const bool offTheRecord = Page::OffTheRecord(m_View);
 
     switch(Application::GetSslErrorPolicy()){
     case Application::IgnoreSslErrors:
@@ -572,10 +581,10 @@ void WebEnginePage::HandleCertificateError(QWebEngineCertificateError error){
 
         const Dialog::Button clicked = dialog->ClickedButton();
         if(clicked == Dialog::Allow){
-            Application::AppendToAllowedHosts(host);
+            Application::AppendToAllowedHosts(host, offTheRecord);
             error.acceptCertificate();
         } else {
-            if(clicked == Dialog::Block) Application::AppendToBlockedHosts(host);
+            if(clicked == Dialog::Block) Application::AppendToBlockedHosts(host, offTheRecord);
             error.rejectCertificate();
         }
         return;
@@ -612,10 +621,10 @@ void WebEnginePage::HandleCertificateError(QWebEngineCertificateError error){
 
         const Dialog::Button clicked = dialog->ClickedButton();
         if(clicked == Dialog::Allow){
-            Application::RememberCertificate(key, true);
+            Application::RememberCertificate(key, true, offTheRecord);
             error.acceptCertificate();
         } else {
-            if(clicked == Dialog::Block) Application::RememberCertificate(key, false);
+            if(clicked == Dialog::Block) Application::RememberCertificate(key, false, offTheRecord);
             error.rejectCertificate();
         }
         return;
@@ -785,233 +794,21 @@ void WebEnginePage::HandleFindTextFinished(const QWebEngineFindTextResult &resul
                            QString());
 }
 
-void WebEnginePage::HandleUnsupportedContent(QNetworkReply *reply){
-    Q_UNUSED(reply)
-}
-
-void WebEnginePage::AddJsObject(){
-#ifdef USE_WEBCHANNEL
-
-    QWebChannel *channel = webChannel();
-
-    setWebChannel(new QWebChannel(this));
-    if(channel) delete channel;
-
-    if(m_View && m_View->GetJsObject()){
-        webChannel()->registerObject(QStringLiteral("_view"), m_View->GetJsObject());
-        m_View->OnSetJsObject(m_View->GetJsObject());
-    }
-    if(m_View && m_View->GetTreeBank() && m_View->GetTreeBank()->GetJsObject()){
-        webChannel()->registerObject(QStringLiteral("_vanilla"), m_View->GetTreeBank()->GetJsObject());
-        m_View->OnSetJsObject(m_View->GetTreeBank()->GetJsObject());
-    }
-#endif
-}
-
 void WebEnginePage::InspectElement(){
     QWebEnginePage::triggerAction(QWebEnginePage::InspectElement);
 }
 
 void WebEnginePage::AddSearchEngine(QPoint pos){
-    m_View->CallWithGotCurrentBaseUrl([this, pos](QUrl base){
-
-    m_View->CallWithEvaluatedJavaScriptResult(QStringLiteral(
-"(function(){\n"
-"    var x = %1;\n"
-"    var y = %2;\n"
-"    var elem = document.elementFromPoint(x, y);\n"
-"    while(elem && (elem.tagName == \"FRAME\" || elem.tagName == \"IFRAME\")){\n"
-"        try{\n"
-"            var frameDocument = elem.contentDocument;\n"
-"            var rect = elem.getBoundingClientRect();\n"
-"            x -= rect.left;\n"
-"            y -= rect.top;\n"
-"            elem = frameDocument.elementFromPoint(x, y);\n"
-"        }\n"
-"        catch(e){ break;}\n"
-"    }\n"
-"    if(!elem) return {};\n"
-"    var name = elem.name;\n"
-"    var form = elem;\n"
-"    while(form && form.tagName != \"FORM\"){\n"
-"        form = form.parentNode;\n"
-"    }\n"
-"    if(!form) return {};\n"
-"    var encode = form.getAttribute(\"accept-charset\") || form.ownerDocument.charset || \"UTF-8\";\n"
-"    var method = form.method || \"get\";\n"
-"    if(method.toLowerCase() != \"get\") return {};\n"
-"    var result = {};\n"
-"    var queries = {};\n"
-"    var engines = {};\n"
-"    var inputs = form.getElementsByTagName(\"input\");\n"
-"    var buttons = form.getElementsByTagName(\"button\");\n"
-"    var selects = form.getElementsByTagName(\"select\");\n"
-"    for(var i = 0; i < inputs.length; i++){\n"
-"        var field = inputs[i];\n"
-"        var type = (field.type || \"text\").toLowerCase();\n"
-"        var name = field.name;\n"
-"        var val = field.value;\n"
-"        if(type == \"submit\"){\n"
-"            engines[name] = val; continue;\n"
-"        } else if(type == \"text\" || type == \"search\"){\n"
-"            if(field == elem) val = \"{query}\";\n"
-"        } else if(type == \"checkbox\" || type == \"radio\"){\n"
-"            if(!field.checked) continue;\n"
-"        } else if(type != \"hidden\") continue;\n"
-"        queries[name] = val;\n"
-"    }\n"
-"    for(var i = 0; i < buttons.length; i++){\n"
-"        var button = buttons[i];\n"
-"        engines[button.name] = button.getAttribute(\"aria-label\");\n"
-"    }\n"
-"    for(var i = 0; i < selects.length; i++){\n"
-"        var select = selects[i];\n"
-"        var index = select.selectedIndex;\n"
-"        if(index != -1){\n"
-"            var options = select.getElementsByTagName(\"option\");\n"
-"            queries[select.name] = options[index].textContent;\n"
-"        }\n"
-"    }\n"
-"    var labels = form.querySelectorAll(\"label[for=\\\"\"+name+\"\\\"]\");\n"
-"    var tag = labels.length ? labels[0].innerText : \"\";\n"
-"    result[0] = encode;\n"
-"    result[1] = method;\n"
-"    result[2] = form.action;\n"
-"    result[3] = queries;\n"
-"    result[4] = engines;\n"
-"    result[5] = tag;\n"
-"    return result;\n"
-"})();").arg(pos.x()).arg(pos.y()),
-[base](QVariant var){
-
-    if(!var.isValid()) return;
-    QVariantList list = var.toMap().values();
-    if(list.isEmpty()) return;
-
-    QString encode = list[0].toString();
-    QString method = list[1].toString();
-    QUrl result = Page::StringToUrl(list[2].toString(), base);
-    QUrlQuery queries = QUrlQuery(result);
-    QMap<QString, QString> engines;
-    foreach(QString key, list[3].toMap().keys()){
-        QString k = QString::fromLatin1(QUrl::toPercentEncoding(key));
-        QString v = QString::fromLatin1(QUrl::toPercentEncoding(list[3].toMap()[key].toString()));
-        queries.addQueryItem(k, v);
-    }
-    foreach(QString key, list[4].toMap().keys()){
-        QString k = QString::fromLatin1(QUrl::toPercentEncoding(key));
-        QString v = QString::fromLatin1(QUrl::toPercentEncoding(list[4].toMap()[key].toString()));
-        engines[k] = v;
-    }
-    QString tag = list[5].toString();
-
-    bool ok = true;
-    if(engines.count() > 1){
-
-        QString engine = ModalDialog::GetItem
-            (tr("Search button"),
-             tr("Select search button."),
-             engines.keys(), false, &ok);
-
-        if(!ok) return;
-        if(!engines[engine].isEmpty()){
-            queries.addQueryItem(engine, engines[engine]);
-        }
-    }
-
-    tag = ModalDialog::GetText
-        (tr("Search tag"),
-         tr("Input search tag.(It will be used as command)"),
-         tag, &ok);
-
-    if(!ok || tag.isEmpty()) return;
-
-    QStringList format;
-
-    result.setQuery(queries);
-    format
-        << result.toString()
-             .replace(QStringLiteral("{query}"),     QStringLiteral("%1"))
-             .replace(QStringLiteral("%7Bquery%7D"), QStringLiteral("%1"))
-        << encode << QStringLiteral("false");
-
-    Page::RegisterSearchEngine(tag, format);
-    });});
+    m_Page->AddSearchEngineAt(pos);
 }
 
 void WebEnginePage::AddBookmarklet(QPoint pos){
-    m_View->CallWithHitElement(pos, [this](SharedWebElement elem){
-
-    QUrl link  = elem ? elem->LinkUrl()  : QUrl();
-    QUrl image = elem ? elem->ImageUrl() : QUrl();
-    QString text = selectedText();
-
-    QStringList places;
-    if(!link.isEmpty())  places << tr("Link at Mouse Cursor");
-    if(!image.isEmpty()) places << tr("Image at Mouse Cursor");
-    if(!text.isEmpty())  places << tr("Selected Text");
-
-    places << tr("Manual Input");
-
-    bool ok;
-
-    QString place = ModalDialog::GetItem
-        (tr("Input type"),
-         tr("Select input type of bookmarklet."),
-         places, false, &ok);
-    if(!ok) return;
-
-    QString bookmark;
-
-    if(place == tr("Link at Mouse Cursor")){
-        bookmark = link.toString(QUrl::None);
-
-        int count = 2;
-
-        for(int i = count; i > 0; i--){
-            bookmark.replace(QStringLiteral("%%%%%%%"), QStringLiteral("%25%25%25%25%25%25%25"));
-            bookmark.replace(QStringLiteral("%%%%%"), QStringLiteral("%25%25%25%25%25"));
-            bookmark.replace(QStringLiteral("%%%"), QStringLiteral("%25%25%25"));
-            bookmark.replace(QStringLiteral("%%"), QStringLiteral("%25%25"));
-            bookmark.replace(QRegularExpression(QStringLiteral("%([^0-9A-F][0-9A-F]|[0-9A-F][^0-9A-F]|[^0-9A-F][^0-9A-F])")),
-                             QStringLiteral("%25\\1"));
-            bookmark = QUrl::fromPercentEncoding(bookmark.toLatin1());
-        }
-    }
-
-    if(place == tr("Image at Mouse Cursor")){
-        bookmark = image.toDisplayString(QUrl::FullyDecoded);
-    }
-
-    if(place == tr("Selected Text")){
-        bookmark = text;
-    }
-
-    if(place == tr("Manual Input")){
-        bookmark = ModalDialog::GetText
-            (tr("Bookmarklet body"),
-             tr("Input bookmarklet body."),
-             QString(), &ok);
-    }
-
-    if(bookmark.isEmpty()) return;
-
-    QString tag = ModalDialog::GetText
-        (tr("Bookmarklet Name"),
-         tr("Input bookmarklet name.(It will be used as command)"),
-         QString(), &ok);
-
-    if(!ok || tag.isEmpty()) return;
-
-    QStringList result;
-    result << bookmark;
-
-    Page::RegisterBookmarklet(tag, result);
-    });
+    m_Page->AddBookmarkletAt(pos);
 }
 
 void WebEnginePage::DownloadSuggest(const QUrl& url){
     QNetworkRequest req(url);
+    NetworkAccessManager::SetRequestOffTheRecord(req, Page::OffTheRecord(m_View));
     DownloadItem *item =
         NetworkController::Download(static_cast<NetworkAccessManager*>(networkAccessManager()),
                                     req, NetworkController::ToVariable);

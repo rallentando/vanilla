@@ -10,6 +10,4 @@
 #define QT_NO_CAST_FROM_BYTEARRAY
 #define QT_NO_URL_CAST_FROM_STRING
 
-//#define USE_WEBCHANNEL
-
 #endif

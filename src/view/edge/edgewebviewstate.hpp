@@ -7,6 +7,7 @@
 
 #include <QByteArray>
 #include <QHash>
+#include <QKeySequence>
 #include <QList>
 #include <QNetworkCookie>
 #include <QMultiHash>
@@ -390,7 +391,7 @@ private:
 
 class EdgeDownloadCloseLedger {
 public:
-    EdgeDownloadCloseLedger() : m_InFlight(0), m_Untracked(false) {}
+    EdgeDownloadCloseLedger() : m_InFlight(0), m_Asked(0), m_Untracked(false) {}
 
     void Started(){ ++m_InFlight;}
 
@@ -401,13 +402,20 @@ public:
 
     void Settled(){ if(m_InFlight > 0) --m_InFlight;}
 
-    bool MayClose() const { return !m_Untracked && m_InFlight == 0;}
+    void AskPlaced(){ ++m_Asked;}
+    void AskAnswered(){ if(m_Asked > 0) --m_Asked;}
+
+    bool MayClose() const { return !m_Untracked && m_InFlight == 0 && m_Asked == 0;}
+
+    bool KeepsAlive() const { return !m_Untracked && m_InFlight > 0;}
 
     int InFlight() const { return m_InFlight;}
+    int Asked() const { return m_Asked;}
     bool IsUntracked() const { return m_Untracked;}
 
 private:
     int m_InFlight;
+    int m_Asked;
     bool m_Untracked;
 };
 
@@ -789,6 +797,40 @@ private:
     QHash<QString, State> m_States;
 };
 
+class EdgePermissionSyncLedger {
+public:
+    enum class Effect {
+        Start,
+        Wait,
+        Proceed,
+    };
+    enum class Settle {
+        Again,
+        Done,
+        Stale,
+    };
+
+    Effect Enter(const QString &key);
+    QStringList TableChanged(const QSet<QString> &live);
+    Settle Finished(const QString &key, int run);
+    void Forget(const QString &key);
+
+    int Run(const QString &key) const { return m_Profiles.value(key).run;}
+    bool IsSynced(const QString &key) const { return m_Profiles.value(key).synced;}
+    bool IsRunning(const QString &key) const { return m_Profiles.value(key).running;}
+
+private:
+    struct Profile {
+        int run = 0;
+        bool running = false;
+        bool dirty = false;
+        bool synced = false;
+        bool forgotten = false;
+    };
+    QHash<QString, Profile> m_Profiles;
+    int m_NextRun = 0;
+};
+
 class EdgeClearRoster {
 public:
     bool ShouldAsk(const QString &key) const { return !m_Done.contains(key);}
@@ -805,6 +847,8 @@ bool EdgeIsOwnViewSource(const QUrl &shown, const QUrl &reported);
 
 bool EdgeIsOwnStringDocument(const QUrl &shown, const QUrl &stringDocument,
                              const QUrl &reported);
+
+bool EdgeThemesDocument(const QUrl &url);
 
 class EdgeStringDocument {
 public:
@@ -875,6 +919,10 @@ public:
             if(it.value().isNull() || it.value() == view) it = m_Waiters.erase(it);
             else ++it;
         }
+        for(auto it = m_PermissionWaiters.begin(); it != m_PermissionWaiters.end();){
+            if(it.value().isNull() || it.value() == view) it = m_PermissionWaiters.erase(it);
+            else ++it;
+        }
     }
 
     QList<View*> LiveViews() const { return m_Live.values();}
@@ -896,6 +944,27 @@ public:
     }
 
     bool IsPrivateProfileClean(const QString &key) const { return m_Wipes.IsClean(key);}
+
+    typename EdgePermissionSyncLedger::Effect
+    EnterPermissionSync(const QString &key, View *view){
+        const typename EdgePermissionSyncLedger::Effect effect = m_Permissions.Enter(key);
+        if(effect != EdgePermissionSyncLedger::Effect::Proceed)
+            m_PermissionWaiters.insert(key, QPointer<View>(view));
+        return effect;
+    }
+
+    typename EdgePermissionSyncLedger::Settle
+    SettlePermissionSync(const QString &key, int run, QList<QPointer<View>> *waiters){
+        const typename EdgePermissionSyncLedger::Settle settle = m_Permissions.Finished(key, run);
+        if(settle == EdgePermissionSyncLedger::Settle::Done && waiters){
+            *waiters = m_PermissionWaiters.values(key);
+            m_PermissionWaiters.remove(key);
+        }
+        return settle;
+    }
+
+    EdgePermissionSyncLedger &Permissions(){ return m_Permissions;}
+    bool IsPermissionSynced(const QString &key) const { return m_Permissions.IsSynced(key);}
     int WaitersFor(const QString &key) const { return m_Waiters.values(key).length();}
 
     EdgeCookieClearLedger &Cookies(){ return m_Cookies;}
@@ -905,6 +974,8 @@ private:
 
     EdgePrivateWipeLedger m_Wipes;
     QMultiHash<QString, QPointer<View>> m_Waiters;
+    EdgePermissionSyncLedger m_Permissions;
+    QMultiHash<QString, QPointer<View>> m_PermissionWaiters;
     EdgeCookieClearLedger m_Cookies;
 };
 
@@ -1116,6 +1187,8 @@ private:
     int m_Sequence = 0;
     QList<EdgeExtensionTabCandidate> m_Candidates;
 };
+
+bool IsPagesOwnEditKey(const QString &action, const QKeySequence &sequence);
 
 #endif
 #endif

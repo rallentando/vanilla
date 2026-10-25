@@ -36,6 +36,7 @@
 #include "nodetitle.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
+#include "menukeys.hpp"
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "gadgetsstyle.hpp"
@@ -245,6 +246,7 @@ QMenu *LocalView::CreateNodeMenu(){
     }
     menu->addSeparator();
     menu->addMenu(CreateSortMenu(menu));
+    MenuKeys::Show(menu, InputMap::ShownKeys(View::KeyLayers()));
     return menu;
 }
 
@@ -430,7 +432,6 @@ void LocalView::show(){
         m_VideoItem->setFocus();
     }
     if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
-    if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
 
     RestoreViewState();
     if(!GetTreeBank() || !GetTreeBank()->GetNotifier()) return;
@@ -571,7 +572,7 @@ void LocalView::UpdateThumbnail(){
                 image.
                 scaled(SAVING_THUMBNAIL_SIZE,
                        Qt::KeepAspectRatioByExpanding,
-                       Qt::SmoothTransformation));
+                       Qt::SmoothTransformation), KeepsOffDisk());
         } else {
             GetViewNode()->SetImage(
                 image.
@@ -580,7 +581,7 @@ void LocalView::UpdateThumbnail(){
                        Qt::SmoothTransformation).
                 copy(width_diff / 2, height_diff / 2,
                      SAVING_THUMBNAIL_SIZE.width(),
-                     SAVING_THUMBNAIL_SIZE.height()));
+                     SAVING_THUMBNAIL_SIZE.height()), KeepsOffDisk());
         }
     }
 }
@@ -595,6 +596,7 @@ bool LocalView::TriggerKeyEvent(QKeyEvent *ev){
 }
 
 bool LocalView::TriggerKeyEvent(QString str){
+    Application::InputScope key(true);
     QKeySequence seq = Application::MakeKeySequence(str);
     if(seq.isEmpty()) return false;
     str = Gadgets::GetThumbListKeyMap()[seq];
@@ -714,6 +716,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         case Gadgets::_ReleaseHiddenView:
             delete action;
             m_ActionTable[a] = action = new QAction(this);
+            action->setObjectName(Gadgets::ActionToString(a));
             break;
         case Gadgets::_ToggleNotifier: action->setChecked(GetTreeBank()->GetNotifier()); return action;
         case Gadgets::_ToggleReceiver: action->setChecked(GetTreeBank()->GetReceiver()); return action;
@@ -725,6 +728,7 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         }
     } else {
         m_ActionTable[a] = action = new QAction(this);
+        action->setObjectName(Gadgets::ActionToString(a));
     }
 
     switch(a){
@@ -950,20 +954,12 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
     return action;
 }
 
-PixmapItem *LocalView::GetPixmapItem(){
-    return m_PixmapItem;
-}
-
 VideoItem *LocalView::GetVideoItem(){
     return m_VideoItem;
 }
 
 QMediaPlayer *LocalView::GetMediaPlayer(){
     return m_MediaPlayer;
-}
-
-QAudioOutput *LocalView::GetAudioOutput(){
-    return m_AudioOutput;
 }
 
 void LocalView::ChangeMediaVolume(int diff){
@@ -1910,11 +1906,9 @@ void LocalView::OnSetMaster(WeakView){}
 
 void LocalView::OnSetSlave(WeakView){}
 
-void LocalView::OnSetJsObject(_View*){}
-
-void LocalView::OnSetJsObject(_Vanilla*){}
-
 void LocalView::OnLoadStarted(){
+    if(!GetViewNode()) return;
+
     View::OnLoadStarted();
 }
 

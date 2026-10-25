@@ -25,5 +25,10 @@ class QMenu;
 void AddEdgeMenuItems(QMenu *menu, const QList<EdgeMenuItem> &items,
                       const std::function<void(int)> &chosen);
 
+class QAction;
+
+bool ReplaceEdgePasteAction(QMenu *menu, QAction *paste, int commandId,
+                            const std::function<void(int)> &chosen);
+
 #endif
 #endif

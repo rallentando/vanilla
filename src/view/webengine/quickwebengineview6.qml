@@ -6,6 +6,27 @@ WebEngineView {
     // inside the root item 'parent' is not it. (D-162)
     id: webEngineView
 
+    // the focus the widget gets goes on in to the engine: without it the
+    // scene has no active focus item, the page is never told it has the
+    // keyboard, and no caret shows (D-585).
+    focus: true
+
+    // the engine learns that the page is out of sight only through this
+    // item; hiding the widget hides the scene's window, and the item goes
+    // with it, so the widget's own 'hide()' stays the one switch. Minimized
+    // counts as out of sight here, as it does for a widgets view. (D-587)
+    visible: Window.visibility !== Window.Hidden
+    // hiding sends the engine a focus-out of its own, behind Qt's back:
+    // the item keeps its active focus, so coming back would bring no
+    // focus-in, and the page would stay without the keyboard. Taken and
+    // given again, the focus-in is delivered. (D-587)
+    onVisibleChanged: {
+        if(visible && activeFocus){
+            focus = false
+            focus = true
+        }
+    }
+
     signal viewChanged()
     signal scrollChanged(point pos)
     signal callBackResult(int id, variant result)

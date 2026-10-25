@@ -186,7 +186,6 @@ void WebEngineView::LoadAfterExtensions(const QWebEngineHttpRequest &request) {
 void WebEngineView::setParent(TreeBank* tb){
     View::SetTreeBank(tb);
     if(!TreeBank::PurgeView()) base()->setParent(tb);
-    if(page()) page()->AddJsObject();
     if(tb) resize(size());
 }
 
@@ -260,6 +259,11 @@ void WebEngineView::Disconnect(TreeBank *tb){
     }
 }
 
+bool WebEngineView::IsOffTheRecord(){
+    if(page() && page()->profile()) return page()->profile()->isOffTheRecord();
+    return View::IsOffTheRecord();
+}
+
 void WebEngineView::ApplySpecificSettings(QStringList set){
     View::ApplySpecificSettings(set);
 
@@ -273,11 +277,26 @@ void WebEngineView::ApplyTheme(){
     const QUrl uri = url();
     const bool blank = uri.isEmpty() || uri == BLANK_URL ||
         uri.scheme() == VANILLA_SCHEME;
-    const QColor color = blank ? Theme::Color(Theme::PageBackground)
+    const bool clear = Application::EnableTransparentWindow() &&
+        VanillaPage::IsTranslucentPage(uri);
+    const QColor color = clear ? QColor(Qt::transparent)
+                       : blank ? Theme::Color(Theme::PageBackground)
                                : QColor(Qt::white);
     if(color == m_BaseBackgroundColor) return;
     m_BaseBackgroundColor = color;
     page()->setBackgroundColor(color);
+    foreach(QQuickWidget *drawing, findChildren<QQuickWidget*>())
+        KeepDrawingWidgetClear(drawing);
+}
+
+void WebEngineView::KeepDrawingWidgetClear(QWidget *drawing){
+    if(!drawing || !drawing->inherits("QQuickWidget")) return;
+    if(drawing->testAttribute(Qt::WA_AlwaysStackOnTop)){
+        drawing->setAttribute(Qt::WA_AlwaysStackOnTop, false);
+        drawing->update();
+    }
+    if(!m_BaseBackgroundColor.isValid() || m_BaseBackgroundColor.alpha() == 255) return;
+    static_cast<QQuickWidget*>(drawing)->setClearColor(m_BaseBackgroundColor);
 }
 
 void WebEngineView::AddSpellCheckMenu(QMenu *menu){
@@ -333,10 +352,6 @@ void WebEngineView::OnSetMaster(WeakView){}
 
 void WebEngineView::OnSetSlave(WeakView){}
 
-void WebEngineView::OnSetJsObject(_View*){}
-
-void WebEngineView::OnSetJsObject(_Vanilla*){}
-
 void WebEngineView::OnLoadStarted(){
     if(!GetViewNode()) return;
 
@@ -345,9 +360,6 @@ void WebEngineView::OnLoadStarted(){
 
     emit statusBarMessage(tr("Started loading."));
     m_PreventScrollRestoration = false;
-
-#ifdef USE_WEBCHANNEL
-#endif
 }
 
 void WebEngineView::OnLoadProgress(int progress){
@@ -538,7 +550,7 @@ bool WebEngineView::SaveHistory(){
     QDataStream stream(&ba, QIODevice::WriteOnly);
     stream << (*history());
     if(!ba.isEmpty()){
-        GetViewNode()->SetHistoryData(ba);
+        GetViewNode()->SetHistoryData(ba, KeepsOffDisk());
         return true;
     }
     return false;
@@ -552,8 +564,6 @@ bool WebEngineView::RestoreHistory(){
         QDataStream stream(&ba, QIODevice::ReadOnly);
         stream >> (*history());
         ExtensionHost::StampRequestsOf(page(), this);
-#ifdef USE_WEBCHANNEL
-#endif
         return history()->count() > 0;
     }
     return false;
@@ -586,7 +596,7 @@ void WebEngineView::SetTextValue(QString xpath, QString text){
 }
 
 void WebEngineView::OnIconChanged(const QIcon &icon){
-    Application::RegisterIcon(url().host(), icon);
+    Application::RegisterIcon(url().host(), icon, Page::OffTheRecord(this));
 }
 
 void WebEngineView::Copy(){
@@ -794,6 +804,7 @@ void WebEngineView::childEvent(QChildEvent *ev){
     if(ev->added() &&
        ev->child()->inherits("QQuickWidget")){
         ev->child()->installEventFilter(new EventEater(this, ev->child()));
+        KeepDrawingWidgetClear(static_cast<QWidget*>(ev->child()));
     }
 }
 

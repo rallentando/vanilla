@@ -59,6 +59,59 @@ bool IsSingleKey(const QKeySequence &seq){
     return combination.key() < 0x01000000;
 }
 
+namespace {
+
+int Rank(const QKeySequence &seq){
+    const Qt::KeyboardModifiers modifiers = seq[0].keyboardModifiers();
+    if(modifiers & (Qt::ControlModifier | Qt::MetaModifier)) return 0;
+    if(modifiers & Qt::AltModifier) return 1;
+    if(!IsSingleKey(seq)) return 2;
+    return 3;
+}
+
+}
+
+QHash<QString, QKeySequence> ShownKeys(const KeyLayers &layers){
+    QHash<QString, QKeySequence> shown;
+    for(int i = 0; i < layers.size(); i++){
+        const KeyLayer &layer = layers[i];
+        for(KeyMap::const_iterator it = layer.map.constBegin(); it != layer.map.constEnd(); ++it){
+            const QKeySequence &seq = it.key();
+            if(seq.count() != 1 || it.value().isEmpty()) continue;
+            if(!layer.singleKeys && IsSingleKey(seq)) continue;
+            bool taken = false;
+            for(int j = 0; j < i && !taken; j++)
+                taken = layers[j].map.contains(seq) && (layers[j].singleKeys || !IsSingleKey(seq));
+            if(taken) continue;
+            QHash<QString, QKeySequence>::iterator held = shown.find(it.value());
+            if(held == shown.end()) shown.insert(it.value(), seq);
+            else if(Rank(seq) < Rank(held.value())) held.value() = seq;
+        }
+    }
+    return shown;
+}
+
+QKeySequence DisplayKey(const QKeySequence &seq){
+    QList<QKeyCombination> strokes;
+    bool changed = false;
+    for(int i = 0; i < seq.count(); i++){
+        QKeyCombination combination = seq[i];
+        if(combination.key() == Qt::Key_Backtab){
+            combination = QKeyCombination(combination.keyboardModifiers() | Qt::ShiftModifier, Qt::Key_Tab);
+            changed = true;
+        }
+        strokes.append(combination);
+    }
+    if(!changed) return seq;
+    switch(strokes.size()){
+    case 1:  return QKeySequence(strokes[0]);
+    case 2:  return QKeySequence(strokes[0], strokes[1]);
+    case 3:  return QKeySequence(strokes[0], strokes[1], strokes[2]);
+    case 4:  return QKeySequence(strokes[0], strokes[1], strokes[2], strokes[3]);
+    default: return seq;
+    }
+}
+
 QString CanonicalKeyName(const QString &name){
     const QKeySequence seq = QKeySequence::fromString(name, QKeySequence::PortableText);
     if(seq.isEmpty()) return QString();

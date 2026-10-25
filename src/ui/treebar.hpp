@@ -324,13 +324,11 @@ public:
     int GetNest() const;
     void SetNest(int);
 
-    bool GetFocused() const;
     void SetFocused(bool);
 
     QRectF GetRect() const;
     void SetRect(QRectF rect);
 
-    QPointF GetTargetPosition() const;
     void SetTargetPosition(QPointF pos);
 
     LayerItem *Layer() const;

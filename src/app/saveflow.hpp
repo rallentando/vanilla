@@ -27,7 +27,6 @@ public:
     }
 
     bool IsSaving() const { return m_Saving;}
-    bool HasPending() const { return m_Pending;}
 
 private:
     bool m_Saving = false;

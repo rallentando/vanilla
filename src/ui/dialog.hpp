@@ -44,7 +44,9 @@ public:
         No       = 1 << 4,
         Cancel   = 1 << 5,
         Open     = 1 << 6,
-        Close    = 1 << 7
+        Close    = 1 << 7,
+        OpenTrash = 1 << 8,
+        Restart   = 1 << 9
     };
     Q_ENUM(Button);
     Q_DECLARE_FLAGS(Buttons, Button);
@@ -142,6 +144,7 @@ public:
 protected:
     void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
     void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
+    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
     void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
     void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
     void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
@@ -225,6 +228,8 @@ public:
     void SetButtons(Dialog::Buttons buttons){ m_Buttons = buttons;}
     void SetDefaultButton(Dialog::Button button){ m_DefaultButton = button;}
     void SetDefaultValue(bool value){ m_DefaultValue = value;}
+    void SetAutoCancel(bool on){ m_AutoCancel = on;}
+    void Renew();
     void SetCallBack(BoolCallBack callBack){ m_CallBack = callBack;}
 
 protected:
@@ -233,6 +238,7 @@ protected:
     void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
     void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
     void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
+    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
 
 signals:
     void Returned();
@@ -255,6 +261,7 @@ private:
     QString m_Title;
     QString m_Caption;
     int m_TimerId;
+    bool m_AutoCancel;
     BoolCallBack m_CallBack;
     bool m_Finished;
     ModelessDialogFrame *m_Frame;

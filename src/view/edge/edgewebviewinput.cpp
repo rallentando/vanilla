@@ -183,6 +183,7 @@ void EdgeWebView::HandleWebMessage(const QString &json, const QString &source){
         const QString action = m_KeyMap.value(sequence);
         if(action.isEmpty() || !CanCompleteAction(action)) return;
 
+        Application::InputScope key(true);
         View::TriggerAction(action);
         break;
     }
@@ -227,6 +228,9 @@ bool EdgeWebView::HandleAcceleratorKey(int virtualKey, bool down, bool repeat){
 
     if(IsMovementAction(action)) return false;
 
+    if(IsPagesOwnEditKey(action, sequence)) return false;
+
+    Application::InputScope key(true);
     if(!View::TriggerAction(action)) return false;
 
     m_Impl->m_HandledKeys.insert(virtualKey);
@@ -257,7 +261,7 @@ void EdgeWebView::DisplayContextMenuFor(const ContextTarget &target){
         return;
     }
     if(!page() || !m_TreeBank){
-        if(generation) CompleteContextMenu(generation, -1);
+        if(generation) CompleteContextMenu(generation, -1, false);
         return;
     }
 
@@ -270,10 +274,15 @@ void EdgeWebView::DisplayContextMenuFor(const ContextTarget &target){
     std::shared_ptr<int> chosen = std::make_shared<int>(-1);
     std::function<void(QMenu*)> extra;
     QPointer<EdgeWebView> alive(this);
-    if(!target.m_ExtensionItems.isEmpty()){
+    if(generation){
         const QList<EdgeMenuItem> items = target.m_ExtensionItems;
-        extra = [items, chosen, alive](QMenu *menu){
-            if(alive) alive->m_Impl->m_ContextMenuWidget = menu;
+        const int paste = target.m_PasteCommandId;
+        extra = [items, paste, chosen, alive](QMenu *menu){
+            if(!alive) return;
+            alive->m_Impl->m_ContextMenuWidget = menu;
+            if(paste >= 0 && alive->page())
+                ReplaceEdgePasteAction(menu, alive->page()->Action(Page::_Paste), paste,
+                                       [chosen](int id){ *chosen = id;});
             AddEdgeMenuItems(menu, items, [chosen](int id){ *chosen = id;});
         };
     }
@@ -287,13 +296,14 @@ void EdgeWebView::DisplayContextMenuFor(const ContextTarget &target){
 
     if(generation){
         const int id = *chosen;
-        QTimer::singleShot(0, alive.data(), [alive, generation, id](){
-            if(alive) alive->CompleteContextMenu(generation, id);
+        const bool extension = id >= 0 && id != target.m_PasteCommandId;
+        QTimer::singleShot(0, alive.data(), [alive, generation, id, extension](){
+            if(alive) alive->CompleteContextMenu(generation, id, extension);
         });
     }
 }
 
-void EdgeWebView::CompleteContextMenu(int generation, int commandId){
+void EdgeWebView::CompleteContextMenu(int generation, int commandId, bool extension){
     if(EdgeInspectorTraceOn()){
         fprintf(stderr, "edge-menu: complete generation=%d command=%d held=%d outstanding=%d\n",
                 generation, commandId, m_Impl->m_ContextMenu.Generation(),
@@ -301,20 +311,20 @@ void EdgeWebView::CompleteContextMenu(int generation, int commandId){
         fflush(stderr);
     }
     if(!m_Impl->m_ContextMenu.Complete(generation)) return;
-    FinishContextMenu(commandId);
+    FinishContextMenu(commandId, extension);
 }
 
-void EdgeWebView::FinishContextMenu(int commandId){
+void EdgeWebView::FinishContextMenu(int commandId, bool extension){
 
     ComPtr<ICoreWebView2ContextMenuRequestedEventArgs> args = m_Impl->m_ContextMenuArgs;
     ComPtr<ICoreWebView2Deferral> deferral = m_Impl->m_ContextMenuDeferral;
     m_Impl->m_ContextMenuArgs.Reset();
     m_Impl->m_ContextMenuDeferral.Reset();
-    CountedComplete(args.Get(), deferral.Get(), commandId);
+    CountedComplete(args.Get(), deferral.Get(), commandId, extension);
 }
 
 void EdgeWebView::CountedComplete(ICoreWebView2ContextMenuRequestedEventArgs *args,
-                                  ICoreWebView2Deferral *deferral, int commandId){
+                                  ICoreWebView2Deferral *deferral, int commandId, bool extension){
     QPointer<EdgeWebView> alive(this);
     m_Impl->m_ContextMenu.BeginFinish();
     if(args && commandId >= 0){
@@ -322,15 +332,17 @@ void EdgeWebView::CountedComplete(ICoreWebView2ContextMenuRequestedEventArgs *ar
         const qint64 tab = vn ? static_cast<qint64>(vn->GetSerial()) : 0;
         const QPointer<ExtensionController> extensions = m_Impl->m_Extensions;
         if(SUCCEEDED(args->put_SelectedCommandId(commandId))){
-            QString page;
-            ComPtr<ICoreWebView2ContextMenuTarget> target;
-            LPWSTR uri = nullptr;
-            if(SUCCEEDED(args->get_ContextMenuTarget(&target)) && target &&
-               SUCCEEDED(target->get_PageUri(&uri)) && uri){
-                page = QString::fromWCharArray(uri);
-                CoTaskMemFree(uri);
+            if(extension){
+                QString page;
+                ComPtr<ICoreWebView2ContextMenuTarget> target;
+                LPWSTR uri = nullptr;
+                if(SUCCEEDED(args->get_ContextMenuTarget(&target)) && target &&
+                   SUCCEEDED(target->get_PageUri(&uri)) && uri){
+                    page = QString::fromWCharArray(uri);
+                    CoTaskMemFree(uri);
+                }
+                if(extensions) ExtensionHost::MenuPicked(extensions.data(), tab, page);
             }
-            if(extensions) ExtensionHost::MenuPicked(extensions.data(), tab, page);
         }
     }
     if(deferral) deferral->Complete();
@@ -366,6 +378,18 @@ bool EdgeWebView::InspectorHoldsKeyboard() const {
 }
 
 bool EdgeWebView::eventFilter(QObject *watched, QEvent *ev){
+    if(watched && m_Impl && watched == m_Impl->m_WatchedTopLevel.data()){
+        if(ev && ev->type() == QEvent::Move && !m_Impl->m_PositionNoticePending){
+            m_Impl->m_PositionNoticePending = true;
+            QTimer::singleShot(0, this, [this](){
+                if(!m_Impl) return;
+                m_Impl->m_PositionNoticePending = false;
+                if(m_Impl->m_State.IsRetired() || !m_Impl->m_Controller) return;
+                m_Impl->m_Controller->NotifyParentWindowPositionChanged();
+            });
+        }
+        return QWidget::eventFilter(watched, ev);
+    }
 
     if(watched == m_Impl->m_HostWindow && ev && ev->type() == QEvent::PlatformSurface && EdgeInspectorTraceOn()){
         const auto kind = static_cast<QPlatformSurfaceEvent*>(ev)->surfaceEventType();
@@ -383,8 +407,10 @@ bool EdgeWebView::eventFilter(QObject *watched, QEvent *ev){
     return QWidget::eventFilter(watched, ev);
 }
 
-void EdgeWebView::PaintHostWindow(){
-    if(!m_Impl->m_HostWindow || m_Impl->m_Controller ||
+void EdgeWebView::PaintHostWindow(bool leavingClear){
+    const bool clear = m_Impl->m_BaseBackgroundColor.isValid() &&
+        m_Impl->m_BaseBackgroundColor.alpha() < 255;
+    if(!m_Impl->m_HostWindow || (m_Impl->m_Controller && !clear && !leavingClear) ||
        !m_Impl->m_HostWindow->isExposed() || m_Impl->m_HostWindow->size().isEmpty()) return;
 
     const QRect rect(QPoint(), m_Impl->m_HostWindow->size());
@@ -395,7 +421,9 @@ void EdgeWebView::PaintHostWindow(){
     store.beginPaint(rect);
     {
         QPainter painter(store.paintDevice());
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.fillRect(rect, color);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
         if(!m_Impl->m_FailureText.isEmpty()){
             painter.setPen(color.lightness() < 128 ? Qt::white : Qt::black);
             const int margin = DeviceScale::FromDpi(16, logicalDpiY());

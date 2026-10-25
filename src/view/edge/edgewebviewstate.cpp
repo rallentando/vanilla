@@ -35,6 +35,12 @@ bool EdgeIsOwnStringDocument(const QUrl &shown, const QUrl &stringDocument,
     return reported == QUrl(QStringLiteral("about:blank"));
 }
 
+bool EdgeThemesDocument(const QUrl &url){
+    return url.isEmpty() ||
+        url == QUrl(QStringLiteral("about:blank")) ||
+        url.scheme() == QStringLiteral("vanilla");
+}
+
 QVariant EdgeScriptResultToVariant(const QByteArray &json){
     const QJsonDocument doc = QJsonDocument::fromJson(json);
     if(!doc.isNull()) return doc.toVariant();
@@ -167,6 +173,73 @@ void EdgePrivateWipeLedger::Settled(const QString &key, bool ok){
     const auto found = m_States.find(key);
     if(found == m_States.end() || found.value() != State::Wiping) return;
     found.value() = ok ? State::Clean : State::Failed;
+}
+
+EdgePermissionSyncLedger::Effect EdgePermissionSyncLedger::Enter(const QString &key){
+    auto found = m_Profiles.find(key);
+    if(found == m_Profiles.end()){
+        Profile profile;
+        profile.run = ++m_NextRun;
+        profile.running = true;
+        m_Profiles.insert(key, profile);
+        return Effect::Start;
+    }
+    Profile &profile = found.value();
+    if(profile.forgotten){
+        profile.forgotten = false;
+        profile.dirty = true;
+        profile.synced = false;
+        return Effect::Wait;
+    }
+    if(profile.synced) return Effect::Proceed;
+    return Effect::Wait;
+}
+
+void EdgePermissionSyncLedger::Forget(const QString &key){
+    auto found = m_Profiles.find(key);
+    if(found == m_Profiles.end()) return;
+    if(found.value().running) found.value().forgotten = true;
+    else m_Profiles.erase(found);
+}
+
+QStringList EdgePermissionSyncLedger::TableChanged(const QSet<QString> &live){
+    QStringList start;
+    for(auto it = m_Profiles.begin(); it != m_Profiles.end();){
+        Profile &profile = it.value();
+        if(!live.contains(it.key())){
+            if(profile.running){ profile.forgotten = true; ++it;}
+            else it = m_Profiles.erase(it);
+            continue;
+        }
+        if(profile.running){
+            profile.dirty = true;
+        } else {
+            profile.run = ++m_NextRun;
+            profile.running = true;
+            start << it.key();
+        }
+        ++it;
+    }
+    return start;
+}
+
+EdgePermissionSyncLedger::Settle EdgePermissionSyncLedger::Finished(const QString &key, int run){
+    auto found = m_Profiles.find(key);
+    if(found == m_Profiles.end()) return Settle::Stale;
+    Profile &profile = found.value();
+    if(!profile.running || profile.run != run) return Settle::Stale;
+    if(profile.forgotten){
+        m_Profiles.erase(found);
+        return Settle::Stale;
+    }
+    if(profile.dirty){
+        profile.dirty = false;
+        profile.run = ++m_NextRun;
+        return Settle::Again;
+    }
+    profile.running = false;
+    profile.synced = true;
+    return Settle::Done;
 }
 
 EdgeEnvironmentState::EdgeEnvironmentState()
@@ -602,6 +675,21 @@ void AddEdgeMenuItems(QMenu *menu, const QList<EdgeMenuItem> &items,
     }
 }
 
+bool ReplaceEdgePasteAction(QMenu *menu, QAction *paste, int commandId,
+                            const std::function<void(int)> &chosen){
+    if(!menu || !paste || commandId < 0 || !menu->actions().contains(paste)) return false;
+    QAction *own = new QAction(paste->text(), menu);
+    own->setObjectName(paste->objectName());
+    own->setToolTip(paste->toolTip());
+    own->setIcon(paste->icon());
+    own->setEnabled(paste->isEnabled());
+    own->setData(commandId);
+    QObject::connect(own, &QAction::triggered, menu, [chosen, commandId](){ chosen(commandId);});
+    menu->insertAction(paste, own);
+    menu->removeAction(paste);
+    return true;
+}
+
 EdgeContextMenuState::EdgeContextMenuState()
     : m_Generation(0), m_Outstanding(false), m_Retired(false)
     , m_Finishing(0), m_RetireWanted(false), m_DeleteWanted(false)
@@ -653,6 +741,20 @@ EdgeContextMenuState::Leaving EdgeContextMenuState::Retire(bool force){
     const bool outstanding = m_Outstanding;
     m_Outstanding = false;
     return outstanding ? Leaving::WithDeferral : Leaving::Now;
+}
+
+bool IsPagesOwnEditKey(const QString &action, const QKeySequence &sequence){
+    static const QHash<QString, QList<QKeySequence>> own = {
+        { QStringLiteral("Copy"),  { QKeySequence(Qt::CTRL  | Qt::Key_C),
+                                     QKeySequence(Qt::CTRL  | Qt::Key_Insert) } },
+        { QStringLiteral("Cut"),   { QKeySequence(Qt::CTRL  | Qt::Key_X),
+                                     QKeySequence(Qt::SHIFT | Qt::Key_Delete) } },
+        { QStringLiteral("Paste"), { QKeySequence(Qt::CTRL  | Qt::Key_V),
+                                     QKeySequence(Qt::SHIFT | Qt::Key_Insert) } },
+    };
+    if(sequence.isEmpty()) return false;
+    const auto found = own.constFind(action);
+    return found != own.constEnd() && found->contains(sequence);
 }
 
 #endif

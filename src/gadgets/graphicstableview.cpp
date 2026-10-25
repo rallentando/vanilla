@@ -606,6 +606,30 @@ bool GraphicsTableView::DeleteNodes(NodeList list){
     FinishFoldAnimation();
 
     if(m_DisplayThumbnails.isEmpty()) return false;
+    if(m_DisplayType == TrashTree){
+        const QSet<Node*> asked(list.begin(), list.end());
+        QSet<Node*> holding;
+        QList<quint64> kept;
+        foreach(Thumbnail *thumb, m_DisplayThumbnails){
+            Node *nd = thumb->GetNode();
+            if(asked.contains(nd) || nd == m_DummyViewNode) continue;
+            kept << nd->GetSerial();
+            for(Node *above = nd->GetParent(); above; above = above->GetParent())
+                holding << above;
+        }
+        QList<quint64> serials;
+        QSet<Node*> tabs;
+        foreach(Node *nd, list){
+            if(nd == m_DummyViewNode || !TreeBank::IsTrash(nd) || holding.contains(nd)) continue;
+            serials << nd->GetSerial();
+            foreach(Node *one, NodeList() << nd << nd->GetDescendants())
+                if(!one->IsDirectory()) tabs << one;
+        }
+        if(serials.isEmpty()) return false;
+        TreeBank::DiscardFromTrashAsked(serials, tabs.isEmpty() ? serials.size() : tabs.size(),
+                                        tr("Trash"), nullptr, kept);
+        return true;
+    }
 
     Node::NodeType type;
     Node *parent = m_CurrentNode->GetParent();
@@ -630,9 +654,11 @@ bool GraphicsTableView::DeleteNodes(NodeList list){
 
     success = m_TreeBank->DeleteNode(list);
 
-    if(!success) m_CurrentNode = backup;
-
-    if(!success) return false;
+    if(!success){
+        m_CurrentNode = backup;
+        ThumbList_RefreshNoScroll();
+        return false;
+    }
 
     if(type == Node::ViewTypeNode){
         m_DummyViewNode->SetParent(parent);
@@ -2124,6 +2150,35 @@ bool GraphicsTableView::ThumbList_PasteNode(){
 bool GraphicsTableView::ThumbList_RestoreNode(){
     if(!m_CurrentNode || !IsDisplayingViewNode()) return false;
 
+    if(m_DisplayType == TrashTree){
+        Node *shown = m_CurrentNode->GetParent();
+        NodeList list = QSet<Node*>(m_NodesRegister.begin(), m_NodesRegister.end()).values();
+        m_NodesRegister.clear();
+        if(list.isEmpty()){
+            if(Node *nd = GetHoveredNode()) list << nd;
+            else list << m_CurrentNode;
+        }
+        SortNodesByDisplayOrder(list);
+        foreach(Node *nd, list){
+            if(nd != m_DummyViewNode && TreeBank::IsTrash(nd) && nd->IsViewNode())
+                m_TreeBank->Restore(nd->ToViewNode(), nullptr);
+        }
+        if(!TreeBank::IsTrash(m_CurrentNode)){
+            m_HoveredItemIndex = -1;
+            m_PrimaryItemIndex = -1;
+            if(shown && TreeBank::IsTrash(shown) && !shown->HasNoChildren()){
+                SetCurrent(shown->GetFirstChild());
+            } else if(!TreeBank::GetTrashRoot()->HasNoChildren()){
+                SetCurrent(TreeBank::GetTrashRoot()->GetFirstChild());
+            } else {
+                m_DummyViewNode->SetParent(TreeBank::GetTrashRoot());
+                SetCurrent(m_DummyViewNode);
+            }
+        }
+        ThumbList_RefreshNoScroll();
+        return true;
+    }
+
     ViewNode *vn = GetHoveredViewNode();
     if(!vn && m_CurrentNode)
         vn = m_CurrentNode->ToViewNode();
@@ -3324,19 +3379,6 @@ void GraphicsTableView::OnNodeCollectionTypeChosen(){
         (static_cast<NodeCollectionType>(action->data().toInt()));
 }
 
-QPointF GraphicsTableView::CurrentThumbnailOffset() const {
-    return QPointF(0,
-                   round(- m_CurrentScroll
-                         / m_CurrentThumbnailColumnCount
-                         * m_CurrentThumbnailHeight));
-}
-
-QPointF GraphicsTableView::CurrentNodeTitleOffset() const {
-    return QPointF(0,
-                   round(- m_CurrentScroll
-                         * GetStyle()->NodeTitleHeight(const_cast<GraphicsTableView* const>(this))));
-}
-
 SpotLight::SpotLight(GraphicsTableView::SpotLightType type, QGraphicsItem *parent)
     : QGraphicsItem(parent)
 {
@@ -3780,7 +3822,10 @@ void CloneButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item,
 void CloneButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     bool pressed = m_ButtonState == Pressed;
     GraphicsButton::mouseReleaseEvent(ev);
-    if(pressed) m_TableView->ThumbList_CloneNode();
+    if(pressed){
+        if(m_TableView->IsDisplayingTrashTree()) m_TableView->ThumbList_RestoreNode();
+        else m_TableView->ThumbList_CloneNode();
+    }
     ev->setAccepted(true);
 }
 

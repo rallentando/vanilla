@@ -513,8 +513,30 @@ void tst_shutdown::runEntersTheLoopThroughTheNamedExec(){
 void tst_shutdown::applicationHandsItsExitToTheFlow(){
     const QString main = Source(QStringLiteral("app/main.cpp"));
     QVERIFY(!main.isEmpty());
-    QVERIFY(main.contains(QStringLiteral("return a.Run();")));
+    const int door = main.indexOf(QStringLiteral("const int code = a.Run();"));
+    const int relaunch = main.indexOf(QStringLiteral("Application::RelaunchIfRequested();"), door);
+    const int back = main.indexOf(QStringLiteral("return code;"), relaunch);
+    QVERIFY(door >= 0);
+    QVERIFY(relaunch > door);
+    QVERIFY(back > relaunch);
     QVERIFY(!main.contains(QStringLiteral("a.exec()")));
+    {
+        const QString app = Source(QStringLiteral("app/application.cpp"));
+        const int boot = app.indexOf(QStringLiteral("void Application::BootApplication("));
+        const int environment = app.indexOf(QStringLiteral("BOOT_ENVIRONMENT = QProcessEnvironment::systemEnvironment();"), boot);
+        const int wait = app.indexOf(QStringLiteral("WaitForPredecessor(argc, argv);"), boot);
+        const int transmitter = app.indexOf(QStringLiteral("new Transmitter(instance);"), boot);
+        const int memory = app.indexOf(QStringLiteral("static QSharedMemory mem("), boot);
+        const int graphics = app.indexOf(QStringLiteral("ApplyGraphicsApi();"), boot);
+        const int flags = app.indexOf(QStringLiteral("ApplyChromiumFlags();"), boot);
+        QVERIFY(boot >= 0);
+        QVERIFY(environment > boot);
+        QVERIFY(wait > environment);
+        QVERIFY(transmitter > wait);
+        QVERIFY(memory > transmitter);
+        QVERIFY(graphics > wait);
+        QVERIFY(flags > wait);
+    }
 
     const QString app = Source(QStringLiteral("app/application.cpp"));
     QVERIFY(!app.isEmpty());

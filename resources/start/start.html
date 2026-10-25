@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<!-- 'vanilla://start' -- what a new tab shows in place of 'about:blank'.
+     The palette, the labels, the actions and the recent tabs are written
+     into the head by the application ('VanillaPage::Answer'); what is
+     fetched afterwards is the tabs a search finds and their thumbnails. -->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>New tab</title>
+    <!--palette-->
+    <style>
+      /* no sideways scroll: the history's band is '100vw' wide, which
+         counts the upright scrollbar's width too. */
+      html { background: var(--bg); height: 100%; overflow-x: hidden; }
+      /* the window's acrylic shows through, under a tint which keeps the
+         text readable on a bright desktop (the bars' own alpha, D-542). */
+      html.translucent { background: color-mix(in srgb, var(--bg) 50%, transparent); }
+      body {
+        margin: 0;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 28px;
+        color: var(--fg);
+        font-family: var(--font-family);
+        font-size: 16px;
+      }
+      /* the field's strip stays at the top as the history is scrolled
+         (D-573 追記 8), and the history's bar (its heading and the delete
+         button) under it; both on the page's ground, so that the rows
+         pass behind them. */
+      #head {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        box-sizing: border-box;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        padding: 16px 0;
+        background: var(--bg);
+      }
+      html.translucent #head { background: transparent; }
+      /* nearly the page's own ground: at 70% the rows passing behind were
+         still legible through it, blur or no blur (Edge). */
+      html.translucent body.scrolled #head {
+        background: color-mix(in srgb, var(--bg-sunken) 50%, transparent);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+      }
+      /* the field and, in front of it, the engine a search goes to. */
+      form {
+        box-sizing: border-box;
+        width: min(640px, calc(100% - 32px));
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-pill);
+        background: var(--field-bg);
+      }
+      form:focus-within { border-color: var(--accent); }
+      select {
+        flex: none;
+        margin-left: 8px;
+        padding: 6px 4px 6px 8px;
+        border: none;
+        border-right: 1px solid var(--line);
+        background: transparent;
+        color: var(--fg-dim);
+        font: inherit;
+        outline: none;
+        cursor: pointer;
+      }
+      select option { background: var(--field-bg); color: var(--fg); }
+      input {
+        box-sizing: border-box;
+        flex: 1;
+        min-width: 0;
+        padding: 12px 18px 12px 12px;
+        border: none;
+        background: transparent;
+        color: var(--fg);
+        font: inherit;
+        font-size: 18px;
+        outline: none;
+      }
+      /* the buttons keep their size, and a row too wide for the view
+         wraps: a centred row that ran past the view had its left end
+         where no scroll could reach it (R-395 mid 3). */
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+      }
+      button {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+        flex: none;
+        padding: 7px 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-sunken);
+        color: var(--fg);
+        font: inherit;
+        font-size: 15px;
+        cursor: pointer;
+      }
+      button:hover { border-color: var(--accent); }
+      /* the application's own bitmaps, as a mask over the text's colour,
+         so that they follow the palette. */
+      button .icon {
+        width: 18px;
+        height: 18px;
+        background: currentColor;
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        -webkit-mask-size: 18px 18px;
+      }
+
+      /* the recent tabs, or the tabs the field finds: cards of as many to
+         a row as the width takes, two rows of them, each its saved
+         thumbnail (4:3, as the application keeps it). */
+      #tabs {
+        width: min(1440px, calc(100% - 32px));
+        min-height: 0;
+      }
+      #tabs h2 {
+        margin: 0 0 10px 6px;
+        font-size: 13px;
+        font-weight: normal;
+        color: var(--fg-dim);
+      }
+      #tabs .empty { margin: 0 0 0 4px; color: var(--fg-dim); }
+      #grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      #grid a {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 8px;
+        border: 1px solid transparent;
+        border-radius: var(--radius);
+        color: var(--fg);
+        text-decoration: none;
+        cursor: pointer;
+        outline: none;
+      }
+      #grid a[hidden] { display: none; }
+      /* the way to the trash, over the thumbnail's corner, shown while
+         the card is pointed at or selected. */
+      #grid .close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-small);
+        background: color-mix(in srgb, var(--bg) 80%, transparent);
+        color: var(--fg);
+        opacity: 0;
+        cursor: pointer;
+      }
+      #grid .close svg { display: block; }
+      #grid a:hover .close, #grid a.selected .close { opacity: 1; }
+      #grid .close:hover { background: var(--accent); color: var(--bg); }
+      /* a tab of the trash (D-572): badged on its thumbnail's corner, and
+         the corner button restores it instead of closing. */
+      #grid .badge {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        padding: 2px 6px;
+        border-radius: var(--radius-small);
+        background: color-mix(in srgb, var(--bg) 80%, transparent);
+        color: var(--fg-dim);
+        font-size: 11px;
+        line-height: 1.3;
+      }
+      /* the way to the rest of the list: the rows past the two, and the
+         tabs of the trash among the older ones (D-572). */
+      #tabs .more { display: flex; margin: 16px auto 0; }
+      #tabs .more[hidden] { display: none; }
+      /* the history (D-573), in the cards' place once 'more' is pressed:
+         the days' headings, each with a box which picks the day's closed
+         tabs, and a row a tab -- its time, its picture (the saved
+         thumbnail, or the site's icon), its title and where it is. An open
+         tab's row has no box and a cross which closes it where it stands;
+         a closed tab's row has a box and the arrow which restores it (the
+         row itself does too). A row whose
+         close (or deletion) is under way is dimmed until it is done. */
+      /* no wider than a long title needs: the row's corner button at
+         the right end was far from the pointer on a wide window. */
+      #history { display: flex; flex-direction: column; width: min(960px, 100%); margin: 0 auto; }
+      /* the box in a cell of its own, as wide as a finger: a click near it
+         picks the row rather than opening it. */
+      #history .pick { width: 36px; height: 36px; margin: -8px 0; flex: none; display: flex; align-items: center; justify-content: center; cursor: default; }
+      #history .sentinel { height: 1px; }
+      /* a band across the whole view (the list is narrower), its content
+         on the list's width: 'delete' at the left by the boxes it acts
+         on, the heading, and 'back' at the right end. */
+      #history .bar {
+        position: sticky;
+        top: 80px;
+        z-index: 2;
+        box-sizing: border-box;
+        width: 100vw;
+        margin: 0 calc(50% - 50vw) 8px;
+        padding: 12px max(16px, calc(50vw - 480px));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        background: var(--bg);
+      }
+      /* over the acrylic, as the settings page's header is (its ground
+         and its blur): a heavier blur with more colour only scattered
+         the colours of what passed behind, as the blur itself hardly
+         takes in Edge's translucent window (D-573 追記 12). */
+      html.translucent #history .bar {
+        background: color-mix(in srgb, var(--bg-sunken) 50%, transparent);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+      }
+      #history .bar h2 { margin: 0 auto 0 8px; font-size: 15px; color: var(--fg); }
+      #history .bar button { padding: 6px 16px; font-size: 13px; }
+      #history .bar button[disabled] { opacity: 0.5; cursor: default; }
+      #history .day { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px 8px; color: var(--fg-dim); font-size: 13px; }
+      #history .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 8px;
+        border-radius: var(--radius-small);
+        cursor: pointer;
+      }
+      #history .row:hover { background: var(--bg-sunken); }
+      #history .row.selected { background: var(--bg-sunken); outline: 1px solid var(--accent); }
+      html.translucent #history .row:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+      #history .row.pending { opacity: 0.4; pointer-events: none; }
+      #history .box { width: 16px; height: 16px; margin: 0; flex: none; accent-color: var(--accent); }
+      #history .row.live .box { visibility: hidden; }
+      #history .day .pick { margin: 0; }
+      #history .time { width: 42px; flex: none; color: var(--fg-dim); font-size: 13px; }
+      #history .pic {
+        width: 48px;
+        height: 36px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 3px;
+        border: 1px solid var(--line);
+        background: var(--bg-sunken) center / cover no-repeat;
+      }
+      html.translucent #history .pic { background-color: color-mix(in srgb, var(--bg-sunken) 50%, transparent); }
+      #history .pic img { width: 16px; height: 16px; }
+      #history .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+      #history .text .title, #history .text .meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      #history .text .meta { color: var(--fg-dim); font-size: 13px; }
+      #history .tag {
+        display: inline-block;
+        margin-right: 8px;
+        padding: 0 6px;
+        border-radius: var(--radius-small);
+        background: color-mix(in srgb, var(--fg) 12%, transparent);
+        color: var(--fg-dim);
+        font-size: 11px;
+        line-height: 16px;
+        vertical-align: 1px;
+      }
+      #history .close {
+        width: 24px;
+        height: 24px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-small);
+        background: color-mix(in srgb, var(--bg) 80%, transparent);
+        color: var(--fg);
+        opacity: 0;
+        cursor: pointer;
+      }
+      #history .close svg { display: block; }
+      #history .row:hover .close { opacity: 1; }
+      #history .close:hover { background: var(--accent); color: var(--bg); }
+      /* the words a search found, in the title and the address (D-582). */
+      mark { background: none; color: var(--accent); font-weight: bold; }
+      #grid a:hover { background: var(--bg-sunken); }
+      #grid a.selected { border-color: var(--accent); background: var(--bg-sunken); }
+      #grid .thumb {
+        aspect-ratio: 4 / 3;
+        border-radius: var(--radius-small);
+        background: var(--bg-sunken) center / cover no-repeat;
+        border: 1px solid var(--line);
+      }
+      /* two lines of the title at most: a video's opens with its
+         channel's phrase, and the words that told it apart were at the
+         end, cut off on one line. A line with nothing to say takes no
+         room (a short title, a tab of the root): the cards of a row are
+         not made the same height for it. */
+      #grid .title {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        line-height: 1.3;
+      }
+      /* the directories above the tab, then its host: one line each. */
+      #grid .path, #grid .host {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: var(--fg-dim);
+        font-size: 13px;
+      }
+      #grid .path:empty { display: none; }
+      html.translucent form,
+      html.translucent button { background: color-mix(in srgb, var(--field-bg) 70%, transparent); }
+      /* over the acrylic the highlight is a wash of the text's colour, not
+         a card of the page's own: the blur stays visible through it. */
+      html.translucent #grid a:hover,
+      html.translucent #grid a.selected { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+      html.translucent #grid .thumb { background-color: color-mix(in srgb, var(--bg-sunken) 50%, transparent); }
+    </style>
+    <!--data-->
+  </head>
+  <body>
+    <header id="head">
+      <form id="search" autocomplete="off">
+        <select id="engine"></select>
+        <input id="query" type="search" spellcheck="false" autofocus>
+      </form>
+    </header>
+    <nav id="actions"></nav>
+    <section id="tabs"></section>
+    <script>
+      (function(){
+        // not inside another page's frame: a frame with its referrer
+        // hidden reaches this page with no initiator, and a click laid
+        // over it would close or delete for good (R-414 high 1, as the
+        // settings page guards itself).
+        if(window.top !== window.self){
+          document.documentElement.textContent = '';
+          throw new Error('framed');
+        }
+        var data = JSON.parse(document.getElementById('start').textContent);
+        if(data.translucent) document.documentElement.classList.add('translucent');
+        document.title = data.title;
+        var query = document.getElementById('query');
+        query.placeholder = data.placeholder;
+
+        // the engine is this page's choice, remembered for the next one;
+        // the application's primary engine stays as it is. Storage may be
+        // refused, and then the primary one is where every page starts.
+        var engine = document.getElementById('engine');
+        data.engines.forEach(function(key){
+          var option = document.createElement('option');
+          option.value = key;
+          option.textContent = key;
+          engine.appendChild(option);
+        });
+        var kept = null;
+        try { kept = localStorage.getItem('engine'); } catch(e){}
+        engine.value = kept && data.engines.indexOf(kept) >= 0 ? kept : data.engine;
+        engine.hidden = data.engines.length < 2;
+        engine.addEventListener('change', function(){
+          try { localStorage.setItem('engine', engine.value); } catch(e){}
+          query.focus();
+        });
+
+        var nav = document.getElementById('actions');
+        data.actions.forEach(function(action){
+          var button = document.createElement('button');
+          button.type = 'button';
+          if(action.icon){
+            var icon = document.createElement('span');
+            icon.className = 'icon';
+            icon.style.webkitMaskImage = action.icon2x
+              ? 'image-set(url("' + action.icon + '") 1x, url("' + action.icon2x + '") 2x)'
+              : 'url("' + action.icon + '")';
+            button.appendChild(icon);
+          }
+          button.appendChild(document.createTextNode(action.text));
+          button.addEventListener('click', function(){
+            fetch('/api/action?name=' + encodeURIComponent(action.name), {method: 'POST'});
+          });
+          nav.appendChild(button);
+        });
+
+        // the tabs listed, those of them shown (two rows' worth), and
+        // which of the shown the arrow keys have selected (-1: none, and
+        // Enter searches the web).
+        var section = document.getElementById('tabs');
+        var listed = [];
+        var shown = [];
+        var selected = -1;
+        // the answers are numbered, and only the one asked for last is
+        // taken: an older one, to a search typed over or a list left for
+        // another, is dropped (R-394 low 1).
+        var asked = 0;
+        var timer = 0;
+        // what the cards shown were found by, to mark in them (D-582).
+        var found = '';
+
+        // the words of a search as the application splits them: at any
+        // white space, the ideographic one included.
+        function wordsOf(text){ return text.split(/\s+/u).filter(Boolean); }
+        function pattern(word, flags){
+          return new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+        }
+        function holds(text, word){ return pattern(word, 'iu').test(text); }
+        // 'text' into 'el', what any of 'words' covers marked; the case is
+        // ignored, as the application's match ignores it.
+        function mark(el, text, words){
+          el.textContent = '';
+          var covered = [];
+          words.forEach(function(word){
+            var re = pattern(word, 'giu');
+            for(var m; (m = re.exec(text));)
+              for(var i = m.index; i < re.lastIndex; i++) covered[i] = true;
+          });
+          for(var at = 0; at < text.length;){
+            var end = at;
+            while(end < text.length && !!covered[end] === !!covered[at]) end++;
+            var part = text.slice(at, end);
+            if(covered[at]){
+              var hit = document.createElement('mark');
+              hit.textContent = part;
+              el.appendChild(hit);
+            } else {
+              el.appendChild(document.createTextNode(part));
+            }
+            at = end;
+          }
+        }
+        // the line under the title: the host, or the address when a word
+        // is in neither the title nor the host -- found past the host, it
+        // would show nowhere. The scheme is left off unless a word is in it.
+        function addressOf(tab, words){
+          var unseen = words.filter(function(w){ return !holds(tab.title, w) && !holds(tab.host, w); });
+          if(!unseen.length) return tab.host;
+          var rest = tab.address.replace(/^[a-z][a-z0-9+.-]*:(\/\/)?/i, '');
+          return unseen.every(function(w){ return holds(rest, w); }) ? rest : tab.address;
+        }
+        // the history (D-573), fifty rows a page under their days, in the
+        // cards' place once 'more' is pressed; null while the cards show.
+        // 'rows' is what the application answered, in its order (the last
+        // look, newest first; a close does not move a row); 'checked' is by
+        // node, of closed rows only.
+        var HISTORY_PAGE = 50;
+        var history = null;
+
+        function open(tab){
+          fetch('/api/open?node=' + encodeURIComponent(tab.node), {method: 'POST'});
+        }
+
+        // the tab to the trash, as a close does. Its card goes at once,
+        // and the list is asked again a moment later for the tab which
+        // takes the freed frame: the application lets the tab go on its
+        // next turn, after it has answered. The selection stays where it
+        // was, on the card which moved into the place.
+        // a tab whose close was asked for and is not done yet: the
+        // application closes it on a turn the tree may be changed, which a
+        // dialog or a close under way puts off, and says so in the answer
+        // ('pending', R-411 mid 1, R-412). Its card stays out, and the list
+        // is asked again a little later for the frame it frees. Nothing is
+        // guessed here: the application takes the mark off itself on the
+        // turn it acts, done or refused.
+        var pendingTimer = 0;
+        function settle(tabs){
+          if(tabs.some(function(t){ return t.pending; })){
+            clearTimeout(pendingTimer);
+            pendingTimer = setTimeout(refresh, 500);
+          }
+          return tabs.filter(function(t){ return !t.pending; });
+        }
+
+        function trash(tab){
+          if(tab.closed) return; // in the trash already; nothing here empties it
+          fetch('/api/close?node=' + encodeURIComponent(tab.node), {method: 'POST'});
+          // an answer already on its way -- to a search typed just before
+          // -- was made with the tab still there: stale now, and dropped.
+          // The recent ones kept for an emptied field lose the tab too
+          // (R-408 mid 1).
+          ++asked;
+          data.recent = data.recent.filter(function(t){ return t.node !== tab.node; });
+          var index = shown.indexOf(tab);
+          var heading = section.querySelector('h2');
+          render(listed.filter(function(t){ return t.node !== tab.node; }),
+                 heading ? heading.textContent : data.recentTitle, found);
+          if(index >= 0 && shown.length) select(Math.min(index, shown.length - 1));
+          setTimeout(refresh, 250);
+        }
+
+        // the list as it is now, for what the field holds; the recent
+        // ones, kept for an emptied field, are taken from the answer too.
+        // A tab still there whose close is under way is left out, and the
+        // list asked for again a little later.
+        function refresh(){
+          if(history) return; // the history asks for itself
+          var mine = ++asked;
+          var text = query.value.trim();
+          var keep = selected;
+          fetch('/api/tabs?q=' + encodeURIComponent(text))
+            .then(function(r){ return r.json(); })
+            .then(function(answer){
+              if(mine !== asked) return;
+              var tabs = settle(answer.tabs);
+              if(!text){ data.recent = tabs; data.more = answer.more; }
+              render(tabs, text ? data.foundTitle : data.recentTitle, text);
+              if(keep >= 0 && shown.length) select(Math.min(keep, shown.length - 1));
+            });
+        }
+
+        function select(index){
+          var cards = section.querySelectorAll('#grid a, #history .row');
+          if(selected >= 0 && cards[selected]) cards[selected].classList.remove('selected');
+          selected = index;
+          if(selected >= 0 && cards[selected]){
+            cards[selected].classList.add('selected');
+            // clear of the strips stuck at the top: 'scrollIntoView' took a
+            // card behind them for shown, and its 'scroll-margin' did not
+            // change that (Chromium).
+            var cover = document.getElementById('head').offsetHeight;
+            var bar = section.querySelector('#history .bar');
+            if(bar) cover = Math.max(cover, parseFloat(getComputedStyle(bar).top) + bar.offsetHeight);
+            var box = cards[selected].getBoundingClientRect();
+            if(box.top < cover + 8) window.scrollBy(0, box.top - cover - 8);
+            else if(box.bottom > window.innerHeight) window.scrollBy(0, box.bottom - window.innerHeight);
+          }
+        }
+
+        // the columns are the width's: read off the grid once it is laid
+        // out, for the count of cards shown and for the arrow keys alike.
+        function columnsOf(){
+          var grid = document.getElementById('grid');
+          if(!grid) return 1;
+          return getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+        }
+
+        // the directories, as many of them as the line holds: the ones
+        // in between go first, the root's child and the nearest kept
+        // ('Youtube / … / Layer3'), then the nearest is cut at its end
+        // by the line's own ellipsis.
+        function fitPath(el, parts){
+          var tail = parts.slice(1);
+          var dropped = false;
+          for(;;){
+            el.textContent = parts.length
+              ? [parts[0]].concat(dropped ? ['…'] : [], tail).join(' / ') : '';
+            if(tail.length < 2 || el.scrollWidth <= el.clientWidth) return;
+            tail.shift();
+            dropped = true;
+          }
+        }
+
+        // as many cards as fill two rows; the rest stay in the grid,
+        // hidden, for a wider view. A thumbnail is asked for once its
+        // card shows, so that the hidden ones cost nothing; the path is
+        // fitted to the card's width, which is the view's.
+        function fit(){
+          var grid = document.getElementById('grid');
+          if(!grid) return;
+          var cards = grid.children;
+          var count = columnsOf() * 2;
+          for(var i = 0; i < cards.length; i++){
+            var card = cards[i];
+            card.hidden = i >= count;
+            if(card.hidden) continue;
+            var thumb = card.firstChild;
+            if(listed[i].thumb && !thumb.style.backgroundImage)
+              thumb.style.backgroundImage =
+                'url("/api/thumb?node=' + encodeURIComponent(listed[i].node) + '")';
+            fitPath(card.children[2], listed[i].path);
+          }
+          shown = listed.slice(0, count);
+          if(selected >= shown.length) select(shown.length - 1);
+          // 'more' when there is more: cards past the two rows, or
+          // anything for the history to show past the first page.
+          var more = section.querySelector('.more');
+          if(more) more.hidden = !(cards.length > count || data.more);
+        }
+        window.addEventListener('resize', fit);
+        // back from another window, where tabs may have been closed or
+        // restored: the history as it is now (R-414 mid 3).
+        window.addEventListener('focus', function(){ if(history) loadHistory(0); });
+
+        function render(tabs, heading, text){
+          found = text || '';
+          var words = wordsOf(found);
+          listed = tabs;
+          shown = [];
+          selected = -1;
+          section.textContent = '';
+          // nothing open and nothing in the trash: no heading either. With
+          // the trash's only, the heading and 'more' stand over an empty list.
+          if(!tabs.length && heading === data.recentTitle && !data.more) return;
+          var h = document.createElement('h2');
+          h.textContent = heading;
+          section.appendChild(h);
+          if(!tabs.length){
+            var none = document.createElement('p');
+            none.className = 'empty';
+            none.textContent = '—';
+            section.appendChild(none);
+            if(heading === data.recentTitle){
+              var only = moreButton();
+              only.hidden = !data.more;
+              section.appendChild(only);
+            }
+            return;
+          }
+          var grid = document.createElement('div');
+          grid.id = 'grid';
+          tabs.forEach(function(tab){
+            var card = document.createElement('a');
+            var thumb = document.createElement('div');
+            thumb.className = 'thumb';
+            var title = document.createElement('div');
+            title.className = 'title';
+            mark(title, tab.title, words);
+            var path = document.createElement('div');
+            path.className = 'path';
+            path.title = tab.path.join(' / '); // the text is fitted in 'fit'
+            var host = document.createElement('div');
+            host.className = 'host';
+            mark(host, addressOf(tab, words), words);
+            card.title = tab.title;
+            var close = cornerButton(tab.closed);
+            close.addEventListener('click', function(ev){
+              ev.stopPropagation();
+              if(tab.closed) open(tab); else trash(tab);
+            });
+            card.appendChild(thumb);
+            card.appendChild(title);
+            card.appendChild(path);
+            card.appendChild(host);
+            if(tab.closed){
+              var badge = document.createElement('span');
+              badge.className = 'badge';
+              badge.textContent = data.closedBadge;
+              card.appendChild(badge);
+            }
+            card.appendChild(close);
+            card.addEventListener('click', function(){ open(tab); });
+            // the middle button too; its press would start the view's
+            // autoscroll, which is kept from it.
+            card.addEventListener('mousedown', function(ev){ if(ev.button === 1) ev.preventDefault(); });
+            card.addEventListener('auxclick', function(ev){
+              if(ev.button === 1){ ev.preventDefault(); trash(tab); }
+            });
+            grid.appendChild(card);
+          });
+          section.appendChild(grid);
+          if(heading === data.recentTitle) section.appendChild(moreButton());
+          fit();
+        }
+
+        // the corner button of a card or a row: a cross drawn, not a
+        // glyph (a glyph sits on its baseline, off the button's centre), or
+        // for a tab of the trash the arrow turning back
+        // ('tableview/restore.png', in the same lines).
+        function cornerButton(restore){
+          var button = document.createElement('span');
+          button.className = 'close';
+          button.title = restore ? data.restoreTitle : data.closeTitle;
+          var cross = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          cross.setAttribute('viewBox', '0 0 10 10');
+          cross.setAttribute('width', '10');
+          cross.setAttribute('height', '10');
+          var stroke = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          stroke.setAttribute('d', restore
+            ? 'M3.5 2.5L1.5 4.5L3.5 6.5M1.5 4.5H6.25A2.25 2.25 0 0 1 6.25 9H4.5'
+            : 'M1 1L9 9M9 1L1 9');
+          stroke.setAttribute('fill', 'none');
+          stroke.setAttribute('stroke', 'currentColor');
+          stroke.setAttribute('stroke-width', '1.5');
+          stroke.setAttribute('stroke-linecap', 'round');
+          stroke.setAttribute('stroke-linejoin', 'round');
+          cross.appendChild(stroke);
+          button.appendChild(cross);
+          return button;
+        }
+
+        // the way to the rest: the history in the cards' place, and fifty
+        // rows more at each press down there.
+        function moreButton(){
+          var more = document.createElement('button');
+          more.className = 'more';
+          more.type = 'button';
+          more.textContent = data.moreTitle;
+          more.addEventListener('click', function(){ showHistory(query.value.trim(), true); });
+          return more;
+        }
+
+        // the history stays the page's view across a reload: '#history' in
+        // the address, and where it was scrolled to in the session's
+        // storage, brought back (pages loaded as needed) once the rows are
+        // there. The browser's own restoring is off: it would run before
+        // the rows have come.
+        var restoring = 0;
+        try { window.history.scrollRestoration = 'manual'; } catch(e){}
+        // 'query': the words the rows must hold (the field's), none for the
+        // whole history. 'entered': come to by 'more' (or the address), to
+        // stay in when the field is emptied; typing alone leaves it then.
+        // come to by 'more', the history is a step of the page's own: the
+        // browser's back takes the cards up again, forward the history
+        // (an address already '#history' -- a reload, a step back to the
+        // page -- adds no step).
+        function showHistory(query, entered){
+          // 'found': the query the rows held were found by, to mark in them
+          // (D-582); 'query' is ahead of it while an answer is on its way.
+          history = {rows: [], more: true, checked: {}, loading: false, query: query || '', found: '', entered: !!entered};
+          if(entered && location.hash !== '#history'){
+            try { window.history.pushState(null, '', '#history'); } catch(e){}
+          }
+          renderHistory(); // the band first, the rows as they come
+          loadHistory(0);
+        }
+        function leaveHistory(){
+          history = null;
+          section.textContent = '';
+          if(location.hash === '#history'){
+            try { window.history.replaceState(null, '', location.pathname + location.search); } catch(e){}
+          }
+          try { sessionStorage.removeItem('history-scroll'); } catch(e){}
+        }
+        // the cards again, from the history's own 'back' button or the
+        // browser's step back.
+        function showCards(){
+          if(history) leaveHistory();
+          query.value = '';
+          render(data.recent, data.recentTitle);
+          refresh();
+        }
+        window.addEventListener('popstate', function(){
+          if(location.hash === '#history'){ if(!history) showHistory('', true); }
+          else if(history) showCards();
+        });
+        window.addEventListener('scroll', function(){
+          document.body.classList.toggle('scrolled', window.scrollY > 8);
+          if(!history || restoring) return;
+          try { sessionStorage.setItem('history-scroll', String(window.scrollY)); } catch(e){}
+        });
+
+        // the rows from 'offset' on, appended; from 0, the whole of what is
+        // shown is asked for again (a close or a deletion done, a frame
+        // freed), and again a little later while any row is still pending.
+        function loadHistory(offset){
+          if(history.loading && offset) return; // one page at a time
+          history.loading = true;
+          var mine = ++asked;
+          var limit = offset ? HISTORY_PAGE : Math.max(HISTORY_PAGE, history.rows.length);
+          var text = history.query;
+          fetch('/api/tabs?view=history&offset=' + offset + '&limit=' + limit + '&q=' + encodeURIComponent(text))
+            .then(function(r){ return r.json(); })
+            .then(function(answer){
+              if(mine !== asked || !history) return;
+              history.loading = false;
+              history.found = text;
+              history.rows = history.rows.slice(0, offset).concat(answer.tabs);
+              history.more = answer.more;
+              // the choice is of closed rows shown: one restored or trimmed
+              // away elsewhere since would fail the whole deletion (R-415 mid 3).
+              var kept = {};
+              history.rows.forEach(function(t){ if(t.closed && !t.pending && history.checked[t.node]) kept[t.node] = true; });
+              history.checked = kept;
+              renderHistory();
+              if(restoring){
+                // as far down as it was: the next page when the rows so
+                // far do not reach it.
+                window.scrollTo(0, restoring);
+                if(window.scrollY < restoring - 8 && history.more) loadHistory(history.rows.length);
+                else restoring = 0;
+              }
+              if(answer.tabs.some(function(t){ return t.pending; })){
+                clearTimeout(pendingTimer);
+                pendingTimer = setTimeout(function(){ if(history) loadHistory(0); }, 500);
+              }
+            });
+        }
+
+        function dayKey(iso){ return iso.slice(0, 10); }
+        function dayLabel(iso){
+          var d = new Date(iso);
+          var now = new Date();
+          var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          var day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          var days = Math.round((today - day) / 86400000);
+          if(days === 0) return data.todayLabel;
+          if(days === 1) return data.yesterdayLabel;
+          var form = {month: 'long', day: 'numeric', weekday: 'short'};
+          if(day.getFullYear() !== today.getFullYear()) form.year = 'numeric';
+          return day.toLocaleDateString(undefined, form);
+        }
+
+        // an open row's cross: the tab closes where it stands, the row
+        // dimmed until the application says it is closed (then it is a
+        // closed row, in the same place: its last look has not changed).
+        function closeRow(tab){
+          if(tab.closed) return;
+          fetch('/api/close?node=' + encodeURIComponent(tab.node), {method: 'POST'});
+          tab.pending = true;
+          renderHistory();
+          clearTimeout(pendingTimer);
+          pendingTimer = setTimeout(function(){ if(history) loadHistory(0); }, 250);
+        }
+
+        // the checked rows out of the trash for good: the application asks
+        // on its own modal first, and the rows come back if it is refused.
+        function discard(nodes){
+          fetch('/api/discard?nodes=' + encodeURIComponent(nodes.join(',')), {method: 'POST'});
+          history.rows.forEach(function(t){ if(history.checked[t.node]) t.pending = true; });
+          history.checked = {};
+          renderHistory();
+          clearTimeout(pendingTimer);
+          pendingTimer = setTimeout(function(){ if(history) loadHistory(0); }, 250);
+        }
+
+        function historyRow(tab){
+          var row = document.createElement('div');
+          row.className = 'row ' + (tab.closed ? 'closed' : 'live') + (tab.pending ? ' pending' : '');
+          row.title = tab.title + '\n' + tab.path.concat([tab.host]).join(' / ')
+            + (tab.closed ? '\n' + data.restoreHint : '');
+          var check = document.createElement('input');
+          check.type = 'checkbox';
+          check.className = 'box';
+          check.checked = !!history.checked[tab.node];
+          check.addEventListener('change', function(){
+            if(check.checked) history.checked[tab.node] = true; else delete history.checked[tab.node];
+            renderHistory();
+          });
+          // in a cell of its own: a click anywhere in it is the box's (a
+          // label's), never the row's.
+          var pick = document.createElement('label');
+          pick.className = 'pick';
+          pick.addEventListener('click', function(ev){ ev.stopPropagation(); });
+          pick.appendChild(check);
+          var time = document.createElement('span');
+          time.className = 'time';
+          time.textContent = tab.seen.slice(11, 16);
+          var pic = document.createElement('span');
+          pic.className = 'pic';
+          if(tab.thumb){
+            pic.style.backgroundImage = 'url("/api/thumb?node=' + encodeURIComponent(tab.node) + '")';
+          } else if(tab.icon){
+            var img = document.createElement('img');
+            img.src = '/api/icon?node=' + encodeURIComponent(tab.node);
+            pic.appendChild(img);
+          }
+          var text = document.createElement('span');
+          text.className = 'text';
+          var title = document.createElement('span');
+          title.className = 'title';
+          var words = wordsOf(history.found);
+          mark(title, tab.title, words);
+          var meta = document.createElement('span');
+          meta.className = 'meta';
+          // a tab of the trash wears its badge here, as its card did
+          // (the cards show open tabs alone since the history, D-573).
+          if(tab.closed){
+            var tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.textContent = data.closedBadge;
+            meta.appendChild(tag);
+          }
+          // the directories are not searched in: the address alone is marked.
+          meta.appendChild(document.createTextNode(tab.path.concat(['']).join(' / ')));
+          var address = document.createElement('span');
+          mark(address, addressOf(tab, words), words);
+          meta.appendChild(address);
+          text.appendChild(title);
+          text.appendChild(meta);
+          row.appendChild(pick);
+          row.appendChild(time);
+          row.appendChild(pic);
+          row.appendChild(text);
+          // the corner button: a cross which closes an open tab's row
+          // where it stands, the arrow which restores a closed one (as on
+          // the cards, D-572; the row itself restores too).
+          var corner = cornerButton(tab.closed);
+          corner.addEventListener('click', function(ev){
+            ev.stopPropagation();
+            if(tab.closed) open(tab); else closeRow(tab);
+          });
+          row.appendChild(corner);
+          row.addEventListener('click', function(){ open(tab); });
+          return row;
+        }
+
+        var watcher = null;
+        function renderHistory(){
+          listed = [];
+          shown = [];
+          selected = -1;
+          // the rows are made over: the page keeps its place (emptied, it
+          // would be scrolled back to the top).
+          var y = window.scrollY;
+          if(watcher){ watcher.disconnect(); watcher = null; }
+          section.textContent = '';
+          var box = document.createElement('div');
+          box.id = 'history';
+          var bar = document.createElement('div');
+          bar.className = 'bar';
+          // the way back to the cards, at the left end
+          var back = document.createElement('button');
+          back.type = 'button';
+          back.className = 'back';
+          back.textContent = data.backTitle;
+          back.addEventListener('click', function(ev){
+            ev.stopPropagation();
+            if(location.hash === '#history' && history.entered) window.history.back();
+            else showCards();
+          });
+          var h = document.createElement('h2');
+          h.textContent = history.query ? data.foundTitle : data.historyTitle;
+          var del = document.createElement('button');
+          del.type = 'button';
+          var count = Object.keys(history.checked).length;
+          del.textContent = data.deleteTitle + (count ? ' (' + count + ')' : '');
+          del.disabled = !count;
+          del.addEventListener('click', function(ev){
+            ev.stopPropagation();
+            discard(Object.keys(history.checked));
+          });
+          bar.appendChild(del);
+          bar.appendChild(h);
+          bar.appendChild(back);
+          box.appendChild(bar);
+          // the rows under their days, in the order answered.
+          var groups = [];
+          var byKey = {};
+          history.rows.forEach(function(tab){
+            var key = dayKey(tab.seen);
+            if(!byKey[key]){ byKey[key] = {key: key, label: dayLabel(tab.seen), rows: []}; groups.push(byKey[key]); }
+            byKey[key].rows.push(tab);
+          });
+          groups.forEach(function(group){
+            var closed = group.rows.filter(function(t){ return t.closed && !t.pending; });
+            var day = document.createElement('div');
+            day.className = 'day';
+            var dayBox = document.createElement('input');
+            dayBox.type = 'checkbox';
+            dayBox.className = 'box';
+            dayBox.checked = closed.length > 0 && closed.every(function(t){ return history.checked[t.node]; });
+            dayBox.style.visibility = closed.length ? '' : 'hidden';
+            dayBox.addEventListener('change', function(){
+              closed.forEach(function(t){ if(dayBox.checked) history.checked[t.node] = true; else delete history.checked[t.node]; });
+              renderHistory();
+            });
+            // the day's box picks the closed rows loaded under it, whose
+            // count the heading shows: a day longer than what is loaded is
+            // picked as far as it is loaded (R-415 mid 4).
+            var label = document.createElement('span');
+            label.textContent = group.label + (closed.length ? ' \u00b7 ' + closed.length : '');
+            var dayPick = document.createElement('label');
+            dayPick.className = 'pick';
+            dayPick.appendChild(dayBox);
+            day.appendChild(dayPick);
+            day.appendChild(label);
+            box.appendChild(day);
+            group.rows.forEach(function(tab){ box.appendChild(historyRow(tab)); });
+          });
+          // the next page comes by itself as the end comes into view.
+          var sentinel = document.createElement('div');
+          sentinel.className = 'sentinel';
+          box.appendChild(sentinel);
+          section.appendChild(box);
+          // the rows are what the arrow keys walk, one to a line.
+          listed = history.rows.slice();
+          shown = listed;
+          window.scrollTo(0, y);
+          if(history.rows.length && history.more && window.IntersectionObserver){
+            watcher = new IntersectionObserver(function(entries){
+              if(entries.some(function(e){ return e.isIntersecting; }) && history && history.more)
+                loadHistory(history.rows.length);
+            }, {rootMargin: '400px'});
+            watcher.observe(sentinel);
+          }
+        }
+
+        // the list the page came with is settled too: a close asked for
+        // from another start page may be waiting (R-413 mid 2).
+        data.recent = settle(data.recent);
+        // the history from the first paint when the address says so (a
+        // reload, a step back to the page): its band at once, the rows as
+        // they come; the cards are not shown in between.
+        if(location.hash === '#history'){
+          try { restoring = parseInt(sessionStorage.getItem('history-scroll') || '0', 10) || 0; } catch(e){}
+          showHistory('', true);
+        } else {
+          render(data.recent, data.recentTitle);
+        }
+
+        // what the field holds is looked for among the tabs, open and
+        // closed alike, shown in the history's form: typing brings the
+        // history up with the words, and emptying the field takes it down
+        // again unless it was come to by 'more' (then the whole of it).
+        query.addEventListener('input', function(){
+          clearTimeout(timer);
+          ++asked;
+          var text = query.value.trim();
+          // typing voids the selection: a refresh on its way (a close's)
+          // would have put it back on the new list (R-412 low 2).
+          select(-1);
+          if(!text){
+            if(history && history.entered){ history.query = ''; loadHistory(0); return; }
+            if(history) leaveHistory();
+            // emptied: the recent ones as kept, at once, and asked for
+            // again: a close under way while the field held a word the tab
+            // did not match was never seen done, and the frame it freed is
+            // still empty (R-413 mid 3).
+            render(data.recent, data.recentTitle);
+            refresh();
+            return;
+          }
+          timer = setTimeout(function(){
+            if(history){ history.query = text; loadHistory(0); }
+            else showHistory(text, false);
+          }, 120);
+        });
+
+        query.addEventListener('keydown', function(ev){
+          var columns = columnsOf();
+          if(ev.key === 'ArrowDown'){
+            ev.preventDefault();
+            if(selected < 0) select(shown.length ? 0 : -1);
+            else if(selected + columns < shown.length) select(selected + columns);
+            // the last row is the shorter one: down from above it lands
+            // on its end (R-395 low 8).
+            else if(Math.floor(selected / columns) < Math.floor((shown.length - 1) / columns))
+              select(shown.length - 1);
+          } else if(ev.key === 'ArrowUp'){
+            ev.preventDefault();
+            // up past the first row: back to the field, at the page's top.
+            if(selected - columns >= 0) select(selected - columns);
+            else { select(-1); window.scrollTo(0, 0); }
+          } else if(ev.key === 'ArrowRight' && selected >= 0){
+            ev.preventDefault();
+            if(selected + 1 < shown.length) select(selected + 1);
+          } else if(ev.key === 'ArrowLeft' && selected >= 0){
+            ev.preventDefault();
+            select(selected - 1);
+          } else if(ev.key === 'Delete' && selected >= 0){
+            ev.preventDefault();
+            if(history){ if(!shown[selected].closed) closeRow(shown[selected]); }
+            else trash(shown[selected]);
+          } else if(ev.key === 'Escape' && selected >= 0){
+            ev.preventDefault();
+            select(-1);
+          }
+        });
+
+        document.getElementById('search').addEventListener('submit', function(ev){
+          ev.preventDefault();
+          if(selected >= 0 && shown[selected]){ open(shown[selected]); return; }
+          var text = query.value.trim();
+          if(!text) return;
+          fetch('/api/resolve?q=' + encodeURIComponent(text) +
+                '&engine=' + encodeURIComponent(engine.value))
+            .then(function(r){ return r.json(); })
+            .then(function(answer){ if(answer.url) location.assign(answer.url); });
+        });
+      })();
+    </script>
+  </body>
+</html>

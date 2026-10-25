@@ -11,6 +11,7 @@
 #include <QTimer>
 #include <QDebug>
 #include <QCursor>
+#include <QPixmap>
 #include <QThread>
 #include <QSslCertificate>
 #include <QElapsedTimer>
@@ -27,6 +28,23 @@
 #include "downloadname.hpp"
 #include "loadending.hpp"
 #include "settingspage.hpp"
+#include "sitepermissions.hpp"
+
+namespace {
+
+QByteArray EdgeStreamBytes(IStream *stream){
+    QByteArray bytes;
+    char buffer[4096];
+    for(;;){
+        ULONG read = 0;
+        const HRESULT hr = stream->Read(buffer, sizeof(buffer), &read);
+        if(read) bytes.append(buffer, int(read));
+        if(FAILED(hr) || hr == S_FALSE || !read) break;
+    }
+    return bytes;
+}
+
+}
 
 class EdgeDownloadAdapter : public QObject {
     Q_OBJECT
@@ -42,12 +60,14 @@ public:
     EdgeDownloadAdapter(QObject *parent,
                         Microsoft::WRL::ComPtr<ICoreWebView2DownloadOperation> operation,
                         std::shared_ptr<EdgeDownloadCell> cell,
-                        const QUrl &url, const QString &path)
+                        const QUrl &url, const QString &path,
+                        std::function<void()> settle)
         : QObject(parent)
         , m_Operation(operation)
         , m_Cell(cell)
         , m_Url(url)
         , m_Path(path)
+        , m_Settle(settle)
         , m_Releasing(false)
     {}
 
@@ -107,6 +127,7 @@ public slots:
         EdgeDownloadCarriers::Instance()->WhenCallsAreDone(this, [this](){
             NotifyState();
             ReleaseAfterUnwind();
+            if(m_Settle) m_Settle();
         });
     }
 
@@ -119,6 +140,7 @@ private:
     std::shared_ptr<EdgeDownloadCell> m_Cell;
     QUrl m_Url;
     QString m_Path;
+    std::function<void()> m_Settle;
     bool m_Releasing;
 };
 
@@ -338,8 +360,7 @@ void EdgeWebView::RegisterNavigationHandlers(){
                      AskAgainAboutAbort(generation, EdgeAbortLatch::Wait);
              }
 
-             if(visible() && m_TreeBank &&
-                m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible())
+             if(visible() && m_TreeBank)
                  UpdateThumbnail();
              return S_OK;
          }).Get(), &token)))
@@ -359,6 +380,52 @@ void EdgeWebView::RegisterNavigationHandlers(){
              return S_OK;
          }).Get(), &token)))
         VANILLA_KEEP_WEBVIEW_EVENT(webview, DocumentTitleChanged, token);
+    VANILLA_STOP_IF_RETIRED();
+
+    ComPtr<ICoreWebView2_15> webview15;
+    if(SUCCEEDED(webview->QueryInterface(IID_PPV_ARGS(&webview15))) && webview15){
+        VANILLA_STOP_IF_RETIRED();
+        if(SUCCEEDED(webview15->add_FaviconChanged
+            (Callback<ICoreWebView2FaviconChangedEventHandler>
+             ([this](ICoreWebView2 *sender, IUnknown*) -> HRESULT {
+                 if(m_Impl->m_State.IsRetired()) return S_OK;
+                 ComPtr<ICoreWebView2_15> sender15;
+                 if(!sender || FAILED(sender->QueryInterface(IID_PPV_ARGS(&sender15))) || !sender15)
+                     return S_OK;
+                 LPWSTR uri = nullptr;
+                 const bool has = SUCCEEDED(sender15->get_FaviconUri(&uri)) && uri && *uri;
+                 const QString requested = has ? QString::fromWCharArray(uri) : QString();
+                 if(uri) CoTaskMemFree(uri);
+                 if(!has){
+                     m_Impl->m_Icon = QIcon();
+                     return S_OK;
+                 }
+                 QPointer<EdgeWebView> alive(this);
+                 const QString host = ReportedSourceOf(sender).host();
+                 const int generation = m_Impl->m_Document.Generation();
+                 const bool offTheRecord = Page::OffTheRecord(this);
+                 sender15->GetFavicon
+                     (COREWEBVIEW2_FAVICON_IMAGE_FORMAT_PNG,
+                      Callback<ICoreWebView2GetFaviconCompletedHandler>
+                      ([alive, sender15, host, requested, generation, offTheRecord](HRESULT result, IStream *stream) -> HRESULT {
+                          if(!alive || alive->m_Impl->m_State.IsRetired() ||
+                             FAILED(result) || !stream) return S_OK;
+                          QPixmap pixmap;
+                          if(!pixmap.loadFromData(EdgeStreamBytes(stream), "PNG")) return S_OK;
+                          const QIcon icon(pixmap);
+                          Application::RegisterIcon(host, icon, offTheRecord);
+                          if(!alive->m_Impl->m_Document.StillCurrent(generation)) return S_OK;
+                          LPWSTR now = nullptr;
+                          const bool same = SUCCEEDED(sender15->get_FaviconUri(&now)) && now &&
+                              QString::fromWCharArray(now) == requested;
+                          if(now) CoTaskMemFree(now);
+                          if(same) alive->m_Impl->m_Icon = icon;
+                          return S_OK;
+                      }).Get());
+                 return S_OK;
+             }).Get(), &token)))
+            VANILLA_KEEP_WEBVIEW_EVENT(webview15.Get(), FaviconChanged, token);
+    }
     VANILLA_STOP_IF_RETIRED();
 
     if(SUCCEEDED(webview->add_SourceChanged
@@ -423,6 +490,49 @@ namespace {
         }
         return made;
     }
+
+    int PasteCommandOf(ICoreWebView2ContextMenuItemCollection *items){
+        UINT32 count = 0;
+        if(FAILED(items->get_Count(&count))) return -1;
+        for(UINT32 i = 0; i < count; ++i){
+            ComPtr<ICoreWebView2ContextMenuItem> item;
+            if(FAILED(items->GetValueAtIndex(i, &item)) || !item) continue;
+            LPWSTR name = nullptr;
+            const bool paste = SUCCEEDED(item->get_Name(&name)) && name && wcscmp(name, L"paste") == 0;
+            if(name) CoTaskMemFree(name);
+            if(!paste) continue;
+            COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND kind = COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND;
+            BOOL enabled = FALSE;
+            INT32 id = -1;
+            if(SUCCEEDED(item->get_Kind(&kind)) && kind == COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND &&
+               SUCCEEDED(item->get_IsEnabled(&enabled)) && enabled &&
+               SUCCEEDED(item->get_CommandId(&id)) && id >= 0)
+                return id;
+            return -1;
+        }
+        return -1;
+    }
+
+    void TraceMenuItems(ICoreWebView2ContextMenuItemCollection *items, bool editable){
+        UINT32 count = 0;
+        if(FAILED(items->get_Count(&count))) return;
+        for(UINT32 i = 0; i < count; ++i){
+            ComPtr<ICoreWebView2ContextMenuItem> item;
+            if(FAILED(items->GetValueAtIndex(i, &item)) || !item) continue;
+            LPWSTR name = nullptr;
+            INT32 id = -1;
+            BOOL enabled = FALSE;
+            COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND kind = COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND;
+            item->get_Name(&name);
+            item->get_CommandId(&id);
+            item->get_IsEnabled(&enabled);
+            item->get_Kind(&kind);
+            fprintf(stderr, "edge-menu: item %u id=%d enabled=%d kind=%d editable=%d name=%ls\n",
+                    i, id, enabled ? 1 : 0, static_cast<int>(kind), editable ? 1 : 0, name ? name : L"");
+            if(name) CoTaskMemFree(name);
+        }
+        fflush(stderr);
+    }
 }
 
 namespace {
@@ -449,7 +559,8 @@ namespace {
 }
 
 void EdgeWebView::WireDownload(ICoreWebView2DownloadOperation *rawOperation,
-                               const QString &shownName, const QString &path){
+                               const QString &shownName, const QString &path,
+                               const QUrl &source, bool offTheRecord){
     ComPtr<ICoreWebView2DownloadOperation> operation(rawOperation);
     QString name = shownName;
     QString file = path;
@@ -459,18 +570,36 @@ void EdgeWebView::WireDownload(ICoreWebView2DownloadOperation *rawOperation,
     emit statusBarMessage(tr("Downloading %1").arg(name));
 
     const bool downloadOnly = m_Impl->m_History.IsEmpty();
-    if(downloadOnly) m_Impl->m_Downloads.Started();
+    m_Impl->m_Downloads.Started();
 
     auto settled = std::make_shared<bool>(false);
+    QPointer<EdgeWebView> alive(this);
+    auto settle = [alive, downloadOnly, settled](){
+        if(*settled) return;
+        *settled = true;
+        if(!alive) return;
+        alive->m_Impl->m_Downloads.Settled();
+        if(!alive->m_Impl->m_Downloads.MayClose()) return;
+
+        EdgeDownloadCarriers::Instance()->ReleaseLater(alive->GetThis());
+
+        if(!downloadOnly || !alive->m_Impl->m_History.IsEmpty()) return;
+
+        QPointer<EdgeWebView> waiting(alive);
+        View::CloseLater(alive->GetThis(), [waiting](){
+            return waiting && !waiting->m_Impl->m_State.IsRetired() &&
+                waiting->m_Impl->m_Downloads.MayClose() &&
+                waiting->m_Impl->m_History.IsEmpty();
+        });
+    };
 
     auto cell = std::make_shared<EdgeDownloadCell>();
     auto wired = std::make_shared<QPointer<EdgeDownloadAdapter>>();
 
-    QPointer<EdgeWebView> alive(this);
     EventRegistrationToken stateToken = {};
     const HRESULT hr = operation->add_StateChanged
         (Callback<ICoreWebView2StateChangedEventHandler>
-         ([alive, name, downloadOnly, settled, cell, wired]
+         ([alive, name, settle, cell, wired]
           (ICoreWebView2DownloadOperation *sender, IUnknown*) -> HRESULT {
              if(!sender) return S_OK;
 
@@ -502,31 +631,14 @@ void EdgeWebView::WireDownload(ICoreWebView2DownloadOperation *rawOperation,
 
              if(!report.terminal) return S_OK;
 
-             if(!downloadOnly || *settled) return S_OK;
-             *settled = true;
-             alive->m_Impl->m_Downloads.Settled();
-
-             if(!alive->m_Impl->m_Downloads.MayClose()) return S_OK;
-
-             EdgeDownloadCarriers::Instance()->ReleaseLater(alive->GetThis());
-
-             if(!alive->m_Impl->m_History.IsEmpty()) return S_OK;
-
-             QPointer<EdgeWebView> waiting(alive);
-             View::CloseLater(alive->GetThis(), [waiting](){
-                 return waiting && !waiting->m_Impl->m_State.IsRetired() &&
-                     waiting->m_Impl->m_Downloads.MayClose() &&
-                     waiting->m_Impl->m_History.IsEmpty();
-             });
+             settle();
              return S_OK;
          }).Get(), &stateToken);
 
     if(FAILED(hr)){
-        if(downloadOnly){
-            qWarning() << "edge: a download cannot be watched;"
-                       << "this tab will not close itself";
-            m_Impl->m_Downloads.Untracked();
-        }
+        qWarning() << "edge: a download cannot be watched;"
+                   << "this tab will not close itself, nor outlive its closing";
+        m_Impl->m_Downloads.Untracked();
         return;
     }
 
@@ -566,11 +678,12 @@ void EdgeWebView::WireDownload(ICoreWebView2DownloadOperation *rawOperation,
     }
 
     EdgeDownloadAdapter *adapter =
-        new EdgeDownloadAdapter(this, operation, cell, remote, file);
+        new EdgeDownloadAdapter(this, operation, cell, remote, file, settle);
     *wired = adapter;
 
     DownloadItem *item = new DownloadItem(adapter);
-    item->Record(m_Impl->m_PrivateMode);
+    item->SetSource(source, offTheRecord || m_Impl->m_PrivateMode);
+    item->Record(offTheRecord || m_Impl->m_PrivateMode);
 
     const bool terminalBeforeReplay = cell->IsTerminal();
 
@@ -636,7 +749,7 @@ void EdgeWebView::RegisterDocumentHandlers(){
     if(webview4 &&
        SUCCEEDED(webview4->add_DownloadStarting
         (Callback<ICoreWebView2DownloadStartingEventHandler>
-         ([this](ICoreWebView2*,
+         ([this](ICoreWebView2 *sender,
                  ICoreWebView2DownloadStartingEventArgs *args) -> HRESULT {
              if(!args) return S_OK;
 
@@ -647,6 +760,16 @@ void EdgeWebView::RegisterDocumentHandlers(){
              ComPtr<ICoreWebView2DownloadOperation> operation;
              if(FAILED(args->get_DownloadOperation(&operation)) || !operation)
                  return S_OK;
+
+             QUrl source;
+             {
+                 LPWSTR text = nullptr;
+                 if(sender && SUCCEEDED(sender->get_Source(&text)) && text){
+                     source = QUrl(QString::fromWCharArray(text));
+                     CoTaskMemFree(text);
+                 }
+             }
+             const bool offTheRecord = Page::OffTheRecord(this);
 
              LPWSTR path = nullptr;
              QString name;
@@ -675,7 +798,7 @@ void EdgeWebView::RegisterDocumentHandlers(){
                      file = native;
                      name = QFileInfo(native).fileName();
                  }
-                 WireDownload(operation.Get(), name, file);
+                 WireDownload(operation.Get(), name, file, source, offTheRecord);
                  return S_OK;
              }
 
@@ -687,12 +810,12 @@ void EdgeWebView::RegisterDocumentHandlers(){
              ComPtr<ICoreWebView2DownloadStartingEventArgs> held(args);
              QPointer<EdgeWebView> alive(this);
              const QString offered = name;
-             m_Impl->m_Downloads.Started();
+             m_Impl->m_Downloads.AskPlaced();
              const bool start = DownloadAsks().Push
-                 ([alive, held, deferral, operation, offered](){
+                 ([alive, held, deferral, operation, offered, source, offTheRecord](){
                  auto usable = [&alive](){
                      return alive && !alive->IsGoing() && !Application::IsQuitting() &&
-                         !g_DownloadAsksDraining;
+                         !g_DownloadAsksDraining && !alive->m_Impl->m_KeptAfterRelease;
                  };
                  QString chosen;
                  if(usable()) Application::AskDownloadPolicyIfNeed();
@@ -722,10 +845,10 @@ void EdgeWebView::RegisterDocumentHandlers(){
                      pathTaken = SUCCEEDED(held->put_ResultFilePath
                                            (reinterpret_cast<PCWSTR>(native.utf16())));
                  }
-                 if(alive) alive->m_Impl->m_Downloads.Settled();
+                 if(alive) alive->m_Impl->m_Downloads.AskAnswered();
                  if(pathTaken){
                      if(usable()){
-                         alive->WireDownload(operation.Get(), QFileInfo(chosen).fileName(), chosen);
+                         alive->WireDownload(operation.Get(), QFileInfo(chosen).fileName(), chosen, source, offTheRecord);
                          Application::SetDownloadDirectory(QFileInfo(chosen).absolutePath() + QStringLiteral("/"));
                          wired = true;
                      }
@@ -869,18 +992,23 @@ void EdgeWebView::RegisterDocumentHandlers(){
                  {
                      QPointer<EdgeWebView> still(this);
                      if(m_Impl->m_ContextMenu.HasOutstanding())
-                         CompleteContextMenu(m_Impl->m_ContextMenu.Generation(), -1);
+                         CompleteContextMenu(m_Impl->m_ContextMenu.Generation(), -1, false);
                      if(!still) return S_OK;
                      if(m_Impl->m_State.IsRetired()) return S_OK;
                  }
                  if(m_Impl->m_ContextMenuWidget) m_Impl->m_ContextMenuWidget->close();
                  {
                      ComPtr<ICoreWebView2ContextMenuItemCollection> items;
-                     if(SUCCEEDED(args->get_MenuItems(&items)) && items)
+                     if(SUCCEEDED(args->get_MenuItems(&items)) && items){
                          target.m_ExtensionItems = MenuItemsOf(items.Get(), true);
+                         if(target.m_Editable &&
+                            View::GetTextMenu().split(QLatin1Char(',')).contains(QStringLiteral("Paste")))
+                             target.m_PasteCommandId = PasteCommandOf(items.Get());
+                         if(EdgeInspectorTraceOn()) TraceMenuItems(items.Get(), target.m_Editable);
+                     }
                  }
                  if(!here) return S_OK;
-                 if(!target.m_ExtensionItems.isEmpty()){
+                 if(!target.m_ExtensionItems.isEmpty() || target.m_PasteCommandId >= 0){
                      ComPtr<ICoreWebView2Deferral> deferral;
                      const HRESULT deferred = args->GetDeferral(&deferral);
                      if(!here){
@@ -900,8 +1028,9 @@ void EdgeWebView::RegisterDocumentHandlers(){
                          target.m_Superseded = deferral &&
                              (m_Impl->m_ContextMenu.HasOutstanding() || m_Impl->m_ContextMenu.IsRetired());
                          target.m_ExtensionItems.clear();
+                         target.m_PasteCommandId = -1;
                          QPointer<EdgeWebView> still(this);
-                         if(deferral) CountedComplete(nullptr, deferral.Get(), -1);
+                         if(deferral) CountedComplete(nullptr, deferral.Get(), -1, false);
                          if(!still) return S_OK;
                      }
                  }
@@ -1173,11 +1302,9 @@ void EdgeWebView::RegisterInputHandlers(){
                  m_Impl->m_HasFocus = true;
                  if(!m_Impl->m_State.IsRetired() && m_TreeBank && visible() &&
                     m_TreeBank->GetCurrentView().get() == this){
-                     if(MainWindow *win = m_TreeBank->GetMainWindow()){
-                         Application::SetCurrentWindow(win);
-                         win->RaiseAllEdgeWidgets();
+                     OnFocusIn();
+                     if(MainWindow *win = m_TreeBank->GetMainWindow())
                          win->UpdateAllEdgeWidgets();
-                     }
                  }
                  return S_OK;
              }).Get(), &token)))
@@ -1189,6 +1316,7 @@ void EdgeWebView::RegisterInputHandlers(){
              ([this](ICoreWebView2Controller*, IUnknown*) -> HRESULT {
                  m_Impl->m_HasFocus = false;
                  m_Impl->m_HandledKeys.clear();
+                 OnFocusOut();
                  return S_OK;
              }).Get(), &token)))
             VANILLA_KEEP_CONTROLLER_EVENT(controller, LostFocus, token);
@@ -1293,15 +1421,6 @@ HRESULT EdgeWebView::AnswerVanillaPage(ICoreWebView2WebResourceRequestedEventArg
         CoTaskMemFree(text);
     }
 
-    QByteArray body;
-    ComPtr<IStream> content;
-    if(SUCCEEDED(request->get_Content(&content)) && content){
-        char buffer[4096];
-        ULONG read = 0;
-        while(SUCCEEDED(content->Read(buffer, sizeof(buffer), &read)) && read > 0)
-            body.append(buffer, static_cast<int>(read));
-    }
-
     QString originHeader, refererHeader;
     ComPtr<ICoreWebView2HttpRequestHeaders> requestHeaders;
     if(SUCCEEDED(request->get_Headers(&requestHeaders)) && requestHeaders){
@@ -1319,6 +1438,21 @@ HRESULT EdgeWebView::AnswerVanillaPage(ICoreWebView2WebResourceRequestedEventArg
     const QUrl initiator = VanillaPage::InitiatorFromHeaders
         (originHeader, refererHeader, m_Impl->m_Url,
          document && method != QByteArrayLiteral("GET"));
+
+    QByteArray body;
+    ComPtr<IStream> content;
+    if(VanillaPage::ReadsBody(url, method, initiator) &&
+       SUCCEEDED(request->get_Content(&content)) && content){
+        char buffer[4096];
+        ULONG read = 0;
+        while(SUCCEEDED(content->Read(buffer, sizeof(buffer), &read)) && read > 0){
+            body.append(buffer, static_cast<int>(read));
+            if(body.size() >= VanillaPage::BodyLimit){
+                PutVanillaPageResponse(args, environment, VanillaPageFailure(403));
+                return S_OK;
+            }
+        }
+    }
 
     const VanillaPageResponse answer =
         VanillaPage::Answer(url, method, body, initiator);
@@ -1471,6 +1605,7 @@ int EdgeWebView::DecideCertificateError(const QUrl &url, const QString &descript
     Application::AskSslErrorPolicyIfNeed();
 
     const QString host = url.host();
+    const bool offTheRecord = Page::OffTheRecord(this);
     const QString detail = tr("Url: %1\nSsl error : %2").arg(url.toString(), description);
 
     switch(Application::GetSslErrorPolicy()){
@@ -1505,10 +1640,10 @@ int EdgeWebView::DecideCertificateError(const QUrl &url, const QString &descript
 
         const Dialog::Button clicked = dialog->ClickedButton();
         if(clicked == Dialog::Allow){
-            Application::AppendToAllowedHosts(host);
+            Application::AppendToAllowedHosts(host, offTheRecord);
             return COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_ALWAYS_ALLOW;
         }
-        if(clicked == Dialog::Block) Application::AppendToBlockedHosts(host);
+        if(clicked == Dialog::Block) Application::AppendToBlockedHosts(host, offTheRecord);
         return COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_CANCEL;
     }
 
@@ -1538,10 +1673,10 @@ int EdgeWebView::DecideCertificateError(const QUrl &url, const QString &descript
 
         const Dialog::Button clicked = dialog->ClickedButton();
         if(clicked == Dialog::Allow){
-            Application::RememberCertificate(key, true);
+            Application::RememberCertificate(key, true, offTheRecord);
             return COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_ALWAYS_ALLOW;
         }
-        if(clicked == Dialog::Block) Application::RememberCertificate(key, false);
+        if(clicked == Dialog::Block) Application::RememberCertificate(key, false, offTheRecord);
         return COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_CANCEL;
     }
 
@@ -1557,6 +1692,13 @@ int EdgeWebView::DecidePermission(const QUrl &origin, int kind, bool *remember){
         (static_cast<COREWEBVIEW2_PERMISSION_KIND>(kind));
     if(name.isEmpty()) return COREWEBVIEW2_PERMISSION_STATE_DEFAULT;
 
+    const QString tableKind = TablePermissionKind(kind);
+    if(!tableKind.isEmpty()){
+        const PermissionTable::State known = SitePermissions::Lookup(origin, tableKind);
+        if(known == PermissionTable::Allow) return COREWEBVIEW2_PERMISSION_STATE_ALLOW;
+        if(known == PermissionTable::Block) return COREWEBVIEW2_PERMISSION_STATE_DENY;
+    }
+
     ModalDialog *dialog = new ModalDialog();
     dialog->SetTitle(tr("Feature Permission Requested."));
     dialog->SetCaption(tr("Feature Permission Requested."));
@@ -1571,10 +1713,10 @@ int EdgeWebView::DecidePermission(const QUrl &origin, int kind, bool *remember){
     if(clicked != Dialog::Yes && clicked != Dialog::No)
         return COREWEBVIEW2_PERMISSION_STATE_DENY;
 
-    if(remember)
-        *remember = !m_Impl->m_PrivateMode &&
-            Application::GlobalSettings()
-                .value(QStringLiteral("network/@RememberPermissions"), true).value<bool>();
+    if(!tableKind.isEmpty())
+        SitePermissions::Remember(origin, QStringList(tableKind),
+                                  clicked == Dialog::Yes ? PermissionTable::Allow : PermissionTable::Block,
+                                  m_Impl->m_PrivateMode || m_Impl->m_ActualPrivate);
 
     return clicked == Dialog::Yes
         ? COREWEBVIEW2_PERMISSION_STATE_ALLOW
@@ -1610,7 +1752,7 @@ void EdgeWebView::ShowPageNotification(const QString &title, const QString &body
 
 void EdgeWebView::HandleFullScreen(bool on){
     TreeBank *tb = GetTreeBank();
-    if(!tb) return;
+    if(!tb || !GetViewNode()) return;
 
     tb->GetMainWindow()->SetFullScreen(on);
     SetDisplayObscured(on);
@@ -1659,6 +1801,17 @@ namespace {
             view->DeleteLater();
     }
 
+}
+
+bool EdgeWebView::KeepForDownloads(){
+    if(IsGoing() || Application::IsQuitting()) return false;
+    if(!m_Impl->m_Downloads.KeepsAlive()) return false;
+    SharedView self = GetThis().lock();
+    if(!self) return false;
+    m_Impl->m_KeptAfterRelease = true;
+    EdgeDownloadCarriers::Instance()->Add(self);
+    View::Orphan();
+    return true;
 }
 
 EdgeDownloadCarriers::EdgeDownloadCarriers()

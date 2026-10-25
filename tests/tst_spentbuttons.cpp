@@ -1,4 +1,6 @@
 #include <QtTest>
+#include <QVBoxLayout>
+#include <memory>
 
 #include "spentbuttons.hpp"
 #include "webengineview.hpp"
@@ -28,6 +30,10 @@ private slots:
     void quickViewSpendsBothQuickPairs();
     void viewsShareSpentButtonsInBothDirections();
     void aDirectoryOverridesMouseGestures();
+    void eventEaterLetsFocusReachTheEngineChild();
+    void quickViewHandsItsFocusToTheEngine();
+    void quickViewHidesThePageWithTheWidget();
+    void quickViewFreezesOnceHidden();
 #endif
 };
 
@@ -62,6 +68,10 @@ public:
     QuickViewHarness()
         : QuickWebEngineView(nullptr, QStringLiteral("spentbuttons-quick"),
                              QStringList() << QStringLiteral("Private")) {}
+
+    static void SetSuspendHiddenViews(const QString &word){
+        m_SuspendHiddenViews = word;
+    }
 
     void Press(Qt::MouseButton button){
         QMouseEvent press(QEvent::MouseButtonPress,
@@ -118,6 +128,16 @@ static bool SendMouse(EventEaterHarness *filter, QWidget *target, QEvent::Type t
     event.setAccepted(false);
     return filter->Filter(target, &event);
 }
+
+class FocusCountingChild : public QWidget {
+public:
+    using QWidget::QWidget;
+    int m_FocusIns = 0;
+    int m_FocusOuts = 0;
+protected:
+    void focusInEvent(QFocusEvent *) Q_DECL_OVERRIDE { ++m_FocusIns; }
+    void focusOutEvent(QFocusEvent *) Q_DECL_OVERRIDE { ++m_FocusOuts; }
+};
 #endif
 
 void tst_spentbuttons::aSpentPressSpendsItsRelease(){
@@ -296,6 +316,112 @@ void tst_spentbuttons::aDirectoryOverridesMouseGestures(){
     outer->SetTitle(after);
     TreeBank::ReconfigureDirectory(outer, QStringLiteral("outer"), after);
     QVERIFY(!disabled.RightGestureEnabled());
+}
+
+void tst_spentbuttons::eventEaterLetsFocusReachTheEngineChild(){
+    WidgetsViewHarness view;
+    FocusCountingChild engineChild(&view);
+    engineChild.installEventFilter(new EventEater(&view, &engineChild));
+
+    QFocusEvent in(QEvent::FocusIn, Qt::OtherFocusReason);
+    QApplication::sendEvent(&engineChild, &in);
+    QCOMPARE(engineChild.m_FocusIns, 1);
+
+    QFocusEvent out(QEvent::FocusOut, Qt::OtherFocusReason);
+    QApplication::sendEvent(&engineChild, &out);
+    QCOMPARE(engineChild.m_FocusOuts, 1);
+}
+
+void tst_spentbuttons::quickViewHandsItsFocusToTheEngine(){
+    QuickViewHarness view;
+    QQuickItem *engine = view.rootObject();
+    QVERIFY(engine);
+    QQuickWidget *widget = &view;
+    widget->resize(200, 200);
+    widget->show();
+    widget->activateWindow();
+    QVERIFY(QTest::qWaitForWindowActive(widget));
+    view.setFocus();
+    QTRY_VERIFY(engine->hasActiveFocus());
+}
+
+void tst_spentbuttons::quickViewHidesThePageWithTheWidget(){
+    QWidget top;
+    QVBoxLayout layout(&top);
+    auto *view = new QuickViewHarness;
+    layout.addWidget(view);
+    top.resize(200, 200);
+    QQuickItem *engine = view->rootObject();
+    QVERIFY(engine);
+
+    const auto eval = [view](const QString &code){
+        struct Answer { QVariant value; bool done = false; };
+        const auto answer = std::make_shared<Answer>();
+        view->CallWithEvaluatedJavaScriptResult(code, [answer](QVariant v){
+            answer->value = v;
+            answer->done = true;
+        });
+        if(!QTest::qWaitFor([answer]{ return answer->done; }, 5000)) return QVariant();
+        return answer->value;
+    };
+
+    QVERIFY(!engine->isVisible());
+    engine->setProperty("url", QUrl(QStringLiteral("about:blank")));
+    QTRY_VERIFY_WITH_TIMEOUT(!engine->property("loading").toBool() &&
+                             engine->property("url").toUrl() == QUrl(QStringLiteral("about:blank")), 10000);
+    QCOMPARE(eval(QStringLiteral("document.visibilityState")).toString(), QStringLiteral("hidden"));
+    eval(QStringLiteral("window.turns = 0;"
+                        "document.addEventListener('visibilitychange', () => window.turns++); 0"));
+
+    top.show();
+    top.activateWindow();
+    QVERIFY(QTest::qWaitForWindowActive(&top));
+    view->setFocus();
+    QTRY_VERIFY(engine->isVisible());
+    QTRY_COMPARE(eval(QStringLiteral("document.visibilityState")).toString(), QStringLiteral("visible"));
+    QTRY_VERIFY(eval(QStringLiteral("document.hasFocus()")).toBool());
+
+    view->hide();
+    QVERIFY(!engine->isVisible());
+    QTRY_COMPARE(eval(QStringLiteral("document.visibilityState")).toString(), QStringLiteral("hidden"));
+    view->show();
+    view->setFocus();
+    QTRY_COMPARE(eval(QStringLiteral("document.visibilityState")).toString(), QStringLiteral("visible"));
+    QTRY_VERIFY(engine->hasActiveFocus());
+    QTRY_VERIFY(eval(QStringLiteral("document.hasFocus()")).toBool());
+
+    top.hide();
+    QVERIFY(!engine->isVisible());
+    QTRY_COMPARE(eval(QStringLiteral("document.visibilityState")).toString(), QStringLiteral("hidden"));
+    top.show();
+    QTRY_COMPARE(eval(QStringLiteral("document.visibilityState")).toString(), QStringLiteral("visible"));
+
+    QTRY_COMPARE(eval(QStringLiteral("window.turns")).toInt(), 5);
+}
+
+void tst_spentbuttons::quickViewFreezesOnceHidden(){
+    const QString old = View::SuspendHiddenViews();
+    const auto restore = qScopeGuard([&]{ QuickViewHarness::SetSuspendHiddenViews(old); });
+    QuickViewHarness::SetSuspendHiddenViews(QStringLiteral("Frozen"));
+
+    QuickViewHarness view;
+    QQuickItem *engine = view.rootObject();
+    QVERIFY(engine);
+    QQuickWidget *widget = &view;
+    widget->resize(200, 200);
+    widget->show();
+    engine->setProperty("url", QUrl(QStringLiteral("about:blank")));
+    QTRY_VERIFY_WITH_TIMEOUT(!engine->property("loading").toBool() &&
+                             engine->property("url").toUrl() == QUrl(QStringLiteral("about:blank")), 10000);
+    QCOMPARE(engine->property("lifecycleState").toInt(), 0);
+
+    widget->hide();
+    view.Suspend();
+    QTRY_COMPARE(engine->property("lifecycleState").toInt(), 1);
+
+    widget->show();
+    view.WakeUp();
+    QTRY_COMPARE(engine->property("lifecycleState").toInt(), 0);
 }
 #endif
 

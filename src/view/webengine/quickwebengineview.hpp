@@ -34,11 +34,14 @@ public:
     ~QuickWebEngineView() Q_DECL_OVERRIDE;
 
     void ApplySpecificSettings(QStringList set) Q_DECL_OVERRIDE;
+    bool IsOffTheRecord() Q_DECL_OVERRIDE;
+    void ApplyTheme() Q_DECL_OVERRIDE;
 
     QQuickWidget *base() Q_DECL_OVERRIDE;
     WebEnginePage *page() Q_DECL_OVERRIDE;
 
     QUrl url() Q_DECL_OVERRIDE;
+    QUrl CommittedUrl() Q_DECL_OVERRIDE;
     QString html() Q_DECL_OVERRIDE;
     TreeBank *parent() Q_DECL_OVERRIDE;
     void setUrl(const QUrl &url) Q_DECL_OVERRIDE;
@@ -91,11 +94,11 @@ public:
         return grabFramebuffer();
     }
     void Render(QPainter *painter) Q_DECL_OVERRIDE {
-        if(visible()) m_GrabedDisplayData = grabFramebuffer();
+        if(EngineShown()) m_GrabedDisplayData = grabFramebuffer();
         painter->drawImage(QPoint(), m_GrabedDisplayData);
     }
     void Render(QPainter *painter, const QRegion &clip) Q_DECL_OVERRIDE {
-        if(visible()) m_GrabedDisplayData = grabFramebuffer();
+        if(EngineShown()) m_GrabedDisplayData = grabFramebuffer();
         foreach(QRect rect, clip){
             painter->drawImage(rect, m_GrabedDisplayData.copy(rect));
         }
@@ -205,7 +208,6 @@ public slots:
         WakeUp();
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
-        if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
 
         if(!wasVisible){
             MainWindow *win = Application::GetCurrentWindow();
@@ -237,6 +239,7 @@ public slots:
         resize(s);
     }
     bool visible() Q_DECL_OVERRIDE { return base()->isVisible();}
+    bool EngineShown() const { return m_QmlWebEngineView && m_QmlWebEngineView->isVisible();}
     void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {
         QTimer::singleShot(0, this, [this, reason](){ base()->setFocus(reason);});
     }
@@ -254,8 +257,6 @@ public slots:
     void OnSetThis(WeakView) Q_DECL_OVERRIDE;
     void OnSetMaster(WeakView) Q_DECL_OVERRIDE;
     void OnSetSlave(WeakView) Q_DECL_OVERRIDE;
-    void OnSetJsObject(_View*) Q_DECL_OVERRIDE;
-    void OnSetJsObject(_Vanilla*) Q_DECL_OVERRIDE;
     void OnLoadStarted() Q_DECL_OVERRIDE;
     void OnLoadProgress(int) Q_DECL_OVERRIDE;
     void OnLoadFinished(bool) Q_DECL_OVERRIDE;
@@ -485,6 +486,7 @@ private:
     QQuickItem *m_QmlWebEngineView;
     QIcon m_Icon;
     QImage m_GrabedDisplayData;
+    QColor m_BaseBackgroundColor;
     QQuickWidget *m_Inspector;
     int m_ScrollSignalTimer;
 #ifdef MEDIATIME

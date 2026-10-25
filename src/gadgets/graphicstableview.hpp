@@ -139,9 +139,7 @@ public:
     inline Thumbnail *GetPrimaryThumbnail() const { return m_DisplayThumbnails.value(m_PrimaryItemIndex);}
     inline NodeTitle *GetPrimaryNodeTitle() const { return m_DisplayNodeTitles.value(m_PrimaryItemIndex);}
 
-    inline int        GetScrolledItemIndex() const { return m_TargetScroll;}
     inline Thumbnail *GetScrolledThumbnail() const { return m_DisplayThumbnails.value(m_TargetScroll);}
-    inline NodeTitle *GetScrolledNodeTitle() const { return m_DisplayNodeTitles.value(m_TargetScroll);}
 
     inline bool IsHovered(Thumbnail *thumb) const { return thumb && thumb == GetHoveredThumbnail();}
     inline bool IsHovered(NodeTitle *title) const { return title && title == GetHoveredNodeTitle();}
@@ -189,6 +187,7 @@ public:
     static bool RightClickToRenameNode();
 
     static bool EnableCloseButton();
+    bool IsDisplayingTrashTree() const { return m_DisplayType == TrashTree;}
     static bool EnableCloneButton();
     static bool EnableAnimation();
     static bool EnableFrameRate();
@@ -361,9 +360,6 @@ public slots:
     virtual bool ThumbList_SwitchNodeCollectionType();
     virtual bool ThumbList_SwitchNodeCollectionTypeReverse();
 
-    QPointF CurrentThumbnailOffset() const;
-    QPointF CurrentNodeTitleOffset() const;
-
 private:
     TreeBank *m_TreeBank;
     QSizeF m_Size;
@@ -476,35 +472,9 @@ protected:
         return 0;
     }
 
-    inline Node *GetPrimaryNode() const {
-        if(Thumbnail *thumb = m_DisplayThumbnails.value(m_PrimaryItemIndex))
-            return thumb->GetNode();
-        return 0;
-    }
-
-    inline Node *GetScrolledNode() const {
-        if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetScroll))
-            return thumb->GetNode();
-        return 0;
-    }
-
     inline ViewNode *GetHoveredViewNode() const {
         if(IsDisplayingViewNode())
             if(Thumbnail *thumb = m_DisplayThumbnails.value(m_HoveredItemIndex))
-                return thumb->GetNode()->ToViewNode();
-        return 0;
-    }
-
-    inline ViewNode *GetPrimaryViewNode() const {
-        if(IsDisplayingViewNode())
-            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_PrimaryItemIndex))
-                return thumb->GetNode()->ToViewNode();
-        return 0;
-    }
-
-    inline ViewNode *GetScrolledViewNode() const {
-        if(IsDisplayingViewNode())
-            if(Thumbnail *thumb = m_DisplayThumbnails.value(m_TargetScroll))
                 return thumb->GetNode()->ToViewNode();
         return 0;
     }

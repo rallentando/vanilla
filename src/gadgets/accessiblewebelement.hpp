@@ -43,14 +43,6 @@ public:
         static const QFontMetrics metrics(AccessKeyChipSFont());
         return metrics;
     }
-    static const QFontMetrics &GetMediumMetrics(){
-        static const QFontMetrics metrics(AccessKeyChipMFont());
-        return metrics;
-    }
-    static const QFontMetrics &GetLargeMetrics(){
-        static const QFontMetrics metrics(AccessKeyChipLFont());
-        return metrics;
-    }
 
     bool IsCurrentBlock() const;
     bool IsSelected() const;

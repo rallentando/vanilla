@@ -4,7 +4,9 @@
 #include <QtTest>
 #include <QUrl>
 #include <QByteArray>
+#include <QFile>
 
+#include "application.hpp"
 #include "settingspage.hpp"
 #include "directorypage.hpp"
 #include "treebank.hpp"
@@ -48,6 +50,9 @@ private slots:
     void thePageCarriesItsColoursAheadOfItsSheet();
     void theDirectoryNamingTheNativeViewHandsThesePagesToTheEngine();
     void theSettingsTabIsTheSameWhicheverCategoryItShows();
+    void theKindOfViewTheSettingsTabKeepsIsTheDirectorys();
+    void thePageCarriesItsSchemaAheadOfItsScript();
+    void thePageCarriesItsSheetAndItsScriptInIt();
 };
 
 void tst_vanillapage::onlyTheTwoPagesAreThisSchemes(){
@@ -58,6 +63,46 @@ void tst_vanillapage::onlyTheTwoPagesAreThisSchemes(){
             (QUrl(VANILLA_SCHEME + QStringLiteral("://elsewhere/"))));
     QVERIFY(!VanillaPage::IsPageUrl(QUrl(QStringLiteral("https://settings/"))));
     QVERIFY(!VanillaPage::IsPageUrl(QUrl()));
+
+    QVERIFY(VanillaPage::IsTranslucentPage(VanillaPage::StartUrl()));
+    QVERIFY(VanillaPage::IsTranslucentPage(VanillaPage::SettingsUrl()));
+    QVERIFY(VanillaPage::IsTranslucentPage(QUrl(VANILLA_SCHEME + QStringLiteral("://settings/#appearance"))));
+    QVERIFY(!VanillaPage::IsTranslucentPage(DirectoryPage::PageUrl()));
+    QVERIFY(!VanillaPage::IsTranslucentPage(QUrl(QStringLiteral("https://example.com/"))));
+    QVERIFY(!VanillaPage::IsTranslucentPage(QUrl()));
+
+    const QJsonObject schema = QJsonDocument::fromJson(
+        Get(Settings(QStringLiteral("/api/schema"))).m_Body).object();
+    QVERIFY(schema.value(QStringLiteral("translucent")).isBool());
+    QCOMPARE(schema.value(QStringLiteral("translucent")).toBool(), Application::EnableTransparentWindow());
+
+    const QString dir = QStringLiteral(VANILLA_SOURCE_DIR) + QStringLiteral("/../resources/settings/");
+    QFile html(dir + QStringLiteral("settings.html")), sheet(dir + QStringLiteral("settings.css"));
+    QVERIFY(html.open(QIODevice::ReadOnly));
+    QVERIFY(sheet.open(QIODevice::ReadOnly));
+    const QByteArray page = VanillaPage::WithInlineResources(
+        VanillaPage::WithInlinePalette(html.readAll()), sheet.readAll(), QByteArray());
+    const int ground = page.indexOf("html { background: var(--bg); }");
+    const int tint   = page.indexOf("html.translucent { background: color-mix(in srgb, var(--bg) 50%, transparent); }");
+    QVERIFY(ground >= 0);
+    QVERIFY(tint > ground);
+    QVERIFY(page.contains("html.translucent body { background: transparent; }"));
+
+    QFile script(dir + QStringLiteral("settings.js"));
+    QVERIFY(script.open(QIODevice::ReadOnly));
+    QVERIFY(script.readAll().contains("if (schema.translucent) document.documentElement.classList.add('translucent');"));
+    const QString src = QStringLiteral(VANILLA_SOURCE_DIR);
+    foreach(const QString &view, QStringList()
+            << QStringLiteral("/view/edge/edgewebviewprofile.cpp")
+            << QStringLiteral("/view/webengine/webengineview.cpp")
+            << QStringLiteral("/view/webengine/quickwebengineview.cpp")){
+        QFile file(src + view);
+        QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(view));
+        const QByteArray code = file.readAll();
+        QVERIFY2(code.contains("Application::EnableTransparentWindow() &&") &&
+                 code.contains("VanillaPage::IsTranslucentPage("), qPrintable(view));
+        QVERIFY2(!code.contains("VanillaPage::IsStartUrl("), qPrintable(view));
+    }
 }
 
 void tst_vanillapage::anAddressWhichIsNotOneOfThesePagesIsRefused(){
@@ -88,6 +133,15 @@ void tst_vanillapage::everyEndpointTakesOneMethodAndNoOther(){
     QVERIFY(picker.NeedsUserInteraction());
     QVERIFY(picker.m_UserInteraction ==
             VanillaPageResponse::UserInteraction::PickChromeExtensionDirectory);
+
+    const VanillaPageResponse folder = Post
+        (Settings(QStringLiteral("/api/pick-directory")),
+         QByteArrayLiteral("{\"key\":\"application/@FileSaveDirectory\"}"),
+         VanillaPage::SettingsUrl());
+    QCOMPARE(folder.m_Status, 200);
+    QVERIFY(folder.m_UserInteraction ==
+            VanillaPageResponse::UserInteraction::Deferred);
+    QVERIFY(folder.m_Deferred);
 
     const VanillaPageResponse noPicker = Post
         (Settings(QStringLiteral("/api/pick-directory")),
@@ -122,6 +176,51 @@ void tst_vanillapage::everyEndpointTakesOneMethodAndNoOther(){
          VanillaPage::SettingsUrl());
     QVERIFY(removeAll.m_UserInteraction == VanillaPageResponse::UserInteraction::Deferred);
 
+    QCOMPARE(Post(Settings(QStringLiteral("/api/permissions")), QByteArray(),
+                  VanillaPage::SettingsUrl()).m_Status, 403);
+    for(const char *endpoint : {"/api/permissions-set", "/api/permissions-remove",
+                                "/api/permissions-remove-all"}){
+        QCOMPARE(Get(Settings(QString::fromLatin1(endpoint)),
+                     VanillaPage::SettingsUrl()).m_Status, 403);
+        QCOMPARE(Post(Settings(QString::fromLatin1(endpoint)), QByteArrayLiteral("{}"),
+                      QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    }
+    const VanillaPageResponse permissions = Get(Settings(QStringLiteral("/api/permissions")),
+                                                VanillaPage::SettingsUrl());
+    QCOMPARE(permissions.m_Status, 200);
+    QVERIFY(permissions.m_Body.contains("\"entries\""));
+    QVERIFY(permissions.m_Body.contains("\"notifications\""));
+    const VanillaPageResponse setOne = Post
+        (Settings(QStringLiteral("/api/permissions-set")),
+         QByteArrayLiteral("{\"origin\":\"https://a.example\",\"kind\":\"camera\",\"state\":\"block\"}"),
+         VanillaPage::SettingsUrl());
+    QCOMPARE(setOne.m_Status, 200);
+    QVERIFY(setOne.m_UserInteraction == VanillaPageResponse::UserInteraction::Deferred);
+    for(const QByteArray &wrong : {
+            QByteArrayLiteral("{\"origin\":\"https://a.example/path\",\"kind\":\"camera\",\"state\":\"block\"}"),
+            QByteArrayLiteral("{\"origin\":\"https://a.example\",\"kind\":\"no-such\",\"state\":\"block\"}"),
+            QByteArrayLiteral("{\"origin\":\"https://a.example\",\"kind\":\"camera\",\"state\":\"ask\"}"),
+            QByteArrayLiteral("{\"origin\":\"\",\"kind\":\"camera\",\"state\":\"block\"}")}){
+        const VanillaPageResponse refused = Post
+            (Settings(QStringLiteral("/api/permissions-set")), wrong, VanillaPage::SettingsUrl());
+        QVERIFY(!refused.NeedsUserInteraction());
+        QVERIFY(refused.m_Body.contains("\"error\""));
+    }
+    QVERIFY(Post(Settings(QStringLiteral("/api/permissions-remove")),
+                 QByteArrayLiteral("{\"origin\":\"https://a.example\",\"kind\":\"camera\"}"),
+                 VanillaPage::SettingsUrl()).m_UserInteraction ==
+            VanillaPageResponse::UserInteraction::Deferred);
+    QVERIFY(Post(Settings(QStringLiteral("/api/permissions-remove")),
+                 QByteArrayLiteral("{\"origin\":\"https://a.example\",\"kind\":\"future\"}"),
+                 VanillaPage::SettingsUrl()).m_UserInteraction ==
+            VanillaPageResponse::UserInteraction::Deferred);
+    QVERIFY(Post(Settings(QStringLiteral("/api/permissions-remove")),
+                 QByteArrayLiteral("{\"origin\":\"\",\"kind\":\"camera\"}"),
+                 VanillaPage::SettingsUrl()).m_Body.contains("\"error\""));
+    QVERIFY(Post(Settings(QStringLiteral("/api/permissions-remove-all")), QByteArrayLiteral("{}"),
+                 VanillaPage::SettingsUrl()).m_UserInteraction ==
+            VanillaPageResponse::UserInteraction::Deferred);
+
     QCOMPARE(Post(Settings(QStringLiteral("/api/downloads")), QByteArray(),
                   VanillaPage::SettingsUrl()).m_Status, 403);
     for(const char *endpoint : {"/api/downloads-open", "/api/downloads-show",
@@ -135,6 +234,18 @@ void tst_vanillapage::everyEndpointTakesOneMethodAndNoOther(){
                                               VanillaPage::SettingsUrl());
         QCOMPARE(post.m_Status, 200);
         QVERIFY(post.m_UserInteraction == VanillaPageResponse::UserInteraction::Deferred);
+    }
+    QCOMPARE(Get(Settings(QStringLiteral("/api/downloads-source")),
+                 VanillaPage::SettingsUrl()).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/downloads-source")), QByteArrayLiteral("{\"id\":1}"),
+                  QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    {
+        const VanillaPageResponse source = Post(Settings(QStringLiteral("/api/downloads-source")),
+                                                QByteArrayLiteral("{\"id\":987654}"),
+                                                VanillaPage::SettingsUrl());
+        QCOMPARE(source.m_Status, 200);
+        QVERIFY(!source.NeedsUserInteraction());
+        QVERIFY(source.m_Body.contains("\"ok\":false"));
     }
     const VanillaPageResponse downloads = Get(Settings(QStringLiteral("/api/downloads")),
                                               VanillaPage::SettingsUrl());
@@ -355,6 +466,110 @@ void tst_vanillapage::theDirectoryNamingTheNativeViewHandsThesePagesToTheEngine(
     QVERIFY(!TreeBank::NeedsEngineForVanillaPage(
                 QUrl(QStringLiteral("https://example.com/")),
                 QStringList(QStringLiteral("nativeweb"))));
+}
+
+void tst_vanillapage::theKindOfViewTheSettingsTabKeepsIsTheDirectorys(){
+    const QUrl settings = VanillaPage::SettingsUrl();
+    const QUrl ordinary(QStringLiteral("https://example.com/"));
+
+#ifdef WEBENGINEVIEW
+    foreach(const QString &name, QStringList()
+            << QStringLiteral("w") << QStringLiteral("web") << QStringLiteral("WV")
+            << QStringLiteral("gw") << QStringLiteral("graphicswebview")
+            << QStringLiteral("we") << QStringLiteral("webengine") << QStringLiteral("WEV")
+            << QStringLiteral("gwe") << QStringLiteral("graphicswebengineview")){
+        QCOMPARE(TreeBank::ViewKindFor(settings, QStringList(name)), TreeBank::WebEngineKind);
+        QCOMPARE(TreeBank::ViewKindFor(ordinary, QStringList(name)), TreeBank::WebEngineKind);
+    }
+    foreach(const QString &name, QStringList()
+            << QStringLiteral("qw") << QStringLiteral("quickweb")
+            << QStringLiteral("qwe") << QStringLiteral("quickwebengineview")){
+        QCOMPARE(TreeBank::ViewKindFor(settings, QStringList(name)), TreeBank::QuickWebEngineKind);
+        QCOMPARE(TreeBank::ViewKindFor(ordinary, QStringList(name)), TreeBank::QuickWebEngineKind);
+    }
+    QCOMPARE(TreeBank::ViewKindFor(settings, QStringList() << QStringLiteral("id") << QStringLiteral("qw") << QStringLiteral("we")),
+             TreeBank::QuickWebEngineKind);
+#endif
+#if defined(NATIVEWEBVIEW) && defined(WEBENGINEVIEW)
+    foreach(const QString &name, QStringList() << QStringLiteral("nwv") << QStringLiteral("quicknativewebview")){
+        QCOMPARE(TreeBank::ViewKindFor(settings, QStringList(name)), TreeBank::WebEngineKind);
+        QCOMPARE(TreeBank::ViewKindFor(ordinary, QStringList(name)), TreeBank::QuickNativeKind);
+    }
+#endif
+#ifdef EDGEWEBVIEW
+    foreach(const QString &name, QStringList()
+            << QStringLiteral("e") << QStringLiteral("edge") << QStringLiteral("edgeweb")
+            << QStringLiteral("edgewebview") << QStringLiteral("EWV")){
+        QCOMPARE(TreeBank::ViewKindFor(settings, QStringList(name)), TreeBank::EdgeKind);
+    }
+#endif
+    const TreeBank::ViewKind fallback = TreeBank::ViewKindFor(settings, QStringList());
+    QVERIFY(fallback != TreeBank::NoView);
+    QCOMPARE(TreeBank::ViewKindFor(ordinary, QStringList(QStringLiteral("id"))), fallback);
+#if defined(EDGEWEBVIEW)
+    QVERIFY(fallback == TreeBank::EdgeKind || fallback == TreeBank::WebEngineKind);
+#elif defined(WEBENGINEVIEW)
+    QCOMPARE(fallback, TreeBank::WebEngineKind);
+#endif
+    QCOMPARE(TreeBank::KindOf(nullptr), TreeBank::NoView);
+}
+
+void tst_vanillapage::thePageCarriesItsSchemaAheadOfItsScript(){
+    const QByteArray page = QByteArrayLiteral(
+        "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n  </head>\n"
+        "  <body>\n    <script src=\"/settings.js\"></script>\n  </body>\n</html>\n");
+    const QByteArray schema = QByteArrayLiteral(
+        "{\"items\":[{\"label\":\"</script><b>x\"},{\"hint\":\"<!-- y\"}]}");
+    const QByteArray served = VanillaPage::WithEmbeddedSchema(page, schema);
+
+    const QByteArray opener = QByteArrayLiteral("<script id=\"schema\" type=\"application/json\">");
+    const int block  = served.indexOf(opener);
+    const int script = served.indexOf("<script src=\"/settings.js\">");
+    QVERIFY(block >= 0);
+    QVERIFY(script >= 0);
+    QVERIFY(block < script);
+
+    const int open = block + opener.size();
+    const int close = served.indexOf("</script>", open);
+    QVERIFY(close >= 0);
+    QVERIFY(close < script);
+    const QByteArray body = served.mid(open, close - open);
+    QVERIFY(!body.contains('<'));
+
+    const QJsonDocument parsed = QJsonDocument::fromJson(body);
+    QVERIFY(!parsed.isNull());
+    QCOMPARE(parsed.object().value(QStringLiteral("items")).toArray().at(0).toObject()
+             .value(QStringLiteral("label")).toString(), QStringLiteral("</script><b>x"));
+    QCOMPARE(parsed.object().value(QStringLiteral("items")).toArray().at(1).toObject()
+             .value(QStringLiteral("hint")).toString(), QStringLiteral("<!-- y"));
+
+    const QByteArray bare = QByteArrayLiteral("<html><body></body></html>");
+    QCOMPARE(VanillaPage::WithEmbeddedSchema(bare, schema), bare);
+}
+
+void tst_vanillapage::thePageCarriesItsSheetAndItsScriptInIt(){
+    const QByteArray page = QByteArrayLiteral(
+        "<html><head><link rel=\"stylesheet\" href=\"/settings.css\"></head>"
+        "<body><script id=\"schema\" type=\"application/json\">{}</script>\n"
+        "    <script src=\"/settings.js\"></script></body></html>");
+    const QByteArray css = QByteArrayLiteral("body { color: red; }\n");
+    const QByteArray js  = QByteArrayLiteral("const x = '<b>';\n");
+    const QByteArray served = VanillaPage::WithInlineResources(page, css, js);
+
+    QVERIFY(!served.contains("<link rel="));
+    QVERIFY(!served.contains("<script src="));
+    QVERIFY(served.contains("<style>\n" + css + "</style>"));
+    QVERIFY(served.contains("<script>\n" + js + "</script>"));
+    QVERIFY(served.indexOf("<script id=\"schema\"") < served.indexOf("<script>\n" + js));
+
+    const QByteArray unsafe = QByteArrayLiteral("const s = '</script>';\n");
+    const QByteArray partly = VanillaPage::WithInlineResources(page, css, unsafe);
+    QVERIFY(partly.contains("<script src=\"/settings.js\"></script>"));
+    QVERIFY(!partly.contains(unsafe));
+    QVERIFY(partly.contains("<style>\n" + css + "</style>"));
+
+    const QByteArray bare = QByteArrayLiteral("<html><body></body></html>");
+    QCOMPARE(VanillaPage::WithInlineResources(bare, css, js), bare);
 }
 
 void tst_vanillapage::thePageCarriesItsColoursAheadOfItsSheet(){

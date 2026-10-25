@@ -150,6 +150,7 @@ public:
 
     static QMap<QKeySequence, QString> GetThumbListKeyMap();
     static QMap<QKeySequence, QString> GetAccessKeyKeyMap();
+    static InputMap::KeyLayers KeyLayers();
     static QMap<QString, QString> GetMouseMap();
     static bool IsValidAccessKey(int);
     static bool IsValidAccessKey(QString);
@@ -163,6 +164,9 @@ public:
 
     QMenu *CreateNodeMenu() Q_DECL_OVERRIDE;
     void RenderBackground(QPainter *painter) Q_DECL_OVERRIDE;
+
+    static bool DrawsBackdrop(bool viewToDraw, bool behind, bool blurring);
+    static QImage BlurBackdrop(const QImage &image, int radius);
 
     QGraphicsObject *base() Q_DECL_OVERRIDE { return static_cast<QGraphicsObject*>(this);}
     Page *page() Q_DECL_OVERRIDE { return nullptr;}
@@ -316,6 +320,7 @@ private:
     QSize m_BackdropSize;
     QSize m_BackdropViewport;
     qreal m_BackdropRatio;
+    bool m_BackdropBlurred;
 
     int m_AccessKeyCount;
     int m_AccessKeyLastBlockIndex;
@@ -330,6 +335,7 @@ private:
     QMap<GadgetsAction, QAction*> m_ActionTable;
 
     static bool m_EnableMultiStroke;
+    static bool m_EnableBackdropBlur;
     static QString m_AccessKeyCustomSequence;
     static AccessKeyMode m_AccessKeyMode;
     static AccessKeyAction m_AccessKeyAction;

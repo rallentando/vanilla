@@ -97,6 +97,9 @@ private slots:
     void bookmarksAreReadByIdAndByWord();
     void aBookmarkReadIsShapedAsTheTreeIs();
     void aVisitIsToldToWhoHasTheHistoryPermission();
+    void theScopeIsTheSettingsWord();
+    void aTabOutOfScopeIsNoTabAndStillHistory();
+    void theOrderAndTheGreetingAreOfTheTabsInScope();
     void theFontsAreToldAsChromeNamesThem();
     void theTopSitesAreTheAddressesLookedAtLast();
     void theEventsAppliedInTurnGiveTheListAfter();
@@ -3041,6 +3044,68 @@ void tst_extensionhostwire::aUserScriptsMessageWaitsForTheWorkerWoken(){
     QVERIFY(!wakes.ShouldWake(QStringLiteral("e"), now, true));
     QVERIFY(!wakes.Resting(QStringLiteral("e"), now + WAKE_REST));
     QVERIFY(!wakes.Resting(QStringLiteral("f"), 0));
+}
+
+void tst_extensionhostwire::theScopeIsTheSettingsWord(){
+    using namespace ExtensionHostWire;
+    QCOMPARE(ParseTabScope(QStringLiteral("All")), TabScope::All);
+    QCOMPARE(ParseTabScope(QStringLiteral("CurrentDirectory")), TabScope::CurrentDirectory);
+    QCOMPARE(ParseTabScope(QStringLiteral("Loaded")), TabScope::Loaded);
+    QCOMPARE(ParseTabScope(QString()), TabScope::All);
+    QCOMPARE(ParseTabScope(QStringLiteral("loaded")), TabScope::All);
+    for(int i = 0; i < 4; i++){
+        const bool here = i & 1, loaded = i & 2;
+        QVERIFY(InTabScope(TabScope::All, here, loaded));
+        QCOMPARE(InTabScope(TabScope::CurrentDirectory, here, loaded), here);
+        QCOMPARE(InTabScope(TabScope::Loaded, here, loaded), loaded);
+    }
+    QList<Tab> tabs = QList<Tab>() << T(1) << T(2) << T(3);
+    tabs[1].scoped = false;
+    QList<qint64> ids;
+    foreach(const Tab &tab, Scoped(tabs)) ids << tab.id;
+    QCOMPARE(ids, QList<qint64>() << 1 << 3);
+}
+
+void tst_extensionhostwire::aTabOutOfScopeIsNoTabAndStillHistory(){
+    using namespace ExtensionHostWire;
+    Sight hist = Sight::All();
+    hist.history = true;
+    const QList<Tab> before = QList<Tab>()
+        << Leaf(1, "https://a.example/", "a", 100) << Leaf(2, "https://b.example/", "b", 100) << Leaf(3, "https://c.example/", "c", 100);
+    QList<Tab> out = before;
+    out[1].scoped = false;
+    QCOMPARE(NamesOf(Diff(before, out, true, true, hist)), QStringList() << QStringLiteral("tabs.onRemoved"));
+    QCOMPARE(Said(Diff(before, out, true, true, Sight::All())), QStringLiteral("tabs.onRemoved(2,isWindowClosing+windowId)"));
+    QCOMPARE(Said(Diff(out, before, true, true, hist)), QStringLiteral("tabs.onCreated(#2@1)"));
+    QList<Tab> looked = out;
+    looked[1].visited = 900;
+    looked[1].title = QStringLiteral("b2");
+    QCOMPARE(NamesOf(Diff(out, looked, true, true, hist)), QStringList() << QStringLiteral("history.onVisited"));
+    QList<Tab> closed = out;
+    closed.removeAt(1);
+    QCOMPARE(NamesOf(Diff(out, closed, true, true, hist)), QStringList() << QStringLiteral("history.onVisitRemoved"));
+}
+
+void tst_extensionhostwire::theOrderAndTheGreetingAreOfTheTabsInScope(){
+    using namespace ExtensionHostWire;
+    Gone().clear();
+    Table table;
+    QList<QByteArray> replies;
+    auto answer = [&](int, const QJsonObject &reply){ replies << QJsonDocument(reply.value(QStringLiteral("value")).toObject()).toJson(QJsonDocument::Compact); };
+    auto sees = [](const QString &){ return ExtensionHostWire::Sight::All(); };
+    QList<Tab> tabs = QList<Tab>() << T(1) << T(2, "https://a.example/", "a", true) << T(3);
+    tabs[1].scoped = false;
+    QVERIFY(Greeting(tabs).isEmpty());
+    QCOMPARE(QJsonDocument(EventsAnswer(QJsonArray(), tabs).value(QStringLiteral("value")).toObject()).toJson(QJsonDocument::Compact),
+             QByteArray("{\"events\":[],\"order\":[1,3]}"));
+    QList<Tab> moved = QList<Tab>() << tabs.at(1) << tabs.at(0) << tabs.at(2);
+    QVERIFY(SameOrder(tabs, moved));
+    tabs[0].active = true;
+    table.Take(EXT, Token(1), 11, 0, There, nullptr);
+    table.Publish(tabs, true, 1, There, sees, answer);
+    QCOMPARE(replies.size(), 1);
+    QVERIFY(replies.last().endsWith("\"order\":[1,3]}"));
+    QVERIFY(!replies.last().contains("[2,"));
 }
 
 QTEST_MAIN(tst_extensionhostwire)

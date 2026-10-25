@@ -1,6 +1,7 @@
 #include "switch.hpp"
 #include "const.hpp"
 #include "theme.hpp"
+#include "blurbehind.hpp"
 
 #include "downloadbar.hpp"
 
@@ -195,13 +196,15 @@ void DownloadBar::ApplyTheme(){
 }
 
 DownloadPanel::DownloadPanel(MainWindow *window)
-    : QWidget(window, Qt::Tool | Qt::FramelessWindowHint)
+    : QWidget(window, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus)
     , m_Window(window)
     , m_ButtonDown(false)
     , m_EscapeDown(false)
+    , m_Translucent(BlurBehind::Enabled())
 {
     setObjectName(QStringLiteral("DownloadsPanel"));
     setAttribute(Qt::WA_DeleteOnClose);
+    if(m_Translucent) setAttribute(Qt::WA_TranslucentBackground);
     setFixedWidth(ScaleByDevice(DOWNLOAD_PANEL_WIDTH));
 
     const int padding = ScaleByDevice(DOWNLOAD_PANEL_PADDING);
@@ -284,19 +287,15 @@ void DownloadPanel::ShowFor(MainWindow *window, bool toggle, bool activate){
     }
     const QPointer<DownloadPanel> shown = Panels().value(window);
     if(shown && shown->isVisible()){
-        if(toggle){
-            shown->close();
-        } else {
-            shown->raise();
-            if(activate) shown->activateWindow();
-        }
+        if(toggle) shown->close();
+        else shown->raise();
         return;
     }
     if(!window->isVisible() || window->isMinimized()) return;
     if(!activate && QGuiApplication::applicationState() != Qt::ApplicationActive) return;
     DownloadPanel *panel = new DownloadPanel(window);
     Panels().insert(window, panel);
-    panel->setAttribute(Qt::WA_ShowWithoutActivating, !activate);
+    panel->setAttribute(Qt::WA_ShowWithoutActivating);
     panel->TellBar();
     panel->Rebuild();
     panel->show();
@@ -309,10 +308,6 @@ void DownloadPanel::ShowFor(MainWindow *window, bool toggle, bool activate){
     }
 #endif
     panel->raise();
-    if(activate){
-        panel->activateWindow();
-        panel->setFocus();
-    }
 }
 
 QString DownloadPanel::Size(qint64 bytes){
@@ -538,7 +533,10 @@ bool DownloadPanel::eventFilter(QObject *watched, QEvent *ev){
         }
         return false;
     case QEvent::KeyPress:
-        if(isVisible() && static_cast<QKeyEvent*>(ev)->key() == Qt::Key_Escape) close();
+        if(isVisible() && static_cast<QKeyEvent*>(ev)->key() == Qt::Key_Escape){
+            close();
+            return true;
+        }
         return false;
     default: break;
     }
@@ -596,6 +594,19 @@ void DownloadPanel::paintEvent(QPaintEvent *ev){
     Q_UNUSED(ev)
     QPainter painter(this);
     painter.setPen(Theme::Pen(Theme::PreviewBorder));
+    if(m_Translucent){
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.setBrush(Theme::Brush(Theme::PreviewBackgroundTranslucent));
+        const int radius = ScaleByDevice(DIALOG_CORNER_RADIUS);
+        const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+        painter.drawRoundedRect(card, radius, radius);
+        return;
+    }
     painter.setBrush(Theme::Brush(Theme::PreviewBackground));
     painter.drawRect(rect().adjusted(0, 0, -1, -1));
+}
+
+void DownloadPanel::showEvent(QShowEvent *ev){
+    QWidget::showEvent(ev);
+    if(m_Translucent) BlurBehind::Apply(this);
 }

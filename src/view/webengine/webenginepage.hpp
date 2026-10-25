@@ -134,10 +134,6 @@ public slots:
     void HandleLoading(const QWebEngineLoadingInfo &info);
     void HandleFindTextFinished(const QWebEngineFindTextResult &result);
 
-    void HandleUnsupportedContent(QNetworkReply *reply);
-
-    void AddJsObject();
-
     View *OpenInNew(QUrl url){ return m_Page->OpenInNew(url);}
     View *OpenInNew(QList<QUrl> urls){ return m_Page->OpenInNew(urls);}
     View *OpenInNew(QString query){ return m_Page->OpenInNew(query);}

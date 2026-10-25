@@ -6,6 +6,7 @@
 #include "lightnode.hpp"
 
 #include "actionmapper.hpp"
+#include "inputmap.hpp"
 #include "view.hpp"
 #include "mainwindow.hpp"
 
@@ -21,8 +22,6 @@ class QUrl;
 class QNetworkRequest;
 class QMenu;
 class QAction;
-
-class _Vanilla;
 
 class NetworkAccessManager;
 class View;
@@ -68,6 +67,9 @@ public:
     static inline ViewNode *GetTrashRoot(){ return m_TrashRoot;}
     static QStringList SettingsOf(ViewNode *vn);
     static QString NetworkSpaceOf(ViewNode *vn);
+    static bool IsOffTheRecord(ViewNode *vn);
+    static void MarkOffDisk(ViewNode *vn);
+    static void SweepOffDisk();
 
     static inline void AppendToAllViews(SharedView view){ m_AllViews.append(view);}
     static inline void PrependToAllViews(SharedView view){ m_AllViews.prepend(view);}
@@ -76,10 +78,8 @@ public:
     inline MainWindow *GetMainWindow() const { return static_cast<MainWindow*>(parentWidget());}
     inline Notifier *GetNotifier() const { return m_Notifier;}
     inline Receiver *GetReceiver() const { return m_Receiver;}
-    inline MiniMap *GetMiniMap() const { return m_MiniMap;}
     QSize ViewSize() const;
     void SetMiniMapShelved(bool shelved);
-    inline _Vanilla *GetJsObject() const { return m_JsObject;}
     inline Gadgets  *GetGadgets()  const { return m_Gadgets;}
     inline QGraphicsScene *GetScene() const { return m_Scene;}
     inline GraphicsView *GetView() const { return m_View;}
@@ -152,7 +152,6 @@ private:
 
 public:
     static Node* GetRoot(Node*);
-    static Node* GetOtherRoot(Node*);
     static bool  IsTrash(Node*);
     bool IsDisplayingTableView();
     bool IsCurrent(Node*);
@@ -187,6 +186,17 @@ private:
     static void DisownNode(Node *nd);
     static void DislinkView(ViewNode *vn);
     static bool MoveToTrash(ViewNode *vn);
+public:
+    static bool DiscardFromTrash(Node *nd);
+    static void DiscardFromTrashAsked(const QList<quint64> &serials, int tabs, const QString &title,
+                                      std::function<void()> settled = nullptr,
+                                      const QList<quint64> &kept = QList<quint64>());
+    static void SetDiscardConfirmer(std::function<bool(int)> confirmer);
+private:
+    static void DiscardFromTree(ViewNode *vn);
+    static bool WhollyOffTheRecord(ViewNode *vn, bool off);
+    static int PruneOffTheRecord(ViewNode *vn, bool off);
+    static bool IsDiscarded(Node *nd);
     static void StripSubTree(Node *nd);
     static void ReleaseView(SharedView view);
 public:
@@ -221,6 +231,12 @@ private:
 public:
     bool DeleteNode(Node *nd);
     bool DeleteNode(NodeList list);
+    bool CloseWithoutTrash(ViewNode *vn);
+    static int KeptInTrash(int moved, int keep);
+    static bool NoticesTrash(int moved, int keep);
+private:
+    void NoticeTrash(int moved);
+public:
 
     static bool MoveNode(Node *nd, Node *dir, int n = -1);
     static bool SetChildrenOrder(Node *parent, NodeList children);
@@ -270,6 +286,8 @@ public:
     QMenu *ApplicationMenu(bool expanded = false);
 
     QMenu *GlobalContextMenu();
+    InputMap::KeyLayers KeyLayers() const;
+    void ShowKeys(QMenu *menu) const;
 
     void PurgeChildWidgetsIfNeed();
     void JoinChildWidgetsIfNeed();
@@ -351,6 +369,7 @@ public slots:
     void UpDirectory          ();
     void Close                (ViewNode *vn = nullptr);
     void Restore              (ViewNode *vn = nullptr, ViewNode *dir = nullptr);
+    static bool RestoreBeside (ViewNode *vn, ViewNode *beside);
     void Recreate             (ViewNode *vn = nullptr);
     void NextView             (ViewNode *vn = nullptr);
     void PrevView             (ViewNode *vn = nullptr);
@@ -448,7 +467,6 @@ private:
     MiniMap *m_MiniMap;
     Gadgets  *m_Gadgets;
     SharedView m_Gadgets_;
-    _Vanilla *m_JsObject;
 
     SharedView m_CurrentView;
     ViewNode *m_CurrentViewNode;
@@ -460,6 +478,7 @@ private:
     static ViewNode *m_TrashRoot;
 
     static SharedViewList m_AllViews;
+    static View *m_ExtractingDownloadCarrier;
     static SharedViewList m_ViewUpdateBox;
     static NodeList m_NodeDeleteBox;
     static NodeList m_FreshDeleteBox;
@@ -487,9 +506,14 @@ private:
 public:
     static bool TakesKey(const QKeySequence &seq){ return !KeyAction(seq).isEmpty(); }
     static QString KeyAction(const QKeySequence &seq);
+    static QMap<QKeySequence, QString> GetKeyMap(){ return m_KeyMap;}
     static void DeleteView(View *view);
     static SharedView CreateView(QNetworkRequest req, ViewNode *vn);
     static bool NeedsEngineForVanillaPage(const QUrl &url, const QStringList &set);
+    enum ViewKind { NoView, LocalKind, WebEngineKind, QuickWebEngineKind, QuickNativeKind, EdgeKind };
+    static ViewKind ViewKindFor(const QUrl &url, const QStringList &set);
+    static ViewKind ViewKindNamedIn(const QStringList &set);
+    static ViewKind KindOf(View *view);
     static bool PurgeView(){ return m_PurgeView;}
 };
 

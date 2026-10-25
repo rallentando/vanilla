@@ -1,4 +1,5 @@
 #include <QtTest>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QCryptographicHash>
 #include <QDir>
@@ -121,7 +122,148 @@ void Write(const QString &path, const QByteArray &data) {
 class ExtensionsTest : public QObject {
     Q_OBJECT
 private slots:
-    void init() { Application::GlobalSettings().clear(); }
+    void init() { Application::GlobalSettings().clear(); ExtensionManifest::ForgetCached(); }
+    void theCanonicalNameIsRememberedWhileTheFolderIsThere() {
+        QTemporaryDir dir;
+        QVERIFY(QDir().mkpath(dir.filePath("abc")));
+        const QString asked = dir.filePath("abc");
+        auto looks = [](){ return ExtensionManifest::CanonicalLooksForTesting(); };
+        int before = looks();
+        const QString first = ExtensionManifest::NormalizePath(asked);
+        QCOMPARE(looks(), before + 1);
+        QCOMPARE(first, QDir::cleanPath(QFileInfo(asked).absoluteFilePath()));
+        before = looks();
+        QCOMPARE(ExtensionManifest::NormalizePath(asked), first);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked + QStringLiteral("/")), first);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked + QStringLiteral("/./")), first);
+        QCOMPARE(ExtensionManifest::NormalizePath(QDir::toNativeSeparators(asked)), first);
+        QCOMPARE(ExtensionManifest::NormalizePath(QStringLiteral("  ") + asked + QStringLiteral(" ")), first);
+        QCOMPARE(ExtensionManifest::NormalizePath(first), first);
+        QCOMPARE(looks(), before);
+        const QString relative = QDir::current().relativeFilePath(asked);
+        if(!QFileInfo(relative).isAbsolute()){
+            const bool climbs = relative.startsWith(QStringLiteral("../"));
+            QCOMPARE(ExtensionManifest::NormalizePath(relative), first);
+            QCOMPARE(looks(), before + (climbs ? 1 : 0));
+            before = looks();
+        }
+        QVERIFY(QDir().mkpath(asked + QStringLiteral("/sub")));
+        QCOMPARE(ExtensionManifest::NormalizePath(asked + QStringLiteral("/sub/..")), first);
+        QCOMPARE(looks(), before + 1);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked + QStringLiteral("/sub/..")), first);
+        QCOMPARE(looks(), before + 1);
+        {
+            const QString cwd = QDir::currentPath();
+            const auto back = qScopeGuard([cwd](){ QDir::setCurrent(cwd); });
+            QVERIFY(QDir::setCurrent(asked));
+            ExtensionManifest::ForgetCached();
+            before = looks();
+            QCOMPARE(ExtensionManifest::NormalizePath(QStringLiteral("sub/..")), first);
+            QCOMPARE(looks(), before + 1);
+            QCOMPARE(ExtensionManifest::NormalizePath(QStringLiteral("sub/..")), first);
+            QCOMPARE(looks(), before + 1);
+            QVERIFY(QDir::setCurrent(asked + QStringLiteral("/sub")));
+            QVERIFY(ExtensionManifest::NormalizePath(QStringLiteral("sub/..")) != first);
+            QCOMPARE(looks(), before + 2);
+        }
+#ifdef Q_OS_WIN
+        {
+            const QString cwd = QDir::currentPath();
+            const auto back = qScopeGuard([cwd](){ QDir::setCurrent(cwd); });
+            QVERIFY(QDir::setCurrent(asked + QStringLiteral("/sub")));
+            const QString drive = QDir::currentPath().left(2);
+            QVERIFY(drive.size() == 2 && drive.at(1) == QLatin1Char(':'));
+            before = looks();
+            QCOMPARE(ExtensionManifest::NormalizePath(first), first);
+            QCOMPARE(looks(), before);
+            QCOMPARE(ExtensionManifest::NormalizePath(drive + QStringLiteral("..")), first);
+            QCOMPARE(looks(), before + 1);
+        }
+#endif
+        before = looks();
+        ExtensionManifest::ForgetCached(asked);
+        QCOMPARE(looks(), before + 1);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked), first);
+        QCOMPARE(looks(), before + 1);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked + QStringLiteral("/sub/..")), first);
+        QCOMPARE(looks(), before + 2);
+        ExtensionManifest::ForgetCached();
+        QCOMPARE(ExtensionManifest::NormalizePath(asked), first);
+        QCOMPARE(looks(), before + 3);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked), first);
+        QCOMPARE(looks(), before + 3);
+        const QString missing = dir.filePath("nope");
+        before = looks();
+        QCOMPARE(ExtensionManifest::NormalizePath(missing), QDir::cleanPath(QFileInfo(missing).absoluteFilePath()));
+        QCOMPARE(ExtensionManifest::NormalizePath(missing), QDir::cleanPath(QFileInfo(missing).absoluteFilePath()));
+        QCOMPARE(looks(), before + 2);
+        QVERIFY(QDir().mkpath(missing));
+        QCOMPARE(ExtensionManifest::NormalizePath(missing), QDir::cleanPath(QFileInfo(missing).absoluteFilePath()));
+        QCOMPARE(ExtensionManifest::NormalizePath(missing), QDir::cleanPath(QFileInfo(missing).absoluteFilePath()));
+        QCOMPARE(looks(), before + 3);
+        const QString root = ExtensionManifest::NormalizePath(asked);
+        Write(root + QStringLiteral("/a.png"), "x");
+        before = looks();
+        QCOMPARE(ExtensionManifest::Resource(root, QStringLiteral("a.png")), root + QStringLiteral("/a.png"));
+        QCOMPARE(ExtensionManifest::Resource(root, QStringLiteral("a.png")), root + QStringLiteral("/a.png"));
+        QCOMPARE(looks(), before + 2);
+    }
+    void aLookWhichBeganBeforeTheForgettingIsNotRemembered() {
+        QTemporaryDir dir;
+        QVERIFY(QDir().mkpath(dir.filePath("abc")));
+        const QString asked = dir.filePath("abc");
+        auto looks = [](){ return ExtensionManifest::CanonicalLooksForTesting(); };
+        const auto unhook = qScopeGuard([](){ ExtensionManifest::SetBetweenLookAndStoreForTesting(nullptr); });
+        ExtensionManifest::SetBetweenLookAndStoreForTesting([](){ ExtensionManifest::ForgetCached(); });
+        int before = looks();
+        const QString first = ExtensionManifest::NormalizePath(asked);
+        QCOMPARE(looks(), before + 1);
+        ExtensionManifest::SetBetweenLookAndStoreForTesting(nullptr);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked), first);
+        QCOMPARE(looks(), before + 2);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked), first);
+        QCOMPARE(looks(), before + 2);
+        ExtensionManifest::ForgetCached();
+        before = looks();
+        QCOMPARE(ExtensionManifest::NormalizePath(asked), first);
+        QCOMPARE(ExtensionManifest::NormalizePath(asked), first);
+        QCOMPARE(looks(), before + 1);
+
+        QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) + QStringLiteral("/app/extensioncontroller.cpp"));
+        QVERIFY2(file.open(QIODevice::ReadOnly), "extensioncontroller.cpp was not read; check VANILLA_SOURCE_DIR");
+        const QString source = QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
+        const int normalize = source.indexOf(QStringLiteral("QString ExtensionManifest::NormalizePath(const QString &path){"));
+        const int end = source.indexOf(QStringLiteral("\n}"), normalize);
+        QVERIFY(normalize >= 0 && end > normalize);
+        const QString body = source.mid(normalize, end - normalize);
+        const int taken = body.indexOf(QStringLiteral("generation = g_PathCacheGeneration;"));
+        const int look = body.indexOf(QStringLiteral("CanonicalPath(path, &existed);"));
+        const int compared = body.indexOf(QStringLiteral("if(generation == g_PathCacheGeneration){"));
+        const int stored = body.indexOf(QStringLiteral("PathCache().insert(key, clean);"));
+        QVERIFY2(taken >= 0 && look > taken && compared > look && stored > compared,
+                 "the generation is not taken before the look and compared before the store");
+        const int forget = source.indexOf(QStringLiteral("void ForgetPaths(){"));
+        const int forgetEnd = source.indexOf(QStringLiteral("\n    }"), forget);
+        QVERIFY(forget >= 0 && forgetEnd > forget);
+        const QString forgetBody = source.mid(forget, forgetEnd - forget);
+        QVERIFY(forgetBody.indexOf(QStringLiteral("QMutexLocker lock(&g_PathCacheMutex);")) < forgetBody.indexOf(QStringLiteral("g_PathCacheGeneration++;")));
+        QCOMPARE(source.count(QStringLiteral("    ForgetPaths();\n")), 2);
+        QList<bool> locked;
+        int touching = 0, locks = 0;
+        foreach(const QString &line, source.split(QLatin1Char('\n'))){
+            const bool takes = line.contains(QStringLiteral("QMutexLocker lock(&g_PathCacheMutex);"));
+            if(takes){ locks++; if(!locked.isEmpty()) locked.last() = true; }
+            if((line.contains(QStringLiteral("PathCache().")) || line.contains(QStringLiteral("g_PathCacheGeneration")))
+               && !line.contains(QStringLiteral("quint64 g_PathCacheGeneration = 0;")) && !line.trimmed().startsWith(QStringLiteral("//"))){
+                touching++;
+                QVERIFY2(locked.contains(true), qPrintable(QStringLiteral("touched outside the lock: ") + line.trimmed()));
+            }
+            for(int i = 0; i < line.count(QLatin1Char('{')); i++) locked.append(false);
+            for(int i = 0; i < line.count(QLatin1Char('}')); i++) if(!locked.isEmpty()) locked.removeLast();
+        }
+        QCOMPARE(locks, 3);
+        QCOMPARE(touching, 8);
+    }
     void theManifestsNameIsReadThroughTheMessagesFiles() {
         QTemporaryDir dir;
         const QString folder = dir.filePath("ext");
@@ -393,6 +535,42 @@ private slots:
         QVERIFY(!c.HasCommand(QStringLiteral("Ctrl+Shift+Y")));
         QVERIFY(!c.RunCommand(QStringLiteral("Ctrl+Shift+Y"), 42));
     }
+    void theRecordOfRegisteredCopiesSaysWhatIsStale() {
+        using ExtensionUi::Registered;
+        const QString a = QStringLiteral("c:/copies/x/111"), b = QStringLiteral("c:/copies/x/222");
+        QVERIFY(Registered::Stale(false, QString(), a, false));
+        QVERIFY(Registered::Stale(false, a, a, false));
+        QVERIFY(!Registered::Stale(true, QString(), a, false));
+        QVERIFY(!Registered::Stale(true, a, a, false));
+        QVERIFY(Registered::Stale(true, a, b, false));
+        QVERIFY(!Registered::Stale(false, a, b, true));
+        QVERIFY(!Registered::Stale(true, a, b, true));
+        bool damaged = true;
+        QJsonObject clean; clean["ok"] = a;
+        QCOMPARE(Registered::FromJson(clean, &damaged).CopyOf("ok"), a);
+        QVERIFY(!damaged);
+        QJsonObject odd; odd["ok"] = a; odd["bad"] = 3;
+        QCOMPARE(Registered::FromJson(odd, &damaged).CopyOf("ok"), a);
+        QVERIFY(damaged);
+        QJsonObject empty; empty["ok"] = a; empty["empty"] = "";
+        Registered::FromJson(empty, &damaged);
+        QVERIFY(damaged);
+
+        ExtensionUi::Registered r;
+        QVERIFY(r.CopyOf("a").isEmpty());
+        QVERIFY(r.Set("a", "c:/copies/a/111"));
+        QVERIFY(!r.Set("a", "c:/copies/a/111"));
+        QVERIFY(r.Set("a", "c:/copies/a/222"));
+        QCOMPARE(r.CopyOf("a"), QStringLiteral("c:/copies/a/222"));
+        QVERIFY(!r.Set("", "x") && !r.Set("b", ""));
+        QVERIFY(r.Set("b", "c:/copies/b/1"));
+        const ExtensionUi::Registered back = ExtensionUi::Registered::FromJson(r.ToJson(), nullptr);
+        QCOMPARE(back.CopyOf("a"), QStringLiteral("c:/copies/a/222"));
+        QCOMPARE(back.CopyOf("b"), QStringLiteral("c:/copies/b/1"));
+        QVERIFY(r.Forget("a") && !r.Forget("a"));
+        QVERIFY(r.CopyOf("a").isEmpty());
+    }
+
     void onInstalledIsOwedFromTheStartAndTakenOnce() {
         QTemporaryDir dir;
         const QString ext = dir.filePath("ext"), other = dir.filePath("other");
@@ -730,13 +908,190 @@ private slots:
         e->items.insert(m.id, {m.id, "updated", m.folder, true, {}});
         Application::GlobalSettings().setValue("network/@Extensions", QStringList{current, old});
         Deferred c(e); c.Start(); Finish(e); QTRY_VERIFY(c.IsReady());
-        QCOMPARE(c.Rows().size(), 2);
+        QCOMPARE(c.Rows().size(), 1);
         QVERIFY(c.Rows().at(0).loaded);
-        QVERIFY(!c.Rows().at(1).loaded);
-        QVERIFY(!c.Rows().at(1).error.isEmpty());
+        QCOMPARE(c.Rows().at(0).manifest.path, ExtensionManifest::NormalizePath(current));
         c.Reconcile({current}, {}, {}); QTest::qWait(20);
         QCOMPARE(e->calls, QStringList{"snapshot"});
         QVERIFY(c.Rows().first().loaded);
+    }
+    void aRegistrationOfChromesIsKeyedWithoutItsVersion() {
+        QTemporaryDir dir;
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        QVERIFY(QDir().mkpath(home + "/1.0.0_0"));
+        const QString one = ExtensionManifest::RegistrationKey(home + "/1.0.0_0");
+        QCOMPARE(one, ExtensionManifest::PathKey(home) + "/");
+        QCOMPARE(ExtensionManifest::RegistrationKey(home + "/2.0.0_3"), one);
+        QCOMPARE(ExtensionManifest::RegistrationKey(home), ExtensionManifest::PathKey(home));
+        QVERIFY(ExtensionManifest::RegistrationKey(home) != one);
+        QCOMPARE(ExtensionManifest::RegistrationKey(home + "/current"), ExtensionManifest::PathKey(home + "/current"));
+        QCOMPARE(ExtensionManifest::RegistrationKey(dir.filePath("plain/1.0.0_0")),
+                 ExtensionManifest::PathKey(dir.filePath("plain/1.0.0_0")));
+        QCOMPARE(ExtensionManifest::RegistrationKey(Fixture()), ExtensionManifest::PathKey(Fixture()));
+        QCOMPARE(ExtensionManifest::RegistrationKey(ExtensionManifest::SourceOfRegistrationKey(one)), one);
+        Write(home + "/1.0.0_0/manifest.json", R"({"manifest_version":3,"name":"one","version":"1","key":"YWJj"})");
+        QCOMPARE(ExtensionManifest::PathKey(ExtensionManifest::SourceOfRegistrationKey(one)),
+                 ExtensionManifest::PathKey(home + "/1.0.0_0"));
+        QCOMPARE(ExtensionManifest::SourceOfRegistrationKey(ExtensionManifest::PathKey(Fixture())), ExtensionManifest::PathKey(Fixture()));
+    }
+    void theListsMoveOnToTheVersionChromeUpdatedTo() {
+        QTemporaryDir dir;
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        QVERIFY(QDir().mkpath(home + "/2.0.0_0"));
+        Write(home + "/2.0.0_0/manifest.json", R"({"manifest_version":3,"name":"updated","version":"2","key":"YWJj"})");
+        const QString old = home + "/1.0.0_0";
+        const QString gone = dir.filePath("Extensions/abcdefghijklmnopabcdefghijklmnop/1.0.0_0");
+        auto &s = Application::GlobalSettings();
+        s.setValue("network/@Extensions", QStringList{"# mine", old, Fixture(), gone});
+        s.setValue("network/@DisabledExtensions", QStringList{old});
+        s.setValue("network/@PinnedExtensions", QStringList{"", old});
+        QVERIFY(ExtensionController::FollowVersionFolders());
+        const QString now = ExtensionManifest::NormalizePath(home + "/2.0.0_0");
+        QCOMPARE(s.value("network/@Extensions").toStringList(), (QStringList{"# mine", now, Fixture(), gone}));
+        QCOMPARE(s.value("network/@DisabledExtensions").toStringList(), QStringList{now});
+        QCOMPARE(s.value("network/@PinnedExtensions").toStringList(), (QStringList{"", now}));
+        QVERIFY(!ExtensionController::FollowVersionFolders());
+        QVERIFY(QDir().mkpath(home + "/1.5.0_0"));
+        Write(home + "/1.5.0_0/manifest.json", R"({"manifest_version":3,"name":"older","version":"1","key":"YWJj"})");
+        s.setValue("network/@Extensions", QStringList{home + "/1.5.0_0"});
+        QVERIFY(!ExtensionController::FollowVersionFolders());
+        QCOMPARE(s.value("network/@Extensions").toStringList(), QStringList{home + "/1.5.0_0"});
+    }
+    void aListMovedOnKeepsWhatItOwned() {
+        QTemporaryDir dir;
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        QVERIFY(QDir().mkpath(home + "/2.0.0_0"));
+        Write(home + "/2.0.0_0/manifest.json", R"({"manifest_version":3,"name":"updated","version":"2","key":"YWJj"})");
+        const QString old = home + "/1.0.0_0";
+        const auto m = ExtensionManifest::Read(old);
+        const QString journal = dir.filePath("owned.json");
+        Write(journal, QJsonDocument(QJsonObject{{"version", 1},
+              {"owned", QJsonObject{{ExtensionManifest::PathKey(old), m.id}}}}).toJson());
+        auto &s = Application::GlobalSettings();
+        s.setValue("network/@Extensions", QStringList{old});
+        s.setValue("network/@PinnedExtensions", QStringList{old});
+        QVERIFY(ExtensionController::FollowVersionFolders());
+        auto e = std::make_shared<Engine>();
+        e->items.insert(m.id, {m.id, "updated", m.folder, true, {}});
+        Deferred c(e, journal); c.Start(); Finish(e); QTRY_VERIFY(c.IsReady());
+        QCOMPARE(e->calls, QStringList{"snapshot"});
+        QCOMPARE(c.Rows().size(), 1);
+        QVERIFY(c.Rows().first().loaded);
+        QVERIFY(c.Rows().first().pinned);
+        QCOMPARE(c.Rows().first().manifest.path, ExtensionManifest::NormalizePath(home + "/2.0.0_0"));
+        c.Reconcile(s.value("network/@Extensions").toStringList(), {old}, {});
+        QTRY_COMPARE(Next(e), QStringLiteral("disable")); Finish(e);
+        QVERIFY(!e->calls.contains("remove"));
+        QVERIFY(!c.Rows().first().wanted);
+    }
+    void aListMovedOnWhileRunningIsReadAgain() {
+        QTemporaryDir dir;
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        QVERIFY(QDir().mkpath(home + "/2.0.0_0"));
+        Write(home + "/2.0.0_0/manifest.json", R"({"manifest_version":3,"name":"updated","version":"2","key":"YWJj"})");
+        const QString old = home + "/1.0.0_0";
+        const auto m = ExtensionManifest::Read(old);
+        auto &s = Application::GlobalSettings();
+        s.setValue("network/@Extensions", QStringList{old});
+        auto e = std::make_shared<Engine>();
+        e->items.insert(m.id, {m.id, "updated", m.folder, true, {}});
+        Deferred c(e); c.Start(); Finish(e); QTRY_VERIFY(c.IsReady());
+        QCOMPARE(c.Rows().first().manifest.path, ExtensionManifest::NormalizePath(old));
+        QVERIFY(ExtensionController::FollowVersionFolders());
+        c.Reconcile(s.value("network/@Extensions").toStringList(), {}, {}); QTest::qWait(20);
+        QCOMPARE(c.Rows().size(), 1);
+        QCOMPARE(c.Rows().first().manifest.path, ExtensionManifest::NormalizePath(home + "/2.0.0_0"));
+        QVERIFY(c.Rows().first().loaded);
+        QCOMPARE(e->calls, QStringList{"snapshot"});
+    }
+    void anOwnedRowOfAVersionKeyIsReadFromTheNewestVersion() {
+        QTemporaryDir dir;
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        QVERIFY(QDir().mkpath(home + "/2.0.0_0"));
+        Write(home + "/2.0.0_0/manifest.json", R"({"manifest_version":3,"name":"updated","version":"2","key":"YWJj"})");
+        const auto m = ExtensionManifest::Read(home + "/2.0.0_0");
+        const QString journal = dir.filePath("owned.json");
+        Write(journal, QJsonDocument(QJsonObject{{"version", 2},
+              {"owned", QJsonObject{{ExtensionManifest::RegistrationKey(home + "/1.0.0_0"), m.id}}}}).toJson());
+        auto e = std::make_shared<Engine>();
+        e->items.insert(m.id, {m.id, "updated", m.folder, true, {}});
+        Deferred c(e, journal); c.Start(); Finish(e);
+        QTRY_COMPARE(Next(e), QStringLiteral("remove"));
+        QCOMPARE(c.Rows().size(), 1);
+        QVERIFY(!c.Rows().first().registered);
+        QCOMPARE(ExtensionManifest::PathKey(c.Rows().first().manifest.path), ExtensionManifest::PathKey(home + "/2.0.0_0"));
+        QCOMPARE(c.Rows().first().manifest.name, QStringLiteral("updated"));
+        Finish(e);
+        QTRY_VERIFY(Owned(journal).isEmpty());
+    }
+    void anOwnedRowWhoseFolderIsGoneIsRetried() {
+        QTemporaryDir dir;
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        const QString key = ExtensionManifest::RegistrationKey(home + "/1.0.0_0");
+        const QString id = QStringLiteral("abcdefghijklmnopabcdefghijklmnop");
+        const QString journal = dir.filePath("owned.json");
+        Write(journal, QJsonDocument(QJsonObject{{"version", 2}, {"owned", QJsonObject{{key, id}}}}).toJson());
+        auto e = std::make_shared<Engine>();
+        e->items.insert(id, {id, "gone", {}, true, {}});
+        Deferred c(e, journal); c.Start(); Finish(e);
+        QTRY_COMPARE(Next(e), QStringLiteral("remove"));
+        e->error = QStringLiteral("refused"); Finish(e); e->error.clear();
+        QTRY_VERIFY(!c.Rows().isEmpty() && !c.Rows().first().error.isEmpty());
+        const ExtensionRow row = c.Rows().first();
+        QCOMPARE(ExtensionManifest::RegistrationKey(row.manifest.path), key);
+        c.Retry(row.manifest.path);
+        QTRY_COMPARE(Next(e), QStringLiteral("remove")); Finish(e);
+        QTRY_VERIFY(Owned(journal).isEmpty());
+    }
+    void aVersionKeyIsToldByItsSlash() {
+        const QString id = QStringLiteral("abcdefghijklmnopabcdefghijklmnop");
+        QTemporaryDir dir;
+        const QString key = ExtensionManifest::RegistrationKey(dir.filePath(id + "/1.0.0_0"));
+        QVERIFY(key.endsWith('/'));
+        QCOMPARE(key, ExtensionManifest::PathKey(dir.filePath(id)) + "/");
+        QVERIFY(!ExtensionManifest::RegistrationKey(dir.filePath(id + "/*")).endsWith('/'));
+        const QString journal = dir.filePath("owned.json");
+        Write(journal, QJsonDocument(QJsonObject{{"version", 2}, {"owned", QJsonObject{{key, id}}}}).toJson());
+        auto e = std::make_shared<Engine>(); Deferred c(e, journal); c.Start(); QTest::qWait(20);
+        QVERIFY(c.Error().isEmpty());
+        QCOMPARE(Next(e), QStringLiteral("snapshot"));
+    }
+    void theOwnershipJournalIsOfFormatTwo() {
+        QTemporaryDir dir;
+        const QString journal = dir.filePath("owned.json");
+        Desired(); auto e = std::make_shared<Engine>(); Deferred c(e, journal); c.Start(); Finish(e);
+        QTRY_COMPARE(Next(e), QStringLiteral("add")); Finish(e);
+        QTRY_VERIFY(c.IsReady());
+        {
+            QFile f(journal); QVERIFY(f.open(QIODevice::ReadOnly));
+            QCOMPARE(QJsonDocument::fromJson(f.readAll()).object().value("version").toInt(), 2);
+        }
+        Deferred again(e, journal); again.Start(); QTRY_COMPARE(Next(e), QStringLiteral("snapshot")); Finish(e);
+        QTRY_VERIFY(again.IsReady()); QVERIFY(again.Error().isEmpty());
+        QVERIFY(!e->calls.contains("remove"));
+
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        const QString meeting = dir.filePath("meeting.json");
+        Write(meeting, QJsonDocument(QJsonObject{{"version", 1}, {"owned", QJsonObject{
+              {ExtensionManifest::PathKey(home + "/1.0.0_0"), "abcdefghijklmnopabcdefghijklmnop"},
+              {ExtensionManifest::PathKey(home + "/1.1.0_0"), "bcdefghijklmnopabcdefghijklmnopa"}}}}).toJson());
+        auto f = std::make_shared<Engine>(); Deferred refused(f, meeting); refused.Start(); QTest::qWait(20);
+        QVERIFY(!refused.Error().isEmpty());
+        QVERIFY(f->calls.isEmpty());
+    }
+    void aRegistrationSwitchedOffByAnotherVersionIsNotInForce() {
+        QTemporaryDir dir;
+        const QString home = dir.filePath("Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh");
+        for(const QString &version : QStringList{"1.0.0_0", "2.0.0_0"}){
+            QVERIFY(QDir().mkpath(home + "/" + version));
+            Write(home + "/" + version + "/manifest.json", R"({"manifest_version":3,"name":"x","version":"1","key":"YWJj"})");
+        }
+        auto &s = Application::GlobalSettings();
+        s.setValue("network/@Extensions", QStringList{home + "/2.0.0_0"});
+        s.setValue("network/@DisabledExtensions", QStringList{home + "/1.0.0_0"});
+        QVERIFY(ExtensionController::EnabledIds().isEmpty());
+        s.setValue("network/@DisabledExtensions", QStringList{});
+        QCOMPARE(ExtensionController::EnabledIds().size(), 1);
     }
     void pickDirectoryFallsBackFromChromesExtensions() {
         QTemporaryDir dir;
@@ -1026,6 +1381,23 @@ private slots:
             QCOMPARE(ids(call(again, id, "declarativeNetRequest.getDynamicRules")), QStringLiteral("1"));
             QCOMPARE(ids(call(again, id, "declarativeNetRequest.getSessionRules")), QString());
         }
+    }
+    void changedIsSaidOnlyWhereSomethingIsDifferent() {
+        auto e = std::make_shared<Engine>(); Deferred c(e);
+        QSignalSpy changed(&c, &ExtensionController::Changed);
+        c.Reconcile({}, {}, {});
+        QCOMPARE(changed.count(), 0);
+        c.Reconcile({Fixture()}, {}, {});
+        QCOMPARE(changed.count(), 1);
+        c.Reconcile({Fixture()}, {}, {});
+        c.Reconcile({Fixture()}, {}, {});
+        QCOMPARE(changed.count(), 1);
+        c.Reconcile({Fixture()}, {Fixture()}, {});
+        QCOMPARE(changed.count(), 2);
+        c.Reconcile({Fixture()}, {Fixture()}, {Fixture()});
+        QCOMPARE(changed.count(), 3);
+        c.Reconcile({}, {}, {});
+        QCOMPARE(changed.count(), 4);
     }
     void removalWhileAddIsPending() {
         Desired(); auto e = std::make_shared<Engine>(); Deferred c(e); c.Start(); Finish(e);

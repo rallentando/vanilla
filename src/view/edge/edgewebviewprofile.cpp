@@ -19,6 +19,8 @@
 #include "networkcontroller.hpp"
 #include "application.hpp"
 #include "theme.hpp"
+#include "settingspage.hpp"
+#include "sitepermissions.hpp"
 
 void EdgeWebView::Suspend(){
     if(HiddenViewsStayActive()) return;
@@ -103,7 +105,7 @@ void EdgeWebView::SettlePrivateWipe(const QString &key, bool ok){
 
     foreach(const QPointer<EdgeWebView> &waiter, waiters){
         if(waiter.isNull() || waiter->m_Impl->m_State.IsRetired()) continue;
-        if(ok) waiter->TryFlushPendingNavigation();
+        if(ok) waiter->EnterPermissionSync();
         else waiter->ReportPrivateWipeFailure();
     }
 }
@@ -191,6 +193,226 @@ void EdgeWebView::ClearPasswords(){
     ClearOncePerProfile(COREWEBVIEW2_BROWSING_DATA_KINDS_PASSWORD_AUTOSAVE);
 }
 
+namespace {
+
+    struct EdgeKindName {
+        COREWEBVIEW2_PERMISSION_KIND kind;
+        const char *name;
+    };
+
+    const EdgeKindName EDGE_KINDS[] = {
+        { COREWEBVIEW2_PERMISSION_KIND_NOTIFICATIONS,                  "notifications" },
+        { COREWEBVIEW2_PERMISSION_KIND_GEOLOCATION,                    "geolocation" },
+        { COREWEBVIEW2_PERMISSION_KIND_MICROPHONE,                     "microphone" },
+        { COREWEBVIEW2_PERMISSION_KIND_CAMERA,                         "camera" },
+        { COREWEBVIEW2_PERMISSION_KIND_LOCAL_FONTS,                    "local-fonts" },
+        { COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ,                 "clipboard-read" },
+        { COREWEBVIEW2_PERMISSION_KIND_OTHER_SENSORS,                  "sensors" },
+        { COREWEBVIEW2_PERMISSION_KIND_MULTIPLE_AUTOMATIC_DOWNLOADS,   "automatic-downloads" },
+        { COREWEBVIEW2_PERMISSION_KIND_FILE_READ_WRITE,                "file-read-write" },
+        { COREWEBVIEW2_PERMISSION_KIND_AUTOPLAY,                       "autoplay" },
+        { COREWEBVIEW2_PERMISSION_KIND_MIDI_SYSTEM_EXCLUSIVE_MESSAGES, "midi-sysex" },
+        { COREWEBVIEW2_PERMISSION_KIND_WINDOW_MANAGEMENT,              "window-management" },
+        { COREWEBVIEW2_PERMISSION_KIND_PERSISTENT_STORAGE,             "persistent-storage" },
+    };
+
+    const QString OTHER_KIND = QStringLiteral("edge:");
+
+    QStringList EdgeStorableKinds(){
+        QStringList kinds;
+        for(const EdgeKindName &entry : EDGE_KINDS) kinds << QLatin1String(entry.name);
+        return kinds;
+    }
+
+    COREWEBVIEW2_PERMISSION_KIND EdgeKindOf(const QString &name){
+        if(name.startsWith(OTHER_KIND))
+            return static_cast<COREWEBVIEW2_PERMISSION_KIND>(name.mid(OTHER_KIND.length()).toInt());
+        for(const EdgeKindName &entry : EDGE_KINDS)
+            if(name == QLatin1String(entry.name)) return entry.kind;
+        return COREWEBVIEW2_PERMISSION_KIND_UNKNOWN_PERMISSION;
+    }
+
+    COREWEBVIEW2_PERMISSION_STATE EdgeStateOf(PermissionTable::State state){
+        switch(state){
+        case PermissionTable::Allow: return COREWEBVIEW2_PERMISSION_STATE_ALLOW;
+        case PermissionTable::Block: return COREWEBVIEW2_PERMISSION_STATE_DENY;
+        case PermissionTable::Ask:   break;
+        }
+        return COREWEBVIEW2_PERMISSION_STATE_DEFAULT;
+    }
+
+    QList<PermissionTable::Row> HeldRows(ICoreWebView2PermissionSettingCollectionView *collection,
+                                         bool *complete){
+        QList<PermissionTable::Row> held;
+        *complete = true;
+        UINT32 count = 0;
+        if(FAILED(collection->get_Count(&count))){ *complete = false; return held;}
+        for(UINT32 i = 0; i < count; i++){
+            ComPtr<ICoreWebView2PermissionSetting> setting;
+            if(FAILED(collection->GetValueAtIndex(i, &setting)) || !setting){
+                *complete = false;
+                continue;
+            }
+
+            COREWEBVIEW2_PERMISSION_KIND kind = COREWEBVIEW2_PERMISSION_KIND_UNKNOWN_PERMISSION;
+            COREWEBVIEW2_PERMISSION_STATE state = COREWEBVIEW2_PERMISSION_STATE_DEFAULT;
+            LPWSTR raw = nullptr;
+            if(FAILED(setting->get_PermissionKind(&kind)) ||
+               FAILED(setting->get_PermissionState(&state)) ||
+               FAILED(setting->get_PermissionOrigin(&raw)) || !raw){
+                if(raw) CoTaskMemFree(raw);
+                *complete = false;
+                continue;
+            }
+            const QString origin = QString::fromWCharArray(raw);
+            CoTaskMemFree(raw);
+
+            const QString name = EdgeWebView::TablePermissionKind(kind);
+            held << PermissionTable::Row{
+                origin,
+                name.isEmpty() ? OTHER_KIND + QString::number(static_cast<int>(kind)) : name,
+                state == COREWEBVIEW2_PERMISSION_STATE_ALLOW ? PermissionTable::Allow
+                : state == COREWEBVIEW2_PERMISSION_STATE_DENY ? PermissionTable::Block
+                : PermissionTable::Ask };
+        }
+        return held;
+    }
+
+    void WarnPermissionNotWritten(const QString &key, const PermissionTable::Row &change, HRESULT hr){
+        qWarning() << "edge: the permission" << change.kind << "of" << change.origin
+                   << "to" << (change.state == PermissionTable::Allow ? "allow"
+                               : change.state == PermissionTable::Block ? "block" : "ask")
+                   << "was not written to profile" << key
+                   << Qt::hex << static_cast<quint32>(hr);
+    }
+}
+
+QString EdgeWebView::TablePermissionKind(int kind){
+    for(const EdgeKindName &entry : EDGE_KINDS)
+        if(entry.kind == kind) return QLatin1String(entry.name);
+    return QString();
+}
+
+void EdgeWebView::EnterPermissionSync(){
+    const QString key = ProfileKey();
+    switch(s_Profiles.EnterPermissionSync(key, this)){
+    case EdgePermissionSyncLedger::Effect::Start:
+        RunPermissionSync(key, s_Profiles.Permissions().Run(key));
+        break;
+    case EdgePermissionSyncLedger::Effect::Wait:
+        break;
+    case EdgePermissionSyncLedger::Effect::Proceed:
+        TryFlushPendingNavigation();
+        break;
+    }
+}
+
+void EdgeWebView::MirrorPermissions(){
+    QSet<QString> live;
+    foreach(EdgeWebView *view, s_Profiles.LiveViews()){
+        if(!view || !view->m_Impl->m_WebView || view->m_Impl->m_State.IsRetired()) continue;
+        live.insert(view->ProfileKey());
+    }
+    foreach(const QString &key, s_Profiles.Permissions().TableChanged(live))
+        RunPermissionSync(key, s_Profiles.Permissions().Run(key));
+}
+
+void EdgeWebView::RunPermissionSync(const QString &key, int run){
+    EdgeWebView *carrier = nullptr;
+    foreach(EdgeWebView *view, s_Profiles.LiveViews()){
+        if(!view || !view->m_Impl->m_WebView || view->m_Impl->m_State.IsRetired()) continue;
+        if(view->ProfileKey() == key){ carrier = view; break;}
+    }
+
+    ComPtr<ICoreWebView2_13> webview13;
+    ComPtr<ICoreWebView2Profile> profile;
+    ComPtr<ICoreWebView2Profile4> profile4;
+    const char *missing = !carrier ? "no live view"
+        : FAILED(carrier->m_Impl->m_WebView.As(&webview13)) || !webview13 ? "no ICoreWebView2_13"
+        : FAILED(webview13->get_Profile(&profile)) || !profile ? "no profile"
+        : FAILED(profile.As(&profile4)) || !profile4 ? "no ICoreWebView2Profile4"
+        : nullptr;
+    if(missing){
+        qWarning() << "edge: the permissions of profile" << key << "were not read:" << missing;
+        SettlePermissionSync(key, run, false);
+        return;
+    }
+
+    const HRESULT placed = profile4->GetNonDefaultPermissionSettings
+        (Callback<ICoreWebView2GetNonDefaultPermissionSettingsCompletedHandler>
+         ([key, run, profile4](HRESULT error,
+                               ICoreWebView2PermissionSettingCollectionView *collection) -> HRESULT {
+             if(FAILED(error) || !collection){
+                 qWarning() << "edge: the permissions of profile" << key << "were not read:"
+                            << Qt::hex << static_cast<quint32>(error);
+                 SettlePermissionSync(key, run, false);
+                 return S_OK;
+             }
+
+             bool complete = true;
+             const QList<PermissionTable::Row> changes = SitePermissions::Table()
+                 .Changes(HeldRows(collection, &complete), EdgeStorableKinds());
+             if(!complete) qWarning() << "edge: the permissions of profile" << key << "were not all read";
+             if(changes.isEmpty()){
+                 SettlePermissionSync(key, run, complete);
+                 return S_OK;
+             }
+
+             auto pending = std::make_shared<int>(changes.length());
+             auto ok = std::make_shared<bool>(complete);
+             auto answered = [key, run, pending, ok](bool succeeded){
+                 if(!succeeded) *ok = false;
+                 if(--*pending == 0) SettlePermissionSync(key, run, *ok);
+             };
+             foreach(const PermissionTable::Row &change, changes){
+                 const HRESULT set = profile4->SetPermissionState
+                     (EdgeKindOf(change.kind),
+                      reinterpret_cast<LPCWSTR>(change.origin.utf16()),
+                      EdgeStateOf(change.state),
+                      Callback<ICoreWebView2SetPermissionStateCompletedHandler>
+                      ([answered, key, change](HRESULT result) -> HRESULT {
+                          if(FAILED(result)) WarnPermissionNotWritten(key, change, result);
+                          answered(SUCCEEDED(result));
+                          return S_OK;
+                      }).Get());
+                 if(FAILED(set)){
+                     WarnPermissionNotWritten(key, change, set);
+                     answered(false);
+                 }
+             }
+             return S_OK;
+         }).Get());
+    if(FAILED(placed)){
+        qWarning() << "edge: the permissions of profile" << key << "were not read:"
+                   << Qt::hex << static_cast<quint32>(placed);
+        SettlePermissionSync(key, run, false);
+    }
+}
+
+void EdgeWebView::SettlePermissionSync(const QString &key, int run, bool ok){
+    if(!ok) qWarning() << "edge: the permissions of profile" << key
+                       << "could not all be brought to the table";
+
+    QList<QPointer<EdgeWebView>> waiters;
+    switch(s_Profiles.SettlePermissionSync(key, run, &waiters)){
+    case EdgePermissionSyncLedger::Settle::Again: {
+        const int next = s_Profiles.Permissions().Run(key);
+        QTimer::singleShot(0, EdgeEnvironment::Instance(), [key, next](){
+            RunPermissionSync(key, next);
+        });
+        return;
+    }
+    case EdgePermissionSyncLedger::Settle::Stale:
+        return;
+    case EdgePermissionSyncLedger::Settle::Done:
+        break;
+    }
+    foreach(const QPointer<EdgeWebView> &waiter, waiters){
+        if(waiter.isNull() || waiter->m_Impl->m_State.IsRetired()) continue;
+        waiter->TryFlushPendingNavigation();
+    }
+}
+
 void EdgeWebView::ApplySpecificSettings(QStringList set){
     View::ApplySpecificSettings(set);
     m_Impl->m_SpecificSet = set;
@@ -227,6 +449,24 @@ void EdgeWebView::ApplyPageSettings(){
     if(SUCCEEDED(settings.As(&settings4)) && settings4)
         settings4->put_IsPasswordAutosaveEnabled(SavePasswords() ? TRUE : FALSE);
 
+    ComPtr<ICoreWebView2Settings8> settings8;
+    if(SUCCEEDED(settings.As(&settings8)) && settings8)
+        settings8->put_IsReputationCheckingRequired(SmartScreen() ? TRUE : FALSE);
+
+    ComPtr<ICoreWebView2_13> webview13;
+    ComPtr<ICoreWebView2Profile> profile;
+    ComPtr<ICoreWebView2Profile3> profile3;
+    if(SUCCEEDED(m_Impl->m_WebView.As(&webview13)) && webview13 &&
+       SUCCEEDED(webview13->get_Profile(&profile)) && profile &&
+       SUCCEEDED(profile.As(&profile3)) && profile3){
+        const QString level = TrackingPrevention();
+        profile3->put_PreferredTrackingPreventionLevel
+            (level == QStringLiteral("None")   ? COREWEBVIEW2_TRACKING_PREVENTION_LEVEL_NONE :
+             level == QStringLiteral("Basic")  ? COREWEBVIEW2_TRACKING_PREVENTION_LEVEL_BASIC :
+             level == QStringLiteral("Strict") ? COREWEBVIEW2_TRACKING_PREVENTION_LEVEL_STRICT :
+                                                 COREWEBVIEW2_TRACKING_PREVENTION_LEVEL_BALANCED);
+    }
+
 }
 
 QString BlankBackgroundJsCode(const QColor &color){
@@ -240,11 +480,14 @@ QString BlankBackgroundJsCode(const QColor &color){
 
 void EdgeWebView::ApplyTheme(){
     const QUrl uri = url();
-    const bool blank = uri.isEmpty() || uri == BLANK_URL ||
-        uri.scheme() == VANILLA_SCHEME;
-    m_Impl->m_BaseBackgroundColor = blank ? Theme::Color(Theme::PageBackground)
-                                  : QColor(Qt::white);
+    const bool wasClear = m_Impl->m_BaseBackgroundColor.isValid() &&
+        m_Impl->m_BaseBackgroundColor.alpha() < 255;
+    const bool clear = Application::EnableTransparentWindow() &&
+        VanillaPage::IsTranslucentPage(uri);
+    m_Impl->m_BaseBackgroundColor = clear ? QColor(0, 0, 0, 1)
+        : EdgeThemesDocument(uri) ? Theme::Color(Theme::PageBackground) : QColor(Qt::white);
     ApplyThemeToBackend();
+    if(clear || wasClear) PaintHostWindow(wasClear && !clear);
 
     if(uri == BLANK_URL && m_Impl && m_Impl->m_WebView)
         RunScript(BlankBackgroundJsCode(m_Impl->m_BaseBackgroundColor));
@@ -257,10 +500,12 @@ void EdgeWebView::ApplyThemeToBackend(){
     if(SUCCEEDED(m_Impl->m_Controller->QueryInterface(IID_PPV_ARGS(&controller2))) &&
        controller2 && m_Impl->m_BaseBackgroundColor.isValid()){
         COREWEBVIEW2_COLOR color = {};
-        color.A = 255;
-        color.R = static_cast<BYTE>(m_Impl->m_BaseBackgroundColor.red());
-        color.G = static_cast<BYTE>(m_Impl->m_BaseBackgroundColor.green());
-        color.B = static_cast<BYTE>(m_Impl->m_BaseBackgroundColor.blue());
+        if(!EdgeThemesDocument(url())){
+            color.A = 255;
+            color.R = static_cast<BYTE>(m_Impl->m_BaseBackgroundColor.red());
+            color.G = static_cast<BYTE>(m_Impl->m_BaseBackgroundColor.green());
+            color.B = static_cast<BYTE>(m_Impl->m_BaseBackgroundColor.blue());
+        }
         controller2->put_DefaultBackgroundColor(color);
     }
 

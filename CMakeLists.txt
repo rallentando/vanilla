@@ -35,6 +35,7 @@ set(VANILLA_HEADERS
     src/app/extensioncontroller.hpp
     src/ui/extensionbar.hpp
     src/ui/sidepanels.hpp
+    src/ui/docktitlebar.hpp
     src/view/webengine/webengineextensions.hpp
     src/app/saveflow.hpp
     src/app/shutdownflow.hpp
@@ -43,7 +44,6 @@ set(VANILLA_HEADERS
     src/app/saver.hpp
     src/core/lightnode.hpp
     src/core/devicescale.hpp
-    src/input/jsobject.hpp
     src/core/treeserializer.hpp
     src/core/bookmarkio.hpp
     src/core/settingsio.hpp
@@ -67,6 +67,7 @@ set(VANILLA_HEADERS
     src/core/downloadname.hpp
     src/core/referrer.hpp
     src/core/passwordpolicy.hpp
+    src/core/permissiontable.hpp
     src/core/qtlog.hpp
     src/core/loadending.hpp
     src/core/translationorder.hpp
@@ -82,10 +83,12 @@ set(VANILLA_HEADERS
     src/app/networkcontroller.hpp
     src/app/passwordstore.hpp
     src/app/downloadhistory.hpp
+    src/app/sitepermissions.hpp
     src/core/switch.hpp
     src/core/callback.hpp
     src/core/const.hpp
     src/ui/theme.hpp
+    src/ui/blurbehind.hpp
     src/core/settingsschema.hpp
     src/app/settingspage.hpp
     src/app/directorypage.hpp
@@ -126,9 +129,12 @@ set(VANILLA_SOURCES
     src/app/extensioncontroller.cpp
     src/ui/extensionbar.cpp
     src/ui/sidepanels.cpp
+    src/ui/docktitlebar.cpp
     src/view/webengine/webengineextensions.cpp
     src/view/edge/edgeextensions.cpp
     src/ui/mainwindow.cpp
+    src/ui/systemmenu.cpp
+    src/ui/systemmenu.hpp
     src/app/saver.cpp
     src/core/lightnode.cpp
     src/core/devicescale.cpp
@@ -153,6 +159,7 @@ set(VANILLA_SOURCES
     src/core/downloadname.cpp
     src/core/referrer.cpp
     src/core/passwordpolicy.cpp
+    src/core/permissiontable.cpp
     src/core/qtlog.cpp
     src/core/nativehistory.cpp
     src/ui/treebank.cpp
@@ -165,7 +172,9 @@ set(VANILLA_SOURCES
     src/app/networkcontroller.cpp
     src/app/passwordstore.cpp
     src/app/downloadhistory.cpp
+    src/app/sitepermissions.cpp
     src/ui/theme.cpp
+    src/ui/blurbehind.cpp
     src/core/settingsschema.cpp
     src/app/settingspage.cpp
     src/app/directorypage.cpp
@@ -173,6 +182,7 @@ set(VANILLA_SOURCES
     src/app/transmitter.cpp
     src/ui/dialog.cpp
     src/ui/editmenu.cpp
+    src/ui/menukeys.cpp
     src/view/view.cpp
     src/view/page.cpp
     src/view/webelement.cpp

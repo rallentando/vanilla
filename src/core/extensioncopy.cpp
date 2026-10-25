@@ -20,6 +20,7 @@
 #include <QMutexLocker>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QTimeZone>
 #include <QUrl>
 
 #ifdef Q_OS_WIN
@@ -504,6 +505,22 @@ QByteArray MessagesLine(const QJsonObject &messages, const QString &locale){
     return QByteArrayLiteral("self.__vanillaMessages = ") + QJsonDocument(carried).toJson(QJsonDocument::Compact) + ";\n";
 }
 
+bool InstalledByChrome(const QString &source){
+    static const QRegularExpression version(QStringLiteral("^(\\d+(?:\\.\\d+){0,3})_(\\d+)$"));
+    static const QRegularExpression id(QStringLiteral("^[a-p]{32}$"));
+    const QFileInfo folder(QDir::cleanPath(QDir(source).absolutePath()));
+    const QRegularExpressionMatch match = version.match(folder.fileName());
+    if(!match.hasMatch()) return false;
+    bool ok = true;
+    foreach(const QString &part, match.captured(1).split(QLatin1Char('.')) << match.captured(2)){
+        part.toInt(&ok);
+        if(!ok) return false;
+    }
+    const QFileInfo parent(folder.path());
+    if(!id.match(parent.fileName()).hasMatch()) return false;
+    return QFileInfo(parent.path()).fileName().compare(QStringLiteral("Extensions"), Qt::CaseInsensitive) == 0;
+}
+
 int Stamp(const QString &source, const QByteArray &manifestBytes, const QByteArray &key, const QString &locale){
     QCryptographicHash hash(QCryptographicHash::Sha1);
     hash.addData(QByteArray(COPY_FORMAT));
@@ -521,19 +538,23 @@ int Stamp(const QString &source, const QByteArray &manifestBytes, const QByteArr
     hash.addData(key);
     hash.addData(locale.toUtf8());
     hash.addData(manifestBytes);
-    QStringList files;
-    const QDir base(source);
-    QDirIterator it(source, QDir::Files | QDir::Hidden | QDir::System, QDirIterator::Subdirectories);
-    while(it.hasNext()){
-        it.next();
-        const QFileInfo info = it.fileInfo();
-        const QString relative = base.relativeFilePath(info.absoluteFilePath());
-        if(Skipped(relative)) continue;
-        files << relative + QLatin1Char('|') + QString::number(info.size()) + QLatin1Char('|')
-                 + QString::number(info.lastModified().toMSecsSinceEpoch());
+    if(InstalledByChrome(source)){
+        hash.addData(QByteArrayLiteral("installed\n") + Key(source).toUtf8());
+    } else {
+        QStringList files;
+        const QDir base(source);
+        QDirIterator it(source, QDir::Files | QDir::Hidden | QDir::System, QDirIterator::Subdirectories);
+        while(it.hasNext()){
+            it.next();
+            const QFileInfo info = it.fileInfo();
+            const QString relative = base.relativeFilePath(info.absoluteFilePath());
+            if(Skipped(relative)) continue;
+            files << relative + QLatin1Char('|') + QString::number(info.size()) + QLatin1Char('|')
+                     + QString::number(info.lastModified(QTimeZone::UTC).toMSecsSinceEpoch());
+        }
+        files.sort();
+        hash.addData(files.join(QLatin1Char('\n')).toUtf8());
     }
-    files.sort();
-    hash.addData(files.join(QLatin1Char('\n')).toUtf8());
     const QByteArray digest = hash.result();
     const int n = (static_cast<quint8>(digest.at(0)) << 8) | static_cast<quint8>(digest.at(1));
     return n ? n : 1;

@@ -7,8 +7,11 @@
 #include <QMenu>
 #include <QAction>
 #include <QActionGroup>
+#include <QKeyEvent>
 
 #include "switch.hpp"
+#include "const.hpp"
+#include "application.hpp"
 #include "edgewebviewstate.hpp"
 #include "extensionhostwire.hpp"
 #include "edgeeventsubscriptions.hpp"
@@ -57,9 +60,17 @@ private slots:
     void aProfileWhichCouldNotBeEmptiedIsNotAskedAgain();
     void aSettlementForAProfileNobodyIsEmptyingChangesNothing();
     void privateAndOrdinaryProfilesOfOneNameAreNotTheSameProfile();
+    void theFirstViewOfAProfileBringsItToTheTable();
+    void aChangeDuringARunIsOneMoreRunAfterIt();
+    void aChangeAfterTheFirstRunStartsAnotherAndKeepsPagesOpen();
+    void aProfileWithNoViewIsForgottenAndStartsAgain();
+    void theViewsWaitingForThePermissionsAreHandedOverOnce();
+    void aProfileForgottenDuringARunKeepsItUntilItEnds();
+    void everyFailureOfARunSaysWhereItWas();
 
     void aDownloadOnlyTabWaitsForTheLastDownload();
     void aDownloadNobodyCanWatchStopsTheTabClosingForGood();
+    void aTabWithADownloadRunningOutlivesItsClosing();
 
     void aDownloadInProgressIsNotOver();
     void aCompletedDownloadIsOver();
@@ -290,6 +301,16 @@ private slots:
     void anAnswerOutOfTurnDoesNothing();
     void theBackendHoldsOnlyWhatTheLedgerKnowsAndAskersGoWithTheirView();
     void theRelayIsAViewOfItsOwnKindSeenByTheEngineAndNavigatedOnce();
+    void theCopiesMadeAheadAreWaitedForBeforeTheEnvironmentAndStartOnlyWhereSafe();
+
+    void focusComingAndGoingReachesTheViewsOwnHooks();
+
+    void theViewThemesTheBlankAndItsOwnPagesAndNothingElse();
+
+    void theEnginesOwnEditKeysStayWithThePage();
+
+    void theMenusPasteIsMadeTheBackends();
+    void aMenuWithADeferralRemembersItselfAndSwapsItsPasteBeforeItOpens();
 };
 
 void tst_edgestate::aViewAsksForTheEnvironmentOnce(){
@@ -1436,6 +1457,40 @@ void tst_edgestate::aDownloadNobodyCanWatchStopsTheTabClosingForGood(){
     QVERIFY(!l.MayClose());
 }
 
+void tst_edgestate::aTabWithADownloadRunningOutlivesItsClosing(){
+    EdgeDownloadCloseLedger l;
+    QVERIFY(!l.KeepsAlive());
+
+    l.AskPlaced();
+    QCOMPARE(l.Asked(), 1);
+    QVERIFY(!l.MayClose());
+    QVERIFY(!l.KeepsAlive());
+    l.AskAnswered();
+    QVERIFY(l.MayClose());
+
+    l.Started();
+    QVERIFY(l.KeepsAlive());
+    QVERIFY(!l.MayClose());
+    l.Settled();
+    QVERIFY(!l.KeepsAlive());
+    QVERIFY(l.MayClose());
+
+    l.Started();
+    l.AskPlaced();
+    QVERIFY(l.KeepsAlive());
+    l.Settled();
+    QVERIFY(!l.KeepsAlive());
+    QVERIFY(!l.MayClose());
+    l.AskAnswered();
+    QVERIFY(l.MayClose());
+
+    l.Started();
+    l.Started();
+    l.Untracked();
+    QVERIFY(!l.KeepsAlive());
+    QVERIFY(!l.MayClose());
+}
+
 void tst_edgestate::aProfileWhoseCookiesRemainIsRefusedTheJar(){
     EdgeCookieClearLedger l;
     const QString kept = QStringLiteral("space1");
@@ -2015,6 +2070,7 @@ void tst_edgestate::everyRegistrationIsKeptOnTheListItComesOff(){
     listOf[QStringLiteral("webview8")]              = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("webview11")]             = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("webview14")]             = QStringLiteral("WEBVIEW");
+    listOf[QStringLiteral("webview15")]             = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("webview24")]             = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("m_Impl->m_WebView")]     = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("controller")]            = QStringLiteral("CONTROLLER");
@@ -2130,7 +2186,7 @@ void tst_edgestate::everyRegistrationIsKeptOnTheListItComesOff(){
                  qPrintable(QStringLiteral("%1 was registered and never kept").arg(owedEvent)));
     }
 
-    QCOMPARE(registrations, 20);
+    QCOMPARE(registrations, 21);
 }
 
 void tst_edgestate::everyHandlerListComesOffBeforeTheControllerIsClosed(){
@@ -2335,6 +2391,27 @@ void tst_edgestate::nothingHereWritesIntoTheBackendsCookieStore(){
              "the pull no longer mirrors the store into the jar");
 }
 
+void tst_edgestate::theViewThemesTheBlankAndItsOwnPagesAndNothingElse(){
+    QVERIFY(EdgeThemesDocument(QUrl()));
+    QVERIFY(EdgeThemesDocument(BLANK_URL));
+    QVERIFY(EdgeThemesDocument(QUrl(VANILLA_SCHEME + QStringLiteral("://settings/#commands"))));
+    QVERIFY(EdgeThemesDocument(QUrl(VANILLA_SCHEME + QStringLiteral("://directory/"))));
+    QVERIFY(!EdgeThemesDocument(QUrl(QStringLiteral("https://example.com/"))));
+    QVERIFY(!EdgeThemesDocument(QUrl(QStringLiteral("file:///C:/page.html"))));
+    QVERIFY(!EdgeThemesDocument(QUrl(QStringLiteral("view-source:https://example.com/"))));
+    QVERIFY(!EdgeThemesDocument(QUrl(QStringLiteral("about:srcdoc"))));
+    QVERIFY(!EdgeThemesDocument(QUrl(QStringLiteral("data:text/html,<p>x</p>"))));
+    QVERIFY(!EdgeThemesDocument(QUrl(QStringLiteral("vanilla-extension://key/"))));
+
+    const QString profile = EdgeSourceTextOf(QStringLiteral("edgewebviewprofile.cpp"));
+    QVERIFY2(!profile.isEmpty(), "edgewebviewprofile.cpp was not read; check VANILLA_SOURCE_DIR");
+    QVERIFY2(profile.count(QStringLiteral("EdgeThemesDocument(")) >= 2,
+             "the theme's colour and the backend's base are not both decided by the predicate");
+    QVERIFY2(!profile.contains(QStringLiteral("color.A = 255;")) ||
+             profile.contains(QStringLiteral("if(!EdgeThemesDocument(url())){")),
+             "the backend's base is opaque without asking the predicate");
+}
+
 void tst_edgestate::theBackendsTwoEventsAreWiredToTheDoor(){
     QString sources;
     QDirIterator it(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) +
@@ -2533,6 +2610,156 @@ void tst_edgestate::aWaiterWhoseObjectWentIsSweptWithTheNextRetirement(){
 
     profiles.Closed(&staying);
     QCOMPARE(profiles.WaitersFor(key), 0);
+}
+
+void tst_edgestate::theFirstViewOfAProfileBringsItToTheTable(){
+    EdgePermissionSyncLedger l;
+    const QString key = QStringLiteral("space1");
+    QCOMPARE(l.Enter(key), EdgePermissionSyncLedger::Effect::Start);
+    QVERIFY(l.IsRunning(key));
+    QVERIFY(!l.IsSynced(key));
+    QCOMPARE(l.Enter(key), EdgePermissionSyncLedger::Effect::Wait);
+
+    QCOMPARE(l.Finished(key, l.Run(key)), EdgePermissionSyncLedger::Settle::Done);
+    QVERIFY(l.IsSynced(key));
+    QVERIFY(!l.IsRunning(key));
+    QCOMPARE(l.Enter(key), EdgePermissionSyncLedger::Effect::Proceed);
+}
+
+void tst_edgestate::aChangeDuringARunIsOneMoreRunAfterIt(){
+    EdgePermissionSyncLedger l;
+    const QString key = QStringLiteral("space1");
+    l.Enter(key);
+    const int first = l.Run(key);
+
+    QVERIFY(l.TableChanged(QSet<QString>() << key).isEmpty());
+    QVERIFY(l.TableChanged(QSet<QString>() << key).isEmpty());
+
+    QCOMPARE(l.Finished(key, first), EdgePermissionSyncLedger::Settle::Again);
+    const int second = l.Run(key);
+    QVERIFY(second != first);
+    QVERIFY(!l.IsSynced(key));
+    QCOMPARE(l.Finished(key, first), EdgePermissionSyncLedger::Settle::Stale);
+
+    QCOMPARE(l.Finished(key, second), EdgePermissionSyncLedger::Settle::Done);
+    QVERIFY(l.IsSynced(key));
+}
+
+void tst_edgestate::aChangeAfterTheFirstRunStartsAnotherAndKeepsPagesOpen(){
+    EdgePermissionSyncLedger l;
+    const QString key = QStringLiteral("space1");
+    const QString other = QStringLiteral("space2");
+    l.Enter(key);
+    l.Finished(key, l.Run(key));
+
+    QCOMPARE(l.TableChanged(QSet<QString>() << key << other), QStringList() << key);
+    QVERIFY(l.IsRunning(key));
+    QVERIFY(l.IsSynced(key));
+    QCOMPARE(l.Enter(key), EdgePermissionSyncLedger::Effect::Proceed);
+    QVERIFY(!l.IsRunning(other));
+    QCOMPARE(l.Enter(other), EdgePermissionSyncLedger::Effect::Start);
+}
+
+void tst_edgestate::aProfileWithNoViewIsForgottenAndStartsAgain(){
+    EdgePermissionSyncLedger l;
+    const QString key = QStringLiteral("space1");
+    l.Enter(key);
+    l.Finished(key, l.Run(key));
+
+    QVERIFY(l.TableChanged(QSet<QString>()).isEmpty());
+    QVERIFY(!l.IsSynced(key));
+    QCOMPARE(l.Enter(key), EdgePermissionSyncLedger::Effect::Start);
+}
+
+void tst_edgestate::aProfileForgottenDuringARunKeepsItUntilItEnds(){
+    EdgePermissionSyncLedger l;
+    const QString key = QStringLiteral("space1");
+    l.Enter(key);
+    const int first = l.Run(key);
+
+    l.Forget(key);
+    QVERIFY(l.IsRunning(key));
+    QCOMPARE(l.Enter(key), EdgePermissionSyncLedger::Effect::Wait);
+    QCOMPARE(l.Run(key), first);
+    QCOMPARE(l.Finished(key, first), EdgePermissionSyncLedger::Settle::Again);
+    QVERIFY(!l.IsSynced(key));
+    QCOMPARE(l.Finished(key, l.Run(key)), EdgePermissionSyncLedger::Settle::Done);
+    QVERIFY(l.IsSynced(key));
+
+    l.TableChanged(QSet<QString>() << key);
+    const int third = l.Run(key);
+    l.Forget(key);
+    QCOMPARE(l.Finished(key, third), EdgePermissionSyncLedger::Settle::Stale);
+    QVERIFY(!l.IsRunning(key));
+    QCOMPARE(l.Enter(key), EdgePermissionSyncLedger::Effect::Start);
+
+    l.TableChanged(QSet<QString>());
+    QVERIFY(l.IsRunning(key));
+    QCOMPARE(l.Finished(key, l.Run(key)), EdgePermissionSyncLedger::Settle::Stale);
+    QCOMPARE(l.Enter(key), EdgePermissionSyncLedger::Effect::Start);
+}
+
+void tst_edgestate::theViewsWaitingForThePermissionsAreHandedOverOnce(){
+    EdgeProfileCoordinatorOf<FakeView> profiles;
+    FakeView first, second, going;
+    const QString key = QStringLiteral("p");
+
+    QCOMPARE(profiles.EnterPermissionSync(key, &first), EdgePermissionSyncLedger::Effect::Start);
+    QCOMPARE(profiles.EnterPermissionSync(key, &second), EdgePermissionSyncLedger::Effect::Wait);
+    QCOMPARE(profiles.EnterPermissionSync(key, &going), EdgePermissionSyncLedger::Effect::Wait);
+    profiles.Closed(&going);
+
+    profiles.Permissions().TableChanged(QSet<QString>() << key);
+    QList<QPointer<FakeView>> waiters;
+    QCOMPARE(profiles.SettlePermissionSync(key, profiles.Permissions().Run(key), &waiters),
+             EdgePermissionSyncLedger::Settle::Again);
+    QVERIFY(waiters.isEmpty());
+    QVERIFY(!profiles.IsPermissionSynced(key));
+
+    QCOMPARE(profiles.SettlePermissionSync(key, profiles.Permissions().Run(key), &waiters),
+             EdgePermissionSyncLedger::Settle::Done);
+    QCOMPARE(waiters.length(), 2);
+    QVERIFY(profiles.IsPermissionSynced(key));
+
+    waiters.clear();
+    profiles.Permissions().TableChanged(QSet<QString>() << key);
+    QCOMPARE(profiles.SettlePermissionSync(key, profiles.Permissions().Run(key), &waiters),
+             EdgePermissionSyncLedger::Settle::Done);
+    QVERIFY(waiters.isEmpty());
+    FakeView late;
+    QCOMPARE(profiles.EnterPermissionSync(key, &late), EdgePermissionSyncLedger::Effect::Proceed);
+}
+
+void tst_edgestate::everyFailureOfARunSaysWhereItWas(){
+    const QString profile = EdgeSourceTextOf(QStringLiteral("edgewebviewprofile.cpp"));
+    QVERIFY2(!profile.isEmpty(), "edgewebviewprofile.cpp was not read; check VANILLA_SOURCE_DIR");
+    const int run = profile.indexOf(QStringLiteral("void EdgeWebView::RunPermissionSync("));
+    const int runEnd = profile.indexOf(QStringLiteral("\n}"), run);
+    QVERIFY2(run >= 0 && runEnd > run, "'RunPermissionSync' has gone");
+    const QString body = profile.mid(run, runEnd - run);
+
+    const QStringList failures = QStringList()
+        << QStringLiteral("SettlePermissionSync(key, run, false);")
+        << QStringLiteral("answered(false);")
+        << QStringLiteral("answered(SUCCEEDED(result));");
+    int from = 0, found = 0;
+    for(;;){
+        int at = -1, length = 0;
+        foreach(const QString &failure, failures){
+            const int next = body.indexOf(failure, from);
+            if(next >= 0 && (at < 0 || next < at)){ at = next; length = failure.length();}
+        }
+        if(at < 0) break;
+        const QString before = body.mid(from, at - from);
+        const bool write = body.mid(at, length).startsWith(QStringLiteral("answered("));
+        QVERIFY2(before.contains(write ? QStringLiteral("WarnPermissionNotWritten(key, change, ")
+                                       : QStringLiteral("qWarning()")),
+                 qPrintable(QStringLiteral("a failure of the run says nothing of itself: ") + body.mid(at, length)));
+        from = at + length;
+        ++found;
+    }
+    QCOMPARE(found, 5);
+    QVERIFY2(body.contains(QStringLiteral("if(!complete) qWarning()")), "a store read only in part says nothing");
 }
 
 void tst_edgestate::aControllerArrivingAfterTheViewIsGoneIsClosedOnce(){
@@ -3910,10 +4137,10 @@ void tst_edgestate::anyRequestEndsThePreviousMenuBeforeReadingItsOwnItems(){
     const int handler = source.indexOf(QStringLiteral("add_ContextMenuRequested"));
     const int end = source.indexOf(QStringLiteral("ContextMenuRequested, token"), handler);
     QVERIFY(handler > 0 && end > handler);
-    const int ends = source.indexOf(QStringLiteral("CompleteContextMenu(m_Impl->m_ContextMenu.Generation(), -1)"), handler);
+    const int ends = source.indexOf(QStringLiteral("CompleteContextMenu(m_Impl->m_ContextMenu.Generation(), -1, false)"), handler);
     const int closes = source.indexOf(QStringLiteral("m_ContextMenuWidget->close()"), handler);
     const int reads = source.indexOf(QStringLiteral("get_MenuItems(&items)"), handler);
-    const int branch = source.indexOf(QStringLiteral("if(!target.m_ExtensionItems.isEmpty())"), handler);
+    const int branch = source.indexOf(QStringLiteral("if(!target.m_ExtensionItems.isEmpty() || target.m_PasteCommandId >= 0)"), handler);
     QVERIFY(ends > handler && closes > handler && reads > handler && branch > handler);
     QVERIFY(branch < end);
     QVERIFY(ends < closes);
@@ -3962,7 +4189,7 @@ void tst_edgestate::everyCompletionIsCounted(){
     const int direct = body.indexOf(QStringLiteral("->Complete()"));
     const int gone = body.lastIndexOf(QStringLiteral("if(!here){"), direct);
     QVERIFY(gone > 0 && direct - gone < 200);
-    QVERIFY(body.contains(QStringLiteral("CountedComplete(nullptr, deferral.Get(), -1)")));
+    QVERIFY(body.contains(QStringLiteral("CountedComplete(nullptr, deferral.Get(), -1, false)")));
     const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
     const int counted = input.indexOf(QStringLiteral("void EdgeWebView::CountedComplete("));
     const int nextAfter = input.indexOf(QStringLiteral("\nvoid EdgeWebView::"), counted + 1);
@@ -4015,7 +4242,7 @@ void tst_edgestate::aRetiringViewCompletesItsMenuLast(){
     const int end = source.indexOf(ends, entered.capturedEnd());
     QVERIFY(end > entered.capturedEnd());
     const QString retire = source.mid(entered.capturedStart(), end - entered.capturedStart());
-    const int finish = retire.indexOf(QStringLiteral("FinishContextMenu(-1)"));
+    const int finish = retire.indexOf(QStringLiteral("FinishContextMenu(-1, false)"));
     const int closed = retire.indexOf(QStringLiteral("m_Controller->Close()"));
     const int released = retire.indexOf(QStringLiteral("ReleaseCompositionTree()"));
     QVERIFY(finish > 0 && closed > 0 && released > 0);
@@ -4235,7 +4462,7 @@ void tst_edgestate::aDeletionAskedForDuringTheTeardownIsPostedAfterIt(){
     QVERIFY(deleteLater > 0 && held > deleteLater && held < retire);
     const int retireFn = view.indexOf(QStringLiteral("void EdgeWebView::Retire(bool force){"));
     const int on = view.indexOf(QStringLiteral("m_Impl->m_Retiring = true;"), retireFn);
-    const int finish = view.indexOf(QStringLiteral("FinishContextMenu(-1);"), retireFn);
+    const int finish = view.indexOf(QStringLiteral("FinishContextMenu(-1, false);"), retireFn);
     const int off = view.indexOf(QStringLiteral("m_Impl->m_Retiring = false;"), retireFn);
     const int posted = view.indexOf(QStringLiteral("if(m_Impl->m_ContextMenu.TakeDeleteLater()) View::DeleteLater();"), retireFn);
     QVERIFY(retireFn > 0 && on > retireFn && finish > on && off > finish && posted > off);
@@ -4351,6 +4578,91 @@ void tst_edgestate::theBackendHoldsOnlyWhatTheLedgerKnowsAndAskersGoWithTheirVie
     QVERIFY2(handlers.contains(QStringLiteral("m_Impl->m_HostToken.data(), args")), "the view's 'Ask' is not owned by the token");
 }
 
+void tst_edgestate::theCopiesMadeAheadAreWaitedForBeforeTheEnvironmentAndStartOnlyWhereSafe(){
+    const QString extensions = EdgeSourceTextOf(QStringLiteral("edgeextensions.cpp"));
+    QFile bootFile(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) + QStringLiteral("/app/application.cpp"));
+    QVERIFY2(bootFile.open(QIODevice::ReadOnly), "application.cpp was not read; check VANILLA_SOURCE_DIR");
+    const QString boot = QString::fromUtf8(bootFile.readAll()).remove(QLatin1Char('\r'));
+    QVERIFY2(!extensions.isEmpty(), "the Edge sources were not read; check VANILLA_SOURCE_DIR");
+
+    const int pin = extensions.indexOf(QStringLiteral("void EdgeEnvironment::PinExtensionCopies(){"));
+    const int pinEnd = extensions.indexOf(QStringLiteral("\n}"), pin);
+    QVERIFY2(pin >= 0 && pinEnd > pin, "'PinExtensionCopies' has gone");
+    const QString pinBody = extensions.mid(pin, pinEnd - pin);
+    const int joined = pinBody.indexOf(QStringLiteral("JoinCopiesAhead();"));
+    const int loop = pinBody.indexOf(QStringLiteral("network/@Extensions"));
+    QVERIFY2(joined >= 0 && loop > joined, "the environment no longer waits for the copies made ahead before it pins them");
+    QVERIFY2(pinBody.indexOf(QStringLiteral("PinnedCopy(manifest)"), loop) > loop, "the environment no longer pins every registered extension itself");
+
+    const int join = extensions.indexOf(QStringLiteral("void JoinCopiesAhead(){"));
+    const int joinEnd = extensions.indexOf(QStringLiteral("\n    }"), join);
+    QVERIFY2(join >= 0 && joinEnd > join, "'JoinCopiesAhead' has gone");
+    const QString joinBody = extensions.mid(join, joinEnd - join);
+    const int lifted = joinBody.indexOf(QStringLiteral("setPriority(QThread::NormalPriority)"));
+    QVERIFY2(lifted >= 0 && joinBody.indexOf(QStringLiteral("->wait()")) > lifted, "the copies made ahead are waited for at the idle priority");
+    int priorities = 0;
+    for(int at = extensions.indexOf(QStringLiteral("setPriority(")); at >= 0; at = extensions.indexOf(QStringLiteral("setPriority("), at + 1)){
+        const int lineStart = extensions.lastIndexOf(QLatin1Char('\n'), at) + 1;
+        QVERIFY2(extensions.mid(lineStart, at - lineStart).contains(QStringLiteral("->isRunning())")), "a priority is lifted on a thread which may have finished");
+        ++priorities;
+    }
+    QCOMPARE(priorities, 2);
+
+    const int ahead = extensions.indexOf(QStringLiteral("void EdgeWebView::StartExtensionCopiesAhead(){"));
+    const int aheadEnd = extensions.indexOf(QStringLiteral("\n}"), ahead);
+    QVERIFY2(ahead >= 0 && aheadEnd > ahead, "'StartExtensionCopiesAhead' has gone");
+    const QString body = extensions.mid(ahead, aheadEnd - ahead);
+    const int made = body.indexOf(QStringLiteral("QThread::create("));
+    QVERIFY2(made > 0, "the copies are no longer made ahead on a thread");
+    int previous = -1;
+    foreach(const QString &asked, QStringList()
+            << QStringLiteral("if(paths.isEmpty()) return;")
+            << QStringLiteral("if(!ExtensionHost::ShimsOn()) return;")
+            << QStringLiteral("hasCapability(QPlatformIntegration::ThreadedPixmaps)) return;")
+            << QStringLiteral(".isEmpty()) return;\n    ExtensionHost::CopyRoot();")
+            << QStringLiteral("const bool edge = QFileInfo(EdgeEnvironment::UserDataFolder()).isDir() && RuntimeAvailable();")){
+        const int at = body.indexOf(asked);
+        QVERIFY2(at > previous && at < made, qPrintable(QStringLiteral("not asked, or not in order, before the thread is made: ") + asked));
+        previous = at;
+    }
+    QVERIFY2(body.indexOf(QStringLiteral("ExtensionHost::KeyFor("), 0) < made, "the process's secret is not filled before the thread");
+    const QString thread = body.mid(made);
+    QVERIFY2(thread.contains(QStringLiteral("if(ids.contains(manifest.id)) continue;")), "the thread makes a copy for a second registration of the same id, which takes the first's away");
+    QVERIFY2(thread.contains(QStringLiteral("else if(edge) later <<")), "the thread makes the disabled extensions' copies for a data which does not run Edge");
+    QVERIFY2(thread.contains(QStringLiteral("off.insert(ExtensionManifest::RegistrationKey(path));"))
+             && thread.contains(QStringLiteral("if(!off.contains(ExtensionManifest::RegistrationKeyOfNormalized(manifest.path))) sources <<")),
+             "the thread reads the list of the disabled by its letters, not by the key 'Reconcile' compares by");
+    const int migrate = extensions.indexOf(QStringLiteral("void Migrate(QList<ExtensionItem> items, SnapshotDone done){"));
+    const int migrateFirst = extensions.indexOf(QStringLiteral("if(current.contains(manifest.id)) continue;"), migrate);
+    const int migratePinned = extensions.indexOf(QStringLiteral("PinnedCopy(manifest, &copy, &keyless)"), migrate);
+    QVERIFY2(migrate >= 0 && migrateFirst > migrate && migratePinned > migrateFirst, "'Migrate' makes a copy for a second registration of the same id, which takes the first's away");
+    QCOMPARE(thread.count(QStringLiteral("PinnedCopy(")), 1);
+    QVERIFY2(thread.contains(QStringLiteral("PinnedCopy(source.first, source.second, nullptr, nullptr, edge);")), "the thread pins for a data which does not run Edge, or makes nothing ahead for it");
+    const int pinnedCopy = extensions.indexOf(QStringLiteral("QString PinnedCopy(const QString &folder, const QString &id, QString *copy = nullptr, bool *keyless = nullptr, bool pin = true){"));
+    QVERIFY2(pinnedCopy >= 0, "'PinnedCopy' no longer takes whether to pin");
+    const int notPinned = extensions.indexOf(QStringLiteral("if(!pin || made == folder) return made;"), pinnedCopy);
+    const int pinnedThere = extensions.indexOf(QStringLiteral("ExtensionCopy::Pin("), pinnedCopy);
+    QVERIFY2(notPinned > pinnedCopy && pinnedThere > notPinned, "'PinnedCopy' pins where it was asked not to");
+    QVERIFY2(pinBody.indexOf(QStringLiteral("if(ids.contains(manifest.id)) continue;"), loop) > loop, "the environment pins a second registration of the same id, which takes the first's copy away");
+    QVERIFY2(body.indexOf(QStringLiteral("->start(QThread::IdlePriority)"), made) > made, "the copies made ahead no longer start idle");
+    QVERIFY2(body.indexOf(QStringLiteral("qAddPostRoutine(&JoinCopiesAhead)"), made) > made, "the copies made ahead are not waited for at the end");
+
+    const int settings = boot.indexOf(QStringLiteral("    LoadGlobalSettings();\n"));
+    const int start = boot.indexOf(QStringLiteral("EdgeWebView::StartExtensionCopiesAhead();"));
+    const int shells = boot.indexOf(QStringLiteral("win->ShowWithFirstFrame();\n    }"));
+    const int hurry = boot.indexOf(QStringLiteral("EdgeWebView::HurryExtensionCopiesAhead();"));
+    const int profiles = boot.indexOf(QStringLiteral("m_NetworkController = new NetworkController();"));
+    QVERIFY2(settings >= 0 && start > settings && shells > start && hurry > shells && profiles > hurry,
+             "the copies made ahead do not start behind the settings, or are not hurried behind the shells and before the profiles");
+
+    const QString environment = EdgeSourceTextOf(QStringLiteral("edgeenvironment.cpp"));
+    const int creation = environment.indexOf(QStringLiteral("void EdgeEnvironment::StartCreation(){"));
+    const int pinned = environment.indexOf(QStringLiteral("PinExtensionCopies();"), creation);
+    const int environmentMade = environment.indexOf(QStringLiteral("CreateCoreWebView2EnvironmentWithOptions"), creation);
+    QVERIFY2(creation >= 0 && pinned > creation && environmentMade > pinned,
+             "the extensions are no longer pinned before the environment is made");
+}
+
 void tst_edgestate::theRelayIsAViewOfItsOwnKindSeenByTheEngineAndNavigatedOnce(){
     const QString source = EdgeSourceTextOf(QStringLiteral("edgeextensions.cpp"));
     QVERIFY2(!source.isEmpty(), "the Edge sources were not read; check VANILLA_SOURCE_DIR");
@@ -4386,6 +4698,135 @@ void tst_edgestate::theRelayIsAViewOfItsOwnKindSeenByTheEngineAndNavigatedOnce()
              "a relay is made for a row which is not loaded, enabled and keyed");
     QVERIFY2(rule.contains(QStringLiteral("if(m_Reconciling){ m_ReconcileAgain = true; return; }")),
              "a reconciliation from inside a reconciliation (the engine pumps) is not put off");
+}
+
+void tst_edgestate::focusComingAndGoingReachesTheViewsOwnHooks(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const int got = source.indexOf(QStringLiteral("add_GotFocus"));
+    const int lost = source.indexOf(QStringLiteral("add_LostFocus"));
+    QVERIFY(got != -1);
+    QVERIFY(lost > got);
+
+    const QString gotBody = source.mid(got, lost - got);
+    const int guard = gotBody.indexOf(QStringLiteral("m_TreeBank->GetCurrentView().get() == this"));
+    const int focusIn = gotBody.indexOf(QStringLiteral("OnFocusIn()"));
+    QVERIFY2(focusIn != -1, "a click into an Edge page no longer reaches View::OnFocusIn");
+    QVERIFY2(guard != -1 && guard < focusIn, "OnFocusIn runs ahead of the D-306 guard");
+    QVERIFY2(!gotBody.contains(QStringLiteral("SetFocus")), "GotFocus sets focus again (D-306)");
+
+    const int cursor = source.indexOf(QStringLiteral("add_CursorChanged"), lost);
+    const QString lostBody = source.mid(lost, (cursor == -1 ? source.length() : cursor) - lost);
+    QVERIFY2(lostBody.contains(QStringLiteral("OnFocusOut()")), "focus leaving an Edge page no longer reaches View::OnFocusOut");
+}
+
+void tst_edgestate::theEnginesOwnEditKeysStayWithThePage(){
+    const QString copy = QStringLiteral("Copy"), cut = QStringLiteral("Cut"), paste = QStringLiteral("Paste");
+    QVERIFY(IsPagesOwnEditKey(paste, QKeySequence(Qt::CTRL  | Qt::Key_V)));
+    QVERIFY(IsPagesOwnEditKey(paste, QKeySequence(Qt::SHIFT | Qt::Key_Insert)));
+    QVERIFY(IsPagesOwnEditKey(copy,  QKeySequence(Qt::CTRL  | Qt::Key_C)));
+    QVERIFY(IsPagesOwnEditKey(copy,  QKeySequence(Qt::CTRL  | Qt::Key_Insert)));
+    QVERIFY(IsPagesOwnEditKey(cut,   QKeySequence(Qt::CTRL  | Qt::Key_X)));
+    QVERIFY(IsPagesOwnEditKey(cut,   QKeySequence(Qt::SHIFT | Qt::Key_Delete)));
+    QKeyEvent event(QEvent::KeyPress, Application::JsKeyToQtKey(0x56), Qt::ControlModifier);
+    QVERIFY(IsPagesOwnEditKey(paste, Application::MakeKeySequence(&event)));
+    QVERIFY(!IsPagesOwnEditKey(paste, QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V)));
+    QVERIFY(!IsPagesOwnEditKey(paste, QKeySequence(Qt::Key_P)));
+    QVERIFY(!IsPagesOwnEditKey(paste, QKeySequence(Qt::CTRL | Qt::Key_Insert)));
+    QVERIFY(!IsPagesOwnEditKey(copy,  QKeySequence(Qt::CTRL | Qt::Key_V)));
+    QVERIFY(!IsPagesOwnEditKey(paste, QKeySequence()));
+    QVERIFY(!IsPagesOwnEditKey(QStringLiteral("PasteAndMatchStyle"), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V)));
+    QVERIFY(!IsPagesOwnEditKey(QStringLiteral("Undo"), QKeySequence(Qt::CTRL | Qt::Key_Z)));
+    QVERIFY(!IsPagesOwnEditKey(QStringLiteral("SelectAll"), QKeySequence(Qt::CTRL | Qt::Key_A)));
+    QVERIFY(!IsPagesOwnEditKey(QString(), QKeySequence(Qt::CTRL | Qt::Key_V)));
+
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int hook = input.indexOf(QStringLiteral("bool EdgeWebView::HandleAcceleratorKey("));
+    const int movement = input.indexOf(QStringLiteral("if(IsMovementAction(action)) return false;"), hook);
+    const int edit = input.indexOf(QStringLiteral("if(IsPagesOwnEditKey(action, sequence)) return false;"), hook);
+    const int acts = input.indexOf(QStringLiteral("if(!View::TriggerAction(action)) return false;"), hook);
+    const int marked = input.indexOf(QStringLiteral("m_Impl->m_HandledKeys.insert(virtualKey);"), hook);
+    QVERIFY(hook > 0 && movement > hook && edit > movement && acts > edit && marked > acts);
+}
+
+void tst_edgestate::theMenusPasteIsMadeTheBackends(){
+    QMenu menu;
+    QAction *before = menu.addAction(QStringLiteral("Undo"));
+    QAction *paste = menu.addAction(QStringLiteral("Paste"));
+    paste->setObjectName(QStringLiteral("Paste"));
+    paste->setToolTip(QStringLiteral("tip"));
+    paste->setEnabled(false);
+    QAction *after = menu.addAction(QStringLiteral("Cut"));
+    QList<int> chosen;
+    QVERIFY(ReplaceEdgePasteAction(&menu, paste, 50152, [&chosen](int id){ chosen.append(id);}));
+    const QList<QAction*> actions = menu.actions();
+    QCOMPARE(actions.size(), 3);
+    QCOMPARE(actions.at(0), before);
+    QCOMPARE(actions.at(2), after);
+    QAction *own = actions.at(1);
+    QVERIFY(own != paste);
+    QCOMPARE(own->text(), QStringLiteral("Paste"));
+    QCOMPARE(own->objectName(), QStringLiteral("Paste"));
+    QCOMPARE(own->toolTip(), QStringLiteral("tip"));
+    QVERIFY(!own->isEnabled());
+    QCOMPARE(own->data().toInt(), 50152);
+    own->setEnabled(true);
+    own->trigger();
+    QCOMPARE(chosen, QList<int>() << 50152);
+    paste->trigger();
+    QCOMPARE(chosen.size(), 1);
+
+    QMenu other;
+    QAction *elsewhere = other.addAction(QStringLiteral("Paste"));
+    QVERIFY(!ReplaceEdgePasteAction(&menu, nullptr, 1, [](int){}));
+    QVERIFY(!ReplaceEdgePasteAction(&menu, elsewhere, 1, [](int){}));
+    QVERIFY(!ReplaceEdgePasteAction(&menu, own, -1, [](int){}));
+    QCOMPARE(menu.actions().size(), 3);
+    QCOMPARE(menu.actions().at(1), own);
+    QVERIFY(!ReplaceEdgePasteAction(nullptr, own, 1, [](int){}));
+
+    QVERIFY(menu.separatorsCollapsible());
+}
+
+void tst_edgestate::aMenuWithADeferralRemembersItselfAndSwapsItsPasteBeforeItOpens(){
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int function = input.indexOf(QStringLiteral("void EdgeWebView::DisplayContextMenuFor("));
+    const int next = input.indexOf(QStringLiteral("\nvoid EdgeWebView::"), function + 1);
+    QVERIFY(function > 0 && next > function);
+    const QString body = input.mid(function, next - function);
+    QVERIFY(!body.contains(QStringLiteral("if(!target.m_ExtensionItems.isEmpty())")));
+    const int chosen = body.indexOf(QStringLiteral("std::shared_ptr<int> chosen"));
+    const int gate = body.indexOf(QStringLiteral("if(generation){"), chosen);
+    const int paste = body.indexOf(QStringLiteral("const int paste = target.m_PasteCommandId;"), gate);
+    const int remembered = body.indexOf(QStringLiteral("alive->m_Impl->m_ContextMenuWidget = menu;"), paste);
+    const int swapped = body.indexOf(QStringLiteral("ReplaceEdgePasteAction(menu, alive->page()->Action(Page::_Paste), paste,"), remembered);
+    const int items = body.indexOf(QStringLiteral("AddEdgeMenuItems(menu, items,"), swapped);
+    const int shows = body.indexOf(QStringLiteral("page()->DisplayContextMenu("), items);
+    QVERIFY(chosen > 0 && gate > chosen && paste > gate && remembered > paste && swapped > remembered && items > swapped && shows > items);
+    const int whose = body.indexOf(QStringLiteral("const bool extension = id >= 0 && id != target.m_PasteCommandId;"), shows);
+    QVERIFY(whose > shows);
+    const int counted = input.indexOf(QStringLiteral("void EdgeWebView::CountedComplete("));
+    const int taken = input.indexOf(QStringLiteral("if(SUCCEEDED(args->put_SelectedCommandId(commandId))){"), counted);
+    const int only = input.indexOf(QStringLiteral("if(extension){"), taken);
+    const int told = input.indexOf(QStringLiteral("ExtensionHost::MenuPicked("), only);
+    QVERIFY(counted > 0 && taken > counted && only > taken && told > only);
+    const QString page = EdgeSourceTextOf(QStringLiteral("edgewebviewpage.cpp"));
+    const int standIn = page.indexOf(QStringLiteral("void EdgeWebView::Paste(){"));
+    const int match = page.indexOf(QStringLiteral("void EdgeWebView::PasteAndMatchStyle(){"), standIn);
+    const int afterMatch = page.indexOf(QStringLiteral("\nvoid EdgeWebView::"), match + 1);
+    QVERIFY(standIn > 0 && match > standIn && afterMatch > match);
+    const QString both = page.mid(standIn, afterMatch - standIn);
+    QVERIFY(!both.contains(QStringLiteral("m_PasteCommandId")));
+    QVERIFY(!both.contains(QStringLiteral("chosen")));
+    QVERIFY(!both.contains(QStringLiteral("ReplaceEdgePasteAction")));
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    const int handler = handlers.indexOf(QStringLiteral("add_ContextMenuRequested"));
+    const int cleared = handlers.indexOf(QStringLiteral("target.m_ExtensionItems.clear();"), handler);
+    const int pasteCleared = handlers.indexOf(QStringLiteral("target.m_PasteCommandId = -1;"), cleared);
+    const int completed = handlers.indexOf(QStringLiteral("CountedComplete(nullptr, deferral.Get(), -1, false);"), pasteCleared);
+    QVERIFY(handler > 0 && cleared > handler && pasteCleared > cleared && completed > pasteCleared);
 }
 
 QTEST_MAIN(tst_edgestate)

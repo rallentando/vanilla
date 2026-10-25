@@ -6,6 +6,7 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDockWidget>
+#include "docktitlebar.hpp"
 #include <QEvent>
 #include <QStackedWidget>
 #include <QTimer>
@@ -75,6 +76,7 @@ SidePanels::SidePanels(MainWindow *window)
     m_TabDock->setWidget(m_TabStack);
     for(QDockWidget *dock : { m_Dock, m_TabDock }){
         dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+        dock->setTitleBarWidget(new DockTitleBar(dock));
         dock->installEventFilter(this);
         window->addDockWidget(Qt::RightDockWidgetArea, dock);
     }

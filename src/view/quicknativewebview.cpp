@@ -319,10 +319,6 @@ void QuickNativeWebView::OnSetMaster(WeakView){}
 
 void QuickNativeWebView::OnSetSlave(WeakView){}
 
-void QuickNativeWebView::OnSetJsObject(_View*){}
-
-void QuickNativeWebView::OnSetJsObject(_Vanilla*){}
-
 void QuickNativeWebView::OnLoadStarted(){
     m_LoadTail.Started();
 
@@ -376,8 +372,7 @@ void QuickNativeWebView::OnLoadFinished(bool ok){
     emit ViewChanged();
     emit statusBarMessage(tr("Finished loading."));
 
-    if(visible() && m_TreeBank &&
-       m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
+    if(visible() && m_TreeBank){
         UpdateThumbnail();
     }
 }
@@ -483,7 +478,7 @@ bool QuickNativeWebView::SaveHistory(){
     const QByteArray already = GetViewNode()->GetHistoryData();
     if(!already.isEmpty() && !NativeHistory::LooksLikeOurs(already)) return false;
 
-    GetViewNode()->SetHistoryData(data);
+    GetViewNode()->SetHistoryData(data, KeepsOffDisk());
     return true;
 }
 
@@ -594,7 +589,9 @@ void QuickNativeWebView::UpdateIcon(const QUrl &iconUrl){
     m_Icon = QIcon();
     if(!page()) return;
     QString host = url().host();
+    const bool offTheRecord = Page::OffTheRecord(this);
     QNetworkRequest req(iconUrl);
+    NetworkAccessManager::SetRequestOffTheRecord(req, offTheRecord);
     DownloadItem *item = NetworkController::Download
         (page()->GetNetworkAccessManager(),
          req, NetworkController::ToVariable);
@@ -603,11 +600,11 @@ void QuickNativeWebView::UpdateIcon(const QUrl &iconUrl){
 
     item->setParent(base());
 
-    connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
+    connect(item, &DownloadItem::DownloadResult, [this, host, offTheRecord](const QByteArray &result){
         QPixmap pixmap;
         if(pixmap.loadFromData(result)){
             QIcon icon = QIcon(pixmap);
-            Application::RegisterIcon(host, icon);
+            Application::RegisterIcon(host, icon, offTheRecord || Page::OffTheRecord(this));
             if(url().host() == host) m_Icon = icon;
         }
     });
@@ -627,6 +624,7 @@ void QuickNativeWebView::HandleJavascriptConsoleMessage(int level, const QString
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
         if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+        Application::InputScope key(true);
         KeyPressEvent(&ke);
     } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
@@ -898,11 +896,11 @@ void QuickNativeWebView::ExitFullScreen(){
 }
 
 void QuickNativeWebView::AddSearchEngine(QPoint pos){
-    Q_UNUSED(pos)
+    if(page()) page()->AddSearchEngineAt(m_ViewNode ? pos / m_ViewNode->GetZoom() : pos);
 }
 
 void QuickNativeWebView::AddBookmarklet(QPoint pos){
-    Q_UNUSED(pos)
+    if(page()) page()->AddBookmarkletAt(pos);
 }
 
 void QuickNativeWebView::timerEvent(QTimerEvent *ev){

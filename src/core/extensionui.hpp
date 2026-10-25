@@ -232,6 +232,7 @@ private:
 };
 
 QString InstalledFileName(const QString &profileKey);
+QString RegisteredFileName(const QString &profileKey);
 
 struct Command {
     QString name;
@@ -266,6 +267,19 @@ private:
         Owed owed;
     };
     QMap<QString, Entry> m_Entries;
+};
+
+class Registered {
+public:
+    QString CopyOf(const QString &id) const { return m_Copies.value(id); }
+    bool Set(const QString &id, const QString &copy);
+    bool Forget(const QString &id) { return m_Copies.remove(id) > 0; }
+    QJsonObject ToJson() const;
+    static Registered FromJson(const QJsonObject &json, bool *damaged);
+    static bool Stale(bool known, const QString &before, const QString &copy, bool unloaded);
+
+private:
+    QMap<QString, QString> m_Copies;
 };
 
 class SidePanel {

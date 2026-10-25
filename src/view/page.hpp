@@ -116,6 +116,10 @@ public:
     static bool ShiftMod();
     static bool CtrlMod();
     static bool Activate();
+    static std::function<void(QList<QNetworkRequest>)>
+    AsAskedBy(std::function<void(QList<QNetworkRequest>)> callBack);
+
+    static bool OffTheRecord(View *view);
 
 public slots:
     void Download(const QNetworkRequest &req,
@@ -240,6 +244,8 @@ public slots:
     void SearchWith();
     void AddSearchEngine();
     void AddBookmarklet();
+    void AddSearchEngineAt(QPoint);
+    void AddBookmarkletAt(QPoint);
     void InspectElement();
 
     void CopyUrl();

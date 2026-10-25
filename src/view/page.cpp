@@ -9,6 +9,7 @@
 #include <QSet>
 #include <QNetworkRequest>
 #include <QStyle>
+#include <QTimer>
 
 #include "view.hpp"
 #include "webengineview.hpp"
@@ -16,6 +17,7 @@
 #include "webenginepage.hpp"
 #include "edgewebview.hpp"
 #include "treebank.hpp"
+#include "menukeys.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "mainwindow.hpp"
@@ -24,6 +26,7 @@
 #include "networkcontroller.hpp"
 #include "application.hpp"
 #include "dialog.hpp"
+#include "directorypage.hpp"
 
 #undef LoadImage
 
@@ -416,10 +419,12 @@ SearchEngine Page::PrimarySearchEngine(){
 }
 
 bool Page::ShiftMod(){
+    if(Application::ByKey()) return false;
     return Application::keyboardModifiers() & Qt::ShiftModifier;
 }
 
 bool Page::CtrlMod(){
+    if(Application::ByKey()) return false;
     return Application::keyboardModifiers() & Qt::ControlModifier
 #if defined(Q_OS_MAC)
         || Application::keyboardModifiers() & Qt::MetaModifier
@@ -427,10 +432,24 @@ bool Page::CtrlMod(){
         ;
 }
 
+std::function<void(QList<QNetworkRequest>)>
+Page::AsAskedBy(std::function<void(QList<QNetworkRequest>)> callBack){
+    const bool byKey = Application::ByKey();
+    return [callBack, byKey](QList<QNetworkRequest> reqs){
+        Application::InputScope asked(byKey);
+        callBack(reqs);
+    };
+}
+
 bool Page::Activate(){
     if(View::ActivateNewViewDefault())
         return !CtrlMod();
     else return CtrlMod();
+}
+
+bool Page::OffTheRecord(View *view){
+    if(!view) return true;
+    return DirectoryPage::SaysPrivate(view->SpecificSettings()) || view->IsOffTheRecord();
 }
 
 void Page::Download(const QNetworkRequest &req,
@@ -445,11 +464,18 @@ void Page::Download(const QNetworkRequest &req,
 
     DownloadItem *item = 0;
 
+    const QUrl source = m_View->url();
+    const bool offTheRecord = OffTheRecord(m_View);
+    NetworkAccessManager::SetRequestOffTheRecord(navigation, offTheRecord);
     if(file.isEmpty()){
         item = NetworkController::Download(nam, navigation);
+        if(item) item->SetSource(source, offTheRecord);
     } else {
         item = NetworkController::Download(nam, navigation, NetworkController::SelectedDirectory);
-        if(item) item->SetPathAndReady(file);
+        if(item){
+            item->SetSource(source, offTheRecord);
+            item->SetPathAndReady(file);
+        }
     }
 }
 
@@ -475,6 +501,7 @@ void Page::SetSource(const QUrl &url){
     QNetworkRequest req(other);
     req.setRawHeader("Referer", other.toEncoded());
     NetworkAccessManager::SetRequestPurpose(req, NetworkAccessManager::Navigation);
+    NetworkAccessManager::SetRequestOffTheRecord(req, OffTheRecord(m_View));
     NetworkAccessManager *nam = GetNetworkAccessManager();
     if(!nam) return;
     DownloadItem *item =
@@ -1069,6 +1096,206 @@ void Page::AddBookmarklet(){
     }
 }
 
+void Page::AddSearchEngineAt(QPoint pos){
+    m_View->CallWithGotCurrentBaseUrl([this, pos](QUrl base){
+
+    m_View->CallWithEvaluatedJavaScriptResult(QStringLiteral(
+"(function(){\n"
+"    var x = %1;\n"
+"    var y = %2;\n"
+"    var elem = document.elementFromPoint(x, y);\n"
+"    while(elem && (elem.tagName == \"FRAME\" || elem.tagName == \"IFRAME\")){\n"
+"        try{\n"
+"            var frameDocument = elem.contentDocument;\n"
+"            var rect = elem.getBoundingClientRect();\n"
+"            x -= rect.left;\n"
+"            y -= rect.top;\n"
+"            elem = frameDocument.elementFromPoint(x, y);\n"
+"        }\n"
+"        catch(e){ break;}\n"
+"    }\n"
+"    if(!elem) return {};\n"
+"    var name = elem.name;\n"
+"    var form = elem;\n"
+"    while(form && form.tagName != \"FORM\"){\n"
+"        form = form.parentNode;\n"
+"    }\n"
+"    if(!form) return {};\n"
+"    var encode = form.getAttribute(\"accept-charset\") || form.ownerDocument.charset || \"UTF-8\";\n"
+"    var method = form.method || \"get\";\n"
+"    if(method.toLowerCase() != \"get\") return {};\n"
+"    var result = {};\n"
+"    var queries = {};\n"
+"    var engines = {};\n"
+"    var inputs = form.getElementsByTagName(\"input\");\n"
+"    var buttons = form.getElementsByTagName(\"button\");\n"
+"    var selects = form.getElementsByTagName(\"select\");\n"
+"    for(var i = 0; i < inputs.length; i++){\n"
+"        var field = inputs[i];\n"
+"        var type = (field.type || \"text\").toLowerCase();\n"
+"        var name = field.name;\n"
+"        var val = field.value;\n"
+"        if(type == \"submit\"){\n"
+"            engines[name] = val; continue;\n"
+"        } else if(type == \"text\" || type == \"search\"){\n"
+"            if(field == elem) val = \"{query}\";\n"
+"        } else if(type == \"checkbox\" || type == \"radio\"){\n"
+"            if(!field.checked) continue;\n"
+"        } else if(type != \"hidden\") continue;\n"
+"        queries[name] = val;\n"
+"    }\n"
+"    for(var i = 0; i < buttons.length; i++){\n"
+"        var button = buttons[i];\n"
+"        engines[button.name] = button.getAttribute(\"aria-label\");\n"
+"    }\n"
+"    for(var i = 0; i < selects.length; i++){\n"
+"        var select = selects[i];\n"
+"        var index = select.selectedIndex;\n"
+"        if(index != -1){\n"
+"            var options = select.getElementsByTagName(\"option\");\n"
+"            queries[select.name] = options[index].textContent;\n"
+"        }\n"
+"    }\n"
+"    var labels = form.querySelectorAll(\"label[for=\\\"\"+name+\"\\\"]\");\n"
+"    var tag = labels.length ? labels[0].innerText : \"\";\n"
+"    result[0] = encode;\n"
+"    result[1] = method;\n"
+"    result[2] = form.action;\n"
+"    result[3] = queries;\n"
+"    result[4] = engines;\n"
+"    result[5] = tag;\n"
+"    return result;\n"
+"})();").arg(pos.x()).arg(pos.y()),
+[this, base](QVariant var){
+
+    if(!var.isValid()) return;
+    QVariantList list = var.toMap().values();
+    if(list.isEmpty()) return;
+
+    QString encode = list[0].toString();
+    QString method = list[1].toString();
+    QUrl result = Page::StringToUrl(list[2].toString(), base);
+    QUrlQuery queries = QUrlQuery(result);
+    QMap<QString, QString> engines;
+    foreach(QString key, list[3].toMap().keys()){
+        QString k = QString::fromLatin1(QUrl::toPercentEncoding(key));
+        QString v = QString::fromLatin1(QUrl::toPercentEncoding(list[3].toMap()[key].toString()));
+        queries.addQueryItem(k, v);
+    }
+    foreach(QString key, list[4].toMap().keys()){
+        QString k = QString::fromLatin1(QUrl::toPercentEncoding(key));
+        QString v = QString::fromLatin1(QUrl::toPercentEncoding(list[4].toMap()[key].toString()));
+        engines[k] = v;
+    }
+    QString tag = list[5].toString();
+
+    QTimer::singleShot(0, this, [encode, result, queries, engines, tag]() mutable {
+    bool ok = true;
+    if(engines.count() > 1){
+
+        QString engine = ModalDialog::GetItem
+            (tr("Search button"),
+             tr("Select search button."),
+             engines.keys(), false, &ok);
+
+        if(!ok) return;
+        if(!engines[engine].isEmpty()){
+            queries.addQueryItem(engine, engines[engine]);
+        }
+    }
+
+    tag = ModalDialog::GetText
+        (tr("Search tag"),
+         tr("Input search tag.(It will be used as command)"),
+         tag, &ok);
+
+    if(!ok || tag.isEmpty()) return;
+
+    QStringList format;
+
+    result.setQuery(queries);
+    format
+        << result.toString()
+             .replace(QStringLiteral("{query}"),     QStringLiteral("%1"))
+             .replace(QStringLiteral("%7Bquery%7D"), QStringLiteral("%1"))
+        << encode << QStringLiteral("false");
+
+    Page::RegisterSearchEngine(tag, format);
+    });});});
+}
+
+void Page::AddBookmarkletAt(QPoint pos){
+    m_View->CallWithHitElement(pos, [this](SharedWebElement elem){
+    m_View->CallWithSelectedText([this, elem](QString text){
+    QTimer::singleShot(0, this, [elem, text](){
+
+    QUrl link  = elem ? elem->LinkUrl()  : QUrl();
+    QUrl image = elem ? elem->ImageUrl() : QUrl();
+
+    QStringList places;
+    if(!link.isEmpty())  places << tr("Link at Mouse Cursor");
+    if(!image.isEmpty()) places << tr("Image at Mouse Cursor");
+    if(!text.isEmpty())  places << tr("Selected Text");
+
+    places << tr("Manual Input");
+
+    bool ok;
+
+    QString place = ModalDialog::GetItem
+        (tr("Input type"),
+         tr("Select input type of bookmarklet."),
+         places, false, &ok);
+    if(!ok) return;
+
+    QString bookmark;
+
+    if(place == tr("Link at Mouse Cursor")){
+        bookmark = link.toString(QUrl::None);
+
+        int count = 2;
+
+        for(int i = count; i > 0; i--){
+            bookmark.replace(QStringLiteral("%%%%%%%"), QStringLiteral("%25%25%25%25%25%25%25"));
+            bookmark.replace(QStringLiteral("%%%%%"), QStringLiteral("%25%25%25%25%25"));
+            bookmark.replace(QStringLiteral("%%%"), QStringLiteral("%25%25%25"));
+            bookmark.replace(QStringLiteral("%%"), QStringLiteral("%25%25"));
+            bookmark.replace(QRegularExpression(QStringLiteral("%([^0-9A-F][0-9A-F]|[0-9A-F][^0-9A-F]|[^0-9A-F][^0-9A-F])")),
+                             QStringLiteral("%25\\1"));
+            bookmark = QUrl::fromPercentEncoding(bookmark.toLatin1());
+        }
+    }
+
+    if(place == tr("Image at Mouse Cursor")){
+        bookmark = image.toDisplayString(QUrl::FullyDecoded);
+    }
+
+    if(place == tr("Selected Text")){
+        bookmark = text;
+    }
+
+    if(place == tr("Manual Input")){
+        bookmark = ModalDialog::GetText
+            (tr("Bookmarklet body"),
+             tr("Input bookmarklet body."),
+             QString(), &ok);
+    }
+
+    if(bookmark.isEmpty()) return;
+
+    QString tag = ModalDialog::GetText
+        (tr("Bookmarklet Name"),
+         tr("Input bookmarklet name.(It will be used as command)"),
+         QString(), &ok);
+
+    if(!ok || tag.isEmpty()) return;
+
+    QStringList result;
+    result << bookmark;
+
+    Page::RegisterBookmarklet(tag, result);
+    });});});
+}
+
 void Page::InspectElement(){
     m_View->InspectElement();
 }
@@ -1439,12 +1666,15 @@ View *Page::OpenInNewDirectoryNewWindow  (QString key, QString query) { return M
 View *Page::OpenOnRootNewWindow          (QString key, QString query) { return MakeTB()->OpenOnSuitableNode (CreateQueryUrl(query, key), true                       ).get();}
 
 void Page::OpenAllUrl(){
-    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
-    m_View->CallWithSelectedHtml([this, base](QString html){
+    auto open = AsAskedBy([this](QList<QNetworkRequest> reqs){
+        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+    });
+    m_View->CallWithGotCurrentBaseUrl([this, open](QUrl base){
+    m_View->CallWithSelectedHtml([this, open, base](QString html){
 
     QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveReference);
 
-    UrlCountCheck(urls.length(), [this, urls](bool result){
+    UrlCountCheck(urls.length(), [this, open, urls](bool result){
 
     if(result){
         QList<QNetworkRequest> reqs;
@@ -1453,18 +1683,21 @@ void Page::OpenAllUrl(){
             req.setRawHeader("Referer", m_View->url().toEncoded());
             reqs << req;
         }
-        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+        open(reqs);
     }
 });});});
 }
 
 void Page::OpenAllImage(){
-    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
-    m_View->CallWithSelectedHtml([this, base](QString html){
+    auto open = AsAskedBy([this](QList<QNetworkRequest> reqs){
+        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+    });
+    m_View->CallWithGotCurrentBaseUrl([this, open](QUrl base){
+    m_View->CallWithSelectedHtml([this, open, base](QString html){
 
     QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveSource);
 
-    UrlCountCheck(urls.length(), [this, urls](bool result){
+    UrlCountCheck(urls.length(), [this, open, urls](bool result){
 
     if(result){
         QList<QNetworkRequest> reqs;
@@ -1473,18 +1706,21 @@ void Page::OpenAllImage(){
             req.setRawHeader("Referer", m_View->url().toEncoded());
             reqs << req;
         }
-        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+        open(reqs);
     }
 });});});
 }
 
 void Page::OpenTextAsUrl(){
-    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
-    m_View->CallWithSelectedText([this, base](QString text){
+    auto open = AsAskedBy([this](QList<QNetworkRequest> reqs){
+        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+    });
+    m_View->CallWithGotCurrentBaseUrl([this, open](QUrl base){
+    m_View->CallWithSelectedText([this, open, base](QString text){
 
     QList<QUrl> urls = ExtractUrlsFromText(text, base);
 
-    UrlCountCheck(urls.length(), [this, urls](bool result){
+    UrlCountCheck(urls.length(), [this, open, urls](bool result){
 
     if(result){
         QList<QNetworkRequest> reqs;
@@ -1492,7 +1728,7 @@ void Page::OpenTextAsUrl(){
             QNetworkRequest req(url);
             reqs << req;
         }
-        SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
+        open(reqs);
     }
 });});});
 }
@@ -1585,6 +1821,7 @@ QAction *Page::Action(CustomAction a, QVariant data){
     if(!webaction){
         create = true;
         m_ActionTable[a] = webaction = new QAction(this);
+        webaction->setObjectName(ActionToString(a));
     }
 
     webaction->setData(data);
@@ -1610,24 +1847,6 @@ QAction *Page::Action(CustomAction a, QVariant data){
     case _Reload:      webaction->setIcon(QIcon(Theme::Pixmap(QStringLiteral(":/resources/menu/reload.png"), Theme::BarIcon)));      break;
     case _Stop:        webaction->setIcon(QIcon(Theme::Pixmap(QStringLiteral(":/resources/menu/stop.png"), Theme::BarIcon)));        break;
     default: break;
-    }
-
-    if(create){
-        QKeySequence::StandardKey key = QKeySequence::UnknownKey;
-        switch(a){
-        case _Undo:      key = QKeySequence::Undo;      break;
-        case _Redo:      key = QKeySequence::Redo;      break;
-        case _Cut:       key = QKeySequence::Cut;       break;
-        case _Copy:      key = QKeySequence::Copy;      break;
-        case _Paste:     key = QKeySequence::Paste;     break;
-        case _SelectAll: key = QKeySequence::SelectAll; break;
-        default: break;
-        }
-        if(key != QKeySequence::UnknownKey){
-            webaction->setShortcut(QKeySequence(key));
-            webaction->setShortcutContext(Qt::WidgetShortcut);
-            webaction->setShortcutVisibleInContextMenu(true);
-        }
     }
 
     if(!create){
@@ -2018,12 +2237,15 @@ void Page::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
 
     m_View->AddRegularMenu(menu, elem);
 
+    MenuKeys::Show(menu, InputMap::ShownKeys(View::KeyLayers()));
+
     menu->exec(globalPos);
     delete menu;
 }
 
 void Page::DownloadSuggest(const QUrl& url){
     QNetworkRequest req(url);
+    NetworkAccessManager::SetRequestOffTheRecord(req, OffTheRecord(m_View));
     DownloadItem *item =
         NetworkController::Download(GetNetworkAccessManager(),
                                     req, NetworkController::ToVariable);
@@ -2048,6 +2270,7 @@ TreeBank *Page::SuitTB(){
 
 void Page::LinkReq(QAction *action,
                    std::function<void(QList<QNetworkRequest>)> callBack){
+    callBack = AsAskedBy(callBack);
 
     if(action->data().canConvert<SharedWebElement>()){
         if(SharedWebElement e = action->data().value<SharedWebElement>()){
@@ -2124,6 +2347,7 @@ void Page::LinkReq(QAction *action,
 
 void Page::ImageReq(QAction *action,
                     std::function<void(QList<QNetworkRequest>)> callBack){
+    callBack = AsAskedBy(callBack);
 
     if(action && action->data().canConvert<SharedWebElement>()){
         if(SharedWebElement e = action->data().value<SharedWebElement>()){

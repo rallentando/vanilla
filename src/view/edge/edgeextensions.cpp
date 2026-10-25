@@ -5,6 +5,10 @@
 #include "edgewebview_p.hpp"
 
 #include <QDir>
+#include <QtGui/private/qguiapplication_p.h>
+#include <qpa/qplatformintegration.h>
+#include <QCoreApplication>
+#include <QFileInfo>
 #include <QCryptographicHash>
 #include <QLabel>
 #include <QVBoxLayout>
@@ -71,13 +75,17 @@ namespace {
     QString CopyLedgerFor(const QString &profileName){
         return JournalFor(profileName).replace(QStringLiteral(".json"), QStringLiteral("-copies.json"));
     }
-    QString PinnedCopy(const ExtensionManifest &manifest, QString *copy = nullptr, bool *keyless = nullptr){
+    QString PinnedCopy(const QString &folder, const QString &id, QString *copy = nullptr, bool *keyless = nullptr, bool pin = true){
         const ExtensionCopy::Made making = ExtensionCopy::Make
-            (manifest.folder, ExtensionHost::CopyRoot(), manifest.id, ExtensionHost::KeyFor(manifest.id), ExtensionCopy::UiLocale());
+            (folder, ExtensionHost::CopyRoot(), id, ExtensionHost::KeyFor(id), ExtensionCopy::UiLocale());
         const QString made = making.path;
-        if(copy) *copy = made == manifest.folder ? QString() : made;
-        if(keyless) *keyless = made != manifest.folder && making.keyless;
-        return made == manifest.folder ? made : ExtensionCopy::Pin(ExtensionHost::CopyRoot(), manifest.id, made);
+        if(copy) *copy = made == folder ? QString() : made;
+        if(keyless) *keyless = made != folder && making.keyless;
+        if(!pin || made == folder) return made;
+        return ExtensionCopy::Pin(ExtensionHost::CopyRoot(), id, made);
+    }
+    QString PinnedCopy(const ExtensionManifest &manifest, QString *copy = nullptr, bool *keyless = nullptr){
+        return PinnedCopy(manifest.folder, manifest.id, copy, keyless);
     }
 
     class EdgeAsk : public ExtensionHost::Ask {
@@ -352,6 +360,7 @@ namespace {
                 foreach(const QString &path, Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList()){
                     const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
                     if(!manifest.error.isEmpty()) continue;
+                    if(current.contains(manifest.id)) continue;
                     QString copy;
                     bool keyless = false;
                     current.insert(manifest.id, ExtensionHost::ShimsOn() ? PinnedCopy(manifest, &copy, &keyless) : manifest.folder);
@@ -1238,11 +1247,66 @@ HRESULT EdgeAnswerExtensionHost(ExtensionController *controller, quint64 viewNum
     return S_OK;
 }
 
-void EdgeEnvironment::PinExtensionCopies(){
+namespace {
+    QThread *g_CopiesAhead = nullptr;
+
+    void JoinCopiesAhead(){
+        if(!g_CopiesAhead) return;
+        if(g_CopiesAhead->isRunning()) g_CopiesAhead->setPriority(QThread::NormalPriority);
+        g_CopiesAhead->wait();
+        delete g_CopiesAhead;
+        g_CopiesAhead = nullptr;
+    }
+}
+
+void EdgeWebView::StartExtensionCopiesAhead(){
+    static bool asked = false;
+    if(asked) return;
+    asked = true;
+    const QStringList paths = Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList();
+    if(paths.isEmpty()) return;
     if(!ExtensionHost::ShimsOn()) return;
+    if(!QGuiApplicationPrivate::platformIntegration()->hasCapability(QPlatformIntegration::ThreadedPixmaps)) return;
+    if(ExtensionHost::KeyFor(QStringLiteral("ahead")).isEmpty()) return;
+    ExtensionHost::CopyRoot();
+    const bool edge = QFileInfo(EdgeEnvironment::UserDataFolder()).isDir() && RuntimeAvailable();
+    const QStringList disabled = Application::GlobalSettings().value(QStringLiteral("network/@DisabledExtensions")).toStringList();
+
+    g_CopiesAhead = QThread::create([paths, disabled, edge](){
+        typedef QPair<QString, QString> Source;
+        QList<Source> sources, later;
+        QSet<QString> off;
+        foreach(const QString &path, disabled) off.insert(ExtensionManifest::RegistrationKey(path));
+        QSet<QString> ids;
+        foreach(const QString &path, paths){
+            const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
+            if(!manifest.error.isEmpty()) continue;
+            if(ids.contains(manifest.id)) continue;
+            ids.insert(manifest.id);
+            if(!off.contains(ExtensionManifest::RegistrationKeyOfNormalized(manifest.path))) sources << qMakePair(manifest.folder, manifest.id);
+            else if(edge) later << qMakePair(manifest.folder, manifest.id);
+        }
+        sources << later;
+        foreach(const Source &source, sources) PinnedCopy(source.first, source.second, nullptr, nullptr, edge);
+    });
+    g_CopiesAhead->start(QThread::IdlePriority);
+    qAddPostRoutine(&JoinCopiesAhead);
+}
+
+void EdgeWebView::HurryExtensionCopiesAhead(){
+    if(g_CopiesAhead && g_CopiesAhead->isRunning()) g_CopiesAhead->setPriority(QThread::NormalPriority);
+}
+
+void EdgeEnvironment::PinExtensionCopies(){
+    JoinCopiesAhead();
+    if(!ExtensionHost::ShimsOn()) return;
+    QSet<QString> ids;
     foreach(const QString &path, Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList()){
         const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
-        if(manifest.error.isEmpty()) PinnedCopy(manifest);
+        if(!manifest.error.isEmpty()) continue;
+        if(ids.contains(manifest.id)) continue;
+        ids.insert(manifest.id);
+        PinnedCopy(manifest);
     }
 }
 

@@ -161,7 +161,7 @@ private slots:
         bar->SetView(view);
         window.show();
         if (phase == "history") {
-            historyNode = std::make_unique<ViewNode>(); historyNode->SetHistoryData(savedHistory);
+            historyNode = std::make_unique<ViewNode>(); historyNode->SetHistoryData(savedHistory, false);
             view->SetViewNode(historyNode.get());
             view->RestoreHistoryOrLoad(QNetworkRequest(url));
         } else view->TriggerNativeLoadAction(url);

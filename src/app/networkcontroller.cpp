@@ -37,6 +37,7 @@
 #  include <QWebEngineProfile>
 #  include <QQuickWebEngineProfile>
 #  include <QQmlEngine>
+#  include <QQmlContext>
 #  include "webengineextensions.hpp"
 #  include "extensionhost.hpp"
 #  include <QtWebEngineCore/qtwebenginecoreglobal.h>
@@ -44,6 +45,9 @@
 #  include <QWebEngineDownloadRequest>
 #  include <QWebEngineNotification>
 #  include <QWebEngineCookieStore>
+#  if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+#    include <QWebEnginePermission>
+#  endif
 #  if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0) && QT_CONFIG(webengine_extensions)
 #    include <QWebEngineExtensionManager>
 #    include <QWebEngineExtensionInfo>
@@ -56,8 +60,10 @@
 #  include <QWebEngineScript>
 #  include <QWebEngineScriptCollection>
 #  include "webengineview.hpp"
+#  include "webenginepage.hpp"
 #  include "quickwebengineview.hpp"
 #endif
+#include "page.hpp"
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
@@ -81,6 +87,7 @@
 #include "view.hpp"
 #include "passwordstore.hpp"
 #include "webenginepasswords.hpp"
+#include "sitepermissions.hpp"
 
 const QList<QEvent::Type> NetworkAccessManager::m_EventTypes =
     QList<QEvent::Type>() << QEvent::KeyPress << QEvent::KeyRelease;
@@ -563,6 +570,7 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
     if(!reply){
         return;
     }
+    const bool offTheRecord = IsOffTheRecord(reply->request());
 
     Application::AskSslErrorPolicyIfNeed();
 
@@ -614,10 +622,10 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
             dialog->Execute();
             const Dialog::Button clicked = dialog->ClickedButton();
             if(clicked == Dialog::Allow){
-                Application::AppendToAllowedHosts(host);
+                Application::AppendToAllowedHosts(host, offTheRecord);
                 reply->ignoreSslErrors();
             } else if(clicked == Dialog::Block){
-                Application::AppendToBlockedHosts(host);
+                Application::AppendToBlockedHosts(host, offTheRecord);
             }
         }
         break;
@@ -656,10 +664,10 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
 
             const Dialog::Button clicked = dialog->ClickedButton();
             if(clicked == Dialog::Allow){
-                Application::RememberCertificate(key, true);
+                Application::RememberCertificate(key, true, offTheRecord);
                 reply->ignoreSslErrors();
             } else if(clicked == Dialog::Block){
-                Application::RememberCertificate(key, false);
+                Application::RememberCertificate(key, false, offTheRecord);
             }
             break;
         }
@@ -682,6 +690,35 @@ void NetworkAccessManager::HandleProxyAuthentication(const QNetworkProxy &proxy,
 }
 #endif
 
+namespace {
+    View *ViewOfDownloadRequest(QObject *request){
+#ifdef WEBENGINEVIEW
+        if(QWebEngineDownloadRequest *widgets = qobject_cast<QWebEngineDownloadRequest*>(request))
+            if(WebEnginePage *page = qobject_cast<WebEnginePage*>(widgets->page()))
+                return page->GetView();
+        if(QObject *item = request ? request->property("view").value<QObject*>() : nullptr){
+            for(QQmlContext *context = qmlContext(item); context; context = context->parentContext()){
+                const QVariant found = context->contextProperty(QStringLiteral("viewInterface"));
+                if(QObject *owner = found.value<QObject*>()) return dynamic_cast<View*>(owner);
+            }
+        }
+#else
+        Q_UNUSED(request)
+#endif
+        return nullptr;
+    }
+}
+
+bool NetworkController::MadeOffTheRecord(QObject *request){
+    QObject *maker = request ? request->parent() : nullptr;
+    if(!maker) return false;
+#ifdef WEBENGINEVIEW
+    if(QWebEngineProfile *profile = qobject_cast<QWebEngineProfile*>(maker))
+        return profile->isOffTheRecord();
+#endif
+    return maker->property("offTheRecord").toBool();
+}
+
 void NetworkAccessManager::HandleDownload(QObject *object){
 #ifdef WEBENGINEVIEW
     static QSet<QObject*> set;
@@ -689,10 +726,25 @@ void NetworkAccessManager::HandleDownload(QObject *object){
     set << object;
     connect(object, &QObject::destroyed, [object](){ set.remove(object);});
 
+    QWebEngineDownloadRequest *orig_item = qobject_cast<QWebEngineDownloadRequest*>(object);
+
+    QUrl sourcePage;
+    bool sourcePrivate = NetworkController::MadeOffTheRecord(object);
+    if(View *starter = ViewOfDownloadRequest(object))
+        sourcePrivate = sourcePrivate || Page::OffTheRecord(starter);
+    if(orig_item && orig_item->page()){
+        sourcePage = orig_item->page()->url();
+        sourcePrivate = sourcePrivate || orig_item->page()->profile()->isOffTheRecord();
+    } else if(QObject *view = object->property("view").value<QObject*>()){
+        sourcePage = view->property("url").toUrl();
+        if(QObject *profile = view->property("profile").value<QObject*>())
+            sourcePrivate = sourcePrivate || profile->property("offTheRecord").toBool();
+    }
+
     Application::AskDownloadPolicyIfNeed();
 
     DownloadItem *item = new DownloadItem(object);
-    QWebEngineDownloadRequest *orig_item = qobject_cast<QWebEngineDownloadRequest*>(object);
+    item->SetSource(sourcePage, sourcePrivate);
     QString dir = Application::GetDownloadDirectory();
     QString filename;
     QString mime;
@@ -965,6 +1017,15 @@ NetworkAccessManager::PurposeOf(const QNetworkRequest &request){
     return said.isValid() && said.toInt() == int(Navigation) ? Navigation : Subresource;
 }
 
+void NetworkAccessManager::SetRequestOffTheRecord(QNetworkRequest &request,
+                                                  bool offTheRecord){
+    request.setAttribute(QNetworkRequest::Attribute(QNetworkRequest::User + 1), offTheRecord);
+}
+
+bool NetworkAccessManager::IsOffTheRecord(const QNetworkRequest &request){
+    return request.attribute(QNetworkRequest::Attribute(QNetworkRequest::User + 1)).toBool();
+}
+
 QNetworkRequest NetworkAccessManager::CompletedRequest(const QNetworkRequest &request,
                                                        const QString &userAgent){
     QNetworkRequest completed(request);
@@ -1176,19 +1237,8 @@ void NetworkAccessManager::SetupProfile(QWebEngineProfile *profile){
         const int megabytes = s.value(QStringLiteral("network/@HttpCacheMaximumSize"), 0).value<int>();
         profile->setHttpCacheMaximumSize(megabytes > 0 ? megabytes * 1024 * 1024 : 0);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-        profile->setPersistentPermissionsPolicy
-            (s.value(QStringLiteral("network/@RememberPermissions"), true).value<bool>()
-             ? QWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk
-             : QWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
-#endif
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    else {
-        profile->setPersistentPermissionsPolicy
-            (QWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
-    }
-#endif
+    NetworkController::AdoptPermissions(profile);
 
     profile->setDownloadPath(Application::GetDownloadDirectory());
 
@@ -1216,10 +1266,6 @@ void NetworkAccessManager::SetupProfile(QWebEngineProfile *profile){
     static QString source;
     if(source.isEmpty()){
         QString inner;
-
-#  ifdef USE_WEBCHANNEL
-        inner += View::InstallWebChannelJsCode();
-#  endif
         inner += View::InstallEventFilterJsCode(m_EventTypes);
         source = QStringLiteral
             ("(function(){\n"
@@ -1609,9 +1655,16 @@ void DownloadItem::Record(bool hideUrl){
     if(m_HistoryId || m_Path.isEmpty() || m_Path == DISABLE_FILENAME) return;
     const QString temporary = QDir::cleanPath(Application::TemporaryDirectory()) + QStringLiteral("/");
     if(QDir::cleanPath(m_Path).startsWith(temporary, Qt::CaseInsensitive)) return;
-    const QUrl url = hideUrl ? QUrl()
+    const bool hidden = hideUrl || m_SourceOffTheRecord;
+    const QUrl url = hidden ? QUrl()
         : m_DownloadReply ? m_DownloadReply->url() : m_RemoteUrl;
-    m_HistoryId = DownloadHistory::Instance()->Started(url, m_Path, this);
+    m_HistoryId = DownloadHistory::Instance()->Started
+        (url, m_Path, this, hidden ? QUrl() : m_SourcePage);
+}
+
+void DownloadItem::SetSource(const QUrl &page, bool offTheRecord){
+    m_SourcePage = page;
+    m_SourceOffTheRecord = offTheRecord;
 }
 
 void DownloadItem::EndRecord(int state){
@@ -1759,7 +1812,7 @@ NetworkController::NetworkController()
     Application::ClearTemporaryDirectory();
     QMap<QString, NetworkAccessManager*> nams = m_NetworkAccessManagerTable;
     if(!nams.isEmpty()){
-        Download(nams.first(), BLANK_URL, EMPTY_URL, NetworkController::TemporaryDirectory);
+        Download(nams.first(), BLANK_URL, EMPTY_URL, NetworkController::TemporaryDirectory, false);
     }
 }
 
@@ -1767,9 +1820,10 @@ NetworkController::~NetworkController(){}
 
 DownloadItem *NetworkController::Download(NetworkAccessManager *nam,
                                           const QUrl &url, const QUrl &referer,
-                                          DownloadType type){
+                                          DownloadType type, bool offTheRecord){
     QNetworkRequest req(url);
     req.setRawHeader("Referer", referer.toEncoded());
+    NetworkAccessManager::SetRequestOffTheRecord(req, offTheRecord);
     DownloadItem *item = Download(nam, req, type);
 
     if(item) item->SetRemoteUrl(url);
@@ -1909,24 +1963,153 @@ void NetworkController::ConnectQuickNotifications(QQuickWebEngineProfile *profil
                      });
 }
 
-void NetworkController::ApplyQuickPermissionsPolicy(QQuickWebEngineProfile *profile){
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    if(!profile) return;
+namespace {
 
-    if(profile->isOffTheRecord()){
-        profile->setPersistentPermissionsPolicy
-            (QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
-        return;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    using PermissionType = QWebEnginePermission::PermissionType;
+
+    QString KindOfType(PermissionType type){
+        switch(type){
+        case PermissionType::Notifications:            return QStringLiteral("notifications");
+        case PermissionType::Geolocation:              return QStringLiteral("geolocation");
+        case PermissionType::MediaAudioCapture:        return QStringLiteral("microphone");
+        case PermissionType::MediaVideoCapture:        return QStringLiteral("camera");
+        case PermissionType::ClipboardReadWrite:       return QStringLiteral("clipboard");
+        case PermissionType::LocalFontsAccess:         return QStringLiteral("local-fonts");
+        case PermissionType::MouseLock:                return QStringLiteral("mouse-lock");
+        case PermissionType::DesktopVideoCapture:      return QStringLiteral("screen");
+        case PermissionType::DesktopAudioVideoCapture: return QStringLiteral("screen-audio");
+        case PermissionType::MediaAudioVideoCapture:
+        case PermissionType::Unsupported:              break;
+        }
+        return QString();
     }
 
-    Settings &s = Application::GlobalSettings();
-    profile->setPersistentPermissionsPolicy
-        (s.value(QStringLiteral("network/@RememberPermissions"), true).value<bool>()
-         ? QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk
-         : QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
+    PermissionType TypeOfKind(const QString &kind){
+        static const PermissionType types[] = {
+            PermissionType::Notifications, PermissionType::Geolocation,
+            PermissionType::MediaAudioCapture, PermissionType::MediaVideoCapture,
+            PermissionType::ClipboardReadWrite, PermissionType::LocalFontsAccess,
+            PermissionType::MouseLock, PermissionType::DesktopVideoCapture,
+            PermissionType::DesktopAudioVideoCapture,
+        };
+        for(PermissionType type : types)
+            if(KindOfType(type) == kind) return type;
+        return PermissionType::Unsupported;
+    }
+
+    QStringList StorableKinds(){
+        QStringList kinds;
+        foreach(const QString &kind, PermissionTable::Kinds()){
+            const PermissionType type = TypeOfKind(kind);
+            if(type != PermissionType::Unsupported && QWebEnginePermission::isPersistent(type))
+                kinds << kind;
+        }
+        return kinds;
+    }
+
+    template <class Profile>
+    void MirrorInto(Profile *profile){
+        const QList<QWebEnginePermission> all = profile->listAllPermissions();
+        QList<PermissionTable::Row> held;
+        foreach(const QWebEnginePermission &permission, all){
+            const QString kind = KindOfType(permission.permissionType());
+            const QWebEnginePermission::State state = permission.state();
+            held << PermissionTable::Row{
+                permission.origin().toString(),
+                kind.isEmpty() ? QStringLiteral("engine:") +
+                    QString::number(static_cast<int>(permission.permissionType())) : kind,
+                state == QWebEnginePermission::State::Granted ? PermissionTable::Allow
+                : state == QWebEnginePermission::State::Denied ? PermissionTable::Block
+                : PermissionTable::Ask };
+        }
+
+        foreach(const PermissionTable::Row &change,
+                SitePermissions::Table().Changes(held, StorableKinds())){
+            if(change.state == PermissionTable::Ask){
+                for(int i = 0; i < all.length(); i++)
+                    if(held[i].origin == change.origin && held[i].kind == change.kind)
+                        all[i].reset();
+                continue;
+            }
+            const QWebEnginePermission permission =
+                profile->queryPermission(QUrl(change.origin), TypeOfKind(change.kind));
+            if(change.state == PermissionTable::Allow) permission.grant();
+            else permission.deny();
+        }
+    }
+
+    template <class Profile>
+    void ApplyDelta(Profile *profile, const QList<PermissionTable::Row> &delta){
+        const QStringList storable = StorableKinds();
+        foreach(const PermissionTable::Row &row, delta){
+            if(!storable.contains(row.kind)) continue;
+            const QWebEnginePermission permission =
+                profile->queryPermission(QUrl(row.origin), TypeOfKind(row.kind));
+            if(row.state == PermissionTable::Allow) permission.grant();
+            else if(row.state == PermissionTable::Block) permission.deny();
+            else permission.reset();
+        }
+    }
+
+    template <class Profile, class Policy>
+    void Adopt(Profile *profile, Policy onDisk, Policy inMemory){
+        if(!profile) return;
+        if(!profile->isOffTheRecord() && profile->persistentPermissionsPolicy() == onDisk){
+            foreach(const QWebEnginePermission &permission, profile->listAllPermissions())
+                permission.reset();
+        }
+        if(profile->persistentPermissionsPolicy() != inMemory)
+            profile->setPersistentPermissionsPolicy(inMemory);
+        MirrorInto(profile);
+    }
+#endif
+}
+
+void NetworkController::AdoptPermissions(QWebEngineProfile *profile){
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    Adopt(profile, QWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk,
+          QWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
 #else
     Q_UNUSED(profile)
 #endif
+}
+
+void NetworkController::AdoptPermissions(QQuickWebEngineProfile *profile){
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    Adopt(profile, QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk,
+          QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
+#else
+    Q_UNUSED(profile)
+#endif
+}
+
+QStringList NetworkController::PermissionKindsOfType(int type){
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    const PermissionType permissionType = static_cast<PermissionType>(type);
+    if(permissionType == PermissionType::MediaAudioVideoCapture)
+        return QStringList() << QStringLiteral("microphone") << QStringLiteral("camera");
+    const QString kind = KindOfType(permissionType);
+    return kind.isEmpty() ? QStringList() : QStringList(kind);
+#else
+    Q_UNUSED(type)
+    return QStringList();
+#endif
+}
+
+QStringList NetworkController::PermissionKindsOfFeature(int feature){
+    switch(feature){
+    case 0: return QStringList(QStringLiteral("microphone"));
+    case 1: return QStringList(QStringLiteral("camera"));
+    case 2: return QStringList() << QStringLiteral("microphone") << QStringLiteral("camera");
+    case 3: return QStringList(QStringLiteral("geolocation"));
+    case 4: return QStringList(QStringLiteral("screen"));
+    case 5: return QStringList(QStringLiteral("screen-audio"));
+    case 6: return QStringList(QStringLiteral("notifications"));
+    case 7: return QStringList(QStringLiteral("clipboard"));
+    case 8: return QStringList(QStringLiteral("local-fonts"));
+    }
+    return QStringList();
 }
 
 void NetworkController::ApplyQuickBlockRules(QQuickWebEngineProfile *profile){
@@ -1991,9 +2174,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
             {QStringLiteral("httpCacheMaximumSize"), maxMB > 0 ? maxMB * 1024 * 1024 : 0},
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
             {QStringLiteral("persistentPermissionsPolicy"), static_cast<int>(
-                s.value(QStringLiteral("network/@RememberPermissions"), true).toBool()
-                ? QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk
-                : QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory)}
+                QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk)}
 #endif
         });
         profile->setProperty(PROFILE_KEY_PROPERTY, key);
@@ -2001,7 +2182,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
         WebEngineExtensions::Install(profile);
         if(profile->isOffTheRecord()){
             SettingsSchemeHandler::Install(profile);
-            ApplyQuickPermissionsPolicy(profile);
+            AdoptPermissions(profile);
             ApplyQuickBlockRules(profile);
             ApplyQuickCommonSettings(profile);
             ConnectQuickNotifications(profile);
@@ -2029,7 +2210,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
 
         SettingsSchemeHandler::Install(profile);
 
-        ApplyQuickPermissionsPolicy(profile);
+        AdoptPermissions(profile);
         ApplyQuickBlockRules(profile);
         ApplyQuickCommonSettings(profile);
 
@@ -2054,7 +2235,7 @@ QQuickWebEngineProfile* NetworkController::QuickPrivateProfile(const QString &id
         profile->setProperty(CREDENTIAL_SPACE_PROPERTY, id);
         profile->setOffTheRecord(true);
         SettingsSchemeHandler::Install(profile);
-        ApplyQuickPermissionsPolicy(profile);
+        AdoptPermissions(profile);
         ApplyQuickBlockRules(profile);
         ApplyQuickCommonSettings(profile);
         ConnectQuickNotifications(profile);
@@ -2213,6 +2394,20 @@ void NetworkController::ClearPasswords(){
             if(failed) qWarning() << "passwords:" << failed << "could not be removed from the store";
         });
     }
+#endif
+}
+
+void NetworkController::MirrorPermissions(const QList<PermissionTable::Row> &delta){
+#if defined(WEBENGINEVIEW) && QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    foreach(NetworkAccessManager *nam, m_NetworkAccessManagerTable){
+        if(!nam) continue;
+        foreach(QWebEngineProfile *profile, nam->Profiles()) ApplyDelta(profile, delta);
+    }
+    foreach(QQuickWebEngineProfile *profile,
+            QuickProfileTable().values() + QuickPrivateProfileTable().values())
+        if(profile) ApplyDelta(profile, delta);
+#else
+    Q_UNUSED(delta)
 #endif
 }
 

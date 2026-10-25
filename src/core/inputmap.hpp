@@ -5,6 +5,8 @@
 
 #include "settingsio.hpp"
 
+#include <QHash>
+#include <QList>
 #include <QMap>
 #include <QString>
 #include <QStringList>
@@ -44,6 +46,16 @@ bool IsSingleKey(const QKeySequence &seq);
 QString CanonicalKeyName(const QString &name);
 QString CanonicalMouseName(const QString &name);
 QString CanonicalGestureName(const QString &name);
+
+struct KeyLayer {
+    KeyMap map;
+    bool singleKeys;
+};
+typedef QList<KeyLayer> KeyLayers;
+
+QHash<QString, QKeySequence> ShownKeys(const KeyLayers &layers);
+
+QKeySequence DisplayKey(const QKeySequence &seq);
 
 bool LoadKeyMap(const SettingsIO::Map &settings, const QString &group,
                 KeyMap &map, const Hooks &hooks = Hooks());

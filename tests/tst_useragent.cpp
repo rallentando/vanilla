@@ -275,6 +275,19 @@ private slots:
                 .hasRawHeader("Sec-Fetch-Dest"));
     }
 
+    void aRequestCarriesWhetherAPrivateViewAsked(){
+        QNetworkRequest request(QUrl(QStringLiteral("https://example.com/file.bin")));
+        QVERIFY(!NetworkAccessManager::IsOffTheRecord(request));
+        NetworkAccessManager::SetRequestPurpose(request, NetworkAccessManager::Navigation);
+        NetworkAccessManager::SetRequestOffTheRecord(request, true);
+        const QNetworkRequest done =
+            NetworkAccessManager::CompletedRequest(request, QStringLiteral("Vanilla/1.0"));
+        QVERIFY(NetworkAccessManager::IsOffTheRecord(done));
+        QCOMPARE(NetworkAccessManager::PurposeOf(done), NetworkAccessManager::Navigation);
+        NetworkAccessManager::SetRequestOffTheRecord(request, false);
+        QVERIFY(!NetworkAccessManager::IsOffTheRecord(request));
+    }
+
     void whereTheRequestSaysItCameFrom(){
         const QUrl file(QStringLiteral("https://example.com/file.bin"));
 

@@ -42,6 +42,10 @@ private slots:
 
     void emptyThumbnailFillsTheBoxAndSaysWhichKindItIs();
     void emptyThumbnailLeavesOutACaptionThatWouldNotFit();
+
+    void barHandleIsAShortBarAcrossTheBar();
+    void barHandleIsCutDownToTheRoomItHas();
+    void barHandleRoundsTheWayTheIconsRound();
 };
 
 namespace {
@@ -52,6 +56,23 @@ namespace {
             for(int x = 0; x < image.width(); x++)
                 if(image.pixelColor(x, y) != fill) n++;
         return n;
+    }
+
+    QRect InkBounds(const QImage &image, const QColor &fill){
+        QRect box;
+        for(int y = 0; y < image.height(); y++)
+            for(int x = 0; x < image.width(); x++)
+                if(image.pixelColor(x, y) != fill)
+                    box = box.isNull() ? QRect(x, y, 1, 1) : box.united(QRect(x, y, 1, 1));
+        return box;
+    }
+
+    QImage HandleDrawn(const QRect &handle, Qt::Orientation bar, int thickness, int length){
+        QImage image(60, 60, QImage::Format_ARGB32);
+        image.fill(Qt::magenta);
+        QPainter painter(&image);
+        Theme::DrawBarHandle(&painter, handle, bar, thickness, length);
+        return image;
     }
 
     QImage Drawn(const QSize &size, Theme::Role fill, bool isDirectory){
@@ -84,7 +105,7 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
 
     ROW(BarBackground,                      240, 240, 240, 255);
     ROW(BarBackgroundGhost,                 240, 240, 240,   1);
-    ROW(BarBackgroundTranslucent,             0,   0,   0,   1);
+    ROW(BarBackgroundTranslucent,           240, 240, 240, 128);
     ROW(BarBorder,                          150, 150, 150, 255);
     ROW(BarButtonHovered,                   180, 180, 180, 255);
     ROW(BarButtonPressed,                   150, 150, 150, 255);
@@ -185,6 +206,9 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
     ROW(NotifierScrollMarker,                 0,   0,   0, 200);
     ROW(NotifierScrollLine,                   0,   0,   0, 100);
 
+    ROW(MiniMapBackground,                  245, 245, 245, 255);
+    ROW(MiniMapBackgroundTranslucent,       245, 245, 245, 128);
+
     ROW(ReceiverBackground,                 240, 240, 240, 180);
     ROW(ReceiverBackgroundContrast,          20,  20,  20, 200);
     ROW(ReceiverText,                        16,  16,  16, 255);
@@ -197,6 +221,7 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
     ROW(PageBackground,                     255, 255, 255, 255);
 
     ROW(PreviewBackground,                  250, 250, 250, 255);
+    ROW(PreviewBackgroundTranslucent,       250, 250, 250, 200);
     ROW(PreviewBorder,                      150, 150, 150, 255);
     ROW(PreviewText,                         28,  28,  28, 255);
     ROW(PreviewPlaceholderDirectory,        217, 217, 217, 255);
@@ -236,7 +261,7 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
 
     ROW(BarBackground,                       32,  32,  32, 255);
     ROW(BarBackgroundGhost,                  32,  32,  32,   1);
-    ROW(BarBackgroundTranslucent,             0,   0,   0,   1);
+    ROW(BarBackgroundTranslucent,            32,  32,  32, 128);
     ROW(BarBorder,                           70,  70,  70, 255);
     ROW(BarButtonHovered,                    58,  58,  58, 255);
     ROW(BarButtonPressed,                    80,  80,  80, 255);
@@ -337,6 +362,9 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
     ROW(NotifierScrollMarker,               255, 255, 255, 220);
     ROW(NotifierScrollLine,                 255, 255, 255, 110);
 
+    ROW(MiniMapBackground,                   38,  38,  38, 255);
+    ROW(MiniMapBackgroundTranslucent,        38,  38,  38, 128);
+
     ROW(ReceiverBackground,                  32,  32,  32, 180);
     ROW(ReceiverBackgroundContrast,         235, 235, 235, 200);
     ROW(ReceiverText,                       240, 240, 240, 255);
@@ -349,6 +377,7 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
     ROW(PageBackground,                      32,  32,  32, 255);
 
     ROW(PreviewBackground,                   44,  44,  44, 255);
+    ROW(PreviewBackgroundTranslucent,        44,  44,  44, 160);
     ROW(PreviewBorder,                       90,  90,  90, 255);
     ROW(PreviewText,                        230, 230, 230, 255);
     ROW(PreviewPlaceholderDirectory,         56,  56,  56, 255);
@@ -396,7 +425,7 @@ void tst_theme::everyRoleHasAValue(){
                      qPrintable(QStringLiteral("role %1 is transparent black; a row is probably missing").arg(i)));
     }
 
-    QCOMPARE(static_cast<int>(Theme::RoleCount), 131);
+    QCOMPARE(static_cast<int>(Theme::RoleCount), 134);
 }
 
 void tst_theme::schemeSurvivesThePropertiesThatMatter(){
@@ -469,6 +498,12 @@ void tst_theme::schemeSurvivesThePropertiesThatMatter(){
         QVERIFY(positioned.alpha() > 0);
         QVERIFY(positioned.hsvHue() >= 90);
         QVERIFY(positioned.hsvHue() <= 170);
+        const QColor opaque = Theme::Color(Theme::MiniMapBackground);
+        const QColor translucent =
+            Theme::Color(Theme::MiniMapBackgroundTranslucent);
+        QCOMPARE(translucent.rgb(), opaque.rgb());
+        QCOMPARE(translucent.alpha(),
+                 Theme::Color(Theme::BarBackgroundTranslucent).alpha());
     }
 
     Theme::ApplyScheme(QStringLiteral("light"));
@@ -644,6 +679,54 @@ void tst_theme::emptyThumbnailLeavesOutACaptionThatWouldNotFit(){
     const QImage image = Drawn(size, Theme::FlatPlaceholderPage, false);
 
     QCOMPARE(InkPixels(image, Theme::Color(Theme::FlatPlaceholderPage)), 0);
+}
+
+void tst_theme::barHandleIsAShortBarAcrossTheBar(){
+    const QRect handle(10, 10, 40, 40);
+    const int thickness = 3, length = 24;
+
+    QRect ink = InkBounds(HandleDrawn(handle, Qt::Horizontal, thickness, length), Qt::magenta);
+    QVERIFY(!ink.isNull());
+    QVERIFY(handle.contains(ink));
+    QCOMPARE(ink.width(), thickness);
+    QCOMPARE(ink.height(), length);
+    QCOMPARE(ink.left(), handle.left());
+    QVERIFY(qAbs(ink.center().y() - handle.center().y()) <= 1);
+
+    ink = InkBounds(HandleDrawn(handle, Qt::Vertical, thickness, length), Qt::magenta);
+    QVERIFY(!ink.isNull());
+    QVERIFY(handle.contains(ink));
+    QCOMPARE(ink.width(), length);
+    QCOMPARE(ink.height(), thickness);
+    QCOMPARE(ink.top(), handle.top());
+    QVERIFY(qAbs(ink.center().x() - handle.center().x()) <= 1);
+
+    const QImage image = HandleDrawn(handle, Qt::Horizontal, thickness, length);
+    QVERIFY(image.pixelColor(InkBounds(image, Qt::magenta).center()) != QColor(Qt::magenta));
+}
+
+void tst_theme::barHandleIsCutDownToTheRoomItHas(){
+    const int thickness = 3, length = 24;
+
+    QRect handle(10, 10, 8, 16);
+    QRect ink = InkBounds(HandleDrawn(handle, Qt::Horizontal, thickness, length), Qt::magenta);
+    QVERIFY(handle.contains(ink));
+    QCOMPARE(ink.height(), handle.height());
+    QCOMPARE(ink.width(), thickness);
+
+    handle = QRect(10, 10, 40, 2);
+    ink = InkBounds(HandleDrawn(handle, Qt::Vertical, thickness, length), Qt::magenta);
+    QVERIFY(handle.contains(ink));
+    QCOMPARE(ink.height(), handle.height());
+
+    QVERIFY(InkBounds(HandleDrawn(QRect(), Qt::Horizontal, thickness, length), Qt::magenta).isNull());
+}
+
+void tst_theme::barHandleRoundsTheWayTheIconsRound(){
+    const QRect handle(10, 0, 20, 40);
+    const QRect ink = InkBounds(HandleDrawn(handle, Qt::Vertical, 3, 19), Qt::magenta);
+    QCOMPARE(ink.left(), qRound(20.0 - 19 / 2.0));
+    QCOMPARE(ink.width(), 19);
 }
 
 QTEST_MAIN(tst_theme)

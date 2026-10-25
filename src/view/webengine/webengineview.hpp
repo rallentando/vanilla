@@ -51,8 +51,10 @@ public:
     void Disconnect(TreeBank *tb) Q_DECL_OVERRIDE;
 
     void ApplySpecificSettings(QStringList set) Q_DECL_OVERRIDE;
+    bool IsOffTheRecord() Q_DECL_OVERRIDE;
 
     void ApplyTheme() Q_DECL_OVERRIDE;
+    void KeepDrawingWidgetClear(QWidget *drawing);
 
     void AddSpellCheckMenu(QMenu *menu) Q_DECL_OVERRIDE;
 
@@ -169,7 +171,7 @@ public:
     }
 
     ExtensionController *Extensions() const override;
-    QWidget *CreateExtensionView(const QUrl &url, ExtensionPage page, QWidget *parent,
+    QWidget *CreateExtensionView(const QUrl &url, ExtensionPage page, QWidget *parent,
                                  const std::function<void()> &closed = std::function<void()>()) override;
     void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE;
     void TriggerNativeLoadAction(const QNetworkRequest &req,
@@ -273,7 +275,6 @@ public slots:
         WakeUp();
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
-        if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
 
         if(!wasVisible){
             MainWindow *win = Application::GetCurrentWindow();
@@ -317,8 +318,6 @@ public slots:
     void OnSetThis(WeakView) Q_DECL_OVERRIDE;
     void OnSetMaster(WeakView) Q_DECL_OVERRIDE;
     void OnSetSlave(WeakView) Q_DECL_OVERRIDE;
-    void OnSetJsObject(_View*) Q_DECL_OVERRIDE;
-    void OnSetJsObject(_Vanilla*) Q_DECL_OVERRIDE;
     void OnLoadStarted() Q_DECL_OVERRIDE;
     void OnLoadProgress(int) Q_DECL_OVERRIDE;
     void OnLoadFinished(bool) Q_DECL_OVERRIDE;
@@ -454,15 +453,16 @@ protected:
         QWidget *widget = qobject_cast<QWidget*>(obj);
 
         switch(ev->type()){
+        case QEvent::Paint: case QEvent::Show: case QEvent::Resize:
+            m_View->KeepDrawingWidgetClear(widget);
+            break;
         case QEvent::FocusIn:{
-            QFocusEvent *fe = static_cast<QFocusEvent*>(ev);
-            m_View->focusInEvent(fe);
-            return fe->isAccepted();
+            m_View->focusInEvent(static_cast<QFocusEvent*>(ev));
+            return false;
         }
         case QEvent::FocusOut:{
-            QFocusEvent *fe = static_cast<QFocusEvent*>(ev);
-            m_View->focusOutEvent(fe);
-            return fe->isAccepted();
+            m_View->focusOutEvent(static_cast<QFocusEvent*>(ev));
+            return false;
         }
         case QEvent::KeyPress:{
             QKeyEvent *ke = static_cast<QKeyEvent*>(ev);

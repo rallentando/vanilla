@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html>
+<!-- 'loading' keeps the page invisible until the script has drawn it
+     (settings.css, D-537): a frame of the bare markup is never painted. -->
+<html class="loading">
   <head>
     <meta charset="utf-8">
-    <!-- both of these are replaced from '/api/schema', which carries them
-         translated; the English here is what shows until it answers. -->
+    <!-- both of these are replaced from the schema, which carries them
+         translated: the one the application writes into the page below
+         ('#schema', D-537), or '/api/schema' where the page came without
+         it. The English here shows only in that second case. -->
     <title>Settings</title>
     <link rel="stylesheet" href="/settings.css">
   </head>

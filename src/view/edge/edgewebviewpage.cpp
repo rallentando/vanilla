@@ -286,6 +286,14 @@ void EdgeWebView::RunScript(const QString &script){
     CallWithScriptResult(script, [](const QVariant&){});
 }
 
+void EdgeWebView::AddSearchEngine(QPoint pos){
+    if(page()) page()->AddSearchEngineAt(PagePointOf(pos));
+}
+
+void EdgeWebView::AddBookmarklet(QPoint pos){
+    if(page()) page()->AddBookmarkletAt(pos);
+}
+
 bool EdgeWebView::SeekText(const QString &str, View::FindFlags opt){
     if(str.isEmpty()){
         RunScript(QStringLiteral("getSelection().removeAllRanges();"));

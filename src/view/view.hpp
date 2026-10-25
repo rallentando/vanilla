@@ -3,6 +3,8 @@
 
 #include "switch.hpp"
 
+#include "inputmap.hpp"
+
 #include <functional>
 #include <QEvent>
 #include <QTimer>
@@ -23,10 +25,9 @@
 
 class QKeySequence;
 class QMimeData;
+class QWidgetAction;
 
 class View;
-class _View;
-class _Vanilla;
 class ExtensionController;
 
 typedef std::shared_ptr<View> SharedView;
@@ -136,12 +137,13 @@ public:
     void Orphan();
     void ForgetViewNode(ViewNode *vn){ if(m_ViewNode == vn) m_ViewNode = nullptr;}
 
+    virtual bool KeepForDownloads(){ return false;}
+
     TreeBank  *GetTreeBank() const;
     ViewNode  *GetViewNode() const;
     WeakView   GetThis() const;
     WeakView   GetMaster() const;
     WeakView   GetSlave() const;
-    _View     *GetJsObject() const;
 
     void SetTreeBank(TreeBank*);
     void SetViewNode(ViewNode*);
@@ -170,6 +172,7 @@ public:
     void AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type = Page::MediaTypeNone);
     void AddExtensionMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type = Page::MediaTypeNone);
     void AddRegularMenu(QMenu *menu, SharedWebElement elem);
+    static QWidgetAction *MenuCaption(QMenu *menu, const QString &text, Qt::Alignment align);
 
     virtual void AddSpellCheckMenu(QMenu*){}
 
@@ -181,13 +184,14 @@ public:
     virtual void ApplySpecificSettings(QStringList set);
     QStringList SpecificSettings() const { return m_SpecificSettings;}
     virtual void RebuildForOffTheRecord();
+    virtual bool IsOffTheRecord();
+    bool KeepsOffDisk();
 
     static bool ActivateNewViewDefault(){ return m_ActivateNewViewDefault;}
     static bool EnableSingleKeyShortcut(){ return m_EnableSingleKeyShortcut;}
     static bool DragToStartDownload(){ return m_DragToStartDownload;}
     static bool EnableDestinationInferrer(){ return m_EnableDestinationInferrer;}
     static bool EnableDragGesture(){ return m_EnableDragGesture;}
-    bool EnableDragGestureLocal() const { return m_EnableDragGestureLocal;}
     static bool EnableRightGesture(){ return m_EnableMouseGesture;}
     bool EnableRightGestureLocal() const { return m_EnableRightGestureLocal;}
     static bool InspectorInMainWindow(){ return m_InspectorInMainWindow;}
@@ -198,6 +202,8 @@ public:
     }
 
     static bool SavePasswords(){ return m_SavePasswords;}
+    static QString TrackingPrevention(){ return m_TrackingPrevention;}
+    static bool SmartScreen(){ return m_SmartScreen;}
 
     static QString GetLinkMenu(){ return m_LinkMenu;}
     static QString GetImageMenu(){ return m_ImageMenu;}
@@ -254,6 +260,8 @@ public:
     quint64 LoadSerial() const { return m_LoadSerial;}
     static bool TakesKey(const QKeySequence &seq){ return !KeyAction(seq).isEmpty();}
     static QString KeyAction(const QKeySequence &seq);
+    static QMap<QKeySequence, QString> GetKeyMap(){ return m_KeyMap;}
+    static InputMap::KeyLayers KeyLayers();
     RenderProcessLedger &RenderProcessDeaths(){ return m_RenderProcessLedger;}
     virtual bool CanGoBack(){ return false;}
     virtual bool CanGoForward(){ return false;}
@@ -404,8 +412,6 @@ public:
     virtual void OnSetThis(WeakView){}
     virtual void OnSetMaster(WeakView){}
     virtual void OnSetSlave(WeakView){}
-    virtual void OnSetJsObject(_View*){}
-    virtual void OnSetJsObject(_Vanilla*){}
     virtual void OnLoadStarted();
     virtual void OnLoadProgress(int progress){ m_LoadProgress = progress;}
     virtual void OnLoadFinished(bool ok);
@@ -527,15 +533,6 @@ protected:
             lis << GestureToChar(vec);
         }
         return lis.join(comma);
-    }
-
-    static inline Gesture StringToGesture(QString strs){
-        const QString comma = QStringLiteral(",");
-        Gesture lis;
-        foreach(QString str, strs.split(comma)){
-            lis << CharToGesture(str);
-        }
-        return lis;
     }
 
 public:
@@ -1409,24 +1406,6 @@ public:
             (QStringLiteral("if(media.paused) media.play(); else media.pause();"));
     }
 
-    static inline QString InstallWebChannelJsCode(){
-        QString script;
-        QFile file(":/qtwebchannel/qwebchannel.js");
-        if(file.open(QFile::ReadOnly)){
-            script = QString::fromLatin1(file.readAll());
-        }
-        file.close();
-        return script + QStringLiteral(
-            "\n"
-            "if(typeof qt === \"undefined\" && typeof top.qt !== \"undefined\"){\n"
-            "    window.qt = top.qt;\n"
-            "}\n"
-            "new QWebChannel(qt.webChannelTransport, function(channel){\n"
-            "    window._vanilla = channel.objects._vanilla;\n"
-            "    window._view = channel.objects._view;\n"
-            "});\n");
-    }
-
     static inline QString InstallSubmitEventJsCode(){
         return QStringLiteral(
             "(function(){\n"
@@ -1462,37 +1441,6 @@ public:
             "        }, false);\n"
             "    }\n"
             "})();").arg(Application::EventKey());
-    }
-
-    static inline QString DecorateFormFieldJsCode(const QString &data){
-        QString quoted = EscapeJsStringLiteral(data);
-        return QStringLiteral(
-            "(function(){\n"
-            "    var data = \"%1\".split(\"&\");\n"
-            "    var forms = document.querySelectorAll(\"form\");\n"
-            "    var allInputs = Array.from(document.querySelectorAll(\"input,textarea\"));\n"
-            "    for(var i = 0; i < forms.length; i++){\n"
-            "        var form = forms[i];\n"
-            "        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
-            "        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
-            "        if(!submit || !password){\n"
-            "            var inputs = allInputs.filter(function(e){ return e.form == form;});\n"
-            "            if(!submit) submit = inputs.find(function(e){ return e.type == \"submit\";});\n"
-            "            if(!password) password = inputs.find(function(e){ return e.type == \"password\";});\n"
-            "        };\n"
-            "        if(!submit || !password) continue;\n"
-            "        for(var j = 0; j < data.length; j++){\n"
-            "            var pair = data[j].split(\"=\");\n"
-            "            var name = decodeURIComponent(pair[0]);\n"
-            "            var val  = decodeURIComponent(pair[1]);\n"
-            "            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
-            "            if(!field) field = document.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
-            "            if(!field) continue;\n"
-            "            field.style.boxShadow = \"inset 0 0 2px 2px #eca\";\n"
-            "            field.style.border = \"1px\";\n"
-            "        }\n"
-            "    }\n"
-            "})();").arg(quoted);
     }
 
     static inline QString SubmitFormDataJsCode(const QString &data){
@@ -2016,6 +1964,8 @@ protected:
     static bool m_InspectorInMainWindow;
     static QString m_SuspendHiddenViews;
     static bool m_SavePasswords;
+    static QString m_TrackingPrevention;
+    static bool m_SmartScreen;
     bool m_EnableDragGestureLocal;
     bool m_EnableRightGestureLocal;
 
@@ -2034,7 +1984,6 @@ protected:
     WeakView  m_Master;
     WeakView  m_Slave;
     QObject  *m_Page;
-    _View    *m_JsObject;
     int m_LoadProgress;
     bool m_IsLoading;
     quint64 m_LoadSerial = 0;

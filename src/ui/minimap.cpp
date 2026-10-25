@@ -255,6 +255,9 @@ MiniMap::MiniMap(TreeBank *parent)
     , m_Dragging(false)
     , m_GrabOffset(0.0)
 {
+    if(Application::EnableTransparentWindow())
+        setAttribute(Qt::WA_TranslucentBackground);
+
     m_RecollectTimer.setSingleShot(true);
     m_RecollectTimer.setInterval(300);
     connect(&m_RecollectTimer, &QTimer::timeout,
@@ -751,7 +754,9 @@ bool MiniMap::Geometry(qreal *scale, QSizeF *contents,
 void MiniMap::paintEvent(QPaintEvent *ev){
     Q_UNUSED(ev)
     QPainter painter(this);
-    painter.fillRect(rect(), Theme::Brush(Theme::MiniMapBackground));
+    painter.fillRect(rect(), Theme::Brush(Application::EnableTransparentWindow()
+                                          ? Theme::MiniMapBackgroundTranslucent
+                                          : Theme::MiniMapBackground));
 
     qreal scale; QSizeF contents; QRectF viewport;
     if(!Geometry(&scale, &contents, &viewport)) return;

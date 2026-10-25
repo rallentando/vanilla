@@ -5,6 +5,12 @@
 #include "settingspage.hpp"
 #include "directorypage.hpp"
 #include "networkcontroller.hpp"
+#include "page.hpp"
+#include "application.hpp"
+#ifdef WEBENGINEVIEW
+#  include <QWebEngineProfile>
+#  include <QQuickWebEngineProfile>
+#endif
 
 #ifdef WEBENGINEVIEW
 #  include <QtWebEngineQuick>
@@ -25,6 +31,10 @@ private slots:
     void aQuickViewStartsOnItsOwnWord();
     void aLiveQuickViewFollowsItsWordsBothWays();
     void aLiveWidgetsViewAsksToBeMadeAgainBothWays();
+    void aDownloadWritesNoAddressWhileTheProfileIsStillPrivate();
+    void aDownloadRequestIsPrivateByTheProfileWhichMadeIt();
+    void aPrivateViewLeavesNoIconAndNoAnswerToABadCertificate();
+    void aFetchByAddressSaysWhetherAPrivateViewAsked();
 #endif
 };
 
@@ -153,6 +163,104 @@ void tst_profilepair::aLiveWidgetsViewAsksToBeMadeAgainBothWays(){
     QCOMPARE(plain.m_Rebuilds, 0);
     plain.ApplySpecificSettings(Words("Private"));
     QCOMPARE(plain.m_Rebuilds, 1);
+}
+
+void tst_profilepair::aDownloadWritesNoAddressWhileTheProfileIsStillPrivate(){
+    const QString id = QStringLiteral("pair-download");
+    WidgetsView view(id, Words("Private"));
+    view.ApplySpecificSettings(Words());
+    QVERIFY(view.Profile()->isOffTheRecord());
+    QVERIFY(!DirectoryPage::SaysPrivate(view.SpecificSettings()));
+    QVERIFY(view.IsOffTheRecord());
+    QVERIFY(Page::OffTheRecord(&view));
+
+    WidgetsView plain(id, Words());
+    plain.ApplySpecificSettings(Words("Private"));
+    QVERIFY(!plain.IsOffTheRecord());
+    QVERIFY(Page::OffTheRecord(&plain));
+
+    WidgetsView open(id, Words());
+    QVERIFY(!Page::OffTheRecord(&open));
+}
+
+void tst_profilepair::aDownloadRequestIsPrivateByTheProfileWhichMadeIt(){
+    QWebEngineProfile widgetsPrivate;
+    QWebEngineProfile widgetsDisk(QStringLiteral("pair-made"));
+    QVERIFY(widgetsPrivate.isOffTheRecord());
+    QVERIFY(!widgetsDisk.isOffTheRecord());
+    QObject fromPrivate(&widgetsPrivate), fromDisk(&widgetsDisk);
+    QVERIFY(NetworkController::MadeOffTheRecord(&fromPrivate));
+    QVERIFY(!NetworkController::MadeOffTheRecord(&fromDisk));
+
+    QQuickWebEngineProfile quickPrivate;
+    quickPrivate.setOffTheRecord(true);
+    QQuickWebEngineProfile quickDisk;
+    quickDisk.setStorageName(QStringLiteral("pair-made-quick"));
+    quickDisk.setOffTheRecord(false);
+    QObject fromQuickPrivate(&quickPrivate), fromQuickDisk(&quickDisk);
+    QVERIFY(NetworkController::MadeOffTheRecord(&fromQuickPrivate));
+    QVERIFY(!NetworkController::MadeOffTheRecord(&fromQuickDisk));
+
+    QObject orphan;
+    QVERIFY(!NetworkController::MadeOffTheRecord(&orphan));
+    QVERIFY(!NetworkController::MadeOffTheRecord(nullptr));
+}
+
+void tst_profilepair::aPrivateViewLeavesNoIconAndNoAnswerToABadCertificate(){
+    const QString id = QStringLiteral("pair-traces");
+    WidgetsView secret(id, Words("Private"));
+    WidgetsView open(id, Words());
+    const bool hidden = Page::OffTheRecord(&secret);
+    const bool shown = Page::OffTheRecord(&open);
+    QVERIFY(hidden);
+    QVERIFY(!shown);
+
+    QPixmap pixmap(16, 16);
+    pixmap.fill(Qt::red);
+    const QIcon icon(pixmap);
+    Application::RegisterIcon(QStringLiteral("secret.example"), icon, hidden);
+    QVERIFY(Application::GetIcon(QStringLiteral("secret.example")).isNull());
+    QVERIFY(!Application::IconDatabaseSnapshot().contains(QStringLiteral("secret.example")));
+    Application::RegisterIcon(QStringLiteral("open.example"), icon, shown);
+    QVERIFY(!Application::GetIcon(QStringLiteral("open.example")).isNull());
+
+    Application::AppendToAllowedHosts(QStringLiteral("secret.example"), hidden);
+    Application::AppendToBlockedHosts(QStringLiteral("secret.example"), hidden);
+    QVERIFY(!Application::GetAllowedHosts().contains(QStringLiteral("secret.example")));
+    QVERIFY(!Application::GetBlockedHosts().contains(QStringLiteral("secret.example")));
+    Application::AppendToAllowedHosts(QStringLiteral("open.example"), shown);
+    Application::AppendToBlockedHosts(QStringLiteral("blocked.example"), shown);
+    QVERIFY(Application::GetAllowedHosts().contains(QStringLiteral("open.example")));
+    QVERIFY(Application::GetBlockedHosts().contains(QStringLiteral("blocked.example")));
+
+    const QString secretKey = QStringLiteral("secret.example:1111");
+    const QString allowedKey = QStringLiteral("open.example:2222");
+    const QString blockedKey = QStringLiteral("open.example:3333");
+    Application::RememberCertificate(secretKey, true, hidden);
+    Application::RememberCertificate(secretKey, false, hidden);
+    QVERIFY(!Application::GetAllowedCertificates().contains(secretKey));
+    QVERIFY(!Application::GetBlockedCertificates().contains(secretKey));
+    Application::RememberCertificate(allowedKey, true, shown);
+    Application::RememberCertificate(blockedKey, false, shown);
+    QVERIFY(Application::GetAllowedCertificates().contains(allowedKey));
+    QVERIFY(Application::GetBlockedCertificates().contains(blockedKey));
+}
+
+void tst_profilepair::aFetchByAddressSaysWhetherAPrivateViewAsked(){
+    NetworkAccessManager *nam =
+        NetworkController::GetNetworkAccessManager(QStringLiteral("pair-fetch"));
+    foreach(const bool offTheRecord, QList<bool>() << true << false){
+        const QList<QNetworkReply*> before = nam->findChildren<QNetworkReply*>();
+        DownloadItem *item = NetworkController::Download
+            (nam, QUrl(QStringLiteral("data:text/plain,x")), QUrl(),
+             NetworkController::ToVariable, offTheRecord);
+        QList<QNetworkReply*> made;
+        foreach(QNetworkReply *reply, nam->findChildren<QNetworkReply*>())
+            if(!before.contains(reply)) made << reply;
+        QCOMPARE(made.size(), 1);
+        QCOMPARE(NetworkAccessManager::IsOffTheRecord(made.first()->request()), offTheRecord);
+        delete item;
+    }
 }
 #endif
 

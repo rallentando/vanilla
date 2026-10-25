@@ -75,9 +75,7 @@ private:
         ADD(ToggleMediaControlsJsCode());
         ADD(ToggleMediaLoopJsCode());
         ADD(ToggleMediaPlayPauseJsCode());
-        ADD(InstallWebChannelJsCode());
         ADD(InstallSubmitEventJsCode());
-        ADD(DecorateFormFieldJsCode(data));
         ADD(SubmitFormDataJsCode(data));
         ADD(InstallEventFilterJsCode(types));
 #ifdef EDGEWEBVIEW
@@ -110,7 +108,7 @@ private slots:
     void everyHelperIsJavascript(){
         QJSEngine engine;
         const QList<NamedScript> helpers = Helpers();
-        int expected = 44;
+        int expected = 42;
 #ifdef MEDIATIME
         expected += 2;
 #endif
@@ -1016,6 +1014,54 @@ private slots:
         QCOMPARE(harness.call({QJSValue(QStringLiteral("#nowhere"))}).toString(), QStringLiteral("general"));
     }
 
+    void settingsNotUsedSentenceReadsInAnyOrder(){
+        QFile file(QStringLiteral(VANILLA_RESOURCE_DIR "/settings/settings.js"));
+        QVERIFY2(file.open(QFile::ReadOnly | QFile::Text),
+                 qPrintable(file.fileName()));
+        const QString source = QString::fromUtf8(file.readAll());
+        const int begin = source.indexOf(QStringLiteral("function notUsedSentence(clauses, strings) {"));
+        const int end = source.indexOf(QStringLiteral("\n}"), begin);
+        QVERIFY(begin >= 0);
+        QVERIFY(end > begin);
+        const QString builder = source.mid(begin, end + 2 - begin);
+        QVERIFY(source.contains(QStringLiteral("note.textContent = notUsedSentence(clauses, state.strings);")));
+
+        QJSEngine engine;
+        const QJSValue harness = engine.evaluate(
+            builder +
+            QStringLiteral("\n(function(strings){"
+                           " var on  = {value: false, other: {label: 'RHI'}};"
+                           " var off = {value: true,  other: {label: 'Ahead'}};"
+                           " var api = {value: 'OpenGL', label: 'OpenGL', other: {label: 'API'}};"
+                           " return [notUsedSentence([on], strings), notUsedSentence([off], strings),"
+                           "         notUsedSentence([api], strings),"
+                           "         notUsedSentence([on, api], strings), notUsedSentence([api, on], strings)];"
+                           "})"));
+        QVERIFY2(!harness.isError(), qPrintable(harness.toString()));
+
+        QJSValue ja = engine.newObject();
+        ja.setProperty(QStringLiteral("notUsedWhile"), QStringLiteral("%1の間は使われません。"));
+        ja.setProperty(QStringLiteral("clauseOn"),  QStringLiteral("「%1」がオン"));
+        ja.setProperty(QStringLiteral("clauseOff"), QStringLiteral("「%1」がオフ"));
+        ja.setProperty(QStringLiteral("clauseNot"), QStringLiteral("「%1」が「%2」以外"));
+        ja.setProperty(QStringLiteral("clauseJoin"), QStringLiteral("で、"));
+        const QJSValue japanese = harness.call({ja});
+        QCOMPARE(japanese.property(0).toString(), QStringLiteral("「RHI」がオンの間は使われません。"));
+        QCOMPARE(japanese.property(1).toString(), QStringLiteral("「Ahead」がオフの間は使われません。"));
+        QCOMPARE(japanese.property(2).toString(), QStringLiteral("「API」が「OpenGL」以外の間は使われません。"));
+        QCOMPARE(japanese.property(3).toString(), QStringLiteral("「RHI」がオンで、「API」が「OpenGL」以外の間は使われません。"));
+        QCOMPARE(japanese.property(4).toString(), QStringLiteral("「API」が「OpenGL」以外で、「RHI」がオンの間は使われません。"));
+
+        QJSValue en = engine.newObject();
+        en.setProperty(QStringLiteral("notUsedWhile"), QStringLiteral("Not used while %1."));
+        en.setProperty(QStringLiteral("clauseOn"),  QStringLiteral("'%1' is on"));
+        en.setProperty(QStringLiteral("clauseOff"), QStringLiteral("'%1' is off"));
+        en.setProperty(QStringLiteral("clauseNot"), QStringLiteral("'%1' is not '%2'"));
+        en.setProperty(QStringLiteral("clauseJoin"), QStringLiteral(" and "));
+        const QJSValue english = harness.call({en});
+        QCOMPARE(english.property(3).toString(), QStringLiteral("Not used while 'RHI' is on and 'API' is not 'OpenGL'."));
+    }
+
     void settingsPickerReleasesItsBusyButton(){
         QFile file(QStringLiteral(VANILLA_RESOURCE_DIR "/settings/settings.js"));
         QVERIFY2(file.open(QFile::ReadOnly | QFile::Text),
@@ -1418,12 +1464,17 @@ private slots:
 
     void theApplicationsPagesDrawNothingInAFrame_data(){
         QTest::addColumn<QString>("name");
+        QTest::addColumn<QString>("from");
         QTest::addColumn<QString>("firstDeclaration");
-        QTest::newRow("settings") << QStringLiteral("/settings/settings.js") << QStringLiteral("const state");
+        QTest::newRow("settings") << QStringLiteral("/settings/settings.js") << QString() << QStringLiteral("const state");
+        QTest::newRow("start") << QStringLiteral("/start/start.html")
+                               << QStringLiteral("// not inside another page's frame")
+                               << QStringLiteral("var data = JSON.parse");
     }
 
     void theApplicationsPagesDrawNothingInAFrame(){
         QFETCH(QString, name);
+        QFETCH(QString, from);
         QFETCH(QString, firstDeclaration);
 
         QFile file(QStringLiteral(VANILLA_RESOURCE_DIR) + name);
@@ -1431,9 +1482,11 @@ private slots:
         const QString source = QString::fromUtf8(file.readAll());
         file.close();
 
-        const int end = source.indexOf(firstDeclaration);
-        QVERIFY(end > 0);
-        const QString head = source.left(end);
+        const int begin = from.isEmpty() ? 0 : source.indexOf(from);
+        QVERIFY(begin >= 0);
+        const int end = source.indexOf(firstDeclaration, begin);
+        QVERIFY(end > begin);
+        const QString head = source.mid(begin, end - begin);
         QVERIFY(!head.contains(QStringLiteral("fetch(")));
 
         QJSEngine engine;

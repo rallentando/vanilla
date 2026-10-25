@@ -34,7 +34,7 @@ WebView {
       'LoadFailedStatus' ('quickwebengineview6.qml') -- and the widget views
       reach it through 'LoadEnding' (D-280).
      */
-    onLoadingChanged: {
+    onLoadingChanged: function(loadRequest) {
         var status = loadRequest.status
 
         if(status == WebView.LoadStartedStatus){

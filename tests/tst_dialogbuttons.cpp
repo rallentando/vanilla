@@ -33,6 +33,7 @@ private slots:
     void aModelessDialogDeletedByAnotherHandLeavesItsFrame();
     void aFrameGoingFirstTakesItsDialogsWithoutReachingBack();
     void anEmptyFrameDrawsNothingUntilTheNextDialog();
+    void aRenewedDialogStaysUpAndADiscardedOneDoesNotComeBack();
 
 private:
     static ModelessDialogFrame *TakeTemporaryFrame(){
@@ -113,7 +114,9 @@ void tst_dialogbuttons::theTableSaysEachButtonOnceAndSaysWhatAClickMeans(){
         { Dialog::No,     false },
         { Dialog::Cancel, false },
         { Dialog::Open,   true  },
-        { Dialog::Close,  false }
+        { Dialog::Close,  false },
+        { Dialog::OpenTrash, true },
+        { Dialog::Restart, true }
     };
 
     const QList<Dialog::Row> rows = Dialog::Table();
@@ -464,6 +467,35 @@ void tst_dialogbuttons::anEmptyFrameDrawsNothingUntilTheNextDialog(){
     QVERIFY(frame->height() > 0);
     QVERIFY2(frame->updatesEnabled(), "the next dialog was not drawn");
     QVERIFY(second->updatesEnabled());
+    delete frame;
+}
+
+void tst_dialogbuttons::aRenewedDialogStaysUpAndADiscardedOneDoesNotComeBack(){
+    int answered = 0;
+    ModelessDialog *dialog = new ModelessDialog();
+    dialog->SetAutoCancel(false);
+    dialog->SetButtons(Dialog::Restart | Dialog::Close);
+    dialog->SetCallBack([&](bool){ answered++;});
+    QPointer<ModelessDialog> alive(dialog);
+    dialog->Execute();
+    ModelessDialogFrame *frame = TakeTemporaryFrame();
+    QVERIFY(frame);
+    QVERIFY(frame->Dialogs().contains(dialog));
+
+    dialog->Renew();
+    QVERIFY(frame->Dialogs().contains(dialog));
+    QCOMPARE(frame->Dialogs().size(), 1);
+    QCOMPARE(answered, 0);
+    QVERIFY(alive);
+
+    dialog->Discard();
+    QVERIFY(!frame->Dialogs().contains(dialog));
+    dialog->Renew();
+    QVERIFY2(!frame->Dialogs().contains(dialog), "a discarded dialog came back on 'Renew'");
+    QVERIFY(!Application::GetTemporaryDialogFrame());
+    QCOMPARE(answered, 0);
+
+    QTRY_VERIFY(alive.isNull());
     delete frame;
 }
 

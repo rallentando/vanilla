@@ -19,10 +19,6 @@
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
 
-#ifdef USE_WEBCHANNEL
-#  error "USE_WEBCHANNEL and VANILLA_PASSWORDS cannot be on together."
-#endif
-
 namespace {
 
     const char *PasswordJsCode = R"JS(

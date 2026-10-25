@@ -23,6 +23,9 @@
 #include <QContextMenuEvent>
 #include <QLocale>
 #include <QMenu>
+#include <QFile>
+#include <QJsonDocument>
+#include <QSaveFile>
 #include <QTimer>
 #include <QWebEngineScript>
 #include <QWebEngineContextMenuRequest>
@@ -50,7 +53,6 @@ namespace {
     ExtensionItem Item(const QWebEngineExtensionInfo &info){
         ExtensionItem item;
         item.id = info.id();
-        item.name = info.name();
         item.path = ExtensionCopy::SourceOf(info.path());
         item.enabled = info.isEnabled();
         item.popup = info.actionPopupUrl();
@@ -66,6 +68,22 @@ namespace {
             SetMenusFile(Application::StateDirectory() + ExtensionUi::MenusFileName(NetworkController::ProfileKey(profile)));
             SetRulesFile(Application::StateDirectory() + ExtensionUi::RulesFileName(NetworkController::ProfileKey(profile)));
             SetInstalledFile(Application::StateDirectory() + ExtensionUi::InstalledFileName(NetworkController::ProfileKey(profile)));
+            m_RecordFile = Application::StateDirectory() + ExtensionUi::RegisteredFileName(NetworkController::ProfileKey(profile));
+            QFile record(m_RecordFile);
+            if(record.open(QIODevice::ReadOnly)){
+                QJsonParseError parse;
+                const QJsonDocument document = QJsonDocument::fromJson(record.readAll(), &parse);
+                if(parse.error == QJsonParseError::NoError && document.isObject()){
+                    bool damaged = false;
+                    const ExtensionUi::Registered read = ExtensionUi::Registered::FromJson(document.object(), &damaged);
+                    if(!damaged) m_Registered = read;
+                    m_RecordRead = !damaged;
+                }
+            }
+            m_RecordKnown = m_RecordRead;
+            m_RecordTimer.setSingleShot(true);
+            m_RecordTimer.setInterval(10000);
+            connect(&m_RecordTimer, &QTimer::timeout, this, [this](){ CommitRecord(); });
         }
 
     protected:
@@ -112,11 +130,21 @@ namespace {
             } else {
                 Note(manifest.path, QString());
             }
+            const QString copy = ExtensionManifest::PathKey(path);
+            const QString before = m_PendingRecord.value(manifest.id, m_PendingForget.contains(manifest.id) ? QString() : m_Registered.CopyOf(manifest.id));
+            const bool stale = ExtensionUi::Registered::Stale(m_RecordKnown, before, copy, m_Unloaded.contains(manifest.id));
+            if(stale) m_Stale.insert(manifest.id);
+            else m_Stale.remove(manifest.id);
+            m_Loading.insert(manifest.id, copy);
             auto connection = std::make_shared<QMetaObject::Connection>();
             *connection = connect(m_Manager, &QWebEngineExtensionManager::loadFinished, this,
-                                  [path, done, connection](const QWebEngineExtensionInfo &info){
+                                  [this, path, done, connection](const QWebEngineExtensionInfo &info){
                 if(ExtensionManifest::PathKey(info.path()) != ExtensionManifest::PathKey(path)) return;
                 QObject::disconnect(*connection);
+                if(info.error().isEmpty()){
+                    m_Refreshed.insert(info.id());
+                    if(!m_Stale.contains(info.id())) Record(info.id());
+                }
                 done(Item(info), info.error());
             });
             m_Manager->loadExtension(path);
@@ -126,10 +154,12 @@ namespace {
             foreach(const QWebEngineExtensionInfo &info, m_Manager->extensions()){
                 if(info.id() != id) continue;
                 m_Manager->setExtensionEnabled(info, enabled);
-                if(enabled && !m_Refreshed.contains(id)){
+                const bool stale = m_Stale.remove(id);
+                if(enabled && (!m_Refreshed.contains(id) || stale)){
                     m_Refreshed.insert(id);
                     m_Manager->setExtensionEnabled(info, false);
                     m_Manager->setExtensionEnabled(info, true);
+                    Record(id);
                 }
                 done(Item(info), QString());
                 return;
@@ -147,7 +177,15 @@ namespace {
                                       [this, id, done, connection](const QWebEngineExtensionInfo &result){
                     if(result.id() != id) return;
                     QObject::disconnect(*connection);
-                    if(result.error().isEmpty()) m_Refreshed.remove(id);
+                    if(result.error().isEmpty()){
+                        m_Refreshed.remove(id);
+                        m_Stale.remove(id);
+                        m_Loading.remove(id);
+                        m_PendingRecord.remove(id);
+                        m_Unloaded.insert(id);
+                        m_PendingForget.insert(id);
+                        m_RecordTimer.start();
+                    }
                     done(result.error());
                 });
                 m_Manager->unloadExtension(info);
@@ -157,8 +195,47 @@ namespace {
         }
 
     private:
+        void Record(const QString &id){
+            const QString copy = m_Loading.value(id);
+            if(copy.isEmpty()) return;
+            m_PendingRecord.insert(id, copy);
+            m_RecordTimer.start();
+        }
+        void CommitRecord(){
+            if(IsBusy()){ m_RecordTimer.start(); return; }
+            bool changed = false;
+            foreach(const QString &id, m_PendingForget) if(m_Registered.Forget(id)) changed = true;
+            m_PendingForget.clear();
+            for(auto i = m_PendingRecord.constBegin(); i != m_PendingRecord.constEnd(); ++i)
+                if(m_Registered.Set(i.key(), i.value())) changed = true;
+            m_PendingRecord.clear();
+            if(changed || !m_RecordRead) SaveRecord();
+            if(m_RecordRead && IsReady()) m_RecordKnown = true;
+        }
+        void SaveRecord(){
+            QSaveFile file(m_RecordFile);
+            if(!file.open(QIODevice::WriteOnly) ||
+               file.write(QJsonDocument(m_Registered.ToJson()).toJson(QJsonDocument::Compact)) < 0 || !file.commit()){
+                if(!m_RecordComplained) qWarning() << "which copies the extensions run from could not be written to" << m_RecordFile;
+                m_RecordComplained = true;
+                return;
+            }
+            m_RecordRead = true;
+        }
+
         QWebEngineExtensionManager *m_Manager;
         QSet<QString> m_Refreshed;
+        QSet<QString> m_Stale;
+        ExtensionUi::Registered m_Registered;
+        QString m_RecordFile;
+        bool m_RecordRead = false;
+        bool m_RecordComplained = false;
+        QHash<QString, QString> m_Loading;
+        QHash<QString, QString> m_PendingRecord;
+        QSet<QString> m_PendingForget;
+        QTimer m_RecordTimer;
+        QSet<QString> m_Unloaded;
+        bool m_RecordKnown = false;
     };
 
     template <typename Profile> void InstallOn(Profile *profile){

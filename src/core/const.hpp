@@ -42,6 +42,7 @@ static const QString EMPTY_FRAME_HTML = QStringLiteral("<html><head></head><body
 
 static const QUrl EMPTY_URL = QUrl();
 static const QUrl BLANK_URL = QUrl(QStringLiteral("about:blank"));
+static const QUrl START_URL = QUrl(QStringLiteral("vanilla://start/"));
 
 static const QString DISABLE_FILENAME = "???";
 
@@ -98,6 +99,12 @@ static const int PAGE_PILL_CORNER_RADIUS = 999;
 
 static const int TOOL_BAR_PADDING = 6;
 static const int TOOL_BAR_ICON_SPACING = 5;
+static const int BAR_HANDLE_THICKNESS = 4;
+static const int BAR_HANDLE_LENGTH = 16;
+
+static const int DOCK_TITLE_BAR_HEIGHT = 28;
+static const int DOCK_TITLE_BUTTON_SIZE = 20;
+static const int DOCK_TITLE_ICON_SIZE = 12;
 static const int TOOL_BAR_ICON_SIZE = 19;
 inline const QFont &ToolBarFieldFont(){
     static const QFont font = ScaledFont(1.0, 2);
@@ -132,8 +139,14 @@ inline const QFont &ExtensionListTitleFont(){
     return font;
 }
 
-static const int MENU_ITEM_EXTRA_HEIGHT = 6;
-static const int MENU_MARGIN = 4;
+static const int MENU_ITEM_EXTRA_HEIGHT = 8;
+static const int MENU_SEPARATOR_EXTRA_HEIGHT = 4;
+static const int MENU_MARGIN = 8;
+static const int MENU_KEY_GAP = 24;
+inline const QFont &MenuFont(){
+    static const QFont font = ScaledFont(1.0, 1);
+    return font;
+}
 
 static const int EDGE_WIDGET_SIZE = 10;
 static const int TITLE_BAR_HEIGHT = 32;
@@ -170,6 +183,7 @@ inline const QFont &DialogTextFont(){ return DefaultFont();}
 static const int MINIMUL_DIALOG_WIDTH = 400;
 static const int MODELESS_DIALOG_WIDTH_DIVISOR = 4;
 static const int AUTOCANCEL_DISTANCE = 10000;
+static const int RESTART_WAIT_LIMIT = 20000;
 
 static const QSize SAVING_THUMBNAIL_SIZE   = QSize(400, 300);
 static const QSize RESIDENT_THUMBNAIL_SIZE = QSize(200, 150);

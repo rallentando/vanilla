@@ -15,6 +15,7 @@ const state = {
     inputEditing: false,
     inputBusy: false,
     passwords: null,
+    permissions: null,
     downloads: null,
     directory: null,
     directoryId: null,
@@ -155,6 +156,14 @@ function buildRow(item) {
         link.textContent = state.strings.openPasswords;
         text.appendChild(link);
     }
+    if (item.key === 'network/@RememberPermissions' &&
+        state.categories.some(category => category.name === 'permissions')) {
+        const link = document.createElement('a');
+        link.className = 'hint link';
+        link.href = '#permissions';
+        link.textContent = state.strings.openPermissions;
+        text.appendChild(link);
+    }
     row.appendChild(text);
 
     const holder = document.createElement('div');
@@ -163,6 +172,7 @@ function buildRow(item) {
     const node = control.make(item);
     node.id = 'c-' + item.key.replace(/[^A-Za-z0-9]/g, '-');
     label.setAttribute('for', node.id);
+    if (item.placeholder) node.placeholder = item.placeholder;
     control.write(node, item.value);
     holder.appendChild(node);
 
@@ -249,7 +259,7 @@ function buildRow(item) {
         row.classList.remove('invalid');
         markChanged();
         refreshApplicability();
-        toast(state.strings.saved);
+        toast(item.needsRestart ? state.strings.savedRestart : state.strings.saved);
     });
 
     return row;
@@ -702,10 +712,33 @@ function inputSection(table, query) {
     return {section, count: shown.length};
 }
 
+function inputContents(sections) {
+    const nav = document.createElement('section');
+    nav.className = 'input-contents';
+    const lead = document.createElement('span');
+    lead.className = 'lead';
+    lead.textContent = state.inputs.strings.jumpTo;
+    nav.appendChild(lead);
+    for (const section of sections) {
+        const title = section.querySelector('.input-head h3');
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'link';
+        link.textContent = title ? title.firstChild.textContent : section.dataset.group;
+        link.addEventListener('click', () => section.scrollIntoView({block: 'start'}));
+        nav.appendChild(link);
+    }
+    return nav;
+}
+
 function inputToolbar() {
     const words = state.inputs.strings;
     const bar = document.createElement('section');
     bar.className = 'input-toolbar';
+    const title = document.createElement('h3');
+    title.className = 'group';
+    title.textContent = words.assignments;
+    bar.appendChild(title);
     const edit = document.createElement('button');
     edit.type = 'button';
     edit.className = 'browse';
@@ -761,7 +794,7 @@ function watchFloatingToggle(toolbar) {
     floatingToggle.observer.observe(toolbar);
 }
 
-function renderInputs(query, searching, label) {
+function renderInputs(query, searching, label, headed) {
     let shown = 0;
     const sections = [];
     for (const table of state.inputs.tables) {
@@ -772,7 +805,7 @@ function renderInputs(query, searching, label) {
     }
     if (!sections.length) return 0;
 
-    if (searching) {
+    if (searching && !headed) {
         const heading = document.createElement('section');
         const h2 = document.createElement('h2');
         h2.textContent = label;
@@ -781,6 +814,7 @@ function renderInputs(query, searching, label) {
     }
     const toolbar = inputToolbar();
     el.main.appendChild(toolbar);
+    if (sections.length > 1) el.main.appendChild(inputContents(sections));
     for (const section of sections) el.main.appendChild(section);
     watchFloatingToggle(toolbar);
     if (state.inputBusy) holdInputs();
@@ -873,6 +907,13 @@ function renderPasswords(query, searching, label) {
         section.appendChild(heading);
     }
 
+    if (!searching) {
+        const heading = document.createElement('h3');
+        heading.className = 'group';
+        heading.textContent = label;
+        section.appendChild(heading);
+    }
+
     const notes = [];
     if (!data.available) notes.push(words.unavailable);
     if (!searching && data.available && !data.entries.length) notes.push(words.none);
@@ -935,6 +976,168 @@ function renderPasswords(query, searching, label) {
     return Math.max(entries.length, 1);
 }
 
+async function refreshPermissions() {
+    try {
+        state.permissions = await api('permissions');
+        render();
+    } catch (e) {
+    }
+}
+
+async function changePermission(endpoint, body) {
+    try {
+        const reply = await api(endpoint, body);
+        if (reply && reply.error) toast(state.permissions.strings.failed);
+    } catch (e) {
+        toast(state.permissions.strings.failed);
+    }
+    await sleep(150);
+    await refreshPermissions();
+}
+
+async function removeSitePermissions(origin) {
+    const entries = state.permissions.entries.filter(e => e.origin === origin);
+    try {
+        let refused = false;
+        for (const entry of entries) {
+            const reply = await api('permissions-remove', {origin: entry.origin, kind: entry.kind});
+            if (reply && reply.error) refused = true;
+        }
+        if (refused) toast(state.permissions.strings.failed);
+    } catch (e) {
+        toast(state.permissions.strings.failed);
+    }
+    await sleep(150);
+    await refreshPermissions();
+}
+
+function permissionButton(text, action) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'browse';
+    button.textContent = text;
+    button.addEventListener('click', () => {
+        if (action() !== false) button.disabled = true;
+    });
+    return button;
+}
+
+function kindLabel(data, kind) {
+    return Object.hasOwn(data.labels, kind) ? data.labels[kind] : '';
+}
+
+function permissionMatches(entry, query, label) {
+    if (!query) return true;
+    const data = state.permissions;
+    const haystack = (entry.origin + ' ' + (kindLabel(data, entry.kind) || entry.kind) + ' ' +
+                      data.strings[entry.state] + ' ' + label).toLowerCase();
+    return query.split(/\s+/).every(word => haystack.includes(word));
+}
+
+function renderPermissions(query, searching, label) {
+    const data = state.permissions;
+    if (!data) return 0;
+    const words = data.strings;
+    const entries = data.entries.filter(e => permissionMatches(e, query, label));
+    if (searching && !entries.length) return 0;
+
+    const section = document.createElement('section');
+    if (searching) {
+        const heading = document.createElement('h2');
+        heading.textContent = label;
+        section.appendChild(heading);
+    } else {
+        section.appendChild(noticeLine(data.entries.length ? words.about : words.none));
+    }
+
+    let card = null;
+    let origin = null;
+    for (const entry of entries) {
+        if (entry.origin !== origin) {
+            origin = entry.origin;
+            const heading = document.createElement('h3');
+            heading.className = 'group';
+            heading.textContent = origin;
+            section.appendChild(heading);
+            card = document.createElement('div');
+            card.className = 'card';
+            section.appendChild(card);
+
+            const own = data.entries.filter(e => e.origin === origin);
+            if (!searching && own.length > 1) {
+                const site = origin;
+                card.dataset.removeSite = site;
+            }
+        }
+
+        const row = document.createElement('div');
+        row.className = 'row';
+        const text = document.createElement('div');
+        text.className = 'text';
+        const what = document.createElement('span');
+        what.className = 'label';
+        what.textContent = kindLabel(data, entry.kind) || entry.kind;
+        text.appendChild(what);
+        const scope = Object.hasOwn(data.scopes, entry.kind) ? data.scopes[entry.kind] : '';
+        if (scope === 'edge' || scope === 'engine') {
+            const note = document.createElement('span');
+            note.className = 'hint';
+            note.textContent = scope === 'edge' ? words.edgeOnly : words.engineOnly;
+            text.appendChild(note);
+        }
+        row.appendChild(text);
+
+        const holder = document.createElement('div');
+        holder.className = 'control';
+        if (kindLabel(data, entry.kind)) {
+            const select = document.createElement('select');
+            for (const answer of ['allow', 'block']) {
+                const option = document.createElement('option');
+                option.value = answer;
+                option.textContent = words[answer];
+                select.appendChild(option);
+            }
+            select.value = entry.state;
+            select.addEventListener('change', () =>
+                changePermission('permissions-set', {origin: entry.origin, kind: entry.kind, state: select.value}));
+            holder.appendChild(select);
+        }
+        holder.appendChild(permissionButton(words.remove, () =>
+            changePermission('permissions-remove', {origin: entry.origin, kind: entry.kind})));
+        row.appendChild(holder);
+        card.appendChild(row);
+    }
+
+    for (const box of section.querySelectorAll('.card[data-remove-site]')) {
+        const site = box.dataset.removeSite;
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.appendChild(Object.assign(document.createElement('div'), {className: 'text'}));
+        const holder = document.createElement('div');
+        holder.className = 'control';
+        holder.appendChild(permissionButton(words.removeSite, () => removeSitePermissions(site)));
+        row.appendChild(holder);
+        box.appendChild(row);
+    }
+
+    if (!searching && data.entries.length) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.appendChild(Object.assign(document.createElement('div'), {className: 'text'}));
+        const holder = document.createElement('div');
+        holder.className = 'control';
+        holder.appendChild(permissionButton(words.removeAll, () => {
+            if (!window.confirm(words.confirmAll)) return false;
+            changePermission('permissions-remove-all', {});
+        }));
+        row.appendChild(holder);
+        section.appendChild(row);
+    }
+
+    el.main.appendChild(section);
+    return Math.max(entries.length, 1);
+}
+
 let downloadsTimer = 0;
 
 async function refreshDownloads() {
@@ -972,6 +1175,19 @@ function downloadMatches(entry, query, label) {
     return query.split(/\s+/).every(word => haystack.includes(word));
 }
 
+function shortUrl(text) {
+    let url;
+    try { url = new URL(text); } catch (e) { return text; }
+    let path = url.pathname;
+    try { path = decodeURI(path); } catch (e) {}
+    return (url.host || url.protocol) + path;
+}
+
+function urlTitle(text) {
+    if (/^(?:https?|ftp):/i.test(text) || text.length <= 2048) return text;
+    return text.slice(0, 2048) + '…';
+}
+
 function actionButton(text, handler) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -981,7 +1197,7 @@ function actionButton(text, handler) {
     return button;
 }
 
-function renderDownloads(query, searching, label) {
+function renderDownloads(query, searching, label, headed) {
     const data = state.downloads;
     if (!data) return 0;
     const words = data.strings;
@@ -989,12 +1205,18 @@ function renderDownloads(query, searching, label) {
     if (searching && !entries.length) return 0;
 
     const section = document.createElement('section');
-    if (searching) {
+    if (searching && !headed) {
         const heading = document.createElement('h2');
         heading.textContent = label;
         section.appendChild(heading);
     }
 
+    if (headed || !searching) {
+        const heading = document.createElement('h3');
+        heading.className = 'group';
+        heading.textContent = words.history;
+        section.appendChild(heading);
+    }
     if (!data.entries.length && !searching) section.appendChild(noticeLine(words.none));
 
     for (const entry of entries) {
@@ -1015,19 +1237,25 @@ function renderDownloads(query, searching, label) {
         if (entry.state !== 'running' && !entry.exists) parts.push(words.missing);
         const status = document.createElement('span');
         status.className = 'hint';
+        if (entry.state === 'failed' || entry.state === 'interrupted')
+            status.classList.add('failed');
         status.textContent = parts.join('  ·  ');
         text.appendChild(status);
 
         if (entry.url) {
             const from = document.createElement('span');
-            from.className = 'hint';
-            from.textContent = entry.url;
+            from.className = 'hint from';
+            from.textContent = shortUrl(entry.url);
+            from.title = urlTitle(entry.url);
             text.appendChild(from);
         }
         row.appendChild(text);
 
         const holder = document.createElement('div');
         holder.className = 'control';
+        if (entry.hasSource)
+            holder.appendChild(actionButton(words.source,
+                () => downloadAction('downloads-source', entry.id)));
         if (entry.state === 'running') {
             holder.appendChild(actionButton(words.cancel,
                 () => downloadAction('downloads-cancel', entry.id)));
@@ -1194,7 +1422,9 @@ function directoryCard(node, depth, current) {
         }
         if (sw.blocked) control.disabled = true;
         controls.push({sw: sw, node: control, borrowed: borrowed});
-        card.appendChild(directoryRow(sw.label, control, sw.hint));
+        const row = directoryRow(sw.label, control, sw.hint);
+        if (sw.blocked) row.classList.add('inapplicable');
+        card.appendChild(row);
     }
 
     const id = controls.find(c => c.sw.key === 'id');
@@ -1207,10 +1437,27 @@ function directoryCard(node, depth, current) {
         name.addEventListener('input', follow);
     }
 
+    let kind = null;
+    if (data.kinds && data.kinds.length) {
+        kind = document.createElement('select');
+        for (const word of [''].concat(data.kinds)) {
+            const option = document.createElement('option');
+            option.value = word;
+            option.textContent = word ||
+                strings.stateDefault.replace('%1', node.inheritedKind || '-');
+            kind.appendChild(option);
+        }
+        kind.value = node.kind || '';
+        card.appendChild(directoryRow(strings.viewKind, kind, strings.viewKindHint));
+    }
+    const unclaimed = directoryUnclaimed(node.tokens);
+    const claimed = node.kindToken ? unclaimed.indexOf(node.kindToken) : -1;
+    if (claimed !== -1) unclaimed.splice(claimed, 1);
+
     const extra = document.createElement('input');
     extra.type = 'text';
     extra.spellcheck = false;
-    extra.value = directoryUnclaimed(node.tokens).join('; ');
+    extra.value = unclaimed.join('; ');
     card.appendChild(directoryRow(strings.otherTokens, extra, strings.otherTokensHint));
 
     const agents = document.createElement('p');
@@ -1233,10 +1480,22 @@ function directoryCard(node, depth, current) {
                 tokens.push(sw.on);
             }
         }
+        const aboutKind = data.kindPattern
+            ? new RegExp('^!?(?:' + data.kindPattern + ')$') : null;
+        const chosen = kind ? kind.value : '';
+        const rechosen = kind !== null && chosen !== (node.kind || '');
+        const free = [];
         for (const token of extra.value.split(';')) {
             const trimmed = token.trim();
-            if (trimmed !== '') tokens.push(trimmed);
+            if (trimmed === '') continue;
+            if (rechosen && aboutKind && aboutKind.test(trimmed)) continue;
+            free.push(trimmed);
         }
+        if (!rechosen && node.kindToken)
+            free.splice(claimed === -1 ? 0 : Math.min(claimed, free.length), 0, node.kindToken);
+        else if (chosen)
+            free.unshift(chosen);
+        tokens.push(...free);
         try {
             const reply = await api('directory-set',
                 {node: node.id, name: name.value.trim(), tokens: tokens});
@@ -1252,6 +1511,7 @@ function directoryCard(node, depth, current) {
     };
     name.addEventListener('change', submit);
     extra.addEventListener('change', submit);
+    if (kind) kind.addEventListener('change', submit);
     for (const {node: control} of controls) control.addEventListener('change', submit);
 
     return card;
@@ -1379,8 +1639,9 @@ function refreshApplicability() {
         const item = state.items.find(i => i.key === row.dataset.key);
         if (!item || !item.appliesWhen) continue;
 
-        const other = state.items.find(i => i.key === item.appliesWhen.key);
-        const applies = !other || other.value === item.appliesWhen.value;
+        const clauses = item.appliesWhen.map(clause =>
+            Object.assign({other: state.items.find(i => i.key === clause.key)}, clause));
+        const applies = clauses.some(c => !c.other || c.other.value === c.value);
 
         row.classList.toggle('inapplicable', !applies);
         for (const node of row.querySelectorAll('input, select, textarea, button'))
@@ -1388,20 +1649,96 @@ function refreshApplicability() {
 
         const note = row.querySelector('.note');
         note.hidden = applies;
-        if (!applies)
-            note.textContent =
-                (item.appliesWhen.value ? state.strings.notUsedWhileOff
-                                        : state.strings.notUsedWhileOn)
-                .replace('%1', other.label);
+        if (!applies) note.textContent = notUsedSentence(clauses, state.strings);
     }
+}
+
+function notUsedSentence(clauses, strings) {
+    return strings.notUsedWhile.replace('%1', clauses.map(c =>
+        typeof c.value === 'boolean'
+            ? (c.value ? strings.clauseOff : strings.clauseOn).replace('%1', c.other.label)
+            : strings.clauseNot.replace('%1', c.other.label).replace('%2', c.label)
+    ).join(strings.clauseJoin));
 }
 
 function matches(item, query, categoryLabel) {
     if (!query) return true;
     const haystack = (item.label + ' ' + (item.hint || '') + ' ' +
                       (item.choiceLabels || []).join(' ') + ' ' +
+                      (item.group || '') + ' ' +
                       categoryLabel + ' ' + item.key).toLowerCase();
     return query.split(/\s+/).every(word => haystack.includes(word));
+}
+
+function markFound(root, query) {
+    const words = query.split(/\s+/).filter(Boolean)
+        .map(w => new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu'));
+    if (!words.length) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: node => node.parentElement.closest('option, textarea, script, style, mark')
+            ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+        const text = node.nodeValue;
+        const covered = [];
+        for (const re of words) {
+            re.lastIndex = 0;
+            for (let m; (m = re.exec(text));)
+                for (let i = m.index; i < re.lastIndex; i++) covered[i] = true;
+        }
+        if (!covered.length) continue;
+        const parts = document.createDocumentFragment();
+        for (let at = 0; at < text.length;) {
+            let end = at;
+            while (end < text.length && !!covered[end] === !!covered[at]) end++;
+            const part = text.slice(at, end);
+            if (covered[at]) {
+                const hit = document.createElement('mark');
+                hit.textContent = part;
+                parts.appendChild(hit);
+            } else {
+                parts.appendChild(document.createTextNode(part));
+            }
+            at = end;
+        }
+        node.replaceWith(parts);
+    }
+}
+
+function renderRows(category, query, searching) {
+    const items = state.items.filter(
+        i => i.category === category.name && matches(i, query, category.label));
+    if (!items.length) return 0;
+
+    const section = document.createElement('section');
+    section.className = 'rows';
+    if (searching) {
+        const heading = document.createElement('h2');
+        heading.textContent = category.label;
+        section.appendChild(heading);
+    }
+    let group = '';
+    let card = null;
+    for (const item of items) {
+        if (!card || (item.group && item.group !== group)) {
+            const title = item.group || (searching ? '' : category.label);
+            if (title) {
+                const heading = document.createElement('h3');
+                heading.className = 'group';
+                heading.textContent = title;
+                section.appendChild(heading);
+            }
+            card = document.createElement('div');
+            card.className = 'card';
+            section.appendChild(card);
+        }
+        group = item.group || '';
+        card.appendChild(buildRow(item));
+    }
+    el.main.appendChild(section);
+    return items.length;
 }
 
 function render() {
@@ -1420,15 +1757,21 @@ function render() {
         if (!searching && category.name !== state.current) continue;
 
         if (state.inputs && category.name === state.inputs.category) {
-            shown += renderInputs(query, searching, category.label);
+            const rows = renderRows(category, query, searching);
+            shown += rows + renderInputs(query, searching, category.label, rows > 0);
             continue;
         }
         if (category.name === 'passwords') {
             shown += renderPasswords(query, searching, category.label);
             continue;
         }
+        if (category.name === 'permissions') {
+            shown += renderPermissions(query, searching, category.label);
+            continue;
+        }
         if (category.name === 'downloads') {
-            shown += renderDownloads(query, searching, category.label);
+            const rows = renderRows(category, query, searching);
+            shown += rows + renderDownloads(query, searching, category.label, rows > 0);
             continue;
         }
         if (category.name === 'directory') {
@@ -1436,27 +1779,16 @@ function render() {
             continue;
         }
 
-        const items = state.items.filter(
-            i => i.category === category.name && matches(i, query, category.label));
-        if (!items.length) continue;
-
-        const section = document.createElement('section');
-        if (searching) {
-            const heading = document.createElement('h2');
-            heading.textContent = category.label;
-            section.appendChild(heading);
-        }
-        for (const item of items) section.appendChild(buildRow(item));
-        el.main.appendChild(section);
-        shown += items.length;
+        shown += renderRows(category, query, searching);
     }
 
     refreshApplicability();
+    for (const section of el.main.querySelectorAll('section')) markFound(section, query);
 
     el.empty.hidden = shown !== 0;
     el.empty.textContent = state.strings.noMatch;
 
-    for (const button of el.nav.children)
+    for (const button of el.nav.querySelectorAll('button'))
         button.setAttribute('aria-current', String(!searching && button.dataset.name === state.current));
 }
 
@@ -1485,12 +1817,18 @@ function showCategory(name) {
     }
     if (state.inputs && name === state.inputs.category) refreshInputs();
     if (name === 'passwords') refreshPasswords();
+    if (name === 'permissions') refreshPermissions();
     if (name === 'downloads') refreshDownloads();
     if (name === 'directory') refreshDirectory(state.directoryId);
 }
 
 function buildNav() {
     for (const category of state.categories) {
+        if (category.divider && el.nav.children.length) {
+            const line = document.createElement('hr');
+            line.className = 'nav-divider';
+            el.nav.appendChild(line);
+        }
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.name = category.name;
@@ -1501,6 +1839,10 @@ function buildNav() {
         });
         el.nav.appendChild(button);
     }
+    const note = document.createElement('p');
+    note.className = 'nav-note';
+    note.textContent = state.strings.autosave;
+    el.nav.appendChild(note);
 }
 
 function categoryOfFragment() {
@@ -1509,8 +1851,30 @@ function categoryOfFragment() {
     return state.categories.length ? state.categories[0].name : null;
 }
 
+async function refreshValues() {
+    let changed = false;
+    try {
+        const schema = await api('schema');
+        for (const fresh of schema.items) {
+            const item = state.items.find(i => i.key === fresh.key);
+            if (item && !sameValue(item.value, fresh.value)) {
+                item.value = fresh.value;
+                changed = true;
+            }
+        }
+    } catch (e) {
+    }
+    if (state.current === 'directory' && !state.query.trim())
+        refreshDirectory(state.directoryId);
+    else if (changed)
+        render();
+}
+
 async function main() {
-    const schema = await api('schema');
+    const embedded = document.getElementById('schema');
+    const schema = embedded ? JSON.parse(embedded.textContent) : await api('schema');
+    if (embedded) embedded.remove();
+    if (schema.translucent) document.documentElement.classList.add('translucent');
     state.strings = schema.strings;
     state.categories = schema.categories;
     state.items = schema.items;
@@ -1523,9 +1887,15 @@ async function main() {
 
     buildNav();
     render();
+    document.documentElement.classList.remove('loading');
     if (state.categories.some(category => category.name === 'passwords')) refreshPasswords();
+    if (state.categories.some(category => category.name === 'permissions')) refreshPermissions();
     if (state.categories.some(category => category.name === 'downloads')) refreshDownloads();
     if (state.current === 'directory') refreshDirectory(null);
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') refreshValues();
+    });
 
     window.addEventListener('hashchange', () => {
         const name = categoryOfFragment();
@@ -1546,4 +1916,5 @@ main().catch(e => {
     const prefix = (state.strings && state.strings.loadFailed)
         || 'Could not load the settings: ';
     document.body.textContent = prefix + e.message;
+    document.documentElement.classList.remove('loading');
 });

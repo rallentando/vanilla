@@ -36,6 +36,9 @@ private slots:
     void aCopyAlreadyMadeIsUsedAndAnOldOneRemoved();
     void whatGoesWrongAnswersWithTheOriginal();
     void theStampFollowsWhatTheCopyIsMadeOf();
+    void aFolderChromeInstalledIsKnownByItsShape_data();
+    void aFolderChromeInstalledIsKnownByItsShape();
+    void theStampOfAFolderChromeInstalledFollowsItsPathAndNotItsFiles();
     void theEngineSpellsAPathWithItsLinksFollowed();
     void aCopyIsNotMadeOfACopy();
     void whatVanillaAddsTakesNobodysPlace();
@@ -363,6 +366,70 @@ void tst_extensioncopy::theStampFollowsWhatTheCopyIsMadeOf(){
     QCOMPARE(ExtensionCopy::Stamp(source, bytes), afterTheFile);
 }
 
+void tst_extensioncopy::aFolderChromeInstalledIsKnownByItsShape_data(){
+    QTest::addColumn<QString>("path");
+    QTest::addColumn<bool>("installed");
+    const QString id = QString(32, QLatin1Char('a'));
+    QTest::newRow("chrome's") << QStringLiteral("C:/Users/x/AppData/Local/Google/Chrome/User Data/Default/Extensions/") + id + QStringLiteral("/1.2.3_0") << true;
+    QTest::newRow("one number") << QStringLiteral("/p/Extensions/") + id + QStringLiteral("/7_1") << true;
+    QTest::newRow("four numbers") << QStringLiteral("/p/Extensions/") + id + QStringLiteral("/1.2.3.4_12") << true;
+    QTest::newRow("as the file system spells it") << QStringLiteral("/p/extensions/") + QString(32, QLatin1Char('p')) + QStringLiteral("/1.0_0") << true;
+#ifdef Q_OS_WIN
+    QTest::newRow("native separators and a trailing slash") << QStringLiteral("C:\\p\\Extensions\\") + id + QStringLiteral("\\1.2_0\\") << true;
+#endif
+    QTest::newRow("five numbers") << QStringLiteral("/p/Extensions/") + id + QStringLiteral("/1.2.3.4.5_0") << false;
+    QTest::newRow("a number too long") << QStringLiteral("/p/Extensions/") + id + QStringLiteral("/999999999999999999_0") << false;
+    QTest::newRow("an 'n' too long") << QStringLiteral("/p/Extensions/") + id + QStringLiteral("/1.2.3_99999999999") << false;
+    QTest::newRow("no '_n'") << QStringLiteral("/p/Extensions/") + id + QStringLiteral("/1.2.3") << false;
+    QTest::newRow("letters in the version") << QStringLiteral("/p/Extensions/") + id + QStringLiteral("/1.2b_0") << false;
+    QTest::newRow("thirty-one letters") << QStringLiteral("/p/Extensions/") + id.left(31) + QStringLiteral("/1.2.3_0") << false;
+    QTest::newRow("a letter past 'p'") << QStringLiteral("/p/Extensions/") + id.left(31) + QStringLiteral("q/1.2.3_0") << false;
+    QTest::newRow("not under 'Extensions'") << QStringLiteral("/p/Extension/") + id + QStringLiteral("/1.2.3_0") << false;
+    QTest::newRow("the id itself") << QStringLiteral("/p/Extensions/") + id << false;
+    QTest::newRow("a developer's folder") << QStringLiteral("/home/me/src/my-extension") << false;
+}
+
+void tst_extensioncopy::aFolderChromeInstalledIsKnownByItsShape(){
+    QFETCH(QString, path);
+    QFETCH(bool, installed);
+    QCOMPARE(ExtensionCopy::InstalledByChrome(path), installed);
+}
+
+void tst_extensioncopy::theStampOfAFolderChromeInstalledFollowsItsPathAndNotItsFiles(){
+    QTemporaryDir dir;
+    const QString id = QString(32, QLatin1Char('b'));
+    const QString home = dir.filePath(QStringLiteral("Extensions/") + id);
+    const QString source = home + QStringLiteral("/1.2.3_0");
+    Extension(source);
+    const QByteArray bytes = Read(source + QStringLiteral("/manifest.json"));
+    const int stamp = ExtensionCopy::Stamp(source, bytes);
+    QVERIFY(stamp >= 1 && stamp <= 65535);
+
+    QFile worker(source + QStringLiteral("/background_scripts/main.js"));
+    QVERIFY(worker.open(QIODevice::ReadWrite));
+    QVERIFY(worker.setFileTime(QDateTime::currentDateTime().addSecs(3600), QFileDevice::FileModificationTime));
+    worker.close();
+    Write(source + QStringLiteral("/lib/types.js"), "var types = 2; // longer\n");
+    Write(source + QStringLiteral("/lib/added.js"), "");
+    QCOMPARE(ExtensionCopy::Stamp(source, bytes), stamp);
+
+    QVERIFY(ExtensionCopy::Stamp(source, bytes + " ") != stamp);
+    QVERIFY(ExtensionCopy::Stamp(source, bytes, QByteArray(64, 'c')) != stamp);
+    QVERIFY(ExtensionCopy::Stamp(source, bytes, QByteArray(), QStringLiteral("ja_JP")) != stamp);
+    const QString reinstalled = home + QStringLiteral("/1.2.3_1");
+    Extension(reinstalled);
+    QVERIFY(ExtensionCopy::Stamp(reinstalled, bytes) != stamp);
+#ifdef Q_OS_WIN
+    QCOMPARE(ExtensionCopy::Stamp(dir.path().toUpper() + QStringLiteral("/EXTENSIONS/") + id + QStringLiteral("/1.2.3_0"), bytes), stamp);
+#endif
+
+    const QString own = dir.filePath(QStringLiteral("my-extension"));
+    Extension(own);
+    const int ownStamp = ExtensionCopy::Stamp(own, bytes);
+    Write(own + QStringLiteral("/lib/added.js"), "");
+    QVERIFY(ExtensionCopy::Stamp(own, bytes) != ownStamp);
+}
+
 void tst_extensioncopy::theEngineSpellsAPathWithItsLinksFollowed(){
     QTemporaryDir dir;
     const QString source = dir.filePath(QStringLiteral("ext"));
@@ -491,23 +558,28 @@ void tst_extensioncopy::onlyAddingAnExtensionMakesACopy(){
         const int remove = text.indexOf("void Remove(", add);
         if(remove > 0 && (next < 0 || remove < next)) next = remove;
         QVERIFY(add > 0 && next > add);
-        int pinned = -1, pinnedEnd = -1;
+        int pinned = -1, pinnedEnd = -1, overloadEnd = -1;
         if(edge){
             pinned = text.indexOf("QString PinnedCopy(");
             pinnedEnd = text.indexOf("\n    }", pinned);
             QVERIFY(pinned > 0 && pinnedEnd > pinned);
+            const int overload = text.indexOf("QString PinnedCopy(const ExtensionManifest", pinnedEnd);
+            overloadEnd = text.indexOf("\n    }", overload);
+            QVERIFY(overload > pinnedEnd && overloadEnd > overload);
         }
         for(int make = text.indexOf("ExtensionCopy::Make"); make >= 0; make = text.indexOf("ExtensionCopy::Make", make + 1))
             QVERIFY2((make > add && make < next) || (make > pinned && make < pinnedEnd),
                      qPrintable(QStringLiteral("a copy is made somewhere other than in 'Add' in ") + user));
         if(edge){
-            QCOMPARE(text.count("PinnedCopy("), 3);
+            QCOMPARE(text.count("PinnedCopy("), 6);
             const int migrate = text.indexOf("void Migrate("), after = text.indexOf("\n        void ", migrate + 1);
             const int start = text.indexOf("void EdgeEnvironment::PinExtensionCopies("), startEnd = text.indexOf("\n}", start);
-            QVERIFY(migrate > 0 && after > migrate && start > 0 && startEnd > start);
+            const int ahead = text.indexOf("void EdgeWebView::StartExtensionCopiesAhead("), aheadEnd = text.indexOf("\n}", ahead);
+            QVERIFY(migrate > 0 && after > migrate && start > 0 && startEnd > start && ahead > 0 && aheadEnd > ahead);
             for(int call = text.indexOf("PinnedCopy(", pinnedEnd); call >= 0; call = text.indexOf("PinnedCopy(", call + 1))
-                QVERIFY2((call > migrate && call < after) || (call > start && call < startEnd),
-                         qPrintable(QStringLiteral("the second copy is made somewhere other than in 'Migrate' or before the backend starts in ") + user));
+                QVERIFY2((call > pinnedEnd && call < overloadEnd) || (call > migrate && call < after)
+                         || (call > start && call < startEnd) || (call > ahead && call < aheadEnd),
+                         qPrintable(QStringLiteral("the second copy is made somewhere other than in 'Migrate', before the backend starts or ahead of it in ") + user));
         }
     }
 }

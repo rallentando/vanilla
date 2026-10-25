@@ -8,6 +8,7 @@
 #include <QPalette>
 #include <QPen>
 #include <QPixmap>
+#include <QRect>
 #include <QIcon>
 #include <QString>
 #include <QByteArray>
@@ -60,6 +61,8 @@ enum Role {
     TitleBarIcon,
     WindowEdgeGhost,
     WindowEdgeLine,
+
+    MenuSeparator,
 
     GlassOverlayBackground,
     GlassThumbLoaded,
@@ -125,6 +128,7 @@ enum Role {
     NotifierScrollLine,
 
     MiniMapBackground,
+    MiniMapBackgroundTranslucent,
     MiniMapViewport,
     MiniMapViewportBorder,
     MiniMapText,
@@ -145,6 +149,7 @@ enum Role {
     PageBackground,
 
     PreviewBackground,
+    PreviewBackgroundTranslucent,
     PreviewBorder,
     PreviewText,
     PreviewPlaceholderDirectory,
@@ -209,6 +214,9 @@ QIcon Icon(const QString &path);
 void DrawEmptyThumbnail(QPainter *painter, const QRectF &rect,
                         Role fill, Role text, bool isDirectory,
                         const QRectF &captionRect = QRectF());
+
+void DrawBarHandle(QPainter *painter, const QRect &handle,
+                   Qt::Orientation bar, int thickness, int length);
 
 }
 

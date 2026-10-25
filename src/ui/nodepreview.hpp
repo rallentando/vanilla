@@ -7,6 +7,7 @@
 #include <QImage>
 #include <QString>
 #include <QRect>
+#include <QPoint>
 #include <QTimer>
 
 class NodePreview : public QWidget {
@@ -16,8 +17,9 @@ public:
     static NodePreview *Instance();
 
     void Request(const QImage &image, const QString &title,
-                 const QRect &itemRect, bool isDirectory);
+                 const QRect &itemRect, bool isDirectory, const QPoint &pointer);
     void Dismiss();
+    void HoldUntilPointerMoves(const QPoint &pointer);
     bool IsAbout(const QString &title, const QRect &itemRect) const;
 
     static QRect Place(const QRect &itemRect, const QSize &size, const QRect &screen, int gap);
@@ -37,6 +39,8 @@ private:
     QRect m_ItemRect;
     bool m_IsDirectory = false;
     QTimer m_Timer;
+    bool m_Held = false;
+    QPoint m_HeldAt;
 };
 
 #endif

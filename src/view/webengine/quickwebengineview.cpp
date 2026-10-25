@@ -29,6 +29,7 @@
 #include "extensioncontroller.hpp"
 #include "webengineextensions.hpp"
 #include "webenginepasswords.hpp"
+#include "sitepermissions.hpp"
 
 #include <QCursor>
 #include <QWebEngineScript>
@@ -52,6 +53,7 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
     InstallPasswords();
 #endif
     QMetaObject::invokeMethod(m_QmlWebEngineView, "installScripts");
+    ApplyTheme();
 
     NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(id, set);
 
@@ -204,6 +206,13 @@ QuickWebEngineView::~QuickWebEngineView(){
         m_Inspector->deleteLater();
     }
 
+}
+
+bool QuickWebEngineView::IsOffTheRecord(){
+    if(m_QmlWebEngineView)
+        if(QObject *profile = m_QmlWebEngineView->property("profile").value<QObject*>())
+            return profile->property("offTheRecord").toBool();
+    return View::IsOffTheRecord();
 }
 
 void QuickWebEngineView::ApplySpecificSettings(QStringList set){
@@ -464,10 +473,6 @@ void QuickWebEngineView::OnSetMaster(WeakView){}
 
 void QuickWebEngineView::OnSetSlave(WeakView){}
 
-void QuickWebEngineView::OnSetJsObject(_View*){}
-
-void QuickWebEngineView::OnSetJsObject(_Vanilla*){}
-
 void QuickWebEngineView::OnLoadStarted(){
     if(!GetViewNode()) return;
 
@@ -476,9 +481,6 @@ void QuickWebEngineView::OnLoadStarted(){
 
     emit statusBarMessage(tr("Started loading."));
     m_PreventScrollRestoration = false;
-
-#ifdef USE_WEBCHANNEL
-#endif
 
     if(m_Icon.isNull() && url() != BLANK_URL)
         UpdateIcon(QUrl(url().resolved(QUrl("/favicon.ico"))));
@@ -505,6 +507,7 @@ void QuickWebEngineView::loadStopped(){
 }
 
 void QuickWebEngineView::OnLoadFinished(bool ok){
+    ApplyTheme();
     if(!EndLoad(ok)) return;
 
     if(!ok){
@@ -519,10 +522,21 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
     emit ViewChanged();
     emit statusBarMessage(tr("Finished loading."));
 
-    if(visible() && m_TreeBank &&
-       m_TreeBank->GetMainWindow()->GetTreeBar()->isVisible()){
+    if(visible() && m_TreeBank){
         UpdateThumbnail();
     }
+}
+
+void QuickWebEngineView::ApplyTheme(){
+    if(!m_QmlWebEngineView) return;
+    const bool clear = Application::EnableTransparentWindow() &&
+        VanillaPage::IsTranslucentPage(url());
+    const QColor color = clear ? QColor(Qt::transparent) : QColor(Qt::white);
+    if(color == m_BaseBackgroundColor) return;
+    m_BaseBackgroundColor = color;
+    m_QmlWebEngineView->setProperty("backgroundColor", color);
+    setClearColor(color);
+    setAttribute(Qt::WA_TranslucentBackground, clear);
 }
 
 void QuickWebEngineView::OnTitleChanged(const QString &title){
@@ -633,13 +647,17 @@ QWebEngineHistory *QuickWebEngineView::history(){
     return m_QmlWebEngineView->property("history").value<QWebEngineHistory*>();
 }
 
+QUrl QuickWebEngineView::CommittedUrl(){
+    return history() ? history()->currentItem().url() : QUrl();
+}
+
 bool QuickWebEngineView::SaveHistory(){
     if(!GetViewNode() || !history()) return false;
     QByteArray ba;
     QDataStream stream(&ba, QIODevice::WriteOnly);
     stream << (*history());
     if(!ba.isEmpty()){
-        GetViewNode()->SetHistoryData(ba);
+        GetViewNode()->SetHistoryData(ba, KeepsOffDisk());
         return true;
     }
     return false;
@@ -702,7 +720,9 @@ void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
     m_Icon = QIcon();
     if(!page()) return;
     QString host = url().host();
+    const bool offTheRecord = Page::OffTheRecord(this);
     QNetworkRequest req(iconUrl);
+    NetworkAccessManager::SetRequestOffTheRecord(req, offTheRecord);
     DownloadItem *item = NetworkController::Download
         (static_cast<NetworkAccessManager*>(page()->networkAccessManager()),
          req, NetworkController::ToVariable);
@@ -711,11 +731,11 @@ void QuickWebEngineView::UpdateIcon(const QUrl &iconUrl){
 
     item->setParent(base());
 
-    connect(item, &DownloadItem::DownloadResult, [this, host](const QByteArray &result){
+    connect(item, &DownloadItem::DownloadResult, [this, host, offTheRecord](const QByteArray &result){
         QPixmap pixmap;
         if(pixmap.loadFromData(result)){
             QIcon icon = QIcon(pixmap);
-            Application::RegisterIcon(host, icon);
+            Application::RegisterIcon(host, icon, offTheRecord || Page::OffTheRecord(this));
             if(url().host() == host) m_Icon = icon;
         }
     });
@@ -735,6 +755,7 @@ void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString
         if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
         if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
         QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
+        Application::InputScope key(true);
         if(!Application::IsOnlyModifier(&ke)) TriggerKeyEvent(&ke);
     } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
         QStringList args = msg.split(QStringLiteral(","));
@@ -773,6 +794,18 @@ void QuickWebEngineView::HandleFeaturePermission(const QUrl &securityOrigin, int
     default: return;
     }
 
+    const QStringList kinds = NetworkController::PermissionKindsOfFeature(feature);
+    PermissionTable::State known = SitePermissions::Lookup(securityOrigin, kinds.first());
+    if(kinds.length() == 2)
+        known = PermissionTable::Both(known, SitePermissions::Lookup(securityOrigin, kinds.last()));
+    if(known != PermissionTable::Ask){
+        QMetaObject::invokeMethod(m_QmlWebEngineView, "grantFeaturePermission_",
+                                  Q_ARG(QVariant, QVariant::fromValue(securityOrigin)),
+                                  Q_ARG(QVariant, QVariant::fromValue(feature)),
+                                  Q_ARG(QVariant, QVariant::fromValue(known == PermissionTable::Allow)));
+        return;
+    }
+
     ModalDialog *dialog = new ModalDialog();
     dialog->SetTitle(tr("Feature Permission Requested."));
     dialog->SetCaption(tr("Feature Permission Requested."));
@@ -796,6 +829,15 @@ void QuickWebEngineView::HandleFeaturePermission(const QUrl &securityOrigin, int
                                   Q_ARG(QVariant, QVariant::fromValue(false)));
     } else if(clicked == Dialog::Cancel){
     }
+    if(clicked == Dialog::Yes || clicked == Dialog::No)
+        SitePermissions::Remember(securityOrigin, kinds,
+                                  clicked == Dialog::Yes ? PermissionTable::Allow : PermissionTable::Block,
+                                  [this](){
+                                      QQuickWebEngineProfile *profile =
+                                          qobject_cast<QQuickWebEngineProfile*>(
+                                              m_QmlWebEngineView->property("profile").value<QObject*>());
+                                      return !profile || profile->isOffTheRecord();
+                                  }());
 }
 
 void QuickWebEngineView::HandleRenderProcessTermination(int status, int code){

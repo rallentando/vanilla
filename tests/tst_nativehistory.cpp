@@ -559,6 +559,9 @@ void tst_nativehistory::theQmlSpellsTheBackendsLoadStatusesTheWayTheBackendDoes(
     QVERIFY2(qml.open(QIODevice::ReadOnly), "check VANILLA_SOURCE_DIR");
     const QString source = QString::fromUtf8(qml.readAll());
 
+    QVERIFY2(source.contains(QStringLiteral("onLoadingChanged: function(loadRequest) {")),
+             "the load handler reads a request it does not declare");
+
     const QString handler = source.section(QStringLiteral("onLoadingChanged"), 1)
                                   .section(QStringLiteral("onLoadProgressChanged"), 0, 0);
     QVERIFY2(!handler.isEmpty(), "the load handler moved");

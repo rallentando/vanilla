@@ -129,8 +129,7 @@ node はユーザーのホームの `.local/node`（`%USERPROFILE%\.local\node`�
 [anki #4470](https://github.com/ankitects/anki/issues/4470)）。公式ビルドで出にくい理由は
 未特定（コード生成の差でタイミングが変わる、までは言えるが確認していない）。
 回避策は設定にした: `application/@GraphicsApi`（設定画面「描画とエンジン」の「描画 API（WebEngineView）」、
-`Auto|Software|OpenGL|Direct3D11|Direct3D12|Vulkan|Metal`、既定 `Auto`、再起動で反映。D-340 / D-342）。
-この機械の自前ビルドでは `OpenGL` にしておく。環境変数 `QSG_RHI_BACKEND` があればそちらが勝つ。
+`Auto|Software|OpenGL|Direct3D11|Direct3D12|Vulkan|Metal`、既定は Windows で `OpenGL`（2026-10-19、D-342 追記 2。それまでは `Auto`）、再起動で反映。D-340 / D-342）。環境変数 `QSG_RHI_BACKEND` があればそちらが勝つ。
 
 その前段で疑った**共有 GPUCache**（結論: 交絡要因ではあるが原因ではない）:
 widget の WebEngine プロファイルは `%APPDATA%/vanilla/QtWebEngine/<MD5(実行ディレクトリ + id)>`

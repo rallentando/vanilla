@@ -5,7 +5,7 @@
 #
 # What it draws and what it leaves alone:
 #   - drawn: the chevrons (menu back/forward/rewind/fastforward, tree bar
-#     up/down/left/right), the crosses, the speakers, clone, trash, plus,
+#     up/down/left/right), the crosses, the speakers, clone, trash, restore, plus,
 #     reload, the tool bar's command, search and download, the downloads
 #     panel's document and folder, and the extension bar's puzzle piece
 #     and pin. Thin strokes (1px at base size), corners
@@ -203,6 +203,21 @@ def icon_trash(size=11):
     return im
 
 
+def icon_restore(size=10):
+    # an arrow turning back to the left: the head at the left, the shaft
+    # running right from it, bending down and back in a half circle. The
+    # start page's cards draw the same shape as an SVG path (D-572).
+    im = canvas(size)
+    d = ImageDraw.Draw(im)
+    stroke(d, [(3.5, 2.5), (1.5, 4.5), (3.5, 6.5)])   # the head
+    stroke(d, [(1.5, 4.5), (6.25, 4.5)])              # the shaft
+    r = 2.25                                          # the bend, centred at (6.25, 6.75)
+    box = [(6.25 - r) * S, (6.75 - r) * S, (6.25 + r) * S, (6.75 + r) * S]
+    d.arc(box, start=-90, end=90, fill=(0, 0, 0, 255), width=round(1.0 * S))
+    stroke(d, [(6.25, 9.0), (4.5, 9.0)])              # the tail
+    return im
+
+
 def icon_command(size=16):
     im = canvas(size)
     d = ImageDraw.Draw(im)
@@ -347,6 +362,7 @@ ICONS = {
     "tableview/muted.png":      lambda: icon_speaker(10, muted=True),
     "treebar/muted.png":        lambda: icon_speaker(10, muted=True),
     "tableview/trash.png":      icon_trash,
+    "tableview/restore.png":    icon_restore,
     "treebar/plus.png":         icon_plus,
     "treebar/up.png":           icon_chevron_up,
     "treebar/down.png":         icon_chevron_down,

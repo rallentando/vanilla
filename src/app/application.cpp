@@ -1,7 +1,9 @@
 #include "switch.hpp"
 #include "const.hpp"
 #include "theme.hpp"
+#include "blurbehind.hpp"
 #include "devicescale.hpp"
+#include "settingsschema.hpp"
 
 #include "application.hpp"
 #include "downloadhistory.hpp"
@@ -28,6 +30,11 @@
 #include <QFileSystemModel>
 #include <QDesktopServices>
 #include <QProcess>
+#include <QElapsedTimer>
+#include <QThread>
+#if !defined(Q_OS_WIN)
+#  include <signal.h>
+#endif
 #include <QTranslator>
 #include <QLibraryInfo>
 #include <QLocale>
@@ -37,6 +44,9 @@
 #include <QOperatingSystemVersion>
 #include <QStyleHints>
 #include <QProxyStyle>
+#include <QMenu>
+#include <QEvent>
+#include <QPainter>
 #include <QStyleOptionMenuItem>
 
 #ifdef WEBENGINEVIEW
@@ -52,11 +62,14 @@
 
 #if defined(Q_OS_WIN)
 #  include <QSharedMemory>
+#  include <QAbstractNativeEventFilter>
+#  include <windows.h>
 #endif
 
 #include "gadgets.hpp"
 #include "networkcontroller.hpp"
 #include "mainwindow.hpp"
+#include "systemmenu.hpp"
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "treebank.hpp"
@@ -94,6 +107,10 @@ namespace QProcess {
 }
 #endif
 
+namespace {
+    QProcessEnvironment BOOT_ENVIRONMENT;
+}
+
 Application *Application::m_Instance = nullptr;
 bool Application::m_RestoringWindows = false;
 int Application::m_DelayFileCount = 0;
@@ -120,7 +137,9 @@ Settings    Application::m_IconTable         = Settings();
 
 bool        Application::m_EnableGoogleSuggest = false;
 bool        Application::m_EnableFramelessWindow = false;
-bool        Application::m_EnableTransparentBar = false;
+bool        Application::m_EnableTransparentWindow = false;
+bool        Application::m_TransparentWindowEffective = false;
+bool        Application::m_EnableTranslucentPanels = false;
 QString     Application::m_ColorScheme = QStringLiteral("Auto");
 bool        Application::m_ReassertingColorScheme = false;
 bool        Application::m_EnableAutoSave    = false;
@@ -176,22 +195,144 @@ namespace {
             if(type == CT_MenuItem){
                 const QStyleOptionMenuItem *item =
                     qstyleoption_cast<const QStyleOptionMenuItem*>(option);
-                if(!item || item->menuItemType != QStyleOptionMenuItem::Separator)
-                    contents.setHeight(contents.height()
-                                       + DeviceScale::Primary(MENU_ITEM_EXTRA_HEIGHT));
+                const bool separator =
+                    item && item->menuItemType == QStyleOptionMenuItem::Separator;
+                contents.setHeight(contents.height()
+                                   + DeviceScale::Primary(separator ? MENU_SEPARATOR_EXTRA_HEIGHT
+                                                                    : MENU_ITEM_EXTRA_HEIGHT));
+                if(ShowsKeys(widget))
+                    contents.setWidth(contents.width() + DeviceScale::Primary(MENU_KEY_GAP));
             }
             return contents;
         }
+
+        static void DrawSeparator(QPainter *painter, const QRect &span, int y){
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, false);
+            painter->setPen(Theme::Pen(Theme::MenuSeparator));
+            painter->drawLine(span.left(), y, span.right(), y);
+            painter->restore();
+        }
+
+        static void DrawSeparatorsAcross(const QWidget *widget, QPainter *painter){
+            const QMenu *menu = qobject_cast<const QMenu*>(widget);
+            if(!menu) return;
+            for(QAction *action : menu->actions()){
+                if(!action->isSeparator()) continue;
+                const QRect rect = menu->actionGeometry(action);
+                if(!rect.isEmpty()) DrawSeparator(painter, menu->rect(), rect.center().y());
+            }
+        }
+
+        static bool ShowsKeys(const QWidget *widget){
+            const QMenu *menu = qobject_cast<const QMenu*>(widget);
+            if(!menu) return false;
+            for(QAction *action : menu->actions())
+                if(!action->shortcut().isEmpty() || action->text().contains(QLatin1Char('\t')))
+                    return true;
+            return false;
+        }
+
+        void drawControl(ControlElement element, const QStyleOption *option,
+                         QPainter *painter, const QWidget *widget) const Q_DECL_OVERRIDE {
+            if(element == CE_MenuItem){
+                const QStyleOptionMenuItem *item =
+                    qstyleoption_cast<const QStyleOptionMenuItem*>(option);
+                if(item && item->menuItemType == QStyleOptionMenuItem::Separator){
+                    const QMenu *menu = qobject_cast<const QMenu*>(widget);
+                    DrawSeparator(painter, menu ? menu->rect() : item->rect,
+                                  item->rect.center().y());
+                    return;
+                }
+                const qsizetype tab = item ? item->text.indexOf(QLatin1Char('\t')) : -1;
+                if(item && tab >= 0 && item->menuItemType != QStyleOptionMenuItem::SubMenu){
+                    QStyleOptionMenuItem narrowed(*item);
+                    const int width = item->fontMetrics.horizontalAdvance(item->text.mid(tab + 1));
+                    narrowed.reservedShortcutWidth = qMin(width, item->reservedShortcutWidth);
+                    QProxyStyle::drawControl(element, &narrowed, painter, widget);
+                    return;
+                }
+            }
+            QProxyStyle::drawControl(element, option, painter, widget);
+            if(element == CE_MenuEmptyArea) DrawSeparatorsAcross(widget, painter);
+        }
+
+        void drawPrimitive(PrimitiveElement element, const QStyleOption *option,
+                           QPainter *painter, const QWidget *widget) const Q_DECL_OVERRIDE {
+            if(element == PE_PanelMenu && widget && widget->testAttribute(Qt::WA_TranslucentBackground)){
+                painter->save();
+                painter->setRenderHint(QPainter::Antialiasing, true);
+                painter->setPen(Theme::Pen(Theme::PreviewBorder));
+                painter->setBrush(Theme::Brush(BlurBehind::Surface()));
+                const int radius = DeviceScale::FromDpi(DIALOG_CORNER_RADIUS, static_cast<int>(widget->logicalDpiY()));
+                const QRectF card = QRectF(option->rect).adjusted(0.5, 0.5, -0.5, -0.5);
+                painter->drawRoundedRect(card, radius, radius);
+                painter->restore();
+                return;
+            }
+            QProxyStyle::drawPrimitive(element, option, painter, widget);
+            if(element == PE_FrameMenu) DrawSeparatorsAcross(widget, painter);
+        }
+
+        void polish(QWidget *widget) Q_DECL_OVERRIDE {
+            QProxyStyle::polish(widget);
+            if(BlurBehind::Enabled() && qobject_cast<QMenu*>(widget)){
+                widget->setAttribute(Qt::WA_TranslucentBackground);
+                widget->installEventFilter(this);
+            }
+        }
+
+        bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE {
+            if(ev->type() == QEvent::Show)
+                if(QWidget *widget = qobject_cast<QWidget*>(watched)) BlurBehind::Apply(widget);
+            return QProxyStyle::eventFilter(watched, ev);
+        }
     };
 }
+
+#if defined(Q_OS_WIN)
+namespace {
+
+    class PopupCloser : public QAbstractNativeEventFilter {
+    public:
+        bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) Q_DECL_OVERRIDE {
+            Q_UNUSED(result)
+            if(eventType != "windows_generic_MSG" || !message) return false;
+            const MSG *msg = static_cast<const MSG*>(message);
+            if(msg->message != WM_ACTIVATE || LOWORD(msg->wParam) != WA_INACTIVE) return false;
+            if(DeactivatedByAnotherProcess(reinterpret_cast<HWND>(msg->lParam)))
+                Application::CloseAllPopups();
+            return false;
+        }
+        static bool DeactivatedByAnotherProcess(HWND activated){
+            if(!activated) return true;
+            DWORD pid = 0;
+            GetWindowThreadProcessId(activated, &pid);
+            return pid != GetCurrentProcessId();
+        }
+    };
+}
+#endif
 
 Application::Application(int &argc, char **argv)
     : QApplication(argc, argv)
 {
     setStyle(new MenuStyle());
+    setFont(MenuFont(), "QMenu");
     m_NetworkController = nullptr;
     m_AutoSaver = nullptr;
     srand(static_cast<unsigned int>(time(nullptr)));
+#if defined(Q_OS_WIN)
+    static PopupCloser popupCloser;
+    installNativeEventFilter(&popupCloser);
+#endif
+}
+
+void Application::CloseAllPopups(){
+    while(QWidget *popup = QApplication::activePopupWidget()){
+        popup->close();
+        if(QApplication::activePopupWidget() == popup) break;
+    }
 }
 
 Application::~Application(){
@@ -218,6 +359,10 @@ Application::~Application(){
 bool Application::notify(QObject *receiver, QEvent *ev){
     if(SwallowsDuringRestore(receiver, ev)) return true;
     try{
+        if(const std::optional<bool> byKey = ByKeyFor(ev)){
+            InputScope scope(*byKey);
+            return QApplication::notify(receiver, ev);
+        }
         return QApplication::notify(receiver, ev);
     } catch(std::exception &e){
         EmitErrorMessage(receiver, ev, e);
@@ -228,7 +373,8 @@ bool Application::notify(QObject *receiver, QEvent *ev){
 }
 
 void Application::BootApplication(int &argc, char **argv, Application *instance){
-    Q_UNUSED(argc) Q_UNUSED(argv)
+    BOOT_ENVIRONMENT = QProcessEnvironment::systemEnvironment();
+    WaitForPredecessor(argc, argv);
 
     Transmitter *t = new Transmitter(instance);
     if(t->ServerAlreadyExists()){
@@ -272,6 +418,10 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     }
     LoadSettingsFile();
     LoadGlobalSettings();
+    ExtensionController::FollowVersionFolders();
+#ifdef EDGEWEBVIEW
+    EdgeWebView::StartExtensionCopiesAhead();
+#endif
     ApplyGraphicsApi();
 #ifdef Q_OS_WIN
     if(QQuickWindow::graphicsApi() == QSGRendererInterface::OpenGL)
@@ -279,6 +429,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
             windows->setHasBorderInFullScreenDefault(true);
 #endif
     Theme::ApplyScheme(m_ColorScheme);
+    SystemMenu::ApplyScheme(Theme::IsDark());
     connect(styleHints(), &QStyleHints::colorSchemeChanged,
             instance, [](Qt::ColorScheme){
                 if(m_ReassertingColorScheme) return;
@@ -299,6 +450,9 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         MainWindow *win = NewWindow(id, QPoint(), false);
         win->ShowWithFirstFrame();
     }
+#ifdef EDGEWEBVIEW
+    EdgeWebView::HurryExtensionCopiesAhead();
+#endif
     m_NetworkController = new NetworkController();
     const TreeBank::Restoration restored = TreeBank::LoadTree();
     DropIdleShells(restored.windowIds, restored.lastWindow);
@@ -306,7 +460,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     if(restored.windowIds.isEmpty()){
         MainWindow *win = Windows().Current();
         if(!win) win = NewWindow(0, QPoint(), TreeBank::PurgeView());
-        win->GetTreeBank()->OpenOnSuitableNode(QUrl(QStringLiteral("https://google.com")), true);
+        win->GetTreeBank()->OpenOnSuitableNode(START_URL, true);
         win->ShowWithFirstFrame();
     }
     SweepWindowSettings(GlobalSettings(), Windows().Ids());
@@ -522,6 +676,52 @@ void Application::Quit(){
     TakeDown();
 }
 
+bool Application::m_RestartRequested = false;
+bool Application::m_ByKey = false;
+
+void Application::Restart(){
+    m_RestartRequested = true;
+    Quit();
+}
+
+void Application::RelaunchIfRequested(){
+    if(!m_RestartRequested) return;
+    m_RestartRequested = false;
+#ifndef QT_NO_PROCESS
+    QProcess process;
+    process.setProgram(applicationFilePath());
+    process.setArguments(QStringList() << QStringLiteral("--restart-after=")
+                                        + QString::number(applicationPid()));
+    process.setWorkingDirectory(applicationDirPath());
+    process.setProcessEnvironment(BOOT_ENVIRONMENT);
+    if(!process.startDetached())
+        qWarning() << "restart: could not start" << applicationFilePath();
+#endif
+}
+
+void Application::WaitForPredecessor(int argc, char **argv){
+    const QString prefix = QStringLiteral("--restart-after=");
+    for(int i = 1; i < argc; i++){
+        const QString arg = QLatin1String(argv[i]);
+        if(!arg.startsWith(prefix)) continue;
+        const qint64 pid = arg.mid(prefix.length()).toLongLong();
+        if(pid <= 0) return;
+#if defined(Q_OS_WIN)
+        if(HANDLE process = ::OpenProcess(SYNCHRONIZE, FALSE, static_cast<DWORD>(pid))){
+            ::WaitForSingleObject(process, RESTART_WAIT_LIMIT);
+            ::CloseHandle(process);
+        }
+#else
+        QElapsedTimer timer;
+        timer.start();
+        while(::kill(static_cast<pid_t>(pid), 0) == 0 &&
+              timer.elapsed() < RESTART_WAIT_LIMIT)
+            QThread::msleep(50);
+#endif
+        return;
+    }
+}
+
 void Application::QueueTakeDown(){
     QTimer::singleShot(0, GetInstance(), [](){ TakeDown();});
 }
@@ -647,7 +847,8 @@ void Application::SaveGlobalSettings(){
 
     s.setValue(QStringLiteral("application/@EnableGoogleSuggest"),      m_EnableGoogleSuggest);
     s.setValue(QStringLiteral("application/@EnableFramelessWindow"),    m_EnableFramelessWindow);
-    s.setValue(QStringLiteral("application/@EnableTransparentBar"),     m_EnableTransparentBar);
+    s.setValue(QStringLiteral("application/@EnableTransparentWindow"),     m_EnableTransparentWindow);
+    s.setValue(QStringLiteral("application/@EnableTranslucentPanels"),  m_EnableTranslucentPanels);
     s.setValue(QStringLiteral("application/@ColorScheme"),              m_ColorScheme);
     s.setValue(QStringLiteral("application/@EnableAutoSave"),           m_EnableAutoSave);
     s.setValue(QStringLiteral("application/@EnableAutoLoad"),           m_EnableAutoLoad);
@@ -685,7 +886,8 @@ void Application::LoadGlobalSettings(){
 
     m_EnableGoogleSuggest      = s.value(QStringLiteral("application/@EnableGoogleSuggest"), false).value<bool>();
     m_EnableFramelessWindow    = s.value(QStringLiteral("application/@EnableFramelessWindow"), false).value<bool>();
-    m_EnableTransparentBar     = s.value(QStringLiteral("application/@EnableTransparentBar"), false).value<bool>();
+    m_EnableTransparentWindow     = s.value(QStringLiteral("application/@EnableTransparentWindow"), false).value<bool>();
+    m_EnableTranslucentPanels  = s.value(QStringLiteral("application/@EnableTranslucentPanels"), false).value<bool>();
     m_ColorScheme              = s.value(QStringLiteral("application/@ColorScheme"), QStringLiteral("Auto")).value<QString>();
     m_EnableAutoSave           = s.value(QStringLiteral("application/@EnableAutoSave"), true).value<bool>();
     m_EnableAutoLoad           = s.value(QStringLiteral("application/@EnableAutoLoad"), true).value<bool>();
@@ -834,9 +1036,11 @@ bool Application::GraphicsApiRunsHere(QSGRendererInterface::GraphicsApi api){
 }
 
 void Application::ApplyGraphicsApi(){
+    const SettingsSchema::Item *item = SettingsSchema::Find(QStringLiteral("application/@GraphicsApi"));
     const QString value =
         m_GlobalSettings.value(QStringLiteral("application/@GraphicsApi"),
-                               QStringLiteral("Auto")).value<QString>();
+                               item ? SettingsSchema::Fallback(*item)
+                                    : QVariant(QStringLiteral("Auto"))).value<QString>();
     QSGRendererInterface::GraphicsApi api = GraphicsApiFor(value);
 
     const bool variable = qEnvironmentVariableIsSet("QSG_RHI_BACKEND");
@@ -858,6 +1062,13 @@ void Application::ApplyGraphicsApi(){
         m_GlobalSettings.value(QStringLiteral("application/@EnableMainWindowRhi"),
                                false).value<bool>(),
         api, variable);
+
+    m_TransparentWindowEffective =
+        m_EnableTransparentWindow &&
+        BlurBehind::Available() &&
+        BlurBehind::MainWindowMayBeTranslucent(qEnvironmentVariableIntValue("QT_WIDGETS_RHI"),
+                                               qEnvironmentVariableIntValue("QT_WIDGETS_HIGHDPI_DOWNSCALE"),
+                                               qgetenv("QT_WIDGETS_RHI_BACKEND"));
 }
 
 void Application::ApplyWidgetsRhi(bool enabled, QSGRendererInterface::GraphicsApi api, bool variable){
@@ -936,7 +1147,8 @@ void Application::LoadIconDatabase(){
     SettingsIO::Load(StateDirectory(), IconDatabaseFileName(), m_IconTable, SettingsHooks());
 }
 
-void Application::RegisterIcon(QString host, QIcon icon){
+void Application::RegisterIcon(QString host, QIcon icon, bool offTheRecord){
+    if(offTheRecord) return;
     if(!host.isEmpty() && !icon.isNull()){
         QSize size = icon.availableSizes().first();
         if(size.width() > 32) size = QSize(32, 32);
@@ -991,8 +1203,18 @@ bool Application::EnableFramelessWindow(){
     return m_EnableFramelessWindow;
 }
 
-bool Application::EnableTransparentBar(){
-    return m_EnableTransparentBar;
+bool Application::EnableTransparentWindow(){
+    return m_TransparentWindowEffective;
+}
+
+void Application::TranslucentWindowUnsupported(){
+    if(!m_TransparentWindowEffective) return;
+    m_TransparentWindowEffective = false;
+    UpdateAllWidgets();
+}
+
+bool Application::EnableTranslucentPanels(){
+    return m_EnableTranslucentPanels;
 }
 
 QString Application::ColorScheme(){
@@ -1025,6 +1247,7 @@ void Application::ReassertColorSchemeForWeb(){
 }
 
 void Application::UpdateAllWidgets(){
+    SystemMenu::ApplyScheme(Theme::IsDark());
     foreach(QWidget *widget, allWidgets()){
         if(LineEdit *edit = qobject_cast<LineEdit*>(widget)) edit->ApplyTheme();
         if(ModalDialog *dialog = qobject_cast<ModalDialog*>(widget)) dialog->ApplyTheme();
@@ -1035,6 +1258,7 @@ void Application::UpdateAllWidgets(){
         widget->update();
     }
     foreach(MainWindow *win, Windows().All().values()){
+        win->ApplyTheme();
         if(TreeBar *bar = win->GetTreeBar()) bar->ApplyTheme();
         if(TreeBank *tb = win->GetTreeBank()) tb->ApplyTheme();
     }
@@ -1062,10 +1286,6 @@ QString Application::GetUploadDirectory(){
 
 void Application::SetMaxBackUpGenerationCount(int count){
     m_MaxBackUpGenerationCount = count;
-}
-
-int Application::GetMaxBackUpGenerationCount(){
-    return m_MaxBackUpGenerationCount;
 }
 
 QStringList Application::BackUpFileFilters(){
@@ -1201,7 +1421,8 @@ QStringList Application::GetAllowedHosts(){
     return m_AllowedHosts;
 }
 
-void Application::AppendToAllowedHosts(QString host){
+void Application::AppendToAllowedHosts(QString host, bool offTheRecord){
+    if(offTheRecord) return;
     if(!m_AllowedHosts.contains(host))
         m_AllowedHosts << host;
 }
@@ -1215,7 +1436,8 @@ QStringList Application::GetBlockedHosts(){
     return m_BlockedHosts;
 }
 
-void Application::AppendToBlockedHosts(QString host){
+void Application::AppendToBlockedHosts(QString host, bool offTheRecord){
+    if(offTheRecord) return;
     if(!m_BlockedHosts.contains(host))
         m_BlockedHosts << host;
 }
@@ -1233,7 +1455,8 @@ QStringList Application::GetBlockedCertificates(){
     return m_BlockedCertificates;
 }
 
-void Application::RememberCertificate(QString key, bool allow){
+void Application::RememberCertificate(QString key, bool allow, bool offTheRecord){
+    if(offTheRecord) return;
     CertificatePolicy::Remember
         (key, allow, &m_AllowedCertificates, &m_BlockedCertificates);
 }
@@ -1526,10 +1749,6 @@ int Application::WindowId(MainWindow *win){
 
 MainWindow *Application::Window(int id){
     return Windows().At(id);
-}
-
-int Application::GetCurrentWindowId(){
-    return Windows().CurrentId();
 }
 
 MainWindow *Application::GetCurrentWindow(){

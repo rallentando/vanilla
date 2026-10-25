@@ -13,6 +13,15 @@ vanilla で Chrome 拡張（Manifest V3）がどこまで動くかを、拡張�
 - private（OTR）のプロファイルでは拡張を動かさない
 - 開発中に実機で使って確かめてきた拡張は Vimium、uBlock Origin Lite、Stands、SingleFile、Dark Reader。どこまで動くかは拡張の版とエンジンによる
 
+## QuickWebEngineView での制限
+
+Qt WebEngine のビューのうち `QuickWebEngineView`（ディレクトリ名の `;qwev`）では、上の前提と表に加えて次のものが動かない。
+
+- 拡張の worker が受け取る `sender.tab.id` が本物のタブ id にならない（文書ごとの番号になる）。worker からそのタブへ送る操作（`tabs.sendMessage` など）は `No tab with id` で失敗する。Vimium では、スクロールなどページの中で済む操作は動き、リンクのヒント（`f`）は出ない
+- `sidePanel` は使えない。サイドパネルを開く拡張のボタンは、代わりにポップアップの窓を開く
+- `offscreen`・`downloads`・`identity` は使えない（`not available in this view`）。SingleFile は保存まで届かず、DeepL はログインできない
+- 寝ている worker を、ボタン・右クリックの項目・ショートカットのイベントでは起こさない。worker が寝ている間は、そのイベントはその場では届かない
+
 ## 方針: 仕様には追従しない
 
 足りない API を Chrome の仕様に合わせて埋め続けることはしない。下の表にある範囲で止めていて、残りは**実際に使う拡張で不具合が出たときに**、その拡張が要る分だけ足す（下の「足さない」に挙げたものは足さない）。

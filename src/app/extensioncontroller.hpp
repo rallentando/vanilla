@@ -44,8 +44,13 @@ struct ExtensionManifest {
     QList<Dnr::Held::Ruleset> Rulesets() const;
 
     static QString NormalizePath(const QString &path);
+    static int CanonicalLooksForTesting();
+    static void SetBetweenLookAndStoreForTesting(void (*hook)());
     static QString PathKey(const QString &path);
     static QString KeyOfNormalized(const QString &normalized);
+    static QString RegistrationKey(const QString &path);
+    static QString RegistrationKeyOfNormalized(const QString &normalized);
+    static QString SourceOfRegistrationKey(const QString &key);
     static ExtensionManifest Read(const QString &path);
     static ExtensionManifest ReadWithBytes(const QString &path, QByteArray *bytesRead);
     static ExtensionManifest ReadCached(const QString &path);
@@ -105,6 +110,7 @@ public:
     void Retry(const QString &path);
 
     static void ReloadAll();
+    static bool FollowVersionFolders();
     static void RegisterPath(const QString &path);
     static void UnregisterPath(const QString &path);
     static void SetEnabled(const QString &path, bool enabled);
@@ -195,6 +201,8 @@ private:
     QString m_Error;
     QMap<QString, ExtensionManifest> m_Desired;
     QMap<QString, ExtensionManifest> m_Manifests;
+    QString m_Reconciled;
+    QString ReconciledSignature() const;
     QStringList m_Order;
     QSet<QString> m_Disabled;
     QSet<QString> m_Pinned;

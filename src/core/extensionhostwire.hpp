@@ -71,7 +71,13 @@ struct Tab {
     bool loading = false;
     quint64 loads = 0;
     double zoom = 0;
+    bool scoped = true;
 };
+
+enum class TabScope { All, CurrentDirectory, Loaded };
+TabScope ParseTabScope(const QString &word);
+bool InTabScope(TabScope scope, bool inCurrentDirectory, bool loaded);
+QList<Tab> Scoped(const QList<Tab> &tabs);
 
 struct Sight {
     bool tabs = false;

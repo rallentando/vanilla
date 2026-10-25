@@ -82,11 +82,12 @@ main.cpp
 | ファイル / ディレクトリ | 何 |
 |---|---|
 | `config.json` | 設定 |
-| `main_tree.json` / `trash_tree.json` | タブツリーとゴミ箱 |
+| `main_tree.json` / `trash_tree.json` | タブツリーとゴミ箱。プライベートのタブはゴミ箱に入らない（D-581） |
 | `cookie.json` | `QNetworkAccessManager` 側のクッキー（エンジンのものではない） |
-| `icondata.json` | ファビコン |
+| `permissions.json` | サイトの許可の表。全ビュー・全プロファイルで 1 つ（`SitePermissions`、D-577） |
+| `icondata.json` | ファビコン。プライベートのビューの分は書かない（D-580） |
 | `<日時>-*.json` | 上の起動ごとのバックアップ（`Application::BackUp`） |
-| `image/` / `history/` | ノードのサムネイルと履歴 |
+| `image/` / `history/` | ノードのサムネイルと履歴。プライベートのノードの分は置かない（D-581） |
 | `extension-*.json`、`extension-copies/`、`serial-base` | 拡張の状態（「拡張機能」の節） |
 | `password.json` | 旧版の残り。読み書きしない |
 
@@ -178,6 +179,7 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 - `BootApplication()` が起動時の初期化をまとめて行う
 - 主窓は最初のフレームを描いてから見せる（`MainWindow::ShowWithFirstFrame`。`show()` の間 DWM の cloak で隠す）。PurgeView とユーザー操作の窓は作った時点で見せる。詳細: D-513
 - 前の回の窓（設定の `mainwindow/<名前><id>`）は、最初の WebEngine プロファイルと木の読みより前に空の殻として作って見せる。木の読みは同じ id の殻に current を付け、木に無い id の殻は読みのあと消す。殻の間（`Application::IsRestoringWindows()`）は主窓への入力と閉じる操作を受けない。詳細: D-514
+- 殻が出るまでの床（Windows）は「DirectWrite の全ファミリーの一覧構築（殻の文字の fallback 照会が要る）→ 殻の生成」で、構築を別スレッドへ出しても、WebEngine の全体設定を殻の後へ回しても縮まない（測って採らず）。詳細: D-516・D-530・D-531
 
 ### `TreeBank` — [treebank.cpp](../src/ui/treebank.cpp)
 
@@ -191,6 +193,7 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
   `MayChangeFromOutside()` を見てから動く
 - 木から出ていくノード（ゴミ箱の切り詰め・download carrier）はその場で解放しない。`Discard` で削除箱へ入れ、
   1 turn あとの関門で全部の窓（タブバー・ギャラリー）が手放してから、保存中でなければ解放する（詳細: D-512）
+- `DeleteNode(NodeList)` が 2 個以上をゴミ箱へ移したら、`ModelessDialog` で知らせて「ゴミ箱を開く」を出す（詳細: D-550）
 
 詳細: D-160、D-357、D-454
 
@@ -237,6 +240,7 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 | 機能 | WebEngine | QuickWebEngine | QuickNative | Edge |
 |---|---|---|---|---|
 | 描画・サムネイル | ○ | ○ | ○ | ○ |
+| タブのアイコン（favicon） | ○ | ○※ | ○※ | ○ |
 | 俯瞰（Gadgets）との共存 | ○ | ○ | ○※ | ○※ |
 | Notifier / Receiver との共存 | ○ | ○ | ○※ | ○※ |
 | プロファイルの分離 | ○ | ○ | ― | ○ |
@@ -248,23 +252,25 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 | 戻る / 進む / 巻き戻し | ○ | ○ | ○ | ○ |
 | スクロール・ズームの保存復元 | ○ | ○ | ○ | ○ |
 | ページ内検索 | ○ | ○ | ○ JS | ○ JS |
-| 編集（コピー・貼り付けなど） | ○ | ○ | ○ JS | ○ JS |
+| 編集（コピー・貼り付けなど） | ○ | ○ | ○ JS | ○ JS※ |
 | 書式の編集（15本） | ○ | ○ | △ JS | ○ JS |
 | 証明書エラーの続行 | ○ | ○ | ― | ○ |
 | 通知の表示 | ○ | ○ | ― | ○ |
-| 画面共有の共有先選択 | △ | △ | ― | × |
-| WebAuthn / パスキー | ○※ | ○※ | ― | × |
+| 画面共有の共有先選択 | ○ | ○ | ― | ○※ |
+| WebAuthn / パスキー | ○※ | ○※ | ― | ○※ |
 | パスワードの保存 | ○※ | ○※ | ― | ○ |
 | 権限（クリップボードの読み取り） | ○ | ○ | ― | ○ |
 | 権限（local fonts） | ○ | ○ | ― | ○※ |
 | 権限の永続 | ○ | ○ | ― | ○ |
 | 閲覧データの消去 | ○ | △※ | × | ○ |
 | リクエストのブロック / DNT | ○ | ○ | ― | ○※ |
-| スペルチェック | △ | △ | ― | × |
-| タブの休止 | ○ | △ | ― | ○※ |
-| POST での遷移 | △ | × | ― | △ |
+| スペルチェック | △ | △ | ― | ×※ |
+| タブの休止 | ○ | ○※ | ― | ○※ |
+| POST での遷移 | △※ | × | ― | △※ |
 | キャッシュを無視した再読み込み | ○ | ○ | × | ○※ |
 | 独自の右クリックメニュー | ○ | ○ | × | ○ |
+| 検索エンジンの追加 | ○ | ○ | △ | ○※ |
+| ブックマークレットの追加 | ○ | ○ | △ | ○ |
 | キーマップ | ○ | ○ | × | ○※ |
 | マウスジェスチャ | ○ | ○ | × | ○ |
 | 入力欄へのドロップ | ○ | ○ | × | ○ |
@@ -277,11 +283,11 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 | UA / AcceptLanguage | ○ | ○ | ○※ | ○ |
 | `vanilla://` のページ | ○ | ○ | ―※ | ○ |
 | ソース表示（view-source:） | ○ | ○ | ○ | ○ |
-| 文字列の文書（`setHtml`） | △ | △ | △ | ○ |
+| 文字列の文書（`setHtml`） | ○ | ○ | △ | ○ |
 | Inspector（ウィンドウ内にも） | ○ | ○ | × | ○ |
 | 動画の再生位置 | ○ | ○ | ○ | ○ |
 | 印刷 | ○ | ○ | ×※ | ○ |
-| ページからの `window.print()` | ○ | △ | ― | ○ |
+| ページからの `window.print()` | ○ | ○ | ― | ○ |
 | フォントの設定（11件） | ○ | × | × | ×※ |
 | 全画面 | ○ | ○ | × | ○ |
 | 新しい窓 | ○ | ○ | × | ○ |
@@ -291,22 +297,35 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 
 - **俯瞰・Notifier / Receiver との共存**: QuickNative と Edge のページはネイティブ窓で、兄弟ウィジェットより上に来る。
   俯瞰は疑似的に重ね、Notifier と Receiver は独立したウィンドウとして出す（`View::ForbidToOverlap()`）
+- **タブのアイコン**: どの実装もホスト別のアイコン DB（`Application::RegisterIcon`）に入れ、TreeBar と俯瞰はビュー → DB → 白紙の順に引く。
+  QuickWebEngine / QuickNative は `/favicon.ico` を自分で取る（`<link rel=icon>` は見ない）。Edge は `FaviconChanged` / `GetFavicon`（D-533）
 - **セッションクッキーの永続**: WebView2 に API が無い。Edge では期限の無いクッキーは再起動で消える
 - **セッション履歴**: QuickWebEngine は保存だけ。QuickNative と Edge は URL だけ
+- **編集**: Edge の Ctrl+C / X / V（Ctrl+Insert、Shift+Delete、Shift+Insert も）はページ自身の編集で、貼り付けはファイルと画像も運ぶ（D-562）。右クリックメニューの「貼り付け」はバックエンドの既定項目に渡す（D-563）。パイプ・ジェスチャ・別のキーに束ねた貼り付けは、アプリ側の文字列を入れる代用
 - **WebAuthn / パスキー**: Windows では OS の「Windows セキュリティ」の窓が出て、vanilla のアカウント選択・PIN の窓は出ない。
-  vanilla の窓（Windows 以外）は実機未確認
+  vanilla の窓（Windows 以外）は実機未確認。Edge も同じ OS の窓が出る（vanilla からの口は無い。D-196、D-533 追記 3）
+- **画面共有の共有先選択**: Edge はバックエンド自身の「共有する内容を選択」が出る（vanilla から選ばせる口は無い。D-196、D-533 追記 3）
+- **スペルチェック**: Edge は API が無く、誤りの下線もメニューの候補も出ない（D-533 追記 3）。WebEngine / QuickWebEngine は辞書が無い環境では下線が出ない（D-275）
+- **POST での遷移**: 3 実装に配線はあるが、vanilla の中に POST で読む経路が無い（検索エンジンの 3 つ目の値は既定の印で、POST ではない）。実機では確かめようがない（D-533 追記 4）
+- **文字列の文書**: `ViewSource` の子で `ApplySource` を使うと、親に `setHtml` で描き直す。WebEngine / QuickWebEngine はこの経路で確認（D-533 追記 4）
 - **パスワードの保存**: WebEngine と QuickWebEngine はメインフレームのフォームだけで、保存先は OS の保管庫（QtKeychain）。入れるのは、欄のクリックか ↓ キーで出るメニューでアカウントを選んだときだけ。
   保存したものは設定画面の「保存したパスワード」で一覧し、1 件ずつか全部を消す（Edge の分は一覧に出ず、全部消すときに消える）
+- **サイトの許可**: 3 実装（Edge・WebEngine・QuickWebEngine）とも `SitePermissions` の表で答え、表に無いときだけ聞く。
+  エンジンのプロファイルは表の写しで、プロファイルを作るたびと表が変わるたびに揃える（古い記録はそこで消える）。
+  Edge は写しが済むまで最初のページを開かない。QuickNative は表を使わない。設定画面の「サイトのアクセス許可」で一覧・切り替え・削除（D-577）
 - **local fonts**: Edge の `file://` のページでは、再読み込みで許可が「確認する」に戻る
 - **閲覧データの消去**: QuickWebEngine は訪問済みリンクだけ消せない（Qt に API が無い）
 - **ブロック / DNT**: Edge は iframe の文書を見逃す
-- **タブの休止**: Edge は凍結（Frozen）だけで、破棄（Discarded）は無い
+- **タブの休止**: Edge は凍結（Frozen）だけで、破棄（Discarded）は無い。QuickWebEngine は凍結をテストで確かめ、破棄は未確認（隠れたビューをエンジンにも隠すまで、どちらも効いていなかった: D-587）
 - **キャッシュを無視した再読み込み**: Edge はヘッダだけで、次の1回だけ
 - **キーマップ・ページ内のキー**: Edge は許可リスト制で、トップ文書だけ
+- **検索エンジンの追加**: 本体は `Page::AddSearchEngineAt` で 4 実装共通。Edge の右クリックの位置は本物のカーソルから取るので、
+  合成入力の検証ではフォームを探せない。人手では確認済み（ユーザー 2026-10-11、D-533 追記 5）
 - **ディレクトリの設定・UA**: QuickNative は一部（UA は効く）。Edge は JS とエラーページの設定だけ
 - **`vanilla://`**: QuickNative では開けず、代わりに WebEngine が開く
 - **印刷**: QuickNative は PDF の書き出しだけ
-- **ダウンロード**: どの実装も履歴（`DownloadHistory`、新しい 500 件）に記録し、ツールバーのボタンの吹き出し（`DownloadPanel`。ツールバーが無いときは窓の右上）と設定画面の「ダウンロード」がそれを見せる。Notifier には出さない。ボタンは進行中・終わってから 1 分・吹き出しが開いている間だけ出す（詳細: D-506、D-519）
+- **ダウンロード**: どの実装も履歴（`DownloadHistory`、新しい 500 件）に記録し、ツールバーのボタンの吹き出し（`DownloadPanel`。ツールバーが無いときは窓の右上）と設定画面の「ダウンロード」がそれを見せる。Notifier には出さない。ボタンは進行中・終わってから 1 分・吹き出しが開いている間だけ出す（詳細: D-506、D-519）。
+  Edge のダウンロードはそのビューの `CoreWebView2` が運び、閉じると何も聞こえなくなるので、ダウンロード中のタブを閉じてもビューは隠したまま終端まで生かし（`EdgeDownloadCarriers`）、終わってから消す。閉じたタブはたずねない（詳細: D-279、D-564）
 - **フォントの設定**: Edge には設定そのものが無い
 - QuickNative の × の多くは Qt WebView の QML API が小さいため。`runJavaScript` はあるので、JS で書けるものは動く。
   ページの上の入力はネイティブ窓が先に取るので、API があっても届かない
@@ -321,7 +340,9 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 - `GraphicsTableView` が一覧の本体。`DisplayType` で ViewTree / TrashTree / LocalFolderTree などを切り替える
 - 表示の種類は「現在のディレクトリ」「配下すべて（全展開）」「配下すべて（展開可）」の3つ（D-497 追記 4）
 - 個々の項目は `AbstractNodeItem` / `Thumbnail` / `NodeTitle`
+- ノードのメニュー（`Gadgets::CreateNodeMenu`）はどこで開いても同じ並び（開く・ノード・作る・消す/戻す・行き先と見せ方・中止）。ゴミ箱は復元が先頭で、作るが無く、消すは「完全に削除」（D-551、D-552、D-589）。ゴミ箱の一覧ではサムネイルの複製ボタンが復元ボタン、閉じるボタン・削除のコマンドは確認のあと完全に削除（D-572、D-589。スタートページの履歴と同じ `TreeBank::DiscardFromTrashAsked`）
 - 描画は `GadgetsStyle`。`GlassStyle`（暗い半透明、既定）と `FlatStyle`（明るい）の2つ
+- ノードを並べている間、背景は一覧の current のノードのページを絵にしてぼかしたもの（どのバックエンドでも止まった絵）。AccessKey の間と設定でオフのときは従来どおり（D-590）
 - 表示中のタブは淡い背景とアクセントの線で示す。折りたたみの開閉は 200ms で補間する
 
 詳細: D-300〜D-305、D-308、D-338
@@ -330,16 +351,15 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 
 | ファイル | 役割 |
 |---|---|
-| [actionmapper.hpp](../src/input/actionmapper.hpp) | アクション名の一覧と、公開 JS API の名前の対応表 |
+| [actionmapper.hpp](../src/input/actionmapper.hpp) | アクション名の一覧。編集アクションには QML 側の関数名（先頭小文字）も並べる |
 | [keymap.hpp](../src/input/keymap.hpp) | キー → アクション名の既定。修飾キーの無い単独キーは設定 `webview/@EnableSingleKeyShortcut`（既定オフ）のときだけ効く |
 | [mousemap.hpp](../src/input/mousemap.hpp) | マウスジェスチャ → アクション名の既定 |
 | [commandmap.hpp](../src/core/commandmap.hpp) | コマンドの綴り → アクション名。綴りの揺れはここにだけある |
 | [receiver.hpp](../src/app/receiver.hpp) | 入力欄。Command / Query / UrlEdit / Search の4モード |
-| [jsobject.hpp](../src/input/jsobject.hpp) | ページの JavaScript から呼べる API（`_Vanilla` / `_View`） |
 
-アクション名・入力の綴り・公開 JS 名の3系統は互換性のために残る。API 名の全体は `tst_commandmap` が固定する。
+アクション名と入力の綴りの2系統は互換性のために残る。綴りの表の全体は `tst_commandmap` が固定する。ページから叩く JavaScript の API は無い。
 
-詳細: D-054、D-123、D-295、D-430
+詳細: D-054、D-123、D-295、D-430、D-540
 
 ### その他
 
@@ -355,6 +375,7 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 | `DownloadBar` / `DownloadPanel` — [downloadbar.hpp](../src/ui/downloadbar.hpp) | ツールバーのダウンロードのボタンと、その吹き出し |
 | `Dialog` — [dialog.hpp](../src/ui/dialog.hpp) | 自前で描くダイアログ。モードレスは窓の右に積む別窓 |
 | `EditMenu` — [editmenu.hpp](../src/ui/editmenu.hpp) | 入力欄（アドレス欄・コマンドライン・ダイアログ）のコンテキストメニュー。ページの文字メニューと同じ項目と言葉（D-522） |
+| `MenuKeys` — [menukeys.hpp](../src/ui/menukeys.hpp) | メニューの右に出すキー。開いた場所で押せば効くものを項目ごとに 1 つ（D-548） |
 | `MiniMap` — [minimap.hpp](../src/ui/minimap.hpp) | ページの脇の帯。注入した JS が集めた要素の矩形を図にする。文書が動かず中の要素がスクロールするページはその要素を描く（D-485）。設定 `application/@EnableMiniMap`（既定オフ） |
 
 `Receiver` のローカルサーバ（パイプのコマンドの受け口）は同じユーザーだけが接続でき、1フレームは 1 MiB まで。
@@ -378,23 +399,44 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 | 何を描くかの表（型・ラベル・分類・既定値・選択肢） | [settingsschema.cpp](../src/core/settingsschema.cpp) |
 | 選択肢の表示名（Choice の値 → 画面の言葉） | 同じファイルの `ChoiceLabels()`。無い選択肢は値の綴りのまま出る |
 | キー・マウス・ジェスチャの表 | [inputmapschema.hpp](../src/core/inputmapschema.hpp) |
-| ページ本体 | [resources/settings/](../resources/settings/) |
+| ページ本体 | [resources/settings/](../resources/settings/)。文書には `/api/schema` の JSON とシートとスクリプトが埋め込まれて 1 往復で届く（`WithEmbeddedSchema` / `WithInlineResources`） |
 
 **設定を1つ画面に出すには、`settingsschema.cpp` の表に1行足すだけ。** HTML も JS も触らない。
-行は表の順に出るので、同じ話題の行の隣に足す。
+行は表の順に出るので、同じ話題の行の隣に足す。分類は「読者がどこを探すか」で決める（ミニマップは主窓の帯なので「外観」、
+ジェスチャの on/off は「キーとマウス」、ダウンロード先は「ダウンロード」。これらの節は自分の表や履歴の上に行を出す）。
+長い節は `GROUPS`（先頭の行のキー → 小見出し）で群に分け、ページが `h3` を描く。
+ラベルの下の説明（`hint`）は、ラベルと選択肢の名前から分からない事実だけを 1〜2 文で書く。言い直し・選択肢の解説・操作のコツは置かない（D-561）。
 
 - **既定値は、そのキーを読むコードが `s.value` に渡す値と同じにする。** `tst_settingsschema` がソースと照合する
 - 書けるのは表にあるキーだけ。型と選択肢も検査する。よそのページからは API に届かない
 - 開きかたは `settings` コマンド、メニューの「設定」、拡張の一覧の「拡張機能を管理」、アドレスバーへの入力。
-  前の3つは `TreeBank::OpenSettings(category)` で同じ1つのタブを使う
+  前の3つは `TreeBank::OpenSettings(category)` で同じ1つのタブを使う。タブのビューは、ディレクトリが指す種類
+  （`ViewKindFor`）と同じなら作り直さず前面に出すだけ（D-537）
 - 表示中のカテゴリは URL のフラグメント（`vanilla://settings/#network`）で持つ
+- 別の設定しだいで使われない行は、表の `appliesWhen`（`"key=value|…"`、どれか 1 つが成り立てば使われる）で宣言する。
+  ページがその行を灰色にして入力を拒み、どの設定のせいかを下に書く。条件は hint に重ねて書かない（D-571）
+- `needsRestart` の行の値が変わると、`ModelessDialog` のカードが「再起動」を勧める（自動では閉じない）。
+  再起動は `Application::Restart` → 終了の段を通ったあと `_main` が同じ exe を `--restart-after=<pid>` 付きで起動し、
+  新しいプロセスは旧プロセスの終了を待ってから既存インスタンスを探す（D-571）
 - `vanilla://` のページは、ディレクトリが QuickNative を指していても `WebEngineView` が描く
+- 検索中は、描き終えたページの文字のうち検索語に当たる所を `<mark>`（アクセント色の太字）で囲む（`markFound`。選択肢と入力欄の中は除く。D-582）
 
 **画面の文字列**: ページは `QTranslator` に触れないので、文字列は全部訳された状態で C++ から届ける
 （ラベルは表の `QT_TRANSLATE_NOOP("SettingsSchema", ...)`、ページ自身の言葉は `SettingsSchema::PageStrings()`）。
 **`QT_TRANSLATE_NOOP` をマクロで短くしないこと。** lupdate はマクロを展開せず、拾われなかった文字列は黙って英語のままになる。
 
-詳細: D-020、D-218、D-431、D-455、D-462、D-475
+詳細: D-020、D-218、D-431、D-455、D-462、D-475、D-537、D-549、D-561、D-571、D-575、D-582
+
+### スタートページ（`vanilla://start`）
+
+- 新しいタブと初回起動で開く。名前で開く `about:blank` はそのまま
+- 検索欄（検索エンジンを選べる）、主窓のアクションのボタン、最後に見た順のタブのカード（サムネイル・題名 2 行まで・上のディレクトリの並び・ホスト。幅に合わせた列数 × 2 行。自前のページは出さない）。カードの × ・中クリック・Delete キーでそのタブをゴミ箱へ。検索欄はタブの検索も兼ねる（自前のページも見つかる。ゴミ箱は探さない）
+- 「もっと見る」でカードの枠が**タブ履歴**に替わる: 開いているタブとゴミ箱のタブを最後に見た順（同じ秒は serial 順）に、日付の見出しで区切った行。50 行ずつ。生きている行は × でその場で閉じる（行は動かない）。閉じた行はチェックボックスと復元の矢印つきで、押すと start のタブの隣（新規タブと同じ位置の規則、`TreeBank::RestoreBeside`）へ戻して current にする。日付の見出しのチェックはその日の読み込み済みの閉じた行をまとめて選び、「削除」ボタンでゴミ箱から完全に消す（取り消せないので、アプリのモーダルで確認してから）（`TreeBank::DiscardFromTrash`。切り詰めと同じ手順）
+- 検索中は、題名と住所の検索語に当たる所をアクセント色の太字にする。住所はホストだけを出し、題名にもホストにも無い語があるときだけパスまで出す（その語がスキームにしか無ければスキームから）。照合はアプリ（`CollectTabs`）が題名と `QUrl::toString()` で行い、ページはその文字列を `address` で受け取る（D-582）
+- タブ・新規ウィンドウ・設定を開いて current が移ると、start のタブは外れる（履歴があればゴミ箱へ、無ければゴミ箱に入れない）
+- 半透明の窓では、start のあいだだけ下地を透かして acrylic を見せる（設定画面も同じ。`VanillaPage::IsTranslucentPage`、D-542 追記 12）
+
+詳細: D-558、D-527 追記 1、D-572、D-573、D-582
 
 ### ディレクトリの設定（設定画面の「ディレクトリ」）
 
@@ -411,7 +453,7 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 - 上で設定を変えると、下でそれを打ち消す語を外す（`LetDescendantsFollow`）。上の変更は下まで行き渡る
 - `ID` だけは継承でなく**ネットワークプロファイルの境目の印**で、中にもう1つ境目を作れる
 - `Private` はビューごとに、自分のノードの継承した言葉で決める
-- 自動読み込みは既定でしない。`!noload` を書いたディレクトリだけが起動時に裏で読み込む。タイマーの 1 回で歩くのは 1,000 ノードまで（詳細: D-510）
+- 自動読み込みは既定でしない。`!noload` を書いたディレクトリだけが起動時に裏で読み込む（`application/@EnableAutoLoad` もオンのとき。オフの間はディレクトリの行を選べない: D-586）。タイマーの 1 回で歩くのは 1,000 ノードまで（詳細: D-510）
 - 読む側はどれも `DirectoryPage::StateIn` に訊く（`1` / `0` / `-1`）
 
 設定を書く口は2つで、実装は [directorypage.hpp](../src/app/directorypage.hpp) の1つ。
@@ -470,7 +512,7 @@ Edge には `edgeenvironment.cpp` が `AdditionalBrowserArguments` として渡�
 
 ### 描画 API
 
-設定 `application/@GraphicsApi`（既定 `Auto`）を `Application::ApplyGraphicsApi()` が `QQuickWindow::setGraphicsApi` に渡す。
+設定 `application/@GraphicsApi`（既定は Windows で `OpenGL`、他は `Auto`。D-342 追記 2）を `Application::ApplyGraphicsApi()` が `QQuickWindow::setGraphicsApi` に渡す。
 WebEngine のビューは中身が QQuickWindow なので、これが Web ビューの描画 API になる。
 
 - 最初の QQuickWindow より前、`BootApplication` が設定を読んだ直後に呼ぶ
@@ -511,9 +553,40 @@ painter->setPen(Theme::Pen(Theme::GlassText));
 - 関数ローカルの `static const QBrush` に入れないこと（実行中に配色を変えられなくなる）
 - 名前を足したら Light と Dark の両方の表と `tst_theme` に足す
 - 配色は `application/@ColorScheme`（`Auto` / `Light` / `Dark`）。`Auto` はデスクトップに追従する
+- Windows のウィンドウメニュー（タイトルバーの右クリック・Alt+Space）はシステムが描くので、配色は uxtheme の
+  `SetPreferredAppMode` で合わせる（`SystemMenu::ApplyScheme`、`UpdateAllWidgets` から）。項目にはアプリケーション
+  メニュー（`TreeBank::GlobalContextMenu`）を開くたびに写す（`MainWindow::nativeEvent`）。詳細: D-547
 - 色を保持するもの（TreeBar の背景、`LineEdit` のスタイルシート、ページの背景色、`ExtensionBar` など）は
   `Application::UpdateAllWidgets()` が配り直す。**保持するものを作ったらここに足す**
 - スタイルシートの色は `#RRGGBB` で書く。解釈できない色は黙って捨てられる
+- メニュー・パネル（拡張の一覧、ダウンロード）・ダイアログの面は `BlurBehind::Surface()` で引く。
+  `application/@EnableTranslucentPanels` が on なら `PreviewBackgroundTranslucent` で描き、`showEvent` から
+  `BlurBehind::Apply` で OS に背後のぼかし（Windows は acrylic）を頼む。カードの角は自分で描く（[blurbehind.hpp](../src/ui/blurbehind.hpp)）
+- `application/@EnableTransparentWindow`（「ウィンドウを半透明にする」）は主窓に `WA_TranslucentBackground` を立てて背後のぼかしを頼み（方式は窓の種類で `BlurBehind::MechanismFor` が選ぶ。下の表）、バーは `BarBackgroundTranslucent`（α128）、ミニマップは `MiniMapBackgroundTranslucent`（α128）で描く。効くかは起動時に `Application::EnableTransparentWindow()` へ固定（RHI の主窓は OpenGL のときだけ）、作り直し後は `surfaceType()` で判定し、載せられなければ不透明へ戻る。詳細: D-542
+
+半透明になる条件（主窓のバー・ミニマップ。Windows）。RHI は「描画とエンジン」の「メインウィンドウも描画 API で描く」
+（`application/@EnableMainWindowRhi`、既定 off）、描画 API は同じ分類の「描画 API（WebEngineView）」（`application/@GraphicsApi`、既定 OpenGL）。
+どちらも再起動で反映:
+
+| RHI・描画 API | Edge のタブだけ | WebEngine のタブだけ | 混在 |
+|---|---|---|---|
+| on・OpenGL | backdrop | backdrop | backdrop |
+| on・D3D11 / D3D12 / Vulkan（Auto は D3D11） | 不透明 | 不透明 | 不透明 |
+| off・OpenGL | accent | backdrop | 最初の WebEngine のタブまで accent、以後 backdrop |
+| off・D3D11 / D3D12 / Vulkan（Auto は D3D11） | accent | 不透明 | 最初の WebEngine のタブまで accent、以後全窓で不透明 |
+
+- RHI off の主窓はラスターで作られ、最初の WebEngine のタブで描画 API の窓に作り直される（D-457 追記 3）。
+  描画 API が Software なら RHI on でもラスターのまま
+- accent は非公開の `SetWindowCompositionAttribute` の accent policy（`ACCENT_ENABLE_ACRYLICBLURBEHIND`。俗に「acrylic blur」）、
+  backdrop は公開の `DWMWA_SYSTEMBACKDROP_TYPE` の `DWMSBT_TRANSIENTWINDOW`（Windows 11 22H2 以降の Acrylic）。どちらも見た目は acrylic。
+  Mica（`DWMSBT_MAINWINDOW`。壁紙だけを写し、窓の後ろの窓は透けない）は使っていない
+- accent は最大化・元に戻すの途中で外れる。backdrop は外れないが、システムの明るい層が乗る
+- 設定画面は、RHI on で描画 API が OpenGL 以外のとき「ウィンドウを半透明にする」の行を灰色にして触らせない
+  （`appliesWhen` が `@EnableMainWindowRhi=false|@GraphicsApi=OpenGL`）。RHI off なら Edge だけで効くので、Auto でも選べる
+- メニュー・パネル・ダイアログは主窓の構成によらず accent（Windows 10 1803 以降。設定の説明にもそう書いてある）
+- ページは start と settings だけ下地を透かす（`VanillaPage::IsTranslucentPage`。Edge / WebEngine / Quick）。ほかのページと浮かせたドックは不透明
+- 22H2 より前の Windows では backdrop が断られて accent になる。Windows 以外では主窓は不透明、カードはぼかさずに半透明なだけ
+- 詳細: D-541、D-542 追記 3・9・10・12、D-342 追記 2
 
 アイコン:
 
@@ -557,7 +630,7 @@ painter->setPen(Theme::Pen(Theme::GlassText));
 - インクルードパスと機能のマクロ（`WEBENGINEVIEW` / `LOCALVIEW` / `NATIVEWEBVIEW` / `EDGEWEBVIEW`）は
   `vanilla_core` の PUBLIC な要件。マクロでヘッダの中身が変わるため
 - `.qrc` は実行ファイルの側に置く。テストはリソースを持たない（要るテストはそのターゲットに `.qrc` を足す）
-- [switch.hpp](../src/core/switch.hpp) の機能スイッチで残っているのは `USE_WEBCHANNEL`（無効）だけ
+- [switch.hpp](../src/core/switch.hpp) に機能スイッチは残っていない（Qt のキャスト禁止マクロだけ。最後の `USE_WEBCHANNEL` は D-539 で外した）
 
 ---
 
@@ -588,11 +661,13 @@ API ごとの対応状況は [EXTENSIONS.md](EXTENSIONS.md)。
 | `ExtensionMainScripts` / `ExtensionUserScripts` | [src/core/](../src/core/) | MAIN world の登録と `chrome.userScripts` を、エンジンのユーザースクリプトにする |
 | `ExtensionBar` | [src/ui/extensionbar.cpp](../src/ui/extensionbar.cpp) | アドレスバー右の一覧のボタンとピン留めしたボタン、ポップアップ |
 | `SidePanels` | [src/ui/sidepanels.cpp](../src/ui/sidepanels.cpp) | `chrome.sidePanel` のドック |
+| `DockTitleBar` | [src/ui/docktitlebar.cpp](../src/ui/docktitlebar.cpp) | サイドパネルとインスペクタのドックの題名バー（バーと同じ地、塗り直した浮かす・閉じる）。詳細: D-567 |
 
 ### 読み込みの流れ
 
 1. 登録のキーは登録したフォルダーのパス。Chrome の `Extensions/<id>/<版>` を登録していて Chrome が版を上げたら、隣の最新版を読む
-2. `ExtensionCopy` が `StateDirectory()/extension-copies/<id>/` にコピーを作り、次を足す:
+2. `ExtensionCopy` が `StateDirectory()/extension-copies/<id>/<印>/` にコピーを作り、次を足す。印はシム・鍵・ロケール・manifest と、元のファイルの名前・サイズ・更新時刻から取る。
+   Chrome が入れたフォルダー（`Extensions/<id>/<版>_<n>`）はファイルを列挙せず、パスで代える（D-544）:
    - worker の入口 `vanilla_worker.js`（worker のシム + 元の worker）
    - 各 HTML の先頭に `<script src="/vanilla_page_shim.js">`（拡張のページのシム）
    - content script のシム。uBOL のように content script を持たない拡張には運び手 `vanilla_carrier.js`
@@ -622,6 +697,8 @@ API ごとの対応状況は [EXTENSIONS.md](EXTENSIONS.md)。
 - **読むだけの要求**（`tabs.query`、`bookmarks.getTree`、`history.search` など）はその場で答える。
   このアプリにはブックマークも履歴も木のほかに無いので、どちらも**タブの木そのもの**を答える
 - **タブの `url` / `title` を見せる**のは、拡張が `tabs` 権限を持つか、`host_permissions` がそのタブの住所に当たるとき（`ExtensionHostWire::Sight`）
+- **拡張に見せるタブの範囲**は設定 `network/@ExtensionTabScope`（全部・現在のディレクトリの直下・読み込み済み）。タブの一覧・イベント・操作を
+  絞り、ブックマークと履歴は木全体のまま。一覧（`Collect`）と操作（`NodeOf`）が同じ判定を通る。詳細: D-555
 - **どのタブからのメッセージか**: ページごとのリクエストインターセプタが `vanilla-extension://` の要求にビューの印を付け、
   content script のシムが置いた nonce を worker が `vanilla.tabOf` でタブの id に引く
 - **worker と content script の間**はホストを通らず、エンジン自身のポート（`runtime.connect`）で運ぶ。
@@ -659,15 +736,18 @@ API ごとの対応状況は [EXTENSIONS.md](EXTENSIONS.md)。
 
 ### UI
 
-- アドレスバーの右に一覧のボタン（パズル）とピン留めしたボタンを置く（`ExtensionBar`）。寸法は `const.hpp` の `EXTENSION_*`
+- アドレスバーの右に一覧のボタン（パズル）とピン留めしたボタンを置く（`ExtensionBar`）。寸法は `const.hpp` の `EXTENSION_*`。
+  ボタンは `ExtensionController::Changed` で作り直す。`Changed` は `Reconcile` が決めるものが前回と違うときだけ出る（D-537）
 - 一覧の「追加」はフォルダー選択を Chrome の `Default/Extensions` から開く（`ExtensionController::DefaultPickDirectory()`）
 - ポップアップは Qt では `WidgetPopup` / `QuickPopup`、Edge では `EdgeExtensionView`。プロファイルやビューが変わると閉じる
 - オプションページは一覧からはポップアップと同じ窓で開き、拡張が `runtime.openOptionsPage` を呼んだときは新しいタブで開く。
   ポップアップの `window.open` は、`tabs.create` と同じ検査を通ったものだけ新しいタブで開く
 - ボタンの右クリックには、拡張の `action` の項目と vanilla の項目（設定・外す・ピン留めなど）を並べる
+- コピーの確認（`Make`）は、登録があれば起動の頭から別スレッドで先に済ませる（Windows の Edge 入りビルド）。Edge を使ったことのある data では全登録を `Pin` まで済ませ、WebView2 の環境作成の前に待ち合わせる。
+  そうでない data では有効な登録だけ `Make` し、Qt 側の `Add` がそれを引く。同じ id の登録は登録順の 1 つだけ
 
 詳細: 全体の決定は D-313〜D-315、互換レイヤーは D-350〜D-373、Edge は D-377〜D-379、
-読み込みと worker は D-382・D-396・D-397、凍結した名前と残りは D-474、公開の表は D-476。
+読み込みと worker は D-382・D-396・D-397、照合の先回しは D-543、凍結した名前と残りは D-474、公開の表は D-476。
 API ごとの D 番号は、[EXTENSIONS.md](EXTENSIONS.md) の名前空間の名前で引く。
 メソッド単位の表は `tst_cdpshims::theTableOfWhatIsAnsweredIsTheShimsOwn` がシムから作る
 （シムの名前を変えたら `VANILLA_WRITE_COVERAGE=1` で走らせて書き直す）。

@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QFontDatabase>
+#include <QFontInfo>
 
 #include "theme.hpp"
 
@@ -84,6 +85,7 @@ private slots:
 
     void theGeneratedLengthsComeFromTheTable();
     void theGeneratedFontIsTheDesktopsOwn();
+    void theMenusAreAPointUpLikeTheTabs();
 
     void theChromeAndThePagesShareTheSmallCorner();
 };
@@ -232,6 +234,26 @@ void tst_uimetrics::theGeneratedFontIsTheDesktopsOwn(){
 
     QCOMPARE(DefaultFont().family(), ui);
     QCOMPARE(TreeBarTitleFont().family(), ui);
+}
+
+void tst_uimetrics::theMenusAreAPointUpLikeTheTabs(){
+    QCOMPARE(MenuFont().family(), DefaultFont().family());
+    QCOMPARE(MenuFont().pointSizeF(), TreeBarTitleFont().pointSizeF());
+
+    const qreal base = QFontInfo(DefaultFont()).pointSizeF();
+    if(base > 0){
+        QCOMPARE(QFontInfo(MenuFont()).pointSizeF(), QFontInfo(TreeBarTitleFont()).pointSizeF());
+        QVERIFY(QFontInfo(MenuFont()).pointSizeF() > base);
+    }
+
+    static const QRegularExpression definition(
+        QStringLiteral("MenuFont\\(\\)\\{\\s*static const QFont font = ScaledFont\\(1\\.0, 1\\);"));
+    QVERIFY2(Code(Read(SRC + QStringLiteral("/core/const.hpp"))).contains(definition),
+             "MenuFont is no longer the tab title's point up.");
+
+    const QString code = Code(Read(SRC + QStringLiteral("/app/application.cpp")));
+    QVERIFY2(code.contains(QStringLiteral("setFont(MenuFont(), \"QMenu\")")),
+             "Application no longer hands QMenu the menu font.");
 }
 
 void tst_uimetrics::theGeneratedLengthsComeFromTheTable(){

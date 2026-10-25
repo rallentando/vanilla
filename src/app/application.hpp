@@ -17,6 +17,8 @@
 #include <QRegularExpression>
 #include <QSet>
 
+#include <optional>
+
 class QIODevice;
 
 class MainWindow;
@@ -63,12 +65,12 @@ public:
     static void AboutVanilla(QWidget *widget);
     static void AboutQt(QWidget *widget);
     static void Quit();
+    static void Restart();
+    static void RelaunchIfRequested();
     static void TakeDown();
+    static void CloseAllPopups();
     int Run();
 
-    static NetworkController *GetNetworkController(){
-        return m_NetworkController;
-    }
     static AutoSaver *GetAutoSaver(){
         return m_AutoSaver;
     }
@@ -84,8 +86,10 @@ private:
     static void KeepSerials(quint64 next);
     static int m_DelayFileCount;
     static bool m_Quitting;
+    static bool m_RestartRequested;
     static ShutdownFlow m_ShutdownFlow;
     static void QueueTakeDown();
+    static void WaitForPredecessor(int argc, char **argv);
     static void WaitForPriorSave();
     static void RequestExit();
 
@@ -109,24 +113,30 @@ public:
     static Settings IconDatabaseSnapshot();
     static bool SaveIconDatabase(const Settings &snapshot);
     static void LoadIconDatabase();
-    static void RegisterIcon(QString, QIcon);
+    static void RegisterIcon(QString, QIcon, bool offTheRecord);
     static QIcon GetIcon(QString);
     static QIcon GetIcon(const QUrl &url);
     static void Reconfigure();
     static bool EnableGoogleSuggest();
     static bool EnableFramelessWindow();
-    static bool EnableTransparentBar();
+    static bool EnableTransparentWindow();
+    static void TranslucentWindowUnsupported();
+    static bool EnableTranslucentPanels();
     static QString ColorScheme();
     static void SetColorScheme(const QString &scheme);
     static void UpdateAllWidgets();
     static bool EnableAutoSave();
     static bool EnableAutoLoad();
 private:
+    friend class tst_treebaritem;
+    friend class tst_directorypage;
     static Settings m_GlobalSettings;
     static Settings m_IconTable;
     static bool m_EnableGoogleSuggest;
     static bool m_EnableFramelessWindow;
-    static bool m_EnableTransparentBar;
+    static bool m_EnableTransparentWindow;
+    static bool m_TransparentWindowEffective;
+    static bool m_EnableTranslucentPanels;
     static QString m_ColorScheme;
     static bool m_ReassertingColorScheme;
     static bool m_EnableAutoSave;
@@ -170,14 +180,14 @@ public:
     static QString GetAcceptLanguage();
     static void SetAcceptLanguage(QString);
     static QStringList GetAllowedHosts();
-    static void AppendToAllowedHosts(QString);
+    static void AppendToAllowedHosts(QString, bool offTheRecord);
     static void RemoveFromAllowedHosts(QString);
     static QStringList GetBlockedHosts();
-    static void AppendToBlockedHosts(QString);
+    static void AppendToBlockedHosts(QString, bool offTheRecord);
     static void RemoveFromBlockedHosts(QString);
     static QStringList GetAllowedCertificates();
     static QStringList GetBlockedCertificates();
-    static void RememberCertificate(QString key, bool allow);
+    static void RememberCertificate(QString key, bool allow, bool offTheRecord);
     static SslErrorPolicy GetSslErrorPolicy();
     static void AskSslErrorPolicyIfNeed();
     static DownloadPolicy GetDownloadPolicy();
@@ -214,7 +224,6 @@ public:
 
     static int WindowId(MainWindow *win);
     static MainWindow *Window(int id);
-    static int GetCurrentWindowId();
     static MainWindow *GetCurrentWindow();
     static QWidget *CurrentWidget();
 
@@ -238,7 +247,6 @@ private:
 
 public:
     static void SetMaxBackUpGenerationCount(int);
-    static int GetMaxBackUpGenerationCount();
 
     static QStringList BackUpFileFilters();
 
@@ -261,6 +269,7 @@ public:
 protected:
     void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
 private:
+    static bool m_ByKey;
     static int m_AutoSaveTimerId;
     static int m_AutoLoadTimerId;
     static void CreateBackUpFiles();
@@ -271,9 +280,6 @@ public:
     static void StopAutoLoadTimer();
     static void RestartAutoSaveTimer();
     static void RestartAutoLoadTimer();
-signals:
-    void SaveCookieRequest();
-    void SaveTreeRequest();
 
 public:
 
@@ -358,6 +364,25 @@ public:
     template <class Event>
     static bool HasNoModifier(Event *ev){
         return ev->modifiers() == Qt::NoModifier;
+    }
+
+    class InputScope {
+    public:
+        explicit InputScope(bool byKey) : m_Saved(m_ByKey){ m_ByKey = byKey;}
+        ~InputScope(){ m_ByKey = m_Saved;}
+    private:
+        Q_DISABLE_COPY(InputScope)
+        const bool m_Saved;
+    };
+    static bool ByKey(){ return m_ByKey;}
+    static std::optional<bool> ByKeyFor(const QEvent *ev){
+        switch(ev->type()){
+        case QEvent::KeyPress: return true;
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseButtonRelease:
+        case QEvent::MouseButtonDblClick: return false;
+        default: return std::nullopt;
+        }
     }
 
     static inline bool IsOnlyModifier(QKeyEvent *ev){

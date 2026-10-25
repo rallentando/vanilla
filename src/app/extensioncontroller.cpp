@@ -6,6 +6,7 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
+#include <QAtomicInt>
 #include <QHash>
 #include <QMutex>
 #include <QFile>
@@ -54,7 +55,7 @@ namespace {
             const QString trimmed = path.trimmed();
             if(trimmed.isEmpty() || trimmed.startsWith(QLatin1Char('#'))) continue;
             const QString clean = ExtensionManifest::NormalizePath(path);
-            const QString key = ExtensionManifest::KeyOfNormalized(clean);
+            const QString key = ExtensionManifest::RegistrationKeyOfNormalized(clean);
             if(keys.contains(key)) continue;
             keys.insert(key);
             result.append(clean);
@@ -98,6 +99,14 @@ namespace {
         return true;
     }
 
+    bool IsVersionKey(const QString &key, QString *stem){
+        if(key.size() < 2 || !key.endsWith(QLatin1Char('/'))) return false;
+        const QString folder = key.chopped(1);
+        if(!ValidId(folder.mid(folder.lastIndexOf(QLatin1Char('/')) + 1))) return false;
+        if(stem) *stem = folder;
+        return true;
+    }
+
     QJsonObject JsonFile(const QString &path){
         QFile file(path);
         if(!file.open(QIODevice::ReadOnly) || file.size() > MAX_MANIFEST_SIZE) return QJsonObject();
@@ -108,11 +117,11 @@ namespace {
         Settings &s = Application::GlobalSettings();
         QStringList list = s.value(key).toStringList();
         const QString clean = ExtensionManifest::NormalizePath(path);
-        const QString keyPath = ExtensionManifest::PathKey(clean);
+        const QString keyPath = ExtensionManifest::RegistrationKeyOfNormalized(clean);
         for(qsizetype i = list.size(); i-- > 0;){
             const QString entry = list.at(i).trimmed();
             if(entry.isEmpty() || entry.startsWith(QLatin1Char('#'))) continue;
-            if(ExtensionManifest::PathKey(entry) != keyPath) continue;
+            if(ExtensionManifest::RegistrationKey(entry) != keyPath) continue;
             if(present) return;
             list.removeAt(i);
         }
@@ -122,15 +131,74 @@ namespace {
     }
 }
 
-QString ExtensionManifest::NormalizePath(const QString &path){
-    QFileInfo info(QDir::fromNativeSeparators(path.trimmed()));
-    QString clean = info.canonicalFilePath();
-    if(clean.isEmpty()) clean = info.absoluteFilePath();
-    clean = QDir::cleanPath(clean);
+namespace {
+    QMutex g_PathCacheMutex;
+    quint64 g_PathCacheGeneration = 0;
+    QHash<QString, QString> &PathCache(){
+        static QHash<QString, QString> cache;
+        return cache;
+    }
+
+    QAtomicInt g_Looks;
+
+    QString CanonicalPath(const QString &path, bool *existed = nullptr){
+        g_Looks.fetchAndAddRelaxed(1);
+        QFileInfo info(QDir::fromNativeSeparators(path.trimmed()));
+        QString clean = info.canonicalFilePath();
+        if(existed) *existed = !clean.isEmpty();
+        if(clean.isEmpty()) clean = info.absoluteFilePath();
+        clean = QDir::cleanPath(clean);
 #ifdef Q_OS_WIN
-    if(clean.size() > 1 && clean.at(1) == QLatin1Char(':')) clean[0] = clean[0].toUpper();
+        if(clean.size() > 1 && clean.at(1) == QLatin1Char(':')) clean[0] = clean[0].toUpper();
 #endif
+        return clean;
+    }
+
+    void ForgetPaths(){
+        QMutexLocker lock(&g_PathCacheMutex);
+        PathCache().clear();
+        g_PathCacheGeneration++;
+    }
+
+    bool HasDotDot(const QString &path){
+        QStringList steps = path.split(QLatin1Char('/'));
+        if(!steps.isEmpty() && steps.first().size() > 1 && steps.first().at(1) == QLatin1Char(':')) steps.first().remove(0, 2);
+        return steps.contains(QStringLiteral(".."));
+    }
+
+    void (*g_BetweenLookAndStore)() = nullptr;
+}
+
+void ExtensionManifest::SetBetweenLookAndStoreForTesting(void (*hook)()){
+    g_BetweenLookAndStore = hook;
+}
+
+QString ExtensionManifest::NormalizePath(const QString &path){
+    const QString given = QDir::fromNativeSeparators(path.trimmed());
+    const QString key = !HasDotDot(given) ? QDir::cleanPath(QFileInfo(given).absoluteFilePath())
+                      : QFileInfo(given).isRelative() ? QDir::currentPath() + QLatin1Char('/') + given : given;
+    quint64 generation = 0;
+    {
+        QMutexLocker lock(&g_PathCacheMutex);
+        const auto it = PathCache().constFind(key);
+        if(it != PathCache().constEnd()) return it.value();
+        generation = g_PathCacheGeneration;
+    }
+    bool existed = false;
+    const QString clean = CanonicalPath(path, &existed);
+    if(g_BetweenLookAndStore) g_BetweenLookAndStore();
+    if(existed){
+        QMutexLocker lock(&g_PathCacheMutex);
+        if(generation == g_PathCacheGeneration){
+            PathCache().insert(key, clean);
+            PathCache().insert(clean, clean);
+        }
+    }
     return clean;
+}
+
+int ExtensionManifest::CanonicalLooksForTesting(){
+    return g_Looks.loadRelaxed();
 }
 
 QString ExtensionManifest::PathKey(const QString &path){
@@ -145,13 +213,34 @@ QString ExtensionManifest::KeyOfNormalized(const QString &normalized){
 #endif
 }
 
+QString ExtensionManifest::RegistrationKey(const QString &path){
+    return RegistrationKeyOfNormalized(NormalizePath(path));
+}
+
+QString ExtensionManifest::RegistrationKeyOfNormalized(const QString &normalized){
+    const QString key = KeyOfNormalized(normalized);
+    const qsizetype last = key.lastIndexOf(QLatin1Char('/'));
+    if(last <= 0) return key;
+    const QString parent = key.left(last);
+    QList<int> order;
+    if(!VersionFolder(key.mid(last + 1), &order) ||
+       !ValidId(parent.mid(parent.lastIndexOf(QLatin1Char('/')) + 1))) return key;
+    return parent + QLatin1Char('/');
+}
+
+QString ExtensionManifest::SourceOfRegistrationKey(const QString &key){
+    QString parent;
+    if(!IsVersionKey(key, &parent)) return key;
+    return CurrentFolder(parent + QStringLiteral("/0_0"));
+}
+
 QString ExtensionManifest::Resource(const QString &root, const QString &relative, QSet<QString> *verified){
     const QUrl url(relative);
     if(relative.isEmpty() || !url.isRelative() || relative.startsWith(QLatin1Char('/')) ||
        relative.contains(QLatin1Char('\\')) || !url.query().isEmpty() || !url.fragment().isEmpty())
         return QString();
     const QString path =
-        NormalizePath(root + QLatin1Char('/') + QUrl::fromPercentEncoding(relative.toUtf8()));
+        CanonicalPath(root + QLatin1Char('/') + QUrl::fromPercentEncoding(relative.toUtf8()));
     if(!KeyOfNormalized(path).startsWith(KeyOfNormalized(root) + QLatin1Char('/')) || !QFileInfo(path).isFile())
         return QString();
     const QFileInfo file(path);
@@ -420,12 +509,14 @@ ExtensionManifest ExtensionManifest::ReadCached(const QString &input){
 }
 
 void ExtensionManifest::ForgetCached(){
+    ForgetPaths();
     QMutexLocker lock(&g_ManifestCacheMutex);
     ManifestCache().clear();
     g_ManifestCacheGeneration++;
 }
 
 void ExtensionManifest::ForgetCached(const QString &path){
+    ForgetPaths();
     const QString key = KeyOfNormalized(NormalizePath(path));
     QMutexLocker lock(&g_ManifestCacheMutex);
     ManifestCache().remove(key);
@@ -501,24 +592,32 @@ bool ExtensionController::ReadOwned(){
     }
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parse);
     const QJsonObject obj = doc.object();
+    const int format = obj.value(QStringLiteral("version")).toInt();
     if(parse.error != QJsonParseError::NoError ||
-       obj.value(QStringLiteral("version")).toInt() != 1 ||
+       (format != 1 && format != 2) ||
        !obj.value(QStringLiteral("owned")).isObject()){
         m_Error = tr("The extension ownership journal is invalid. No extensions were changed.");
         return false;
     }
     const QJsonObject owned = obj.value(QStringLiteral("owned")).toObject();
     QSet<QString> ids;
+    QMap<QString, QString> read;
     for(QJsonObject::const_iterator i = owned.begin(); i != owned.end(); ++i){
         const QString id = i.value().toString();
-        if(!QDir::isAbsolutePath(i.key()) || !ValidId(id) || ids.contains(id) ||
-           ExtensionManifest::PathKey(i.key()) != i.key()){
+        QString stem;
+        const bool versionKey = format == 2 && IsVersionKey(i.key(), &stem);
+        if(!versionKey) stem = i.key();
+        const QString key = ExtensionManifest::RegistrationKeyOfNormalized(stem);
+        const bool wellFormed = versionKey || format == 1 || key == i.key();
+        if(!QDir::isAbsolutePath(stem) || !ValidId(id) || ids.contains(id) || !wellFormed ||
+           ExtensionManifest::PathKey(stem) != stem || read.contains(versionKey ? i.key() : key)){
             m_Error = tr("The extension ownership journal is invalid. No extensions were changed.");
             return false;
         }
-        m_Owned.insert(i.key(), id);
+        read.insert(versionKey ? i.key() : key, id);
         ids.insert(id);
     }
+    m_Owned = read;
     return true;
 }
 
@@ -529,7 +628,7 @@ bool ExtensionController::SaveOwned(){
     for(QMap<QString, QString>::const_iterator i = m_Owned.begin(); i != m_Owned.end(); ++i)
         owned.insert(i.key(), i.value());
     const QByteArray data =
-        QJsonDocument(QJsonObject{{QStringLiteral("version"), 1},
+        QJsonDocument(QJsonObject{{QStringLiteral("version"), 2},
                                   {QStringLiteral("owned"), owned}}).toJson();
     QSaveFile file(m_Journal);
     if(!QDir().mkpath(QFileInfo(m_Journal).absolutePath()) ||
@@ -549,7 +648,32 @@ void ExtensionController::ReadSettings(){
               s.value(PINNED_KEY).toStringList());
 }
 
+bool ExtensionController::FollowVersionFolders(){
+    Settings &s = Application::GlobalSettings();
+    bool any = false;
+    foreach(const QString &key, QStringList() << PATHS_KEY << DISABLED_KEY << PINNED_KEY){
+        QStringList list = s.value(key).toStringList();
+        bool changed = false;
+        for(qsizetype i = 0; i < list.size(); ++i){
+            const QString entry = list.at(i).trimmed();
+            if(entry.isEmpty() || entry.startsWith(QLatin1Char('#'))) continue;
+            const QString clean = ExtensionManifest::NormalizePath(entry);
+            const QString folder = ExtensionManifest::CurrentFolder(clean);
+            if(folder == clean ||
+               ExtensionManifest::RegistrationKeyOfNormalized(folder) !=
+               ExtensionManifest::RegistrationKeyOfNormalized(clean)) continue;
+            list[i] = folder;
+            changed = true;
+        }
+        if(!changed) continue;
+        s.setValue(key, list);
+        any = true;
+    }
+    return any;
+}
+
 void ExtensionController::ReloadAll(){
+    FollowVersionFolders();
     foreach(const QPointer<ExtensionController> &c, g_Controllers){
         if(!c) continue;
         QTimer::singleShot(0, c, [c](){ if(c) c->ReadSettings();});
@@ -563,7 +687,7 @@ namespace {
         const Settings &s = Application::GlobalSettings();
         QSet<QString> disabled;
         foreach(const QString &path, Normalized(s.value(DISABLED_KEY).toStringList()))
-            disabled.insert(ExtensionManifest::KeyOfNormalized(path));
+            disabled.insert(ExtensionManifest::RegistrationKeyOfNormalized(path));
 
         QList<ExtensionManifest> result;
         QSet<QString> ids;
@@ -572,7 +696,7 @@ namespace {
             if(!manifest.error.isEmpty() || manifest.id.isEmpty()) continue;
             if(ids.contains(manifest.id)) continue;
             ids.insert(manifest.id);
-            if(disabled.contains(ExtensionManifest::KeyOfNormalized(path))) continue;
+            if(disabled.contains(ExtensionManifest::RegistrationKeyOfNormalized(path))) continue;
             result << manifest;
         }
         return result;
@@ -1003,7 +1127,7 @@ QString ExtensionController::CopyNote(const QString &note, const QString &detail
 }
 
 void ExtensionController::Note(const QString &path, const QString &text){
-    const QString key = ExtensionManifest::PathKey(path);
+    const QString key = ExtensionManifest::RegistrationKey(path);
     if(text.isEmpty()) m_Notes.remove(key);
     else m_Notes.insert(key, text);
 }
@@ -1064,9 +1188,9 @@ void ExtensionController::Reconcile(const QStringList &paths, const QStringList 
                                     const QStringList &pinned){
     const QStringList sourcePaths = Normalized(paths);
     QStringList order, disabledList, pinnedList;
-    foreach(const QString &path, sourcePaths) order.append(ExtensionManifest::KeyOfNormalized(path));
-    foreach(const QString &path, Normalized(disabled)) disabledList.append(ExtensionManifest::KeyOfNormalized(path));
-    foreach(const QString &path, Normalized(pinned)) pinnedList.append(ExtensionManifest::KeyOfNormalized(path));
+    foreach(const QString &path, sourcePaths) order.append(ExtensionManifest::RegistrationKeyOfNormalized(path));
+    foreach(const QString &path, Normalized(disabled)) disabledList.append(ExtensionManifest::RegistrationKeyOfNormalized(path));
+    foreach(const QString &path, Normalized(pinned)) pinnedList.append(ExtensionManifest::RegistrationKeyOfNormalized(path));
     const QSet<QString> disabledSet(disabledList.begin(), disabledList.end());
 
     if(order != m_Order || disabledSet != m_Disabled) emit InvalidatePopups();
@@ -1075,7 +1199,7 @@ void ExtensionController::Reconcile(const QStringList &paths, const QStringList 
     QSet<QString> ids;
     for(qsizetype i = 0; i < order.size(); ++i){
         const QString path = order.at(i);
-        if(!m_Manifests.contains(path))
+        if(!m_Manifests.contains(path) || m_Manifests.value(path).path != sourcePaths.at(i))
             m_Manifests.insert(path, ExtensionManifest::ReadCached(sourcePaths.at(i)));
         ExtensionManifest m = m_Manifests.value(path);
         if(m.error.isEmpty() && ids.contains(m.id))
@@ -1121,8 +1245,23 @@ void ExtensionController::Reconcile(const QStringList &paths, const QStringList 
             if(!command.key.isEmpty()) m_Commands[command.key].append(CommandOwner{path, m.id, command.name});
     }
     if(m_InstalledRead) ApplyInstalled(false, false);
-    emit Changed();
+    const QString now = ReconciledSignature();
+    const bool different = m_Reconciled.isNull() || now != m_Reconciled;
+    m_Reconciled = now;
+    if(different) emit Changed();
     Schedule();
+}
+
+QString ExtensionController::ReconciledSignature() const {
+    QStringList lines;
+    foreach(const QString &path, m_Order){
+        const ExtensionManifest m = m_Desired.value(path);
+        lines << path << m.folder << m.id << m.version << m.name << m.error
+              << (m_Disabled.contains(path) ? QStringLiteral("off") : QStringLiteral("on"))
+              << (m_Pinned.contains(path) ? QStringLiteral("pin") : QString())
+              << m_Errors.value(path);
+    }
+    return QString::number(m_Order.size()) + QLatin1Char('|') + lines.join(QLatin1Char('\x1f'));
 }
 
 void ExtensionController::Start(){
@@ -1305,7 +1444,7 @@ void ExtensionController::Retry(const QString &input){
         Start();
         return;
     }
-    const QString path = ExtensionManifest::PathKey(input);
+    const QString path = ExtensionManifest::RegistrationKey(input);
     emit InvalidatePopups();
     m_Errors.remove(path);
     if(m_Desired.contains(path)){
@@ -1328,9 +1467,10 @@ QList<ExtensionRow> ExtensionController::Rows() const {
     foreach(const QString &path, paths){
         ExtensionRow row;
         row.registered = m_Desired.contains(path);
-        row.manifest = row.registered ? m_Desired.value(path) : ExtensionManifest::ReadCached(path);
+        row.manifest = row.registered ? m_Desired.value(path)
+                                      : ExtensionManifest::ReadCached(ExtensionManifest::SourceOfRegistrationKey(path));
         row.error = m_Errors.value(path, row.manifest.error);
-        row.note = m_Notes.value(ExtensionManifest::PathKey(path));
+        row.note = m_Notes.value(path);
         const QString id = m_Owned.value(path);
         row.loaded = !id.isEmpty() && m_Actual.contains(id);
         if(row.loaded){

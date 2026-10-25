@@ -87,6 +87,7 @@ public:
 private:
     ExtensionHost(QObject *owner, ExtensionController *controller, const QString &profileSpace);
     QList<ExtensionHostWire::Tab> Tabs(bool dated = false) const;
+    QList<ExtensionHostWire::Tab> Whole(bool dated = false) const;
     ExtensionHostWire::Bookmark Tree() const;
     ViewNode *NodeOf(qint64 id) const;
     ViewNode *CurrentNode() const;

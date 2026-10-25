@@ -1,5 +1,8 @@
 #include "switch.hpp"
 #include "theme.hpp"
+#include "application.hpp"
+
+#include <QSurfaceFormat>
 #include "treebank.hpp"
 #include "treebar.hpp"
 #include "mainwindow.hpp"
@@ -42,6 +45,11 @@ EdgeWebView::EdgeWebView(TreeBank *parent, QString id, QStringList set)
     Initialize();
 
     EdgeHostWindow *host = new EdgeHostWindow();
+    if(Application::EnableTransparentWindow()){
+        QSurfaceFormat format = host->format();
+        format.setAlphaBufferSize(8);
+        host->setFormat(format);
+    }
     m_Impl->m_HostWindow = host;
     m_Impl->m_Container = QWidget::createWindowContainer(m_Impl->m_HostWindow, this);
     host->GiveQtFocusOnPress(m_Impl->m_Container);
@@ -76,6 +84,8 @@ EdgeWebView::EdgeWebView(TreeBank *parent, QString id, QStringList set)
 }
 
 EdgeWebView::~EdgeWebView(){
+    if(m_Impl && m_Impl->m_WatchedTopLevel)
+        m_Impl->m_WatchedTopLevel->removeEventFilter(this);
     Retire(true);
 }
 
@@ -114,6 +124,13 @@ void EdgeWebView::Retire(bool force){
     m_Impl->m_HostToken.reset();
 
     s_Profiles.Closed(this);
+    if(m_Impl->m_ProfileMeasured){
+        const QString key = ProfileKey();
+        bool another = false;
+        foreach(EdgeWebView *view, s_Profiles.LiveViews())
+            if(view && view->m_Impl->m_ProfileMeasured && view->ProfileKey() == key) another = true;
+        if(!another) s_Profiles.Permissions().Forget(key);
+    }
 
     RemoveCompositionHandlers();
     RemoveWebViewHandlers();
@@ -151,7 +168,7 @@ void EdgeWebView::Retire(bool force){
     ReleaseCompositionTree();
 
     QPointer<EdgeWebView> alive(this);
-    if(leaving == EdgeContextMenuState::Leaving::WithDeferral) FinishContextMenu(-1);
+    if(leaving == EdgeContextMenuState::Leaving::WithDeferral) FinishContextMenu(-1, false);
     if(!alive) return;
     m_Impl->m_Retiring = false;
     if(m_Impl->m_ContextMenu.TakeDeleteLater()) View::DeleteLater();
@@ -165,15 +182,11 @@ QIcon EdgeWebView::GetIcon(){
     return m_Impl->m_Icon;
 }
 
-int EdgeWebView::GetToken() const {
-    return m_Impl->m_Token;
-}
-
-QString EdgeWebView::GetProfileName() const {
-    return m_Impl->m_ProfileName;
-}
-
 bool EdgeWebView::IsPrivateMode() const {
+    return m_Impl->m_PrivateMode;
+}
+
+bool EdgeWebView::IsOffTheRecord(){
     return m_Impl->m_PrivateMode;
 }
 
@@ -323,11 +336,14 @@ void EdgeWebView::TakeController(EdgeUnadoptedController &made){
         case EdgePrivateWipeLedger::Effect::Wait:
             break;
         case EdgePrivateWipeLedger::Effect::Proceed:
+            EnterPermissionSync();
             break;
         case EdgePrivateWipeLedger::Effect::Fail:
             ReportPrivateWipeFailure();
             break;
         }
+    } else {
+        EnterPermissionSync();
     }
     RegisterHandlers();
     RegisterDropTarget();
@@ -479,6 +495,7 @@ void EdgeWebView::Navigate(const QUrl &url){
 bool EdgeWebView::MayStartLoad() const {
     if(m_Impl->m_State.GetState() != EdgeControllerState::State::Ready) return false;
     if(m_Impl->m_Extensions && !m_Impl->m_Extensions->IsReady()) return false;
+    if(!s_Profiles.IsPermissionSynced(ProfileKey())) return false;
     if(!m_Impl->m_ActualPrivate) return true;
     return s_Profiles.IsPrivateProfileClean(ProfileKey());
 }
@@ -634,7 +651,7 @@ bool EdgeWebView::SaveHistory(){
     const QByteArray already = GetViewNode()->GetHistoryData();
     if(!already.isEmpty() && !NativeHistory::LooksLikeOurs(already)) return false;
 
-    GetViewNode()->SetHistoryData(data);
+    GetViewNode()->SetHistoryData(data, KeepsOffDisk());
     return true;
 }
 
@@ -700,6 +717,11 @@ void EdgeWebView::resizeEvent(QResizeEvent *ev){
 
 void EdgeWebView::showEvent(QShowEvent *ev){
     QWidget::showEvent(ev);
+    if(QWidget *top = window(); top != m_Impl->m_WatchedTopLevel.data()){
+        if(m_Impl->m_WatchedTopLevel) m_Impl->m_WatchedTopLevel->removeEventFilter(this);
+        m_Impl->m_WatchedTopLevel = top;
+        if(top && top != this) top->installEventFilter(this);
+    }
     if(m_Impl && m_Impl->m_Controller){
         ApplyBounds();
         if(m_Impl->m_Controller) ApplyVisibility();
@@ -715,6 +737,7 @@ void EdgeWebView::showEvent(QShowEvent *ev){
 }
 
 void EdgeWebView::hideEvent(QHideEvent *ev){
+    if(GetDisplayObscured()) ExitFullScreen();
     AbandonMouse();
     AbandonDrag();
     m_Impl->m_Drop.SetReady(false);

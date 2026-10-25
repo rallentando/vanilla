@@ -6,6 +6,9 @@
 #include <QFile>
 #include <QPainter>
 #include <QWidget>
+#include <QMenu>
+#include <QLabel>
+#include <QWidgetAction>
 
 #include "view.hpp"
 
@@ -102,6 +105,23 @@ private slots:
 
         QVERIFY(html.isEmpty());
         QVERIFY2(timer.elapsed() < 1000, qPrintable(QString::number(timer.elapsed())));
+    }
+
+    void aMenuCaptionIsDrawnFaint(){
+        QMenu menu;
+        QWidgetAction *action = View::MenuCaption(&menu, QStringLiteral("(name)"), Qt::AlignRight);
+        QVERIFY(action);
+        QLabel *label = action->defaultWidget()->findChild<QLabel*>();
+        QVERIFY(label);
+        QCOMPARE(label->text(), QStringLiteral("(name)"));
+        QCOMPARE(label->alignment(), Qt::Alignment(Qt::AlignRight));
+        QCOMPARE(label->foregroundRole(), QPalette::PlaceholderText);
+
+        QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + QStringLiteral("/view/view.cpp"));
+        QVERIFY(file.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString source = QString::fromUtf8(file.readAll());
+        QCOMPARE(source.count(QStringLiteral("new QLabel(")), 1);
+        QCOMPARE(source.count(QStringLiteral("MenuCaption(menu, name,")), 3);
     }
 
     void aViewIsNamedAfterTheObjectItReallyIs(){

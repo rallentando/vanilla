@@ -222,6 +222,38 @@ private slots:
         QVERIFY(item.isNull());
     }
 
+    void theSourceIsRecordedAndAPrivateOneHidesBothAddresses(){
+        QTemporaryDir dir;
+        Settings &s = Application::GlobalSettings();
+        s.setValue(QStringLiteral("application/@DownloadPolicy"), QStringLiteral("FixedLocale"));
+        s.setValue(QStringLiteral("application/@FileSaveDirectory"), dir.path() + QStringLiteral("/"));
+        Application::LoadGlobalSettings();
+
+        const QUrl page(QStringLiteral("https://example.com/files.html"));
+        for(const bool offTheRecord : {false, true}){
+            AbortingReply *reply =
+                new AbortingReply(QUrl(QStringLiteral("https://example.com/source.zip")));
+            QPointer<DownloadItem> item = new DownloadItem(reply, QStringLiteral("source.zip"));
+            item->SetSource(page, offTheRecord);
+            QMetaObject::invokeMethod(item, "Finished");
+
+            const QList<DownloadHistory::Entry> entries = DownloadHistory::Instance()->Entries();
+            QVERIFY(!entries.isEmpty());
+            QVERIFY(entries.first().path.startsWith(dir.path()));
+            if(offTheRecord){
+                QVERIFY(entries.first().url.isEmpty());
+                QVERIFY(entries.first().page.isEmpty());
+            } else {
+                QCOMPARE(entries.first().url, QUrl(QStringLiteral("https://example.com/source.zip")));
+                QCOMPARE(entries.first().page, page);
+            }
+        }
+
+        s.remove(QStringLiteral("application/@DownloadPolicy"));
+        s.remove(QStringLiteral("application/@FileSaveDirectory"));
+        Application::LoadGlobalSettings();
+    }
+
     void aReplyWhichEndedBeforeAnyDataIsRecordedAsEnded(){
         QTemporaryDir dir;
         Settings &s = Application::GlobalSettings();

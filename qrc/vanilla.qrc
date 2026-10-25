@@ -3,6 +3,13 @@
     <file>../resources/settings/settings.html</file>
     <file>../resources/settings/settings.css</file>
     <file>../resources/settings/settings.js</file>
+    <file>../resources/start/start.html</file>
+    <file>../resources/start/table.png</file>
+    <file>../resources/start/table@2x.png</file>
+    <file>../resources/start/trash.png</file>
+    <file>../resources/start/trash@2x.png</file>
+    <file>../resources/start/window.png</file>
+    <file>../resources/start/window@2x.png</file>
     <file>../resources/blank.png</file>
     <file>../resources/blank@2x.png</file>
     <file>../resources/blankw.png</file>
@@ -29,6 +36,8 @@
     <file>../resources/tableview/muted@2x.png</file>
     <file>../resources/tableview/trash.png</file>
     <file>../resources/tableview/trash@2x.png</file>
+    <file>../resources/tableview/restore.png</file>
+    <file>../resources/tableview/restore@2x.png</file>
     <file>../resources/tableview/table.png</file>
     <file>../resources/tableview/table@2x.png</file>
     <file>../resources/treebar/close.png</file>

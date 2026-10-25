@@ -1,6 +1,7 @@
 #include "switch.hpp"
 #include "const.hpp"
 #include "theme.hpp"
+#include "blurbehind.hpp"
 
 #include "dialog.hpp"
 
@@ -39,7 +40,9 @@ const ButtonSpec ButtonSpecs[] = {
     { Dialog::No,     QT_TRANSLATE_NOOP("Dialog", "No"),     false },
     { Dialog::Cancel, QT_TRANSLATE_NOOP("Dialog", "Cancel"), false },
     { Dialog::Open,   QT_TRANSLATE_NOOP("Dialog", "Open"),   true  },
-    { Dialog::Close,  QT_TRANSLATE_NOOP("Dialog", "Close"),  false }
+    { Dialog::Close,  QT_TRANSLATE_NOOP("Dialog", "Close"),  false },
+    { Dialog::OpenTrash, QT_TRANSLATE_NOOP("Dialog", "Open Trash"), true },
+    { Dialog::Restart,   QT_TRANSLATE_NOOP("Dialog", "Restart"),    true }
 };
 
 }
@@ -558,10 +561,15 @@ void ModalDialog::paintEvent(QPaintEvent *ev){
         const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
         painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setPen(Theme::Pen(Theme::PreviewBorder));
-        painter.setBrush(Theme::Brush(Theme::PreviewBackground));
+        painter.setBrush(Theme::Brush(BlurBehind::Surface()));
         painter.drawRoundedRect(card, ScaleByDevice(DIALOG_CORNER_RADIUS),
                                 ScaleByDevice(DIALOG_CORNER_RADIUS));
     }
+}
+
+void ModalDialog::showEvent(QShowEvent *ev){
+    QWidget::showEvent(ev);
+    BlurBehind::Apply(this);
 }
 
 void ModalDialog::mousePressEvent(QMouseEvent *ev){
@@ -651,6 +659,7 @@ ModelessDialog::ModelessDialog()
     , m_Title(QString())
     , m_Caption(QString())
     , m_TimerId(0)
+    , m_AutoCancel(true)
     , m_CallBack([](bool){})
     , m_Finished(false)
     , m_Frame(nullptr)
@@ -815,16 +824,30 @@ void ModelessDialog::paintEvent(QPaintEvent *ev){
         const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
         painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setPen(Theme::Pen(Theme::PreviewBorder));
-        painter.setBrush(Theme::Brush(Theme::PreviewBackground));
+        painter.setBrush(Theme::Brush(BlurBehind::Surface()));
         painter.drawRoundedRect(card, ScaleByDevice(DIALOG_CORNER_RADIUS),
                                 ScaleByDevice(DIALOG_CORNER_RADIUS));
     }
 }
 
+void ModelessDialog::showEvent(QShowEvent *ev){
+    QWidget::showEvent(ev);
+    BlurBehind::Apply(this);
+}
+
+void ModelessDialog::Renew(){
+    if(m_Finished) return;
+    if(m_TimerId) StartTimer();
+    if(m_Frame) m_Frame->raise();
+    raise();
+}
+
 void ModelessDialog::StartTimer(){
     if(m_TimerId){
         killTimer(m_TimerId);
+        m_TimerId = 0;
     }
+    if(!m_AutoCancel) return;
     m_TimerId = startTimer(AUTOCANCEL_DISTANCE);
 }
 

@@ -217,7 +217,8 @@ void WriteNames(SettingsIO::Map &settings, const Table &table, const Pairs &pair
     }
 }
 
-QJsonArray KeyParts(const QKeySequence &seq){
+QJsonArray KeyParts(const QKeySequence &shown){
+    const QKeySequence seq = InputMap::DisplayKey(shown);
     QJsonArray strokes;
     for(int i = 0; i < seq.count(); i++){
         const QKeyCombination combination = seq[i];
@@ -445,8 +446,12 @@ QJsonObject Describe(const SettingsIO::Map &settings){
     QJsonObject strings;
     strings[QStringLiteral("edit")] =
         QCoreApplication::translate("InputMapSchema", "Edit");
+    strings[QStringLiteral("assignments")] =
+        QCoreApplication::translate("InputMapSchema", "Assignments");
     strings[QStringLiteral("done")] =
         QCoreApplication::translate("InputMapSchema", "Done");
+    strings[QStringLiteral("jumpTo")] =
+        QCoreApplication::translate("InputMapSchema", "Jump to");
     strings[QStringLiteral("resetTable")] =
         QCoreApplication::translate("InputMapSchema", "Back to the defaults");
     strings[QStringLiteral("changed")] =

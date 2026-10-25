@@ -431,6 +431,22 @@ private slots:
         MainWindow::ActivateWindowIfNeeded(window, other.winId());
         QTRY_VERIFY(window->isActiveWindow());
     }
+
+    void deletingTheGlobalContextMenuTakesItsSubMenus(){
+        if(!m_Custom){
+            m_Custom = std::make_unique<MainWindow>(901, QPoint(100, 100));
+            m_Custom->setAnimated(false);
+            m_Custom->resize(1200, 800);
+        }
+        TreeBank *treeBank = m_Custom->GetTreeBank();
+        const int before = treeBank->findChildren<QMenu*>().size();
+        for(int i = 0; i < 3; i++){
+            QMenu *menu = treeBank->GlobalContextMenu();
+            QVERIFY(treeBank->findChildren<QMenu*>().size() > before);
+            delete menu;
+        }
+        QCOMPARE(treeBank->findChildren<QMenu*>().size(), before);
+    }
 };
 
 QTEST_MAIN(tst_windowframe)

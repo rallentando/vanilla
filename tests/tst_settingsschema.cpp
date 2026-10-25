@@ -3,6 +3,7 @@
 #include <QtTest>
 #include <QFile>
 #include <QDir>
+#include <QStandardPaths>
 #include <QSet>
 #include <QJsonArray>
 #include <QRegularExpression>
@@ -23,11 +24,15 @@ private slots:
     void everyKeyAppearsOnce();
     void everyItemIsInAKnownCategory();
     void everyCategoryHasARowAndTheTableKeepsTheirOrder();
+    void theRunsOfCategoriesBeginWhereTheListSays();
+    void everyGroupStartsARowOnceAndInOrder();
     void everyChoiceDefaultIsOneOfTheChoices();
     void everyChoiceHasALabelAndEveryLabelNamesAChoice();
     void everyLabelIsPresent();
-    void everyDependencyNamesABooleanInTheTable();
+    void everyDependencyNamesARowAndAValueItOffers();
+    void aDependencyIsDescribedInTheShapeOfTheRowItNames();
     void chromeExtensionsOfferADirectoryPicker();
+    void theDownloadFoldersOfferAPickerAndWhatEmptyComesTo();
 
     void defaultsAgreeWithTheCodeThatReadsTheKey();
     void noKeyIsShadowedByAnotherOneTheCodeReadsFirst();
@@ -111,11 +116,46 @@ void tst_settingsschema::everyCategoryHasARowAndTheTableKeepsTheirOrder(){
         }
     }
     QStringList expected = order;
-    expected.removeOne(QStringLiteral("input"));
     expected.removeOne(QStringLiteral("passwords"));
-    expected.removeOne(QStringLiteral("downloads"));
+    expected.removeOne(QStringLiteral("permissions"));
     expected.removeOne(QStringLiteral("directory"));
     QCOMPARE(seen, expected);
+}
+
+void tst_settingsschema::theRunsOfCategoriesBeginWhereTheListSays(){
+    const QJsonArray categories =
+        SettingsSchema::Describe()[QStringLiteral("categories")].toArray();
+    QStringList marked;
+    for(int i = 0; i < categories.size(); i++){
+        const QJsonObject category = categories[i].toObject();
+        if(category[QStringLiteral("divider")].toBool()){
+            QVERIFY2(i > 0, "the first category is marked");
+            marked << category[QStringLiteral("name")].toString();
+        }
+    }
+    QCOMPARE(marked, SettingsSchema::CategoriesBeginningARun());
+}
+
+void tst_settingsschema::everyGroupStartsARowOnceAndInOrder(){
+    QStringList keys;
+    foreach(const SettingsSchema::Item &item, SettingsSchema::Items())
+        keys << QString::fromLatin1(item.key);
+
+    int last = -1;
+    foreach(const SettingsSchema::Group &group, SettingsSchema::Groups()){
+        const QString key = QString::fromLatin1(group.key);
+        const int at = keys.indexOf(key);
+        QVERIFY2(at >= 0,
+                 qPrintable(QStringLiteral("heading '%1' names no row (%2)")
+                            .arg(QString::fromLatin1(group.label), key)));
+        QVERIFY2(at > last,
+                 qPrintable(QStringLiteral("heading '%1' is out of the table's order (%2)")
+                            .arg(QString::fromLatin1(group.label), key)));
+        last = at;
+        QVERIFY2(QString::fromLatin1(group.label).length() > 0,
+                 qPrintable(QStringLiteral("heading over %1 has no words").arg(key)));
+    }
+    QVERIFY(!SettingsSchema::Groups().isEmpty());
 }
 
 void tst_settingsschema::everyChoiceDefaultIsOneOfTheChoices(){
@@ -190,22 +230,77 @@ void tst_settingsschema::everyLabelIsPresent(){
     }
 }
 
-void tst_settingsschema::everyDependencyNamesABooleanInTheTable(){
+void tst_settingsschema::everyDependencyNamesARowAndAValueItOffers(){
+    int clausesSeen = 0;
     foreach(const SettingsSchema::Item &item, SettingsSchema::Items()){
-        if(!item.appliesWhenKey || !item.appliesWhenKey[0]) continue;
-
         const QString key = QString::fromLatin1(item.key);
-        const QString other = QString::fromLatin1(item.appliesWhenKey);
-        QVERIFY2(other != key,
-                 qPrintable(QStringLiteral("%1 depends on itself").arg(key)));
+        typedef QPair<QString, QString> Clause;
+        foreach(const Clause &clause, SettingsSchema::AppliesWhenClauses(item)){
+            clausesSeen++;
+            const QString other = clause.first, value = clause.second;
+            QVERIFY2(other != key,
+                     qPrintable(QStringLiteral("%1 depends on itself").arg(key)));
 
-        const SettingsSchema::Item *control = SettingsSchema::Find(other);
-        QVERIFY2(control,
-                 qPrintable(QStringLiteral("%1 depends on %2, which is not in the table")
-                            .arg(key, other)));
-        QVERIFY2(control->type == SettingsSchema::Bool,
-                 qPrintable(QStringLiteral("%1 depends on %2, which is not a boolean")
-                            .arg(key, other)));
+            const SettingsSchema::Item *control = SettingsSchema::Find(other);
+            QVERIFY2(control,
+                     qPrintable(QStringLiteral("%1 depends on %2, which is not in the table")
+                                .arg(key, other)));
+            if(control->type == SettingsSchema::Bool){
+                QVERIFY2(value == QStringLiteral("true") || value == QStringLiteral("false"),
+                         qPrintable(QStringLiteral("%1 depends on %2 being '%3', which is not a boolean")
+                                    .arg(key, other, value)));
+            } else if(control->type == SettingsSchema::Choice){
+                const QStringList choices =
+                    QString::fromLatin1(control->choices).split(QLatin1Char('|'));
+                QVERIFY2(choices.contains(value),
+                         qPrintable(QStringLiteral("%1 depends on %2 being '%3', which it does not offer")
+                                    .arg(key, other, value)));
+            } else {
+                QFAIL(qPrintable(QStringLiteral("%1 depends on %2, which is neither a boolean nor a choice")
+                                 .arg(key, other)));
+            }
+        }
+    }
+    QVERIFY2(clausesSeen >= 16,
+             qPrintable(QStringLiteral("only %1 clauses were found").arg(clausesSeen)));
+}
+
+void tst_settingsschema::aDependencyIsDescribedInTheShapeOfTheRowItNames(){
+    const QJsonArray described =
+        SettingsSchema::Describe()[QStringLiteral("items")].toArray();
+    QJsonArray clauses;
+    for(const QJsonValue &value : described){
+        const QJsonObject object = value.toObject();
+        if(object[QStringLiteral("key")].toString() !=
+           QStringLiteral("application/@EnableTransparentWindow")) continue;
+        clauses = object[QStringLiteral("appliesWhen")].toArray();
+    }
+    QCOMPARE(clauses.count(), 2);
+
+    const QJsonObject rhi = clauses[0].toObject();
+    QCOMPARE(rhi[QStringLiteral("key")].toString(), QStringLiteral("application/@EnableMainWindowRhi"));
+    QVERIFY(rhi[QStringLiteral("value")].isBool());
+    QCOMPARE(rhi[QStringLiteral("value")].toBool(), false);
+    QVERIFY(!rhi.contains(QStringLiteral("label")));
+
+    const QJsonObject api = clauses[1].toObject();
+    QCOMPARE(api[QStringLiteral("key")].toString(), QStringLiteral("application/@GraphicsApi"));
+    QCOMPARE(api[QStringLiteral("value")].toString(), QStringLiteral("OpenGL"));
+    QCOMPARE(api[QStringLiteral("label")].toString(),
+             QCoreApplication::translate("SettingsSchema", "OpenGL"));
+
+    for(const QJsonValue &value : described){
+        const QJsonObject object = value.toObject();
+        const QString key = object[QStringLiteral("key")].toString();
+        if(key == QStringLiteral("gadgets/thumblist/@RightClickToRenameNode")){
+            const QJsonArray glass = object[QStringLiteral("appliesWhen")].toArray();
+            QCOMPARE(glass.count(), 1);
+            QCOMPARE(glass[0].toObject()[QStringLiteral("value")].toString(), QStringLiteral("GlassStyle"));
+            QCOMPARE(glass[0].toObject()[QStringLiteral("label")].toString(),
+                     QCoreApplication::translate("SettingsSchema", "Glass"));
+        }
+        if(key == QStringLiteral("application/@ColorScheme"))
+            QVERIFY(!object.contains(QStringLiteral("appliesWhen")));
     }
 }
 
@@ -230,6 +325,43 @@ void tst_settingsschema::chromeExtensionsOfferADirectoryPicker(){
                  QStringLiteral("chrome-extension"));
     }
     QCOMPARE(found, 1);
+}
+
+void tst_settingsschema::theDownloadFoldersOfferAPickerAndWhatEmptyComesTo(){
+    QStringList folders;
+    for(const SettingsSchema::Item &item : SettingsSchema::Items())
+        if(item.type == SettingsSchema::Directory) folders << QString::fromLatin1(item.key);
+    QCOMPARE(folders, QStringList()
+             << QStringLiteral("application/@FileSaveDirectory")
+             << QStringLiteral("application/@FileOpenDirectory"));
+
+    const QJsonArray described =
+        SettingsSchema::Describe()[QStringLiteral("items")].toArray();
+    int found = 0;
+    for(const QJsonValue &value : described){
+        const QJsonObject object = value.toObject();
+        if(!folders.contains(object[QStringLiteral("key")].toString())) continue;
+        found++;
+        QCOMPARE(object[QStringLiteral("picker")].toString(), QStringLiteral("folder"));
+        QVERIFY(!object[QStringLiteral("placeholder")].toString().isEmpty());
+    }
+    QCOMPARE(found, 2);
+
+    const SettingsSchema::Item *save =
+        SettingsSchema::Find(QStringLiteral("application/@FileSaveDirectory"));
+    QVERIFY(save);
+    QCOMPARE(SettingsSchema::EmptyDirectory(*save),
+             QDir::toNativeSeparators(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)));
+    const SettingsSchema::Item *open =
+        SettingsSchema::Find(QStringLiteral("application/@FileOpenDirectory"));
+    QVERIFY(open);
+    QCOMPARE(SettingsSchema::EmptyDirectory(*open),
+             QDir::toNativeSeparators(QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)));
+
+    const QString kept = QStringLiteral("C:/Users/someone/Downloads/");
+    const QJsonValue shown = SettingsSchema::ToJson(*save, kept);
+    QCOMPARE(shown.toString(), QDir::toNativeSeparators(kept));
+    QCOMPARE(SettingsSchema::FromJson(*save, shown).toString(), kept);
 }
 
 namespace {
@@ -580,8 +712,7 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
         << QStringLiteral("setHttpCacheType")
         << QStringLiteral("setHttpCacheMaximumSize")
         << QStringLiteral("setPushServiceEnabled")
-        << QStringLiteral("setHttpAcceptLanguage")
-        << QStringLiteral("setPersistentPermissionsPolicy");
+        << QStringLiteral("setHttpAcceptLanguage");
 
     foreach(const QString &setter, setters){
         QVERIFY2(widget.contains(QStringLiteral("profile->") + setter),
@@ -592,6 +723,9 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
                             .arg(setter)));
     }
 
+    QVERIFY2(widget.contains(QStringLiteral("NetworkController::AdoptPermissions(profile)")),
+             "the widget profile is no longer given the permissions table");
+
     const int at = source.indexOf
         (QStringLiteral("NetworkController::QuickPrivateProfile"));
     QVERIFY2(at > 0, "'QuickPrivateProfile' was not found");
@@ -600,7 +734,7 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
     const QString privateBody = source.mid(at, end - at);
 
     const QStringList helpers = QStringList()
-        << QStringLiteral("ApplyQuickPermissionsPolicy(profile)")
+        << QStringLiteral(" AdoptPermissions(profile)")
         << QStringLiteral("ApplyQuickBlockRules(profile)")
         << QStringLiteral("ApplyQuickCommonSettings(profile)");
     foreach(const QString &helper, helpers){
@@ -740,7 +874,11 @@ void tst_settingsschema::everyGraphicsApiChoiceMeansSomethingToQt(){
     const SettingsSchema::Item *item = SettingsSchema::Find(QStringLiteral("application/@GraphicsApi"));
     QVERIFY(item);
     QCOMPARE(item->type, SettingsSchema::Choice);
+#if defined(Q_OS_WIN)
+    QCOMPARE(QString::fromLatin1(item->fallback), QStringLiteral("OpenGL"));
+#else
     QCOMPARE(QString::fromLatin1(item->fallback), QStringLiteral("Auto"));
+#endif
 
     const QStringList choices = QString::fromLatin1(item->choices).split(QLatin1Char('|'));
     foreach(const QString &choice, choices){

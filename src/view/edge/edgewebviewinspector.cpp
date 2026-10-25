@@ -6,6 +6,8 @@
 
 #include <QTimer>
 #include <QDockWidget>
+#include <QtMath>
+#include <QMargins>
 #include <QResizeEvent>
 #include <QMoveEvent>
 #include <QShowEvent>
@@ -40,10 +42,10 @@ static void EdgeInspectorTrace(const char *what, const QWidget *pane, WId id){
 
 class EdgeInspectorPane : public QWidget {
 public:
-    EdgeInspectorPane(WId hwnd, int captionHeight)
+    EdgeInspectorPane(WId hwnd, const QMargins &frame)
         : QWidget(nullptr)
         , m_Hwnd(hwnd)
-        , m_CaptionHeight(captionHeight)
+        , m_Frame(frame)
         , m_State(State::Orphaned)
         , m_HiddenByPane(false)
         , m_Generation(0)
@@ -115,19 +117,26 @@ public:
         return !(::GetWindowLongPtr(hwnd, GWL_STYLE) & WS_VISIBLE);
     }
 
-    static int MeasureCaptionHeight(HWND hwnd, int limit = 120){
-        RECT r;
-        if(!::GetWindowRect(hwnd, &r)) return 0;
-        const int x = (r.left + r.right) / 2;
-        for(int y = 0; y < limit; y++){
+    static int MeasureFrameSide(HWND hwnd, POINT from, int dx, int dy, int limit){
+        for(int i = 0; i < limit; i++){
             DWORD_PTR answer = 0;
-            const LPARAM at = MAKELPARAM(x, r.top + y);
+            const LPARAM at = MAKELPARAM(from.x + dx * i, from.y + dy * i);
             if(!::SendMessageTimeoutW(hwnd, WM_NCHITTEST, 0, at,
                                       SMTO_ABORTIFHUNG, 200, &answer))
                 return 0;
-            if(static_cast<LRESULT>(answer) == HTCLIENT) return y;
+            if(static_cast<LRESULT>(answer) == HTCLIENT) return i;
         }
         return 0;
+    }
+
+    static QMargins MeasureFrame(HWND hwnd){
+        RECT r;
+        if(!::GetWindowRect(hwnd, &r)) return QMargins();
+        const LONG cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+        return QMargins(MeasureFrameSide(hwnd, { r.left, cy },      1,  0, 60),
+                        MeasureFrameSide(hwnd, { cx, r.top },       0,  1, 120),
+                        MeasureFrameSide(hwnd, { r.right - 1, cy }, -1, 0, 60),
+                        MeasureFrameSide(hwnd, { cx, r.bottom - 1 }, 0, -1, 60));
     }
 
 protected:
@@ -340,8 +349,12 @@ private:
     void Place(){
         if(m_State != State::Attached || !m_Foreign) return;
         RememberScreenPosition();
-        const int cap = qRound(m_CaptionHeight / devicePixelRatioF());
-        m_Foreign->setGeometry(0, -cap, width(), height() + cap);
+        const qreal dpr = devicePixelRatioF();
+        const int left   = qCeil(m_Frame.left()   / dpr);
+        const int top    = qCeil(m_Frame.top()    / dpr);
+        const int right  = qCeil(m_Frame.right()  / dpr);
+        const int bottom = qCeil(m_Frame.bottom() / dpr);
+        m_Foreign->setGeometry(-left, -top, width() + left + right, height() + top + bottom);
     }
 
     void ScheduleSelfTest(){
@@ -360,7 +373,7 @@ private:
 
     WId m_Hwnd;
     QPointer<QWindow> m_Foreign;
-    int m_CaptionHeight;
+    QMargins m_Frame;
     State m_State;
     bool m_HiddenByPane;
     int m_Generation;
@@ -465,9 +478,9 @@ void EdgeWebView::AdoptInspectorWindow(WId id){
 
     ReleaseInspector(InspectorRelease::FrontendClosed);
 
-    const int cap = EdgeInspectorPane::MeasureCaptionHeight(reinterpret_cast<HWND>(id));
+    const QMargins frame = EdgeInspectorPane::MeasureFrame(reinterpret_cast<HWND>(id));
     m_Impl->m_InspectorWinId = id;
-    m_Impl->m_InspectorPane = new EdgeInspectorPane(id, cap);
+    m_Impl->m_InspectorPane = new EdgeInspectorPane(id, frame);
 
     if(!m_Impl->m_InspectorWatch){
         m_Impl->m_InspectorWatch = new QTimer(this);

@@ -5,6 +5,7 @@
 #include <QRegularExpression>
 
 #include "directorypage.hpp"
+#include "application.hpp"
 #include "view.hpp"
 #include "treebank.hpp"
 #include "lightnode.hpp"
@@ -47,6 +48,7 @@ private slots:
 
     void theNegationWinsWhenBothArePresent();
     void theAutoLoadRowIsTurnedRound();
+    void theAutoLoadRowIsBlockedByEitherSwitch();
     void onlyTheProfileRowIsAboutItsOwnDirectory();
 
     void writesATokenWithoutDisturbingTheOthers();
@@ -65,6 +67,7 @@ private slots:
 
     void namesWhatATokenIsAbout();
     void namesWhatATokenIsAbout_data();
+    void theKindOfViewRowReadsTheWordsItWrites();
 
     void inheritsSettingBySetting();
     void inheritsSettingBySetting_data();
@@ -89,6 +92,9 @@ public:
     static void SetGestures(bool right, bool drag){
         m_EnableMouseGesture = right;
         m_EnableDragGesture = drag;
+    }
+    static void SetSuspendHiddenViews(const QString &word){
+        m_SuspendHiddenViews = word;
     }
 };
 
@@ -283,6 +289,31 @@ void tst_directorypage::theAutoLoadRowIsTurnedRound(){
     }
 }
 
+void tst_directorypage::theAutoLoadRowIsBlockedByEitherSwitch(){
+    const QString oldSuspend = View::SuspendHiddenViews();
+    const bool oldAutoLoad = Application::m_EnableAutoLoad;
+    const auto restore = qScopeGuard([=](){
+        DirectoryDefaultsHarness::SetSuspendHiddenViews(oldSuspend);
+        Application::m_EnableAutoLoad = oldAutoLoad;
+    });
+    const Token &autoload = TokenOf("autoload");
+
+    for(bool global : {false, true}){
+        for(const char *suspend : {"Active", "Frozen", "Discarded"}){
+            Application::m_EnableAutoLoad = global;
+            DirectoryDefaultsHarness::SetSuspendHiddenViews(QLatin1String(suspend));
+            const bool usable = global && qstrcmp(suspend, "Active") == 0;
+            QCOMPARE(TokenBlocked(autoload), !usable);
+        }
+    }
+    Application::m_EnableAutoLoad = false;
+    DirectoryDefaultsHarness::SetSuspendHiddenViews(QStringLiteral("Frozen"));
+    foreach(const Token &token, Tokens()){
+        if(qstrcmp(token.key, "autoload") == 0) continue;
+        QVERIFY(!TokenBlocked(token));
+    }
+}
+
 void tst_directorypage::onlyTheProfileRowIsAboutItsOwnDirectory(){
     QVERIFY(TokenOf("id").ownOnly);
     foreach(const Token &token, Tokens()){
@@ -413,6 +444,8 @@ void tst_directorypage::namesWhatATokenIsAbout_data(){
     QTest::newRow("a view kind")       << "WebEngine" << "viewkind";
     QTest::newRow("another view kind") << "Local"     << "viewkind";
     QTest::newRow("a short view kind") << "nwv"       << "viewkind";
+    QTest::newRow("the native view kind") << "NativeWeb"          << "viewkind";
+    QTest::newRow("its quick spelling")   << "QuickNativeWebView" << "viewkind";
     QTest::newRow("the edge view kind") << "Edge"        << "viewkind";
     QTest::newRow("its long spelling")  << "EdgeWebView" << "viewkind";
     QTest::newRow("the shortest edge")  << "e"           << "viewkind";
@@ -430,6 +463,30 @@ void tst_directorypage::namesWhatATokenIsAbout(){
     QFETCH(QString, subject);
 
     QCOMPARE(TokenSubject(token), subject);
+}
+
+void tst_directorypage::theKindOfViewRowReadsTheWordsItWrites(){
+    const QStringList words = ViewKindWords();
+    QVERIFY(!words.isEmpty());
+    foreach(const QString &word, words){
+        QCOMPARE(ViewKindWordIn(QStringList() << QStringLiteral("ID") << word), word);
+        QCOMPARE(ViewKindTokenIn(QStringList() << QStringLiteral("ID") << word), word);
+        QCOMPARE(TokenSubject(word), QStringLiteral("viewkind"));
+    }
+#ifdef WEBENGINEVIEW
+    QCOMPARE(ViewKindWordIn(QStringList() << QStringLiteral("Javascript") << QStringLiteral("wev")),
+             QStringLiteral("WebEngine"));
+    QCOMPARE(ViewKindTokenIn(QStringList() << QStringLiteral("Javascript") << QStringLiteral("wev")),
+             QStringLiteral("wev"));
+#endif
+    foreach(const QStringList &tokens, QList<QStringList>()
+            << QStringList()
+            << (QStringList() << QStringLiteral("Javascript") << QStringLiteral("Private"))
+            << (QStringList() << QStringLiteral("!Edge"))
+            << (QStringList() << QStringLiteral("Trident"))){
+        QCOMPARE(ViewKindWordIn(tokens), QString());
+        QCOMPARE(ViewKindTokenIn(tokens), QString());
+    }
 }
 
 void tst_directorypage::inheritsSettingBySetting_data(){

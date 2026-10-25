@@ -949,6 +949,39 @@ QString InstalledFileName(const QString &profileKey){
     return ExtensionMainScripts::ProfileFileName(QStringLiteral("extension-installed-"), profileKey);
 }
 
+QString RegisteredFileName(const QString &profileKey){
+    return ExtensionMainScripts::ProfileFileName(QStringLiteral("extension-registered-"), profileKey);
+}
+
+bool Registered::Set(const QString &id, const QString &copy){
+    if(id.isEmpty() || copy.isEmpty() || m_Copies.value(id) == copy) return false;
+    m_Copies.insert(id, copy);
+    return true;
+}
+
+QJsonObject Registered::ToJson() const {
+    QJsonObject all;
+    for(auto i = m_Copies.constBegin(); i != m_Copies.constEnd(); ++i) all[i.key()] = i.value();
+    return all;
+}
+
+Registered Registered::FromJson(const QJsonObject &json, bool *damaged){
+    Registered registered;
+    bool bad = false;
+    for(auto i = json.constBegin(); i != json.constEnd(); ++i){
+        if(i.key().isEmpty() || !i.value().isString() || i.value().toString().isEmpty()){ bad = true; continue; }
+        registered.m_Copies.insert(i.key(), i.value().toString());
+    }
+    if(damaged) *damaged = bad;
+    return registered;
+}
+
+bool Registered::Stale(bool known, const QString &before, const QString &copy, bool unloaded){
+    if(unloaded) return false;
+    if(!known) return true;
+    return !before.isEmpty() && before != copy;
+}
+
 namespace {
     const QStringList &KeyNames(){
         static const QStringList names = QStringList()

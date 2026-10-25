@@ -125,11 +125,24 @@ QList<DownloadHistory::Entry> DownloadHistory::Entries() const {
     return list;
 }
 
-int DownloadHistory::Started(const QUrl &url, const QString &path, DownloadItem *item){
+QUrl DownloadHistory::SourcePageWorthKeeping(const QUrl &page, const QUrl &url){
+    if(!page.isValid() || page.isEmpty()) return QUrl();
+    const QString scheme = page.scheme().toLower();
+    if(scheme != QStringLiteral("http") && scheme != QStringLiteral("https") &&
+       scheme != QStringLiteral("ftp") && scheme != QStringLiteral("file"))
+        return QUrl();
+    if(page.adjusted(QUrl::NormalizePathSegments) == url.adjusted(QUrl::NormalizePathSegments))
+        return QUrl();
+    return page;
+}
+
+int DownloadHistory::Started(const QUrl &url, const QString &path, DownloadItem *item,
+                             const QUrl &page){
     if(m_Closing || path.isEmpty()) return 0;
     Entry entry;
     entry.id = m_NextId++;
     entry.url = url;
+    entry.page = SourcePageWorthKeeping(page, url);
     entry.path = path;
     entry.started = QDateTime::currentDateTime();
     entry.state = Running;
@@ -259,6 +272,8 @@ void DownloadHistory::Load(){
         entry.path = obj.value(QStringLiteral("path")).toString();
         if(entry.id <= 0 || entry.path.isEmpty()) continue;
         entry.url = QUrl(obj.value(QStringLiteral("url")).toString());
+        entry.page = SourcePageWorthKeeping
+            (QUrl(obj.value(QStringLiteral("page")).toString()), entry.url);
         entry.started = QDateTime::fromString(obj.value(QStringLiteral("started")).toString(), Qt::ISODate);
         entry.ended = QDateTime::fromString(obj.value(QStringLiteral("ended")).toString(), Qt::ISODate);
         entry.state = StateOf(obj.value(QStringLiteral("state")).toString());
@@ -277,6 +292,8 @@ void DownloadHistory::Commit(){
         QJsonObject obj;
         obj.insert(QStringLiteral("id"), entry.id);
         obj.insert(QStringLiteral("url"), entry.url.toString());
+        if(!entry.page.isEmpty())
+            obj.insert(QStringLiteral("page"), entry.page.toString());
         obj.insert(QStringLiteral("path"), entry.path);
         obj.insert(QStringLiteral("started"), entry.started.toString(Qt::ISODate));
         if(entry.ended.isValid())

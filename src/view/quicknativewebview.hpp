@@ -186,7 +186,6 @@ public slots:
     void show() Q_DECL_OVERRIDE {
         base()->show();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
-        if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
 
         MainWindow *win = Application::GetCurrentWindow();
         QSize s =
@@ -235,8 +234,6 @@ public slots:
     void OnSetThis(WeakView) Q_DECL_OVERRIDE;
     void OnSetMaster(WeakView) Q_DECL_OVERRIDE;
     void OnSetSlave(WeakView) Q_DECL_OVERRIDE;
-    void OnSetJsObject(_View*) Q_DECL_OVERRIDE;
-    void OnSetJsObject(_Vanilla*) Q_DECL_OVERRIDE;
     void OnLoadStarted() Q_DECL_OVERRIDE;
     void OnLoadProgress(int) Q_DECL_OVERRIDE;
     void OnLoadFinished(bool) Q_DECL_OVERRIDE;

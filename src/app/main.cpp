@@ -45,7 +45,9 @@ static int _main(int argc, char **argv){
 #endif
     Application a(argc, argv);
     Application::BootApplication(argc, argv, &a);
-    return a.Run();
+    const int code = a.Run();
+    Application::RelaunchIfRequested();
+    return code;
 }
 
 int main(int argc, char **argv){

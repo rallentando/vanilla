@@ -72,6 +72,7 @@ protected:
     void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
     void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
+    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
     bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE;
 
 private:
@@ -90,6 +91,7 @@ private:
     QTimer *m_PressPoll;
     bool m_ButtonDown;
     bool m_EscapeDown;
+    bool m_Translucent;
 };
 
 #endif

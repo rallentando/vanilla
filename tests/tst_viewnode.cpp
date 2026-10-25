@@ -55,6 +55,7 @@ private slots:
     void makeChildClampsThePosition_data();
 
     void makeSiblingLandsNextToTheNode();
+    void siblingInsertIndexFollowsThePositionSetting();
     void makeParentWrapsTheNode();
 
     void nextWalksTheTreeDepthFirst();
@@ -94,6 +95,11 @@ private slots:
     void nothingAboutADownloadCarrierGoesThroughTheTrash();
     void quarantineLetsGoOfAllThreePointers();
     void theClosedNodeIsStrippedBeforeTheTrashIsTrimmed();
+    void onlyAMoveOfTwoOrMoreWhichStaysInTheTrashIsNoticed_data();
+    void onlyAMoveOfTwoOrMoreWhichStaysInTheTrashIsNoticed();
+    void theTrashsNodeMenuOffersTheWayBackFirst();
+    void theNodeMenuGoesFromTheNodeToLeaving();
+    void theTabMenuGoesInTheOverviewsOrder();
     void aDiscardedNodeIsNeverFreedInTheTurnItWasBoxed();
     void aDiscardedNodeIsFreedPastTheBarrier();
     void whileTheTreeIsWalkedTheBarrierOnlyRipens();
@@ -103,6 +109,9 @@ private slots:
 
     void overviewSharesTheWebViewAreaAndLeavesCompanionsAlone();
     void showingAnAlreadyVisibleEngineViewDoesNotJiggleItsSize();
+    void showingATabStampsItsLastAccessWhicheverEngineShowsIt();
+    void aFinishedLoadTakesItsThumbnailWhateverTheBarShows();
+    void hidingAFullScreenViewLeavesFullScreenWhicheverEngine();
 };
 
 namespace {
@@ -197,6 +206,49 @@ void tst_viewnode::makeSiblingLandsNextToTheNode(){
     QVERIFY(young->GetParent() == root);
     QCOMPARE(ChildTitles(root), QStringList()
              << QStringLiteral("a") << QStringLiteral("young") << QStringLiteral("b"));
+
+    delete root;
+}
+
+struct SiblingPosition : ViewNode {
+    static void Use(const QString &name){
+        if(name == QStringLiteral("RightEnd"))                    m_AddSiblingViewNodePosition = RightEnd;
+        if(name == QStringLiteral("LeftEnd"))                     m_AddSiblingViewNodePosition = LeftEnd;
+        if(name == QStringLiteral("RightOfPrimary"))              m_AddSiblingViewNodePosition = RightOfPrimary;
+        if(name == QStringLiteral("LeftOfPrimary"))               m_AddSiblingViewNodePosition = LeftOfPrimary;
+        if(name == QStringLiteral("TailOfRightUnreadsOfPrimary")) m_AddSiblingViewNodePosition = TailOfRightUnreadsOfPrimary;
+        if(name == QStringLiteral("HeadOfLeftUnreadsOfPrimary"))  m_AddSiblingViewNodePosition = HeadOfLeftUnreadsOfPrimary;
+    }
+};
+
+void tst_viewnode::siblingInsertIndexFollowsThePositionSetting(){
+    struct Reset { ~Reset(){ SiblingPosition::Use(QStringLiteral("RightOfPrimary")); } } reset;
+    ViewNode *root = new ViewNode();
+    ViewNode *a = MakeTab(root, QStringLiteral("a"));
+    ViewNode *b = MakeTab(root, QStringLiteral("b"));
+    ViewNode *primary = MakeTab(root, QStringLiteral("primary"));
+    ViewNode *c = MakeTab(root, QStringLiteral("c"));
+    ViewNode *d = MakeTab(root, QStringLiteral("d"));
+    ViewNode *e = MakeTab(root, QStringLiteral("e"));
+    auto read   = [](ViewNode *vn){ vn->SetLastAccessDate(vn->GetCreateDate().addSecs(60)); };
+    auto unread = [](ViewNode *vn){ vn->SetLastAccessDate(vn->GetCreateDate()); };
+    read(a); unread(b); unread(c); read(d); unread(e);
+    auto index = [&](const char *position){
+        SiblingPosition::Use(QLatin1String(position));
+        return primary->SiblingInsertIndex();
+    };
+
+    QCOMPARE(index("RightEnd"), 6);
+    QCOMPARE(index("LeftEnd"), 0);
+    QCOMPARE(index("RightOfPrimary"), 3);
+    QCOMPARE(index("LeftOfPrimary"), 2);
+    QCOMPARE(index("TailOfRightUnreadsOfPrimary"), 4);
+    QCOMPARE(index("HeadOfLeftUnreadsOfPrimary"), 1);
+    unread(a); unread(d);
+    QCOMPARE(index("TailOfRightUnreadsOfPrimary"), 6);
+    QCOMPARE(index("HeadOfLeftUnreadsOfPrimary"), 0);
+    ViewNode *young = primary->MakeSibling();
+    QCOMPARE(root->ChildrenIndexOf(young), 0);
 
     delete root;
 }
@@ -587,7 +639,7 @@ void tst_viewnode::newMakesASiblingTab(){
     QVERIFY(fresh);
     QVERIFY(fresh->GetParent() == root);
     QVERIFY(fresh->HoldsView());
-    QCOMPARE(fresh->GetUrl(), BLANK_URL);
+    QCOMPARE(fresh->GetUrl(), START_URL);
 
     delete root;
 }
@@ -831,10 +883,210 @@ void tst_viewnode::theClosedNodeIsStrippedBeforeTheTrashIsTrimmed(){
     QVERIFY(body.contains(QStringLiteral("qMax(0, m_MaxTrashEntryCount)")));
     QVERIFY(body.contains(QStringLiteral("ChildrenLength() > keep")));
 
-    const int forget = body.indexOf(QStringLiteral("ForgetNodeItems(forgotten);"));
-    QVERIFY(forget > trim);
-    QVERIFY(forget < body.indexOf(QStringLiteral("Discard(needless, m_TrashRoot);")));
+    QVERIFY(body.indexOf(QStringLiteral("DiscardFromTrash(m_TrashRoot->GetLastChild());")) > trim);
+    const QString steps = BodyOf(source, QStringLiteral("bool TreeBank::DiscardFromTrash"));
+    QVERIFY(!steps.isEmpty());
+    const int disown = steps.indexOf(QStringLiteral("DisownNode(nd);"));
+    const int stripped = steps.indexOf(QStringLiteral("StripSubTree(nd);"));
+    const int forget = steps.indexOf(QStringLiteral("ForgetNodeItems(forgotten);"));
+    const int discard = steps.indexOf(QStringLiteral("Discard(nd, parent);"));
+    QVERIFY(disown >= 0 && disown < stripped && stripped < forget && forget < discard);
+    QVERIFY(!steps.contains(QStringLiteral("->Delete()")));
     QVERIFY(!body.contains(QStringLiteral("->Delete()")));
+}
+
+void tst_viewnode::onlyAMoveOfTwoOrMoreWhichStaysInTheTrashIsNoticed_data(){
+    QTest::addColumn<int>("moved");
+    QTest::addColumn<int>("keep");
+    QTest::addColumn<int>("kept");
+    QTest::addColumn<bool>("noticed");
+
+    QTest::newRow("one")              << 1 << 25 <<  1 << false;
+    QTest::newRow("two")              << 2 << 25 <<  2 << true;
+    QTest::newRow("more than kept")   << 5 <<  3 <<  3 << true;
+    QTest::newRow("only one kept")    << 3 <<  1 <<  1 << true;
+    QTest::newRow("trash of none")    << 3 <<  0 <<  0 << false;
+    QTest::newRow("below none")       << 3 << -1 <<  0 << false;
+}
+
+void tst_viewnode::onlyAMoveOfTwoOrMoreWhichStaysInTheTrashIsNoticed(){
+    QFETCH(int, moved);
+    QFETCH(int, keep);
+    QFETCH(int, kept);
+    QFETCH(bool, noticed);
+
+    QCOMPARE(TreeBank::KeptInTrash(moved, keep), kept);
+    QCOMPARE(TreeBank::NoticesTrash(moved, keep), noticed);
+
+    const QString body = BodyOf(TreeBankSource(),
+                                QStringLiteral("bool TreeBank::DeleteNode(NodeList list)"));
+    QVERIFY(!body.isEmpty());
+    QCOMPARE(body.count(QStringLiteral("NoticeTrash(moved)")), 1);
+    QVERIFY(body.indexOf(QStringLiteral("NoticeTrash(moved)"))
+            > body.indexOf(QStringLiteral("if(!moved) return false;")));
+}
+
+void tst_viewnode::theTrashsNodeMenuOffersTheWayBackFirst(){
+    const QString menu = BodyOf(SourceFile(QStringLiteral("/gadgets/gadgets.cpp")),
+                                QStringLiteral("QMenu *Gadgets::CreateNodeMenu()"));
+    QVERIFY(!menu.isEmpty());
+
+    const int trashAt = menu.indexOf(QStringLiteral("if(trash && (hovered || selected)){"));
+    const int firstAt = menu.indexOf(QStringLiteral("menu->addAction("));
+    const int treeAt = menu.indexOf(QStringLiteral("if(!trash){"));
+    const int endAt = menu.indexOf(QStringLiteral("menu->addAction(toggleTrash);"), treeAt);
+    QVERIFY(trashAt >= 0 && treeAt > trashAt && endAt > treeAt);
+    QVERIFY(firstAt > trashAt);
+    const QString inTrash = menu.mid(trashAt, menu.indexOf(QLatin1Char('}'), trashAt) - trashAt);
+    const int elseAt = menu.indexOf(QStringLiteral("} else if(hovered || selected){"), treeAt);
+    QVERIFY(elseAt > treeAt && elseAt < endAt);
+    const QString inTree = menu.mid(treeAt, elseAt - treeAt);
+    const QString inTrashDeletes = menu.mid(elseAt, menu.indexOf(QLatin1Char('}'), elseAt + 1) - elseAt);
+    QVERIFY(inTrashDeletes.contains(QStringLiteral("menu->addAction(deleting);")));
+    QCOMPARE(inTrashDeletes.count(QStringLiteral("addAction(")), 1);
+
+    QVERIFY(inTrash.contains(QStringLiteral("menu->addAction(restore);")));
+    QCOMPARE(menu.indexOf(QStringLiteral("menu->addAction(restore);")),
+             menu.indexOf(QStringLiteral("menu->addAction("), trashAt));
+    for(const QString &name : { QStringLiteral("_DeleteRightNode"),
+                                QStringLiteral("_DeleteLeftNode"), QStringLiteral("_DeleteOtherNode"),
+                                QStringLiteral("_NewNode"), QStringLiteral("_MakeDirectory"),
+                                QStringLiteral("_PasteNode"), QStringLiteral("_CloneNode")}){
+        QVERIFY2(!inTrash.contains(name), qPrintable(name));
+        if(name != QStringLiteral("_CloneNode"))
+            QCOMPARE(menu.count(name + QLatin1Char(')')), inTree.count(name + QLatin1Char(')')));
+    }
+    QVERIFY(menu.contains(QStringLiteral("if(!trash) menu->addAction(Action(_CloneNode));")));
+
+    const int guard = inTree.indexOf(QStringLiteral("if(!TreeBank::GetTrashRoot()->HasNoChildren())"));
+    QVERIFY(guard >= 0);
+    QVERIFY(inTree.indexOf(QStringLiteral("addAction(restore)"), guard) > guard);
+
+    QCOMPARE(menu.count(QStringLiteral("Action(_DeleteNode)")), 1);
+    QVERIFY(menu.contains(QStringLiteral("!trash    ? tr(\"DeleteNode\")")));
+    QVERIFY(inTree.contains(QStringLiteral("menu->addAction(deleting);")));
+    QVERIFY(!inTrash.contains(QStringLiteral("deleting")));
+
+    const QString restore = BodyOf(SourceFile(QStringLiteral("/gadgets/graphicstableview.cpp")),
+                                   QStringLiteral("bool GraphicsTableView::ThumbList_RestoreNode()"));
+    QVERIFY(!restore.isEmpty());
+    QVERIFY(restore.contains(QStringLiteral("TreeBank::IsTrash(nd) && nd->IsViewNode()")));
+    QVERIFY(restore.indexOf(QStringLiteral("if(!TreeBank::IsTrash(m_CurrentNode)){"))
+            > restore.indexOf(QStringLiteral("m_TreeBank->Restore(nd->ToViewNode(), nullptr);")));
+
+    const QString deleting = BodyOf(SourceFile(QStringLiteral("/gadgets/graphicstableview.cpp")),
+                                    QStringLiteral("bool GraphicsTableView::DeleteNodes(NodeList list)"));
+    QVERIFY(!deleting.isEmpty());
+    const int refused = deleting.indexOf(QStringLiteral("if(m_DisplayType == TrashTree){"));
+    QVERIFY(refused >= 0);
+    QVERIFY(refused < deleting.indexOf(QStringLiteral("TreeBank::DiscardFromTrashAsked(")));
+    QVERIFY(deleting.indexOf(QStringLiteral("TreeBank::DiscardFromTrashAsked("))
+            < deleting.indexOf(QStringLiteral("setVisible(false)")));
+    const int failed = deleting.indexOf(QStringLiteral("if(!success){"));
+    QVERIFY(failed >= 0);
+    const int remade = deleting.indexOf(QStringLiteral("ThumbList_RefreshNoScroll();"), failed);
+    QVERIFY(remade > failed);
+    QVERIFY(remade < deleting.indexOf(QStringLiteral("return false;"), failed));
+}
+
+void tst_viewnode::theNodeMenuGoesFromTheNodeToLeaving(){
+    const QString menu = BodyOf(SourceFile(QStringLiteral("/gadgets/gadgets.cpp")),
+                                QStringLiteral("QMenu *Gadgets::CreateNodeMenu()"));
+    QVERIFY(!menu.isEmpty());
+
+    const QStringList order = {
+        QStringLiteral("Action(_OpenNode)"),
+        QStringLiteral("Action(_OpenNodeOnNewWindow)"),
+        QStringLiteral("tr(\"OpenNodeWithOtherBrowser\")"),
+        QStringLiteral("Action(_RenameNode)"),
+        QStringLiteral("Action(_CopyNodeUrl)"),
+        QStringLiteral("Action(_CloneNode)"),
+        QStringLiteral("DirectoryPage::CreateSettingsMenu"),
+        QStringLiteral("Action(_NewNode)"),
+        QStringLiteral("Action(_MakeDirectory)"),
+        QStringLiteral("Action(_PasteNode)"),
+        QStringLiteral("Action(_MakeDirectoryWithSelectedNode)"),
+        QStringLiteral("Action(_MakeDirectoryWithSameDomainNode)"),
+        QStringLiteral("if(hovered || selected)\n            menu->addAction(deleting);"),
+        QStringLiteral("tr(\"DeleteNodesTogether\")"),
+        QStringLiteral("if(!TreeBank::GetTrashRoot()->HasNoChildren())\n            menu->addAction(restore);"),
+        QStringLiteral("} else if(hovered || selected){"),
+        QStringLiteral("Action(_UpDirectory)"),
+        QStringLiteral("Action(_DownDirectory)"),
+        QStringLiteral("menu->addAction(toggleTrash);"),
+        QStringLiteral("CreateSortMenu(menu)"),
+        QStringLiteral("CreateNodeCollectionTypeMenu(menu)"),
+        QStringLiteral("Action(_Refresh)"),
+        QStringLiteral("menu->addAction(deactivate);"),
+    };
+    int last = -1;
+    for(const QString &item : order){
+        const int at = menu.indexOf(item);
+        QVERIFY2(at > last, qPrintable(item));
+        QCOMPARE(menu.count(item), 1);
+        last = at;
+    }
+
+    const int together = menu.indexOf(QStringLiteral("tr(\"DeleteNodesTogether\")"));
+    const int added = menu.indexOf(QStringLiteral("menu->addMenu(m);"), together);
+    for(const QString &item : { QStringLiteral("m->addAction(Action(_DeleteRightNode));"),
+                                QStringLiteral("m->addAction(Action(_DeleteLeftNode));"),
+                                QStringLiteral("m->addAction(Action(_DeleteOtherNode));") }){
+        const int at = menu.indexOf(item);
+        QVERIFY2(at > together && at < added, qPrintable(item));
+    }
+
+    QVERIFY(menu.contains(QStringLiteral("deactivate->setText(tr(\"CloseViewTree\"));")));
+    QVERIFY(menu.contains(QStringLiteral("toggleTrash->setText(trash ? tr(\"BackToViewTree\") : tr(\"ShowTrash\"));")));
+}
+
+void tst_viewnode::theTabMenuGoesInTheOverviewsOrder(){
+    const QString source = SourceFile(QStringLiteral("/ui/treebar.cpp"));
+    const QString menu = BodyOf(source, QStringLiteral("QMenu *NodeItem::NodeMenu()"));
+    QVERIFY(!menu.isEmpty());
+
+    const QStringList order = {
+        QStringLiteral("tr(\"OpenViewNode\")"),
+        QStringLiteral("tr(\"OpenViewNodeOnNewWindow\")"),
+        QStringLiteral("tr(\"OpenViewNodeWithOtherBrowser\")"),
+        QStringLiteral("tr(\"RenameViewNode\")"),
+        QStringLiteral("tr(\"ReloadViewNode\")"),
+        QStringLiteral("tr(\"CloneViewNode\")"),
+        QStringLiteral("tr(\"NewViewNode\")"),
+        QStringLiteral("tr(\"MakeDirectory\")"),
+        QStringLiteral("tr(\"MakeDirectoryWithSelectedNode\")"),
+        QStringLiteral("tr(\"MakeDirectoryWithSameDomainNode\")"),
+        QStringLiteral("tr(\"DeleteViewNode\")"),
+        QStringLiteral("tr(\"DeleteViewNodesTogether\")"),
+        QStringLiteral("tr(\"RecentlyClosedViewNode\")"),
+        QStringLiteral("m_TreeBar->TreeBarMenu()"),
+        QStringLiteral("tb->ShowKeys(menu);"),
+    };
+    int last = -1;
+    for(const QString &item : order){
+        const int at = menu.indexOf(item);
+        QVERIFY2(at > last, qPrintable(item));
+        QCOMPARE(menu.count(item), 1);
+        last = at;
+    }
+
+    for(const QString &item : { QStringLiteral("together->addAction(deleteRightNode);"),
+                                QStringLiteral("together->addAction(deleteLeftNode);"),
+                                QStringLiteral("together->addAction(deleteOtherNode);") })
+        QCOMPARE(menu.count(item), 1);
+
+    QVERIFY(menu.contains(QStringLiteral("if(current) action->setObjectName(name);")));
+    QCOMPARE(menu.count(QStringLiteral("setObjectName(")), 1);
+
+    const int recent = menu.indexOf(QStringLiteral("AddTrashEntries(recent, tb,"));
+    QVERIFY(recent >= 0);
+    const int into = menu.indexOf(QStringLiteral("tb->MoveNode(t, vn);"), recent);
+    const int next = menu.indexOf(QStringLiteral("tb->MoveNode(t, vn->GetParent(), vn->Index() + 1);"), recent);
+    QVERIFY(into > recent && next > into);
+    QVERIFY(menu.indexOf(QStringLiteral("if(vn->IsDirectory())"), recent) < into);
+
+    const QString layer = BodyOf(source, QStringLiteral("QMenu *LayerItem::MakeNodeMenu()"));
+    QVERIFY(layer.contains(QStringLiteral("AddTrashEntries(menu, tb,")));
 }
 
 namespace {
@@ -1033,6 +1285,83 @@ void tst_viewnode::aRunsSerialsBeginPastTheLastRuns(){
     QCOMPARE(Node::SerialAfter(ceiling - span - 1, ceiling - span - 1), ceiling - 1);
     QCOMPARE(Node::SerialAfter(1, ceiling + 5), quint64(1));
     QVERIFY(Node::SerialStart(QByteArray::number(Node::SerialAfter(ceiling - 1, ceiling - 1))) < ceiling);
+}
+
+void tst_viewnode::showingATabStampsItsLastAccessWhicheverEngineShowsIt(){
+    const QString tree = TreeBankSource();
+    QVERIFY2(!tree.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const QString setCurrent =
+        BodyOf(tree, QStringLiteral("bool TreeBank::SetCurrent(Node *nd)"));
+    QVERIFY(!setCurrent.isEmpty());
+
+    const int current = setCurrent.indexOf(QStringLiteral("m_CurrentViewNode = nd->ToViewNode()"));
+    const int stamp = setCurrent.indexOf(QStringLiteral("m_CurrentViewNode->SetLastAccessDateToCurrent()"));
+    const int load = setCurrent.indexOf(QStringLiteral("LoadWithLink(m_CurrentViewNode)"));
+    QVERIFY(current != -1);
+    QVERIFY2(stamp != -1, "showing a tab no longer stamps its last access");
+    QVERIFY2(stamp > current, "the stamp lands on the tab being left");
+    QVERIFY2(load == -1 || stamp < load, "the stamp waits for the engine, which Edge never answers with a focus-in");
+
+    ViewNode *root = new ViewNode();
+    ViewNode *dir = root->MakeChild();
+    ViewNode *tab = dir->MakeChild();
+    const QDateTime old = QDateTime::currentDateTime().addSecs(-3600);
+    dir->SetLastAccessDate(old);
+    tab->SetLastAccessDate(old);
+    tab->SetLastAccessDateToCurrent();
+    QVERIFY(tab->GetLastAccessDate() > old);
+    QVERIFY(dir->GetLastAccessDate() > old);
+    delete root;
+}
+
+void tst_viewnode::aFinishedLoadTakesItsThumbnailWhateverTheBarShows(){
+    struct Place { QString file; QString signature; };
+    const QList<Place> places = QList<Place>()
+        << Place{ QStringLiteral("/view/webengine/webengineview.cpp"),
+                  QStringLiteral("void WebEngineView::OnLoadFinished(bool ok)") }
+        << Place{ QStringLiteral("/view/webengine/quickwebengineview.cpp"),
+                  QStringLiteral("void QuickWebEngineView::OnLoadFinished(bool ok)") }
+        << Place{ QStringLiteral("/view/quicknativewebview.cpp"),
+                  QStringLiteral("void QuickNativeWebView::OnLoadFinished(bool ok)") }
+        << Place{ QStringLiteral("/view/edge/edgewebviewhandlers.cpp"),
+                  QStringLiteral("add_NavigationCompleted") };
+
+    foreach(const Place &place, places){
+        const QString source = SourceFile(place.file);
+        QVERIFY2(!source.isEmpty(), qPrintable(place.file + QStringLiteral(" was not read")));
+        const QString body = BodyOf(source, place.signature);
+        QVERIFY2(!body.isEmpty(), qPrintable(place.file + QStringLiteral(" has no body for ") + place.signature));
+
+        const int taken = body.indexOf(QStringLiteral("UpdateThumbnail()"));
+        QVERIFY2(taken != -1, qPrintable(place.file + QStringLiteral(" takes no thumbnail at the end of a load")));
+        QVERIFY2(body.lastIndexOf(QStringLiteral("visible() && m_TreeBank"), taken) != -1,
+                 qPrintable(place.file + QStringLiteral(" takes the thumbnail without asking whether it is on screen")));
+        QVERIFY2(!body.contains(QStringLiteral("GetTreeBar()->isVisible()")),
+                 qPrintable(place.file + QStringLiteral(" still waits for the tab bar to be visible")));
+    }
+}
+
+void tst_viewnode::hidingAFullScreenViewLeavesFullScreenWhicheverEngine(){
+    struct Place { QString file; QString signature; };
+    const QList<Place> places = QList<Place>()
+        << Place{ QStringLiteral("/view/webengine/webengineview.cpp"),
+                  QStringLiteral("void WebEngineView::hideEvent(QHideEvent *ev)") }
+        << Place{ QStringLiteral("/view/webengine/quickwebengineview.cpp"),
+                  QStringLiteral("void QuickWebEngineView::hideEvent(QHideEvent *ev)") }
+        << Place{ QStringLiteral("/view/quicknativewebview.cpp"),
+                  QStringLiteral("void QuickNativeWebView::hideEvent(QHideEvent *ev)") }
+        << Place{ QStringLiteral("/view/edge/edgewebview.cpp"),
+                  QStringLiteral("void EdgeWebView::hideEvent(QHideEvent *ev)") };
+
+    foreach(const Place &place, places){
+        const QString source = SourceFile(place.file);
+        QVERIFY2(!source.isEmpty(), qPrintable(place.file + QStringLiteral(" was not read")));
+        const QString body = BodyOf(source, place.signature);
+        QVERIFY2(!body.isEmpty(), qPrintable(place.file + QStringLiteral(" has no hideEvent body")));
+        QVERIFY2(body.contains(QStringLiteral("if(GetDisplayObscured()) ExitFullScreen();")),
+                 qPrintable(place.file + QStringLiteral(" hides without leaving full screen")));
+    }
 }
 
 QTEST_MAIN(tst_viewnode)

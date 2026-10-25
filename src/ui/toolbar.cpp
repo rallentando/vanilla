@@ -1,5 +1,6 @@
 #include "switch.hpp"
 #include "const.hpp"
+#include "settingspage.hpp"
 #include "theme.hpp"
 
 #include "toolbar.hpp"
@@ -195,7 +196,7 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
     setAllowedAreas(Qt::TopToolBarArea | Qt::BottomToolBarArea);
     setIconSize(QSize(ScaleByDevice(TOOL_BAR_ICON_SIZE), ScaleByDevice(TOOL_BAR_ICON_SIZE)));
 
-    if(Application::EnableTransparentBar()){
+    if(Application::EnableTransparentWindow()){
         setAttribute(Qt::WA_TranslucentBackground);
     }
 
@@ -366,7 +367,7 @@ QMenu *ToolBar::ToolBarMenu(){
 }
 
 void ToolBar::SetUrl(const QUrl &url){
-    m_LineEdit->setText(url.toString());
+    m_LineEdit->setText(VanillaPage::IsStartUrl(url) ? QString() : url.toString());
     if(m_View){
         m_BackAction->setEnabled(m_View->CanGoBack());
         m_ForwardAction->setEnabled(m_View->CanGoForward());
@@ -396,18 +397,19 @@ void ToolBar::paintEvent(QPaintEvent *ev){
     QPainter painter(this);
 
     painter.setPen(Qt::NoPen);
-    painter.setBrush(Theme::Brush(Application::EnableTransparentBar()
+    painter.setBrush(Theme::Brush(Application::EnableTransparentWindow()
                                   ? Theme::BarBackgroundTranslucent
                                   : Theme::BarBackground));
     foreach(QRect rect, ev->region()){
         painter.drawRect(rect);
     }
-    QStyle *s = style();
     QStyleOptionToolBar opt;
     initStyleOption(&opt);
-    opt.rect = s->subElementRect(QStyle::SE_ToolBarHandle, &opt, this);
-    if(opt.rect.isValid() && ev->region().contains(opt.rect))
-        s->drawPrimitive(QStyle::PE_IndicatorToolBarHandle, &opt, &painter, this);
+    const QRect handle = style()->subElementRect(QStyle::SE_ToolBarHandle, &opt, this);
+    if(handle.isValid() && ev->region().intersects(handle))
+        Theme::DrawBarHandle(&painter, handle, orientation(),
+                             ScaleByDevice(BAR_HANDLE_THICKNESS),
+                             ScaleByDevice(BAR_HANDLE_LENGTH));
 }
 
 void ToolBar::resizeEvent(QResizeEvent *ev){

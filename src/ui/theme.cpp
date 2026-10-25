@@ -25,7 +25,7 @@ namespace {
 
         QColor(240, 240, 240, 255),
         QColor(240, 240, 240,   1),
-        QColor(  0,   0,   0,   1),
+        QColor(240, 240, 240, 128),
         QColor(150, 150, 150, 255),
         QColor(180, 180, 180, 255),
         QColor(150, 150, 150, 255),
@@ -63,6 +63,7 @@ namespace {
         QColor(  0,   0,   0, 255),
         QColor(  0,   0,   0,   1),
         QColor(  0,   0,   0, 255),
+        QColor(175, 175, 175, 255),
 
         QColor(  0,   0,   0, 170),
         QColor(255, 255, 200,  44),
@@ -128,6 +129,7 @@ namespace {
         QColor(  0,   0,   0, 100),
 
         QColor(245, 245, 245, 255),
+        QColor(245, 245, 245, 128),
         QColor(  0,   0,   0,  25),
         QColor(  0,   0,   0,  70),
         QColor(  0,   0,   0,  90),
@@ -148,6 +150,7 @@ namespace {
         QColor(255, 255, 255, 255),
 
         QColor(250, 250, 250, 255),
+        QColor(250, 250, 250, 200),
         QColor(150, 150, 150, 255),
         QColor( 28,  28,  28, 255),
         QColor(217, 217, 217, 255),
@@ -176,7 +179,7 @@ namespace {
 
         QColor( 32,  32,  32, 255),
         QColor( 32,  32,  32,   1),
-        QColor(  0,   0,   0,   1),
+        QColor( 32,  32,  32, 128),
         QColor( 70,  70,  70, 255),
         QColor( 58,  58,  58, 255),
         QColor( 80,  80,  80, 255),
@@ -214,6 +217,7 @@ namespace {
         QColor(230, 230, 230, 255),
         QColor(  0,   0,   0,   1),
         QColor(230, 230, 230, 255),
+        QColor( 80,  80,  80, 255),
 
         QColor(  0,   0,   0, 190),
         QColor(255, 255, 200,  44),
@@ -279,6 +283,7 @@ namespace {
         QColor(255, 255, 255, 110),
 
         QColor( 38,  38,  38, 255),
+        QColor( 38,  38,  38, 128),
         QColor(255, 255, 255,  30),
         QColor(255, 255, 255,  80),
         QColor(255, 255, 255, 100),
@@ -299,6 +304,7 @@ namespace {
         QColor( 32,  32,  32, 255),
 
         QColor( 44,  44,  44, 255),
+        QColor( 44,  44,  44, 160),
         QColor( 90,  90,  90, 255),
         QColor(230, 230, 230, 255),
         QColor( 56,  56,  56, 255),
@@ -545,6 +551,31 @@ void DrawEmptyThumbnail(QPainter *painter, const QRectF &rect,
         painter->drawText(where, Qt::AlignCenter, caption);
     }
 
+    painter->restore();
+}
+
+void DrawBarHandle(QPainter *painter, const QRect &handle,
+                   Qt::Orientation bar, int thickness, int length){
+    if(!painter || !handle.isValid()) return;
+
+    const bool upright = bar == Qt::Horizontal;
+    const int along  = upright ? handle.height() : handle.width();
+    const int across = upright ? handle.width()  : handle.height();
+    const int l = qMin(length, along);
+    const int t = qMin(thickness, across);
+    if(l <= 0 || t <= 0) return;
+
+    const QSize size = upright ? QSize(t, l) : QSize(l, t);
+    const QPointF centre = QRectF(handle).center();
+    const QRect pill(upright ? handle.left() : qRound(centre.x() - size.width() / 2.0),
+                     upright ? qRound(centre.y() - size.height() / 2.0) : handle.top(),
+                     size.width(), size.height());
+
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(Brush(BarScrollerHandle));
+    painter->drawRoundedRect(pill, t / 2.0, t / 2.0);
     painter->restore();
 }
 

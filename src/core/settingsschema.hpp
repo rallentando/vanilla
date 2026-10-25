@@ -30,17 +30,27 @@ struct Item {
     const char *fallback;
     bool needsRestart;
 
-    const char *appliesWhenKey;
-    bool appliesWhen;
+    const char *appliesWhen;
 
     const char *picker;
 };
 
 const QList<Item> &Items();
 
+struct Group {
+    const char *key;
+    const char *label;
+};
+
+const QList<Group> &Groups();
+
 const Item *Find(const QString &key);
 
+QList<QPair<QString, QString> > AppliesWhenClauses(const Item &item);
+
 QList<QPair<QString, QString> > Categories();
+
+QStringList CategoriesBeginningARun();
 
 struct ChoiceLabel {
     const char *key;
@@ -52,6 +62,8 @@ const QList<ChoiceLabel> &ChoiceLabels();
 QVariant Fallback(const Item &item);
 QVariant FromJson(const Item &item, const QJsonValue &value);
 QJsonValue ToJson(const Item &item, const QVariant &value);
+
+QString EmptyDirectory(const Item &item);
 
 QJsonObject PageStrings();
 

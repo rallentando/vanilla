@@ -48,13 +48,13 @@
 #include "edgewebview.hpp"
 #include "webenginepage.hpp"
 #include "gadgets.hpp"
+#include "menukeys.hpp"
 #include "mainwindow.hpp"
 #include "downloadbar.hpp"
 #include "sidepanels.hpp"
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "localview.hpp"
-#include "jsobject.hpp"
 #include "dialog.hpp"
 
 QString TreeBank::m_RootName = QString();
@@ -76,6 +76,7 @@ int  TreeBank::m_TraverseCondition = 0;
 
 TreeBank::Viewport     TreeBank::m_Viewport = Widget;
 SharedViewList TreeBank::m_AllViews = SharedViewList();
+View *TreeBank::m_ExtractingDownloadCarrier = nullptr;
 SharedViewList TreeBank::m_ViewUpdateBox = SharedViewList();
 NodeList TreeBank::m_NodeDeleteBox = NodeList();
 NodeList TreeBank::m_FreshDeleteBox = NodeList();
@@ -100,7 +101,6 @@ TreeBank::TreeBank(QWidget *parent)
     , m_View(new GraphicsView(m_Scene, this))
     , m_Notifier(new Notifier(this, m_PurgeNotifier || m_PurgeView))
     , m_Receiver(new Receiver(this, m_PurgeReceiver || m_PurgeView))
-    , m_JsObject(new _Vanilla(this))
 {
     m_MiniMap = (m_EnableMiniMap && !m_PurgeView) ? new MiniMap(this) : nullptr;
     m_Gadgets_ = SharedView(new Gadgets(this), &DeleteView);
@@ -342,6 +342,7 @@ void TreeBank::ReconfigureDirectory(ViewNode *vn, QString before, QString after)
     foreach(Node *nd, vn->GetChildren()){
         ReapplySpecificSettings(nd->ToViewNode());
     }
+    MarkOffDisk(vn);
 }
 
 void TreeBank::ApplySpecificSettings(ViewNode *vn){
@@ -350,6 +351,7 @@ void TreeBank::ApplySpecificSettings(ViewNode *vn){
     NetworkController::GetNetworkAccessManager(GetNetworkSpaceId(vn),
                                                GetNodeSettings(vn));
     ReapplySpecificSettings(vn);
+    MarkOffDisk(vn);
 }
 
 void TreeBank::ReapplySpecificSettings(ViewNode *vn){
@@ -398,6 +400,30 @@ QStringList TreeBank::SettingsOf(ViewNode *vn){
 
 QString TreeBank::NetworkSpaceOf(ViewNode *vn){
     return vn ? GetNetworkSpaceId(vn) : QString();
+}
+
+bool TreeBank::IsOffTheRecord(ViewNode *vn){
+    return vn && DirectoryPage::SaysPrivate(GetNodeSettings(vn));
+}
+
+static bool OffTheRecordBelow(ViewNode *vn, bool parentOff){
+    return vn->IsDirectory() ? TreeBank::IsOffTheRecord(vn) : parentOff;
+}
+
+static void MarkOffDiskBelow(ViewNode *vn, bool off){
+    vn->SetOffDisk(off);
+    foreach(Node *nd, vn->GetChildren()){
+        if(ViewNode *child = nd->ToViewNode())
+            MarkOffDiskBelow(child, OffTheRecordBelow(child, off));
+    }
+}
+
+void TreeBank::MarkOffDisk(ViewNode *vn){
+    if(vn) MarkOffDiskBelow(vn, IsOffTheRecord(vn));
+}
+
+void TreeBank::SweepOffDisk(){
+    MarkOffDisk(m_ViewRoot);
 }
 
 void TreeBank::DoUpdate(){
@@ -549,13 +575,6 @@ Node* TreeBank::GetRoot(Node* nd){
     return nd;
 }
 
-Node* TreeBank::GetOtherRoot(Node* nd){
-    Node *root = GetRoot(nd);
-    if(root == m_ViewRoot)  return m_TrashRoot;
-    if(root == m_TrashRoot) return m_ViewRoot;
-    return nullptr;
-}
-
 bool TreeBank::IsTrash(Node* nd){
     if(nd->IsViewNode())
         return GetRoot(nd) == m_TrashRoot;
@@ -631,7 +650,7 @@ static TreeSerializer::Hooks TreeSaveHooks(const TreeBank::WindowIndexMap &windo
     hooks.WindowIndexOf = [windowIndices](ViewNode *nd){
         return windowIndices.value(nd, 0);
     };
-    hooks.KeepsSideFiles = [](ViewNode *nd){ return !TreeBank::IsTrash(nd);};
+    hooks.KeepsSideFiles = [](ViewNode *nd){ return !TreeBank::IsTrash(nd) && !nd->IsOffDisk();};
     return hooks;
 }
 
@@ -703,6 +722,7 @@ TreeBank::Restoration TreeBank::LoadTree(){
         if(root == m_ViewRoot)
             EmitTreeStructureChanged();
     }
+    SweepOffDisk();
     Node::SetBooting(false);
     return restored;
 }
@@ -787,7 +807,7 @@ void TreeBank::LoadSettings(){
 
     m_RootName             = s.value(QStringLiteral("application/@RootName"), QStringLiteral("root;id")).value<QString>();
     m_MaxViewCount         = s.value(QStringLiteral("application/@MaxViewCount")         , 10)   .value<int>();
-    m_MaxTrashEntryCount   = s.value(QStringLiteral("application/@MaxTrashEntryCount")   , 100)  .value<int>();
+    m_MaxTrashEntryCount   = s.value(QStringLiteral("application/@MaxTrashEntryCount")   , 500)  .value<int>();
     m_TraverseAllView      = s.value(QStringLiteral("application/@TraverseAllView")      , false).value<bool>();
     m_PurgeNotifier        = s.value(QStringLiteral("application/@PurgeNotifier")        , false).value<bool>();
     m_PurgeReceiver        = s.value(QStringLiteral("application/@PurgeReceiver")        , false).value<bool>();
@@ -802,7 +822,7 @@ void TreeBank::LoadSettings(){
     if(m_MaxViewCount == -1)       m_MaxViewCount       = s.value(QStringLiteral("application/@MaxView")  , -1).value<int>();
     if(m_MaxViewCount == -1)       m_MaxViewCount       = 10;
     if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = s.value(QStringLiteral("application/@MaxTrash") , -1).value<int>();
-    if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = 100;
+    if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = 500;
 
     {
         TREEBANK_KEYMAP
@@ -933,16 +953,110 @@ bool TreeBank::MoveToTrash(ViewNode *vn){
     MoveNode(vn, m_TrashRoot, 0);
     StripSubTree(vn);
     const int keep = qMax(0, m_MaxTrashEntryCount);
-    while(m_TrashRoot->ChildrenLength() > keep){
-        Node *needless = m_TrashRoot->TakeLastChild();
-        DisownNode(needless);
-        StripSubTree(needless->ToViewNode());
-        NodeList forgotten = NodeList() << needless << needless->GetDescendants();
-        ForgetNodeItems(forgotten);
+    while(m_TrashRoot->ChildrenLength() > keep)
+        DiscardFromTrash(m_TrashRoot->GetLastChild());
+    return true;
+}
 
-        Discard(needless, m_TrashRoot);
+void TreeBank::DiscardFromTree(ViewNode *vn){
+    Node *prevparent = vn->GetParent();
+    NodeList all = NodeList() << vn << vn->GetDescendants();
+    StripSubTree(vn);
+    foreach(Node *nd, all){
+        if(ViewNode *each = nd->ToViewNode()) each->SetOffDisk(true);
+    }
+    DisownNode(vn);
+    NodeList deleted = NodeList() << vn;
+    EmitNodeDeleted(deleted);
+    ForgetNodeItems(all);
+    Discard(vn, prevparent);
+}
+
+bool TreeBank::WhollyOffTheRecord(ViewNode *vn, bool off){
+    if(!off) return false;
+    foreach(Node *nd, vn->GetChildren()){
+        ViewNode *child = nd->ToViewNode();
+        if(child && !WhollyOffTheRecord(child, OffTheRecordBelow(child, off))) return false;
     }
     return true;
+}
+
+int TreeBank::PruneOffTheRecord(ViewNode *vn, bool off){
+    int pruned = 0;
+    const NodeList children = vn->GetChildren();
+    foreach(Node *nd, children){
+        ViewNode *child = nd->ToViewNode();
+        if(!child) continue;
+        const bool childOff = OffTheRecordBelow(child, off);
+        if(WhollyOffTheRecord(child, childOff)){
+            DiscardFromTree(child);
+            pruned++;
+        } else {
+            pruned += PruneOffTheRecord(child, childOff);
+        }
+    }
+    return pruned;
+}
+
+bool TreeBank::IsDiscarded(Node *nd){
+    for(; nd; nd = nd->GetParent()){
+        if(m_FreshDeleteBox.contains(nd) || m_NodeDeleteBox.contains(nd)) return true;
+    }
+    return false;
+}
+
+bool TreeBank::DiscardFromTrash(Node *nd){
+    if(!nd || nd == m_TrashRoot || !IsTrash(nd)) return false;
+    Node *parent = nd->GetParent();
+    DisownNode(nd);
+    StripSubTree(nd);
+    NodeList forgotten = NodeList() << nd << nd->GetDescendants();
+    ForgetNodeItems(forgotten);
+
+    Discard(nd, parent);
+    return true;
+}
+
+namespace {
+    std::function<bool(int)> DiscardConfirmer;
+}
+
+void TreeBank::SetDiscardConfirmer(std::function<bool(int)> confirmer){
+    DiscardConfirmer = confirmer;
+}
+
+void TreeBank::DiscardFromTrashAsked(const QList<quint64> &serials, int tabs, const QString &title,
+                                     std::function<void()> settled, const QList<quint64> &kept){
+    WhenItMayChange([serials, tabs, title, settled, kept](){
+        const bool sure = DiscardConfirmer ? DiscardConfirmer(tabs)
+            : ModalDialog::Question(title, tr("Delete %1 closed tabs from the wastebasket for good?\n"
+                                              "This cannot be undone.").arg(tabs));
+        if(!sure){
+            if(settled) settled();
+            return;
+        }
+        WhenItMayChange([serials, settled, kept](){
+            ChangeScope changing;
+            const QSet<quint64> asked(serials.begin(), serials.end());
+            const QSet<quint64> keeping(kept.begin(), kept.end());
+            QHash<quint64, Node*> now;
+            foreach(Node *nd, m_TrashRoot->GetDescendants())
+                if(asked.contains(nd->GetSerial())) now.insert(nd->GetSerial(), nd);
+            for(quint64 serial : serials){
+                Node *nd = now.value(serial);
+                if(!nd || !IsTrash(nd)) continue;
+                Node *parent = nd->GetParent();
+                DiscardFromTrash(nd);
+                while(parent && parent != m_TrashRoot && parent->HasNoChildren()
+                      && !keeping.contains(parent->GetSerial())){
+                    Node *above = parent->GetParent();
+                    DiscardFromTrash(parent);
+                    parent = above;
+                }
+            }
+            if(settled) settled();
+        });
+    });
 }
 
 void TreeBank::StripSubTree(Node *nd){
@@ -965,6 +1079,9 @@ void TreeBank::ReleaseView(SharedView view){
             if(MainWindow *win = tb->GetMainWindow())
                 win->SetFullScreen(false);
     }
+
+    if(view.get() != m_ExtractingDownloadCarrier) view->KeepForDownloads();
+
     RemoveFromAllViews(view);
     RemoveFromUpdateBox(view);
 }
@@ -1098,7 +1215,9 @@ SharedView TreeBank::ExtractDownloadCarrier(ViewNode *vn){
     if(!next) return SharedView();
 
     QuarantineViewNode(vn);
+    m_ExtractingDownloadCarrier = held.get();
     DislinkView(vn);
+    m_ExtractingDownloadCarrier = nullptr;
 
     held->Orphan();
 
@@ -1127,15 +1246,33 @@ bool TreeBank::DeleteNode(NodeList list){
 
     Node *sample = list.first();
     Node *prevparent  = sample->GetParent();
+    NodeList above;
+    for(Node *nd = prevparent; nd; nd = nd->GetParent()) above << nd;
 
     if(sample->IsViewNode()){
-        bool deleted = false;
+        int moved = 0;
+        int discarded = 0;
 
         foreach(Node *nd, list){
             Q_ASSERT(nd->IsViewNode());
-            deleted = MoveToTrash(nd->ToViewNode()) || deleted;
+            ViewNode *vn = nd->ToViewNode();
+            if(vn->IsRoot() || GetRoot(vn) == m_TrashRoot || IsDiscarded(vn)) continue;
+            const bool off = IsOffTheRecord(vn);
+            if(WhollyOffTheRecord(vn, off)){
+                DiscardFromTree(vn);
+                discarded++;
+                continue;
+            }
+            discarded += PruneOffTheRecord(vn, off);
+            if(MoveToTrash(vn)) moved++;
         }
-        if(!deleted) return false;
+        if(!moved && !discarded) return false;
+        prevparent = m_ViewRoot;
+        foreach(Node *nd, above){
+            if(!IsDiscarded(nd) && GetRoot(nd) == m_ViewRoot){ prevparent = nd; break;}
+        }
+
+        if(NoticesTrash(moved, m_MaxTrashEntryCount)) NoticeTrash(moved);
 
     } else {
         return false;
@@ -1145,6 +1282,54 @@ bool TreeBank::DeleteNode(NodeList list){
         if(SelectCurrentAfterDelete(prevparent)) return true;
     }
     return true;
+}
+
+bool TreeBank::CloseWithoutTrash(ViewNode *vn){
+    ChangeScope changing;
+    if(!vn || vn->IsDirectory() || !vn->HasNoChildren() || vn == m_CurrentViewNode) return false;
+    Node *prevparent = vn->GetParent();
+    if(!prevparent || GetRoot(vn) != m_ViewRoot) return false;
+    if(vn->GetView() && vn->GetView()->GetTreeBank() != this) return false;
+    foreach(MainWindow *win, Application::GetMainWindows())
+        if(win->GetTreeBank() && win->GetTreeBank()->GetCurrentViewNode() == vn) return false;
+
+    SharedView held = vn->GetView() ? vn->GetView()->GetThis().lock() : SharedView();
+    QuarantineViewNode(vn);
+    DislinkView(vn);
+    if(held) held->ForgetViewNode(vn);
+
+    DisownNode(vn);
+    NodeList deleted = NodeList() << vn;
+    EmitNodeDeleted(deleted);
+    ForgetNodeItems(deleted);
+    Discard(vn, prevparent);
+    return true;
+}
+
+int TreeBank::KeptInTrash(int moved, int keep){
+    return qBound(0, keep, qMax(0, moved));
+}
+
+bool TreeBank::NoticesTrash(int moved, int keep){
+    return moved >= 2 && KeptInTrash(moved, keep) > 0;
+}
+
+void TreeBank::NoticeTrash(int moved){
+    const int kept = KeptInTrash(moved, m_MaxTrashEntryCount);
+
+    ModelessDialog *dialog = new ModelessDialog();
+    connect(this, &QObject::destroyed, dialog, &ModelessDialog::Discard);
+    dialog->SetTitle(tr("Moved %1 nodes to the trash.").arg(moved));
+    dialog->SetCaption(kept == moved
+                       ? tr("They can be restored from the trash.")
+                       : tr("The trash keeps a limited number of items, "
+                            "so the oldest of these are gone."));
+    dialog->SetButtons(Dialog::OpenTrash);
+    dialog->SetCallBack([this](bool open){
+        if(open && m_Gadgets && !m_Gadgets->IsDisplaying(Gadgets::TrashTree))
+            DisplayTrashTree();
+    });
+    QTimer::singleShot(0, dialog, &ModelessDialog::Execute);
 }
 
 bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
@@ -1238,6 +1423,8 @@ bool TreeBank::SetCurrent(Node *nd){
     m_CurrentViewNode = nd->ToViewNode();
 
     m_CurrentViewNode->ResetPrimaryPath();
+
+    m_CurrentViewNode->SetLastAccessDateToCurrent();
 
     m_ViewIterForward = m_ViewIterBackward = m_CurrentViewNode;
 
@@ -1354,6 +1541,7 @@ bool TreeBank::SetCurrent(Node *nd){
        !GetMainWindow()->GetTreeBar()->TabWindowVisible()){
 
         QTimer::singleShot(0, this, [this](){
+            if(Application::GetCurrentWindow() != GetMainWindow()) return;
             GetMainWindow()->ActivateIfNeeded();
             if(TreeBank::PurgeView())
                 if(QWidget *w = qobject_cast<QWidget*>(m_CurrentView->base()))
@@ -1729,6 +1917,7 @@ static void SetViewProp(QUrl url, ViewNode *vn, SharedView view){
 QMenu *TreeBank::NodeMenu(){
     QMenu *menu = new QMenu(tr("TabList"), this);
     menu->setToolTipsVisible(true);
+    connect(menu, &QMenu::aboutToShow, this, [this, menu](){ ShowKeys(menu);});
 
     menu->addAction(Action(_DisplayViewTree));
     menu->addAction(Action(_DisplayTrashTree));
@@ -1750,6 +1939,7 @@ QMenu *TreeBank::NodeMenu(){
 QMenu *TreeBank::DisplayMenu(){
     QMenu *menu = new QMenu(tr("Display"), this);
     menu->setToolTipsVisible(true);
+    connect(menu, &QMenu::aboutToShow, this, [this, menu](){ ShowKeys(menu);});
 
     menu->addAction(Action(_ToggleNotifier));
     menu->addAction(Action(_ToggleReceiver));
@@ -1762,6 +1952,7 @@ QMenu *TreeBank::DisplayMenu(){
 QMenu *TreeBank::WindowMenu(){
     QMenu *menu = new QMenu(tr("Window"), this);
     menu->setToolTipsVisible(true);
+    connect(menu, &QMenu::aboutToShow, this, [this, menu](){ ShowKeys(menu);});
 
     menu->addAction(Action(_ToggleFullScreen));
     menu->addAction(Action(_ToggleMaximized));
@@ -1780,6 +1971,7 @@ QMenu *TreeBank::WindowMenu(){
 QMenu *TreeBank::PageMenu(){
     QMenu *menu = new QMenu(tr("Page"), this);
     menu->setToolTipsVisible(true);
+    connect(menu, &QMenu::aboutToShow, this, [this, menu](){ ShowKeys(menu);});
 
     menu->addAction(Action(_Copy));
     menu->addAction(Action(_Cut));
@@ -1802,6 +1994,7 @@ QMenu *TreeBank::PageMenu(){
 QMenu *TreeBank::ApplicationMenu(bool expanded){
     QMenu *menu = new QMenu(tr("Application"), this);
     menu->setToolTipsVisible(true);
+    connect(menu, &QMenu::aboutToShow, this, [this, menu](){ ShowKeys(menu);});
 
     menu->addAction(Action(_Import));
     menu->addAction(Action(_Export));
@@ -1831,6 +2024,7 @@ QMenu *TreeBank::ApplicationMenu(bool expanded){
 QMenu *TreeBank::GlobalContextMenu(){
     QMenu *menu = new QMenu(this);
     menu->setToolTipsVisible(true);
+    connect(menu, &QMenu::aboutToShow, this, [this, menu](){ ShowKeys(menu);});
 
     menu->addMenu(ApplicationMenu(false));
     menu->addMenu(NodeMenu());
@@ -1846,7 +2040,26 @@ QMenu *TreeBank::GlobalContextMenu(){
     menu->addSeparator();
     menu->addAction(Action(_Quit));
 
+    foreach(QAction *action, menu->actions())
+        if(QMenu *sub = action->menu()) sub->setParent(menu, sub->windowFlags());
+
+    ShowKeys(menu);
+
     return menu;
+}
+
+InputMap::KeyLayers TreeBank::KeyLayers() const {
+    if(m_Gadgets && m_Gadgets->IsActive() && !m_Gadgets->IsDisplaying(Gadgets::AccessKey))
+        return Gadgets::KeyLayers();
+    if(m_CurrentView) return View::KeyLayers();
+    InputMap::KeyLayer application;
+    application.map = m_KeyMap;
+    application.singleKeys = View::EnableSingleKeyShortcut();
+    return InputMap::KeyLayers() << application;
+}
+
+void TreeBank::ShowKeys(QMenu *menu) const {
+    MenuKeys::Show(menu, InputMap::ShownKeys(KeyLayers()));
 }
 
 void TreeBank::PurgeChildWidgetsIfNeed(){
@@ -2130,9 +2343,13 @@ void TreeBank::OpenSettings(const QString &category){
     if(ViewNode *found = FindByUrl(m_ViewRoot, url)){
         const bool already = found->GetUrl() == url;
         if(!category.isEmpty()) found->SetUrl(url);
-        Recreate(found);
+        View *view = found->GetView();
+        const bool kept = view && view->GetTreeBank() == this &&
+            KindOf(view) == ViewKindFor(url, GetNodeSettings(found));
+        if(kept) SetCurrent(found);
+        else Recreate(found);
         if(!category.isEmpty() && !already)
-            if(View *view = found->GetView()) view->Load(url);
+            if(View *now = found->GetView()) now->Load(url);
         return;
     }
     OpenByCommandOperation(url);
@@ -2459,6 +2676,13 @@ void TreeBank::Restore(ViewNode *vn, ViewNode *dir){
     }
 }
 
+bool TreeBank::RestoreBeside(ViewNode *vn, ViewNode *beside){
+    if(!vn || !IsTrash(vn)) return false;
+    if(beside && beside->GetParent() && GetRoot(beside) == m_ViewRoot)
+        return MoveNode(vn, beside->GetParent(), beside->SiblingInsertIndex());
+    return MoveNode(vn, m_ViewRoot);
+}
+
 void TreeBank::Recreate(ViewNode *vn){
     ChangeScope changing;
     if(!vn) vn = m_CurrentViewNode;
@@ -2670,7 +2894,7 @@ ViewNode *TreeBank::NewViewNode(ViewNode *vn){
     if(!vn) vn = m_CurrentViewNode;
 
     if(!vn || !vn->GetParent() || IsTrash(vn)){
-        SharedView view = OpenOnSuitableNode(QNetworkRequest(BLANK_URL),
+        SharedView view = OpenOnSuitableNode(QNetworkRequest(START_URL),
                                              Page::Activate(), m_ViewRoot);
         return view ? view->GetViewNode() : nullptr;
     }
@@ -2700,6 +2924,7 @@ ViewNode *TreeBank::CloneViewNode(ViewNode *vn){
     if(!vn) vn = m_CurrentViewNode;
     if(!vn) return nullptr;
 
+    MarkOffDisk(vn);
     ViewNode *clone = vn->Clone();
     if(clone){
         if(m_Gadgets && m_Gadgets->IsActive()){
@@ -3059,23 +3284,7 @@ QAction *TreeBank::Action(TreeBankAction a){
     m_ActionTable[a] = action = new QAction(this);
 
     SetActionIcon(action, a);
-    {
-        QKeySequence::StandardKey key = QKeySequence::UnknownKey;
-        switch(a){
-        case _Undo:      key = QKeySequence::Undo;      break;
-        case _Redo:      key = QKeySequence::Redo;      break;
-        case _Cut:       key = QKeySequence::Cut;       break;
-        case _Copy:      key = QKeySequence::Copy;      break;
-        case _Paste:     key = QKeySequence::Paste;     break;
-        case _SelectAll: key = QKeySequence::SelectAll; break;
-        default: break;
-        }
-        if(key != QKeySequence::UnknownKey){
-            action->setShortcut(QKeySequence(key));
-            action->setShortcutContext(Qt::WidgetShortcut);
-            action->setShortcutVisibleInContextMenu(true);
-        }
-    }
+    action->setObjectName(ActionToString(a));
 
     switch(a){
     case _NoAction: break;
@@ -3278,6 +3487,7 @@ bool TreeBank::TriggerKeyEvent(QKeyEvent *ev){
 }
 
 bool TreeBank::TriggerKeyEvent(QString str){
+    Application::InputScope key(true);
     QKeySequence seq = Application::MakeKeySequence(str);
     if(seq.isEmpty()) return false;
     str = m_KeyMap[seq];
@@ -3301,6 +3511,71 @@ bool TreeBank::NeedsEngineForVanillaPage(const QUrl &url, const QStringList &set
         || set.indexOf(QRE("\\A[qQ](?:uick)?" "[nN](?:ative)?" "[wW](?:eb)?" "(?:[vV](?:iew)?)?\\Z")) != -1;
 }
 
+TreeBank::ViewKind TreeBank::ViewKindNamedIn(const QStringList &set){
+#ifdef WEBENGINEVIEW
+    if(set.indexOf(QRE("\\A"                 "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?\\Z")) != -1) return WebEngineKind;
+    if(set.indexOf(QRE("\\A[gG](?:raphics)?" "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?\\Z")) != -1) return WebEngineKind;
+    if(set.indexOf(QRE("\\A[qQ](?:uick)?"    "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?\\Z")) != -1) return QuickWebEngineKind;
+    if(set.indexOf(QRE("\\A"                 "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?\\Z")) != -1) return WebEngineKind;
+    if(set.indexOf(QRE("\\A[gG](?:raphics)?" "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?\\Z")) != -1) return WebEngineKind;
+    if(set.indexOf(QRE("\\A[qQ](?:uick)?"    "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?\\Z")) != -1) return QuickWebEngineKind;
+#endif
+#ifdef NATIVEWEBVIEW
+    if(set.indexOf(QRE("\\A"                 "[nN](?:ative)?" "[wW](?:eb)?" "(?:[vV](?:iew)?)?\\Z")) != -1) return QuickNativeKind;
+    if(set.indexOf(QRE("\\A[qQ](?:uick)?"    "[nN](?:ative)?" "[wW](?:eb)?" "(?:[vV](?:iew)?)?\\Z")) != -1) return QuickNativeKind;
+#endif
+#ifdef EDGEWEBVIEW
+    if(set.indexOf(QRE("\\A"                 "[eE](?:dge)?" "(?:[wW](?:eb)?)?" "(?:[vV](?:iew)?)?\\Z")) != -1) return EdgeKind;
+#endif
+#ifdef LOCALVIEW
+    if(set.indexOf(QRE("\\A"                 "[lL](?:ocal)?"                "(?:[vV](?:iew)?)?\\Z")) != -1) return LocalKind;
+#endif
+    Q_UNUSED(set)
+    return NoView;
+}
+
+TreeBank::ViewKind TreeBank::ViewKindFor(const QUrl &url, const QStringList &set){
+    const QString urlstr = url.toString();
+    Q_UNUSED(urlstr)
+
+#ifdef LOCALVIEW
+    if(urlstr.startsWith(QStringLiteral("file:///")) && (QFileInfo(url.toLocalFile()).isDir() || LocalView::IsSupported(url))) return LocalKind;
+#endif
+    const ViewKind named = ViewKindNamedIn(set);
+#if defined(NATIVEWEBVIEW) && defined(WEBENGINEVIEW)
+    if(named == QuickNativeKind && NeedsEngineForVanillaPage(url, set)) return WebEngineKind;
+#endif
+    if(named != NoView) return named;
+#if defined(EDGEWEBVIEW)
+    if(EdgeWebView::RuntimeAvailable()) return EdgeKind;
+#endif
+#if defined(WEBENGINEVIEW)
+    return WebEngineKind;
+#elif defined(NATIVEWEBVIEW)
+    return QuickNativeKind;
+#else
+    return NoView;
+#endif
+}
+
+TreeBank::ViewKind TreeBank::KindOf(View *view){
+    if(!view) return NoView;
+#ifdef LOCALVIEW
+    if(dynamic_cast<LocalView*>(view)) return LocalKind;
+#endif
+#ifdef WEBENGINEVIEW
+    if(dynamic_cast<QuickWebEngineView*>(view)) return QuickWebEngineKind;
+    if(dynamic_cast<WebEngineView*>(view)) return WebEngineKind;
+#endif
+#ifdef NATIVEWEBVIEW
+    if(dynamic_cast<QuickNativeWebView*>(view)) return QuickNativeKind;
+#endif
+#ifdef EDGEWEBVIEW
+    if(dynamic_cast<EdgeWebView*>(view)) return EdgeKind;
+#endif
+    return NoView;
+}
+
 SharedView TreeBank::CreateView(QNetworkRequest req, ViewNode *vn){
     MainWindow *win = Application::GetCurrentWindow();
     TreeBank *tb = win ? win->GetTreeBank() : nullptr;
@@ -3308,46 +3583,25 @@ SharedView TreeBank::CreateView(QNetworkRequest req, ViewNode *vn){
     QString id = GetNetworkSpaceId(vn);
 
     QUrl url = req.url();
-    QString urlstr = url.toString();
 
-    SharedView view = SharedView();
-
-    view = SharedView(
+    View *made = nullptr;
+    switch(ViewKindFor(url, set)){
 #ifdef LOCALVIEW
-        (urlstr.startsWith(QStringLiteral("file:///")) && (QFileInfo(url.toLocalFile()).isDir() || LocalView::IsSupported(url))) ? new LocalView(tb, id, set) :
+    case LocalKind:          made = new LocalView(tb, id, set);          break;
 #endif
 #ifdef WEBENGINEVIEW
-        set.indexOf(QRE("\\A"                 "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?\\Z")) != -1 ? new WebEngineView(tb, id, set) :
-        set.indexOf(QRE("\\A[gG](?:raphics)?" "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?\\Z")) != -1 ? new WebEngineView(tb, id, set) :
-        set.indexOf(QRE("\\A[qQ](?:uick)?"    "[wW](?:eb)?"                  "(?:[vV](?:iew)?)?\\Z")) != -1 ? new QuickWebEngineView(tb, id, set) :
-        set.indexOf(QRE("\\A"                 "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?\\Z")) != -1 ? new WebEngineView(tb, id, set) :
-        set.indexOf(QRE("\\A[gG](?:raphics)?" "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?\\Z")) != -1 ? new WebEngineView(tb, id, set) :
-        set.indexOf(QRE("\\A[qQ](?:uick)?"    "[wW](?:eb)?" "[eE](?:ngine)?" "(?:[vV](?:iew)?)?\\Z")) != -1 ? new QuickWebEngineView(tb, id, set) :
-#endif
-#if defined(NATIVEWEBVIEW) && defined(WEBENGINEVIEW)
-        NeedsEngineForVanillaPage(url, set) ? new WebEngineView(tb, id, set) :
+    case WebEngineKind:      made = new WebEngineView(tb, id, set);      break;
+    case QuickWebEngineKind: made = new QuickWebEngineView(tb, id, set); break;
 #endif
 #ifdef NATIVEWEBVIEW
-        set.indexOf(QRE("\\A"                 "[nN](?:ative)?" "[wW](?:eb)?" "(?:[vV](?:iew)?)?\\Z")) != -1 ? new QuickNativeWebView(tb, id, set) :
-        set.indexOf(QRE("\\A[qQ](?:uick)?"    "[nN](?:ative)?" "[wW](?:eb)?" "(?:[vV](?:iew)?)?\\Z")) != -1 ? new QuickNativeWebView(tb, id, set) :
+    case QuickNativeKind:    made = new QuickNativeWebView(tb, id, set); break;
 #endif
 #ifdef EDGEWEBVIEW
-        set.indexOf(QRE("\\A"                 "[eE](?:dge)?" "(?:[wW](?:eb)?)?" "(?:[vV](?:iew)?)?\\Z")) != -1 ? new EdgeWebView(tb, id, set) :
+    case EdgeKind:           made = new EdgeWebView(tb, id, set);        break;
 #endif
-#ifdef LOCALVIEW
-        set.indexOf(QRE("\\A"                 "[lL](?:ocal)?"                "(?:[vV](?:iew)?)?\\Z")) != -1 ? new LocalView(tb, id, set) :
-#endif
-#if defined(EDGEWEBVIEW)
-        EdgeWebView::RuntimeAvailable() ? static_cast<View*>(new EdgeWebView(tb, id, set)) :
-#endif
-#if defined(WEBENGINEVIEW)
-        static_cast<View*>(new WebEngineView(tb, id, set))
-#elif defined(NATIVEWEBVIEW)
-        static_cast<View*>(new QuickNativeWebView(tb, id, set))
-#else
-        static_cast<View*>(nullptr)
-#endif
-        , &DeleteView);
+    default: break;
+    }
+    SharedView view = SharedView(made, &DeleteView);
 
     if(vn->GetTitle().isEmpty())
         vn->SetTitle(req.url().toString());

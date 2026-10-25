@@ -4,6 +4,8 @@
 
 #include <QCoreApplication>
 #include <QJsonArray>
+#include <QDir>
+#include <QStandardPaths>
 
 #include "application.hpp"
 
@@ -19,18 +21,33 @@ namespace {
         { "gadgets/@Style", SettingsSchema::Choice, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Tab list style"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "'Flat' is a grid of cards, 'Glass' a translucent overlay. Either "
-              "is drawn in either colour scheme."),
+              "'Flat' is a grid of cards, 'Glass' a translucent overlay."),
           "FlatStyle|GlassStyle", "FlatStyle", false },
 
-        { "application/@EnableTransparentBar", SettingsSchema::Bool, "appearance",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Translucent tab bar"), "", "", "false", true },
+        { "application/@EnableMiniMap", SettingsSchema::Bool, "appearance",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Show the minimap"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+                            "A strip beside the page with a reduced model of "
+                            "the whole page. A scroll on it acts at the "
+                            "middle of the page."),
+          "", "false", true },
+
+        { "application/@EnableTranslucentPanels", SettingsSchema::Bool, "appearance",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Translucent menus, panels and dialogs"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Blurs what is behind them where the system can (Windows 10 1803 and later)."),
+          "", "false", false },
+
+        { "application/@EnableTransparentWindow", SettingsSchema::Bool, "appearance",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Translucent window"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Shows what is behind the window, blurred, through it; web pages stay opaque (Windows)."),
+          "", "false", true,
+          "application/@EnableMainWindowRhi=false|application/@GraphicsApi=OpenGL" },
 
         { "application/@EnableFramelessWindow", SettingsSchema::Bool, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Draw the window frame in the application"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "Replaces the system's title bar with the application's own."),
-          "", "false", true },
+          "", "", "false", true },
 
         { "application/@PurgeView", SettingsSchema::Bool, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Give the page its own window"),
@@ -43,14 +60,6 @@ namespace {
         { "application/@PurgeReceiver", SettingsSchema::Bool, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Give the command line its own window"),
           "", "", "false", true },
-
-        { "application/@Viewport", SettingsSchema::Choice, "appearance",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Tab list drawing surface"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "What the tab list and the access key labels are drawn on; the "
-              "page is not. 'GLWidget' and 'OpenGLWidget' are the same. Change "
-              "it only if they are drawn wrongly."),
-          "Widget|GLWidget|OpenGLWidget", "Widget", true },
 
         { "treebar/@EnableCloseButton", SettingsSchema::Bool, "tabs",
           QT_TRANSLATE_NOOP("SettingsSchema", "Close button on a tab"), "", "", "true", false },
@@ -68,6 +77,10 @@ namespace {
         { "treebar/@WheelClickToClose", SettingsSchema::Bool, "tabs",
           QT_TRANSLATE_NOOP("SettingsSchema", "Middle click closes a tab"), "", "", "true", false },
 
+        { "treebar/@EnableFrameRate", SettingsSchema::Bool, "tabs",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Show the frame rate on the bar"),
+          "", "", "false", false },
+
         { "application/@AddChildViewNodePosition", SettingsSchema::Choice, "tabs",
           QT_TRANSLATE_NOOP("SettingsSchema", "Where a tab is inserted in a directory"), "",
           "RightEnd|LeftEnd|RightOfPrimary|LeftOfPrimary|"
@@ -82,9 +95,7 @@ namespace {
 
         { "application/@TraverseAllView", SettingsSchema::Bool, "tabs",
           QT_TRANSLATE_NOOP("SettingsSchema", "Next and previous walk the whole tree"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "Off, they stay among the siblings of the current tab."),
-          "", "false", false },
+          "", "", "false", false },
 
         { "application/@MaxViewCount", SettingsSchema::Int, "tabs",
           QT_TRANSLATE_NOOP("SettingsSchema", "Pages kept loaded at once"),
@@ -97,43 +108,29 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Hidden tabs"),
 #ifdef EDGEWEBVIEW
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "'Keep running': keeps running while hidden.\n"
-              "'Freeze': stops timers and animations.\n"
-              "'Discard': throws the page away and frees its render "
-              "process.\n"
-              "\n"
-              "'Freeze' and 'Discard' do nothing while a tab is "
-              "loading, playing sound, or sharing its process.\n"
+              "'Freeze' and 'Discard' do nothing while a tab is loading, playing "
+              "sound, or sharing its process.\n"
               "An Edge view treats 'Discard' as 'Freeze'."),
 #else
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "'Keep running': keeps running while hidden.\n"
-              "'Freeze': stops timers and animations.\n"
-              "'Discard': throws the page away and frees its render "
-              "process.\n"
-              "\n"
-              "'Freeze' and 'Discard' do nothing while a tab is "
-              "loading, playing sound, or sharing its process."),
+              "'Freeze' and 'Discard' do nothing while a tab is loading, playing "
+              "sound, or sharing its process."),
 #endif
           "Active|Frozen|Discarded", "Active", false },
 
         { "application/@EnableAutoLoad", SettingsSchema::Bool, "tabs",
           QT_TRANSLATE_NOOP("SettingsSchema", "Load tabs ahead in the background"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Only tabs whose directory setting 'Auto load' is on, and only "
-              "while 'Hidden tabs' above is 'Keep running'."),
-          "", "true", false },
+              "Only tabs whose directory setting 'Auto load' is on."),
+          "", "true", false, "webview/@SuspendHiddenViews=Active" },
 
         { "application/@AutoLoadInterval", SettingsSchema::Int, "tabs",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Load one tab every (ms)"), "", "", "1000", false },
+          QT_TRANSLATE_NOOP("SettingsSchema", "Load one tab every (ms)"), "", "", "1000", false,
+          "application/@EnableAutoLoad=true" },
 
         { "application/@MaxTrashEntryCount", SettingsSchema::Int, "tabs",
           QT_TRANSLATE_NOOP("SettingsSchema", "Entries kept in the wastebasket"),
-          "", "", "100", false },
-
-        { "treebar/@EnableFrameRate", SettingsSchema::Bool, "tabs",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Show the frame rate on the bar"),
-          "", "", "false", false },
+          "", "", "500", false },
 
         { "gadgets/thumblist/@NodeCollectionType", SettingsSchema::Choice, "gadgets",
           QT_TRANSLATE_NOOP("SettingsSchema", "Display type"),
@@ -150,39 +147,37 @@ namespace {
         { "gadgets/thumblist/@EnableAnimation", SettingsSchema::Bool, "gadgets",
           QT_TRANSLATE_NOOP("SettingsSchema", "Animate the tab list"), "", "", "true", false },
 
+        { "gadgets/thumblist/@EnableBackdropBlur", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Blur the page behind the tab list"),
+          "", "", "true", false },
+
         { "gadgets/thumblist/@EnableInPlaceNotifier", SettingsSchema::Bool, "gadgets",
           QT_TRANSLATE_NOOP("SettingsSchema", "Show a panel of dates and URLs"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "Glass style only."),
-          "", "true", true },
-
-        { "gadgets/thumblist/@EnableHoveredSpotLight", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Join a hovered thumbnail to its title"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "Glass style only."),
-          "", "true", true },
-
-        { "gadgets/thumblist/@EnablePrimarySpotLight", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Join the current thumbnail to its title"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "Glass style only."),
-          "", "false", true },
-
-        { "gadgets/thumblist/@EnableLoadedSpotLight", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Join every loaded thumbnail to its title"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "Glass style only."),
-          "", "false", false },
-
-        { "gadgets/thumblist/@RightClickToRenameNode", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Right click renames"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "Glass style only."),
-          "", "false", false },
-
-        { "gadgets/thumblist/@ScrollToChangeDirectory", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Wheel changes directory"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "Glass style only."),
-          "", "false", false },
+          "", "", "true", true, "gadgets/@Style=GlassStyle" },
 
         { "gadgets/thumblist/@EnableFrameRate", SettingsSchema::Bool, "gadgets",
           QT_TRANSLATE_NOOP("SettingsSchema", "Show the frame rate on the tab list"),
           "", "", "false", false },
+
+        { "gadgets/thumblist/@EnableHoveredSpotLight", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Join a hovered thumbnail to its title"),
+          "", "", "true", true, "gadgets/@Style=GlassStyle" },
+
+        { "gadgets/thumblist/@EnablePrimarySpotLight", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Join the current thumbnail to its title"),
+          "", "", "false", true, "gadgets/@Style=GlassStyle" },
+
+        { "gadgets/thumblist/@EnableLoadedSpotLight", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Join every loaded thumbnail to its title"),
+          "", "", "false", false, "gadgets/@Style=GlassStyle" },
+
+        { "gadgets/thumblist/@RightClickToRenameNode", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Right click renames"),
+          "", "", "false", false, "gadgets/@Style=GlassStyle" },
+
+        { "gadgets/thumblist/@ScrollToChangeDirectory", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Wheel changes directory"),
+          "", "", "false", false, "gadgets/@Style=GlassStyle" },
 
         { "webview/@OpenCommandOperation", SettingsSchema::Choice, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Where a link opens"), "",
@@ -198,6 +193,10 @@ namespace {
               "the address. On, the rewind and fast forward buttons are hidden."),
           "", "false", false },
 
+        { "webview/preferences/BackForwardCacheEnabled", SettingsSchema::Bool, "page",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Keep the previous page in memory"),
+          "", "", "false", false },
+
         { "webview/@ActivateNewViewDefault", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Switch to a newly opened tab"),
           "", "", "true", false },
@@ -210,19 +209,6 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Dragging a link out downloads it"),
           "", "", "false", false },
 
-        { "webview/@EnableSingleKeyShortcut", SettingsSchema::Bool, "page",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Shortcuts on a single key"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "A letter or symbol pressed without Ctrl or Alt runs its action. "
-              "Off, the page gets the key."),
-          "", "false", true },
-
-        { "webview/@EnableMouseGesture", SettingsSchema::Bool, "page",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Mouse gestures"), "", "", "true", false },
-
-        { "webview/@EnableDragGesture", SettingsSchema::Bool, "page",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Super drag"), "", "", "false", false },
-
         { "webview/preferences/SpatialNavigationEnabled", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Arrow keys move between links"),
           "", "", "false", false },
@@ -234,13 +220,13 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Focus the page when it navigates"),
           "", "", "false", false },
 
-        { "application/@EnableMiniMap", SettingsSchema::Bool, "page",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Show the minimap scroll bar"),
+        { "network/@SpellCheckLanguages", SettingsSchema::TextList, "page",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Spell checking dictionaries"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-                            "A reduced model of the whole page. A scroll "
-                            "on the minimap acts at the middle of the "
-                            "page."),
-          "", "false", true },
+              "One name per line, as the '.bdic' file next to the executable "
+              "is called without its extension ('en-US'). Empty turns spell "
+              "checking off."),
+          "", "", true },
 
         { "webview/preferences/ShowScrollBars", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Show scroll bars"), "", "", "true", false },
@@ -256,6 +242,10 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Allow a page to go full screen"),
           "", "", "true", false },
 
+        { "webview/preferences/PlaybackRequiresUserGesture", SettingsSchema::Bool, "page",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Media needs a click before it plays"),
+          "", "", "true", false },
+
         { "webview/preferences/AutoLoadImages", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Load images"), "", "", "true", false },
 
@@ -267,6 +257,12 @@ namespace {
 
         { "webview/preferences/PdfViewerEnabled", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Show PDFs in the page"), "", "", "true", false },
+
+        { "webview/@InspectorInMainWindow", SettingsSchema::Bool, "page",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Open the inspector beside the page"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Takes effect the next time the inspector is opened."),
+          "", "true", false },
 
         { "webview/font/StandardFont", SettingsSchema::Text, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Standard font"), "", "", "", false },
@@ -283,14 +279,6 @@ namespace {
 
         { "webview/font/MinimumFontSize", SettingsSchema::Int, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Minimum font size"), "", "", "0", false },
-
-        { "network/@SpellCheckLanguages", SettingsSchema::TextList, "page",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Spell checking dictionaries"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "One name per line, as the '.bdic' file next to the executable "
-              "is called without its extension ('en-US'). Empty turns spell "
-              "checking off."),
-          "", "", true },
 
         { "webview/preferences/JavascriptEnabled", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "JavaScript"), "", "", "true", false },
@@ -315,10 +303,6 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Allow a page to capture the screen"),
           "", "", "false", false },
 
-        { "webview/preferences/PlaybackRequiresUserGesture", SettingsSchema::Bool, "page",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Media needs a click before it plays"),
-          "", "", "true", false },
-
         { "webview/preferences/TouchEventsApiEnabled", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Tell pages this machine has a touch screen"),
           QT_TRANSLATE_NOOP("SettingsSchema",
@@ -332,11 +316,7 @@ namespace {
 
         { "webview/@SavePageFormat", SettingsSchema::Choice, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "How a page is saved"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "'One .mhtml file' has everything in it. '.html and a folder of "
-              "its files' is the page beside a folder of what it refers to. "
-              "'.html only' is the markup alone."),
-          "MimeHtmlSaveFormat|CompleteHtmlSaveFormat|SingleHtmlSaveFormat",
+          "", "MimeHtmlSaveFormat|CompleteHtmlSaveFormat|SingleHtmlSaveFormat",
           "MimeHtmlSaveFormat", false },
 
         { "webview/preferences/PrintElementBackgrounds", SettingsSchema::Bool, "page",
@@ -349,20 +329,6 @@ namespace {
         { "webview/preferences/PreferCSSMarginsForPrinting", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Let the page choose the printed margins"),
           "", "", "false", false },
-
-        { "webview/@InspectorInMainWindow", SettingsSchema::Bool, "page",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Open the inspector beside the page"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "A pane of this window instead of a window of its own. Takes "
-              "effect the next time the inspector is opened."),
-          "", "true", false },
-
-        { "webview/preferences/BackForwardCacheEnabled", SettingsSchema::Bool, "page",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Keep the previous page in memory"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "Going back then shows the page as it was, without loading it "
-              "again."),
-          "", "false", false },
 
         { "gadgets/accesskey/@EnableMultiStroke", SettingsSchema::Bool, "accesskey",
           QT_TRANSLATE_NOOP("SettingsSchema", "Allow multi-stroke labels"),
@@ -377,8 +343,7 @@ namespace {
 
         { "gadgets/accesskey/@AccessKeyCustomSequence", SettingsSchema::Text, "accesskey",
           QT_TRANSLATE_NOOP("SettingsSchema", "Custom key sequence"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "Used when the mode above is 'Custom'."),
-          "", "", false },
+          "", "", "", false },
 
         { "gadgets/accesskey/@AccessKeyAction", SettingsSchema::Choice, "accesskey",
           QT_TRANSLATE_NOOP("SettingsSchema", "What choosing a link does"), "",
@@ -390,23 +355,48 @@ namespace {
         { "gadgets/accesskey/@AccessKeySelectBlockMethod", SettingsSchema::Choice, "accesskey",
           QT_TRANSLATE_NOOP("SettingsSchema", "How a block of links is chosen"), "",
           "Number|ShiftedChar|CtrledChar|AltedChar|MetaChar", "Number", false,
-          "gadgets/accesskey/@EnableMultiStroke", false },
+          "gadgets/accesskey/@EnableMultiStroke=false" },
 
         { "gadgets/accesskey/@AccessKeySortOrientation", SettingsSchema::Choice, "accesskey",
           QT_TRANSLATE_NOOP("SettingsSchema", "Order the links are labelled in"), "",
           "Vertical|Horizontal", "Vertical", false },
 
+        { "webview/@EnableSingleKeyShortcut", SettingsSchema::Bool, "input",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Shortcuts on a single key"),
+          "", "", "false", true },
+
+        { "webview/@EnableMouseGesture", SettingsSchema::Bool, "input",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Mouse gestures"), "", "", "true", false },
+
+        { "webview/@EnableDragGesture", SettingsSchema::Bool, "input",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Super drag"), "", "", "false", false },
+
+        { "application/@DownloadPolicy", SettingsSchema::Choice, "downloads",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Where downloads go"), "",
+          "Undefined|FixedLocale|DownloadFolder|AskForEachDownload",
+          "Undefined", false },
+
+        { "application/@FileSaveDirectory", SettingsSchema::Directory, "downloads",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Download folder"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Replaced by the folder a file was last saved to."),
+          "", "", false, "", "folder" },
+
+        { "application/@FileOpenDirectory", SettingsSchema::Directory, "downloads",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Folder a file picker opens in"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Replaced by the folder a file was last chosen from."),
+          "", "", false, "", "folder" },
+
         { "localview/@MediaVolume", SettingsSchema::Int, "files",
           QT_TRANSLATE_NOOP("SettingsSchema", "Volume"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "0 to 100. The up and down arrows over a playing file change it."),
+              "0 to 100."),
           "", "50", false },
 
         { "localview/@AutoPlayMedia", SettingsSchema::Bool, "files",
           QT_TRANSLATE_NOOP("SettingsSchema", "Start playing when a file is opened"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "Off, the file opens paused and the space bar starts it."),
-          "", "true", false },
+          "", "", "true", false },
 
         { "application/@ExternalCommands", SettingsSchema::TextList, "commands",
           QT_TRANSLATE_NOOP("SettingsSchema", "Programs to open a page with"),
@@ -423,28 +413,28 @@ namespace {
               "One unpacked extension per line: the folder its 'manifest.json' "
               "sits in. A line starting with '#' is ignored. Manifest version 3 "
               "only.\n"
-              "Extensions work in the WebEngine and Edge views, except in "
-              "private profiles.\n"
-              "Use the address bar's Extensions button to enable, disable, pin "
-              "or open one.\n"
-              "Reload open pages after a change."),
-          "", "", false, nullptr, false, "chrome-extension" },
+              "Not in private profiles. Reload open pages after a change."),
+          "", "", false, "", "chrome-extension" },
 
         { "network/@ExtensionShims", SettingsSchema::Bool, "extensions",
           QT_TRANSLATE_NOOP("SettingsSchema", "Extension compatibility layer (WebEngineView / Edge)"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "WebEngine views leave out parts of the extension platform, so "
-              "some extensions load and do nothing.\n"
-              "On, vanilla loads a copy of each extension with a script added "
-              "that fills them in. The Edge view uses the same copy for its "
-              "tabs.\n"
-              "The folder you registered is not changed; the copy is kept in "
-              "vanilla's data directory.\n"
-              "An extension the layer cannot help is loaded as it is, and its "
-              "row says why.\n"
-              "Some features, such as an extension's page shown inside a web "
-              "page, need a WebEngine built with vanilla's patches."),
+              "WebEngine views leave out parts of the extension platform. On, "
+              "each extension is loaded as a copy with a script added that fills "
+              "them in; the folder you registered is not changed.\n"
+              "An extension the layer cannot help is loaded as it is, and its row "
+              "says why."),
           "", "true", true },
+
+        { "network/@ExtensionTabScope", SettingsSchema::Choice, "extensions",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Tabs shown to extensions"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Which tabs an extension's tab list, tab events and tab "
+              "actions cover. Bookmarks and history still cover the whole "
+              "tree.\n"
+              "Content scripts still run on every page they match, so this "
+              "does not hide pages from an extension."),
+          "All|CurrentDirectory|Loaded", "All", false },
 
         { "network/@UnloadHangoutsExtension", SettingsSchema::Bool, "extensions",
           QT_TRANSLATE_NOOP("SettingsSchema", "Remove the built-in Google Hangouts extension"),
@@ -457,48 +447,36 @@ namespace {
         { "application/@SaveSessionCookie", SettingsSchema::Bool, "sitedata",
           QT_TRANSLATE_NOOP("SettingsSchema", "Keep session cookies between launches"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Cookies a site sets to last only until the browser closes, such "
-              "as a login, are saved too and used again at the next launch."),
+              "Cookies meant to last only until the browser closes, such as a "
+              "login, are kept too."),
           "", "false", true },
 
         { "network/@RememberPermissions", SettingsSchema::Bool, "sitedata",
           QT_TRANSLATE_NOOP("SettingsSchema", "Remember what a site was allowed"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "An answer to a permission request is kept for that site instead "
-              "of being asked for again at the next launch."),
-          "", "true", true },
+          "", "", "true", true },
 
 #if defined(EDGEWEBVIEW) || defined(VANILLA_PASSWORDS)
         { "webview/@SavePasswords", SettingsSchema::Bool, "sitedata",
           QT_TRANSLATE_NOOP("SettingsSchema", "Offer to save passwords"),
 #  if defined(EDGEWEBVIEW) && defined(VANILLA_PASSWORDS) && defined(VANILLA_QUICK_PASSWORDS)
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "When a sign-in form is sent, the view asks whether to save the "
-              "password.\n"
-              "An Edge view fills it in the next time. In a WebEngine view "
-              "(Quick too), click the field and choose the account."),
+              "An Edge view fills it in the next time. In a WebEngine view (Quick "
+              "too), click the field and choose the account."),
 #  elif defined(EDGEWEBVIEW) && defined(VANILLA_PASSWORDS)
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "When a sign-in form is sent, the view asks whether to save the "
-              "password.\n"
-              "An Edge view fills it in the next time. In a WebEngine view, "
-              "click the field and choose the account.\n"
+              "An Edge view fills it in the next time. In a WebEngine view, click "
+              "the field and choose the account.\n"
               "Quick views do not save passwords."),
 #  elif defined(EDGEWEBVIEW)
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "When a sign-in form is sent, an Edge view asks whether to save "
-              "the password, and fills it in the next time.\n"
-              "Other views do not save passwords."),
+              "An Edge view fills it in the next time. Other views do not save "
+              "passwords."),
 #  elif defined(VANILLA_QUICK_PASSWORDS)
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "When a sign-in form is sent, a WebEngine view (Quick too) asks "
-              "whether to save the password. Click the field and choose the "
-              "account to fill it in."),
+              "Click the field and choose the account to fill it in."),
 #  else
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "When a sign-in form is sent, a WebEngine view asks whether to "
-              "save the password. Click the field and choose the account to "
-              "fill it in.\n"
+              "Click the field and choose the account to fill it in.\n"
               "Quick views do not save passwords."),
 #  endif
           "", "true", false },
@@ -521,30 +499,6 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Zero lets the engine decide."),
           "", "0", true },
 
-        { "application/@DownloadPolicy", SettingsSchema::Choice, "network",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Where downloads go"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "'Not decided yet' asks at the next download which of the other "
-              "three to use. 'The folder below' and 'The system's Downloads "
-              "folder' both save without asking; the latter, chosen at that "
-              "question, also points the folder below at the system's Downloads."),
-          "Undefined|FixedLocale|DownloadFolder|AskForEachDownload",
-          "Undefined", false },
-
-        { "application/@FileSaveDirectory", SettingsSchema::Directory, "network",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Download folder"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "Replaced by the folder a file was last saved to. Empty means the "
-              "system's Downloads."),
-          "", "", false },
-
-        { "application/@FileOpenDirectory", SettingsSchema::Directory, "network",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Folder a file picker opens in"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "Replaced by the folder a file was last chosen from. Empty means "
-              "the desktop."),
-          "", "", false },
-
         { "network/@BlockedUrlPatterns", SettingsSchema::TextList, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Requests never made"),
           QT_TRANSLATE_NOOP("SettingsSchema",
@@ -563,14 +517,27 @@ namespace {
         { "network/@SendDoNotTrack", SettingsSchema::Bool, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Ask not to be tracked"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Adds the 'DNT' and 'Sec-GPC' headers. Whether a site honours "
-              "them is up to the site."),
+              "Adds the 'DNT' and 'Sec-GPC' headers."),
           "", "false", false },
+
+#ifdef EDGEWEBVIEW
+        { "webview/@TrackingPrevention", SettingsSchema::Choice, "network",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Tracking prevention"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Edge views only. Strict may break parts of some sites."),
+          "None|Basic|Balanced|Strict", "Balanced", false },
+
+        { "webview/@SmartScreen", SettingsSchema::Bool, "network",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Microsoft Defender SmartScreen"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Edge views only. Sites and downloads are checked against "
+              "Microsoft's list of unsafe ones."),
+          "", "true", false },
+#endif
 
         { "application/@EnableGoogleSuggest", SettingsSchema::Bool, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Suggestions from Google while typing a URL"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "Sends what is typed in the address bar to Google."),
-          "", "false", false },
+          "", "", "false", false },
 
         { "application/@SslErrorPolicy", SettingsSchema::Choice, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "On a certificate error"), "",
@@ -581,37 +548,31 @@ namespace {
         { "application/@AllowedHosts", SettingsSchema::TextList, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Hosts whose certificate errors are accepted"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Used only while 'On a certificate error' is 'Ask once per host'. "
               "One per line. Answering its question adds a line."),
-          "", "", false },
+          "", "", false, "application/@SslErrorPolicy=AskForEachHost" },
 
         { "application/@BlockedHosts", SettingsSchema::TextList, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Hosts whose certificate errors are refused"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Used only while 'On a certificate error' is 'Ask once per host'. "
               "One per line. Answering its question adds a line."),
-          "", "", false },
+          "", "", false, "application/@SslErrorPolicy=AskForEachHost" },
 
         { "application/@AllowedCertificates", SettingsSchema::TextList, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Certificates always allowed"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Used only while 'On a certificate error' is 'Ask once per certificate'. "
               "One host:SHA-256 identity per line. Remove one to ask again."),
-          "", "", false },
+          "", "", false, "application/@SslErrorPolicy=AskForEachCertificate" },
 
         { "application/@BlockedCertificates", SettingsSchema::TextList, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Certificates always blocked"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Used only while 'On a certificate error' is 'Ask once per certificate'. "
               "One host:SHA-256 identity per line. Remove one to ask again."),
-          "", "", false },
+          "", "", false, "application/@SslErrorPolicy=AskForEachCertificate" },
 
         { "network/@SecureDnsMode", SettingsSchema::Choice, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "DNS over HTTPS"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "'The system's resolver' asks the machine's resolver. The other "
-              "two use the servers below, falling back to the system or "
-              "refusing to."),
+              "The two secure modes use the servers below."),
           "SystemOnly|SecureWithFallback|SecureOnly", "SystemOnly", true },
 
         { "network/@SecureDnsServers", SettingsSchema::TextList, "network",
@@ -619,36 +580,38 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema",
               "One URI template per line, for example "
               "'https://dns.google/dns-query{?dns}'."),
-          "", "", true },
+          "", "", true,
+          "network/@SecureDnsMode=SecureWithFallback|network/@SecureDnsMode=SecureOnly" },
 
         { "application/@EnableAutoSave", SettingsSchema::Bool, "session",
           QT_TRANSLATE_NOOP("SettingsSchema", "Save while running"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Saves the tab tree, the settings, cookies and site icons at the "
-              "interval below, so that a crash loses less. They are saved on "
-              "quitting either way."),
+              "At the interval below, so that a crash loses less. Everything is "
+              "saved on quitting either way."),
           "", "true", false },
 
         { "application/@AutoSaveInterval", SettingsSchema::Int, "session",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Save every (ms)"), "", "", "300000", false },
+          QT_TRANSLATE_NOOP("SettingsSchema", "Save every (ms)"), "", "", "300000", false,
+          "application/@EnableAutoSave=true" },
 
         { "application/@MaxBackUpGenerationCount", SettingsSchema::Int, "session",
           QT_TRANSLATE_NOOP("SettingsSchema", "Backups kept"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "At each launch the saved files are copied with the date in "
-              "their names, next to them in the data folder. Older copies "
-              "than this many are deleted."),
+              "Made at each launch, next to the saved files in the data folder. "
+              "Older copies than this many are deleted."),
           "", "5", false },
 
         { "application/@GraphicsApi", SettingsSchema::Choice, "engine",
           QT_TRANSLATE_NOOP("SettingsSchema", "Graphics API (WebEngineView)"),
 #if defined(Q_OS_WIN)
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "'Auto': Direct3D 11.\n"
-              "'OpenGL': choose this if the screen flickers.\n"
+              "'OpenGL': keeps the translucent window after a WebEngineView tab "
+              "opens.\n"
+              "'Auto': Direct3D 11. Choose this if the screen stays blank or is "
+              "slow with OpenGL.\n"
               "\n"
-              "A choice this OS cannot run is treated as 'Auto'. The "
-              "environment variable QSG_RHI_BACKEND wins when it is set."),
+              "A choice this OS cannot run is treated as 'Auto'. The environment "
+              "variable QSG_RHI_BACKEND wins when it is set."),
 #elif defined(Q_OS_MACOS)
           QT_TRANSLATE_NOOP("SettingsSchema",
               "'Auto': Metal.\n"
@@ -663,7 +626,13 @@ namespace {
               "A choice this OS cannot run is treated as 'Auto'. The "
               "environment variable QSG_RHI_BACKEND wins when it is set."),
 #endif
-          "Auto|Software|OpenGL|Direct3D11|Direct3D12|Vulkan|Metal", "Auto", true },
+          "Auto|Software|OpenGL|Direct3D11|Direct3D12|Vulkan|Metal",
+#if defined(Q_OS_WIN)
+          "OpenGL",
+#else
+          "Auto",
+#endif
+          true },
 
         { "application/@EnableMainWindowRhi", SettingsSchema::Bool, "engine",
           QT_TRANSLATE_NOOP("SettingsSchema", "Draw the main window with the graphics API too"),
@@ -676,6 +645,14 @@ namespace {
               "application. Not needed when the graphics API is 'Software'."),
           "", "false", true },
 
+        { "application/@Viewport", SettingsSchema::Choice, "engine",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Tab list drawing surface"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "What the tab list and the access key labels are drawn on; the "
+              "page is not. 'GLWidget' and 'OpenGLWidget' are the same.\n"
+              "Change it only if they are drawn wrongly."),
+          "Widget|GLWidget|OpenGLWidget", "Widget", true },
+
         { "application/@ChromiumFlags", SettingsSchema::TextList, "engine",
           QT_TRANSLATE_NOOP("SettingsSchema", "Chromium switches"),
           QT_TRANSLATE_NOOP("SettingsSchema",
@@ -686,6 +663,40 @@ namespace {
               "A switch it does not accept can stop it from starting; to "
               "recover, edit 'data/config.json'."),
           "", "", true },
+    };
+
+    const SettingsSchema::Group GROUPS[] = {
+        { "treebar/@EnableCloseButton",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Tab bar") },
+        { "application/@AddChildViewNodePosition",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Tree") },
+        { "application/@MaxViewCount",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Loading and limits") },
+
+        { "webview/@OpenCommandOperation",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Links and new tabs") },
+        { "webview/preferences/SpatialNavigationEnabled",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Keys and typing") },
+        { "webview/preferences/ShowScrollBars",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Display") },
+        { "webview/font/StandardFont",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Fonts") },
+        { "webview/preferences/JavascriptEnabled",
+          QT_TRANSLATE_NOOP("SettingsSchema", "What a page may do") },
+        { "webview/@SavePageFormat",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Saving and printing") },
+
+        { "webview/@EnableSingleKeyShortcut",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Gestures and single keys") },
+        { "application/@DownloadPolicy",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Where files go") },
+
+        { "network/@BlockedUrlPatterns",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Requests") },
+        { "application/@SslErrorPolicy",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Certificates") },
+        { "network/@SecureDnsMode",
+          QT_TRANSLATE_NOOP("SettingsSchema", "DNS") },
     };
 
     QList<SettingsSchema::Item> BuildItems(){
@@ -702,6 +713,17 @@ namespace SettingsSchema {
 const QList<Item> &Items(){
     static const QList<Item> items = BuildItems();
     return items;
+}
+
+const QList<Group> &Groups(){
+    static const QList<Group> groups = [](){
+        QList<Group> list;
+        const int count = sizeof(GROUPS) / sizeof(GROUPS[0]);
+        list.reserve(count);
+        for(int i = 0; i < count; i++) list << GROUPS[i];
+        return list;
+    }();
+    return groups;
 }
 
 const Item *Find(const QString &key){
@@ -744,6 +766,8 @@ QList<QPair<QString, QString> > Categories(){
     list << qMakePair(QStringLiteral("passwords"),
                       QCoreApplication::translate("SettingsSchema", "Saved passwords"));
 #endif
+    list << qMakePair(QStringLiteral("permissions"),
+                      QCoreApplication::translate("SettingsSchema", "Site permissions"));
     list << qMakePair(QStringLiteral("network"),
                       QCoreApplication::translate("SettingsSchema", "Network"));
     list << qMakePair(QStringLiteral("session"),
@@ -753,11 +777,23 @@ QList<QPair<QString, QString> > Categories(){
     return list;
 }
 
+QStringList CategoriesBeginningARun(){
+    return QStringList()
+        << QStringLiteral("accesskey")
+        << QStringLiteral("downloads")
+        << QStringLiteral("extensions")
+        << QStringLiteral("session");
+}
+
 const QList<ChoiceLabel> &ChoiceLabels(){
     static const QList<ChoiceLabel> table = {
         { "application/@ColorScheme", "Auto",  QT_TRANSLATE_NOOP("SettingsSchema", "Auto") },
         { "application/@ColorScheme", "Light", QT_TRANSLATE_NOOP("SettingsSchema", "Light") },
         { "application/@ColorScheme", "Dark",  QT_TRANSLATE_NOOP("SettingsSchema", "Dark") },
+
+        { "network/@ExtensionTabScope", "All",              QT_TRANSLATE_NOOP("SettingsSchema", "All tabs") },
+        { "network/@ExtensionTabScope", "CurrentDirectory", QT_TRANSLATE_NOOP("SettingsSchema", "Tabs in the current tab's directory") },
+        { "network/@ExtensionTabScope", "Loaded",           QT_TRANSLATE_NOOP("SettingsSchema", "Loaded tabs") },
 
         { "gadgets/@Style", "FlatStyle",  QT_TRANSLATE_NOOP("SettingsSchema", "Flat") },
         { "gadgets/@Style", "GlassStyle", QT_TRANSLATE_NOOP("SettingsSchema", "Glass") },
@@ -889,6 +925,13 @@ const QList<ChoiceLabel> &ChoiceLabels(){
         { "application/@SslErrorPolicy", "AskForEachCertificate",
           QT_TRANSLATE_NOOP("SettingsSchema", "Ask once per certificate") },
 
+#ifdef EDGEWEBVIEW
+        { "webview/@TrackingPrevention", "None",     QT_TRANSLATE_NOOP("SettingsSchema", "Off") },
+        { "webview/@TrackingPrevention", "Basic",    QT_TRANSLATE_NOOP("SettingsSchema", "Basic") },
+        { "webview/@TrackingPrevention", "Balanced", QT_TRANSLATE_NOOP("SettingsSchema", "Balanced") },
+        { "webview/@TrackingPrevention", "Strict",   QT_TRANSLATE_NOOP("SettingsSchema", "Strict") },
+#endif
+
         { "network/@SecureDnsMode", "SystemOnly",
           QT_TRANSLATE_NOOP("SettingsSchema", "The system's resolver") },
         { "network/@SecureDnsMode", "SecureWithFallback",
@@ -932,6 +975,27 @@ namespace {
     }
 }
 
+static QString LabelOfChoice(const Item &item, const QString &choice){
+    foreach(const ChoiceLabel &line, ChoiceLabels()){
+        if(QLatin1String(line.key) == QLatin1String(item.key) &&
+           QLatin1String(line.choice) == choice)
+            return QCoreApplication::translate("SettingsSchema", line.label);
+    }
+    return choice;
+}
+
+QList<QPair<QString, QString> > AppliesWhenClauses(const Item &item){
+    QList<QPair<QString, QString> > clauses;
+    if(!item.appliesWhen || !item.appliesWhen[0]) return clauses;
+    foreach(const QString &clause,
+            QString::fromLatin1(item.appliesWhen).split(QLatin1Char('|'))){
+        const int equals = clause.indexOf(QLatin1Char('='));
+        clauses << qMakePair(clause.left(equals),
+                             equals < 0 ? QString() : clause.mid(equals + 1));
+    }
+    return clauses;
+}
+
 QVariant Fallback(const Item &item){
     const QString text = QString::fromLatin1(item.fallback);
     switch(item.type){
@@ -961,9 +1025,11 @@ QVariant FromJson(const Item &item, const QJsonValue &value){
         return QVariant(text);
     }
     case Text:
-    case Directory:
         if(!value.isString()) return QVariant();
         return QVariant(value.toString());
+    case Directory:
+        if(!value.isString()) return QVariant();
+        return QVariant(QDir::fromNativeSeparators(value.toString()));
     case TextList: {
         if(!value.isArray()) return QVariant();
         QStringList list;
@@ -991,10 +1057,21 @@ QJsonValue ToJson(const Item &item, const QVariant &value){
             return QJsonValue(QString::fromLatin1(item.fallback));
         return QJsonValue(canonical);
     }
-    case Text:
-    case Directory: return QJsonValue(value.value<QString>());
+    case Text:      return QJsonValue(value.value<QString>());
+    case Directory: return QJsonValue(QDir::toNativeSeparators(value.value<QString>()));
     }
     return QJsonValue();
+}
+
+QString EmptyDirectory(const Item &item){
+    const QLatin1String key(item.key);
+    QStandardPaths::StandardLocation where;
+    if(key == QLatin1String("application/@FileSaveDirectory"))
+        where = QStandardPaths::DownloadLocation;
+    else if(key == QLatin1String("application/@FileOpenDirectory"))
+        where = QStandardPaths::DesktopLocation;
+    else return QString();
+    return QDir::toNativeSeparators(QStandardPaths::writableLocation(where));
 }
 
 QJsonObject Describe(){
@@ -1002,37 +1079,70 @@ QJsonObject Describe(){
 
     QJsonArray categories;
     const QList<QPair<QString, QString> > names = Categories();
+    const QStringList runs = CategoriesBeginningARun();
     for(int i = 0; i < names.length(); i++){
         QJsonObject category;
         category[QStringLiteral("name")]  = names[i].first;
         category[QStringLiteral("label")] = names[i].second;
+        if(runs.contains(names[i].first))
+            category[QStringLiteral("divider")] = true;
         categories.append(category);
     }
 
     QJsonArray items;
     const QList<Item> &table = Items();
+    const QList<Group> &headings = Groups();
+    const char *group = nullptr;
+    const char *category = nullptr;
     for(int i = 0; i < table.length(); i++){
         const Item &item = table[i];
         const QString key = QString::fromLatin1(item.key);
+
+        if(!category || QLatin1String(category) != QLatin1String(item.category)){
+            category = item.category;
+            group = nullptr;
+        }
+        for(int j = 0; j < headings.length(); j++){
+            if(QLatin1String(headings[j].key) == key){ group = headings[j].label; break; }
+        }
 
         QJsonObject object;
         object[QStringLiteral("key")]      = key;
         object[QStringLiteral("category")] = QString::fromLatin1(item.category);
         object[QStringLiteral("label")]    =
             QCoreApplication::translate("SettingsSchema", item.label);
+        if(group)
+            object[QStringLiteral("group")] =
+                QCoreApplication::translate("SettingsSchema", group);
         if(item.hint[0])
             object[QStringLiteral("hint")] =
                 QCoreApplication::translate("SettingsSchema", item.hint);
         if(item.needsRestart)
             object[QStringLiteral("needsRestart")] = true;
-        if(item.appliesWhenKey && item.appliesWhenKey[0]){
-            QJsonObject applies;
-            applies[QStringLiteral("key")]   = QString::fromLatin1(item.appliesWhenKey);
-            applies[QStringLiteral("value")] = item.appliesWhen;
+        const QList<QPair<QString, QString> > clauses = AppliesWhenClauses(item);
+        if(!clauses.isEmpty()){
+            QJsonArray applies;
+            for(const QPair<QString, QString> &clause : clauses){
+                QJsonObject clauseObject;
+                clauseObject[QStringLiteral("key")] = clause.first;
+                const Item *other = Find(clause.first);
+                if(other && other->type == Bool){
+                    clauseObject[QStringLiteral("value")] = clause.second == QStringLiteral("true");
+                } else {
+                    clauseObject[QStringLiteral("value")] = clause.second;
+                    clauseObject[QStringLiteral("label")] =
+                        other ? LabelOfChoice(*other, clause.second) : clause.second;
+                }
+                applies.append(clauseObject);
+            }
             object[QStringLiteral("appliesWhen")] = applies;
         }
         if(item.picker && item.picker[0])
             object[QStringLiteral("picker")] = QString::fromLatin1(item.picker);
+        if(item.type == Directory){
+            const QString empty = EmptyDirectory(item);
+            if(!empty.isEmpty()) object[QStringLiteral("placeholder")] = empty;
+        }
 
         switch(item.type){
         case Bool:      object[QStringLiteral("type")] = QStringLiteral("bool");      break;
@@ -1048,17 +1158,8 @@ QJsonObject Describe(){
                 QString::fromLatin1(item.choices).split(QLatin1Char('|'));
             object[QStringLiteral("choices")] = QJsonArray::fromStringList(choices);
             QJsonArray labels;
-            foreach(const QString &choice, choices){
-                QString label = choice;
-                foreach(const ChoiceLabel &line, ChoiceLabels()){
-                    if(QLatin1String(line.key) == QLatin1String(item.key) &&
-                       QLatin1String(line.choice) == choice){
-                        label = QCoreApplication::translate("SettingsSchema", line.label);
-                        break;
-                    }
-                }
-                labels.append(label);
-            }
+            foreach(const QString &choice, choices)
+                labels.append(LabelOfChoice(item, choice));
             object[QStringLiteral("choiceLabels")] = labels;
         }
 
@@ -1096,16 +1197,27 @@ QJsonObject PageStrings(){
         QCoreApplication::translate("SettingsPage", "Not saved");
     strings[QStringLiteral("restart")] =
         QCoreApplication::translate("SettingsPage", "restart");
-    strings[QStringLiteral("notUsedWhileOn")] =
-        QCoreApplication::translate("SettingsPage", "Not used while '%1' is on.");
-    strings[QStringLiteral("notUsedWhileOff")] =
-        QCoreApplication::translate("SettingsPage", "Not used while '%1' is off.");
+    strings[QStringLiteral("notUsedWhile")] =
+        QCoreApplication::translate("SettingsPage", "Not used while %1.");
+    strings[QStringLiteral("clauseOn")] =
+        QCoreApplication::translate("SettingsPage", "'%1' is on");
+    strings[QStringLiteral("clauseOff")] =
+        QCoreApplication::translate("SettingsPage", "'%1' is off");
+    strings[QStringLiteral("clauseNot")] =
+        QCoreApplication::translate("SettingsPage", "'%1' is not '%2'");
+    strings[QStringLiteral("clauseJoin")] =
+        QCoreApplication::translate("SettingsPage", " and ");
     strings[QStringLiteral("noMatch")] =
         QCoreApplication::translate("SettingsPage", "Nothing matches.");
     strings[QStringLiteral("loadFailed")] =
         QCoreApplication::translate("SettingsPage", "Could not load the settings: ");
     strings[QStringLiteral("openPasswords")] =
         QCoreApplication::translate("SettingsPage", "See the saved passwords");
+    strings[QStringLiteral("openPermissions")] =
+        QCoreApplication::translate("SettingsPage", "See the site permissions");
+    strings[QStringLiteral("autosave")] =
+        QCoreApplication::translate("SettingsPage",
+            "Changes are saved as they are made. Text is saved when its box is left.");
     return strings;
 }
 

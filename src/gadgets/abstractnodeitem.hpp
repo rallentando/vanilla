@@ -42,10 +42,6 @@ public:
     qreal RealBottom() const { return pos().y() + boundingRect().bottom();}
     qreal RealLeft()   const { return pos().x() + boundingRect().left();}
     qreal RealRight()  const { return pos().x() + boundingRect().right();}
-    QPointF RealTopLeft()     const { return pos() + boundingRect().topLeft();}
-    QPointF RealTopRight()    const { return pos() + boundingRect().topRight();}
-    QPointF RealBottomLeft()  const { return pos() + boundingRect().bottomLeft();}
-    QPointF RealBottomRight() const { return pos() + boundingRect().bottomRight();}
 
     void LockRect();
     void UnlockRect();

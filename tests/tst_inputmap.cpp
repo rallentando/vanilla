@@ -231,6 +231,95 @@ private slots:
         QVERIFY(!InputMap::IsSingleKey(QKeySequence()));
     }
 
+    static InputMap::KeyLayer Layer(const InputMap::KeyMap &map, bool singleKeys){
+        InputMap::KeyLayer layer;
+        layer.map = map;
+        layer.singleKeys = singleKeys;
+        return layer;
+    }
+
+    static QKeySequence Seq(const char *name){ return QKeySequence(QLatin1String(name)); }
+
+    void thekeyShownIsOneWhichFiresTheActionThere(){
+        InputMap::KeyMap application;
+        application[Seq("Alt+Left")]  = QStringLiteral("Back");
+        application[Seq("Backspace")] = QStringLiteral("Back");
+        application[Seq("Z")]         = QStringLiteral("Back");
+        application[Seq("F5")]        = QStringLiteral("Reload");
+        application[Seq("B")]         = QStringLiteral("Reload");
+        application[Seq("X")]         = QStringLiteral("Forward");
+
+        QHash<QString, QKeySequence> shown = InputMap::ShownKeys(InputMap::KeyLayers() << Layer(application, false));
+        QCOMPARE(shown.value(QStringLiteral("Back")),   Seq("Alt+Left"));
+        QCOMPARE(shown.value(QStringLiteral("Reload")), Seq("F5"));
+        QVERIFY(!shown.contains(QStringLiteral("Forward")));
+        QVERIFY(!shown.contains(QStringLiteral("Close")));
+
+        shown = InputMap::ShownKeys(InputMap::KeyLayers() << Layer(application, true));
+        QCOMPARE(shown.value(QStringLiteral("Back")),    Seq("Alt+Left"));
+        QCOMPARE(shown.value(QStringLiteral("Forward")), Seq("X"));
+    }
+
+    void akeyAnEarlierTableHoldsIsNotShownForAlaterOne(){
+        InputMap::KeyMap views;
+        views[Seq("Ctrl+R")] = QStringLiteral("Stop");
+        views[Seq("Q")]      = QStringLiteral("NoAction");
+        InputMap::KeyMap application;
+        application[Seq("Ctrl+R")] = QStringLiteral("Reload");
+        application[Seq("F5")]     = QStringLiteral("Reload");
+        application[Seq("Q")]      = QStringLiteral("Close");
+
+        QHash<QString, QKeySequence> shown = InputMap::ShownKeys(InputMap::KeyLayers()
+                                                                 << Layer(views, false) << Layer(application, false));
+        QCOMPARE(shown.value(QStringLiteral("Reload")), Seq("F5"));
+        QCOMPARE(shown.value(QStringLiteral("Stop")),   Seq("Ctrl+R"));
+        QVERIFY(!shown.contains(QStringLiteral("Close")));
+
+        shown = InputMap::ShownKeys(InputMap::KeyLayers() << Layer(views, true) << Layer(application, true));
+        QVERIFY(!shown.contains(QStringLiteral("Close")));
+        QCOMPARE(shown.value(QStringLiteral("NoAction")), Seq("Q"));
+
+        shown = InputMap::ShownKeys(InputMap::KeyLayers() << Layer(views, false) << Layer(application, true));
+        QCOMPARE(shown.value(QStringLiteral("Close")), Seq("Q"));
+    }
+
+    void amongSeveralKeysTheChordIsShown(){
+        InputMap::KeyMap map;
+        map[Seq("F5")]              = QStringLiteral("Reload");
+        map[Seq("Ctrl+R")]          = QStringLiteral("Reload");
+        map[Seq("Backspace")]       = QStringLiteral("Back");
+        map[Seq("Alt+Left")]        = QStringLiteral("Back");
+        map[Seq("X")]               = QStringLiteral("Forward");
+        map[Seq("Shift+Backspace")] = QStringLiteral("Forward");
+        map[Seq("Ctrl+Ins")]        = QStringLiteral("Copy");
+        map[Seq("Ctrl+C")]          = QStringLiteral("Copy");
+        map[Seq("Alt+F4")]          = QStringLiteral("Quit");
+        map[Seq("Ctrl+Q")]          = QStringLiteral("Quit");
+        map[Seq("V")]               = QStringLiteral("NextView");
+        map[Seq("M")]               = QStringLiteral("NextView");
+        map[Seq("Ctrl+K, Ctrl+V")]  = QStringLiteral("Paste");
+        map[Seq("P")]               = QStringLiteral("Paste");
+
+        const QHash<QString, QKeySequence> shown = InputMap::ShownKeys(InputMap::KeyLayers() << Layer(map, true));
+        QCOMPARE(shown.value(QStringLiteral("Reload")),   Seq("Ctrl+R"));
+        QCOMPARE(shown.value(QStringLiteral("Back")),     Seq("Alt+Left"));
+        QCOMPARE(shown.value(QStringLiteral("Forward")),  Seq("Shift+Backspace"));
+        QCOMPARE(shown.value(QStringLiteral("Copy")),     Seq("Ctrl+C"));
+        QCOMPARE(shown.value(QStringLiteral("Quit")),     Seq("Ctrl+Q"));
+        QCOMPARE(shown.value(QStringLiteral("NextView")), Seq("M"));
+        QCOMPARE(shown.value(QStringLiteral("Paste")),    Seq("P"));
+    }
+
+    void backtabIsShownAsShiftTab(){
+        QCOMPARE(InputMap::DisplayKey(Seq("Ctrl+Shift+Backtab")), Seq("Ctrl+Shift+Tab"));
+        QCOMPARE(InputMap::DisplayKey(Seq("Backtab")),            Seq("Shift+Tab"));
+        QCOMPARE(InputMap::DisplayKey(Seq("Alt+Backtab")),        Seq("Alt+Shift+Tab"));
+        QCOMPARE(InputMap::DisplayKey(Seq("Ctrl+Tab")),           Seq("Ctrl+Tab"));
+        QCOMPARE(InputMap::DisplayKey(Seq("Shift+?")),            Seq("Shift+?"));
+        QCOMPARE(InputMap::DisplayKey(Seq("Ctrl+K, Backtab")),    Seq("Ctrl+K, Shift+Tab"));
+        QCOMPARE(InputMap::DisplayKey(QKeySequence()),             QKeySequence());
+    }
+
     void amouseNameIsSpelledTheWayApressIsBuilt(){
         QString press;
         Application::AddModifiersToString(press, Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier);

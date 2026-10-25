@@ -154,10 +154,8 @@ public:
         return Action(Gadgets::StringToAction(Page::ActionToString(a)));
     }
 
-    PixmapItem *GetPixmapItem();
     VideoItem *GetVideoItem();
     QMediaPlayer *GetMediaPlayer();
-    QAudioOutput *GetAudioOutput();
 
     void ChangeMediaVolume(int diff);
 
@@ -257,8 +255,6 @@ public slots:
     void OnSetThis(WeakView) Q_DECL_OVERRIDE;
     void OnSetMaster(WeakView) Q_DECL_OVERRIDE;
     void OnSetSlave(WeakView) Q_DECL_OVERRIDE;
-    void OnSetJsObject(_View*) Q_DECL_OVERRIDE;
-    void OnSetJsObject(_Vanilla*) Q_DECL_OVERRIDE;
     void OnLoadStarted() Q_DECL_OVERRIDE;
     void OnLoadProgress(int) Q_DECL_OVERRIDE;
     void OnLoadFinished(bool) Q_DECL_OVERRIDE;

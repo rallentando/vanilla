@@ -1,6 +1,8 @@
 #include "switch.hpp"
 #include "const.hpp"
 #include "theme.hpp"
+#include "blurbehind.hpp"
+#include "devicescale.hpp"
 
 #include "extensionbar.hpp"
 
@@ -40,10 +42,12 @@
 
 class ExtensionWindow : public QWidget {
 public:
-    ExtensionWindow(QWidget *parent, Qt::WindowFlags flags)
+    ExtensionWindow(QWidget *parent, Qt::WindowFlags flags, bool translucent = false)
         : QWidget(parent, flags)
+        , m_Translucent(translucent)
     {
         setAttribute(Qt::WA_DeleteOnClose);
+        if(m_Translucent) setAttribute(Qt::WA_TranslucentBackground);
         ApplyTheme();
     }
     ~ExtensionWindow() Q_DECL_OVERRIDE {}
@@ -58,9 +62,24 @@ protected:
         Q_UNUSED(ev)
         QPainter painter(this);
         painter.setPen(Theme::Pen(Theme::PreviewBorder));
+        if(m_Translucent){
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.setBrush(Theme::Brush(Theme::PreviewBackgroundTranslucent));
+            const int radius = DeviceScale::FromDpi(DIALOG_CORNER_RADIUS, static_cast<int>(logicalDpiY()));
+            const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+            painter.drawRoundedRect(card, radius, radius);
+            return;
+        }
         painter.setBrush(Theme::Brush(Theme::PreviewBackground));
         painter.drawRect(rect().adjusted(0, 0, -1, -1));
     }
+    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE {
+        QWidget::showEvent(ev);
+        if(m_Translucent) BlurBehind::Apply(this);
+    }
+
+private:
+    bool m_Translucent;
 };
 
 namespace {
@@ -291,12 +310,29 @@ void ExtensionBar::ApplyTheme(){
 }
 
 void ExtensionBar::Refresh(){
+    m_Button->setIcon(PuzzleIcon());
+    QStringList keys;
+    QList<ExtensionRow> pinned;
+    if(m_Controller){
+        foreach(const ExtensionRow &row, m_Controller->Rows()){
+            if(!row.registered || !row.pinned) continue;
+            keys << row.manifest.id + QLatin1Char('\n') + row.manifest.path
+                    + QLatin1Char('\n') + (row.manifest.popup.isEmpty() ? QLatin1Char('0') : QLatin1Char('1'))
+                    + QLatin1Char('\n') + row.manifest.name;
+            pinned << row;
+        }
+    }
+    if(keys == m_PinKeys && pinned.size() == m_Pins.size()){
+        for(int i = 0; i < pinned.size(); i++) Decorate(m_Pins.at(i), pinned.at(i));
+        RefreshList();
+        return;
+    }
     foreach(QToolButton *pin, m_Pins){
         m_Layout->removeWidget(pin);
         pin->deleteLater();
     }
     m_Pins.clear();
-    m_Button->setIcon(PuzzleIcon());
+    m_PinKeys = keys;
     if(m_Controller){
         foreach(const ExtensionRow &row, m_Controller->Rows()){
             if(!row.registered || !row.pinned) continue;
@@ -417,7 +453,7 @@ void ExtensionBar::ShowList(){
         return;
     }
     ClosePopup();
-    ExtensionWindow *panel = new ExtensionWindow(this, Qt::Popup);
+    ExtensionWindow *panel = new ExtensionWindow(this, Qt::Popup, BlurBehind::Enabled());
     m_List = panel;
     panel->setObjectName(QStringLiteral("ExtensionsPanel"));
     panel->setFixedWidth(ScaleByDevice(EXTENSION_LIST_WIDTH));
@@ -476,7 +512,8 @@ void ExtensionBar::RefreshList(){
     QWidget *body = new QWidget;
     body->setAutoFillBackground(false);
     QVBoxLayout *layout = new QVBoxLayout(body);
-    layout->setContentsMargins(0, 0, 0, 0);
+    const int inset = ScaleByDevice(EXTENSION_PANEL_PADDING / 2);
+    layout->setContentsMargins(inset, inset, inset, inset);
 
     const int indent = body->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, body) + 2;
     auto message = [body, layout, indent](const QString &text){

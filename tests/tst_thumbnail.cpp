@@ -5,6 +5,8 @@
 #include <QDir>
 #include <QImage>
 #include <QPainter>
+#include <QCursor>
+#include <QThreadPool>
 
 #include "lightnode.hpp"
 #include "nodepreview.hpp"
@@ -48,6 +50,14 @@ private slots:
     void setImageAgainOverwritesTheSameFile();
     void clearingTheImageRemovesTheFile();
 
+    void aPrivateNodesPictureStaysInMemory();
+    void aPrivateNodesHistoryIsNeverSaved();
+    void anEmptyPictureOfAPrivateNodeKeepsItPrivate();
+    void goingOffTheDiskTakesTheFilesAndKeepsWhatMemoryHolds();
+    void aCopyOfAPrivateNodeHasNoFiles();
+    void aCopyOfANodeJustBackFromPrivateWritesWhatMemoryHolds();
+    void aNodeWaitsForItsPictureToBeReadBeforeItGoes();
+
     void aFolderBorrowsThePictureOfTheTabItWouldOpen();
     void nothingToBorrowLeavesTheFolderWithoutAPicture();
 
@@ -58,6 +68,8 @@ private slots:
 
     void thePreviewOfAFolderWithNothingToBorrowSaysSo();
     void thePreviewKnowsWhichTabItIsWaitingFor();
+    void thePreviewHeldStaysAwayUntilThePointerMoves();
+    void thePreviewGoesWhenTheFocusWindowChanges();
 
 private:
     ViewNode *m_Root;
@@ -66,6 +78,7 @@ private:
 void tst_thumbnail::initTestCase(){
     TestSupport::SilenceDebugOutput();
     QDir().mkpath(Application::ThumbnailDirectory());
+    QDir().mkpath(Application::HistoryDirectory());
     m_Root = new ViewNode();
 }
 
@@ -73,6 +86,141 @@ void tst_thumbnail::cleanup(){
     QDir dir(Application::ThumbnailDirectory());
     foreach(const QString &name, dir.entryList(QDir::Files))
         QFile::remove(Application::ThumbnailDirectory() + name);
+    QDir history(Application::HistoryDirectory());
+    foreach(const QString &name, history.entryList(QDir::Files))
+        QFile::remove(Application::HistoryDirectory() + name);
+}
+
+namespace {
+int FilesIn(const QString &directory){
+    return QDir(directory).entryList(QDir::Files).length();
+}
+}
+
+void tst_thumbnail::aPrivateNodesPictureStaysInMemory(){
+    ViewNode *vn = m_Root->MakeChild();
+    vn->SetHoldView(true);
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 1);
+
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), true);
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 0);
+    QVERIFY(vn->GetImageFileName().isEmpty());
+    QVERIFY(vn->IsOffDisk());
+    QCOMPARE(vn->GetImage().size(), RESIDENT_THUMBNAIL_SIZE);
+    QCOMPARE(vn->GetLargeImage().size(), RESIDENT_THUMBNAIL_SIZE);
+
+    vn->SaveImageIfNeed();
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 0);
+    vn->Delete();
+}
+
+void tst_thumbnail::aPrivateNodesHistoryIsNeverSaved(){
+    ViewNode *vn = m_Root->MakeChild();
+    vn->SetHoldView(true);
+    vn->SetHistoryData(QByteArrayLiteral("history"), true);
+    vn->SaveHistoryIfNeed();
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 0);
+    QVERIFY(vn->GetHistoryFileName().isEmpty());
+    QCOMPARE(vn->GetHistoryData(), QByteArrayLiteral("history"));
+    vn->Delete();
+}
+
+void tst_thumbnail::anEmptyPictureOfAPrivateNodeKeepsItPrivate(){
+    ViewNode *vn = m_Root->MakeChild();
+    vn->SetHoldView(true);
+    vn->SetHistoryData(QByteArrayLiteral("history"), true);
+    vn->SetImage(QImage(), true);
+    QVERIFY(vn->IsOffDisk());
+    vn->SaveHistoryIfNeed();
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 0);
+    vn->Delete();
+}
+
+void tst_thumbnail::goingOffTheDiskTakesTheFilesAndKeepsWhatMemoryHolds(){
+    ViewNode *vn = m_Root->MakeChild();
+    vn->SetHoldView(true);
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
+    vn->SetHistoryData(QByteArrayLiteral("history"), false);
+    vn->SaveHistoryIfNeed();
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 1);
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 1);
+
+    vn->SetOffDisk(true);
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 0);
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 0);
+    QVERIFY(vn->GetImageFileName().isEmpty());
+    QVERIFY(vn->GetHistoryFileName().isEmpty());
+    QVERIFY(!vn->GetImage().isNull());
+    QCOMPARE(vn->GetHistoryData(), QByteArrayLiteral("history"));
+
+    vn->SetOffDisk(false);
+    vn->SaveImageIfNeed();
+    vn->SaveHistoryIfNeed();
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 1);
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 1);
+    vn->Delete();
+}
+
+void tst_thumbnail::aCopyOfAPrivateNodeHasNoFiles(){
+    ViewNode *vn = m_Root->MakeChild();
+    vn->SetHoldView(true);
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), true);
+    vn->SetHistoryData(QByteArrayLiteral("history"), true);
+    ViewNode *copy = vn->Clone();
+    QVERIFY(copy);
+    QVERIFY(copy->IsOffDisk());
+    QVERIFY(copy->GetImageFileName().isEmpty());
+    QVERIFY(copy->GetHistoryFileName().isEmpty());
+    QVERIFY(!copy->GetImage().isNull());
+    copy->SaveImageIfNeed();
+    copy->SaveHistoryIfNeed();
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 0);
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 0);
+    copy->Delete();
+    vn->Delete();
+}
+
+void tst_thumbnail::aCopyOfANodeJustBackFromPrivateWritesWhatMemoryHolds(){
+    ViewNode *vn = m_Root->MakeChild();
+    vn->SetHoldView(true);
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), true);
+    vn->SetHistoryData(QByteArrayLiteral("history"), true);
+    vn->SetOffDisk(false);
+    ViewNode *copy = vn->Clone();
+    QVERIFY(copy);
+    QVERIFY(!copy->IsOffDisk());
+    copy->SaveImageIfNeed();
+    copy->SaveHistoryIfNeed();
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 1);
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 1);
+    copy->Delete();
+    vn->Delete();
+}
+
+void tst_thumbnail::aNodeWaitsForItsPictureToBeReadBeforeItGoes(){
+    ViewNode *source = m_Root->MakeChild();
+    source->SetHoldView(true);
+    source->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
+    const QString name = source->GetImageFileName();
+
+    {   ViewNode *vn = m_Root->MakeChild();
+        vn->SetHoldView(true);
+        vn->SetImageFileName(name);
+        QVERIFY(vn->GetImage().isNull());
+        QTRY_COMPARE(vn->GetImage().size(), RESIDENT_THUMBNAIL_SIZE);
+        vn->Delete();
+    }
+
+    for(int i = 0; i < 20; i++){
+        ViewNode *vn = m_Root->MakeChild();
+        vn->SetHoldView(true);
+        vn->SetImageFileName(name);
+        QVERIFY(vn->GetImage().isNull());
+        vn->Delete();
+    }
+    QThreadPool::globalInstance()->waitForDone();
+    source->Delete();
 }
 
 void tst_thumbnail::setImageWritesTheFileStraightAway(){
@@ -81,7 +229,7 @@ void tst_thumbnail::setImageWritesTheFileStraightAway(){
 
     QVERIFY(vn->GetImageFileName().isEmpty());
 
-    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
 
     QVERIFY(!vn->GetImageFileName().isEmpty());
     QVERIFY(QFile::exists(ThumbnailPath(vn)));
@@ -93,7 +241,7 @@ void tst_thumbnail::setImageKeepsOnlyTheSmallCopyInMemory(){
     ViewNode *vn = m_Root->MakeChild();
     vn->SetHoldView(true);
 
-    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
 
     QCOMPARE(vn->GetImage().size(), RESIDENT_THUMBNAIL_SIZE);
     QVERIFY(RESIDENT_THUMBNAIL_SIZE.width()  < SAVING_THUMBNAIL_SIZE.width());
@@ -106,7 +254,7 @@ void tst_thumbnail::theSavedFileKeepsTheCaptureSize(){
     ViewNode *vn = m_Root->MakeChild();
     vn->SetHoldView(true);
 
-    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
 
     QCOMPARE(QImage(ThumbnailPath(vn)).size(), SAVING_THUMBNAIL_SIZE);
 
@@ -117,7 +265,7 @@ void tst_thumbnail::largeImageComesFromTheFile(){
     ViewNode *vn = m_Root->MakeChild();
     vn->SetHoldView(true);
 
-    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
 
     QCOMPARE(vn->GetLargeImage().size(), SAVING_THUMBNAIL_SIZE);
     QVERIFY(vn->GetLargeImage().size() != vn->GetImage().size());
@@ -129,7 +277,7 @@ void tst_thumbnail::largeImageFallsBackToTheResidentCopy(){
     ViewNode *vn = m_Root->MakeChild();
     vn->SetHoldView(true);
 
-    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
     QFile::remove(ThumbnailPath(vn));
 
     QCOMPARE(vn->GetLargeImage().size(), RESIDENT_THUMBNAIL_SIZE);
@@ -141,10 +289,10 @@ void tst_thumbnail::setImageAgainOverwritesTheSameFile(){
     ViewNode *vn = m_Root->MakeChild();
     vn->SetHoldView(true);
 
-    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
     const QString first = vn->GetImageFileName();
 
-    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
 
     QCOMPARE(vn->GetImageFileName(), first);
     QCOMPARE(QDir(Application::ThumbnailDirectory()).entryList(QDir::Files).length(), 1);
@@ -156,10 +304,10 @@ void tst_thumbnail::clearingTheImageRemovesTheFile(){
     ViewNode *vn = m_Root->MakeChild();
     vn->SetHoldView(true);
 
-    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
     const QString path = ThumbnailPath(vn);
 
-    vn->SetImage(QImage());
+    vn->SetImage(QImage(), false);
 
     QVERIFY(vn->GetImageFileName().isEmpty());
     QVERIFY(vn->GetImage().isNull());
@@ -175,8 +323,8 @@ void tst_thumbnail::aFolderBorrowsThePictureOfTheTabItWouldOpen(){
     first->SetHoldView(true);
     second->SetHoldView(true);
 
-    first->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
-    second->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE));
+    first->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
+    second->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
 
     QVERIFY(folder->IsDirectory());
     QVERIFY(folder->GetImage().isNull());
@@ -267,7 +415,7 @@ void tst_thumbnail::thePreviewOfAFolderWithNothingToBorrowSaysSo(){
     const QRect tab(100, 30, 150, 28);
 
     auto shotOf = [&](bool isDirectory){
-        preview->Request(QImage(), QStringLiteral("t"), tab, isDirectory);
+        preview->Request(QImage(), QStringLiteral("t"), tab, isDirectory, QPoint(120, 40));
         QImage image(preview->size(), QImage::Format_ARGB32);
         image.fill(Qt::magenta);
         preview->render(&image);
@@ -298,13 +446,49 @@ void tst_thumbnail::thePreviewKnowsWhichTabItIsWaitingFor(){
     preview->Dismiss();
     QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
 
-    preview->Request(QImage(), QStringLiteral("t"), tab, false);
+    preview->Request(QImage(), QStringLiteral("t"), tab, false, QPoint(120, 40));
     QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
     QVERIFY(!preview->IsAbout(QStringLiteral("u"), tab));
     QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab.translated(150, 0)));
 
     preview->Dismiss();
     QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
+}
+
+void tst_thumbnail::thePreviewHeldStaysAwayUntilThePointerMoves(){
+    NodePreview *preview = NodePreview::Instance();
+    const QRect tab(100, 30, 150, 28);
+    const QPoint held(120, 40);
+
+    preview->HoldUntilPointerMoves(held);
+    preview->Request(QImage(), QStringLiteral("t"), tab, false, held);
+    QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
+
+    preview->Request(QImage(), QStringLiteral("t"), tab, false, held + QPoint(1, 0));
+    QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
+
+    preview->Dismiss();
+    preview->Request(QImage(), QStringLiteral("t"), tab, false, held);
+    QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
+    preview->Dismiss();
+}
+
+void tst_thumbnail::thePreviewGoesWhenTheFocusWindowChanges(){
+    NodePreview *preview = NodePreview::Instance();
+    const QRect tab(100, 30, 150, 28);
+    const QPoint pointer(120, 40);
+
+    preview->Request(QImage(), QStringLiteral("t"), tab, false, pointer);
+    QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
+
+    emit qGuiApp->focusWindowChanged(nullptr);
+    QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
+
+    preview->Request(QImage(), QStringLiteral("t"), tab, false, QCursor::pos());
+    QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
+    preview->Request(QImage(), QStringLiteral("t"), tab, false, QCursor::pos() + QPoint(1, 0));
+    QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
+    preview->Dismiss();
 }
 
 QTEST_MAIN(tst_thumbnail)

@@ -28,6 +28,7 @@ public:
         State state = Running;
         qint64 received = 0;
         qint64 total = -1;
+        QUrl page;
     };
 
     static const int Limit = 500;
@@ -37,7 +38,9 @@ public:
     explicit DownloadHistory(const QString &path, QObject *parent = nullptr);
     ~DownloadHistory();
 
-    int Started(const QUrl &url, const QString &path, DownloadItem *item);
+    int Started(const QUrl &url, const QString &path, DownloadItem *item,
+                const QUrl &page = QUrl());
+    static QUrl SourcePageWorthKeeping(const QUrl &page, const QUrl &url);
     void Progress(int id, qint64 received, qint64 total);
     void Ended(int id, State state);
 

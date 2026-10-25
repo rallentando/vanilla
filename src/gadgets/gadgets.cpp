@@ -26,6 +26,7 @@
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "treebank.hpp"
+#include "menukeys.hpp"
 #include "directorypage.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
@@ -40,7 +41,10 @@
 
 #include "lightnode.hpp"
 
+static const int BACKDROP_BLUR_RADIUS = 24;
+
 bool Gadgets::m_EnableMultiStroke = true;
+bool Gadgets::m_EnableBackdropBlur = true;
 QString Gadgets::m_AccessKeyCustomSequence = QString();
 Gadgets::AccessKeyMode Gadgets::m_AccessKeyMode = BothHands;
 Gadgets::AccessKeyAction Gadgets::m_AccessKeyAction = OpenMenu;
@@ -61,6 +65,7 @@ Gadgets::Gadgets(TreeBank *parent)
 
     m_BackdropOwner = nullptr;
     m_BackdropRatio = 0.0;
+    m_BackdropBlurred = false;
 
     m_AccessKeyCount = 0;
     m_AccessKeyLastBlockIndex = 0;
@@ -105,6 +110,7 @@ void Gadgets::LoadSettings(){
         InputMap::LoadGestureMap(s, QStringLiteral("gadgets/thumblist/mouse"), m_MouseMap, InputMap::Hooks(IsValidAction));
     }
 
+    m_EnableBackdropBlur = s.value(QStringLiteral("gadgets/thumblist/@EnableBackdropBlur"), true).value<bool>();
     m_EnableMultiStroke = s.value(QStringLiteral("gadgets/accesskey/@EnableMultiStroke"), true).value<bool>();
     m_AccessKeyCustomSequence =
         InputMap::UnescapeKeyName(s.value(QStringLiteral("gadgets/accesskey/@AccessKeyCustomSequence"), QString()).value<QString>().toUpper());
@@ -159,6 +165,7 @@ void Gadgets::SaveSettings(){
 
     InputMap::SaveGestureMap(s, QStringLiteral("gadgets/thumblist/mouse"), m_MouseMap);
 
+    s.setValue(QStringLiteral("gadgets/thumblist/@EnableBackdropBlur"), m_EnableBackdropBlur);
     s.setValue(QStringLiteral("gadgets/accesskey/@EnableMultiStroke"), m_EnableMultiStroke);
     s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyCustomSequence"),
                 InputMap::EscapeKeyName(m_AccessKeyCustomSequence));
@@ -798,7 +805,7 @@ void Gadgets::UpdateThumbnail(){
                 image.
                 scaled(SAVING_THUMBNAIL_SIZE,
                        Qt::KeepAspectRatioByExpanding,
-                       Qt::SmoothTransformation));
+                       Qt::SmoothTransformation), KeepsOffDisk());
         } else {
             m_ViewNode->SetImage(
                 image.
@@ -807,7 +814,7 @@ void Gadgets::UpdateThumbnail(){
                        Qt::SmoothTransformation).
                 copy(width_diff / 2, height_diff / 2,
                      SAVING_THUMBNAIL_SIZE.width(),
-                     SAVING_THUMBNAIL_SIZE.height()));
+                     SAVING_THUMBNAIL_SIZE.height()), KeepsOffDisk());
         }
     }
 }
@@ -825,6 +832,7 @@ bool Gadgets::TriggerKeyEvent(QKeyEvent *ev){
 }
 
 bool Gadgets::TriggerKeyEvent(QString str){
+    Application::InputScope key(true);
     QKeySequence seq = Application::MakeKeySequence(str);
     if(seq.isEmpty()) return false;
     str = m_ThumbListKeyMap[seq];
@@ -838,6 +846,16 @@ bool Gadgets::TriggerKeyEvent(QString str){
 
 QMap<QKeySequence, QString> Gadgets::GetThumbListKeyMap(){
     return m_ThumbListKeyMap;
+}
+
+InputMap::KeyLayers Gadgets::KeyLayers(){
+    InputMap::KeyLayer overview;
+    overview.map = m_ThumbListKeyMap;
+    overview.singleKeys = true;
+    InputMap::KeyLayer application;
+    application.map = TreeBank::GetKeyMap();
+    application.singleKeys = View::EnableSingleKeyShortcut();
+    return InputMap::KeyLayers() << overview << application;
 }
 
 QMap<QKeySequence, QString> Gadgets::GetAccessKeyKeyMap(){
@@ -1217,20 +1235,39 @@ QMenu *Gadgets::CreateNodeMenu(){
     QMenu *menu = new QMenu(GetTreeBank());
     menu->setToolTipsVisible(true);
 
-    menu->addAction(Action(_Deactivate));
-    menu->addAction(Action(_Refresh));
-    menu->addSeparator();
+    const bool trash = m_DisplayType == TrashTree;
+    const bool hovered = m_HoveredItemIndex != -1 &&
+        m_HoveredItemIndex < m_DisplayThumbnails.length();
+    const bool selected = !m_NodesRegister.isEmpty();
+    Node *nd = hovered ? GetHoveredNode() : nullptr;
+    const bool directory = nd && nd->IsViewNode() && nd->IsDirectory();
 
-    if(m_HoveredItemIndex != -1 &&
-       m_HoveredItemIndex < m_DisplayThumbnails.length()){
+    QAction *restore = Action(_RestoreNode);
+    restore->setText(!trash    ? tr("RestoreNode")
+                     : !selected ? tr("RestoreNodeFromTrash")
+                     :             tr("RestoreSelectedNode"));
+    restore->setToolTip(restore->text());
 
+    QAction *deleting = Action(_DeleteNode);
+    deleting->setText(!trash    ? tr("DeleteNode")
+                      : !selected ? tr("DeleteNodeForGood")
+                      :             tr("DeleteSelectedNodeForGood"));
+    deleting->setToolTip(deleting->text());
+
+    QAction *toggleTrash = Action(_ToggleTrash);
+    toggleTrash->setText(trash ? tr("BackToViewTree") : tr("ShowTrash"));
+    toggleTrash->setToolTip(toggleTrash->text());
+
+    if(trash && (hovered || selected)){
+        menu->addAction(restore);
+        menu->addSeparator();
+    }
+
+    if(hovered){
         menu->addAction(Action(_OpenNode));
         menu->addAction(Action(_OpenNodeOnNewWindow));
-        menu->addAction(Action(_RenameNode));
-        menu->addAction(Action(_CopyNodeUrl));
-        menu->addAction(Action(_CloneNode));
 
-        QMenu *m = new QMenu(tr("OpenNodeWithOtherBrowser"));
+        QMenu *m = new QMenu(tr("OpenNodeWithOtherBrowser"), menu);
         m->addAction(Action(_OpenNodeWithDefault));
         const QList<QPair<QString, QString> > commands = Application::ExternalCommands();
         for(int i = 0; i < commands.length(); i++){
@@ -1239,12 +1276,15 @@ QMenu *Gadgets::CreateNodeMenu(){
             action->setProperty(EXTERNAL_COMMAND_PROPERTY, commands[i].first);
         }
         menu->addMenu(m);
+    }
+    menu->addSeparator();
 
-        Node *nd = GetHoveredNode();
-        if(nd->IsViewNode() && nd->IsDirectory()){
+    if(hovered){
+        menu->addAction(Action(_RenameNode));
+        menu->addAction(Action(_CopyNodeUrl));
+        if(!trash) menu->addAction(Action(_CloneNode));
 
-            menu->addAction(Action(_DownDirectory));
-
+        if(directory && !trash){
             TreeBank *tb = GetTreeBank();
             ViewNode *vn = nd->ToViewNode();
             menu->addMenu(DirectoryPage::CreateSettingsMenu
@@ -1256,39 +1296,113 @@ QMenu *Gadgets::CreateNodeMenu(){
                            menu));
         }
     }
+    menu->addSeparator();
+
+    if(!trash){
+        menu->addAction(Action(_NewNode));
+        menu->addAction(Action(_MakeDirectory));
+        if(selected){
+            menu->addAction(Action(_PasteNode));
+            menu->addAction(Action(_MakeDirectoryWithSelectedNode));
+        }
+        menu->addAction(Action(_MakeDirectoryWithSameDomainNode));
+        menu->addSeparator();
+
+        if(hovered || selected)
+            menu->addAction(deleting);
+        if(hovered){
+            QMenu *m = new QMenu(tr("DeleteNodesTogether"), menu);
+            m->addAction(Action(_DeleteRightNode));
+            m->addAction(Action(_DeleteLeftNode));
+            m->addAction(Action(_DeleteOtherNode));
+            menu->addMenu(m);
+        }
+        if(!TreeBank::GetTrashRoot()->HasNoChildren())
+            menu->addAction(restore);
+        menu->addSeparator();
+    } else if(hovered || selected){
+        menu->addAction(deleting);
+        menu->addSeparator();
+    }
+
     if(m_CurrentNode &&
        m_CurrentNode->GetParent() &&
        m_CurrentNode->GetParent()->GetParent()){
 
         menu->addAction(Action(_UpDirectory));
     }
-    if((m_HoveredItemIndex != -1 &&
-        m_HoveredItemIndex < m_DisplayThumbnails.length()) ||
-       !m_NodesRegister.isEmpty()){
+    if(directory) menu->addAction(Action(_DownDirectory));
+    menu->addAction(toggleTrash);
 
-        menu->addAction(Action(_DeleteNode));
-        menu->addAction(Action(_DeleteRightNode));
-        menu->addAction(Action(_DeleteLeftNode));
-        menu->addAction(Action(_DeleteOtherNode));
-        if(!m_NodesRegister.isEmpty())
-            menu->addAction(Action(_PasteNode));
-    }
-    menu->addAction(Action(_MakeDirectory));
-    menu->addAction(Action(_MakeDirectoryWithSelectedNode));
-    menu->addAction(Action(_MakeDirectoryWithSameDomainNode));
-    menu->addAction(Action(_RestoreNode));
-    menu->addAction(Action(_NewNode));
-    menu->addAction(Action(_ToggleTrash));
-
-    menu->addSeparator();
     menu->addMenu(CreateSortMenu(menu));
 
-    if(IsDisplayingViewNode()){
-        menu->addSeparator();
+    if(IsDisplayingViewNode())
         menu->addMenu(CreateNodeCollectionTypeMenu(menu));
-    }
+    menu->addSeparator();
+
+    menu->addAction(Action(_Refresh));
+    QAction *deactivate = Action(_Deactivate);
+    deactivate->setText(tr("CloseViewTree"));
+    deactivate->setToolTip(deactivate->text());
+    menu->addAction(deactivate);
+
+    MenuKeys::Show(menu, InputMap::ShownKeys(KeyLayers()));
 
     return menu;
+}
+
+bool Gadgets::DrawsBackdrop(bool viewToDraw, bool behind, bool blurring){
+    if(!viewToDraw) return false;
+    return blurring || !behind;
+}
+
+QImage Gadgets::BlurBackdrop(const QImage &image, int radius){
+    if(image.isNull() || radius <= 0) return image;
+
+    const int shrink = qMax(1, radius / 4);
+    const int box = qMax(1, qRound(qreal(radius) / shrink - 0.5));
+    const int w = qMax(1, image.width()  / shrink);
+    const int h = qMax(1, image.height() / shrink);
+
+    QImage small = image.scaled(w, h, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)
+        .convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+    const auto pass = [box](QRgb *line, int count, int stride, QVector<QRgb> &copy){
+        copy.resize(count);
+        for(int i = 0; i < count; i++) copy[i] = line[i * stride];
+        const int span = box * 2 + 1;
+        int a = 0, r = 0, g = 0, b = 0;
+        for(int i = -box; i <= box; i++){
+            const QRgb p = copy[qBound(0, i, count - 1)];
+            a += qAlpha(p); r += qRed(p); g += qGreen(p); b += qBlue(p);
+        }
+        for(int i = 0; i < count; i++){
+            line[i * stride] = qRgba(r / span, g / span, b / span, a / span);
+            const QRgb out = copy[qBound(0, i - box, count - 1)];
+            const QRgb in  = copy[qBound(0, i + box + 1, count - 1)];
+            a += qAlpha(in) - qAlpha(out); r += qRed(in) - qRed(out);
+            g += qGreen(in) - qGreen(out); b += qBlue(in) - qBlue(out);
+        }
+    };
+
+    QVector<QRgb> copy;
+    QRgb *bits = reinterpret_cast<QRgb*>(small.bits());
+    const int stride = static_cast<int>(small.bytesPerLine() / sizeof(QRgb));
+    for(int n = 0; n < 3; n++){
+        for(int y = 0; y < h; y++) pass(bits + y * stride, w, 1, copy);
+        for(int x = 0; x < w; x++) pass(bits + x, h, stride, copy);
+    }
+
+    QImage result(image.size(), QImage::Format_ARGB32_Premultiplied);
+    result.fill(Qt::transparent);
+    {
+        QPainter painter(&result);
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
+        painter.drawImage(QRect(QPoint(), image.size()), small);
+    }
+    result.setDevicePixelRatio(image.devicePixelRatio());
+    return result;
 }
 
 void Gadgets::RenderBackground(QPainter *painter){
@@ -1340,8 +1454,10 @@ void Gadgets::RenderBackground(QPainter *painter){
         else;
     }
 
-    if(!nativeViewBehind &&
-       (!view || view == GetTreeBank()->GetCurrentView().get())){
+    const bool behind = !nativeViewBehind &&
+        view && view == GetTreeBank()->GetCurrentView().get();
+    const bool blurred = IsDisplayingNode() && m_EnableBackdropBlur;
+    if(!DrawsBackdrop(view != nullptr, behind, blurred)){
         GraphicsTableView::RenderBackground(painter);
         return;
     }
@@ -1358,14 +1474,15 @@ void Gadgets::RenderBackground(QPainter *painter){
 
         if(m_Backdrop.isNull() || m_BackdropOwner != view ||
            m_BackdropSize != size || m_BackdropViewport != viewport ||
-           m_BackdropRatio != ratio){
+           m_BackdropRatio != ratio || m_BackdropBlurred != blurred){
 
-            m_Backdrop = QPixmap(QSize(static_cast<int>(size.width()  * ratio),
-                                       static_cast<int>(size.height() * ratio)));
-            m_Backdrop.setDevicePixelRatio(ratio);
-            m_Backdrop.fill(Qt::transparent);
+            QImage page(QSize(static_cast<int>(size.width()  * ratio),
+                              static_cast<int>(size.height() * ratio)),
+                        QImage::Format_ARGB32_Premultiplied);
+            page.setDevicePixelRatio(ratio);
+            page.fill(Qt::transparent);
 
-            QPainter into(&m_Backdrop);
+            QPainter into(&page);
             const bool inPlace = view == GetTreeBank()->GetCurrentView().get();
             const int width_diff  = size.width()  - viewport.width();
             const int height_diff = size.height() - viewport.height();
@@ -1374,10 +1491,15 @@ void Gadgets::RenderBackground(QPainter *painter){
             view->Render(&into);
             into.end();
 
+            m_Backdrop = QPixmap::fromImage(
+                blurred ? BlurBackdrop(page, qRound(ScaleByDevice(BACKDROP_BLUR_RADIUS) * ratio))
+                        : page);
+
             m_BackdropOwner = view;
             m_BackdropSize = size;
             m_BackdropViewport = viewport;
             m_BackdropRatio = ratio;
+            m_BackdropBlurred = blurred;
         }
 
         painter->drawPixmap(QPointF(), m_Backdrop);
@@ -1704,6 +1826,7 @@ QAction *Gadgets::Action(GadgetsAction a){
     if(!action){
         create = true;
         m_ActionTable[a] = action = new QAction(this);
+        action->setObjectName(ActionToString(a));
     }
 
     switch(a){

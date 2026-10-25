@@ -11,6 +11,8 @@
 #include <QUuid>
 #include <QtConcurrent/QtConcurrent>
 
+#include <utility>
+
 std::atomic<quint64> Node::m_SerialCounter(1);
 QRecursiveMutex Node::m_DataMutex;
 bool Node::m_Booting = false;
@@ -207,6 +209,7 @@ ViewNode::ViewNode()
     m_HistoryData = QByteArray();
     m_HistoryFileName = QString();
     m_NeedToSaveHistory = false;
+    m_OffDisk = false;
     m_ScrollX = 0;
     m_ScrollY = 0;
     m_Zoom    = 1.0;
@@ -217,6 +220,7 @@ ViewNode::ViewNode()
 }
 
 ViewNode::~ViewNode(){
+    m_ImageLoad.waitForFinished();
 }
 
 bool ViewNode::IsRoot(){
@@ -356,55 +360,31 @@ ViewNode *ViewNode::MakeParent(){
 ViewNode *ViewNode::MakeSibling(){
     ViewNode *young = new ViewNode();
     young->SetParent(m_Parent);
+    InsertSibling(m_Booting ? SiblingsIndexOf(this) + 1 : SiblingInsertIndex(), young);
+    return young;
+}
 
-    int primaryIndex = SiblingsIndexOf(this);
-
-    if(m_Booting){
-        InsertSibling(primaryIndex+1, young);
-        return young;
-    }
+int ViewNode::SiblingInsertIndex() const {
+    const int primaryIndex = SiblingsIndexOf(const_cast<ViewNode*>(this));
+    const int length = SiblingsLength();
 
     switch(m_AddSiblingViewNodePosition){
-    case RightEnd: AppendSibling(young);  break;
-    case LeftEnd:  PrependSibling(young); break;
-    case RightOfPrimary: InsertSibling(primaryIndex+1, young); break;
-    case LeftOfPrimary:  InsertSibling(primaryIndex, young);   break;
+    case RightEnd: return length;
+    case LeftEnd:  return 0;
+    case RightOfPrimary: return primaryIndex + 1;
+    case LeftOfPrimary:  return primaryIndex;
 
     case TailOfRightUnreadsOfPrimary:
-
-        if(primaryIndex == SiblingsLength()-1){
-            AppendSibling(young);
-            break;
-        }
-        for(int i = primaryIndex+1; i < SiblingsLength(); i++){
-            if(GetSiblingAt(i)->IsRead()){
-                InsertSibling(i, young);
-                break;
-            } else if(i == SiblingsLength()-1){
-                AppendSibling(young);
-                break;
-            }
-        }
-        break;
+        for(int i = primaryIndex + 1; i < length; i++)
+            if(GetSiblingAt(i)->IsRead()) return i;
+        return length;
 
     case HeadOfLeftUnreadsOfPrimary:
-
-        if(primaryIndex == 0){
-            PrependSibling(young);
-            break;
-        }
-        for(int i = primaryIndex-1; i >= 0; i--){
-            if(GetSiblingAt(i)->IsRead()){
-                InsertSibling(i+1, young);
-                break;
-            } else if(i == 0){
-                PrependSibling(young);
-                break;
-            }
-        }
-        break;
+        for(int i = primaryIndex - 1; i >= 0; i--)
+            if(GetSiblingAt(i)->IsRead()) return i + 1;
+        return 0;
     }
-    return young;
+    return primaryIndex + 1;
 }
 
 ViewNode *ViewNode::NewDir(){
@@ -439,7 +419,7 @@ ViewNode *ViewNode::New(){
     ViewNode *vn = MakeSibling();
     vn->m_HoldView = true;
     {   QMutexLocker locker(&m_DataMutex);
-        vn->m_Url = BLANK_URL;
+        vn->m_Url = START_URL;
     }
     return vn;
 }
@@ -465,13 +445,21 @@ ViewNode *ViewNode::Clone(ViewNode *parent){
         {   QMutexLocker locker(&m_DataMutex);
             clone->m_Url = m_Url;
             clone->m_Image = QImage(m_Image);
-            imageFrom = m_ImageFileName;
-            if(!imageFrom.isEmpty())
-                clone->m_ImageFileName = QUuid::createUuid().toString() + QStringLiteral(".jpg");
             clone->m_HistoryData = QByteArray(m_HistoryData);
-            historyFrom = m_HistoryFileName;
-            if(!historyFrom.isEmpty())
-                clone->m_HistoryFileName = QUuid::createUuid().toString() + QStringLiteral(".dat");
+            if(m_OffDisk){
+                clone->m_OffDisk = true;
+                clone->m_NeedToSaveImage = !m_Image.isNull();
+                clone->m_NeedToSaveHistory = !m_HistoryData.isEmpty();
+            } else {
+                imageFrom = m_ImageFileName;
+                if(!imageFrom.isEmpty())
+                    clone->m_ImageFileName = QUuid::createUuid().toString() + QStringLiteral(".jpg");
+                historyFrom = m_HistoryFileName;
+                if(!historyFrom.isEmpty())
+                    clone->m_HistoryFileName = QUuid::createUuid().toString() + QStringLiteral(".dat");
+                clone->m_NeedToSaveImage = m_NeedToSaveImage || (imageFrom.isEmpty() && !m_Image.isNull());
+                clone->m_NeedToSaveHistory = m_NeedToSaveHistory || (historyFrom.isEmpty() && !m_HistoryData.isEmpty());
+            }
         }
         if(!imageFrom.isEmpty())
             QFile::copy(Application::ThumbnailDirectory() + imageFrom,
@@ -498,14 +486,15 @@ QImage ViewNode::GetImage(){
     QMutexLocker locker(&m_DataMutex);
     if(m_Image.isNull() && !m_ImageFileName.isEmpty()){
         const QString filename = m_ImageFileName;
-        QtConcurrent::run([this, filename](){
+        if(!m_ImageLoad.isFinished()) return QImage();
+        m_ImageLoad = QtConcurrent::run([this, filename](){
             QImage image = QImage(Application::ThumbnailDirectory() + filename);
             if(!image.isNull() && image.size() != RESIDENT_THUMBNAIL_SIZE)
                 image = image.scaled(RESIDENT_THUMBNAIL_SIZE,
                                      Qt::KeepAspectRatioByExpanding,
                                      Qt::SmoothTransformation);
             QMutexLocker locker(&m_DataMutex);
-            if(m_Image.isNull()) m_Image = image;
+            if(m_Image.isNull() && m_ImageFileName == filename) m_Image = image;
         });
         return QImage();
     }
@@ -613,7 +602,24 @@ void ViewNode::SetLastAccessDateToCurrent(){
     }
 }
 
-void ViewNode::SetImage(const QImage &image){
+void ViewNode::SetImage(const QImage &image, bool offTheRecord){
+    if(offTheRecord){
+        SetOffDisk(true);
+    } else {
+        QMutexLocker locker(&m_DataMutex);
+        m_OffDisk = false;
+    }
+    if(offTheRecord && !image.isNull()){
+        const QImage resident = image.size() == RESIDENT_THUMBNAIL_SIZE
+            ? image
+            : image.scaled(RESIDENT_THUMBNAIL_SIZE,
+                           Qt::KeepAspectRatioByExpanding,
+                           Qt::SmoothTransformation);
+        QMutexLocker locker(&m_DataMutex);
+        m_Image = resident;
+        m_NeedToSaveImage = true;
+        return;
+    }
     if(image.isNull()){
         QString needless;
         {   QMutexLocker locker(&m_DataMutex);
@@ -688,20 +694,26 @@ void ViewNode::SaveImageIfNeed(){
     QImage image;
     QString name;
     {   QMutexLocker locker(&m_DataMutex);
-        if(!m_NeedToSaveImage || m_Image.isNull()) return;
+        if(m_OffDisk || !m_NeedToSaveImage || m_Image.isNull()) return;
         image = m_Image;
         name = m_ImageFileName.isEmpty()
             ? QUuid::createUuid().toString() + QStringLiteral(".jpg")
             : m_ImageFileName;
     }
-    if(image.save(Application::ThumbnailDirectory() + name,
-                  nullptr, THUMBNAIL_JPEG_QUALITY)){
-        QMutexLocker locker(&m_DataMutex);
-        if(m_NeedToSaveImage){
-            m_ImageFileName = name;
-            m_NeedToSaveImage = false;
-        }
+    const bool saved = image.save(Application::ThumbnailDirectory() + name,
+                                  nullptr, THUMBNAIL_JPEG_QUALITY);
+    QMutexLocker locker(&m_DataMutex);
+    if(m_OffDisk){
+        QFile::remove(Application::ThumbnailDirectory() + name);
+        return;
     }
+    if(saved && m_NeedToSaveImage){
+        m_ImageFileName = name;
+        m_NeedToSaveImage = false;
+        return;
+    }
+    if(m_ImageFileName != name)
+        QFile::remove(Application::ThumbnailDirectory() + name);
 }
 
 QByteArray ViewNode::GetHistoryData(){
@@ -717,9 +729,11 @@ QByteArray ViewNode::GetHistoryData(){
     return m_HistoryData;
 }
 
-void ViewNode::SetHistoryData(const QByteArray &ba){
+void ViewNode::SetHistoryData(const QByteArray &ba, bool offTheRecord){
+    if(offTheRecord) SetOffDisk(true);
     QString needless;
     {   QMutexLocker locker(&m_DataMutex);
+        if(!offTheRecord) m_OffDisk = false;
         if(ba.isEmpty()){
             m_NeedToSaveHistory = false;
             needless = m_HistoryFileName;
@@ -749,7 +763,7 @@ void ViewNode::SaveHistoryIfNeed(){
     QByteArray data;
     QString name;
     {   QMutexLocker locker(&m_DataMutex);
-        if(!m_NeedToSaveHistory || m_HistoryData.isEmpty()) return;
+        if(m_OffDisk || !m_NeedToSaveHistory || m_HistoryData.isEmpty()) return;
         if(m_HistoryFileName.isEmpty())
             m_HistoryFileName = QUuid::createUuid().toString() + QStringLiteral(".dat");
         name = m_HistoryFileName;
@@ -760,6 +774,35 @@ void ViewNode::SaveHistoryIfNeed(){
     if(file.open(QIODevice::WriteOnly))
         file.write(data);
     file.close();
+
+    QMutexLocker locker(&m_DataMutex);
+    if(m_OffDisk){
+        QFile::remove(Application::HistoryDirectory() + name);
+        if(m_HistoryFileName == name) m_HistoryFileName = QString();
+        m_NeedToSaveHistory = !m_HistoryData.isEmpty();
+    } else if(m_HistoryFileName != name){
+        QFile::remove(Application::HistoryDirectory() + name);
+        m_NeedToSaveHistory = !m_HistoryData.isEmpty();
+    }
+}
+
+void ViewNode::SetOffDisk(bool off){
+    QString image, history;
+    {   QMutexLocker locker(&m_DataMutex);
+        m_OffDisk = off;
+        if(!off) return;
+        image = std::exchange(m_ImageFileName, QString());
+        history = std::exchange(m_HistoryFileName, QString());
+        if(!m_Image.isNull()) m_NeedToSaveImage = true;
+        if(!m_HistoryData.isEmpty()) m_NeedToSaveHistory = true;
+    }
+    if(!image.isEmpty())   QFile::remove(Application::ThumbnailDirectory() + image);
+    if(!history.isEmpty()) QFile::remove(Application::HistoryDirectory() + history);
+}
+
+bool ViewNode::IsOffDisk(){
+    QMutexLocker locker(&m_DataMutex);
+    return m_OffDisk;
 }
 
 QCache<QString, QImage> LocalNode::m_FileImageCache(DEFAULT_LOCALVIEW_MAX_FILEIMAGE);

@@ -662,9 +662,11 @@ void GlassStyle::Render(CloneButton *button, QPainter *painter) const {
     painter->drawRect(rect);
 
     if(button->GetState() != GraphicsButton::Pressed){
-        static QIcon icon = Theme::Icon(QStringLiteral(":/resources/tableview/clone.png"));
+        static QIcon clone = Theme::Icon(QStringLiteral(":/resources/tableview/clone.png"));
+        static QIcon restore = Theme::Icon(QStringLiteral(":/resources/tableview/restore.png"));
         rect = ButtonIconRect(button, rect);
-        const QPixmap pixmap = icon.pixmap(rect.size().toSize());
+        const QPixmap pixmap = (button->GetTableView()->IsDisplayingTrashTree() ? restore : clone)
+            .pixmap(rect.size().toSize());
         painter->drawPixmap(rect, pixmap, QRect(QPoint(), pixmap.size()));
     }
 
@@ -1199,9 +1201,11 @@ void FlatStyle::Render(CloneButton *button, QPainter *painter) const {
     painter->setBrush(Theme::Brush(Theme::FlatButtonBackground));
     painter->drawRect(rect);
 
-    static QIcon icon = Theme::Icon(QStringLiteral(":/resources/tableview/clone.png"));
+    static QIcon clone = Theme::Icon(QStringLiteral(":/resources/tableview/clone.png"));
+    static QIcon restore = Theme::Icon(QStringLiteral(":/resources/tableview/restore.png"));
     rect = ButtonIconRect(button, rect);
-    const QPixmap pixmap = icon.pixmap(rect.size().toSize());
+    const QPixmap pixmap = (button->GetTableView()->IsDisplayingTrashTree() ? restore : clone)
+        .pixmap(rect.size().toSize());
     painter->drawPixmap(rect, pixmap, QRect(QPoint(), pixmap.size()));
 
     painter->restore();

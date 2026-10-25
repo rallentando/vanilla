@@ -12,6 +12,7 @@
 #include <QMutex>
 #include <QSet>
 #include <QFileInfo>
+#include <QFuture>
 
 #include <atomic>
 
@@ -268,14 +269,8 @@ public:
     void PrependSibling(Node *nd){
         if(m_Parent) m_Parent->PrependSibling(nd);
     }
-    void RemoveSibling(Node *nd){
-        if(m_Parent) m_Parent->RemoveChild(nd);
-    }
     void InsertSibling(int i, Node *nd){
         if(m_Parent) m_Parent->InsertChild(i, nd);
-    }
-    void MoveSibling(int from, int to){
-        if(m_Parent) m_Parent->MoveChild(from, to);
     }
     Node *GetSiblingAt(int i) const {
         if(!m_Parent) return nullptr;
@@ -288,14 +283,6 @@ public:
     Node *GetLastSibling() const {
         if(!m_Parent) return nullptr;
         return m_Parent->GetLastChild();
-    }
-    Node *TakeFirstSibling(){
-        if(!m_Parent) return nullptr;
-        return m_Parent->TakeFirstChild();
-    }
-    Node *TakeLastSibling(){
-        if(!m_Parent) return nullptr;
-        return m_Parent->TakeLastChild();
     }
     int Index(){
         return SiblingsIndexOf(this);
@@ -336,6 +323,9 @@ private:
     QString m_HistoryFileName;
     std::atomic_bool m_NeedToSaveHistory;
 
+    bool m_OffDisk;
+    QFuture<void> m_ImageLoad;
+
     std::atomic_int m_ScrollX;
     std::atomic_int m_ScrollY;
     std::atomic<float> m_Zoom;
@@ -363,6 +353,7 @@ public:
     ViewNode *MakeChild() Q_DECL_OVERRIDE;
     ViewNode *MakeParent() Q_DECL_OVERRIDE;
     ViewNode *MakeSibling();
+    int SiblingInsertIndex() const;
     ViewNode *NewDir();
     ViewNode *Next() Q_DECL_OVERRIDE;
     ViewNode *Prev() Q_DECL_OVERRIDE;
@@ -393,7 +384,7 @@ public:
     void SetLastUpdateDateToCurrent() Q_DECL_OVERRIDE;
     void SetLastAccessDateToCurrent() Q_DECL_OVERRIDE;
 
-    void SetImage(const QImage &i);
+    void SetImage(const QImage &i, bool offTheRecord);
     void SetScrollX(int x);
     void SetScrollY(int y);
     void SetZoom(float z);
@@ -407,12 +398,15 @@ public:
     void SaveImageIfNeed();
 
     QByteArray GetHistoryData();
-    void SetHistoryData(const QByteArray &data);
+    void SetHistoryData(const QByteArray &data, bool offTheRecord);
 
     QString GetHistoryFileName();
     void SetHistoryFileName(const QString &path);
 
     void SaveHistoryIfNeed();
+
+    void SetOffDisk(bool off);
+    bool IsOffDisk();
 };
 
 class LocalNode : public Node {

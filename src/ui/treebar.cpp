@@ -23,6 +23,7 @@
 #include <QStyle>
 #include <QStyleOptionToolBar>
 #include <QUrl>
+#include <QCursor>
 
 #include <math.h>
 
@@ -201,13 +202,15 @@ namespace {
         }
 
     protected:
-        QPoint Oriented(const QPoint &horizontal) const {
-            return m_TreeBar->orientation() == Qt::Horizontal
-                ? horizontal : horizontal.transposed();
+        QRect Centred(const QSize &size) const {
+            const QPointF centre = boundingRect().center();
+            return QRect(qRound(centre.x() - size.width() / 2.0),
+                         qRound(centre.y() - size.height() / 2.0),
+                         size.width(), size.height());
         }
 
-        void PaintFringe(QPainter *painter, const QPoint &chipOffset) const {
-            if(Application::EnableTransparentBar()){
+        void PaintFringe(QPainter *painter) const {
+            if(Application::EnableTransparentWindow()){
                 QPainter::CompositionMode mode = painter->compositionMode();
                 painter->setCompositionMode(QPainter::CompositionMode_Clear);
                 painter->fillRect(boundingRect(), Qt::BrushStyle::SolidPattern);
@@ -226,10 +229,8 @@ namespace {
                                                : Theme::BarButtonPressed));
                 painter->setPen(Qt::NoPen);
                 painter->setRenderHint(QPainter::Antialiasing, true);
-                painter->drawRoundedRect(QRect(boundingRect().center().toPoint()
-                                               + m_TreeBar->ScaleByDevice(Oriented(chipOffset)),
-                                               QSize(m_TreeBar->ScaleByDevice(13),
-                                                     m_TreeBar->ScaleByDevice(13))),
+                const int chip = m_TreeBar->ScaleByDevice(13);
+                painter->drawRoundedRect(Centred(QSize(chip, chip)),
                                          MARKER_CORNER_RADIUS, MARKER_CORNER_RADIUS);
             }
         }
@@ -284,14 +285,13 @@ namespace {
 
             painter->save();
 
-            PaintFringe(painter, QPoint(-9, -8));
+            PaintFringe(painter);
 
             const QPixmap &table = Theme::Pixmap(QStringLiteral(":/resources/treebar/table.png"),
                                        Theme::BarIcon);
-            const QPoint offset = m_TreeBar->ScaleByDevice(Oriented(QPoint(-8, -7)));
             const QRectF bound = boundingRect();
             const bool horizontal = m_TreeBar->orientation() == Qt::Horizontal;
-            const QRect icon = QRect(bound.center().toPoint() + offset, table.size());
+            const QRect icon = Centred(table.size());
 
             const bool showRate = m_TreeBar->EnableFrameRate();
             bool drawIcon = true;
@@ -376,15 +376,11 @@ namespace {
 
             painter->save();
 
-            PaintFringe(painter, QPoint(-7, -8));
+            PaintFringe(painter);
 
             const QPixmap &plus = Theme::Pixmap(QStringLiteral(":/resources/treebar/plus.png"),
                                       Theme::BarIcon);
-            const QPoint offset = m_TreeBar->ScaleByDevice(Oriented(QPoint(-6, -7)));
-            painter->drawPixmap
-                (QRect(boundingRect().center().toPoint() + offset,
-                       plus.size()),
-                 plus, QRect(QPoint(), plus.size()));
+            painter->drawPixmap(Centred(plus.size()), plus, QRect(QPoint(), plus.size()));
 
             painter->restore();
         }
@@ -457,50 +453,39 @@ namespace {
             }
 
             painter->setPen(Qt::NoPen);
-            if(!Application::EnableTransparentBar()){
-                m_Gradient.setStart(outer);
-                m_Gradient.setFinalStop(inner);
+            m_Gradient.setStart(outer);
+            m_Gradient.setFinalStop(inner);
+            if(Application::EnableTransparentWindow()){
+                QPainter::CompositionMode mode = painter->compositionMode();
+                painter->setCompositionMode(QPainter::CompositionMode_DestinationOut);
+                painter->setBrush(QBrush(m_Gradient));
+                painter->drawRect(bound);
+                painter->setCompositionMode(mode);
+
+                SetFade(m_TranslucentGradient, Theme::BarBackgroundTranslucent);
+                m_TranslucentGradient.setStart(outer);
+                m_TranslucentGradient.setFinalStop(inner);
+                painter->setBrush(QBrush(m_TranslucentGradient));
+                painter->drawRect(bound);
+            } else {
                 painter->setBrush(QBrush(m_Gradient));
                 painter->drawRect(bound);
             }
             SetFGBrush(painter, outer, inner);
 
-            QRectF chip = bound;
-            QPoint corner;
-            QPoint offset;
-            QString path;
-            if(horizontal){
-                const int middle = m_TreeBar->GetHorizontalNodeHeight() / 2;
-                chip.setTop(chip.top() + middle - m_TreeBar->ScaleByDevice(6));
-                chip.setHeight(m_TreeBar->ScaleByDevice(13));
-                if(m_Direction == Prev){
-                    corner = bound.topLeft().toPoint();
-                    offset = QPoint(-1, middle - m_TreeBar->ScaleByDevice(5));
-                    path = QStringLiteral(":/resources/treebar/left.png");
-                } else {
-                    corner = bound.topRight().toPoint();
-                    offset = QPoint(-m_TreeBar->ScaleByDevice(10), middle - m_TreeBar->ScaleByDevice(5));
-                    path = QStringLiteral(":/resources/treebar/right.png");
-                }
-            } else {
-                const int middle = m_TreeBar->GetVerticalNodeWidth() / 2;
-                chip.setLeft(chip.left() + middle - m_TreeBar->ScaleByDevice(6));
-                chip.setWidth(m_TreeBar->ScaleByDevice(13));
-                if(m_Direction == Prev){
-                    corner = bound.topLeft().toPoint();
-                    offset = QPoint(middle - m_TreeBar->ScaleByDevice(5), -1);
-                    path = QStringLiteral(":/resources/treebar/up.png");
-                } else {
-                    corner = bound.bottomLeft().toPoint();
-                    offset = QPoint(middle - m_TreeBar->ScaleByDevice(5), -m_TreeBar->ScaleByDevice(10));
-                    path = QStringLiteral(":/resources/treebar/down.png");
-                }
-            }
+            const int across = m_TreeBar->ScaleByDevice(13);
+            const QRect chip = Centred(horizontal
+                                       ? QSize(bound.toRect().width(), across)
+                                       : QSize(across, bound.toRect().height()));
             painter->drawRect(chip);
 
+            const QString path = horizontal
+                ? (m_Direction == Prev ? QStringLiteral(":/resources/treebar/left.png")
+                                       : QStringLiteral(":/resources/treebar/right.png"))
+                : (m_Direction == Prev ? QStringLiteral(":/resources/treebar/up.png")
+                                       : QStringLiteral(":/resources/treebar/down.png"));
             const QPixmap &arrow = Theme::Pixmap(path, Theme::BarIcon);
-            painter->drawPixmap(QRect(corner + offset, arrow.size()),
-                                arrow, QRect(QPoint(), arrow.size()));
+            painter->drawPixmap(Centred(arrow.size()), arrow, QRect(QPoint(), arrow.size()));
         }
 
     protected:
@@ -532,6 +517,7 @@ namespace {
 
         const Direction m_Direction;
         QLinearGradient m_Gradient;
+        QLinearGradient m_TranslucentGradient;
         QLinearGradient m_HoveredGradient;
         QLinearGradient m_PressedGradient;
     };
@@ -727,7 +713,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
     setAcceptDrops(true);
     setMouseTracking(true);
 
-    if(Application::EnableTransparentBar()){
+    if(Application::EnableTransparentWindow()){
         m_View->setStyleSheet("QGraphicsView{ background: transparent}");
         setAttribute(Qt::WA_TranslucentBackground);
     }
@@ -737,7 +723,7 @@ TreeBar::TreeBar(TreeBank *tb, QWidget *parent)
 TreeBar::~TreeBar(){}
 
 void TreeBar::ApplyTheme(){
-    m_View->setBackgroundBrush(Application::EnableTransparentBar()
+    m_View->setBackgroundBrush(Application::EnableTransparentWindow()
                                ? QBrush(Qt::transparent)
                                : Theme::Brush(Theme::BarBackground));
     foreach(LayerItem *layer, m_LayerList) layer->ApplyTheme();
@@ -1017,8 +1003,15 @@ QSize TreeBar::minimumSizeHint() const {
     return QSize(0, 0);
 }
 
+static QMenu *HoldingPreviewWhenHidden(QMenu *menu){
+    QObject::connect(menu, &QMenu::aboutToHide, menu, [](){
+        NodePreview::Instance()->HoldUntilPointerMoves(QCursor::pos());
+    });
+    return menu;
+}
+
 QMenu *TreeBar::TreeBarMenu(){
-    QMenu *menu = new QMenu(this);
+    QMenu *menu = HoldingPreviewWhenHidden(new QMenu(this));
     AddTreeBarMenu(menu);
     return menu;
 }
@@ -1653,12 +1646,25 @@ void TreeBar::OnCurrentChanged(Node *nd){
         if(!nd) break;
 
         LayerItem *layer = m_LayerList.first();
-        QList<NodeItem*> &items = layer->GetNodeItems();
         int index = -1;
-        for(int i = 0; i < items.length(); i++){
-            if(items[i]->GetNode() == nd){ index = i; break;}
+        for(int i = 0; i < layer->GetNodeItems().length(); i++){
+            if(layer->GetNodeItems()[i]->GetNode() == nd){ index = i; break;}
         }
-        if(index == -1) break;
+        if(index == -1){
+            CollectNodes();
+            m_LastAction = CurrentChanged;
+            layer = m_LayerList.first();
+            for(int i = 0; i < layer->GetNodeItems().length(); i++){
+                if(layer->GetNodeItems()[i]->GetNode() == nd){ index = i; break;}
+            }
+            if(index == -1) return;
+            layer->ResetTargetScroll();
+            layer->Scroll(m_VerticalNodeHeight * (index + 0.5)
+                          - m_Scene->sceneRect().height() / 2.0
+                          + ScaleByDevice(FRINGE_BUTTON_SIZE) - layer->GetScroll());
+            return;
+        }
+        QList<NodeItem*> &items = layer->GetNodeItems();
         for(int i = 0; i < items.length(); i++){
             NodeItem *item = items[i];
             item->SetFocused(item->GetNode() == nd);
@@ -1736,18 +1742,23 @@ void TreeBar::paintEvent(QPaintEvent *ev){
     QPainter painter(this);
 
     painter.setPen(Qt::NoPen);
-    painter.setBrush(Theme::Brush(Application::EnableTransparentBar()
+    painter.setBrush(Theme::Brush(Application::EnableTransparentWindow()
                                   ? Theme::BarBackgroundTranslucent
                                   : Theme::BarBackground));
     foreach(QRect rect, ev->region()){
         painter.drawRect(rect);
     }
-    QStyle *s = style();
     QStyleOptionToolBar opt;
     initStyleOption(&opt);
-    opt.rect = HandlePaintRect(s->subElementRect(QStyle::SE_ToolBarHandle, &opt, this));
-    if(opt.rect.isValid() && ev->region().contains(opt.rect))
-        s->drawPrimitive(QStyle::PE_IndicatorToolBarHandle, &opt, &painter, this);
+    const QRect handle = HandlePaintRect(style()->subElementRect(QStyle::SE_ToolBarHandle, &opt, this));
+    if(handle.isValid() && ev->region().intersects(handle)){
+        int length = ScaleByDevice(BAR_HANDLE_LENGTH);
+        const int icon = Theme::Pixmap(QStringLiteral(":/resources/treebar/table.png"),
+                                       Theme::BarIcon).width();
+        if((length & 1) != (icon & 1)) length++;
+        Theme::DrawBarHandle(&painter, handle, orientation(),
+                             ScaleByDevice(BAR_HANDLE_THICKNESS), length);
+    }
 }
 
 QRect TreeBar::HandlePaintRect(const QRect &rect) const {
@@ -1755,10 +1766,12 @@ QRect TreeBar::HandlePaintRect(const QRect &rect) const {
     QRect handle = rect;
     if(orientation() == Qt::Horizontal){
         handle.moveLeft(margin);
+        handle.setRight(qMin(handle.right(), rect.right()));
         handle.setTop(margin);
         handle.setBottom(height() - margin - 1);
     } else {
         handle.moveTop(margin);
+        handle.setBottom(qMin(handle.bottom(), rect.bottom()));
         handle.setLeft(margin);
         handle.setRight(width() - margin - 1);
     }
@@ -1867,7 +1880,7 @@ LayerItem::LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd, QGraphicsI
     ApplyTheme();
     m_Line->setZValue(BORDER_LINE_LAYER);
 
-    m_Animation = new QPropertyAnimation(this, "scroll");
+    m_Animation = new QPropertyAnimation(this, "scroll", this);
     connect(m_Animation, &QPropertyAnimation::finished,
             this, &LayerItem::ResetTargetScroll);
 
@@ -1894,7 +1907,7 @@ LayerItem::~LayerItem(){
 
 void LayerItem::ApplyTheme(){
     if(!m_Line) return;
-    m_Line->setPen(Application::EnableTransparentBar()
+    m_Line->setPen(Application::EnableTransparentWindow()
                    ? QPen(Qt::NoPen)
                    : Theme::Pen(Theme::BarBorder));
 }
@@ -1939,18 +1952,6 @@ bool LayerItem::IsLocked() const {
 
 qreal LayerItem::MaxScroll() const {
     if(!scene()) return 0.0;
-    if(Application::EnableTransparentBar()){
-        switch(m_TreeBar->orientation()){
-        case Qt::Horizontal:
-            return m_TreeBar->GetHorizontalNodeWidth() * (m_NodeItems.length() - 0.5)
-                - scene()->sceneRect().width() / 2.0
-                + m_TreeBar->ScaleByDevice(FRINGE_BUTTON_SIZE);
-        case Qt::Vertical:
-            return m_TreeBar->GetVerticalNodeHeight() * (m_NodeItems.length() - 0.5)
-                - scene()->sceneRect().height() / 2.0
-                + m_TreeBar->ScaleByDevice(FRINGE_BUTTON_SIZE);
-        }
-    }
     qreal scroll = 0.0;
     switch(m_TreeBar->orientation()){
     case Qt::Horizontal:
@@ -1970,18 +1971,6 @@ qreal LayerItem::MaxScroll() const {
 
 qreal LayerItem::MinScroll() const {
     if(!scene()) return 0.0;
-    if(Application::EnableTransparentBar()){
-        switch(m_TreeBar->orientation()){
-        case Qt::Horizontal:
-            return m_TreeBar->GetHorizontalNodeWidth() * 0.5
-                - scene()->sceneRect().width() / 2.0
-                + m_TreeBar->ScaleByDevice(FRINGE_BUTTON_SIZE);
-        case Qt::Vertical:
-            return m_TreeBar->GetVerticalNodeHeight() * 0.5
-                - scene()->sceneRect().height() / 2.0
-                + m_TreeBar->ScaleByDevice(FRINGE_BUTTON_SIZE);
-        }
-    }
     return 0.0;
 }
 
@@ -2479,30 +2468,11 @@ void LayerItem::SwapWithPrev(int index){
     m_NodeItems.swapItemsAt(index-1, index);
 }
 
-QMenu *LayerItem::MakeNodeMenu(){
-    QMenu *menu = new QMenu(m_TreeBar);
-    menu->setToolTipsVisible(true);
-
-    QAction *newViewNode = new QAction(menu);
-    newViewNode->setText(QObject::tr("NewViewNode"));
-    newViewNode->connect(newViewNode, &QAction::triggered, this, &LayerItem::NewViewNode);
-    menu->addAction(newViewNode);
-
-    QAction *cloneViewNode = new QAction(menu);
-    cloneViewNode->setText(QObject::tr("CloneViewNode"));
-    cloneViewNode->connect(cloneViewNode, &QAction::triggered, this, &LayerItem::CloneViewNode);
-    menu->addAction(cloneViewNode);
-
+static void AddTrashEntries(QMenu *menu, TreeBank *tb,
+                            const std::function<void(ViewNode*)> &place){
     NodeList trash = TreeBank::GetTrashRoot()->GetChildren();
 
     QMenu *restoreMenu = menu;
-
-    if(trash.length())
-        restoreMenu->addSeparator();
-
-    TreeBank *tb = m_TreeBank;
-    Node *nd = GetNode();
-    Node *pnd = m_DummyNode->GetParent();
 
     int max = 20;
     int i = 0;
@@ -2522,13 +2492,8 @@ QMenu *LayerItem::MakeNodeMenu(){
 
             restore->connect
                 (restore, &QAction::triggered,
-                 [t, nd, pnd, tb](){
-                    if(nd)
-                        tb->MoveNode(t, nd->GetParent(), nd->Index() + 1);
-                    else if(pnd)
-                        tb->MoveNode(t, pnd);
-                    else
-                        tb->MoveNode(t, TreeBank::GetViewRoot());
+                 [t, tb, place](){
+                    place(t);
                     tb->SetCurrent(t);
                 });
             restoreMenu->addAction(restore);
@@ -2543,8 +2508,39 @@ QMenu *LayerItem::MakeNodeMenu(){
     QAction *displayTrashTree = new QAction(restoreMenu);
     displayTrashTree->setText(QObject::tr("DisplayTrashTree"));
     displayTrashTree->connect(displayTrashTree, &QAction::triggered,
-                              this, &LayerItem::DisplayTrashTree);
+                              [tb](){ tb->DisplayTrashTree();});
     restoreMenu->addAction(displayTrashTree);
+}
+
+QMenu *LayerItem::MakeNodeMenu(){
+    QMenu *menu = HoldingPreviewWhenHidden(new QMenu(m_TreeBar));
+    menu->setToolTipsVisible(true);
+
+    QAction *newViewNode = new QAction(menu);
+    newViewNode->setText(QObject::tr("NewViewNode"));
+    newViewNode->connect(newViewNode, &QAction::triggered, this, &LayerItem::NewViewNode);
+    menu->addAction(newViewNode);
+
+    QAction *cloneViewNode = new QAction(menu);
+    cloneViewNode->setText(QObject::tr("CloneViewNode"));
+    cloneViewNode->connect(cloneViewNode, &QAction::triggered, this, &LayerItem::CloneViewNode);
+    menu->addAction(cloneViewNode);
+
+    if(!TreeBank::GetTrashRoot()->HasNoChildren())
+        menu->addSeparator();
+
+    TreeBank *tb = m_TreeBank;
+    Node *nd = GetNode();
+    Node *pnd = m_DummyNode->GetParent();
+
+    AddTrashEntries(menu, tb, [tb, nd, pnd](ViewNode *t){
+        if(nd)
+            tb->MoveNode(t, nd->GetParent(), nd->Index() + 1);
+        else if(pnd)
+            tb->MoveNode(t, pnd);
+        else
+            tb->MoveNode(t, TreeBank::GetViewRoot());
+    });
 
     return menu;
 }
@@ -2553,9 +2549,9 @@ void LayerItem::NewViewNode(){
     if(Node *nd = GetNode())
         m_TreeBank->NewViewNode(nd->ToViewNode());
     else if(Node *nd = m_DummyNode->GetParent())
-        m_TreeBank->OpenOnSuitableNode(BLANK_URL, true, nd->ToViewNode());
+        m_TreeBank->OpenOnSuitableNode(START_URL, true, nd->ToViewNode());
     else
-        m_TreeBank->OpenOnSuitableNode(BLANK_URL, true);
+        m_TreeBank->OpenOnSuitableNode(START_URL, true);
 }
 
 void LayerItem::CloneViewNode(){
@@ -2769,7 +2765,7 @@ NodeItem::NodeItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent)
     m_HoveredTimerId = 0;
     m_ButtonState = NotHovered;
     m_TargetPosition = QPoint();
-    m_Animation = new QPropertyAnimation(this, "rect");
+    m_Animation = new QPropertyAnimation(this, "rect", this);
     m_Animation->setDuration(334);
     m_Animation->setEasingCurve(QEasingCurve::OutCubic);
     connect(m_Animation, &QPropertyAnimation::finished,
@@ -2846,7 +2842,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     View *view = m_Node->GetView();
     bool isDir = m_Node->IsDirectory();
     const bool isCurrent = m_TreeBank && m_Node == m_TreeBank->GetCurrentViewNode();
-    bool contrast = Application::EnableTransparentBar() && m_IsFocused && !isCurrent;
+    bool contrast = Application::EnableTransparentWindow() && m_IsFocused && !isCurrent;
     const auto drawCurrentAccent = [&]{
         if(!isCurrent) return;
         QRectF accent = bound;
@@ -2883,7 +2879,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         if(isCurrent){
             painter->setBrush(Theme::Brush(Theme::BarTabCurrentBackground));
             painter->setPen(Qt::NoPen);
-        } else if(Application::EnableTransparentBar()){
+        } else if(Application::EnableTransparentWindow()){
             painter->setBrush(Theme::Brush(m_IsFocused
                                            ? (m_IsHovered ? Theme::BarTabTranslucentFocusedHovered
                                                           : Theme::BarTabTranslucentFocused)
@@ -2895,7 +2891,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
             painter->setPen(Qt::NoPen);
         }
         QRectF rect = bound;
-        if(!Application::EnableTransparentBar()){
+        if(!Application::EnableTransparentWindow()){
             switch(m_TreeBar->orientation()){
             case Qt::Horizontal: rect.setBottom(rect.bottom() + 1); break;
             case Qt::Vertical:   rect.setRight(rect.right() + 1);   break;
@@ -2987,13 +2983,13 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     }
 
     if(m_IsHovered){
-        painter->setBrush(Theme::Brush(Application::EnableTransparentBar() && !isCurrent
+        painter->setBrush(Theme::Brush(Application::EnableTransparentWindow() && !isCurrent
                                        ? (m_IsFocused ? Theme::BarTabHoverOverlayTranslucentFocused
                                                       : Theme::BarTabHoverOverlayTranslucent)
                                        : Theme::BarTabHoverOverlay));
         painter->setPen(Qt::NoPen);
         QRectF rect = bound;
-        if(!Application::EnableTransparentBar()){
+        if(!Application::EnableTransparentWindow()){
             switch(m_TreeBar->orientation()){
             case Qt::Horizontal: rect.setBottom(rect.bottom() + 1); break;
             case Qt::Vertical:   rect.setRight(rect.right() + 1);   break;
@@ -3057,7 +3053,7 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         painter->setRenderHint(QPainter::SmoothPixmapTransform, false);
     }
 
-    if(!Application::EnableTransparentBar() && m_IsFocused && !isCurrent){
+    if(!Application::EnableTransparentWindow() && m_IsFocused && !isCurrent){
         painter->setPen(Theme::Pen(Theme::BarBorder));
         painter->setBrush(Qt::NoBrush);
         QRectF rect = bound;
@@ -3175,10 +3171,6 @@ void NodeItem::SetNest(int nest){
     m_Nest = nest;
 }
 
-bool NodeItem::GetFocused() const {
-    return m_IsFocused;
-}
-
 void NodeItem::SetFocused(bool focused){
     m_IsFocused = focused;
     if(zValue() == DELETED_NODE_LAYER) return;
@@ -3199,10 +3191,6 @@ QRectF NodeItem::GetRect() const {
 void NodeItem::SetRect(QRectF rect){
     m_Rect = rect;
     if(Layer()) Layer()->update();
-}
-
-QPointF NodeItem::GetTargetPosition() const {
-    return m_TargetPosition;
 }
 
 void NodeItem::SetTargetPosition(QPointF pos){
@@ -3233,7 +3221,7 @@ void NodeItem::SetButtonState(ButtonState state){
 }
 
 void NodeItem::SetHoveredWithItem(bool hovered){
-    if(m_Node->IsDirectory() && m_IsHovered != hovered){
+    if(m_Node && m_Node->IsDirectory() && m_IsHovered != hovered){
         m_IsHovered = hovered;
         if(m_IsHovered){
             m_HoveredTimerId = startTimer(500);
@@ -3369,6 +3357,7 @@ void NodeItem::OnDeleted(QRectF target, QRectF start){
 
 void NodeItem::ForgetNode(){
     if(!m_Node) return;
+    if(LayerItem *layer = Layer()) layer->RemoveFromNodeItems(this);
     m_Node = nullptr;
 
     if(m_Animation){
@@ -3384,10 +3373,6 @@ void NodeItem::ForgetNode(){
     setSelected(false);
     setAcceptHoverEvents(false);
     hide();
-
-    if(LayerItem *layer = Layer()) layer->RemoveFromNodeItems(this);
-    setParentItem(nullptr);
-    if(QGraphicsScene *sc = scene()) sc->removeItem(this);
 
     deleteLater();
 }
@@ -3787,7 +3772,8 @@ void NodeItem::RequestPreview(){
     if(NodePreview::Instance()->IsAbout(title, rect)) return;
     NodePreview::Instance()->Request(m_Node->VisibleLargeImage(),
                                      title, rect,
-                                     m_Node->IsDirectory());
+                                     m_Node->IsDirectory(),
+                                     QCursor::pos());
 }
 
 void NodeItem::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
@@ -3827,40 +3813,20 @@ QPointF NodeItem::ScheduledPosition(){
 }
 
 QMenu *NodeItem::NodeMenu(){
-    QMenu *menu = new QMenu(m_TreeBar);
+    QMenu *menu = HoldingPreviewWhenHidden(new QMenu(m_TreeBar));
 
     TreeBank *tb = m_TreeBank;
     ViewNode *vn = GetNode() ? GetNode()->ToViewNode() : nullptr;
     if(!vn) return menu;
 
-    QAction *newViewNode = new QAction(menu);
-    newViewNode->setText(QObject::tr("NewViewNode"));
-    newViewNode->connect(newViewNode, &QAction::triggered, this, &NodeItem::NewViewNode);
-    menu->addAction(newViewNode);
+    const bool current = tb->IsCurrent(vn);
 
-    QAction *cloneViewNode = new QAction(menu);
-    cloneViewNode->setText(QObject::tr("CloneViewNode"));
-    cloneViewNode->connect(cloneViewNode, &QAction::triggered, this, &NodeItem::CloneViewNode);
-    menu->addAction(cloneViewNode);
+    auto named = [current](QAction *action, const QString &name){
+        if(current) action->setObjectName(name);
+    };
 
-    menu->addSeparator();
-
-    if(vn->IsDirectory()){
-        QAction *rename = new QAction(menu);
-        rename->setText(QObject::tr("RenameViewNode"));
-        rename->connect(rename, &QAction::triggered, this, &NodeItem::RenameViewNode);
-        menu->addAction(rename);
-
-        menu->addMenu(DirectoryPage::CreateSettingsMenu
-                      (vn, [tb, vn](){ tb->OpenDirectorySettings(vn); }, menu));
-
-    } else {
-        QAction *reload = new QAction(menu);
-        reload->setText(QObject::tr("ReloadViewNode"));
-        reload->connect(reload, &QAction::triggered, this, &NodeItem::ReloadViewNode);
-        menu->addAction(reload);
-
-        if(!tb->IsCurrent(vn)){
+    if(!vn->IsDirectory()){
+        if(!current){
             QAction *open = new QAction(menu);
             open->setText(QObject::tr("OpenViewNode"));
             open->connect(open, &QAction::triggered, this, &NodeItem::OpenViewNode);
@@ -3871,8 +3837,6 @@ QMenu *NodeItem::NodeMenu(){
                                      this, &NodeItem::OpenViewNodeOnNewWindow);
             menu->addAction(openOnNewWindow);
         }
-
-        menu->addSeparator();
 
         QMenu *m = new QMenu(tr("OpenViewNodeWithOtherBrowser"), menu);
         {
@@ -3894,31 +3858,36 @@ QMenu *NodeItem::NodeMenu(){
 
     menu->addSeparator();
 
-    QAction *deleteViewNode = new QAction(menu);
-    deleteViewNode->setText(QObject::tr("DeleteViewNode"));
-    deleteViewNode->connect(deleteViewNode, &QAction::triggered, this, &NodeItem::DeleteViewNode);
-    menu->addAction(deleteViewNode);
-    QAction *deleteRightNode = new QAction(menu);
-    deleteRightNode->setText(m_TreeBar->orientation() == Qt::Horizontal
-                             ? QObject::tr("DeleteRightViewNode")
-                             : QObject::tr("DeleteLowerViewNode"));
-    deleteRightNode->connect(deleteRightNode, &QAction::triggered,
-                             this, &NodeItem::DeleteRightViewNode);
-    menu->addAction(deleteRightNode);
-    QAction *deleteLeftNode = new QAction(menu);
-    deleteLeftNode->setText(m_TreeBar->orientation() == Qt::Horizontal
-                            ? QObject::tr("DeleteLeftViewNode")
-                            : QObject::tr("DeleteUpperViewNode"));
-    deleteLeftNode->connect(deleteLeftNode, &QAction::triggered,
-                            this, &NodeItem::DeleteLeftViewNode);
-    menu->addAction(deleteLeftNode);
-    QAction *deleteOtherNode = new QAction(menu);
-    deleteOtherNode->setText(QObject::tr("DeleteOtherViewNode"));
-    deleteOtherNode->connect(deleteOtherNode, &QAction::triggered,
-                             this, &NodeItem::DeleteOtherViewNode);
-    menu->addAction(deleteOtherNode);
+    if(vn->IsDirectory()){
+        QAction *rename = new QAction(menu);
+        rename->setText(QObject::tr("RenameViewNode"));
+        rename->connect(rename, &QAction::triggered, this, &NodeItem::RenameViewNode);
+        menu->addAction(rename);
+
+        menu->addMenu(DirectoryPage::CreateSettingsMenu
+                      (vn, [tb, vn](){ tb->OpenDirectorySettings(vn); }, menu));
+
+    } else {
+        QAction *reload = new QAction(menu);
+        reload->setText(QObject::tr("ReloadViewNode"));
+        reload->connect(reload, &QAction::triggered, this, &NodeItem::ReloadViewNode);
+        named(reload, QStringLiteral("Reload"));
+        menu->addAction(reload);
+    }
+
+    QAction *cloneViewNode = new QAction(menu);
+    cloneViewNode->setText(QObject::tr("CloneViewNode"));
+    cloneViewNode->connect(cloneViewNode, &QAction::triggered, this, &NodeItem::CloneViewNode);
+    named(cloneViewNode, QStringLiteral("CloneViewNode"));
+    menu->addAction(cloneViewNode);
 
     menu->addSeparator();
+
+    QAction *newViewNode = new QAction(menu);
+    newViewNode->setText(QObject::tr("NewViewNode"));
+    newViewNode->connect(newViewNode, &QAction::triggered, this, &NodeItem::NewViewNode);
+    named(newViewNode, QStringLiteral("NewViewNode"));
+    menu->addAction(newViewNode);
 
     QAction *makeDirectory = new QAction(menu);
     makeDirectory->setText(QObject::tr("MakeDirectory"));
@@ -3938,10 +3907,53 @@ QMenu *NodeItem::NodeMenu(){
     menu->addAction(makeDirectoryWithSameDomain);
 
     menu->addSeparator();
+
+    QAction *deleteViewNode = new QAction(menu);
+    deleteViewNode->setText(QObject::tr("DeleteViewNode"));
+    deleteViewNode->connect(deleteViewNode, &QAction::triggered, this, &NodeItem::DeleteViewNode);
+    named(deleteViewNode, QStringLiteral("Close"));
+    menu->addAction(deleteViewNode);
+
+    QMenu *together = new QMenu(QObject::tr("DeleteViewNodesTogether"), menu);
+    QAction *deleteRightNode = new QAction(together);
+    deleteRightNode->setText(m_TreeBar->orientation() == Qt::Horizontal
+                             ? QObject::tr("DeleteRightViewNode")
+                             : QObject::tr("DeleteLowerViewNode"));
+    deleteRightNode->connect(deleteRightNode, &QAction::triggered,
+                             this, &NodeItem::DeleteRightViewNode);
+    together->addAction(deleteRightNode);
+    QAction *deleteLeftNode = new QAction(together);
+    deleteLeftNode->setText(m_TreeBar->orientation() == Qt::Horizontal
+                            ? QObject::tr("DeleteLeftViewNode")
+                            : QObject::tr("DeleteUpperViewNode"));
+    deleteLeftNode->connect(deleteLeftNode, &QAction::triggered,
+                            this, &NodeItem::DeleteLeftViewNode);
+    together->addAction(deleteLeftNode);
+    QAction *deleteOtherNode = new QAction(together);
+    deleteOtherNode->setText(QObject::tr("DeleteOtherViewNode"));
+    deleteOtherNode->connect(deleteOtherNode, &QAction::triggered,
+                             this, &NodeItem::DeleteOtherViewNode);
+    together->addAction(deleteOtherNode);
+    menu->addMenu(together);
+
+    if(!TreeBank::GetTrashRoot()->HasNoChildren()){
+        QMenu *recent = new QMenu(QObject::tr("RecentlyClosedViewNode"), menu);
+        AddTrashEntries(recent, tb, [tb, vn](ViewNode *t){
+            if(vn->IsDirectory())
+                tb->MoveNode(t, vn);
+            else
+                tb->MoveNode(t, vn->GetParent(), vn->Index() + 1);
+        });
+        menu->addMenu(recent);
+    }
+
+    menu->addSeparator();
     QMenu *treeBarMenu = m_TreeBar->TreeBarMenu();
     treeBarMenu->setParent(menu, treeBarMenu->windowFlags());
     treeBarMenu->setTitle(m_TreeBar->windowTitle());
     menu->addMenu(treeBarMenu);
+
+    tb->ShowKeys(menu);
 
     return menu;
 }

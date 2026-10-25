@@ -7,6 +7,8 @@
 #include <QFontMetrics>
 #include <QScreen>
 #include <QGuiApplication>
+#include <QCursor>
+#include <QWindow>
 
 #include "theme.hpp"
 #include "devicescale.hpp"
@@ -42,6 +44,10 @@ NodePreview::NodePreview()
     m_Timer.setSingleShot(true);
     m_Timer.setInterval(PREVIEW_DELAY_MS);
     connect(&m_Timer, &QTimer::timeout, this, &NodePreview::Appear);
+
+    connect(qGuiApp, &QGuiApplication::focusWindowChanged, this, [this](QWindow *){
+        HoldUntilPointerMoves(QCursor::pos());
+    });
 }
 
 QSize NodePreview::SizeForImageArea(const QSize &imageArea){
@@ -74,7 +80,12 @@ QRect NodePreview::Place(const QRect &itemRect, const QSize &size, const QRect &
 }
 
 void NodePreview::Request(const QImage &image, const QString &title,
-                          const QRect &itemRect, bool isDirectory){
+                          const QRect &itemRect, bool isDirectory, const QPoint &pointer){
+    if(m_Held){
+        if(pointer == m_HeldAt) return;
+        m_Held = false;
+    }
+
     const bool same = (m_ItemRect == itemRect && m_Title == title);
 
     m_Image = image;
@@ -97,6 +108,12 @@ bool NodePreview::IsAbout(const QString &title, const QRect &itemRect) const {
 void NodePreview::Dismiss(){
     m_Timer.stop();
     hide();
+}
+
+void NodePreview::HoldUntilPointerMoves(const QPoint &pointer){
+    Dismiss();
+    m_Held = true;
+    m_HeldAt = pointer;
 }
 
 void NodePreview::Appear(){

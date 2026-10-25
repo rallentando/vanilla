@@ -659,8 +659,9 @@ QJsonObject HistoryItemOf(const Tab &tab){
 
 }
 
-QJsonArray Diff(const QList<Tab> &before, const QList<Tab> &after,
+QJsonArray Diff(const QList<Tab> &leavesBefore, const QList<Tab> &leavesAfter,
                 bool focusedBefore, bool focusedAfter, const Sight &sight){
+    const QList<Tab> before = Scoped(leavesBefore), after = Scoped(leavesAfter);
     QHash<qint64, int> was, is;
     for(int i = 0; i < before.size(); i++) was.insert(before.at(i).id, i);
     for(int i = 0; i < after.size(); i++) is.insert(after.at(i).id, i);
@@ -738,11 +739,13 @@ QJsonArray Diff(const QList<Tab> &before, const QList<Tab> &after,
     if(active && focusedBefore != focusedAfter)
         events.append(Event("windows.onFocusChanged", QJsonArray() << (focusedAfter ? WINDOW : WINDOW_ID_NONE)));
     if(sight.history){
+        QHash<qint64, int> was;
+        for(int i = 0; i < leavesBefore.size(); i++) was.insert(leavesBefore.at(i).id, i);
         QSet<QString> held;
-        foreach(const Tab &tab, after) if(!tab.url.isEmpty()) held.insert(tab.url.toString(QUrl::FullyEncoded));
+        foreach(const Tab &tab, leavesAfter) if(!tab.url.isEmpty()) held.insert(tab.url.toString(QUrl::FullyEncoded));
         QJsonArray gone;
         QSet<QString> said;
-        foreach(const Tab &tab, before){
+        foreach(const Tab &tab, leavesBefore){
             const QString url = tab.url.toString(QUrl::FullyEncoded);
             if(url.isEmpty() || held.contains(url) || said.contains(url)) continue;
             said.insert(url);
@@ -754,10 +757,10 @@ QJsonArray Diff(const QList<Tab> &before, const QList<Tab> &after,
             removed[QStringLiteral("urls")] = gone;
             events.append(Event("history.onVisitRemoved", QJsonArray() << removed));
         }
-        foreach(const Tab &now, after){
+        foreach(const Tab &now, leavesAfter){
             if(now.url.isEmpty()) continue;
             const bool fresh = !was.contains(now.id);
-            const Tab *then = fresh ? nullptr : &before.at(was.value(now.id));
+            const Tab *then = fresh ? nullptr : &leavesBefore.at(was.value(now.id));
             if(fresh || then->url != now.url || VisitOf(*then) != VisitOf(now))
                 events.append(Event("history.onVisited", QJsonArray() << HistoryItemOf(now)));
         }
@@ -765,7 +768,8 @@ QJsonArray Diff(const QList<Tab> &before, const QList<Tab> &after,
     return events;
 }
 
-bool SameOrder(const QList<Tab> &before, const QList<Tab> &after){
+bool SameOrder(const QList<Tab> &leavesBefore, const QList<Tab> &leavesAfter){
+    const QList<Tab> before = Scoped(leavesBefore), after = Scoped(leavesAfter);
     if(before.size() != after.size()) return false;
     for(int i = 0; i < before.size(); i++)
         if(before.at(i).id != after.at(i).id) return false;
@@ -773,13 +777,13 @@ bool SameOrder(const QList<Tab> &before, const QList<Tab> &after){
 }
 
 QJsonArray Greeting(const QList<Tab> &tabs){
-    const qint64 active = ActiveOf(tabs);
+    const qint64 active = ActiveOf(Scoped(tabs));
     return active ? QJsonArray() << Activated(active) : QJsonArray();
 }
 
 QJsonObject EventsAnswer(const QJsonArray &events, const QList<Tab> &tabs){
     QJsonArray order;
-    foreach(const Tab &tab, tabs) order.append(tab.id);
+    foreach(const Tab &tab, Scoped(tabs)) order.append(tab.id);
     QJsonObject value;
     value[QStringLiteral("events")] = events;
     value[QStringLiteral("order")] = order;
@@ -884,6 +888,27 @@ bool NodeIsOfProfile(const QStringList &settings, const QString &space, const QS
     }
     if(said) return false;
     return !profileSpace.isEmpty() && space == profileSpace;
+}
+
+TabScope ParseTabScope(const QString &word){
+    if(word == QStringLiteral("CurrentDirectory")) return TabScope::CurrentDirectory;
+    if(word == QStringLiteral("Loaded")) return TabScope::Loaded;
+    return TabScope::All;
+}
+
+bool InTabScope(TabScope scope, bool inCurrentDirectory, bool loaded){
+    switch(scope){
+    case TabScope::All: return true;
+    case TabScope::CurrentDirectory: return inCurrentDirectory;
+    case TabScope::Loaded: return loaded;
+    }
+    return true;
+}
+
+QList<Tab> Scoped(const QList<Tab> &tabs){
+    QList<Tab> in;
+    foreach(const Tab &tab, tabs) if(tab.scoped) in.append(tab);
+    return in;
 }
 
 bool TabIsTold(TabOwner owner, const std::function<bool()> &directoryIsOfProfile){

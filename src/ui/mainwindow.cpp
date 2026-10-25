@@ -1,12 +1,14 @@
 #include "switch.hpp"
 #include "const.hpp"
 #include "theme.hpp"
+#include "blurbehind.hpp"
 
 #include "mainwindow.hpp"
 
 #include <QIcon>
 #include <QStyle>
 #include <QDockWidget>
+#include "docktitlebar.hpp"
 #include <QLabel>
 #include <QPushButton>
 #include <QHBoxLayout>
@@ -14,6 +16,7 @@
 #include <QGraphicsScene>
 #include <QWindow>
 #include <QMenuBar>
+#include <QPainter>
 #include <QScreen>
 #include <QTimer>
 #include <QElapsedTimer>
@@ -40,6 +43,7 @@
 #include "dialog.hpp"
 #include "treebar.hpp"
 #include "toolbar.hpp"
+#include "systemmenu.hpp"
 
 MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
     :
@@ -69,6 +73,13 @@ MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
 {
     m_Index = id;
 
+    if(Application::EnableTransparentWindow()){
+        setAttribute(Qt::WA_TranslucentBackground);
+#if defined(Q_OS_WIN)
+        installEventFilter(this);
+#endif
+    }
+
     m_TreeBank = new TreeBank(this);
     setCentralWidget(m_TreeBank);
 
@@ -83,6 +94,7 @@ MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
     m_InspectorDock = new QDockWidget(tr("Inspector"), this);
     m_InspectorDock->setObjectName(QStringLiteral("inspector"));
     m_InspectorDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    m_InspectorDock->setTitleBarWidget(new DockTitleBar(m_InspectorDock));
     m_InspectorDock->installEventFilter(this);
 #if defined(Q_OS_WIN) && defined(EDGEWEBVIEW)
     installEventFilter(this);
@@ -110,8 +122,9 @@ MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
     m_DialogFrame->show();
 
     menuBar()->hide();
-    if(Application::EnableTransparentBar()){
+    if(Application::EnableTransparentWindow()){
         menuBar()->setStyleSheet(QStringLiteral("QMenuBar{ background-color: transparent;}"));
+        menuBar()->installEventFilter(this);
     }
 
     if(Application::EnableFramelessWindow()){
@@ -442,6 +455,25 @@ void MainWindow::UpdateInspectorDock(){
 bool MainWindow::eventFilter(QObject *watched, QEvent *ev){
     if(watched == m_InspectorDock && ev->type() == QEvent::Close)
         m_InspectorDockClosed = true;
+    if(ev->type() == QEvent::Paint && qobject_cast<QMenuBar*>(watched) &&
+       testAttribute(Qt::WA_TranslucentBackground)){
+        QWidget *bar = static_cast<QWidget*>(watched);
+        QPainter painter(bar);
+        painter.fillRect(bar->rect(), Theme::Brush(Application::EnableTransparentWindow()
+                                                   ? Theme::BarBackgroundTranslucent
+                                                   : Theme::BarBackground));
+    }
+#if defined(Q_OS_WIN)
+    if(watched == this && ev->type() == QEvent::WinIdChange &&
+       Application::EnableTransparentWindow() && internalWinId() && windowHandle()){
+        if(BlurBehind::SurfaceMayBeTranslucent(windowHandle()->surfaceType())){
+            BlurBehind::Blur(this);
+            ApplyTranslucentFrame();
+        } else {
+            Application::TranslucentWindowUnsupported();
+        }
+    }
+#endif
 #if defined(Q_OS_WIN) && defined(EDGEWEBVIEW)
     if(watched == this && ev->type() == QEvent::WinIdChange &&
        qEnvironmentVariableIsSet("VANILLA_EDGE_INSPECTOR_TRACE")){
@@ -479,6 +511,7 @@ void MainWindow::ClearMenuBar(){
 QMenu *MainWindow::createPopupMenu(){
     QMenu *menu = new QMenu(this);
     AddDisplayMenuActions(menu);
+    m_TreeBank->ShowKeys(menu);
     return menu;
 }
 
@@ -979,6 +1012,60 @@ void MainWindow::paintEvent(QPaintEvent *ev){
     QMainWindow::paintEvent(ev);
 }
 
+void MainWindow::ApplyTheme(){
+    ApplyTranslucentFrame();
+    if(testAttribute(Qt::WA_TranslucentBackground)) menuBar()->update();
+}
+
+void MainWindow::ApplyTranslucentFrame(){
+#if defined(Q_OS_WIN)
+    if(!Application::EnableTransparentWindow() || Application::EnableFramelessWindow() || !internalWinId()) return;
+    const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
+    const auto colorref = [](const QColor &c){ return static_cast<DWORD>(c.red() | (c.green() << 8) | (c.blue() << 16)); };
+    DWORD caption = colorref(Theme::Color(Theme::BarBackground));
+    DWORD text    = colorref(Theme::Color(Theme::BarTitleText));
+    ::DwmSetWindowAttribute(hwnd, 35 , &caption, sizeof(caption));
+    ::DwmSetWindowAttribute(hwnd, 36 , &text, sizeof(text));
+#endif
+}
+
+#if defined(Q_OS_WIN)
+
+bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result){
+    if(eventType == "windows_generic_MSG" && message){
+        const MSG *msg = static_cast<const MSG*>(message);
+        const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
+        if(msg->message == WM_INITMENUPOPUP && HIWORD(msg->lParam) && hwnd && msg->hwnd == hwnd &&
+           reinterpret_cast<HMENU>(msg->wParam) == ::GetSystemMenu(hwnd, FALSE)){
+            delete m_SystemMenu;
+            m_SystemMenuActions.clear();
+            QList<QAction*> actions;
+            m_SystemMenu = m_TreeBank->GlobalContextMenu();
+            const QList<SystemMenu::Entry> entries = SystemMenu::Entries(m_SystemMenu, actions);
+            foreach(QAction *action, actions) m_SystemMenuActions.append(QPointer<QAction>(action));
+            SystemMenu::Install(internalWinId(), entries);
+            return false;
+        }
+        if(msg->message == WM_ACTIVATE && hwnd && msg->hwnd == hwnd &&
+           LOWORD(msg->wParam) != WA_INACTIVE){
+            QTimer::singleShot(0, this, [this](){ RaiseAllEdgeWidgets();});
+        }
+        if(msg->message == WM_SYSCOMMAND){
+            const int index = SystemMenu::IndexOf(msg->wParam);
+            if(index >= 0){
+                if(index < m_SystemMenuActions.size()){
+                    if(QAction *action = m_SystemMenuActions[index])
+                        QMetaObject::invokeMethod(action, &QAction::trigger, Qt::QueuedConnection);
+                }
+                *result = 0;
+                return true;
+            }
+        }
+    }
+    return QMainWindow::nativeEvent(eventType, message, result);
+}
+#endif
+
 void MainWindow::closeEvent(QCloseEvent *ev){
     if(Application::IsRestoringWindows()){
         ev->ignore();
@@ -1064,6 +1151,10 @@ void MainWindow::moveEvent(QMoveEvent *ev){
 
 void MainWindow::showEvent(QShowEvent *ev){
     QMainWindow::showEvent(ev);
+    if(Application::EnableTransparentWindow()){
+        BlurBehind::Blur(this);
+        ApplyTranslucentFrame();
+    }
     if(TreeBank::PurgeView()){
         if(SharedView view = m_TreeBank->GetCurrentView()){
             if(0);

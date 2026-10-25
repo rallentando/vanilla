@@ -38,9 +38,12 @@ vanilla_add_test(tst_gadgetsframe)
 # directory card falls back to; without it the styles draw no glyph at all.
 target_sources(tst_gadgetsframe PRIVATE ../qrc/vanilla.qrc)
 vanilla_add_test(tst_theme)
+vanilla_add_test(tst_blurbehind)
 vanilla_add_test(tst_pagetheme)
 vanilla_add_test(tst_uimetrics)
 vanilla_add_test(tst_windowframe)
+vanilla_add_test(tst_docktitlebar)
+vanilla_add_test(tst_systemmenu)
 vanilla_add_test(tst_receiver)
 vanilla_add_test(tst_startupwindows)
 vanilla_add_test(tst_settingsschema)
@@ -68,6 +71,11 @@ vanilla_add_test(tst_extensionuserscripts)
 vanilla_add_test(tst_extensionui)
 vanilla_add_test(tst_searchengine)
 vanilla_add_test(tst_vanillapage)
+vanilla_add_test(tst_startpage)
+# 'vanilla.qrc' for the start page itself ('resources/start/start.html'), which
+# the test reads for the data the page comes with (D-572 追記 4).
+target_sources(tst_startpage PRIVATE ../qrc/vanilla.qrc)
+vanilla_add_test(tst_privatetree)
 vanilla_add_test(tst_directorypage)
 vanilla_add_test(tst_viewsettings)
 vanilla_add_test(tst_devicescale)
@@ -81,6 +89,9 @@ vanilla_add_test(tst_certificatepolicy)
 vanilla_add_test(tst_fileoperation)
 vanilla_add_test(tst_dialogbuttons)
 vanilla_add_test(tst_editmenu)
+vanilla_add_test(tst_menukeys)
+vanilla_add_test(tst_keymodifiers)
+vanilla_add_test(tst_popupclose)
 vanilla_add_test(tst_nativehistory)
 vanilla_add_test(tst_quickviewbridge)
 vanilla_add_test(tst_jscode)
@@ -95,17 +106,25 @@ vanilla_add_test(tst_profilepair)
 if(TARGET Qt6::WebEngineWidgets)
     target_sources(tst_profilepair PRIVATE ../qrc/quickwebengineview6.qrc)
 endif()
+vanilla_add_test(tst_drawingstack)
 vanilla_add_test(tst_zoomsave)
 vanilla_add_test(tst_minimap)
 vanilla_add_test(tst_downloadname)
 vanilla_add_test(tst_referrer)
 vanilla_add_test(tst_passwordpolicy)
+vanilla_add_test(tst_permissiontable)
 vanilla_add_test(tst_passwordstore)
 vanilla_add_test(tst_downloadhistory)
+# (and the sources: that the panel's window never takes the activation, D-565.)
+target_compile_definitions(tst_downloadhistory PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
 vanilla_add_test(tst_qtlog)
 vanilla_add_test(tst_downloaditem)
 vanilla_add_test(tst_sslprotocol)
 vanilla_add_test(tst_treebaritem)
+# 'vanilla.qrc' for the bar's own bitmaps: the arrow on a scroll button and
+# the plus icon, whose places a test reads off a rendering.
+target_sources(tst_treebaritem PRIVATE ../qrc/vanilla.qrc)
 vanilla_add_test(tst_loadending)
 vanilla_add_test(tst_translationorder)
 # the .qm files the application ships, read where the build puts them.
@@ -115,7 +134,9 @@ add_dependencies(tst_translationorder vanilla)
 vanilla_add_test(tst_shutdown)
 vanilla_add_test(tst_extensions)
 target_compile_definitions(tst_extensions PRIVATE
-    VANILLA_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/extension")
+    VANILLA_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/extension"
+    # (and the sources: that the canonical names' generation is taken before the look, D-546.)
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
 
 # Explicit desktop smoke test, not a headless ctest. Its stores live beside
 # its own executable and it serves only loopback HTTP (D-313).
@@ -136,6 +157,9 @@ endif()
 # both have to know where the sources are: the test binaries run from the
 # build tree.
 target_compile_definitions(tst_settingsschema PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
+# ('tst_vanillapage': that the settings page's see-through tint is the root's, after the inline palette; D-542 追記 12.)
+target_compile_definitions(tst_vanillapage PRIVATE
     VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
 # ('tst_extensioncopy': that copies are made where an extension is added and nowhere else.)
 target_compile_definitions(tst_extensioncopy PRIVATE

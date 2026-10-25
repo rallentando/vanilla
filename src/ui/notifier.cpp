@@ -124,24 +124,12 @@ void Notifier::RegisterUpload(UploadItem *item){
             this, &Notifier::SetOpenProgress);
 }
 
-void Notifier::AddDownloadItem(DownloadItem *item){
-    m_DownloadItemTable[item] = 0;
-    ResizeNotify(m_TreeBank->size());
-    repaint();
-}
-
 void Notifier::RemoveDownloadItem(DownloadItem *item){
     if(m_HoveredDownloadItem == item){
         m_HoveredDownloadItem = nullptr;
         m_CancelButtonState = NotHovered;
     }
     m_DownloadItemTable.remove(item);
-    ResizeNotify(m_TreeBank->size());
-    repaint();
-}
-
-void Notifier::AddUploadItem(UploadItem *item){
-    m_UploadItemTable[item] = 0;
     ResizeNotify(m_TreeBank->size());
     repaint();
 }

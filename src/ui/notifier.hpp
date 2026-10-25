@@ -42,9 +42,7 @@ public:
     void RepaintIfNeed(const QRect &rect);
     void RegisterDownload(DownloadItem *item);
     void RegisterUpload(UploadItem *item);
-    void AddDownloadItem(DownloadItem *item);
     void RemoveDownloadItem(DownloadItem *item);
-    void AddUploadItem(UploadItem *item);
     void RemoveUploadItem(UploadItem *item);
 
 public slots:

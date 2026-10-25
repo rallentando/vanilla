@@ -32,6 +32,10 @@ const QList<Token> &Tokens();
 
 QString TokenSubject(const QString &token);
 
+QStringList ViewKindWords();
+QString ViewKindWordIn(const QStringList &tokens);
+QString ViewKindTokenIn(const QStringList &tokens);
+
 QStringList InheritTokens(const QStringList &titlesNearestFirst);
 
 int StateIn(const QStringList &set, const QString &pattern);

@@ -42,6 +42,8 @@ QJsonObject Messages(const QString &source, const QJsonObject &manifest, const Q
 QString UiLocale();
 QByteArray MessagesLine(const QJsonObject &messages, const QString &locale);
 
+bool InstalledByChrome(const QString &source);
+
 int Stamp(const QString &source, const QByteArray &manifestBytes, const QByteArray &key = QByteArray(),
           const QString &locale = QString());
 

@@ -14,6 +14,7 @@
 #include "lightnode.hpp"
 #include "graphicstableview.hpp"
 #include "gadgets.hpp"
+#include "treebank.hpp"
 #include <QMenu>
 #include "gadgetsstyle.hpp"
 #include "thumbnail.hpp"
@@ -67,7 +68,7 @@ ViewNode *MakeDirectory(int count){
         tab->SetCreateDate(Created());
         tab->SetLastUpdateDate(Created());
         tab->SetLastAccessDate(Created().addSecs(1));
-        tab->SetImage(Snapshot(i));
+        tab->SetImage(Snapshot(i), false);
     }
     return root;
 }
@@ -105,6 +106,9 @@ private slots:
     void initTestCase();
     void theTableLetsGoOfEverythingAboutALeavingNode();
     void anInactiveTableLetsGoAsWell();
+    void theTrashDeletesForGoodOnlyWhenTheUserSaysSo();
+    void thePageIsDrawnBehindNodesButNotBehindAccessKeys();
+    void theBackdropBlurSoftensAnEdgeAndNothingElse();
 
     void zoomingOutDoesNotDivideByZero_data();
     void zoomingOutDoesNotDivideByZero();
@@ -851,6 +855,146 @@ void tst_gadgetsframe::anInactiveTableLetsGoAsWell(){
     QCOMPARE(table->m_DisplayThumbnails.length(), folder->ChildrenLength());
     table->Deactivate();
     delete root;
+}
+
+void tst_gadgetsframe::theTrashDeletesForGoodOnlyWhenTheUserSaysSo(){
+    if(!TreeBank::GetTrashRoot()) TreeBank::Initialize();
+    ViewNode *trash = TreeBank::GetTrashRoot();
+    QVERIFY(trash->HasNoChildren());
+    auto tab = [](ViewNode *parent, const QString &name){
+        ViewNode *vn = parent->MakeChild();
+        vn->SetHoldView(true);
+        vn->SetTitle(name);
+        vn->SetUrl(QUrl(QStringLiteral("https://example.com/") + name));
+        return vn;
+    };
+    ViewNode *folder;
+    ViewNode *inner;
+    ViewNode *inner2;
+    ViewNode *loose;
+    {
+        Booting booting;
+        folder = trash->MakeChild();
+        folder->SetTitle(QStringLiteral("folder"));
+        inner = tab(folder, QStringLiteral("inner"));
+        inner2 = tab(folder, QStringLiteral("inner2"));
+        loose = tab(trash, QStringLiteral("loose"));
+    }
+
+    class RecursiveTable : public GraphicsTableView {
+    public:
+        NodeCollectionType GetNodeCollectionType() const override { return Recursive;}
+    };
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(0, 0), QSizeF(SCREEN)));
+    GraphicsTableView *table = new RecursiveTable;
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+    table->Activate(GraphicsTableView::ViewTree);
+    table->m_DisplayType = GraphicsTableView::TrashTree;
+    table->SetCurrent(loose);
+    QVERIFY(table->IsDisplayingTrashTree());
+    QSet<Node*> shown;
+    for(Thumbnail *thumb : table->m_DisplayThumbnails) shown << thumb->GetNode();
+    QCOMPARE(shown, QSet<Node*>() << folder << inner << inner2 << loose);
+
+    int askedAbout = -1;
+    bool answer = false;
+    TreeBank::SetDiscardConfirmer([&](int count){ askedAbout = count; return answer; });
+    const auto unhook = qScopeGuard([]{ TreeBank::SetDiscardConfirmer(nullptr); });
+
+    GraphicsTableView::m_NodesRegister << table->m_DummyViewNode;
+    QVERIFY(!table->ThumbList_DeleteNode());
+    QTest::qWait(50);
+    QCOMPARE(askedAbout, -1);
+
+    GraphicsTableView::m_NodesRegister = NodeList() << folder << inner << inner2 << loose << loose;
+    QVERIFY(table->ThumbList_DeleteNode());
+    QTRY_COMPARE_WITH_TIMEOUT(askedAbout, 3, 1000);
+    QTest::qWait(50);
+    QCOMPARE(trash->GetChildren(), NodeList() << folder << loose);
+    QCOMPARE(table->m_DisplayThumbnails.length(), 4);
+    QCOMPARE(GraphicsTableView::m_NodesRegister.length(), 4);
+
+    askedAbout = -1;
+    QVERIFY(table->DeleteNodes(NodeList() << folder << inner2 << loose));
+    QTRY_COMPARE_WITH_TIMEOUT(askedAbout, 2, 1000);
+    askedAbout = -1;
+    QVERIFY(!table->DeleteNodes(NodeList() << folder));
+    QTest::qWait(50);
+    QCOMPARE(askedAbout, -1);
+
+    answer = true;
+    askedAbout = -1;
+    GraphicsTableView::m_NodesRegister = NodeList() << folder;
+    QVERIFY(table->ThumbList_DeleteOtherNode());
+    GraphicsTableView::m_NodesRegister.clear();
+    table->Deactivate();
+    delete table;
+    QTRY_COMPARE_WITH_TIMEOUT(trash->GetChildren(), NodeList() << folder, 1000);
+    QCOMPARE(askedAbout, 3);
+    QVERIFY(folder->HasNoChildren());
+
+    bool settledWhileThere = true;
+    bool settled = false;
+    TreeBank::DiscardFromTrashAsked(QList<quint64>() << folder->GetSerial(), 1, QString(),
+                                    [&](){ settled = true; settledWhileThere = trash->GetChildren().contains(folder); });
+    QTRY_VERIFY_WITH_TIMEOUT(settled, 1000);
+    QVERIFY(!settledWhileThere);
+    QVERIFY(trash->HasNoChildren());
+}
+
+void tst_gadgetsframe::thePageIsDrawnBehindNodesButNotBehindAccessKeys(){
+    QVERIFY(!Gadgets::DrawsBackdrop(false, false, true));
+    QVERIFY(!Gadgets::DrawsBackdrop(false, false, false));
+    QVERIFY( Gadgets::DrawsBackdrop(true, true,  true));
+    QVERIFY(!Gadgets::DrawsBackdrop(true, true,  false));
+    QVERIFY( Gadgets::DrawsBackdrop(true, false, true));
+    QVERIFY( Gadgets::DrawsBackdrop(true, false, false));
+}
+
+void tst_gadgetsframe::theBackdropBlurSoftensAnEdgeAndNothingElse(){
+    const int radius = 24;
+    const QSize size(400, 200);
+
+    QImage edge(size, QImage::Format_ARGB32_Premultiplied);
+    edge.setDevicePixelRatio(1.5);
+    edge.fill(Qt::white);
+    for(int y = 0; y < size.height(); y++)
+        for(int x = 0; x < size.width() / 2; x++)
+            edge.setPixel(x, y, qRgb(0, 0, 0));
+
+    const QImage blurred = Gadgets::BlurBackdrop(edge, radius);
+    QCOMPARE(blurred.size(), size);
+    QCOMPARE(blurred.devicePixelRatio(), 1.5);
+
+    const int y = size.height() / 2;
+    const auto grey = [&](int x){ return qGray(blurred.pixel(x, y));};
+    QVERIFY(grey(10) <= 2);
+    QVERIFY(grey(size.width() - 10) >= 253);
+    QVERIFY2(qAbs(grey(200) - 128) <= 24, qPrintable(QString::number(grey(200))));
+    QVERIFY2(grey(200 - radius) > 4 && grey(200 - radius) < 80,
+             qPrintable(QString::number(grey(200 - radius))));
+    QVERIFY2(grey(200 + radius) > 175 && grey(200 + radius) < 251,
+             qPrintable(QString::number(grey(200 + radius))));
+    for(int x = 150; x < 250; x++)
+        QVERIFY2(grey(x) <= grey(x + 1) + 1, qPrintable(QString::number(x)));
+
+    QImage strip(size, QImage::Format_ARGB32_Premultiplied);
+    strip.fill(Qt::transparent);
+    for(int y2 = 0; y2 < size.height(); y2++)
+        for(int x = 0; x < size.width() / 2; x++)
+            strip.setPixel(x, y2, qRgb(200, 40, 40));
+    const QImage soft = Gadgets::BlurBackdrop(strip, radius)
+        .convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    for(int x = 0; x < size.width(); x += 7){
+        const QRgb p = soft.pixel(x, y);
+        QVERIFY(qRed(p) <= qAlpha(p) && qGreen(p) <= qAlpha(p) && qBlue(p) <= qAlpha(p));
+    }
+    QCOMPARE(qAlpha(soft.pixel(size.width() - 10, y)), 0);
+
+    QVERIFY(Gadgets::BlurBackdrop(QImage(), radius).isNull());
+    QCOMPARE(Gadgets::BlurBackdrop(edge, 0), edge);
 }
 
 void tst_gadgetsframe::zoomingOutDoesNotDivideByZero(){

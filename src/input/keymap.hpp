@@ -73,7 +73,6 @@
     m_KeyMap[QKeySequence(Qt::Key_M)]        = QStringLiteral("NextView"); \
     m_KeyMap[QKeySequence(Qt::Key_Comma)]    = QStringLiteral("Back");  \
     m_KeyMap[QKeySequence(Qt::Key_Period)]   = QStringLiteral("Forward"); \
-    m_KeyMap[QKeySequence(Qt::Key_Slash)]    = QStringLiteral("NoAction"); \
                                                                         \
     m_KeyMap[QKeySequence(Qt::Key_F1)]       = QStringLiteral("OpenUrlEditor"); \
     m_KeyMap[QKeySequence(Qt::Key_F2)]       = QStringLiteral("Load");  \
@@ -173,7 +172,6 @@
     m_KeyMap[QKeySequence(Qt::Key_M)]        = QStringLiteral("NextView"); \
     m_KeyMap[QKeySequence(Qt::Key_Comma)]    = QStringLiteral("Back");  \
     m_KeyMap[QKeySequence(Qt::Key_Period)]   = QStringLiteral("Forward"); \
-    m_KeyMap[QKeySequence(Qt::Key_Slash)]    = QStringLiteral("NoAction"); \
                                                                         \
     m_KeyMap[QKeySequence(Qt::Key_F1)]       = QStringLiteral("OpenUrlEditor"); \
     m_KeyMap[QKeySequence(Qt::Key_F2)]       = QStringLiteral("Load");  \
@@ -261,7 +259,6 @@
     m_ThumbListKeyMap[QKeySequence(Qt::Key_M)] = QStringLiteral("CloneNode"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_Comma)] = QStringLiteral("UpDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_Period)] = QStringLiteral("DownDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Slash)] = QStringLiteral("NoAction"); \
                                                                         \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_F1)]  = QStringLiteral("OpenUrlEditor"); \
     m_ThumbListKeyMap[QKeySequence(Qt::Key_F2)]  = QStringLiteral("RenameNode"); \

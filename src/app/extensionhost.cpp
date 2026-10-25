@@ -353,14 +353,35 @@ namespace {
                                             dirIsOfProfile);
     }
 
+    TreeBank *CurrentBank();
+
+    struct Scope {
+        ExtensionHostWire::TabScope scope = ExtensionHostWire::TabScope::All;
+        ViewNode *directory = nullptr;
+        bool Holds(ViewNode *vn, ViewNode *parent) const {
+            return ExtensionHostWire::InTabScope(scope, directory && parent == directory, vn->GetView() != nullptr);
+        }
+    };
+    Scope ScopeNow(){
+        Scope now;
+        now.scope = ExtensionHostWire::ParseTabScope(
+            Application::GlobalSettings().value(QStringLiteral("network/@ExtensionTabScope")).toString());
+        if(now.scope == ExtensionHostWire::TabScope::CurrentDirectory){
+            TreeBank *bank = CurrentBank();
+            ViewNode *current = bank ? bank->GetCurrentViewNode() : nullptr;
+            now.directory = current && current->GetParent() ? current->GetParent()->ToViewNode() : nullptr;
+        }
+        return now;
+    }
+
     void Collect(ViewNode *parent, ExtensionController *controller, const QString &profileSpace,
-                 ViewNode *current, bool dated, QList<ExtensionHostWire::Tab> *tabs){
+                 ViewNode *current, const Scope &scope, bool dated, bool deep, QList<ExtensionHostWire::Tab> *tabs){
         bool asked = false, ofProfile = false;
         foreach(Node *child, parent->GetChildren()){
             ViewNode *vn = child->ToViewNode();
             if(!vn) continue;
             if(vn->IsDirectory()){
-                Collect(vn, controller, profileSpace, current, dated, tabs);
+                if(deep) Collect(vn, controller, profileSpace, current, scope, dated, deep, tabs);
                 continue;
             }
             View *view = vn->GetView();
@@ -380,6 +401,7 @@ namespace {
             tab.loading = view && view->IsLoading();
             tab.loads = view ? view->LoadSerial() : 0;
             tab.zoom = vn->GetZoom();
+            tab.scoped = scope.Holds(vn, parent);
             if(dated){
                 tab.added = Milliseconds(vn->GetCreateDate());
                 tab.visited = Milliseconds(vn->GetLastAccessDate());
@@ -674,6 +696,7 @@ void ExtensionHost::Invoked(const ExtensionController *controller, const QString
 void ExtensionHost::SidePanelEvent(const ExtensionController *controller, const QString &id, bool opened, const QString &path, qint64 tab){
     ExtensionHost *host = controller ? Of(controller) : nullptr;
     if(!host) return;
+    if(tab > 0 && TreeBank::TabOfSerial(static_cast<quint64>(tab)) && !host->NodeOf(tab)) return;
     QJsonObject info;
     info[QStringLiteral("path")] = path;
     if(tab > 0) info[QStringLiteral("tabId")] = double(tab);
@@ -793,6 +816,13 @@ void ExtensionHost::CloseNotices(){
 QJsonObject ExtensionHost::SidePanelCall(const ExtensionHostWire::Call &asked, const QString &id){
     using namespace ExtensionHostWire;
     const QString api = asked.api;
+    const QJsonValue named = asked.args.size() >= 1 && asked.args.at(0).isObject()
+        ? asked.args.at(0).toObject().value(QStringLiteral("tabId")) : QJsonValue();
+    if(named.isDouble()){
+        const double number = named.toDouble();
+        const qint64 tab = qint64(number);
+        if(double(tab) != number || !NodeOf(tab)) return Refused(NoTab(tab));
+    }
     if(api != QStringLiteral("sidePanel.open") && api != QStringLiteral("sidePanel.close")){
         const QJsonObject reply = m_Controller->SidePanelCall(id, api, asked.args);
         if(api == QStringLiteral("sidePanel.setOptions") && reply.value(QStringLiteral("ok")).toBool()) SidePanels::UpdateAll();
@@ -1135,7 +1165,7 @@ void ExtensionHost::Handle(const HeldAsk &ask, quint64 view){
         if(!m_Controller->HasPermission(id, history ? QStringLiteral("history") : QStringLiteral("bookmarks")))
             ask->Reply(ExtensionHostWire::Refused(ExtensionHostWire::NotAvailable(asked.api)));
         else if(history)
-            ask->Reply(ExtensionHostWire::History(asked, Tabs(true), QDateTime::currentMSecsSinceEpoch()));
+            ask->Reply(ExtensionHostWire::History(asked, Whole(true), QDateTime::currentMSecsSinceEpoch()));
         else if(asked.api == QStringLiteral("bookmarks.getTree"))
             ask->Reply(ExtensionHostWire::BookmarkTree(asked, Tree()));
         else
@@ -1146,7 +1176,7 @@ void ExtensionHost::Handle(const HeldAsk &ask, quint64 view){
         if(!m_Controller->HasPermission(id, QStringLiteral("topSites")))
             ask->Reply(ExtensionHostWire::Refused(ExtensionHostWire::NotAvailable(asked.api)));
         else
-            ask->Reply(ExtensionHostWire::TopSites(asked, Tabs(true)));
+            ask->Reply(ExtensionHostWire::TopSites(asked, Whole(true)));
         return;
     }
 
@@ -2145,7 +2175,7 @@ qint64 ExtensionHost::Publish(){
         if(m_Controller->HasPermission(entry.extension, QStringLiteral("history"))){ dated = true; break; }
     if(watch) foreach(const QString &id, m_Subscribers.Watched())
         if(m_Controller->HasPermission(id, QStringLiteral("history"))){ dated = true; break; }
-    const QList<ExtensionHostWire::Tab> tabs = Tabs(dated);
+    const QList<ExtensionHostWire::Tab> tabs = Whole(dated);
     const bool focused = AnyFrameActive();
     const auto sees = [this](const QString &id){ return m_Controller ? m_Controller->SightOf(id) : ExtensionHostWire::Sight(); };
     const QStringList wake = watch ? m_Subscribers.Watch(tabs, focused, Now(), StillThere, sees) : QStringList();
@@ -2227,11 +2257,21 @@ void ExtensionHost::Drain(){
 }
 
 QList<ExtensionHostWire::Tab> ExtensionHost::Tabs(bool dated) const {
+    return ExtensionHostWire::Scoped(Whole(dated));
+}
+
+QList<ExtensionHostWire::Tab> ExtensionHost::Whole(bool dated) const {
     QList<ExtensionHostWire::Tab> tabs;
     TreeBank *bank = CurrentBank();
+    ViewNode *current = bank ? bank->GetCurrentViewNode() : nullptr;
+    const Scope scope = ScopeNow();
+    if(scope.scope == ExtensionHostWire::TabScope::CurrentDirectory && !dated){
+        if(scope.directory)
+            Collect(scope.directory, m_Controller, m_ProfileSpace, current, scope, dated, false, &tabs);
+        return tabs;
+    }
     if(ViewNode *root = TreeBank::GetViewRoot())
-        Collect(root, m_Controller, m_ProfileSpace,
-                bank ? bank->GetCurrentViewNode() : nullptr, dated, &tabs);
+        Collect(root, m_Controller, m_ProfileSpace, current, scope, dated, true, &tabs);
     return tabs;
 }
 
@@ -2245,6 +2285,7 @@ ViewNode *ExtensionHost::NodeOf(qint64 id) const {
     ViewNode *vn = id > 0 && m_Controller ? TreeBank::TabOfSerial(static_cast<quint64>(id)) : nullptr;
     ViewNode *parent = vn && vn->GetParent() ? vn->GetParent()->ToViewNode() : nullptr;
     if(!vn || !parent) return nullptr;
+    if(!ScopeNow().Holds(vn, parent)) return nullptr;
     return VisibleTo(vn, m_Controller, [&](){ return DirIsOfProfile(parent, m_ProfileSpace); }) ? vn : nullptr;
 }
 
@@ -2400,7 +2441,8 @@ QJsonObject ExtensionHost::Move(const ExtensionHostWire::Act &act, const Extensi
         ViewNode *vn = NodeOf(id);
         if(!vn) return Refused(NoTab(id));
         const QList<Tab> tabs = Tabs();
-        ViewNode *dir = TreeBank::GetViewRoot();
+        const Scope scope = ScopeNow();
+        ViewNode *dir = scope.scope == TabScope::CurrentDirectory ? scope.directory : TreeBank::GetViewRoot();
         int to = -1, from = -1;
         for(int i = 0; i < tabs.size(); i++) if(tabs.at(i).id == id) from = i;
         if(place >= 0 && place < tabs.size()){

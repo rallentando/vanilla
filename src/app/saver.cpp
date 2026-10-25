@@ -44,6 +44,7 @@ bool AutoSaver::BeginSave(){
 bool AutoSaver::CaptureProductionSnapshot(SaveSnapshot *snapshot){
     if(!snapshot) return false;
     TreeBank::DoDelete();
+    TreeBank::SweepOffDisk();
     TreeBank::UpdateCurrentThumbnails();
     foreach(MainWindow *win, Application::GetMainWindows()){
         win->SaveSettings();

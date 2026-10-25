@@ -8,6 +8,7 @@
 #include "windowframereveal.hpp"
 
 #include <QMainWindow>
+#include <QPointer>
 
 class QGraphicsScene;
 class QDockWidget;
@@ -104,6 +105,7 @@ public:
     static void ActivateWindowIfNeeded(QWidget *window, WId front);
 
     bool IsFrameActive() const;
+    void ApplyTheme();
 
 protected:
     void changeEvent(QEvent *ev) Q_DECL_OVERRIDE;
@@ -114,8 +116,12 @@ protected:
     void moveEvent(QMoveEvent *ev) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
+#if defined(Q_OS_WIN)
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) Q_DECL_OVERRIDE;
+#endif
 
 private:
+    void ApplyTranslucentFrame();
     friend class tst_windowframe;
     void ShowWindowFrameWidgets();
     void HideWindowFrameWidgets();
@@ -150,6 +156,8 @@ private:
     MainWindowNorthEastWidget *m_NorthEastWidget;
     MainWindowSouthWestWidget *m_SouthWestWidget;
     MainWindowSouthEastWidget *m_SouthEastWidget;
+    QPointer<QMenu> m_SystemMenu;
+    QList<QPointer<QAction>> m_SystemMenuActions;
 };
 
 class TitleBar : public QWidget {
