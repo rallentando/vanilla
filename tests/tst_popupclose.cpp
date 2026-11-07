@@ -14,7 +14,7 @@ class tst_popupclose : public QObject {
         int asked = 0;
         Refusing() : QWidget(nullptr, Qt::Popup) {}
     protected:
-        void closeEvent(QCloseEvent *ev) Q_DECL_OVERRIDE { ++asked; ev->ignore(); }
+        void closeEvent(QCloseEvent *ev) override { ++asked; ev->ignore(); }
     };
 
 private slots:

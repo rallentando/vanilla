@@ -133,7 +133,7 @@ void tst_urlblock::extensionRulesAreAskedOfOrdinaryEngineProfilesOnly(){
     QDir edge(root + QStringLiteral("/view/edge"));
     const QStringList files = edge.entryList(QStringList() << QStringLiteral("*.cpp") << QStringLiteral("*.hpp"));
     QVERIFY(!files.isEmpty());
-    foreach(const QString &name, files){
+    for(const QString &name : files){
         QFile each(edge.filePath(name));
         QVERIFY(each.open(QIODevice::ReadOnly));
         QVERIFY2(!each.readAll().contains("ExtensionNetRules"),

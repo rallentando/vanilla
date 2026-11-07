@@ -30,7 +30,7 @@ class Gadgets : public GraphicsTableView , public View {
 
 public:
     Gadgets(TreeBank *parent = nullptr);
-    ~Gadgets() Q_DECL_OVERRIDE;
+    ~Gadgets() override;
 
     enum AccessKeyMode {
         BothHands,
@@ -76,12 +76,12 @@ public:
     static void SaveSettings();
     void ApplyNodeCollectionTypeSetting();
 
-    void SetNodeCollectionType(NodeCollectionType type) Q_DECL_OVERRIDE {
+    void SetNodeCollectionType(NodeCollectionType type) override {
         if(IsDisplayingViewNode()){
             m_ViewNodeCollectionType = type;
         }
     }
-    NodeCollectionType GetNodeCollectionType() const Q_DECL_OVERRIDE {
+    NodeCollectionType GetNodeCollectionType() const override {
         if(IsDisplayingViewNode()){
             return m_ViewNodeCollectionType;
         }
@@ -109,8 +109,8 @@ public:
     }
 
 public slots:
-    void Activate(DisplayType type) Q_DECL_OVERRIDE;
-    void Deactivate() Q_DECL_OVERRIDE;
+    void Activate(DisplayType type) override;
+    void Deactivate() override;
     void Dismiss();
 
 private slots:
@@ -121,19 +121,19 @@ private slots:
     void OpenInNew(QString);
     void OpenInNew(QString, QString);
 
-    void Load() Q_DECL_OVERRIDE { View::Load();}
-    void Load(const QString &url) Q_DECL_OVERRIDE { View::Load(url);}
-    void Load(const QUrl &url) Q_DECL_OVERRIDE { View::Load(url);}
-    void Load(const QNetworkRequest &req) Q_DECL_OVERRIDE { View::Load(req);}
+    void Load() override { View::Load();}
+    void Load(const QString &url) override { View::Load(url);}
+    void Load(const QUrl &url) override { View::Load(url);}
+    void Load(const QNetworkRequest &req) override { View::Load(req);}
 
     void Download(QString, QString);
     void SeekText(const QString&, View::FindFlags);
     void KeyEvent(QString);
 
-    void TriggerNativeLoadAction(const QUrl&) Q_DECL_OVERRIDE;
+    void TriggerNativeLoadAction(const QUrl&) override;
     void TriggerNativeLoadAction(const QNetworkRequest&,
                                  QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
-                                 const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE;
+                                 const QByteArray &body = QByteArray()) override;
 
     void UpKey       ();
     void DownKey     ();
@@ -162,96 +162,96 @@ public:
 
     bool IsCurrentBlock(const AccessibleWebElement*) const;
 
-    QMenu *CreateNodeMenu() Q_DECL_OVERRIDE;
-    void RenderBackground(QPainter *painter) Q_DECL_OVERRIDE;
+    QMenu *CreateNodeMenu() override;
+    void RenderBackground(QPainter *painter) override;
 
     static bool DrawsBackdrop(bool viewToDraw, bool behind, bool blurring);
     static QImage BlurBackdrop(const QImage &image, int radius);
 
-    QGraphicsObject *base() Q_DECL_OVERRIDE { return static_cast<QGraphicsObject*>(this);}
-    Page *page() Q_DECL_OVERRIDE { return nullptr;}
+    QGraphicsObject *base() override { return static_cast<QGraphicsObject*>(this);}
+    Page *page() override { return nullptr;}
 
-    QUrl url() Q_DECL_OVERRIDE { return QUrl();}
-    QString html() Q_DECL_OVERRIDE { return QString();}
-    TreeBank *parent() Q_DECL_OVERRIDE;
-    void setUrl(const QUrl &) Q_DECL_OVERRIDE {}
-    void setHtml(const QString &, const QUrl &) Q_DECL_OVERRIDE {}
-    void setParent(TreeBank *tb) Q_DECL_OVERRIDE;
+    QUrl url() override { return QUrl();}
+    QString html() override { return QString();}
+    TreeBank *parent() override;
+    void setUrl(const QUrl &) override {}
+    void setHtml(const QString &, const QUrl &) override {}
+    void setParent(TreeBank *tb) override;
 
-    QSize size() Q_DECL_OVERRIDE { return Size().toSize();}
-    void resize(QSize size) Q_DECL_OVERRIDE { ResizeNotify(size);}
+    QSize size() override { return Size().toSize();}
+    void resize(QSize size) override { ResizeNotify(size);}
 
-    void show() Q_DECL_OVERRIDE { QGraphicsObject::show();}
-    void hide() Q_DECL_OVERRIDE { QGraphicsObject::hide();}
-    void raise() Q_DECL_OVERRIDE { setZValue(MAIN_CONTENTS_LAYER);}
-    void lower() Q_DECL_OVERRIDE { setZValue(HIDDEN_CONTENTS_LAYER);}
-    void repaint() Q_DECL_OVERRIDE {
+    void show() override { QGraphicsObject::show();}
+    void hide() override { QGraphicsObject::hide();}
+    void raise() override { setZValue(MAIN_CONTENTS_LAYER);}
+    void lower() override { setZValue(HIDDEN_CONTENTS_LAYER);}
+    void repaint() override {
         QGraphicsObject::update();
     }
-    bool visible() Q_DECL_OVERRIDE { return QGraphicsObject::isVisible();}
-    void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {
+    bool visible() override { return QGraphicsObject::isVisible();}
+    void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) override {
         QGraphicsObject::setFocus(reason);
     }
 
-    void Connect(TreeBank*) Q_DECL_OVERRIDE;
-    void Disconnect(TreeBank*) Q_DECL_OVERRIDE;
+    void Connect(TreeBank*) override;
+    void Disconnect(TreeBank*) override;
 
-    void ZoomIn()  Q_DECL_OVERRIDE { ThumbList_ZoomIn();}
-    void ZoomOut() Q_DECL_OVERRIDE { ThumbList_ZoomOut();}
+    void ZoomIn()  override { ThumbList_ZoomIn();}
+    void ZoomOut() override { ThumbList_ZoomOut();}
 
-    void UpKeyEvent() Q_DECL_OVERRIDE {
+    void UpKeyEvent() override {
         if(IsDisplayingAccessKey())
             AccessKey_PrevBlock();
         else
             ThumbList_MoveToUpperItem();
     }
-    void DownKeyEvent() Q_DECL_OVERRIDE {
+    void DownKeyEvent() override {
         if(IsDisplayingAccessKey())
             AccessKey_NextBlock();
         else
             ThumbList_MoveToLowerItem();
     }
-    void RightKeyEvent() Q_DECL_OVERRIDE {
+    void RightKeyEvent() override {
         if(IsDisplayingAccessKey())
             AccessKey_PrevBlock();
         else
             ThumbList_MoveToRightItem();
     }
-    void LeftKeyEvent() Q_DECL_OVERRIDE {
+    void LeftKeyEvent() override {
         if(IsDisplayingAccessKey())
             AccessKey_NextBlock();
         else
             ThumbList_MoveToLeftItem();
     }
-    void PageDownKeyEvent() Q_DECL_OVERRIDE {
+    void PageDownKeyEvent() override {
         if(IsDisplayingAccessKey())
             AccessKey_NextBlock();
         else
             ThumbList_NextPage();
     }
-    void PageUpKeyEvent() Q_DECL_OVERRIDE {
+    void PageUpKeyEvent() override {
         if(IsDisplayingAccessKey())
             AccessKey_PrevBlock();
         else
             ThumbList_PrevPage();
     }
-    void HomeKeyEvent() Q_DECL_OVERRIDE {
+    void HomeKeyEvent() override {
         if(IsDisplayingAccessKey())
             AccessKey_PrevBlock();
         else
             ThumbList_MoveToFirstItem();
     }
-    void EndKeyEvent() Q_DECL_OVERRIDE {
+    void EndKeyEvent() override {
         if(IsDisplayingAccessKey())
             AccessKey_NextBlock();
         else
             ThumbList_MoveToLastItem();
     }
 
-    void UpdateThumbnail() Q_DECL_OVERRIDE;
+    void UpdateThumbnail() override;
 
-    bool TriggerKeyEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    bool TriggerKeyEvent(QString str) Q_DECL_OVERRIDE;
+    bool TriggerKeyEvent(QKeyEvent *ev) override;
+    bool TriggerKeyEvent(QString str) override;
 
 protected:
     void CreateLabelSequence();
@@ -259,43 +259,44 @@ protected:
     void CollectAccessibleWebElement(View *view);
 
 public slots:
-    void OnTitleChanged(const QString&) Q_DECL_OVERRIDE;
-    void OnUrlChanged(const QUrl&) Q_DECL_OVERRIDE;
+    void OnTitleChanged(const QString&) override;
+    void OnUrlChanged(const QUrl&) override;
 
 protected:
-    void keyPressEvent         (QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void keyReleaseEvent       (QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dropEvent             (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent       (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void contextMenuEvent      (QGraphicsSceneContextMenuEvent *ev) Q_DECL_OVERRIDE;
-    void wheelEvent            (QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
-    void focusInEvent          (QFocusEvent *ev) Q_DECL_OVERRIDE;
-    void focusOutEvent         (QFocusEvent *ev) Q_DECL_OVERRIDE;
+    void keyPressEvent         (QKeyEvent *ev) override;
+    void keyReleaseEvent       (QKeyEvent *ev) override;
+    void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) override;
+    void dropEvent             (QGraphicsSceneDragDropEvent *ev) override;
+    void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) override;
+    void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) override;
+    void mousePressEvent       (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) override;
+    void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) override;
+    bool TakeMappedPress       (QGraphicsSceneMouseEvent *ev) override;
+    void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) override;
+    void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) override;
+    void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) override;
+    void contextMenuEvent      (QGraphicsSceneContextMenuEvent *ev) override;
+    void wheelEvent            (QGraphicsSceneWheelEvent *ev) override;
+    void focusInEvent          (QFocusEvent *ev) override;
+    void focusOutEvent         (QFocusEvent *ev) override;
 
 private:
-    bool TriggerAction(QString str, QVariant data = QVariant()) Q_DECL_OVERRIDE;
+    bool TriggerAction(QString str, QVariant data = QVariant()) override;
     using View::TriggerAction;
     void TriggerAction(GadgetsAction a);
     using View::Action;
     QAction *Action(GadgetsAction a);
 
 public:
-    void KeyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void KeyReleaseEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void MousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void MouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void MouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void MouseDoubleClickEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void WheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE;
+    void KeyPressEvent(QKeyEvent *ev) override;
+    void KeyReleaseEvent(QKeyEvent *ev) override;
+    void MousePressEvent(QMouseEvent *ev) override;
+    void MouseReleaseEvent(QMouseEvent *ev) override;
+    void MouseMoveEvent(QMouseEvent *ev) override;
+    void MouseDoubleClickEvent(QMouseEvent *ev) override;
+    void WheelEvent(QWheelEvent *ev) override;
 
 public slots:
     void AccessKey_TriggerElementAction(Page::CustomAction);
@@ -351,9 +352,9 @@ class AccessKeyBlockLabel : public QGraphicsRectItem {
 
 public:
     AccessKeyBlockLabel(QGraphicsItem *parent, int index, bool isNumber);
-    ~AccessKeyBlockLabel() Q_DECL_OVERRIDE;
+    ~AccessKeyBlockLabel() override;
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
     bool IsNumber() const { return m_IsNumber;}
 

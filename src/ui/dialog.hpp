@@ -18,8 +18,6 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QComboBox>
-#include <QSpinBox>
-#include <QDoubleSpinBox>
 #include <QPainter>
 
 #include <float.h>
@@ -46,7 +44,8 @@ public:
         Open     = 1 << 6,
         Close    = 1 << 7,
         OpenTrash = 1 << 8,
-        Restart   = 1 << 9
+        Restart   = 1 << 9,
+        Never     = 1 << 10
     };
     Q_ENUM(Button);
     Q_DECLARE_FLAGS(Buttons, Button);
@@ -74,7 +73,7 @@ class ModalDialog : public QWidget {
 
 public:
     ModalDialog();
-    ~ModalDialog() Q_DECL_OVERRIDE;
+    ~ModalDialog() override;
 
     template <class T> T ScaleByDevice(T t) const {
         return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));
@@ -110,8 +109,6 @@ public:
         ModalDialog *m_Dialog;
     };
 
-    static int     GetInt   (QString title, QString caption, int    val = 0, int    min = INT_MIN, int    max = INT_MAX, int     step = 1, bool *ok = nullptr);
-    static double  GetDouble(QString title, QString caption, double val = 0, double min = DBL_MIN, double max = DBL_MAX, int decimals = 1, bool *ok = nullptr);
     static QString GetItem  (QString title, QString caption, QStringList items, bool editable = true, bool *ok = nullptr);
     static QString GetText  (QString title, QString caption, QString text = QString(), bool *ok = nullptr, const QString &icon = QString());
     static QString GetPass  (QString title, QString caption, QString text = QString(), bool *ok = nullptr);
@@ -121,6 +118,7 @@ public:
     static QStringList GetOpenFileNames(const QString &caption = QString(), const QString &dir = QString(), const QString &filter = QString(), QString *selectedFilter = nullptr, QFileDialog::Options options = QFileDialog::Options());
     static void Information(const QString &title, const QString &text, const QString &icon = QString());
     static bool Question(const QString &title, const QString &text, const QString &icon = QString());
+    static Dialog::Button AllowBlockOrCancel(const QString &title, const QString &question, const QString &detail);
 
     static QUrl SiteOrigin(const QUrl &securityOrigin, const QUrl &pageUrl);
     static QString SiteTitle(const QUrl &origin);
@@ -139,15 +137,14 @@ public:
     void SetInformativeText(QString information){ m_InformativeText = information;}
     void SetDetailedText(QString detail){ m_DetailedText = detail;}
     void SetButtons(Dialog::Buttons buttons){ m_Buttons = buttons;}
-    void SetDefaultButton(Dialog::Button button){ m_DefaultButton = button;}
 
 protected:
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent *ev) override;
+    void paintEvent(QPaintEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
 
 signals:
     void Returned();
@@ -197,7 +194,7 @@ class ModelessDialog : public QWidget {
 
 public:
     ModelessDialog();
-    ~ModelessDialog() Q_DECL_OVERRIDE;
+    ~ModelessDialog() override;
 
     template <class T> T ScaleByDevice(T t) const {
         return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));
@@ -226,19 +223,20 @@ public:
     void SetTitle(QString title){ m_Title = title;}
     void SetCaption(QString caption){ m_Caption = caption;}
     void SetButtons(Dialog::Buttons buttons){ m_Buttons = buttons;}
-    void SetDefaultButton(Dialog::Button button){ m_DefaultButton = button;}
     void SetDefaultValue(bool value){ m_DefaultValue = value;}
     void SetAutoCancel(bool on){ m_AutoCancel = on;}
     void Renew();
     void SetCallBack(BoolCallBack callBack){ m_CallBack = callBack;}
+    void SetContent(QWidget *content);
 
 protected:
-    void enterEvent(QEnterEvent *ev) Q_DECL_OVERRIDE;
-    void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
+    bool eventFilter(QObject *watched, QEvent *ev) override;
+    void enterEvent(QEnterEvent *ev) override;
+    void leaveEvent(QEvent *ev) override;
+    void keyPressEvent(QKeyEvent *ev) override;
+    void timerEvent(QTimerEvent *ev) override;
+    void paintEvent(QPaintEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
 
 signals:
     void Returned();
@@ -262,6 +260,7 @@ private:
     QString m_Caption;
     int m_TimerId;
     bool m_AutoCancel;
+    QWidget *m_Content = nullptr;
     BoolCallBack m_CallBack;
     bool m_Finished;
     ModelessDialogFrame *m_Frame;
@@ -279,7 +278,7 @@ public:
         setText(text);
         setFont(font);
     }
-    ~DialogLabel() Q_DECL_OVERRIDE {}
+    ~DialogLabel() override {}
 };
 
 class DialogLineEdit : public QLineEdit {
@@ -291,20 +290,20 @@ public:
     {
         EditMenu::Install(this);
     }
-    ~DialogLineEdit() Q_DECL_OVERRIDE {}
+    ~DialogLineEdit() override {}
 
 protected:
-    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
+    void focusInEvent(QFocusEvent *ev) override {
         QLineEdit::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
-    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
+    void focusOutEvent(QFocusEvent *ev) override {
         QLineEdit::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
+    void keyPressEvent(QKeyEvent *ev) override {
         QLineEdit::keyPressEvent(ev);
         if(!ev->isAccepted()){
             if(ev->key() == Qt::Key_Return){
@@ -319,7 +318,7 @@ protected:
             }
         }
     }
-    void inputMethodEvent(QInputMethodEvent *ev) Q_DECL_OVERRIDE {
+    void inputMethodEvent(QInputMethodEvent *ev) override {
         QLineEdit::inputMethodEvent(ev);
         emit textChanged(text() + ev->preeditString());
     }
@@ -339,20 +338,20 @@ public:
         : QComboBox(parent)
     {
     }
-    ~DialogComboBox() Q_DECL_OVERRIDE {}
+    ~DialogComboBox() override {}
 
 protected:
-    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
+    void focusInEvent(QFocusEvent *ev) override {
         QComboBox::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
-    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
+    void focusOutEvent(QFocusEvent *ev) override {
         QComboBox::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
+    void keyPressEvent(QKeyEvent *ev) override {
         QComboBox::keyPressEvent(ev);
         if(!ev->isAccepted()){
             if(ev->key() == Qt::Key_Return){
@@ -367,99 +366,9 @@ protected:
             }
         }
     }
-    void inputMethodEvent(QInputMethodEvent *ev) Q_DECL_OVERRIDE {
+    void inputMethodEvent(QInputMethodEvent *ev) override {
         QComboBox::inputMethodEvent(ev);
         emit editTextChanged(currentText() + ev->preeditString());
-    }
-
-signals:
-    void Returned();
-    void Aborted();
-    void FocusIn();
-    void FocusOut();
-};
-
-class DialogIntSpinBox : public QSpinBox {
-    Q_OBJECT
-
-public:
-    DialogIntSpinBox(QWidget *parent = nullptr)
-        : QSpinBox(parent)
-    {
-        EditMenu::Install(lineEdit());
-    }
-    ~DialogIntSpinBox() Q_DECL_OVERRIDE {}
-
-protected:
-    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
-        QSpinBox::focusInEvent(ev);
-        emit FocusIn();
-        ev->setAccepted(true);
-    }
-    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
-        QSpinBox::focusOutEvent(ev);
-        emit FocusOut();
-        ev->setAccepted(true);
-    }
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
-        QSpinBox::keyPressEvent(ev);
-        if(!ev->isAccepted()){
-            if(ev->key() == Qt::Key_Return){
-                emit Returned();
-                ev->setAccepted(true);
-                return;
-            }
-            if(ev->key() == Qt::Key_Escape){
-                emit Aborted();
-                ev->setAccepted(true);
-                return;
-            }
-        }
-    }
-
-signals:
-    void Returned();
-    void Aborted();
-    void FocusIn();
-    void FocusOut();
-};
-
-class DialogDoubleSpinBox : public QDoubleSpinBox {
-    Q_OBJECT
-
-public:
-    DialogDoubleSpinBox(QWidget *parent = nullptr)
-        : QDoubleSpinBox(parent)
-    {
-        EditMenu::Install(lineEdit());
-    }
-    ~DialogDoubleSpinBox() Q_DECL_OVERRIDE{}
-
-protected:
-    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
-        QDoubleSpinBox::focusInEvent(ev);
-        emit FocusIn();
-        ev->setAccepted(true);
-    }
-    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
-        QDoubleSpinBox::focusOutEvent(ev);
-        emit FocusOut();
-        ev->setAccepted(true);
-    }
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
-        QDoubleSpinBox::keyPressEvent(ev);
-        if(!ev->isAccepted()){
-            if(ev->key() == Qt::Key_Return){
-                emit Returned();
-                ev->setAccepted(true);
-                return;
-            }
-            if(ev->key() == Qt::Key_Escape){
-                emit Aborted();
-                ev->setAccepted(true);
-                return;
-            }
-        }
     }
 
 signals:
@@ -477,20 +386,20 @@ public:
         : QSlider(parent)
     {
     }
-    ~DialogSlider() Q_DECL_OVERRIDE {}
+    ~DialogSlider() override {}
 
 protected:
-    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
+    void focusInEvent(QFocusEvent *ev) override {
         QSlider::focusInEvent(ev);
         emit FocusIn();
         ev->setAccepted(true);
     }
-    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
+    void focusOutEvent(QFocusEvent *ev) override {
         QSlider::focusOutEvent(ev);
         emit FocusOut();
         ev->setAccepted(true);
     }
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
+    void keyPressEvent(QKeyEvent *ev) override {
         QSlider::keyPressEvent(ev);
         if(!ev->isAccepted()){
             if(ev->key() == Qt::Key_Return){

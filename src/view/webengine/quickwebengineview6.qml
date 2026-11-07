@@ -38,7 +38,9 @@ WebEngineView {
         script.injectionPoint = WebEngineScript.DocumentReady
         // not the page's world: what this script says, the host acts on. (D-355)
         script.worldId = WebEngineScript.ApplicationWorld
-        script.runsOnSubFrames = true
+        // the frames under it have the profile's, which reaches a frame of
+        // another process too (D-616).
+        script.runsOnSubFrames = false
         script.sourceCode = viewInterface.defaultScript()
         return script
     }

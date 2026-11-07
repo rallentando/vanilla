@@ -1,12 +1,9 @@
 # アーキテクチャ
 
-最終更新: 2026-10-03
+最終更新: 2026-11-03
 
 vanilla の**いまの構造の地図**。何がどのファイルにあり、どう繋がっているかだけを書く。
 
-- なぜそうなったか・測った事実・境界条件は  の D 番号にある。
-  各節の終わりの「詳細:」がその入口
-- 触る前の注意と再現手順は HANDOVER.md、残りの仕事は ROADMAP.md
 - 拡張 API ごとの対応状況は [EXTENSIONS.md](EXTENSIONS.md)
 
 コードは大きなファイルに集中している（`src/ui/treebar.cpp`、`src/gadgets/graphicstableview.cpp`、
@@ -28,7 +25,7 @@ main.cpp
                  ├─ View        表示中のページ（エンジン別の実装）
                  ├─ Gadgets     サムネイル一覧（俯瞰）UI
                  ├─ Receiver    コマンド / URL / 検索の入力欄
-                 └─ Notifier    ステータス表示
+                 └─ Notifier    ステータスとリンクのカード
 ```
 
 ---
@@ -86,7 +83,7 @@ main.cpp
 | `cookie.json` | `QNetworkAccessManager` 側のクッキー（エンジンのものではない） |
 | `permissions.json` | サイトの許可の表。全ビュー・全プロファイルで 1 つ（`SitePermissions`、D-577） |
 | `icondata.json` | ファビコン。プライベートのビューの分は書かない（D-580） |
-| `<日時>-*.json` | 上の起動ごとのバックアップ（`Application::BackUp`） |
+| `<日時>-*.json` | 上の起動ごとのバックアップ（`Application::CreateBackUpFiles`） |
 | `image/` / `history/` | ノードのサムネイルと履歴。プライベートのノードの分は置かない（D-581） |
 | `extension-*.json`、`extension-copies/`、`serial-base` | 拡張の状態（「拡張機能」の節） |
 | `password.json` | 旧版の残り。読み書きしない |
@@ -299,6 +296,9 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
   俯瞰は疑似的に重ね、Notifier と Receiver は独立したウィンドウとして出す（`View::ForbidToOverlap()`）
 - **タブのアイコン**: どの実装もホスト別のアイコン DB（`Application::RegisterIcon`）に入れ、TreeBar と俯瞰はビュー → DB → 白紙の順に引く。
   QuickWebEngine / QuickNative は `/favicon.ico` を自分で取る（`<link rel=icon>` は見ない）。Edge は `FaviconChanged` / `GetFavicon`（D-533）
+- **TreeBar とタブ一覧の描き直し**: 周期では描かない。タブの見た目の入力（題名・アイコン・音声と消音・サムネイル・読み込み・畳み・primary・描画が読む設定）を変える所が
+  `TreeBank::TabsLookChanged()` を呼び、各バーと開いているタブ一覧が次の turn に 1 回描く。どのスレッドからも呼べる。入力を足すときは告げる所も足す。
+  `LocalView` だけは表示中に周期で描き直す（外さないと決めた。隠れれば止まる）。詳細: D-594、D-595
 - **セッションクッキーの永続**: WebView2 に API が無い。Edge では期限の無いクッキーは再起動で消える
 - **セッション履歴**: QuickWebEngine は保存だけ。QuickNative と Edge は URL だけ
 - **編集**: Edge の Ctrl+C / X / V（Ctrl+Insert、Shift+Delete、Shift+Insert も）はページ自身の編集で、貼り付けはファイルと画像も運ぶ（D-562）。右クリックメニューの「貼り付け」はバックエンドの既定項目に渡す（D-563）。パイプ・ジェスチャ・別のキーに束ねた貼り付けは、アプリ側の文字列を入れる代用
@@ -308,11 +308,11 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 - **スペルチェック**: Edge は API が無く、誤りの下線もメニューの候補も出ない（D-533 追記 3）。WebEngine / QuickWebEngine は辞書が無い環境では下線が出ない（D-275）
 - **POST での遷移**: 3 実装に配線はあるが、vanilla の中に POST で読む経路が無い（検索エンジンの 3 つ目の値は既定の印で、POST ではない）。実機では確かめようがない（D-533 追記 4）
 - **文字列の文書**: `ViewSource` の子で `ApplySource` を使うと、親に `setHtml` で描き直す。WebEngine / QuickWebEngine はこの経路で確認（D-533 追記 4）
-- **パスワードの保存**: WebEngine と QuickWebEngine はメインフレームのフォームだけで、保存先は OS の保管庫（QtKeychain）。入れるのは、欄のクリックか ↓ キーで出るメニューでアカウントを選んだときだけ。
+- **パスワードの保存**: WebEngine と QuickWebEngine はメインフレームと iframe のフォームで（iframe はその枠の origin で保存し、その枠にだけ入れる。D-610）、保存先は OS の保管庫（QtKeychain）。入れるのは、欄のクリックか ↓ キーで出る一覧でアカウントを選んだときだけ（一覧はフォーカスを取らず、打った文字は欄へ入って一覧を前方一致で絞る。絞りはページのアプリの world でして、欄の値はアプリへ出ない。↑↓ Enter Esc Tab は一覧が出ている間だけアプリが取る。D-611）。
   保存したものは設定画面の「保存したパスワード」で一覧し、1 件ずつか全部を消す（Edge の分は一覧に出ず、全部消すときに消える）
 - **サイトの許可**: 3 実装（Edge・WebEngine・QuickWebEngine）とも `SitePermissions` の表で答え、表に無いときだけ聞く。
   エンジンのプロファイルは表の写しで、プロファイルを作るたびと表が変わるたびに揃える（古い記録はそこで消える）。
-  Edge は写しが済むまで最初のページを開かない。QuickNative は表を使わない。設定画面の「サイトのアクセス許可」で一覧・切り替え・削除（D-577）
+  Edge は写しが済むまで最初のページを開かない。QuickNative は表を使わない。設定画面の「サイトのアクセス許可」で一覧・切り替え・削除（D-577）。拡張機能のページも表に残し、一覧には名前を出す（D-650）
 - **local fonts**: Edge の `file://` のページでは、再読み込みで許可が「確認する」に戻る
 - **閲覧データの消去**: QuickWebEngine は訪問済みリンクだけ消せない（Qt に API が無い）
 - **ブロック / DNT**: Edge は iframe の文書を見逃す
@@ -320,11 +320,12 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 - **キャッシュを無視した再読み込み**: Edge はヘッダだけで、次の1回だけ
 - **キーマップ・ページ内のキー**: Edge は許可リスト制で、トップ文書だけ
 - **検索エンジンの追加**: 本体は `Page::AddSearchEngineAt` で 4 実装共通。Edge の右クリックの位置は本物のカーソルから取るので、
-  合成入力の検証ではフォームを探せない。人手では確認済み（ユーザー 2026-10-11、D-533 追記 5）
+  合成入力の検証ではフォームを探せない。人手では確認済み（2026-10-11、D-533 追記 5）
 - **ディレクトリの設定・UA**: QuickNative は一部（UA は効く）。Edge は JS とエラーページの設定だけ
 - **`vanilla://`**: QuickNative では開けず、代わりに WebEngine が開く
 - **印刷**: QuickNative は PDF の書き出しだけ
 - **ダウンロード**: どの実装も履歴（`DownloadHistory`、新しい 500 件）に記録し、ツールバーのボタンの吹き出し（`DownloadPanel`。ツールバーが無いときは窓の右上）と設定画面の「ダウンロード」がそれを見せる。Notifier には出さない。ボタンは進行中・終わってから 1 分・吹き出しが開いている間だけ出す（詳細: D-506、D-519）。
+- **フォームの送信**: メインフレームの multipart の送信が 2 秒続くと、同じ吹き出しの先頭に「送信中」の行と止めるボタンを出す（`RunningUploads`。WebEngineView と Edge。保存しない）。進捗は出ない。XHR と fetch は対象外（詳細: D-630、D-631）。
   Edge のダウンロードはそのビューの `CoreWebView2` が運び、閉じると何も聞こえなくなるので、ダウンロード中のタブを閉じてもビューは隠したまま終端まで生かし（`EdgeDownloadCarriers`）、終わってから消す。閉じたタブはたずねない（詳細: D-279、D-564）
 - **フォントの設定**: Edge には設定そのものが無い
 - QuickNative の × の多くは Qt WebView の QML API が小さいため。`runJavaScript` はあるので、JS で書けるものは動く。
@@ -341,11 +342,12 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 - 表示の種類は「現在のディレクトリ」「配下すべて（全展開）」「配下すべて（展開可）」の3つ（D-497 追記 4）
 - 個々の項目は `AbstractNodeItem` / `Thumbnail` / `NodeTitle`
 - ノードのメニュー（`Gadgets::CreateNodeMenu`）はどこで開いても同じ並び（開く・ノード・作る・消す/戻す・行き先と見せ方・中止）。ゴミ箱は復元が先頭で、作るが無く、消すは「完全に削除」（D-551、D-552、D-589）。ゴミ箱の一覧ではサムネイルの複製ボタンが復元ボタン、閉じるボタン・削除のコマンドは確認のあと完全に削除（D-572、D-589。スタートページの履歴と同じ `TreeBank::DiscardFromTrashAsked`）
-- 描画は `GadgetsStyle`。`GlassStyle`（暗い半透明、既定）と `FlatStyle`（明るい）の2つ
-- ノードを並べている間、背景は一覧の current のノードのページを絵にしてぼかしたもの（どのバックエンドでも止まった絵）。AccessKey の間と設定でオフのときは従来どおり（D-590）
+- 描画は `GadgetsStyle`。`PlainStyle`（Flat と同じ格子を単色の面に、既定。D-652）、`FlatStyle`（カードの格子）、`GlassStyle`（暗い半透明）の3つ
+- 上端に固定のバー（`TableHeader`）。上へ・ゴミ箱のボタン、パンくず、絞り込み欄（`HeaderFilter`）、タブ一覧とゴミ箱では右端に閉じるボタン（`CloseTableButton`）が並び、カードはその下から始まる（D-602、D-603）
+- ノードを並べている間、背景は（Plain は半透明の窓のときだけ）一覧の current のノードのページを絵にしてぼかしたもの（どのバックエンドでも止まった絵）。AccessKey の間と設定でオフのときは従来どおり（D-590）
 - 表示中のタブは淡い背景とアクセントの線で示す。折りたたみの開閉は 200ms で補間する
 
-詳細: D-300〜D-305、D-308、D-338
+詳細: D-300〜D-305、D-308、D-338、D-592（開くときの描く順）、D-602（バー）、D-603（閉じるボタン）、D-652（Plain）
 
 ### 入力とアクション
 
@@ -355,26 +357,28 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 | [keymap.hpp](../src/input/keymap.hpp) | キー → アクション名の既定。修飾キーの無い単独キーは設定 `webview/@EnableSingleKeyShortcut`（既定オフ）のときだけ効く |
 | [mousemap.hpp](../src/input/mousemap.hpp) | マウスジェスチャ → アクション名の既定 |
 | [commandmap.hpp](../src/core/commandmap.hpp) | コマンドの綴り → アクション名。綴りの揺れはここにだけある |
-| [receiver.hpp](../src/app/receiver.hpp) | 入力欄。Command / Query / UrlEdit / Search の4モード |
+| [receiver.hpp](../src/app/receiver.hpp) | 入力欄のカード。Command / Query / UrlEdit / Search の4モード。中央に浮かび、ページ内検索（`search <語>` を含む）は右上。コマンドバーの候補はコマンド（検索エンジンとブックマークレットの名前を含む）・タブ・ゴミ箱・設定・Web のソース別で、行の操作は Tab か右クリックの一覧（D-622、D-625、D-633） |
+| [searchsuggest.hpp](../src/core/searchsuggest.hpp) | 検索の候補を問い合わせる URL と答えの読み取り（Google / Bing / DuckDuckGo。D-622） |
 
 アクション名と入力の綴りの2系統は互換性のために残る。綴りの表の全体は `tst_commandmap` が固定する。ページから叩く JavaScript の API は無い。
 
-詳細: D-054、D-123、D-295、D-430、D-540
+詳細: D-054、D-123、D-295、D-430、D-540、D-622、D-625、D-633、D-636
 
 ### その他
 
 | クラス | 役割 |
 |---|---|
 | `NetworkController` — [networkcontroller.hpp](../src/app/networkcontroller.hpp) | `NetworkAccessManager` の生成、Cookie、プロキシ、認証 |
-| `Saver` — [saver.hpp](../src/app/saver.hpp) | 自動保存。GUI のスレッドで値を写し、別スレッドで順に書く |
+| `AutoSaver` — [saver.hpp](../src/app/saver.hpp) | 自動保存。GUI のスレッドで値を写し、別スレッドで順に書く |
 | `Transmitter` — [transmitter.hpp](../src/app/transmitter.hpp) | 二重起動のとき、既にあるプロセスへ引数を渡して終了する |
 | `UserAgent` — [useragent.hpp](../src/core/useragent.hpp) | 名乗るブラウザの表と、その設定の読み書き |
 | `DownloadName` — [downloadname.hpp](../src/core/downloadname.hpp) | ダウンロード先のファイル名を作る規則 |
 | `WindowLedger` — [windowledger.hpp](../src/core/windowledger.hpp) | どのウィンドウがあり、今どれかを持つ表 |
-| `Notifier` — [notifier.hpp](../src/ui/notifier.hpp) | ステータスと進捗の表示（ダウンロードは D-506 から吹き出しへ） |
+| `Notifier` — [notifier.hpp](../src/ui/notifier.hpp) | ステータスとリンクのカード。内容があるときだけ出る（D-621。ダウンロードは D-506 から吹き出しへ。行は D-630 で撤去） |
 | `DownloadBar` / `DownloadPanel` — [downloadbar.hpp](../src/ui/downloadbar.hpp) | ツールバーのダウンロードのボタンと、その吹き出し |
+| `RunningUploads` — [runninguploads.hpp](../src/app/runninguploads.hpp) | 送信中のフォーム。吹き出しの行の元で、保存しない |
 | `Dialog` — [dialog.hpp](../src/ui/dialog.hpp) | 自前で描くダイアログ。モードレスは窓の右に積む別窓 |
-| `EditMenu` — [editmenu.hpp](../src/ui/editmenu.hpp) | 入力欄（アドレス欄・コマンドライン・ダイアログ）のコンテキストメニュー。ページの文字メニューと同じ項目と言葉（D-522） |
+| `EditMenu` — [editmenu.hpp](../src/ui/editmenu.hpp) | 入力欄（アドレス欄・コマンドバー・ダイアログ）のコンテキストメニュー。ページの文字メニューと同じ項目と言葉（D-522） |
 | `MenuKeys` — [menukeys.hpp](../src/ui/menukeys.hpp) | メニューの右に出すキー。開いた場所で押せば効くものを項目ごとに 1 つ（D-548） |
 | `MiniMap` — [minimap.hpp](../src/ui/minimap.hpp) | ページの脇の帯。注入した JS が集めた要素の矩形を図にする。文書が動かず中の要素がスクロールするページはその要素を描く（D-485）。設定 `application/@EnableMiniMap`（既定オフ） |
 
@@ -466,9 +470,59 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 - 編集はすべてリネーム（`TreeBank::ReconfigureDirectory`）を通るので、ネットワークプロファイルの付け替えも同じ経路で働く
 - ノードのリネームの欄は名前だけを見せ、元のトークンを付け直す。`;` は打てない
 - ルートも編集できる（`application/@RootName` に残る）。ゴミ箱は編集できない
+- 一覧で選ぶと、一覧内のスクロール位置を描き直しの前後で保つ（D-618）
 - 分解・合成・継承は純粋な関数で、`tst_directorypage` が固定する
 
-詳細: D-047、D-048、D-078、D-116〜D-122、D-310、D-311、D-428
+**名前を変えるときのプロファイル**
+
+ID ディレクトリと根で、空間の境界を保ったまま `A` → `B` と名前を変えると、**データ移動・併合・拒否**のいずれかになる。「併合」は B が既にある空間のときで、プロファイル全体の統合ではない（WebEngine・Quick のサイトのデータは読み出せないので運べない）。
+
+**1. 名前変更の判定**
+
+別の移動が進行していない場合は、次の順で決める。
+
+```mermaid
+flowchart TD
+    registered{"B の manager が登録済み？"}
+    registered -->|はい| merge["併合"]
+    registered -->|いいえ| shared{"A を別の境界が共有？"}
+    shared -->|はい| refuse["拒否"]
+    shared -->|いいえ| occupied{"B の保存先・台帳が存在？"}
+    occupied -->|あり| refuse
+    occupied -->|なし| move["データ移動"]
+```
+
+- **登録済み**: 名前 → manager の表から B の manager を引けること。起動時の `cookie.json` の読み込みでも登録されるので、表示中のタブの有無では決まらない。
+- **共有**: ほかの ID ディレクトリや根も A を空間名にしていること（ゴミ箱内も含む）。子ディレクトリが A を継承するだけなら共有とは数えない。
+- **保存先・台帳**: 移動先候補のエンジン保存先・キャッシュと拡張の台帳。B が未登録でも、これらがディスクに残っていれば拒否する。
+
+B が登録済みなら、移動先の競合判定を通らず、併合へ進む。併合では A の共有を見て、共有されていれば A を手放さない。
+
+**2. データへの影響**
+
+| 対象 | データ移動 | 併合 | 拒否 |
+|---|---|---|---|
+| QNAM の保存対象 Cookie | B へ引き継ぐ | B の jar に合流 | 変更なし |
+| Edge の Cookie | 保存先ごと移動 | 永続 Cookie のうち、B に同じ名前・domain・path が無いものだけ B へ足す | 変更なし |
+| エンジン保存先・キャッシュ | B へ移動 | 移動しない（A に残す） | 変更なし |
+| 拡張の状態・台帳 | B へ移動 | 移動しない | 変更なし |
+| 保存パスワード | B へ移動 | B へ移す（B にあるものを残す。A が共有なら移さない） | 変更なし |
+| A のプロファイルを使う既存ビュー | 全窓で閉じ、各窓の current だけ再生成 | 同じ（A が共有ならこのディレクトリの下だけ）。B の Edge のビューも閉じて開き直す | 変更なし |
+| A の manager | 破棄し、保存対象 Cookie を持つ B の manager を生成 | 破棄（A が共有なら残す） | 変更なし |
+| 名前変更 | 成立（一部の移動失敗時も） | 成立 | 題名を元に戻す |
+
+データ移動の欄は成功した項目の扱い。一部だけ移動に失敗することがあり、全項目をまとめて成功・失敗にする原子的な操作ではない。
+
+**3. 制約と未保証事項**
+
+- **対象外**: 普通のディレクトリの名前だけを変えても、継承元の空間は変わらない。ID の付け外しは別の経路で、ID を外すと、A を共有する境界が無ければ庫を閉じて手放し（データは残す）、下のタブを親の空間で開き直す。ID を付けると、同名の空間が登録済みならそこへ入り、無ければ作る。どちらも、まだ閉じきっていない保存先を開くときは拒否する（D-619）。
+- **実行中の制約**: データ移動はダウンロード中・別の移動中に拒否し、移動中は全窓の入力を止める。別の移動で保護中の A/B の境界を変更する要求は、上の判定より先に拒否する。
+- **移動の限界**: 移せなかった保存先・台帳は元のパスを、パスワードは失敗件数を報告し、成功分を戻すことなく処理を終える。新名では失敗分のデータを引き継がない。セッション Cookie・sessionStorage・ページ内の状態は失われうる。
+- **併合の限界**: WebEngine・Quick のログインは B へ運べない（報告する）。Edge の Cookie は、そのセッションで Edge の環境ができていないと運べない（報告する）。これがこのアプリがバックエンドの Cookie 庫へ書く唯一の場所（D-259 L1 の例外、D-619）。
+- **使っていないプロファイルの削除**: 設定画面の「プロファイル」が、ディスクの保存先を空間ごとに一覧にし、ツリーで使っておらずタブでも開いていない行だけを消す。名前の当たらない行は、別のインストールやビルドのものかもしれないと注意書きを出す（共有の保存先があるため）。詳細: D-620。
+- **WebView2 の「最後に使ったプロファイル」**: Edge のビューが残らない rename では、ブラウザのプロセスが終わるのを待ってから移し、`Local State` の `last_used` が無いプロファイルを指していたら外す（次に起動したブラウザが旧い場所に空のプロファイルを作り直さないように）。環境を作る前とブラウザが終わるたびにも同じことをする（D-617 追記 1）。
+
+詳細: D-047、D-048、D-078、D-116〜D-122、D-310、D-311、D-428、D-617、D-619
 
 ---
 
@@ -482,6 +536,9 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 | [toolbar.cpp](../src/ui/toolbar.cpp) の `IsUrlToLoadInPlace` | 今のタブで開くか、`Receiver` を通して新しいタブで開くか |
 
 `tst_inputmapping` の `tellsAUrlFromSomethingToSearchFor` が、どちらに転ぶべきかを固定している。
+
+アドレスバーの候補は今のタブと周辺（上の階層の URL・同じ階層のタブ・打った URL の履歴・ページへの動作）だけで、
+アプリ全体と窓の動作はコマンドバーの候補に任せる（D-624）。
 
 ---
 
@@ -659,6 +716,7 @@ API ごとの対応状況は [EXTENSIONS.md](EXTENSIONS.md)。
 | `ExtensionHostWire` | [src/core/extensionhostwire.cpp](../src/core/extensionhostwire.cpp) | ホストの純粋な規則: 呼び元の確認、タブを見せるか、イベントの差分、待ち行列 |
 | `ExtensionUi` | [src/core/extensionui.cpp](../src/core/extensionui.cpp) | ボタンの状態、右クリックの項目、ショートカット、ダウンロードの純粋な部分 |
 | `ExtensionMainScripts` / `ExtensionUserScripts` | [src/core/](../src/core/) | MAIN world の登録と `chrome.userScripts` を、エンジンのユーザースクリプトにする |
+| `ExtensionAlarms` | [src/core/](../src/core/) | Qt の `chrome.alarms` の表と永続。期限が来たものは worker が取りに来るまで待つ（鍵のあるコピーだけ。ほかは D-442 のシム。詳細: D-647） |
 | `ExtensionBar` | [src/ui/extensionbar.cpp](../src/ui/extensionbar.cpp) | アドレスバー右の一覧のボタンとピン留めしたボタン、ポップアップ |
 | `SidePanels` | [src/ui/sidepanels.cpp](../src/ui/sidepanels.cpp) | `chrome.sidePanel` のドック |
 | `DockTitleBar` | [src/ui/docktitlebar.cpp](../src/ui/docktitlebar.cpp) | サイドパネルとインスペクタのドックの題名バー（バーと同じ地、塗り直した浮かす・閉じる）。詳細: D-567 |
@@ -732,7 +790,7 @@ API ごとの対応状況は [EXTENSIONS.md](EXTENSIONS.md)。
 - **見えないページ**（`OffscreenPage`）: `chrome.offscreen` の文書、`chrome.downloads` のダウンロード、worker を起こすページに使う
 - **MAIN world のスクリプト**: ページより先に走らせる口がエンジンのユーザースクリプトしか無いので、ホストがコピーのファイルを読んで `QWebEngineScript` にする
 - **ポップアップの大きさ**: ホストが中身の大きさを測って窓を合わせる（`View::ExtensionPopupSizeJsCode`）
-- isolated world での `scripting.executeScript` は、自前ビルドの QtWebEngine のパッチが要る（公式のエンジンでは CSP で拒まれる）
+- isolated world での `scripting.executeScript` は、パッチを当てて自分でビルドした QtWebEngine が要る（公式のエンジンでは CSP で拒まれる）
 
 ### UI
 

@@ -87,17 +87,17 @@ namespace {
         }
 
     protected:
-        bool WorkerIsOfThisRun(const QString &id) const Q_DECL_OVERRIDE { return m_Refreshed.contains(id); }
-        bool HandlesCommands() const Q_DECL_OVERRIDE { return true; }
+        bool WorkerIsOfThisRun(const QString &id) const override { return m_Refreshed.contains(id); }
+        bool HandlesCommands() const override { return true; }
 
-        void Snapshot(SnapshotDone done) Q_DECL_OVERRIDE {
+        void Snapshot(SnapshotDone done) override {
             QList<ExtensionItem> result;
             foreach(const QWebEngineExtensionInfo &info, m_Manager->extensions())
                 result.append(Item(info));
             done(result, QString());
         }
 
-        QString EngineNote() const Q_DECL_OVERRIDE {
+        QString EngineNote() const override {
             if(!ExtensionHost::ShimsOn()) return QString();
             return ExtensionController::tr(
                 "In this view extensions run from a copy with a compatibility layer added. "
@@ -105,13 +105,13 @@ namespace {
                 "Some extensions may not work fully.");
         }
 
-        QSet<QString> ShimmedIds() const Q_DECL_OVERRIDE {
+        QSet<QString> ShimmedIds() const override {
             QSet<QString> ids;
             foreach(const QWebEngineExtensionInfo &info, m_Manager->extensions())
                 if(info.isEnabled() && ExtensionCopy::SourceOf(info.path()) != info.path()) ids.insert(info.id());
             return ids;
         }
-        QString RunFolderOf(const QString &id) const Q_DECL_OVERRIDE {
+        QString RunFolderOf(const QString &id) const override {
             foreach(const QWebEngineExtensionInfo &info, m_Manager->extensions())
                 if(info.id() == id && info.isEnabled() && ExtensionCopy::SourceOf(info.path()) != info.path()) return info.path();
             return QString();
@@ -119,7 +119,7 @@ namespace {
 
     protected:
 
-        void Add(const ExtensionManifest &manifest, ItemDone done) Q_DECL_OVERRIDE {
+        void Add(const ExtensionManifest &manifest, ItemDone done) override {
             QString path = manifest.folder;
             if(ExtensionHost::ShimsOn()){
                 const ExtensionCopy::Made made = ExtensionCopy::Make
@@ -150,7 +150,7 @@ namespace {
             m_Manager->loadExtension(path);
         }
 
-        void Enable(const QString &id, bool enabled, ItemDone done) Q_DECL_OVERRIDE {
+        void Enable(const QString &id, bool enabled, ItemDone done) override {
             foreach(const QWebEngineExtensionInfo &info, m_Manager->extensions()){
                 if(info.id() != id) continue;
                 m_Manager->setExtensionEnabled(info, enabled);
@@ -169,7 +169,7 @@ namespace {
             done(gone, ExtensionController::tr("The extension is no longer loaded."));
         }
 
-        void Remove(const QString &id, Done done) Q_DECL_OVERRIDE {
+        void Remove(const QString &id, Done done) override {
             foreach(const QWebEngineExtensionInfo &info, m_Manager->extensions()){
                 if(info.id() != id) continue;
                 auto connection = std::make_shared<QMetaObject::Connection>();
@@ -264,6 +264,16 @@ void WebEngineExtensions::Install(QQuickWebEngineProfile *profile){
 #endif
 }
 
+namespace {
+    const char QUICK_PROFILE_OWNER[] = "vanillaQuickProfileOwner";
+}
+
+void WebEngineExtensions::DeleteQuickProfile(QQuickWebEngineProfile *profile){
+    if(!profile) return;
+    if(QObject *owner = profile->property(QUICK_PROFILE_OWNER).value<QObject*>()) owner->deleteLater();
+    else profile->deleteLater();
+}
+
 QQuickWebEngineProfile *WebEngineExtensions::CreateQuickProfile(QObject *owner, const QVariantMap &initial){
     if(!owner) owner = QCoreApplication::instance();
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
@@ -277,7 +287,10 @@ QQuickWebEngineProfile *WebEngineExtensions::CreateQuickProfile(QObject *owner, 
         QMetaObject::invokeMethod(prototype, "instance", Qt::DirectConnection,
                                   Q_RETURN_ARG(QQuickWebEngineProfile*, profile));
     }
-    if(profile) return profile;
+    if(profile){
+        profile->setProperty(QUICK_PROFILE_OWNER, QVariant::fromValue(static_cast<QObject*>(engine)));
+        return profile;
+    }
     qWarning() << "Quick profile construction failed:" << component.errors();
     delete engine;
 #else
@@ -408,22 +421,22 @@ namespace {
                 });
             }
         }
-        ~WidgetPopup() Q_DECL_OVERRIDE {
+        ~WidgetPopup() override {
             delete page();
         }
 
     protected:
-        void childEvent(QChildEvent *ev) Q_DECL_OVERRIDE {
+        void childEvent(QChildEvent *ev) override {
             QWebEngineView::childEvent(ev);
             if(ev->added()) ev->child()->installEventFilter(this);
         }
-        bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE {
+        bool eventFilter(QObject *watched, QEvent *ev) override {
             if(ev->type() == QEvent::KeyRelease ||
                (ev->type() == QEvent::MouseButtonRelease && static_cast<QMouseEvent*>(ev)->button() != Qt::RightButton))
                 Hand();
             return QWebEngineView::eventFilter(watched, ev);
         }
-        void contextMenuEvent(QContextMenuEvent *ev) Q_DECL_OVERRIDE {
+        void contextMenuEvent(QContextMenuEvent *ev) override {
             const QWebEngineContextMenuRequest *request = lastContextMenuRequest();
             if(!request){ ev->ignore(); return; }
             static const QMap<QString, QWebEnginePage::WebAction> actions = {
@@ -500,11 +513,11 @@ namespace {
         }
 
     protected:
-        void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE {
+        void mouseReleaseEvent(QMouseEvent *ev) override {
             QQuickWidget::mouseReleaseEvent(ev);
             if(ev->button() != Qt::RightButton) Hand();
         }
-        void keyReleaseEvent(QKeyEvent *ev) Q_DECL_OVERRIDE {
+        void keyReleaseEvent(QKeyEvent *ev) override {
             QQuickWidget::keyReleaseEvent(ev);
             Hand();
         }

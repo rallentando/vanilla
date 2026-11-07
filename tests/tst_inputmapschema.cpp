@@ -57,7 +57,7 @@ private slots:
             "InputMap::Hooks\\(((?:\\w+::)?IsValidAction)\\)\\)"));
 
         typedef QPair<QString, InputMapSchema::Vocabulary> File;
-        foreach(const File &file, files){
+        for(const File &file : files){
             const QString source = Source(file.first);
             QVERIFY2(!source.isEmpty(), qPrintable(file.first));
             QRegularExpressionMatchIterator it = load.globalMatch(source);
@@ -72,10 +72,11 @@ private slots:
             }
         }
         QCOMPARE(read.size(), 10);
-        QCOMPARE(InputMapSchema::Tables().size(), 10);
+        QCOMPARE(InputMapSchema::Tables().size(), 11);
 
         foreach(const InputMapSchema::Table &table, InputMapSchema::Tables()){
             const QString group = QString::fromLatin1(table.group);
+            if(table.vocabulary == InputMapSchema::ReceiverActions) continue;
             QVERIFY2(read.contains(group), qPrintable(group));
             const InputMapSchema::Kind kind =
                 table.kind == InputMapSchema::Gesture ? InputMapSchema::Mouse : table.kind;
@@ -105,7 +106,7 @@ private slots:
         QSet<QString> defined;
         int compared = 0;
         typedef QPair<QString, InputMapSchema::Vocabulary> File;
-        foreach(const File &file, files){
+        for(const File &file : files){
             QRegularExpressionMatchIterator it = define.globalMatch(Source(file.first));
             while(it.hasNext()){
                 const QRegularExpressionMatch match = it.next();
@@ -128,12 +129,18 @@ private slots:
         }
     }
 
+    void aRightGestureThereAndBackOpensTheCommandBar(){
+        const Pairs defaults = InputMapSchema::Defaults(TableOf("webview/rightgesture"));
+        QVERIFY(defaults.contains(qMakePair(QStringLiteral("L,R"), QStringLiteral("OpenCommand"))));
+        QVERIFY(defaults.contains(qMakePair(QStringLiteral("R,L"), QStringLiteral("OpenCommand"))));
+    }
+
     void everyDefaultCanBePressed(){
         foreach(const InputMapSchema::Table &table, InputMapSchema::Tables()){
             const Pairs defaults = InputMapSchema::Defaults(table);
             QVERIFY2(!defaults.isEmpty(), table.group);
             typedef QPair<QString, QString> Pair;
-            foreach(const Pair &pair, defaults){
+            for(const Pair &pair : defaults){
                 QString canonical;
                 switch(table.kind){
                 case InputMapSchema::Keys:    canonical = InputMap::CanonicalKeyName(pair.first);     break;
@@ -154,7 +161,7 @@ private slots:
             << qMakePair(QStringLiteral("view/webengine/quickwebengineview.cpp"),
                          QStringLiteral("void QuickWebEngineView::keyPressEvent(QKeyEvent *ev){"));
         typedef QPair<QString, QString> Place;
-        foreach(const Place &place, places){
+        for(const Place &place : places){
             const QString source = Source(place.first);
             const int start = source.indexOf(place.second);
             QVERIFY2(start >= 0, qPrintable(place.first));
@@ -168,7 +175,7 @@ private slots:
                          QStringLiteral("bool WebEngineView::RestoreScroll(){"))
             << qMakePair(QStringLiteral("view/webengine/quickwebengineview.cpp"),
                          QStringLiteral("bool QuickWebEngineView::RestoreScroll(){"));
-        foreach(const Place &place, restores){
+        for(const Place &place : restores){
             const QString source = Source(place.first);
             const int start = source.indexOf(place.second);
             QVERIFY2(start >= 0, qPrintable(place.first));
@@ -384,7 +391,7 @@ private slots:
 
         const QJsonArray entries = described[QStringLiteral("entries")].toArray();
         QCOMPARE(entries.size(), 2);
-        foreach(QJsonValue value, entries){
+        for(QJsonValue value : entries){
             const QJsonObject entry = value.toObject();
             const bool k = entry[QStringLiteral("input")].toString() == QStringLiteral("K");
             QCOMPARE(entry[QStringLiteral("isDefault")].toBool(), !k);
@@ -403,7 +410,89 @@ private slots:
         const QJsonObject all = InputMapSchema::Describe(settings);
         QCOMPARE(all[QStringLiteral("singleKeysOff")].toBool(), true);
         QCOMPARE(all[QStringLiteral("fourWayGestures")].toBool(), true);
-        QCOMPARE(all[QStringLiteral("tables")].toArray().size(), 10);
+        QCOMPARE(all[QStringLiteral("tables")].toArray().size(), 11);
+    }
+
+    void everyBindingOfTheTablesIsThereInWordsAUserUses(){
+        const SettingsIO::Map none;
+        const QList<InputMapSchema::Binding> all = InputMapSchema::Bindings(none, true);
+        int expected = 0;
+        foreach(const InputMapSchema::Table &table, InputMapSchema::Tables())
+            expected += InputMapSchema::Current(none, table).length();
+        QCOMPARE(all.length(), expected);
+
+        bool key = false, mouse = false, gesture = false;
+        for(const InputMapSchema::Binding &binding : all){
+            QVERIFY(!binding.shown.isEmpty());
+            QVERIFY(!binding.table.isEmpty());
+            QVERIFY(!binding.action.isEmpty());
+            if(binding.input == QStringLiteral("Ctrl+T") && binding.action == QStringLiteral("NewViewNode")) key = true;
+            if(binding.input.contains(QStringLiteral("Button"))){
+                mouse = true;
+                QVERIFY(!binding.shown.contains(QStringLiteral("LeftButton")));
+            }
+            if(binding.input == QStringLiteral("L")) gesture = true;
+            if(binding.input == QStringLiteral("L") && binding.table.contains(QStringLiteral("gesture"), Qt::CaseInsensitive))
+                QCOMPARE(binding.shown, QStringLiteral("\u2190"));
+        }
+        foreach(const InputMapSchema::Binding &binding, all){
+            QVERIFY2(!binding.shown.contains(QStringLiteral("Backtab")), qPrintable(binding.shown));
+        }
+        QVERIFY(key);
+        QVERIFY(mouse);
+        QVERIFY(gesture);
+    }
+
+    void aSingleKeyIsLeftOutWhileItDoesNothing(){
+        const SettingsIO::Map none;
+        const auto has = [](const QList<InputMapSchema::Binding> &list, const QString &table, const QString &input){
+            foreach(const InputMapSchema::Binding &binding, list)
+                if(binding.table == table && binding.input == input) return true;
+            return false;
+        };
+        const QString page = QCoreApplication::translate("InputMapSchema", "Keys on a page");
+        QVERIFY(has(InputMapSchema::Bindings(none, true), page, QStringLiteral("M")));
+        QVERIFY(!has(InputMapSchema::Bindings(none, false), page, QStringLiteral("M")));
+        QVERIFY(has(InputMapSchema::Bindings(none, false), page, QStringLiteral("Ctrl+C")));
+    }
+
+    void whatIsTypedIsTheInputWhateverItsOrder_data(){
+        QTest::addColumn<QString>("typed");
+        QTest::addColumn<bool>("is");
+        QTest::newRow("as written") << QStringLiteral("Ctrl+Shift+T") << true;
+        QTest::newRow("lower") << QStringLiteral("ctrl+shift+t") << true;
+        QTest::newRow("spaces") << QStringLiteral("ctrl shift t") << true;
+        QTest::newRow("order") << QStringLiteral("shift ctrl t") << true;
+        QTest::newRow("too few") << QStringLiteral("ctrl t") << false;
+        QTest::newRow("too many") << QStringLiteral("ctrl shift alt t") << false;
+        QTest::newRow("empty") << QString() << false;
+    }
+    void whatIsTypedIsTheInputWhateverItsOrder(){
+        QFETCH(QString, typed);
+        QFETCH(bool, is);
+        const InputMapSchema::Binding binding{ QStringLiteral("Ctrl+Shift+T"), QStringLiteral("Ctrl+Shift+T"),
+                                               QString(), QString(), QString(), InputMapSchema::PageActions };
+        QCOMPARE(InputMapSchema::IsThisInput(binding, typed), is);
+    }
+
+    void thePlusKeyIsAPartOfTheInput(){
+        const InputMapSchema::Binding plus{ QStringLiteral("Ctrl++"), QStringLiteral("Ctrl++"),
+                                            QString(), QString(), QString(), InputMapSchema::PageActions };
+        QVERIFY(!InputMapSchema::IsThisInput(plus, QStringLiteral("ctrl")));
+        QVERIFY(InputMapSchema::IsThisInput(plus, QStringLiteral("ctrl++")));
+        QVERIFY(InputMapSchema::IsThisInput(plus, QStringLiteral("ctrl+")));
+        const InputMapSchema::Binding control{ QStringLiteral("Ctrl+T"), QStringLiteral("Ctrl+T"),
+                                               QString(), QString(), QString(), InputMapSchema::PageActions };
+        QVERIFY(!InputMapSchema::IsThisInput(control, QStringLiteral("ctrl+t+")));
+    }
+
+    void aSingleLetterIsNotAnInputButALongerKeyIs(){
+        const InputMapSchema::Binding letter{ QStringLiteral("A"), QStringLiteral("A"),
+                                              QString(), QString(), QString(), InputMapSchema::PageActions };
+        QVERIFY(!InputMapSchema::IsThisInput(letter, QStringLiteral("a")));
+        const InputMapSchema::Binding function{ QStringLiteral("F5"), QStringLiteral("F5"),
+                                                QString(), QString(), QString(), InputMapSchema::PageActions };
+        QVERIFY(InputMapSchema::IsThisInput(function, QStringLiteral("f5")));
     }
 };
 

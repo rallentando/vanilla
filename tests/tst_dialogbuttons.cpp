@@ -2,6 +2,7 @@
 
 #include <QMetaEnum>
 #include <QSet>
+#include <QAccessible>
 
 #include <type_traits>
 
@@ -31,6 +32,7 @@ private slots:
     void aPasswordIsAskedForInTheNameOfWhoAsks();
     void aDiscardedModelessDialogIsNeverAnsweredAndLeavesItsFrame();
     void aModelessDialogDeletedByAnotherHandLeavesItsFrame();
+    void aModelessDialogGoesWithItsDestroyedSignalIntact();
     void aFrameGoingFirstTakesItsDialogsWithoutReachingBack();
     void anEmptyFrameDrawsNothingUntilTheNextDialog();
     void aRenewedDialogStaysUpAndADiscardedOneDoesNotComeBack();
@@ -112,6 +114,7 @@ void tst_dialogbuttons::theTableSaysEachButtonOnceAndSaysWhatAClickMeans(){
         { Dialog::Block,  true  },
         { Dialog::Yes,    true  },
         { Dialog::No,     false },
+        { Dialog::Never,  false },
         { Dialog::Cancel, false },
         { Dialog::Open,   true  },
         { Dialog::Close,  false },
@@ -497,6 +500,26 @@ void tst_dialogbuttons::aRenewedDialogStaysUpAndADiscardedOneDoesNotComeBack(){
 
     QTRY_VERIFY(alive.isNull());
     delete frame;
+}
+
+void tst_dialogbuttons::aModelessDialogGoesWithItsDestroyedSignalIntact(){
+    ModelessDialog *dialog = new ModelessDialog();
+    QAccessibleInterface *cached = QAccessible::queryAccessibleInterface(dialog);
+    QVERIFY(cached);
+    const QAccessible::Id id = QAccessible::uniqueId(cached);
+    QVERIFY(QAccessible::accessibleInterface(id));
+
+    int heard = 0;
+    connect(dialog, &ModelessDialog::Returned, this, [&heard](){ heard++;});
+    QPointer<ModelessDialog> alive(dialog);
+
+    QTest::failOnWarning(QRegularExpression(QStringLiteral("wildcard call disconnects")));
+    dialog->Discard();
+    emit dialog->Returned();
+    QCOMPARE(heard, 0);
+
+    QTRY_VERIFY(alive.isNull());
+    QVERIFY(!QAccessible::accessibleInterface(id));
 }
 
 QTEST_MAIN(tst_dialogbuttons)

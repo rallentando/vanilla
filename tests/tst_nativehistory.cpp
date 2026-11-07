@@ -420,7 +420,7 @@ void tst_nativehistory::aFileWhoseCountAndIndexDisagreeIsRefused(){
         << Case{NativeHistory::Version(), -2, 2}
         << Case{NativeHistory::Version(), 0, NativeHistory::MaxEntries() + 1};
 
-    foreach(const Case &c, cases){
+    for(const Case &c : cases){
         QByteArray data;
         QDataStream stream(&data, QIODevice::WriteOnly);
         stream.setVersion(QDataStream::Qt_6_0);
@@ -440,7 +440,7 @@ void tst_nativehistory::aFileWithAnUnusableOrRepeatedUrlIsRefused(){
         << (QList<QUrl>() << U("a") << U("a"))
         << (QList<QUrl>() << U("a") << QUrl() << U("b"));
 
-    foreach(const QList<QUrl> &urls, cases){
+    for(const QList<QUrl> &urls : cases){
         QByteArray data;
         QDataStream stream(&data, QIODevice::WriteOnly);
         stream.setVersion(QDataStream::Qt_6_0);
@@ -603,7 +603,7 @@ void tst_nativehistory::theQmlSpellsTheBackendsLoadStatusesTheWayTheBackendDoes(
         QSKIP("no QtWebView plugins.qmltypes to check the spelling against");
     const QString described = QString::fromUtf8(known.readAll());
 
-    foreach(const QString &name, asked)
+    for(const QString &name : std::as_const(asked))
         QVERIFY2(described.contains(QStringLiteral("\"%1\"").arg(name)),
                  qPrintable(QStringLiteral("the backend has no %1").arg(name)));
 }

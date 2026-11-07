@@ -15,21 +15,16 @@ namespace {
 
         { "application/@ColorScheme", SettingsSchema::Choice, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Colour scheme"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "'Auto' follows the desktop."),
-          "Auto|Light|Dark", "Auto", false },
+          "", "Auto|Light|Dark", "Auto", false },
 
         { "gadgets/@Style", SettingsSchema::Choice, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Tab list style"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "'Flat' is a grid of cards, 'Glass' a translucent overlay."),
-          "FlatStyle|GlassStyle", "FlatStyle", false },
+          "", "PlainStyle|FlatStyle|GlassStyle", "PlainStyle", false },
 
         { "application/@EnableMiniMap", SettingsSchema::Bool, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Show the minimap"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-                            "A strip beside the page with a reduced model of "
-                            "the whole page. A scroll on it acts at the "
-                            "middle of the page."),
+                            "A scroll on it acts at the middle of the page."),
           "", "false", true },
 
         { "application/@EnableTranslucentPanels", SettingsSchema::Bool, "appearance",
@@ -57,8 +52,12 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Give the status area its own window"),
           "", "", "false", true },
 
+        { "application/@EnableNotifierScrollArea", SettingsSchema::Bool, "appearance",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Show a scroll area beside the status text"),
+          "", "", "false", false },
+
         { "application/@PurgeReceiver", SettingsSchema::Bool, "appearance",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Give the command line its own window"),
+          QT_TRANSLATE_NOOP("SettingsSchema", "Give the command bar its own window"),
           "", "", "false", true },
 
         { "treebar/@EnableCloseButton", SettingsSchema::Bool, "tabs",
@@ -136,6 +135,19 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Display type"),
           "", "Flat|Recursive|Foldable", "Flat", false },
 
+        { "gadgets/thumblist/@SelectionOperation", SettingsSchema::Choice, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Pasting selected nodes"),
+          QT_TRANSLATE_NOOP("SettingsSchema", "What a paste does with selected nodes that were not cut or copied first: Copy duplicates them, Cut moves them. It takes them as they are selected at that moment."),
+          "None|Copy|Cut", "None", false },
+
+        { "gadgets/thumblist/@RightClickToRenameNode", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Right click renames"),
+          "", "", "false", false, "gadgets/@Style=GlassStyle" },
+
+        { "gadgets/thumblist/@ScrollToChangeDirectory", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Wheel changes directory"),
+          "", "", "false", false, "gadgets/@Style=GlassStyle" },
+
         { "gadgets/thumblist/@EnableCloseButton", SettingsSchema::Bool, "gadgets",
           QT_TRANSLATE_NOOP("SettingsSchema", "Close button on a thumbnail"),
           "", "", "true", true },
@@ -144,20 +156,9 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Duplicate button on a thumbnail"),
           "", "", "true", true },
 
-        { "gadgets/thumblist/@EnableAnimation", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Animate the tab list"), "", "", "true", false },
-
-        { "gadgets/thumblist/@EnableBackdropBlur", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Blur the page behind the tab list"),
-          "", "", "true", false },
-
         { "gadgets/thumblist/@EnableInPlaceNotifier", SettingsSchema::Bool, "gadgets",
           QT_TRANSLATE_NOOP("SettingsSchema", "Show a panel of dates and URLs"),
           "", "", "true", true, "gadgets/@Style=GlassStyle" },
-
-        { "gadgets/thumblist/@EnableFrameRate", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Show the frame rate on the tab list"),
-          "", "", "false", false },
 
         { "gadgets/thumblist/@EnableHoveredSpotLight", SettingsSchema::Bool, "gadgets",
           QT_TRANSLATE_NOOP("SettingsSchema", "Join a hovered thumbnail to its title"),
@@ -171,13 +172,17 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Join every loaded thumbnail to its title"),
           "", "", "false", false, "gadgets/@Style=GlassStyle" },
 
-        { "gadgets/thumblist/@RightClickToRenameNode", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Right click renames"),
-          "", "", "false", false, "gadgets/@Style=GlassStyle" },
+        { "gadgets/thumblist/@EnableAnimation", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Animate the tab list"), "", "", "true", false },
 
-        { "gadgets/thumblist/@ScrollToChangeDirectory", SettingsSchema::Bool, "gadgets",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Wheel changes directory"),
-          "", "", "false", false, "gadgets/@Style=GlassStyle" },
+        { "gadgets/thumblist/@EnableBackdropBlur", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Blur the page behind the tab list"),
+          "", "", "true", false,
+          "gadgets/@Style=FlatStyle|gadgets/@Style=GlassStyle|application/@EnableTransparentWindow=true" },
+
+        { "gadgets/thumblist/@EnableFrameRate", SettingsSchema::Bool, "gadgets",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Show the frame rate on the tab list"),
+          "", "", "false", false },
 
         { "webview/@OpenCommandOperation", SettingsSchema::Choice, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Where a link opens"), "",
@@ -200,6 +205,15 @@ namespace {
         { "webview/@ActivateNewViewDefault", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Switch to a newly opened tab"),
           "", "", "true", false },
+
+        { "application/@ExternalCommands", SettingsSchema::TextList, "page",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Programs to open a page with"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Each line adds an item to the right-click menu 'Open with "
+              "other browser', as 'name = command line'. The page's address "
+              "goes where '%u' is, or at the end when there is none.\n"
+              "For example: Firefox = \"C:\\Program Files\\Mozilla Firefox\\firefox.exe\" %u"),
+          "", "", false },
 
         { "webview/preferences/NavigateOnDropEnabled", SettingsSchema::Bool, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Dropping a link on a page opens it there"),
@@ -330,6 +344,14 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Let the page choose the printed margins"),
           "", "", "false", false },
 
+        { "localview/@MediaVolume", SettingsSchema::Int, "page",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Volume"),
+          "", "", "50", false },
+
+        { "localview/@AutoPlayMedia", SettingsSchema::Bool, "page",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Start playing when a file is opened"),
+          "", "", "true", false },
+
         { "gadgets/accesskey/@EnableMultiStroke", SettingsSchema::Bool, "accesskey",
           QT_TRANSLATE_NOOP("SettingsSchema", "Allow multi-stroke labels"),
           QT_TRANSLATE_NOOP("SettingsSchema",
@@ -387,25 +409,6 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema",
               "Replaced by the folder a file was last chosen from."),
           "", "", false, "", "folder" },
-
-        { "localview/@MediaVolume", SettingsSchema::Int, "files",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Volume"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "0 to 100."),
-          "", "50", false },
-
-        { "localview/@AutoPlayMedia", SettingsSchema::Bool, "files",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Start playing when a file is opened"),
-          "", "", "true", false },
-
-        { "application/@ExternalCommands", SettingsSchema::TextList, "commands",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Programs to open a page with"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "Each line adds an item to the right-click menu 'Open with "
-              "other browser', as 'name = command line'. The page's address "
-              "goes where '%u' is, or at the end when there is none.\n"
-              "For example: Firefox = \"C:\\Program Files\\Mozilla Firefox\\firefox.exe\" %u"),
-          "", "", false },
 
         { "network/@Extensions", SettingsSchema::TextList, "extensions",
           QT_TRANSLATE_NOOP("SettingsSchema", "Chrome extensions"),
@@ -484,10 +487,7 @@ namespace {
 
         { "network/@EnablePushService", SettingsSchema::Bool, "sitedata",
           QT_TRANSLATE_NOOP("SettingsSchema", "Let a site send push messages"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-              "A site allowed to send notifications can then reach this "
-              "machine while its page is not open."),
-          "", "false", true },
+          "", "", "false", true },
 
         { "network/@HttpCacheType", SettingsSchema::Choice, "sitedata",
           QT_TRANSLATE_NOOP("SettingsSchema", "Where the page cache is kept"),
@@ -524,20 +524,25 @@ namespace {
         { "webview/@TrackingPrevention", SettingsSchema::Choice, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Tracking prevention"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Edge views only. Strict may break parts of some sites."),
+              "Enabled in Edge. Strict may break parts of some sites."),
           "None|Basic|Balanced|Strict", "Balanced", false },
 
         { "webview/@SmartScreen", SettingsSchema::Bool, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "Microsoft Defender SmartScreen"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "Edge views only. Sites and downloads are checked against "
+              "Enabled in Edge. Sites and downloads are checked against "
               "Microsoft's list of unsafe ones."),
           "", "true", false },
 #endif
 
         { "application/@EnableGoogleSuggest", SettingsSchema::Bool, "network",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Suggestions from Google while typing a URL"),
-          "", "", "false", false },
+          QT_TRANSLATE_NOOP("SettingsSchema", "Search suggestions while typing"),
+          QT_TRANSLATE_NOOP("SettingsSchema", "What is typed is sent to the service below."),
+          "", "false", false },
+
+        { "application/@SuggestEngine", SettingsSchema::Choice, "network",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Service for search suggestions"), "",
+          "Google|Bing|DuckDuckGo", "Google", false },
 
         { "application/@SslErrorPolicy", SettingsSchema::Choice, "network",
           QT_TRANSLATE_NOOP("SettingsSchema", "On a certificate error"), "",
@@ -586,8 +591,7 @@ namespace {
         { "application/@EnableAutoSave", SettingsSchema::Bool, "session",
           QT_TRANSLATE_NOOP("SettingsSchema", "Save while running"),
           QT_TRANSLATE_NOOP("SettingsSchema",
-              "At the interval below, so that a crash loses less. Everything is "
-              "saved on quitting either way."),
+              "Everything is saved on quitting either way."),
           "", "true", false },
 
         { "application/@AutoSaveInterval", SettingsSchema::Int, "session",
@@ -685,6 +689,8 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "What a page may do") },
         { "webview/@SavePageFormat",
           QT_TRANSLATE_NOOP("SettingsSchema", "Saving and printing") },
+        { "localview/@MediaVolume",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Local view") },
 
         { "webview/@EnableSingleKeyShortcut",
           QT_TRANSLATE_NOOP("SettingsSchema", "Gestures and single keys") },
@@ -754,10 +760,6 @@ QList<QPair<QString, QString> > Categories(){
                       QCoreApplication::translate("SettingsSchema", "Keys and mouse"));
     list << qMakePair(QStringLiteral("downloads"),
                       QCoreApplication::translate("SettingsSchema", "Downloads"));
-    list << qMakePair(QStringLiteral("files"),
-                      QCoreApplication::translate("SettingsSchema", "File browser"));
-    list << qMakePair(QStringLiteral("commands"),
-                      QCoreApplication::translate("SettingsSchema", "Open in other programs"));
     list << qMakePair(QStringLiteral("extensions"),
                       QCoreApplication::translate("SettingsSchema", "Extensions"));
     list << qMakePair(QStringLiteral("sitedata"),
@@ -768,6 +770,8 @@ QList<QPair<QString, QString> > Categories(){
 #endif
     list << qMakePair(QStringLiteral("permissions"),
                       QCoreApplication::translate("SettingsSchema", "Site permissions"));
+    list << qMakePair(QStringLiteral("profiles"),
+                      QCoreApplication::translate("SettingsSchema", "Profiles"));
     list << qMakePair(QStringLiteral("network"),
                       QCoreApplication::translate("SettingsSchema", "Network"));
     list << qMakePair(QStringLiteral("session"),
@@ -791,10 +795,15 @@ const QList<ChoiceLabel> &ChoiceLabels(){
         { "application/@ColorScheme", "Light", QT_TRANSLATE_NOOP("SettingsSchema", "Light") },
         { "application/@ColorScheme", "Dark",  QT_TRANSLATE_NOOP("SettingsSchema", "Dark") },
 
+        { "application/@SuggestEngine", "Google", QT_TRANSLATE_NOOP("SettingsSchema", "Google") },
+        { "application/@SuggestEngine", "Bing", QT_TRANSLATE_NOOP("SettingsSchema", "Bing") },
+        { "application/@SuggestEngine", "DuckDuckGo", QT_TRANSLATE_NOOP("SettingsSchema", "DuckDuckGo") },
+
         { "network/@ExtensionTabScope", "All",              QT_TRANSLATE_NOOP("SettingsSchema", "All tabs") },
         { "network/@ExtensionTabScope", "CurrentDirectory", QT_TRANSLATE_NOOP("SettingsSchema", "Tabs in the current tab's directory") },
         { "network/@ExtensionTabScope", "Loaded",           QT_TRANSLATE_NOOP("SettingsSchema", "Loaded tabs") },
 
+        { "gadgets/@Style", "PlainStyle", QT_TRANSLATE_NOOP("SettingsSchema", "Plain") },
         { "gadgets/@Style", "FlatStyle",  QT_TRANSLATE_NOOP("SettingsSchema", "Flat") },
         { "gadgets/@Style", "GlassStyle", QT_TRANSLATE_NOOP("SettingsSchema", "Glass") },
 
@@ -838,6 +847,13 @@ const QList<ChoiceLabel> &ChoiceLabels(){
           QT_TRANSLATE_NOOP("SettingsSchema", "Recursive") },
         { "gadgets/thumblist/@NodeCollectionType", "Foldable",
           QT_TRANSLATE_NOOP("SettingsSchema", "Expandable") },
+
+        { "gadgets/thumblist/@SelectionOperation", "None",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Do nothing") },
+        { "gadgets/thumblist/@SelectionOperation", "Copy",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Copy") },
+        { "gadgets/thumblist/@SelectionOperation", "Cut",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Cut") },
 
         { "webview/@OpenCommandOperation", "InNewViewNode",
           QT_TRANSLATE_NOOP("SettingsSchema", "In a new tab") },
@@ -961,7 +977,7 @@ namespace {
     QString Canonical(const Item &item, const QString &value){
         const QStringList choices =
             QString::fromLatin1(item.choices).split(QLatin1Char('|'));
-        foreach(const QString &choice, choices){
+        for(const QString &choice : choices){
             if(choice.compare(value, Qt::CaseInsensitive) == 0) return choice;
         }
         const int count = sizeof(RENAMED) / sizeof(RENAMED[0]);
@@ -1158,7 +1174,7 @@ QJsonObject Describe(){
                 QString::fromLatin1(item.choices).split(QLatin1Char('|'));
             object[QStringLiteral("choices")] = QJsonArray::fromStringList(choices);
             QJsonArray labels;
-            foreach(const QString &choice, choices)
+            for(const QString &choice : choices)
                 labels.append(LabelOfChoice(item, choice));
             object[QStringLiteral("choiceLabels")] = labels;
         }

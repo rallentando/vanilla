@@ -50,7 +50,7 @@ public:
         if(m_Translucent) setAttribute(Qt::WA_TranslucentBackground);
         ApplyTheme();
     }
-    ~ExtensionWindow() Q_DECL_OVERRIDE {}
+    ~ExtensionWindow() override {}
 
     void ApplyTheme(){
         setPalette(Theme::PanelPalette(palette()));
@@ -58,7 +58,7 @@ public:
     }
 
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE {
+    void paintEvent(QPaintEvent *ev) override {
         Q_UNUSED(ev)
         QPainter painter(this);
         painter.setPen(Theme::Pen(Theme::PreviewBorder));
@@ -73,7 +73,7 @@ protected:
         painter.setBrush(Theme::Brush(Theme::PreviewBackground));
         painter.drawRect(rect().adjusted(0, 0, -1, -1));
     }
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE {
+    void showEvent(QShowEvent *ev) override {
         QWidget::showEvent(ev);
         if(m_Translucent) BlurBehind::Apply(this);
     }
@@ -102,13 +102,13 @@ namespace {
         }
 
     protected:
-        void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE {
+        void resizeEvent(QResizeEvent *ev) override {
             ExtensionWindow::resizeEvent(ev);
             if(m_Title)
                 m_Title->setText(m_Title->fontMetrics().elidedText(m_Name, Qt::ElideRight, qMax(0, m_Title->width())));
             if(m_Anchor && isVisible()) move(Place(size(), m_Anchor));
         }
-        bool event(QEvent *ev) Q_DECL_OVERRIDE {
+        bool event(QEvent *ev) override {
             if(ev->type() == QEvent::WindowDeactivate &&
                windowType() == Qt::Tool && isVisible()){
                 close();
@@ -537,7 +537,7 @@ void ExtensionBar::RefreshList(){
         const QList<ExtensionRow> rows = m_Controller->Rows();
         if(rows.isEmpty()) message(tr("No extensions are registered."));
 
-        foreach(const ExtensionRow &row, rows){
+        for(const ExtensionRow &row : rows){
             const QString path = row.manifest.path;
             QHBoxLayout *line = new QHBoxLayout;
 

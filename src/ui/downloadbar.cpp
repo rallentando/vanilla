@@ -7,6 +7,7 @@
 
 #include "application.hpp"
 #include "mainwindow.hpp"
+#include "runninguploads.hpp"
 #include "toolbar.hpp"
 #include "treebank.hpp"
 
@@ -36,7 +37,6 @@
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
-#  include <dwmapi.h>
 #endif
 
 namespace {
@@ -44,6 +44,14 @@ namespace {
     QHash<MainWindow*, QPointer<DownloadPanel>> &Panels(){
         static QHash<MainWindow*, QPointer<DownloadPanel>> panels;
         return panels;
+    }
+
+    void MakeQuiet(QLabel *label){
+        QPalette palette = label->palette();
+        QColor quiet = Theme::Color(Theme::PreviewText);
+        quiet.setAlphaF(DOWNLOAD_PANEL_QUIET_ALPHA);
+        palette.setColor(QPalette::WindowText, quiet);
+        label->setPalette(palette);
     }
 
     QToolButton *IconButton(QWidget *parent, const QString &path, const QString &text){
@@ -72,15 +80,15 @@ namespace {
         }
 
     protected:
-        void enterEvent(QEnterEvent *ev) Q_DECL_OVERRIDE {
+        void enterEvent(QEnterEvent *ev) override {
             QWidget::enterEvent(ev);
             SetHovered(true);
         }
-        void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE {
+        void leaveEvent(QEvent *ev) override {
             QWidget::leaveEvent(ev);
             SetHovered(false);
         }
-        void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE {
+        void paintEvent(QPaintEvent *ev) override {
             Q_UNUSED(ev)
             if(!m_Hovered) return;
             QPainter painter(this);
@@ -137,6 +145,8 @@ DownloadBar::DownloadBar(QWidget *parent)
     });
     connect(DownloadHistory::Instance(), &DownloadHistory::ListChanged,
             this, &DownloadBar::Reconsider);
+    connect(RunningUploads::Instance(), &RunningUploads::Changed,
+            this, &DownloadBar::Reconsider);
     Reconsider();
 }
 
@@ -165,6 +175,7 @@ void DownloadBar::Reconsider(){
     const QList<DownloadHistory::Entry> entries = DownloadHistory::Instance()->Entries();
     const qint64 wanted = WantedFor(entries, QDateTime::currentDateTime());
     bool listWants = wanted != 0;
+    const bool sending = !RunningUploads::Instance()->Shown().isEmpty();
     if(wanted > 0){
         const QDateTime newest = NewestEnding(entries);
         if(newest != m_ArmedFor){
@@ -180,7 +191,7 @@ void DownloadBar::Reconsider(){
         m_Timer->stop();
     }
     MainWindow *window = qobject_cast<MainWindow*>(this->window());
-    const bool needed = listWants || DownloadPanel::IsOpenFor(window);
+    const bool needed = listWants || sending || DownloadPanel::IsOpenFor(window);
     if(needed == m_Needed) return;
     m_Needed = needed;
     emit NeededChanged(needed);
@@ -241,6 +252,8 @@ DownloadPanel::DownloadPanel(MainWindow *window)
     connect(m_RebuildTimer, &QTimer::timeout, this, &DownloadPanel::Rebuild);
     connect(DownloadHistory::Instance(), &DownloadHistory::Changed,
             this, &DownloadPanel::RebuildSoon);
+    connect(RunningUploads::Instance(), &RunningUploads::Changed,
+            this, &DownloadPanel::RebuildSoon);
 
     qApp->installEventFilter(this);
     window->installEventFilter(this);
@@ -273,6 +286,12 @@ void DownloadPanel::Initialize(){
                          if(MainWindow *window = Application::GetCurrentWindow())
                              ShowFor(window, false, false);
                      }, Qt::QueuedConnection);
+    QObject::connect(RunningUploads::Instance(), &RunningUploads::Appeared, qApp,
+                     [](){
+                         if(Application::IsQuitting()) return;
+                         if(MainWindow *window = Application::GetCurrentWindow())
+                             ShowFor(window, false, false);
+                     });
 }
 
 bool DownloadPanel::IsOpenFor(MainWindow *window){
@@ -299,14 +318,7 @@ void DownloadPanel::ShowFor(MainWindow *window, bool toggle, bool activate){
     panel->TellBar();
     panel->Rebuild();
     panel->show();
-#if defined(Q_OS_WIN)
-    {
-        const DWORD round = 2;
-        DwmSetWindowAttribute(reinterpret_cast<HWND>(panel->winId()),
-                              33 ,
-                              &round, sizeof(round));
-    }
-#endif
+    BlurBehind::RoundCorners(panel);
     panel->raise();
 }
 
@@ -370,10 +382,49 @@ void DownloadPanel::Rebuild(){
     const int inset = ScaleByDevice(DOWNLOAD_PANEL_PADDING) / 2;
     const int rowWidth = width() - 2 * ScaleByDevice(DOWNLOAD_PANEL_PADDING)
         - ScaleByDevice(DOWNLOAD_PANEL_SCROLL_ROOM);
-    if(entries.isEmpty()){
+    const QList<RunningUploads::Entry> uploads = RunningUploads::Instance()->Shown();
+    if(entries.isEmpty() && uploads.isEmpty()){
         QLabel *none = new QLabel(tr("No downloads"), inner);
         none->setContentsMargins(inset, 0, 0, 0);
         rowsLayout->addWidget(none);
+    }
+    foreach(const RunningUploads::Entry &upload, uploads){
+        const int id = upload.id;
+        DownloadRow *row = new DownloadRow(inner);
+        QHBoxLayout *across = new QHBoxLayout(row);
+        across->setContentsMargins(inset, inset, inset, inset);
+        across->setSpacing(inset);
+        QVBoxLayout *lines = new QVBoxLayout();
+        lines->setContentsMargins(0, 0, 0, 0);
+        lines->setSpacing(0);
+        across->addLayout(lines, 1);
+
+        QToolButton *cancel = IconButton(row, QStringLiteral(":/resources/menu/stop.png"), tr("Stop sending"));
+        across->addWidget(cancel, 0, Qt::AlignVCenter);
+        connect(cancel, &QToolButton::clicked, this, [id](){
+            RunningUploads::Instance()->Cancel(id);
+        });
+        const int nameWidth = rowWidth - 2 * inset - cancel->sizeHint().width() - across->spacing();
+
+        const QString host = upload.url.host();
+        QLabel *name = new QLabel(row);
+        name->setTextFormat(Qt::PlainText);
+        name->setText(name->fontMetrics().elidedText(
+                          host.isEmpty() ? upload.url.toDisplayString(QUrl::RemoveQuery) : host,
+                          Qt::ElideMiddle, nameWidth));
+        name->setToolTip(upload.url.toDisplayString(QUrl::RemoveUserInfo | QUrl::RemoveQuery | QUrl::RemoveFragment));
+        lines->addWidget(name);
+
+        QLabel *state = new QLabel(tr("Sending"), row);
+        MakeQuiet(state);
+        lines->addWidget(state);
+
+        QProgressBar *bar = new QProgressBar(row);
+        bar->setTextVisible(false);
+        bar->setFixedHeight(ScaleByDevice(DOWNLOAD_PANEL_PROGRESS_HEIGHT));
+        bar->setRange(0, 0);
+        lines->addWidget(bar);
+        rowsLayout->addWidget(row);
     }
     foreach(const DownloadHistory::Entry &entry, entries){
         const int id = entry.id;
@@ -425,13 +476,7 @@ void DownloadPanel::Rebuild(){
         QLabel *state = new QLabel(row);
         state->setTextFormat(Qt::PlainText);
         state->setText(Describe(entry, info.isFile()));
-        {
-            QPalette palette = state->palette();
-            QColor quiet = Theme::Color(Theme::PreviewText);
-            quiet.setAlphaF(DOWNLOAD_PANEL_QUIET_ALPHA);
-            palette.setColor(QPalette::WindowText, quiet);
-            state->setPalette(palette);
-        }
+        MakeQuiet(state);
         lines->addWidget(state);
 
         if(entry.state == DownloadHistory::Running){

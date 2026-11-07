@@ -121,6 +121,8 @@ private slots:
 
     void trashLeavesOutTheSideFiles();
     void windowIdsGoThroughTheHooks();
+    void aSkippedNodeLeavesNoGap_data();
+    void aSkippedNodeLeavesNoGap();
     void theTickIsSpacedOutInTime();
 
     void stampsWithTheZoneAgreeWithThePlainForm();
@@ -627,6 +629,66 @@ void tst_treeserializer::stampsWithTheZoneAgreeWithThePlainForm(){
         QCOMPARE(fold.time(), QTime(2, 30));
         QCOMPARE(fold.offsetFromUtc(), 7200);
     }
+}
+
+void tst_treeserializer::aSkippedNodeLeavesNoGap_data(){
+    QTest::addColumn<QStringList>("skipped");
+    QTest::addColumn<QStringList>("left");
+
+    const QStringList all = QStringList() << QStringLiteral("a") << QStringLiteral("b")
+        << QStringLiteral("f") << QStringLiteral("f1") << QStringLiteral("f2") << QStringLiteral("c");
+    auto without = [&](const QStringList &gone){
+        QStringList left = all;
+        foreach(const QString &title, gone) left.removeAll(title);
+        return left;
+    };
+    QTest::newRow("nothing") << QStringList() << all;
+    QTest::newRow("the first") << (QStringList() << QStringLiteral("a")) << without(QStringList() << QStringLiteral("a"));
+    QTest::newRow("one in the middle") << (QStringList() << QStringLiteral("b")) << without(QStringList() << QStringLiteral("b"));
+    QTest::newRow("the last") << (QStringList() << QStringLiteral("c")) << without(QStringList() << QStringLiteral("c"));
+    QTest::newRow("a folder, with what is in it") << (QStringList() << QStringLiteral("f"))
+        << without(QStringList() << QStringLiteral("f") << QStringLiteral("f1") << QStringLiteral("f2"));
+    QTest::newRow("the last in a folder") << (QStringList() << QStringLiteral("f2")) << without(QStringList() << QStringLiteral("f2"));
+    QTest::newRow("all in a folder") << (QStringList() << QStringLiteral("f1") << QStringLiteral("f2"))
+        << without(QStringList() << QStringLiteral("f1") << QStringLiteral("f2"));
+    QTest::newRow("everything") << (QStringList() << QStringLiteral("a") << QStringLiteral("b")
+                                    << QStringLiteral("f") << QStringLiteral("c")) << QStringList();
+}
+
+void tst_treeserializer::aSkippedNodeLeavesNoGap(){
+    QFETCH(QStringList, skipped);
+    QFETCH(QStringList, left);
+
+    ViewNode *root = new ViewNode();
+    {
+        Booting booting;
+        MakeTab(root, QStringLiteral("a"), QStringLiteral("https://example.com/a"));
+        MakeTab(root, QStringLiteral("b"), QStringLiteral("https://example.com/b"));
+        ViewNode *folder = MakeFolder(root, QStringLiteral("f"));
+        MakeTab(folder, QStringLiteral("f1"), QStringLiteral("https://example.com/f1"));
+        MakeTab(folder, QStringLiteral("f2"), QStringLiteral("https://example.com/f2"));
+        MakeTab(root, QStringLiteral("c"), QStringLiteral("https://example.com/c"));
+    }
+
+    TreeSerializer::Hooks hooks;
+    hooks.Skips = [skipped](ViewNode *nd){ return skipped.contains(nd->GetTitle());};
+    const QString path = Path(QStringLiteral("skipped.json"));
+    QVERIFY(TreeSerializer::WriteJsonFile(path, root, hooks));
+
+    ViewNode *reread = new ViewNode();
+    {
+        Booting booting;
+        QVERIFY2(TreeSerializer::ReadJsonFile(path, reread), qPrintable(ReadAll(path)));
+    }
+    QStringList titles;
+    std::function<void(Node*)> walk = [&](Node *nd){
+        foreach(Node *child, nd->GetChildren()){ titles << child->GetTitle(); walk(child);}
+    };
+    walk(reread);
+    QCOMPARE(titles, left);
+
+    delete reread;
+    delete root;
 }
 
 QTEST_MAIN(tst_treeserializer)

@@ -251,6 +251,14 @@ QString DownloadName::FromContentDisposition(const QByteArray &header){
     return plain.isEmpty() ? field : plain;
 }
 
+QString DownloadName::AsHtml(const QString &name){
+    foreach(const QString &suffix, QStringList() << QStringLiteral(".mhtml") << QStringLiteral(".mht")){
+        if(name.endsWith(suffix, Qt::CaseInsensitive))
+            return name.left(name.length() - suffix.length()) + QStringLiteral(".html");
+    }
+    return name;
+}
+
 QString DownloadName::Suggest(const QString &suggested,
                               const QString &mimeType,
                               const QUrl &url){

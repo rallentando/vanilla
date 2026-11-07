@@ -19,7 +19,7 @@ class DownloadBar : public QWidget {
 
 public:
     explicit DownloadBar(QWidget *parent);
-    ~DownloadBar() Q_DECL_OVERRIDE;
+    ~DownloadBar() override;
 
     template <class T> T ScaleByDevice(T t) const {
         return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));
@@ -66,14 +66,14 @@ public:
         return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));
     }
 
-    ~DownloadPanel() Q_DECL_OVERRIDE;
+    ~DownloadPanel() override;
 
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
-    bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    void keyPressEvent(QKeyEvent *ev) override;
+    void hideEvent(QHideEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
+    bool eventFilter(QObject *watched, QEvent *ev) override;
 
 private:
     explicit DownloadPanel(MainWindow *window);

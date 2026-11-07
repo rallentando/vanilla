@@ -23,6 +23,30 @@ class tst_permissiontable : public QObject {
 
 private slots:
 
+    void theOriginIsMadeFromWhatTheUserTyped_data(){
+        QTest::addColumn<QString>("text");
+        QTest::addColumn<QString>("origin");
+        QTest::newRow("a bare host is https") << QStringLiteral("Example.com") << QStringLiteral("https://example.com");
+        QTest::newRow("spaces around") << QStringLiteral("  example.com  ") << QStringLiteral("https://example.com");
+        QTest::newRow("a host and a port") << QStringLiteral("localhost:8080") << QStringLiteral("https://localhost:8080");
+        QTest::newRow("http as written") << QStringLiteral("http://example.com:80/a") << QStringLiteral("http://example.com");
+        QTest::newRow("a path dropped") << QStringLiteral("example.com/a?b") << QStringLiteral("https://example.com");
+        QTest::newRow("the default port dropped") << QStringLiteral("example.com:443") << QStringLiteral("https://example.com");
+        QTest::newRow("an extension as written")
+            << QStringLiteral("chrome-extension://ddkjiahejlhfcafbddmgiahcphecmpfh/")
+            << QStringLiteral("chrome-extension://ddkjiahejlhfcafbddmgiahcphecmpfh");
+        QTest::newRow("another scheme") << QStringLiteral("ftp://example.com") << QString();
+        QTest::newRow("file") << QStringLiteral("file:///c:/a") << QString();
+        QTest::newRow("empty") << QString() << QString();
+        QTest::newRow("words") << QStringLiteral("not a site") << QString();
+        QTest::newRow("a scheme and nothing") << QStringLiteral("https://") << QString();
+    }
+    void theOriginIsMadeFromWhatTheUserTyped(){
+        QFETCH(QString, text);
+        QFETCH(QString, origin);
+        QCOMPARE(PermissionTable::OriginFromUserText(text), origin);
+    }
+
     void theOriginIsMadeFromTheAddress_data(){
         QTest::addColumn<QString>("url");
         QTest::addColumn<QString>("origin");
@@ -41,6 +65,11 @@ private slots:
             << QStringLiteral("https://bücher.example/") << QStringLiteral("https://xn--bcher-kva.example");
         QTest::newRow("IPv6 in brackets")
             << QStringLiteral("https://[::1]:8443/") << QStringLiteral("https://[::1]:8443");
+        QTest::newRow("an extension's page, by its id")
+            << QStringLiteral("chrome-extension://DDKJ/dashboard.html?a#b") << QStringLiteral("chrome-extension://ddkj");
+        QTest::newRow("an extension has no port")
+            << QStringLiteral("chrome-extension://ddkj:8080/") << QStringLiteral("chrome-extension://ddkj");
+        QTest::newRow("an extension with no id has none") << QStringLiteral("chrome-extension:///a") << QString();
         QTest::newRow("a file has none") << QStringLiteral("file:///C:/a.html") << QString();
         QTest::newRow("data has none") << QStringLiteral("data:text/html,x") << QString();
         QTest::newRow("nothing has none") << QString() << QString();

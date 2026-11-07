@@ -933,7 +933,7 @@ void tst_dnrrules::measureARealExtension(){
     QElapsedTimer timer;
     timer.start();
     qint64 bytes = 0;
-    foreach(const QJsonValue &value, resources){
+    for(const QJsonValue &value : resources){
         QFile file(root + QLatin1Char('/') + value.toObject()[QStringLiteral("path")].toString());
         if(!file.open(QIODevice::ReadOnly)) continue;
         const QByteArray json = file.readAll();

@@ -222,6 +222,8 @@
     F(DeleteRightNode)                          \
     F(DeleteLeftNode)                           \
     F(DeleteOtherNode)                          \
+    F(CutNode)                                  \
+    F(CopyNode)                                 \
     F(PasteNode)                                \
     F(RestoreNode)                              \
     F(NewNode)                                  \

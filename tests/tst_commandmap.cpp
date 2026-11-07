@@ -50,7 +50,7 @@ static QStringList Expand(const QString &spelling){
                 } else current += c;
             }
             alternatives << current;
-            foreach(QString alternative, alternatives)
+            for(QString alternative : std::as_const(alternatives))
                 tails << Expand(alternative);
             i = close + 1;
 
@@ -66,7 +66,7 @@ static QStringList Expand(const QString &spelling){
 
         QStringList next;
         foreach(QString head, out)
-            foreach(QString tail, tails)
+            for(QString tail : std::as_const(tails))
                 next << head + tail;
         out = next;
     }
@@ -163,7 +163,7 @@ private slots:
         const QStringList gadgetsActions  = QStringList() GADGETS_FOR_EACH_ACTION(COLLECT_ACTION);
         const QStringList treebankActions = QStringList() TREEBANK_FOR_EACH_ACTION(COLLECT_ACTION);
 
-        foreach(QString action, treebankActions)
+        for(QString action : treebankActions)
             QVERIFY2(pageActions.contains(action), qPrintable(action));
 
         int signals_ = 0, elements = 0;
@@ -182,7 +182,7 @@ private slots:
                 elements++;
             }
         }
-        QCOMPARE(signals_,  172);
+        QCOMPARE(signals_,  177);
         QCOMPARE(elements,   71);
     }
 
@@ -318,6 +318,51 @@ private slots:
         QCOMPARE(CommandMap::Resolve(QStringLiteral("example.com"), &action), CommandMap::NotACommand);
         QVERIFY(action.isEmpty());
         QCOMPARE(CommandMap::Resolve(QString()), CommandMap::NotACommand);
+    }
+
+    void theCommandsOfferedBeginWithTheWordThenHoldItThenAreCalledIt(){
+        const auto label = [](const QString &name){
+            return name == QStringLiteral("Quit") ? QStringLiteral("Leave the tree") : QString();
+        };
+        const QStringList tree = CommandMap::Suggestions(QStringLiteral("tree"), 100, label);
+        QVERIFY(tree.contains(QStringLiteral("ToggleTreeBar")));
+        QCOMPARE(tree.last(), QStringLiteral("Quit"));
+
+        const QStringList re = CommandMap::Suggestions(QStringLiteral("RE"), 100, label);
+        QVERIFY(re.contains(QStringLiteral("Reload")));
+        QVERIFY(re.indexOf(QStringLiteral("Reload")) < re.indexOf(QStringLiteral("ToggleReceiver")));
+
+        QCOMPARE(CommandMap::Suggestions(QStringLiteral("re"), 3, label).length(), 3);
+        QVERIFY(CommandMap::Suggestions(QString(), 100, label).isEmpty());
+        QVERIFY(CommandMap::Suggestions(QStringLiteral("example.com"), 100, label).isEmpty());
+    }
+
+    void aCommandIsFoundByEveryWordInAnyOrder(){
+        const auto label = [](const QString &name){
+            return name == QStringLiteral("ToggleTreeBar") ? QStringLiteral("show the strip") : QString();
+        };
+        QVERIFY(CommandMap::Suggestions(QStringLiteral("toggle tree"), 100, label).contains(QStringLiteral("ToggleTreeBar")));
+        QVERIFY(CommandMap::Suggestions(QStringLiteral("tree toggle"), 100, label).contains(QStringLiteral("ToggleTreeBar")));
+        QVERIFY(CommandMap::Suggestions(QStringLiteral("toggle  tree "), 100, label).contains(QStringLiteral("ToggleTreeBar")));
+        QVERIFY(!CommandMap::Suggestions(QStringLiteral("toggle tree"), 100, label).contains(QStringLiteral("ToggleBold")));
+        QVERIFY(CommandMap::Suggestions(QStringLiteral("toggle zzzz"), 100, label).isEmpty());
+        QCOMPARE(CommandMap::Suggestions(QStringLiteral("toggle strip"), 100, label),
+                 QStringList() << QStringLiteral("ToggleTreeBar"));
+        const QStringList bar = CommandMap::Suggestions(QStringLiteral("toggle bar"), 100, label);
+        QCOMPARE(bar.first().left(6), QStringLiteral("Toggle"));
+        const QStringList view = CommandMap::Suggestions(QStringLiteral("view next"), 100, label);
+        QVERIFY(view.contains(QStringLiteral("NextView")));
+    }
+
+    void everyCommandOfferedIsOneTheTableAnswers(){
+        const QStringList all = CommandMap::AllCommands();
+        QVERIFY(all.length() > 50);
+        for(const QString &name : all){
+            QVERIFY2(CommandMap::Resolve(name.trimmed()) != CommandMap::NotACommand, qPrintable(name));
+        }
+        foreach(const QString &name, CommandMap::ArgumentCommands()){
+            QVERIFY2(CommandMap::Resolve(name.trimmed()) != CommandMap::NotACommand, qPrintable(name));
+        }
     }
 };
 

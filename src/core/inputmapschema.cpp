@@ -10,6 +10,8 @@
 
 #include <QCoreApplication>
 #include <QKeySequence>
+#include <QMap>
+#include <QRegularExpression>
 #include <QSet>
 
 #include <algorithm>
@@ -56,6 +58,17 @@ Group ElementGroup(){
     return Group{ QT_TRANSLATE_NOOP("InputMapSchema", "Links, images and media"),
                   QStringList() FOR_EACH_WEB_EVENTS2(INPUTMAPSCHEMA_NAME) };
 }
+Group ReceiverGroup(){
+    return Group{ QT_TRANSLATE_NOOP("InputMapSchema", "Command bar"),
+                  QStringList() << QStringLiteral("NextCommandLineTab")
+                                << QStringLiteral("PrevCommandLineTab")
+                                << QStringLiteral("CommandLineRowActions")
+                                << QStringLiteral("NextCommandLineRow")
+                                << QStringLiteral("PrevCommandLineRow")
+                                << QStringLiteral("NextCommandLinePage")
+                                << QStringLiteral("PrevCommandLinePage")
+                                << QStringLiteral("CloseCommandLine") };
+}
 Group GadgetsGroup(){
     return Group{ QT_TRANSLATE_NOOP("InputMapSchema", "Tab list"),
                   QStringList() FOR_EACH_GADGETS_EVENTS(INPUTMAPSCHEMA_NAME) };
@@ -73,10 +86,13 @@ const QList<Group> &Groups(Vocabulary vocabulary){
     static const QList<Group> gadgets = QList<Group>()
         << NothingGroup() << ScrollGroup() << ApplicationGroup() << ViewGroup()
         << GadgetsGroup();
+    static const QList<Group> receiver = QList<Group>()
+        << NothingGroup() << ReceiverGroup();
     switch(vocabulary){
     case PageActions:     return page;
     case TreeBankActions: return treebank;
     case GadgetsActions:  return gadgets;
+    case ReceiverActions: return receiver;
     }
     return page;
 }
@@ -86,6 +102,7 @@ QString VocabularyName(Vocabulary vocabulary){
     case PageActions:     return QStringLiteral("page");
     case TreeBankActions: return QStringLiteral("treebank");
     case GadgetsActions:  return QStringLiteral("gadgets");
+    case ReceiverActions: return QStringLiteral("receiver");
     }
     return QString();
 }
@@ -99,22 +116,6 @@ QString KindName(Kind kind){
     return QString();
 }
 
-QString LabelSource(const QString &action){
-    static const QMap<QString, QString> exceptions = {
-        { QStringLiteral("Up"),       QStringLiteral("UpKey") },
-        { QStringLiteral("Down"),     QStringLiteral("DownKey") },
-        { QStringLiteral("Right"),    QStringLiteral("RightKey") },
-        { QStringLiteral("Left"),     QStringLiteral("LeftKey") },
-        { QStringLiteral("Home"),     QStringLiteral("HomeKey") },
-        { QStringLiteral("End"),      QStringLiteral("EndKey") },
-        { QStringLiteral("PageUp"),   QStringLiteral("PageUpKey") },
-        { QStringLiteral("PageDown"), QStringLiteral("PageDownKey") },
-        { QStringLiteral("OpenSettings"),          QStringLiteral("Settings") },
-        { QStringLiteral("OpenDirectorySettings"), QStringLiteral("DirectorySettings") },
-    };
-    return exceptions.value(action, action);
-}
-
 InputMap::KeyMap DefaultKeyMap(const QString &group){
     if(group == QStringLiteral("webview/keymap")){
         InputMap::KeyMap m_KeyMap; WEBVIEW_KEYMAP return m_KeyMap;
@@ -124,6 +125,9 @@ InputMap::KeyMap DefaultKeyMap(const QString &group){
     }
     if(group == QStringLiteral("gadgets/thumblist/keymap")){
         InputMap::KeyMap m_ThumbListKeyMap; THUMBLIST_KEYMAP return m_ThumbListKeyMap;
+    }
+    if(group == QStringLiteral("receiver/keymap")){
+        InputMap::KeyMap m_ReceiverKeyMap; RECEIVER_KEYMAP return m_ReceiverKeyMap;
     }
     if(group == QStringLiteral("gadgets/accesskey/keymap")){
         InputMap::KeyMap m_AccessKeyKeyMap; ACCESSKEY_KEYMAP return m_AccessKeyKeyMap;
@@ -157,7 +161,7 @@ typedef QList<QPair<QString, QString> > Pairs;
 
 Pairs NamesOf(const InputMap::KeyMap &map){
     Pairs pairs;
-    foreach(QKeySequence seq, map.keys()){
+    for(QKeySequence seq : map.keys()){
         if(seq.isEmpty()) continue;
         bool pressable = true;
         for(int i = 0; i < seq.count(); i++)
@@ -171,7 +175,7 @@ Pairs NamesOf(const InputMap::KeyMap &map){
 
 Pairs NamesOf(const InputMap::GestureMap &map){
     Pairs pairs;
-    foreach(QString name, map.keys()){
+    for(QString name : map.keys()){
         if(name.isEmpty() || name == Placeholder()) continue;
         pairs << qMakePair(name, map[name]);
     }
@@ -254,6 +258,10 @@ const QList<Table> &Tables(){
                   QT_TRANSLATE_NOOP("InputMapSchema", "Keys on an access key"),
                   QT_TRANSLATE_NOOP("InputMapSchema", "While access keys are shown: pressed after a label, what is done to that element."),
                   false }
+        << Table{ "receiver/keymap", Keys, ReceiverActions,
+                  QT_TRANSLATE_NOOP("InputMapSchema", "Keys in the command bar"),
+                  QT_TRANSLATE_NOOP("InputMapSchema", "While the command bar is open."),
+                  false }
         << Table{ "webview/mouse", Mouse, PageActions,
                   QT_TRANSLATE_NOOP("InputMapSchema", "Mouse on a page"),
                   QT_TRANSLATE_NOOP("InputMapSchema", "\"A+B\" is B pressed while A is held."),
@@ -300,6 +308,22 @@ bool IsAction(Vocabulary vocabulary, const QString &action){
     return false;
 }
 
+QString LabelSource(const QString &action){
+    static const QMap<QString, QString> exceptions = {
+        { QStringLiteral("Up"),       QStringLiteral("UpKey") },
+        { QStringLiteral("Down"),     QStringLiteral("DownKey") },
+        { QStringLiteral("Right"),    QStringLiteral("RightKey") },
+        { QStringLiteral("Left"),     QStringLiteral("LeftKey") },
+        { QStringLiteral("Home"),     QStringLiteral("HomeKey") },
+        { QStringLiteral("End"),      QStringLiteral("EndKey") },
+        { QStringLiteral("PageUp"),   QStringLiteral("PageUpKey") },
+        { QStringLiteral("PageDown"), QStringLiteral("PageDownKey") },
+        { QStringLiteral("OpenSettings"),          QStringLiteral("Settings") },
+        { QStringLiteral("OpenDirectorySettings"), QStringLiteral("DirectorySettings") },
+    };
+    return exceptions.value(action, action);
+}
+
 QString ActionLabel(Vocabulary vocabulary, const QString &action){
     if(action == NO_ACTION)
         return QCoreApplication::translate("InputMapSchema", "Does nothing");
@@ -309,6 +333,24 @@ QString ActionLabel(Vocabulary vocabulary, const QString &action){
     case PageActions:     contexts << "Page" << "TreeBank"; break;
     case TreeBankActions: contexts << "TreeBank" << "Page"; break;
     case GadgetsActions:  contexts << "Gadgets" << "Page" << "TreeBank"; break;
+    case ReceiverActions:
+        if(action == QStringLiteral("NextCommandLineTab"))
+            return QCoreApplication::translate("InputMapSchema", "Next tab");
+        if(action == QStringLiteral("PrevCommandLineTab"))
+            return QCoreApplication::translate("InputMapSchema", "Previous tab");
+        if(action == QStringLiteral("CommandLineRowActions"))
+            return QCoreApplication::translate("InputMapSchema", "Operations on the row");
+        if(action == QStringLiteral("NextCommandLineRow"))
+            return QCoreApplication::translate("InputMapSchema", "Next row");
+        if(action == QStringLiteral("PrevCommandLineRow"))
+            return QCoreApplication::translate("InputMapSchema", "Previous row");
+        if(action == QStringLiteral("NextCommandLinePage"))
+            return QCoreApplication::translate("InputMapSchema", "Next page of rows");
+        if(action == QStringLiteral("PrevCommandLinePage"))
+            return QCoreApplication::translate("InputMapSchema", "Previous page of rows");
+        if(action == QStringLiteral("CloseCommandLine"))
+            return QCoreApplication::translate("InputMapSchema", "Close the command bar");
+        return action;
     }
     const QByteArray source = LabelSource(action).toUtf8();
     foreach(const char *context, contexts){
@@ -316,6 +358,13 @@ QString ActionLabel(Vocabulary vocabulary, const QString &action){
         if(text != QString::fromUtf8(source)) return text;
     }
     return QString::fromUtf8(source);
+}
+
+bool TypesIntoTheField(const QKeySequence &seq){
+    if(seq.count() != 1) return false;
+    const QKeyCombination combination = seq[0];
+    return !(combination.keyboardModifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) &&
+        combination.key() < Qt::Key_Escape;
 }
 
 QString Placeholder(){
@@ -362,6 +411,9 @@ QString Write(SettingsIO::Map &settings, const Table &table, const QJsonArray &e
         }
         if(!IsAction(table.vocabulary, action) && !held)
             return QStringLiteral("unknown action: \"%1\"").arg(action);
+        if(table.vocabulary == ReceiverActions && !held &&
+           TypesIntoTheField(QKeySequence(name, QKeySequence::PortableText)))
+            return QStringLiteral("types into the field: \"%1\"").arg(input);
 
         for(int i = written.length() - 1; i >= 0; i--)
             if(written[i].first == name) written.removeAt(i);
@@ -376,12 +428,78 @@ void Reset(SettingsIO::Map &settings, const Table &table){
     WriteNames(settings, table, Defaults(table));
 }
 
+namespace {
+    QString MouseWord(const QString &token){
+        if(token == QStringLiteral("LeftButton"))   return QCoreApplication::translate("InputMapSchema", "Left button");
+        if(token == QStringLiteral("RightButton"))  return QCoreApplication::translate("InputMapSchema", "Right button");
+        if(token == QStringLiteral("MidButton"))    return QCoreApplication::translate("InputMapSchema", "Middle button");
+        if(token == QStringLiteral("ExtraButton1")) return QCoreApplication::translate("InputMapSchema", "Side button 1");
+        if(token == QStringLiteral("ExtraButton2")) return QCoreApplication::translate("InputMapSchema", "Side button 2");
+        if(token == QStringLiteral("WheelUp"))      return QCoreApplication::translate("InputMapSchema", "Wheel up");
+        if(token == QStringLiteral("WheelDown"))    return QCoreApplication::translate("InputMapSchema", "Wheel down");
+        return token;
+    }
+
+    QString Shown(const Table &table, const QString &input){
+        QStringList parts;
+        switch(table.kind){
+        case Keys:
+            return QKeySequence(input, QKeySequence::PortableText).toString(QKeySequence::NativeText)
+                .replace(QStringLiteral("Backtab"), QStringLiteral("Tab"));
+        case Mouse:
+            for(const QString &token : input.split(QLatin1Char('+'))) parts << MouseWord(token);
+            return parts.join(QLatin1Char('+'));
+        case Gesture:
+            for(const QString &stroke : input.split(QLatin1Char(','))){
+                static const QMap<QString, QString> arrows{
+                    { QStringLiteral("U"),  QStringLiteral("\u2191") }, { QStringLiteral("D"),  QStringLiteral("\u2193") },
+                    { QStringLiteral("R"),  QStringLiteral("\u2192") }, { QStringLiteral("L"),  QStringLiteral("\u2190") },
+                    { QStringLiteral("UR"), QStringLiteral("\u2197") }, { QStringLiteral("UL"), QStringLiteral("\u2196") },
+                    { QStringLiteral("DR"), QStringLiteral("\u2198") }, { QStringLiteral("DL"), QStringLiteral("\u2199") },
+                };
+                parts << arrows.value(stroke, stroke);
+            }
+            return parts.join(QLatin1Char(' '));
+        }
+        return input;
+    }
+
+    QStringList SortedParts(const QString &text){
+        static const QRegularExpression separator(QStringLiteral("[+\\s]+"));
+        QStringList parts = text.toLower().split(separator, Qt::SkipEmptyParts);
+        if(text.trimmed().endsWith(QLatin1Char('+'))) parts << QStringLiteral("+");
+        parts.sort();
+        return parts;
+    }
+}
+
+QList<Binding> Bindings(const SettingsIO::Map &settings, bool singleKeys){
+    QList<Binding> bindings;
+    foreach(const Table &table, Tables()){
+        const QString label = QCoreApplication::translate("InputMapSchema", table.label);
+        foreach(const Pairs::value_type &pair, Current(settings, table)){
+            if(table.kind == Keys && table.singleKeysHeld && !singleKeys &&
+               InputMap::IsSingleKey(QKeySequence(pair.first, QKeySequence::PortableText)))
+                continue;
+            bindings << Binding{ Shown(table, pair.first), pair.first, pair.second,
+                                 ActionLabel(table.vocabulary, pair.second), label, table.vocabulary };
+        }
+    }
+    return bindings;
+}
+
+bool IsThisInput(const Binding &binding, const QString &typed){
+    const QStringList parts = SortedParts(typed);
+    if(parts.isEmpty() || (parts.length() == 1 && parts.first().length() < 2)) return false;
+    return parts == SortedParts(binding.shown) || parts == SortedParts(binding.input);
+}
+
 QJsonObject DescribeTable(const SettingsIO::Map &settings, const Table &table){
     const Pairs defaults = Defaults(table);
     const Pairs current = Current(settings, table);
 
     QJsonArray entries;
-    foreach(const Pairs::value_type &pair, current){
+    for(const Pairs::value_type &pair : current){
         QJsonObject entry;
         entry[QStringLiteral("input")]  = pair.first;
         entry[QStringLiteral("action")] = pair.second;
@@ -398,7 +516,7 @@ QJsonObject DescribeTable(const SettingsIO::Map &settings, const Table &table){
         }
         if(table.kind == Gesture){
             bool diagonal = false;
-            foreach(QString stroke, pair.first.split(QLatin1Char(',')))
+            for(QString stroke : pair.first.split(QLatin1Char(',')))
                 if(stroke.length() == 2) diagonal = true;
             entry[QStringLiteral("diagonal")] = diagonal;
         }
@@ -425,7 +543,7 @@ QJsonObject Describe(const SettingsIO::Map &settings){
     foreach(const Table &table, Tables()) tables.append(DescribeTable(settings, table));
 
     QJsonObject vocabularies;
-    foreach(Vocabulary vocabulary, QList<Vocabulary>() << PageActions << TreeBankActions << GadgetsActions){
+    foreach(Vocabulary vocabulary, QList<Vocabulary>() << PageActions << TreeBankActions << GadgetsActions << ReceiverActions){
         QJsonArray groups;
         foreach(const Group &group, Groups(vocabulary)){
             QJsonArray actions;
@@ -474,6 +592,8 @@ QJsonObject Describe(const SettingsIO::Map &settings){
         QCoreApplication::translate("InputMapSchema", "Nothing is assigned.");
     strings[QStringLiteral("unknown")] =
         QCoreApplication::translate("InputMapSchema", "Not an input or action this version knows. Kept as it is.");
+    strings[QStringLiteral("searchAction")] =
+        QCoreApplication::translate("InputMapSchema", "Search actions");
     strings[QStringLiteral("singleKeyOff")] =
         QCoreApplication::translate("InputMapSchema", "Not used while 'Shortcuts on a single key' is off.");
     strings[QStringLiteral("diagonalOff")] =

@@ -45,7 +45,7 @@ namespace {
     bool Strings(const QJsonValue &value, QStringList *out){
         if(!value.isArray()) return false;
         out->clear();
-        foreach(const QJsonValue &one, value.toArray()){
+        for(const QJsonValue &one : value.toArray()){
             if(!one.isString()) return false;
             out->append(one.toString());
         }
@@ -180,7 +180,7 @@ QString ColorOf(const QJsonValue &value){
         QString digits = m.captured(1).toLower();
         if(digits.size() == 3){
             QString wide;
-            foreach(const QChar c, digits){ wide += c; wide += c; }
+            for(const QChar c : std::as_const(digits)){ wide += c; wide += c; }
             digits = wide;
         }
         if(digits.size() == 6) digits += QStringLiteral("ff");
@@ -190,7 +190,7 @@ QString ColorOf(const QJsonValue &value){
         const QJsonArray parts = value.toArray();
         if(parts.size() != 4) return QString();
         QString out = QStringLiteral("#");
-        foreach(const QJsonValue &part, parts){
+        for(const QJsonValue &part : parts){
             if(!part.isDouble()) return QString();
             const double d = part.toDouble();
             if(d < 0 || d > 255 || d != static_cast<int>(d)) return QString();
@@ -626,7 +626,7 @@ bool AcceptsDownloadFilename(const QString &name){
     static const QStringList explorers = QStringList() << QStringLiteral("desktop.ini") << QStringLiteral("thumbs.db");
     static const QRegularExpression shell(QStringLiteral("\\.(?:lnk|local|\\{[0-9A-Fa-f-]+\\})\\z"), QRegularExpression::CaseInsensitiveOption);
     const QStringList parts = name.split(QRegularExpression(QStringLiteral("[/\\\\]")));
-    foreach(const QString &part, parts){
+    for(const QString &part : parts){
         if(part.isEmpty() || part == QStringLiteral(".") || part == QStringLiteral("..")) return false;
         if(part.startsWith(QLatin1Char('.')) || part.endsWith(QLatin1Char(' ')) || part.endsWith(QLatin1Char('.'))) return false;
         if(device.match(part).hasMatch() || explorers.contains(part, Qt::CaseInsensitive) || shell.match(part).hasMatch()) return false;
@@ -1000,7 +1000,7 @@ namespace {
         if(tokens.isEmpty() || tokens.size() > 3) return QString();
         bool ctrl = false, alt = false, shift = false;
         QString key;
-        foreach(QString token, tokens){
+        for(QString token : tokens){
             token = token.trimmed();
             if(token == QStringLiteral("Ctrl")) ctrl = true;
             else if(token == QStringLiteral("Command")){ if(platform != QStringLiteral("mac")) return QString(); ctrl = true; }

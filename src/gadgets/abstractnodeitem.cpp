@@ -19,12 +19,7 @@
 #include "graphicstableview.hpp"
 
 #include "lightnode.hpp"
-
-namespace {
-    bool NearlyEqual(const qreal a, const qreal b){
-        return qFabs(a - b) < 0.001;
-    }
-}
+#include "const.hpp"
 
 AbstractNodeItem::AbstractNodeItem(Node *nd, int nest, QGraphicsItem *parent)
     : QGraphicsItem(parent)
@@ -56,14 +51,17 @@ void AbstractNodeItem::SetIndex(int index){
     m_Index = index;
 }
 
-const QStaticText &AbstractNodeItem::TitleText(const QString &text, const QFont &font){
-    if(m_TitleText.text() != text || m_TitleTextFont != font){
+const QStaticText &AbstractNodeItem::TitleText(const QString &text, const QFont &font, int elideWidth){
+    if(m_TitleTextSource != text || m_TitleTextFont != font || m_TitleTextElideWidth != elideWidth){
         m_TitleText.setTextFormat(Qt::PlainText);
         QTextOption option;
         option.setWrapMode(QTextOption::NoWrap);
         m_TitleText.setTextOption(option);
         m_TitleText.setPerformanceHint(QStaticText::AggressiveCaching);
-        m_TitleText.setText(text);
+        m_TitleText.setText(elideWidth < 0 ? text
+                            : QFontMetrics(font).elidedText(text, Qt::ElideRight, elideWidth));
+        m_TitleTextSource = text;
+        m_TitleTextElideWidth = elideWidth;
         m_TitleTextFont = font;
         m_TitleText.prepare(QTransform(), font);
     }
@@ -146,6 +144,8 @@ void AbstractNodeItem::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
 }
 
 void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    if((ev->buttons() & ~ev->button()) && m_TableView->TakeMappedPress(ev)) return;
+    m_TableView->ForgetSpentPress(ev->button());
     m_TableView->FinishFoldAnimation();
     m_TableView->SetInPlaceNotifierContent(nullptr);
 
@@ -178,6 +178,10 @@ void AbstractNodeItem::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 void AbstractNodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    if(m_TableView->SettleSpentPress(ev->button())){
+        ev->setAccepted(true);
+        return;
+    }
     if(ev->button() == Qt::RightButton){
 
         if(GraphicsTableView::RightClickToRenameNode() &&

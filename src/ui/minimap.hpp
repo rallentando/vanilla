@@ -21,7 +21,7 @@ class MiniMap : public QWidget {
 
 public:
     explicit MiniMap(TreeBank *parent);
-    ~MiniMap() Q_DECL_OVERRIDE;
+    ~MiniMap() override;
 
     template <class T> T ScaleByDevice(T t) const {
         return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));
@@ -139,13 +139,13 @@ private:
     quint64 m_PollApplied;
 
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE;
-    void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
+    void wheelEvent(QWheelEvent *ev) override;
+    void hideEvent(QHideEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
 };
 
 #endif

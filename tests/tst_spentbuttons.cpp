@@ -104,7 +104,7 @@ public:
     int EngineReleaseCount() const { return m_EngineReleaseCount; }
 
 private:
-    void ForwardMouseReleaseToEngine(QMouseEvent *) Q_DECL_OVERRIDE {
+    void ForwardMouseReleaseToEngine(QMouseEvent *) override {
         ++m_EngineReleaseCount;
     }
 
@@ -135,8 +135,8 @@ public:
     int m_FocusIns = 0;
     int m_FocusOuts = 0;
 protected:
-    void focusInEvent(QFocusEvent *) Q_DECL_OVERRIDE { ++m_FocusIns; }
-    void focusOutEvent(QFocusEvent *) Q_DECL_OVERRIDE { ++m_FocusOuts; }
+    void focusInEvent(QFocusEvent *) override { ++m_FocusIns; }
+    void focusOutEvent(QFocusEvent *) override { ++m_FocusOuts; }
 };
 #endif
 

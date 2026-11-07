@@ -19,6 +19,8 @@ QString FromContentDisposition(const QByteArray &header);
 
 QString Suggest(const QString &suggested, const QString &mimeType, const QUrl &url);
 
+QString AsHtml(const QString &name);
+
 QString Unique(const QString &path, int limit = 9999);
 
 }

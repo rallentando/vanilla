@@ -7,6 +7,7 @@
 
 #include <functional>
 
+#include "application.hpp"
 #include "graphicstableview.hpp"
 
 #include "testsupport.hpp"
@@ -38,6 +39,8 @@ private slots:
 
 void tst_gadgetsscroll::initTestCase(){
     TestSupport::SilenceDebugOutput();
+    Application::GlobalSettings()[QStringLiteral("gadgets/@Style")] = QStringLiteral("FlatStyle");
+    GraphicsTableView::LoadSettings();
 }
 
 void tst_gadgetsscroll::indicatorFollowsTheScroll_data(){

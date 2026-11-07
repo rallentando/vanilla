@@ -23,4 +23,7 @@ namespace DeviceScale {
     qreal PrimaryFactor();
 }
 
+inline int ScaleByDevice(int t){ return DeviceScale::Primary(t);}
+inline QSize ScaleByDevice(const QSize &size){ return DeviceScale::PrimarySize(size);}
+
 #endif

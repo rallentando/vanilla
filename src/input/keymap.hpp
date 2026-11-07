@@ -100,104 +100,7 @@
                                                                         \
     m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_X)] = QStringLiteral("OpenCommand");
 
-#define WEBVIEW_KEYMAP                                                  \
-    m_KeyMap[QKeySequence(QKeySequence::Copy)]          = QStringLiteral("Copy"); \
-    m_KeyMap[QKeySequence(QKeySequence::Cut)]           = QStringLiteral("Cut"); \
-    m_KeyMap[QKeySequence(QKeySequence::Paste)]         = QStringLiteral("Paste"); \
-    m_KeyMap[QKeySequence(QKeySequence::Open)]          = QStringLiteral("Load"); \
-    m_KeyMap[QKeySequence(QKeySequence::Save)]          = QStringLiteral("Save"); \
-    m_KeyMap[QKeySequence(QKeySequence::Print)]         = QStringLiteral("Print"); \
-    m_KeyMap[QKeySequence(QKeySequence::Quit)]          = QStringLiteral("Quit"); \
-    m_KeyMap[QKeySequence(QKeySequence::Undo)]          = QStringLiteral("Undo"); \
-    m_KeyMap[QKeySequence(QKeySequence::Redo)]          = QStringLiteral("Redo"); \
-    m_KeyMap[QKeySequence(QKeySequence::Back)]          = QStringLiteral("Back"); \
-    m_KeyMap[QKeySequence(QKeySequence::Forward)]       = QStringLiteral("Forward"); \
-    m_KeyMap[QKeySequence(QKeySequence::Refresh)]       = QStringLiteral("Reload"); \
-    m_KeyMap[QKeySequence(QKeySequence::ZoomIn)]        = QStringLiteral("ZoomIn"); \
-    m_KeyMap[QKeySequence(QKeySequence::ZoomOut)]       = QStringLiteral("ZoomOut"); \
-    m_KeyMap[QKeySequence(QKeySequence::NextChild)]     = QStringLiteral("NextView"); \
-    m_KeyMap[QKeySequence(QKeySequence::PreviousChild)] = QStringLiteral("PrevView"); \
-    m_KeyMap[QKeySequence(QKeySequence::Find)]          = QStringLiteral("OpenTextSeeker"); \
-    m_KeyMap[QKeySequence(QKeySequence::SelectAll)]     = QStringLiteral("SelectAll"); \
-    m_KeyMap[QKeySequence(QKeySequence::AddTab)]        = QStringLiteral("NewViewNode"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_F4)]    = QStringLiteral("Quit"); \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_Left)]  = QStringLiteral("Back"); \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_Right)] = QStringLiteral("Forward"); \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_Up)]    = QStringLiteral("DigView"); \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_Down)]  = QStringLiteral("BuryView"); \
-    m_KeyMap[QKeySequence(Qt::Key_Backspace)]       = QStringLiteral("Back"); \
-    m_KeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Backspace)] = QStringLiteral("Forward"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_Q)] = QStringLiteral("Quit"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_W)] = QStringLiteral("Close"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_C)] = QStringLiteral("Copy"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_X)] = QStringLiteral("Cut"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_V)] = QStringLiteral("Paste"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_O)] = QStringLiteral("Load"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_S)] = QStringLiteral("Save"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_P)] = QStringLiteral("Print"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_Z)] = QStringLiteral("Undo"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_Y)] = QStringLiteral("Redo"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_F)] = QStringLiteral("OpenTextSeeker"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_Q)]        = QStringLiteral("Close"); \
-    m_KeyMap[QKeySequence(Qt::Key_W)]        = QStringLiteral("Restore"); \
-    m_KeyMap[QKeySequence(Qt::Key_E)]        = QStringLiteral("UpDirectory"); \
-    m_KeyMap[QKeySequence(Qt::Key_R)]        = QStringLiteral("Home");  \
-    m_KeyMap[QKeySequence(Qt::Key_T)]        = QStringLiteral("End");   \
-    m_KeyMap[QKeySequence(Qt::Key_Y)]        = QStringLiteral("End");   \
-    m_KeyMap[QKeySequence(Qt::Key_U)]        = QStringLiteral("Home");  \
-    m_KeyMap[QKeySequence(Qt::Key_I)]        = QStringLiteral("UpDirectory"); \
-    m_KeyMap[QKeySequence(Qt::Key_O)]        = QStringLiteral("Restore"); \
-    m_KeyMap[QKeySequence(Qt::Key_P)]        = QStringLiteral("Close"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_A)]        = QStringLiteral("DisplayAccessKey"); \
-    m_KeyMap[QKeySequence(Qt::Key_S)]        = QStringLiteral("OpenQueryEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_D)]        = QStringLiteral("OpenUrlEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_F)]        = QStringLiteral("DisplayViewTree"); \
-    m_KeyMap[QKeySequence(Qt::Key_G)]        = QStringLiteral("OpenCommand"); \
-    m_KeyMap[QKeySequence(Qt::Key_H)]        = QStringLiteral("OpenCommand"); \
-    m_KeyMap[QKeySequence(Qt::Key_J)]        = QStringLiteral("DisplayViewTree"); \
-    m_KeyMap[QKeySequence(Qt::Key_K)]        = QStringLiteral("OpenUrlEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_L)]        = QStringLiteral("OpenQueryEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_Semicolon)] = QStringLiteral("DisplayAccessKey"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_Z)]        = QStringLiteral("Back");  \
-    m_KeyMap[QKeySequence(Qt::Key_X)]        = QStringLiteral("Forward"); \
-    m_KeyMap[QKeySequence(Qt::Key_C)]        = QStringLiteral("PrevView"); \
-    m_KeyMap[QKeySequence(Qt::Key_V)]        = QStringLiteral("NextView"); \
-    m_KeyMap[QKeySequence(Qt::Key_B)]        = QStringLiteral("Reload"); \
-    m_KeyMap[QKeySequence(Qt::Key_N)]        = QStringLiteral("PrevView"); \
-    m_KeyMap[QKeySequence(Qt::Key_M)]        = QStringLiteral("NextView"); \
-    m_KeyMap[QKeySequence(Qt::Key_Comma)]    = QStringLiteral("Back");  \
-    m_KeyMap[QKeySequence(Qt::Key_Period)]   = QStringLiteral("Forward"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_F1)]       = QStringLiteral("OpenUrlEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_F2)]       = QStringLiteral("Load");  \
-    m_KeyMap[QKeySequence(Qt::Key_F3)]       = QStringLiteral("NewWindow"); \
-    m_KeyMap[QKeySequence(Qt::Key_F4)]       = QStringLiteral("CloseWindow"); \
-    m_KeyMap[QKeySequence(Qt::Key_F5)]       = QStringLiteral("Reload"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_F5)] = QStringLiteral("ReloadAndBypassCache"); \
-    m_KeyMap[QKeySequence(Qt::Key_F6)]       = QStringLiteral("PrevView"); \
-    m_KeyMap[QKeySequence(Qt::Key_F7)]       = QStringLiteral("NextView"); \
-    m_KeyMap[QKeySequence(Qt::Key_F8)]       = QStringLiteral("SwitchWindow"); \
-    m_KeyMap[QKeySequence(Qt::Key_F9)]       = QStringLiteral("DisplayViewTree"); \
-    m_KeyMap[QKeySequence(Qt::Key_F10)]      = QStringLiteral("ToggleMenuBar"); \
-    m_KeyMap[QKeySequence(Qt::Key_F11)]      = QStringLiteral("ToggleFullScreen"); \
-    m_KeyMap[QKeySequence(Qt::Key_F12)]      = QStringLiteral("DisplayAccessKey"); \
-    m_KeyMap[QKeySequence(Qt::Key_Escape)]   = QStringLiteral("Stop");  \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_Up)]       = QStringLiteral("Up");    \
-    m_KeyMap[QKeySequence(Qt::Key_Down)]     = QStringLiteral("Down");  \
-    m_KeyMap[QKeySequence(Qt::Key_Right)]    = QStringLiteral("Right"); \
-    m_KeyMap[QKeySequence(Qt::Key_Left)]     = QStringLiteral("Left");  \
-    m_KeyMap[QKeySequence(Qt::Key_PageUp)]   = QStringLiteral("PageUp"); \
-    m_KeyMap[QKeySequence(Qt::Key_PageDown)] = QStringLiteral("PageDown"); \
-    m_KeyMap[QKeySequence(Qt::Key_Home)]     = QStringLiteral("Home");  \
-    m_KeyMap[QKeySequence(Qt::Key_End)]      = QStringLiteral("End");   \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_X)] = QStringLiteral("OpenCommand");
+#define WEBVIEW_KEYMAP TREEBANK_KEYMAP
 
 #define THUMBLIST_KEYMAP                                                \
     m_ThumbListKeyMap[QKeySequence(QKeySequence::Paste)]         = QStringLiteral("PasteNode"); \
@@ -223,6 +126,8 @@
                                                                         \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Q)] = QStringLiteral("Quit"); \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_W)] = QStringLiteral("Close"); \
+    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_X)] = QStringLiteral("CutNode"); \
+    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_C)] = QStringLiteral("CopyNode"); \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_V)] = QStringLiteral("PasteNode"); \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_F)] = QStringLiteral("OpenTextSeeker"); \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Comma)] = QStringLiteral("ScrollUp"); \
@@ -323,11 +228,20 @@
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Backspace)] = QStringLiteral("TransferToUpDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Backspace)] = QStringLiteral("TransferToDownDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Z)]      = QStringLiteral("TransferToUpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_X)]      = QStringLiteral("TransferToDownDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Comma)]  = QStringLiteral("TransferToUpDirectory"); \
     m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Period)] = QStringLiteral("TransferToDownDirectory"); \
                                                                         \
     m_ThumbListKeyMap[QKeySequence(Qt::ALT | Qt::Key_X)] = QStringLiteral("OpenCommand");
+
+#define RECEIVER_KEYMAP                                                 \
+    m_ReceiverKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Tab)] = QStringLiteral("NextCommandLineTab"); \
+    m_ReceiverKeyMap[QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Backtab)] = QStringLiteral("PrevCommandLineTab"); \
+    m_ReceiverKeyMap[QKeySequence(Qt::Key_Tab)]      = QStringLiteral("CommandLineRowActions"); \
+    m_ReceiverKeyMap[QKeySequence(Qt::Key_Down)]     = QStringLiteral("NextCommandLineRow"); \
+    m_ReceiverKeyMap[QKeySequence(Qt::Key_Up)]       = QStringLiteral("PrevCommandLineRow"); \
+    m_ReceiverKeyMap[QKeySequence(Qt::Key_PageDown)] = QStringLiteral("NextCommandLinePage"); \
+    m_ReceiverKeyMap[QKeySequence(Qt::Key_PageUp)]   = QStringLiteral("PrevCommandLinePage"); \
+    m_ReceiverKeyMap[QKeySequence(Qt::Key_Escape)]   = QStringLiteral("CloseCommandLine");
 
 #define ACCESSKEY_KEYMAP                                                \
     m_AccessKeyKeyMap[QKeySequence(Qt::Key_E)] = QStringLiteral("OpenOnRootForeground"); \

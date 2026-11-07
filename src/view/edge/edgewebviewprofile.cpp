@@ -103,7 +103,7 @@ void EdgeWebView::SettlePrivateWipe(const QString &key, bool ok){
 
     if(!ok) qWarning() << "edge: the private profile" << key << "could not be emptied";
 
-    foreach(const QPointer<EdgeWebView> &waiter, waiters){
+    for(const QPointer<EdgeWebView> &waiter : waiters){
         if(waiter.isNull() || waiter->m_Impl->m_State.IsRetired()) continue;
         if(ok) waiter->EnterPermissionSync();
         else waiter->ReportPrivateWipeFailure();
@@ -364,7 +364,7 @@ void EdgeWebView::RunPermissionSync(const QString &key, int run){
                  if(!succeeded) *ok = false;
                  if(--*pending == 0) SettlePermissionSync(key, run, *ok);
              };
-             foreach(const PermissionTable::Row &change, changes){
+             for(const PermissionTable::Row &change : changes){
                  const HRESULT set = profile4->SetPermissionState
                      (EdgeKindOf(change.kind),
                       reinterpret_cast<LPCWSTR>(change.origin.utf16()),
@@ -444,6 +444,9 @@ void EdgeWebView::ApplyPageSettings(){
     settings->put_IsScriptEnabled(script ? TRUE : FALSE);
     settings->put_IsBuiltInErrorPageEnabled(errorPage ? TRUE : FALSE);
     settings->put_AreDevToolsEnabled(TRUE);
+    ComPtr<ICoreWebView2_12> webview12;
+    settings->put_IsStatusBarEnabled(SUCCEEDED(m_Impl->m_WebView.As(&webview12)) && webview12
+                                     ? FALSE : TRUE);
 
     ComPtr<ICoreWebView2Settings4> settings4;
     if(SUCCEEDED(settings.As(&settings4)) && settings4)

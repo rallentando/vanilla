@@ -9,11 +9,13 @@
 #include <QImage>
 #include <QVariantAnimation>
 #include <QGraphicsPixmapItem>
+#include <QGraphicsSceneMouseEvent>
 
 #include "application.hpp"
 #include "lightnode.hpp"
 #include "graphicstableview.hpp"
 #include "gadgets.hpp"
+#include "localview.hpp"
 #include "treebank.hpp"
 #include <QMenu>
 #include "gadgetsstyle.hpp"
@@ -85,6 +87,10 @@ class tst_gadgetsframe : public QObject {
     Q_OBJECT
 
 private slots:
+    void aPasteTakesTheSelectionOnlyWhenTheSettingSaysSo();
+    void aPasteOnAnEmptyPlaceGoesWhereThePlaceIs();
+    void theTableDrawsOnceWhenToldAndNotAgainUntilTold();
+    void aClockStartedTwiceCountsEachFrameOnce();
     void applyCollectionSetting();
     void collectionSettingRebuildsVisibleNodes();
     void savedCollectionType_data();
@@ -103,12 +109,26 @@ private slots:
     void closeButtonKeepsTheCardItHangsOn();
     void recursivePrimaryTracksTheDisplayedPage_data();
     void recursivePrimaryTracksTheDisplayedPage();
+    void upADirectoryFromWhereTheChosenTabsAre();
+    void aLocalFolderGoesUpAsFarAsTheTop();
+    void aLocalViewOfItsOwnStaysOnDeactivate();
+    void theBarClosesTheTabListButNotALocalFolder();
+    void intoADirectoryFromWhereTheChosenTabsAre();
     void initTestCase();
     void theTableLetsGoOfEverythingAboutALeavingNode();
     void anInactiveTableLetsGoAsWell();
     void theTrashDeletesForGoodOnlyWhenTheUserSaysSo();
     void thePageIsDrawnBehindNodesButNotBehindAccessKeys();
     void theBackdropBlurSoftensAnEdgeAndNothingElse();
+    void plainStyleIsTheDefault();
+    void plainStyleShowsWhatIsBehindAThroughATranslucentWindow();
+    void plainStyleHoldsAsManyCardsAsFlatStyle();
+    void plainStyleCoversThePageOnlyBehindNodes();
+    void plainStyleFillsTheBoxAndRoundsItsCorners();
+    void plainStyleCutsALongTitleOnceWithAnEllipsis();
+    void plainStyleKeepsTheRingOnTheSmallestCard();
+    void plainStyleCutsTheTitleOnceThroughAFold();
+    void plainStyleCornersAreAtTheDevicesPixels();
 
     void zoomingOutDoesNotDivideByZero_data();
     void zoomingOutDoesNotDivideByZero();
@@ -116,20 +136,477 @@ private slots:
     void aScreenfulOfNodesHoldsTwentyFramesASecond();
     void scrollingAScreenful_data();
     void scrollingAScreenful();
+    void aChordOnACardIsTheMapsAndNothingElse();
 
 private:
     static QString KeptAbout(GraphicsTableView *table, const QSet<Node*> &going);
+
+public:
+    static bool SwapTranslucent(bool on){
+        const bool before = Application::m_TransparentWindowEffective;
+        Application::m_TransparentWindowEffective = on;
+        return before;
+    }
 };
+
+class TranslucentWindow {
+public:
+    explicit TranslucentWindow(bool on = true)
+        : m_Before(tst_gadgetsframe::SwapTranslucent(on)) {}
+    ~TranslucentWindow(){ tst_gadgetsframe::SwapTranslucent(m_Before);}
+private:
+    bool m_Before;
+};
+
+static const char TRANSLUCENT_ROW[] = "PlainStyle through a translucent window";
+
+static void FrameStyleData(){
+    QTest::addColumn<QString>("style");
+    QTest::newRow("GlassStyle") << QStringLiteral("GlassStyle");
+    QTest::newRow("FlatStyle")  << QStringLiteral("FlatStyle");
+    QTest::newRow("PlainStyle") << QStringLiteral("PlainStyle");
+    QTest::newRow(TRANSLUCENT_ROW) << QStringLiteral("PlainStyle");
+}
 
 static void StyleData(){
     QTest::addColumn<QString>("style");
     QTest::newRow("GlassStyle") << QStringLiteral("GlassStyle");
     QTest::newRow("FlatStyle")  << QStringLiteral("FlatStyle");
+    QTest::newRow("PlainStyle") << QStringLiteral("PlainStyle");
+}
+
+void tst_gadgetsframe::plainStyleIsTheDefault(){
+    auto &settings = Application::GlobalSettings();
+    const QString key = QStringLiteral("gadgets/@Style");
+    const QVariant before = settings.value(key);
+    const auto restore = qScopeGuard([&]{
+        if(before.isValid()) settings.setValue(key, before);
+        else settings.remove(key);
+        GraphicsTableView::LoadSettings();
+    });
+
+    settings.remove(key);
+    GraphicsTableView::LoadSettings();
+    QCOMPARE(GraphicsTableView::GetStyle()->StyleName(), QStringLiteral("PlainStyle"));
+
+    UseStyle(QStringLiteral("FlatStyle"));
+    QCOMPARE(GraphicsTableView::GetStyle()->StyleName(), QStringLiteral("FlatStyle"));
+}
+
+void tst_gadgetsframe::plainStyleHoldsAsManyCardsAsFlatStyle(){
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new GraphicsTableView(nullptr);
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+    const auto layout = [&](const QString &style, float zoom){
+        UseStyle(style);
+        table->m_CurrentThumbnailZoomFactor = zoom;
+        int col = 0, line = 0, width = 0, height = 0;
+        GraphicsTableView::GetStyle()->ComputeContentsLayout(table, col, line, width, height);
+        return QList<int>{col, line, width, height};
+    };
+    for(const float zoom : {0.25f, 0.5f, 0.8f, 1.0f, 1.5f, 2.0f}){
+        const QList<int> flat = layout(QStringLiteral("FlatStyle"), zoom);
+        QVERIFY(flat[0] > 0 && flat[1] > 0);
+        QCOMPARE(layout(QStringLiteral("PlainStyle"), zoom), flat);
+    }
+    table->m_CurrentThumbnailZoomFactor = 1.0f;
+    UseStyle(QStringLiteral("FlatStyle"));
+}
+
+void tst_gadgetsframe::plainStyleCoversThePageOnlyBehindNodes(){
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new GraphicsTableView(nullptr);
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+    auto *root = MakeDirectory(1);
+    UseStyle(QStringLiteral("PlainStyle"));
+    GadgetsStyle *style = GraphicsTableView::GetStyle();
+    QVERIFY(!table->IsDisplayingNode());
+    QVERIFY(!style->CoversViewBehind(table));
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(root->GetChildAt(0)->ToViewNode()->GetChildAt(0));
+    QVERIFY(table->IsDisplayingNode());
+    QVERIFY(style->CoversViewBehind(table));
+
+    QImage frame(QSize(100, 100), QImage::Format_ARGB32_Premultiplied);
+    frame.fill(Qt::red);
+    {
+        QPainter painter(&frame);
+        table->RenderBackground(&painter);
+    }
+    QCOMPARE(frame.pixelColor(50, 50), Theme::Color(Theme::PlainSurface));
+
+    for(const QString &other : {QStringLiteral("FlatStyle"), QStringLiteral("GlassStyle")}){
+        UseStyle(other);
+        QVERIFY(!GraphicsTableView::GetStyle()->CoversViewBehind(table));
+    }
+    table->Deactivate();
+    delete table;
+    delete root;
+}
+
+void tst_gadgetsframe::plainStyleFillsTheBoxAndRoundsItsCorners(){
+    UseStyle(QStringLiteral("PlainStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    class CardTable : public GraphicsTableView {
+    public:
+        Thumbnail *thumb(Node *node) {
+            for(auto *item : childItems())
+                if(auto *thumb = dynamic_cast<Thumbnail*>(item))
+                    if(thumb->GetNode() == node) return thumb;
+            return nullptr;
+        }
+    };
+    auto *table = new CardTable;
+    scene.addItem(table);
+    table->Resize(SCREEN);
+    auto *root = MakeDirectory(3);
+    auto *folder = root->GetChildAt(0)->ToViewNode();
+    QImage page(800, 300, QImage::Format_ARGB32_Premultiplied);
+    page.fill(Qt::blue);
+    {
+        QPainter painter(&page);
+        painter.fillRect(QRect(0, 0, 800, 150), Qt::red);
+    }
+    Node *node = folder->GetChildAt(1);
+    node->ToViewNode()->SetImage(page, false);
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(folder->GetChildAt(0));
+    Thumbnail *thumb = table->thumb(node);
+    QVERIFY(thumb);
+
+    const QRectF cell = thumb->boundingRect();
+    const int margin = table->ScaleByDevice(PlainStyle::m_CardMargin);
+    const int padding = table->ScaleByDevice(PlainStyle::m_ImagePadding);
+    const int title = table->ScaleByDevice(PlainStyle::m_TitleHeight);
+    const int inset = margin + padding;
+    const QRect box(qRound(cell.left()) + inset, qRound(cell.top()) + inset,
+                    qRound(cell.width()) - inset * 2,
+                    qRound(cell.height()) - inset - margin - title);
+    QVERIFY(box.height() > 20 && box.width() > 20);
+
+    const QColor surface = Theme::Color(Theme::PlainSurface);
+    QImage frame(SCREEN, QImage::Format_ARGB32_Premultiplied);
+    frame.fill(surface);
+    {
+        QPainter painter(&frame);
+        painter.translate(thumb->pos());
+        thumb->paint(&painter, nullptr, nullptr);
+    }
+    const QPoint offset = thumb->pos().toPoint();
+    const auto at = [&](int x, int y){ return frame.pixelColor(QPoint(x, y) + offset); };
+
+    const int edge = table->ScaleByDevice(PlainStyle::m_EdgeWidth);
+    QVERIFY(edge > 0);
+    const QColor hairline = Theme::Color(Theme::PlainDivider);
+    QCOMPARE(at(box.left(), box.center().y()), hairline);
+    QCOMPARE(at(box.center().x(), box.top()), hairline);
+    QCOMPARE(at(box.left() + edge,  box.top() + box.height() / 4), QColor(Qt::red));
+    QCOMPARE(at(box.right() - edge, box.top() + box.height() / 4), QColor(Qt::red));
+    QCOMPARE(at(box.center().x(), box.top() + edge), QColor(Qt::red));
+    QCOMPARE(at(box.center().x(), box.bottom() - edge), QColor(Qt::blue));
+    QCOMPARE(at(box.left(),  box.top()),    surface);
+    QCOMPARE(at(box.right(), box.top()),    surface);
+    QCOMPARE(at(box.left(),  box.bottom()), surface);
+    QCOMPARE(at(box.right(), box.bottom()), surface);
+    QCOMPARE(at(box.left() - 1, box.center().y()), surface);
+
+    QImage tall(200, 800, QImage::Format_ARGB32_Premultiplied);
+    tall.fill(Qt::blue);
+    {
+        QPainter painter(&tall);
+        painter.fillRect(QRect(0, 0, 200, 400), Qt::red);
+    }
+    node->ToViewNode()->SetImage(tall, false);
+    frame.fill(surface);
+    {
+        QPainter painter(&frame);
+        painter.translate(thumb->pos());
+        thumb->paint(&painter, nullptr, nullptr);
+    }
+    QCOMPARE(at(box.center().x(), box.top() + edge), QColor(Qt::red));
+    QCOMPARE(at(box.center().x(), box.bottom() - edge), QColor(Qt::red));
+    node->ToViewNode()->SetImage(page, false);
+
+    thumb->setSelected(true);
+    frame.fill(surface);
+    {
+        QPainter painter(&frame);
+        painter.translate(thumb->pos());
+        thumb->paint(&painter, nullptr, nullptr);
+    }
+    const QColor plate = Theme::Color(Theme::PlainSelected);
+    const QColor accent = Theme::Color(Theme::PlainAccent);
+    QCOMPARE(at(box.left() - 1, box.center().y()), plate);
+    QCOMPARE(at(box.left(), box.center().y()), accent);
+    QCOMPARE(at(box.right(), box.center().y()), accent);
+    QCOMPARE(at(box.left(), box.top()), plate);
+    QCOMPARE(at(qRound(cell.left()) + margin, qRound(cell.top()) + margin), surface);
+    thumb->setSelected(false);
+
+    table->Deactivate();
+    delete table;
+    delete root;
+    UseStyle(QStringLiteral("FlatStyle"));
+}
+
+void tst_gadgetsframe::plainStyleCutsALongTitleOnceWithAnEllipsis(){
+    ViewNode *root = MakeDirectory(1);
+    GraphicsTableView table(nullptr);
+    auto *item = new Thumbnail(root->GetChildAt(0), 0, &table);
+    Thumbnail &thumb = *item;
+    const QFont font = ThumbnailTitleFont();
+    const QString title = QString(200, QLatin1Char('x'));
+    const int width = 100;
+
+    QCOMPARE(thumb.TitleText(title, font).text(), title);
+
+    const QString cut = thumb.TitleText(title, font, width).text();
+    QVERIFY(cut.endsWith(QChar(0x2026)));
+    QVERIFY(QFontMetrics(font).horizontalAdvance(cut) <= width);
+
+    QCOMPARE(thumb.TitleText(QStringLiteral("ab"), font, width).text(), QStringLiteral("ab"));
+    const QString longer = thumb.TitleText(title, font, width * 2).text();
+    QVERIFY(longer.length() > cut.length());
+    QCOMPARE(thumb.TitleText(title, font, width).text(), cut);
+
+    delete item;
+    delete root;
+}
+
+namespace {
+    class PlainCardTable : public GraphicsTableView {
+    public:
+        Thumbnail *thumb(Node *node) {
+            for(auto *item : childItems())
+                if(auto *thumb = dynamic_cast<Thumbnail*>(item))
+                    if(thumb->GetNode() == node) return thumb;
+            return nullptr;
+        }
+    };
+
+    QImage PaintCard(Thumbnail *thumb, const QColor &under, qreal ratio = 1.0){
+        QImage frame(SCREEN * ratio, QImage::Format_ARGB32_Premultiplied);
+        frame.setDevicePixelRatio(ratio);
+        frame.fill(under);
+        QPainter painter(&frame);
+        painter.translate(thumb->pos());
+        thumb->paint(&painter, nullptr, nullptr);
+        return frame;
+    }
+}
+
+void tst_gadgetsframe::plainStyleShowsWhatIsBehindAThroughATranslucentWindow(){
+    UseStyle(QStringLiteral("PlainStyle"));
+    TranslucentWindow window;
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new PlainCardTable;
+    scene.addItem(table);
+    table->Resize(SCREEN);
+    auto *root = MakeDirectory(3);
+    auto *folder = root->GetChildAt(0)->ToViewNode();
+    Node *node = folder->GetChildAt(1);
+    QImage solid(200, 150, QImage::Format_ARGB32_Premultiplied);
+    solid.fill(Qt::green);
+    node->ToViewNode()->SetImage(solid, false);
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(folder->GetChildAt(0));
+    QVERIFY(table->IsDisplayingNode());
+    QVERIFY(!GraphicsTableView::GetStyle()->CoversViewBehind(table));
+
+    QImage behind(QSize(100, 100), QImage::Format_ARGB32_Premultiplied);
+    behind.fill(Qt::red);
+    {
+        QPainter painter(&behind);
+        table->RenderBackground(&painter);
+    }
+    const QColor mixed = behind.pixelColor(50, 50);
+    QVERIFY(mixed != Theme::Color(Theme::PlainSurface));
+    QVERIFY(mixed != QColor(Qt::red));
+
+    Thumbnail *thumb = table->thumb(node);
+    QVERIFY(thumb);
+    const QRectF cell = thumb->boundingRect();
+    const int margin = table->ScaleByDevice(PlainStyle::m_CardMargin);
+    const int inset = margin + table->ScaleByDevice(PlainStyle::m_ImagePadding);
+    const int title = table->ScaleByDevice(PlainStyle::m_TitleHeight);
+    const int edge = table->ScaleByDevice(PlainStyle::m_EdgeWidth);
+    const QRect box(qRound(cell.left()) + inset, qRound(cell.top()) + inset,
+                    qRound(cell.width()) - inset * 2,
+                    qRound(cell.height()) - inset - margin - title);
+    const QPoint offset = thumb->pos().toPoint();
+
+    QImage frame = PaintCard(thumb, Qt::red);
+    const auto at = [&](int x, int y){ return frame.pixelColor(QPoint(x, y) + offset); };
+    QCOMPARE(at(box.left(), box.top()), QColor(Qt::red));
+    QCOMPARE(at(box.right(), box.bottom()), QColor(Qt::red));
+    QCOMPARE(at(box.center().x(), box.center().y()), QColor(Qt::green));
+    QCOMPARE(at(box.left() + edge, box.center().y()), QColor(Qt::green));
+    QCOMPARE(at(box.left(), box.center().y()), Theme::Color(Theme::PlainDivider));
+
+    thumb->setSelected(true);
+    frame = PaintCard(thumb, Qt::red);
+    const QColor plate = at(box.left() - 1, box.center().y());
+    QVERIFY(plate != Theme::Color(Theme::PlainSelected));
+    QVERIFY(plate != QColor(Qt::red));
+    QCOMPARE(at(box.left(), box.center().y()), Theme::Color(Theme::PlainAccent));
+    thumb->setSelected(false);
+
+    thumb->SetTransitionRect(cell);
+    GraphicsTableView *base = table;
+    const int width = base->m_CurrentThumbnailWidth;
+    QVERIFY(width >= table->ScaleByDevice(PlainStyle::m_RoundedCellMinWidth));
+    base->m_CurrentThumbnailWidth = table->ScaleByDevice(PlainStyle::m_RoundedCellMinWidth) - 1;
+    frame = PaintCard(thumb, Qt::red);
+    QCOMPARE(at(box.left(), box.top()), Theme::Color(Theme::PlainDivider));
+    QCOMPARE(at(box.right(), box.bottom()), Theme::Color(Theme::PlainDivider));
+    QCOMPARE(at(box.left(), box.center().y()), Theme::Color(Theme::PlainDivider));
+    QCOMPARE(at(box.center().x(), box.center().y()), QColor(Qt::green));
+    thumb->setSelected(true);
+    frame = PaintCard(thumb, Qt::red);
+    const QColor squarePlate = frame.pixelColor(offset + QPoint(qRound(cell.left()) + margin,
+                                                                qRound(cell.top()) + margin));
+    QVERIFY(squarePlate != QColor(Qt::red));
+    QVERIFY(squarePlate != Theme::Color(Theme::PlainSelected));
+    thumb->setSelected(false);
+    base->m_CurrentThumbnailWidth = width;
+    thumb->SetTransitionRect(std::nullopt);
+
+    table->Deactivate();
+    delete table;
+    delete root;
+    UseStyle(QStringLiteral("FlatStyle"));
+}
+
+void tst_gadgetsframe::plainStyleKeepsTheRingOnTheSmallestCard(){
+    UseStyle(QStringLiteral("PlainStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new PlainCardTable;
+    scene.addItem(table);
+    table->Resize(SCREEN);
+    auto *root = MakeDirectory(3);
+    auto *folder = root->GetChildAt(0)->ToViewNode();
+    Node *node = folder->GetChildAt(1);
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(node);
+    Thumbnail *thumb = table->thumb(node);
+    QVERIFY(thumb);
+    QVERIFY(thumb->IsPrimary());
+    static_cast<GraphicsTableView*>(table)->m_HoveredItemIndex = -1;
+    QVERIFY(!thumb->IsHovered());
+
+    const int inset = table->ScaleByDevice(PlainStyle::m_CardMargin)
+                    + table->ScaleByDevice(PlainStyle::m_ImagePadding);
+    const int title = table->ScaleByDevice(PlainStyle::m_TitleHeight);
+    const int margin = table->ScaleByDevice(PlainStyle::m_CardMargin);
+    const int boxHeight = table->ScaleByDevice(PlainStyle::m_CornerRadius) * 2 - 1;
+    const QRectF cell(0, 0, 60, inset + boxHeight + title + margin);
+    thumb->SetTransitionRect(cell);
+    const QImage frame = PaintCard(thumb, Theme::Color(Theme::PlainSurface));
+    thumb->SetTransitionRect(std::nullopt);
+
+    const QPoint offset = thumb->pos().toPoint();
+    const QColor accent = Theme::Color(Theme::PlainAccent);
+    QCOMPARE(frame.pixelColor(offset + QPoint(30, inset)), accent);
+    QCOMPARE(frame.pixelColor(offset + QPoint(30, inset + boxHeight - 1)), accent);
+    QCOMPARE(frame.pixelColor(offset + QPoint(inset, inset + boxHeight / 2)), accent);
+    QCOMPARE(frame.pixelColor(offset + QPoint(59 - inset, inset + boxHeight / 2)), accent);
+
+    table->Deactivate();
+    delete table;
+    delete root;
+    UseStyle(QStringLiteral("FlatStyle"));
+}
+
+void tst_gadgetsframe::plainStyleCutsTheTitleOnceThroughAFold(){
+    UseStyle(QStringLiteral("PlainStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new PlainCardTable;
+    scene.addItem(table);
+    table->Resize(SCREEN);
+    auto *root = MakeDirectory(3);
+    auto *folder = root->GetChildAt(0)->ToViewNode();
+    Node *node = folder->GetChildAt(1);
+    node->SetTitle(QString(300, QLatin1Char('x')));
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(folder->GetChildAt(0));
+    Thumbnail *thumb = table->thumb(node);
+    QVERIFY(thumb);
+
+    PaintCard(thumb, Qt::black);
+    const int settled = thumb->m_TitleTextElideWidth;
+    QVERIFY(settled > 0);
+    const QString cut = thumb->m_TitleText.text();
+    QVERIFY(cut.endsWith(QChar(0x2026)));
+
+    const QRectF cell = thumb->boundingRect();
+    for(const qreal part : {0.9, 0.7, 0.5}){
+        thumb->SetTransitionRect(QRectF(cell.topLeft(), cell.size() * part));
+        PaintCard(thumb, Qt::black);
+        QCOMPARE(thumb->m_TitleTextElideWidth, settled);
+        QCOMPARE(thumb->m_TitleText.text(), cut);
+    }
+    thumb->SetTransitionRect(std::nullopt);
+
+    table->Deactivate();
+    delete table;
+    delete root;
+    UseStyle(QStringLiteral("FlatStyle"));
+}
+
+void tst_gadgetsframe::plainStyleCornersAreAtTheDevicesPixels(){
+    UseStyle(QStringLiteral("PlainStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new PlainCardTable;
+    scene.addItem(table);
+    table->Resize(SCREEN);
+    auto *root = MakeDirectory(3);
+    auto *folder = root->GetChildAt(0)->ToViewNode();
+    Node *node = folder->GetChildAt(1);
+    QImage solid(200, 150, QImage::Format_ARGB32_Premultiplied);
+    solid.fill(Qt::red);
+    node->ToViewNode()->SetImage(solid, false);
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(folder->GetChildAt(0));
+    Thumbnail *thumb = table->thumb(node);
+    QVERIFY(thumb);
+
+    const QImage frame = PaintCard(thumb, Theme::Color(Theme::PlainSurface), 2.0);
+    const int inset = table->ScaleByDevice(PlainStyle::m_CardMargin)
+                    + table->ScaleByDevice(PlainStyle::m_ImagePadding);
+    const int radius = table->ScaleByDevice(PlainStyle::m_CornerRadius);
+    const QRectF cell = thumb->boundingRect();
+    const QPoint corner = (thumb->pos().toPoint()
+                           + QPoint(qRound(cell.left()) + inset, qRound(cell.top()) + inset)) * 2;
+    bool finer = false;
+    for(int y = 0; y < radius * 2; y += 2){
+        for(int x = 0; x < radius * 2; x += 2){
+            const QRgb first = frame.pixel(corner + QPoint(x, y));
+            if(frame.pixel(corner + QPoint(x + 1, y)) != first
+               || frame.pixel(corner + QPoint(x, y + 1)) != first
+               || frame.pixel(corner + QPoint(x + 1, y + 1)) != first)
+                finer = true;
+        }
+    }
+    QVERIFY(finer);
+
+    table->Deactivate();
+    delete table;
+    delete root;
+    UseStyle(QStringLiteral("FlatStyle"));
 }
 
 void tst_gadgetsframe::zoomingOutDoesNotDivideByZero_data(){ StyleData();}
-void tst_gadgetsframe::aScreenfulOfNodesHoldsTwentyFramesASecond_data(){ StyleData();}
-void tst_gadgetsframe::scrollingAScreenful_data(){ StyleData();}
+void tst_gadgetsframe::aScreenfulOfNodesHoldsTwentyFramesASecond_data(){ FrameStyleData();}
+void tst_gadgetsframe::scrollingAScreenful_data(){ FrameStyleData();}
 void tst_gadgetsframe::foldAnimation_data(){ StyleData();}
 void tst_gadgetsframe::unfoldingALargeDirectoryAnimatesOnlyTheScreen_data(){ StyleData();}
 void tst_gadgetsframe::foldedDirectoryGlyph_data(){ StyleData();}
@@ -163,6 +640,7 @@ void tst_gadgetsframe::unfoldingALargeDirectoryAnimatesOnlyTheScreen(){
     folder->SetFolded(false);
     table->OnFoldedChanged(NodeList() << folder);
     QCOMPARE(animation->state(), QAbstractAnimation::Running);
+    animation->setCurrentTime(0);
     QList<AbstractNodeItem*> appearing;
     for(auto *item : table->childItems())
         if(auto *node = dynamic_cast<AbstractNodeItem*>(item))
@@ -236,7 +714,7 @@ void tst_gadgetsframe::foldAnimation(){
     const qreal titleOpacity = table->title(page)->opacity();
     const qreal thumbOpacity = table->thumb(page)->opacity();
     auto item = [&](Node *node) -> AbstractNodeItem* {
-        return style == QStringLiteral("FlatStyle") ?
+        return style != QStringLiteral("GlassStyle") ?
             static_cast<AbstractNodeItem*>(table->thumb(node)) : table->title(node);
     };
     folder->SetFolded(true);
@@ -253,6 +731,10 @@ void tst_gadgetsframe::foldAnimation(){
     auto toggle = [&](bool folded){
         folder->SetFolded(folded);
         table->OnFoldedChanged(NodeList() << folder);
+        if(animation->state() == QAbstractAnimation::Running){
+            QCOMPARE(animation->currentTime(), 16);
+            animation->setCurrentTime(0);
+        }
     };
     auto finish = [&]{ animation->setCurrentTime(animation->duration()); };
     auto clean = [&]{
@@ -406,6 +888,75 @@ void tst_gadgetsframe::foldAnimation(){
     delete root;
 }
 
+void tst_gadgetsframe::aChordOnACardIsTheMapsAndNothingElse(){
+    class ChordTable : public GraphicsTableView {
+    public:
+        int taken = 0;
+        int menus = 0;
+        NodeCollectionType GetNodeCollectionType() const override { return Foldable; }
+        QMenu *CreateNodeMenu() override { ++menus; return nullptr; }
+        bool TakeMappedPress(QGraphicsSceneMouseEvent *ev) override {
+            ++taken;
+            for(Qt::MouseButton button : { Qt::LeftButton, Qt::RightButton })
+                if((ev->buttons() | ev->button()) & button) m_TakenButtons.Press(button, true);
+            ev->setAccepted(true);
+            return true;
+        }
+        Thumbnail *thumb(Node *node) {
+            for(auto *item : childItems())
+                if(auto *thumb = dynamic_cast<Thumbnail*>(item))
+                    if(thumb->GetNode() == node) return thumb;
+            return nullptr;
+        }
+    };
+    UseStyle(QStringLiteral("FlatStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new ChordTable;
+    scene.addItem(table);
+    table->Resize(SCREEN);
+    auto *root = MakeDirectory(3);
+    auto *page = root->GetChildAt(0)->ToViewNode();
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(page);
+    Thumbnail *thumb = table->thumb(page);
+    QVERIFY(thumb);
+    const QPointF at = thumb->sceneBoundingRect().center();
+    const auto send = [&](QEvent::Type type, Qt::MouseButton button, Qt::MouseButtons held){
+        QGraphicsSceneMouseEvent ev(type);
+        ev.setScenePos(at);
+        ev.setPos(table->mapFromScene(at));
+        ev.setScreenPos(at.toPoint());
+        ev.setButton(button);
+        ev.setButtons(held);
+        ev.setAccepted(false);
+        QCoreApplication::sendEvent(&scene, &ev);
+    };
+
+    send(QEvent::GraphicsSceneMousePress, Qt::RightButton, Qt::RightButton);
+    QVERIFY(scene.mouseGrabberItem() == thumb);
+    QCOMPARE(table->taken, 0);
+    send(QEvent::GraphicsSceneMousePress, Qt::LeftButton, Qt::RightButton | Qt::LeftButton);
+    QCOMPARE(table->taken, 1);
+    send(QEvent::GraphicsSceneMouseRelease, Qt::LeftButton, Qt::RightButton);
+    send(QEvent::GraphicsSceneMouseRelease, Qt::RightButton, Qt::NoButton);
+    QCOMPARE(table->menus, 0);
+
+    send(QEvent::GraphicsSceneMousePress, Qt::LeftButton, Qt::LeftButton);
+    send(QEvent::GraphicsSceneMousePress, Qt::RightButton, Qt::LeftButton | Qt::RightButton);
+    QCOMPARE(table->taken, 2);
+    send(QEvent::GraphicsSceneMouseRelease, Qt::RightButton, Qt::LeftButton);
+    QCOMPARE(table->menus, 0);
+    send(QEvent::GraphicsSceneMouseRelease, Qt::LeftButton, Qt::NoButton);
+
+    send(QEvent::GraphicsSceneMousePress, Qt::RightButton, Qt::RightButton);
+    QCOMPARE(table->taken, 2);
+    send(QEvent::GraphicsSceneMouseRelease, Qt::RightButton, Qt::NoButton);
+    QCOMPARE(table->menus, 1);
+    delete table;
+    delete root;
+}
+
 void tst_gadgetsframe::foldedDirectoryGlyph(){
     QFETCH(QString, style);
     UseStyle(style);
@@ -486,6 +1037,10 @@ void tst_gadgetsframe::cardsAnswerTheMouseOnlyWhereTheyAreDrawn(){
         const qreal dy = table->ScaleByDevice(FlatStyle::m_ThumbnailPaddingY);
         QVERIFY(dx > 0 && dy > 0);
         QCOMPARE(hit, cell.adjusted(dx, dy, -dx, -dy));
+    } else if(style == QStringLiteral("PlainStyle")){
+        const qreal margin = table->ScaleByDevice(PlainStyle::m_CardMargin);
+        QVERIFY(margin > 0);
+        QCOMPARE(hit, cell.adjusted(margin, margin, -margin, -margin));
     } else {
         QCOMPARE(hit, cell);
     }
@@ -493,7 +1048,7 @@ void tst_gadgetsframe::cardsAnswerTheMouseOnlyWhereTheyAreDrawn(){
     const QPointF corner = thumb->mapToScene(cell.topLeft() + QPointF(1, 1));
     QCOMPARE(scene.itemAt(centre, QTransform()), static_cast<QGraphicsItem*>(thumb));
     QGraphicsItem *atCorner = scene.itemAt(corner, QTransform());
-    if(style == QStringLiteral("FlatStyle")){
+    if(style != QStringLiteral("GlassStyle")){
         QCOMPARE(atCorner, static_cast<QGraphicsItem*>(table));
     } else {
         QCOMPARE(atCorner, static_cast<QGraphicsItem*>(thumb));
@@ -547,7 +1102,7 @@ void tst_gadgetsframe::closeButtonKeepsTheCardItHangsOn(){
     const QRectF buttonRect = button->boundingRect();
     QVERIFY(cell.contains(buttonRect));
     hover(QPointF(buttonRect.center().x(), cell.top() + 1));
-    if(style == QStringLiteral("FlatStyle")){
+    if(style != QStringLiteral("GlassStyle")){
         QCOMPARE(table->hoveredNode(), static_cast<Node*>(nullptr));
     } else {
         QCOMPARE(table->hoveredNode(), node);
@@ -582,11 +1137,11 @@ void tst_gadgetsframe::styleSwitchRestoresOpacity(){
     }
     QCOMPARE(cached.size(), 2);
     for(auto *item : cached) QCOMPARE(item->opacity(), 0.8);
-    for(const QString &style : {QStringLiteral("FlatStyle"), QStringLiteral("GlassStyle")}){
+    for(const QString &style : {QStringLiteral("FlatStyle"), QStringLiteral("PlainStyle"), QStringLiteral("GlassStyle")}){
         UseStyle(style);
         table->ThumbList_RefreshNoScroll();
         for(auto *item : cached)
-            QCOMPARE(item->opacity(), style == QStringLiteral("FlatStyle") ? 1.0 : 0.8);
+            QCOMPARE(item->opacity(), style != QStringLiteral("GlassStyle") ? 1.0 : 0.8);
     }
     folder->SetFolded(true);
     table->OnFoldedChanged(NodeList() << folder);
@@ -609,6 +1164,7 @@ void tst_gadgetsframe::styleSwitchRestoresOpacity(){
 void tst_gadgetsframe::initTestCase(){
     TestSupport::SilenceDebugOutput();
     GraphicsTableView::LoadSettings();
+    TreeBank::Initialize();
 }
 
 void tst_gadgetsframe::applyCollectionSetting(){
@@ -1024,6 +1580,7 @@ void tst_gadgetsframe::zoomingOutDoesNotDivideByZero(){
 void tst_gadgetsframe::aScreenfulOfNodesHoldsTwentyFramesASecond(){
     QFETCH(QString, style);
     UseStyle(style);
+    TranslucentWindow window(QByteArray(QTest::currentDataTag()) == TRANSLUCENT_ROW);
 
     QGraphicsScene scene;
     scene.setSceneRect(QRectF(QPointF(0, 0), QSizeF(SCREEN)));
@@ -1098,6 +1655,7 @@ void tst_gadgetsframe::aScreenfulOfNodesHoldsTwentyFramesASecond(){
 void tst_gadgetsframe::scrollingAScreenful(){
     QFETCH(QString, style);
     UseStyle(style);
+    TranslucentWindow window(QByteArray(QTest::currentDataTag()) == TRANSLUCENT_ROW);
 
     QGraphicsScene scene;
     scene.setSceneRect(QRectF(QPointF(0, 0), QSizeF(SCREEN)));
@@ -1194,12 +1752,12 @@ void tst_gadgetsframe::recursivePrimaryTracksTheDisplayedPage(){
     table->SetCurrent(folder);
     QVERIFY(table->GetPrimaryThumbnail());
     QCOMPARE(table->GetPrimaryThumbnail()->GetNode(), page);
-    table->CollectNodes(folder, QStringLiteral("node 0"));
+    table->SetFilter(QStringLiteral("node 0"));
     QCOMPARE(table->GetPrimaryItemIndex(), -1);
-    table->CollectNodes(folder, QStringLiteral("directory"));
+    table->SetFilter(QStringLiteral("directory"));
     QVERIFY(table->GetPrimaryThumbnail());
     QCOMPARE(table->GetPrimaryThumbnail()->GetNode(), folder);
-    table->CollectNodes(folder);
+    table->SetFilter(QString());
     QCOMPARE(table->GetPrimaryThumbnail()->GetNode(), page);
     if(collection == GraphicsTableView::Foldable){
         folder->SetFolded(true);
@@ -1225,9 +1783,9 @@ void tst_gadgetsframe::recursivePrimaryTracksTheDisplayedPage(){
         deepPage->SetTitle(QStringLiteral("deep page"));
     }
     table->displayed = deepPage;
-    table->CollectNodes(folder, QStringLiteral("directory"));
+    table->SetFilter(QStringLiteral("directory"));
     QCOMPARE(table->GetPrimaryThumbnail()->GetNode(), inner);
-    table->CollectNodes(folder);
+    table->SetFilter(QString());
     QCOMPARE(table->GetPrimaryThumbnail()->GetNode(), deepPage);
     table->displayed = nullptr;
     table->CollectNodes(folder);
@@ -1235,6 +1793,539 @@ void tst_gadgetsframe::recursivePrimaryTracksTheDisplayedPage(){
     table->Deactivate();
     delete table;
     delete root;
+}
+
+void tst_gadgetsframe::aLocalFolderGoesUpAsFarAsTheTop(){
+    QCOMPARE(QUrl(QStringLiteral("file:///")).toLocalFile(), QStringLiteral("/"));
+    QCOMPARE(LocalView::UpDirectoryPath(QStringLiteral("/")), QString());
+#ifdef Q_OS_WIN
+    QCOMPARE(LocalView::UpDirectoryPath(QStringLiteral("C:/Users/")), QStringLiteral("C:/"));
+    QCOMPARE(LocalView::UpDirectoryPath(QStringLiteral("C:/")), QStringLiteral("/"));
+
+    const QStringList folders = LocalView::PathFolders(QStringLiteral("C:/Users/"));
+    QCOMPARE(folders, (QStringList{QStringLiteral("/"), QStringLiteral("C:"), QStringLiteral("Users")}));
+    QCOMPARE(LocalView::PathOfFolder(folders, 0), QStringLiteral("/"));
+    QCOMPARE(LocalView::PathOfFolder(folders, 1), QStringLiteral("C:/"));
+    QCOMPARE(LocalView::PathOfFolder(folders, 2), QStringLiteral("C:/Users/"));
+    QCOMPARE(LocalView::PathFolders(QStringLiteral("/")), QStringList{QStringLiteral("/")});
+#else
+    QCOMPARE(LocalView::UpDirectoryPath(QStringLiteral("/home/")), QStringLiteral("/"));
+    const QStringList folders = LocalView::PathFolders(QStringLiteral("/home/"));
+    QCOMPARE(LocalView::PathOfFolder(folders, 0), QStringLiteral("/"));
+    QCOMPARE(LocalView::PathOfFolder(folders, 1), QStringLiteral("/home/"));
+#endif
+}
+
+void tst_gadgetsframe::aLocalViewOfItsOwnStaysOnDeactivate(){
+    QGraphicsScene scene;
+    LocalView *view = new LocalView(nullptr, QString(), QStringList());
+    scene.addItem(view->base());
+    view->base()->show();
+    view->Deactivate();
+    QVERIFY(view->base()->isVisible());
+
+    QGraphicsSceneMouseEvent ev(QEvent::GraphicsSceneMouseDoubleClick);
+    ev.setButton(Qt::LeftButton);
+    ev.setPos(QPointF(5, 5));
+    scene.sendEvent(view->base(), &ev);
+    QVERIFY(ev.isAccepted());
+    QVERIFY(view->base()->isVisible());
+    scene.removeItem(view->base());
+    delete view;
+}
+
+void tst_gadgetsframe::theBarClosesTheTabListButNotALocalFolder(){
+    UseStyle(QStringLiteral("FlatStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new GraphicsTableView;
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+    auto *root = MakeDirectory(3);
+    auto *folder = root->GetChildAt(0)->ToViewNode();
+
+    for(auto type : {GraphicsTableView::ViewTree, GraphicsTableView::TrashTree}){
+        table->Activate(type);
+        table->SetCurrent(folder);
+        GraphicsButton *close = table->m_CloseTableButton;
+        QVERIFY(close->isVisible());
+        QVERIFY(close->isEnabled());
+        QVERIFY(!close->boundingRect().isEmpty());
+        QVERIFY(table->HeaderFilterRect().right() < close->boundingRect().left());
+        QVERIFY(close->boundingRect().right() > SCREEN.width() - table->ScaleByDevice(DISPLAY_PADDING_X));
+        QCOMPARE(SCREEN.width() - close->boundingRect().right(),
+                 close->boundingRect().left() - table->HeaderFilterRect().right());
+
+        const QPointF at = close->boundingRect().center();
+        QGraphicsSceneMouseEvent press(QEvent::GraphicsSceneMousePress);
+        press.setButton(Qt::LeftButton);
+        press.setPos(at);
+        press.setScenePos(at);
+        scene.sendEvent(close, &press);
+        QGraphicsSceneMouseEvent release(QEvent::GraphicsSceneMouseRelease);
+        release.setButton(Qt::LeftButton);
+        release.setPos(at);
+        release.setScenePos(at);
+        scene.sendEvent(close, &release);
+        QVERIFY(!table->isVisible());
+    }
+
+    table->Activate(GraphicsTableView::LocalFolderTree);
+    table->SetCurrent(folder);
+    QVERIFY(!table->m_CloseTableButton->isVisible());
+    QVERIFY(table->HeaderCloseRect().isNull());
+    QCOMPARE(table->HeaderFilterRect().right(),
+             qreal(SCREEN.width() - table->ScaleByDevice(DISPLAY_PADDING_X)));
+
+    table->Deactivate();
+    delete table;
+    delete root;
+}
+
+void tst_gadgetsframe::upADirectoryFromWhereTheChosenTabsAre(){
+    class MoveTable : public GraphicsTableView {
+    public:
+        NodeCollectionType GetNodeCollectionType() const override { return Foldable; }
+        void choose(Node *hovered, const NodeList &nodes){
+            for(int i = 0; i < m_DisplayThumbnails.length(); i++)
+                if(m_DisplayThumbnails[i]->GetNode() == hovered) SetHoveredItem(i);
+            m_NodesRegister = nodes;
+        }
+        Node *current() const { return m_CurrentNode;}
+        NodeList chosen() const { return m_NodesRegister;}
+    };
+    UseStyle(QStringLiteral("FlatStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new MoveTable;
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+
+    ViewNode *root = TreeBank::GetViewRoot();
+    ViewNode *level, *tab, *inner, *a, *b, *last;
+    {
+        Booting booting;
+        auto page = [](ViewNode *parent, const char *title){
+            ViewNode *vn = parent->MakeChild();
+            vn->SetHoldView(true);
+            vn->SetTitle(QString::fromLatin1(title));
+            vn->SetUrl(QUrl(QStringLiteral("https://example.com/") + QString::fromLatin1(title)));
+            return vn;
+        };
+        level = root->MakeChild();
+        level->SetTitle(QStringLiteral("level"));
+        tab = page(level, "tab");
+        inner = level->MakeChild();
+        inner->SetTitle(QStringLiteral("inner"));
+        inner->SetFolded(false);
+        a = page(inner, "a");
+        b = page(inner, "b");
+        last = page(level, "last");
+    }
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(tab);
+
+    table->choose(a, NodeList() << a << b);
+    QVERIFY(table->ThumbList_TransferToUpDirectory());
+    QCOMPARE(a->GetParent(), static_cast<Node*>(level));
+    QCOMPARE(b->GetParent(), static_cast<Node*>(level));
+    QVERIFY(inner->HasNoChildren());
+    QCOMPARE(table->current(), static_cast<Node*>(tab));
+    auto chosen = [table](){
+        const NodeList nodes = table->chosen();
+        return QSet<Node*>(nodes.begin(), nodes.end());
+    };
+    QCOMPARE(chosen(), QSet<Node*>() << a << b);
+
+    table->choose(last, NodeList() << last);
+    QVERIFY(table->ThumbList_TransferToUpDirectory());
+    QCOMPARE(last->GetParent(), static_cast<Node*>(root));
+    QCOMPARE(table->current(), static_cast<Node*>(level));
+    QCOMPARE(chosen(), QSet<Node*>() << last);
+
+    table->Deactivate();
+    delete table;
+    for(ViewNode *vn : { last, level }){
+        root->RemoveChild(vn);
+        vn->Delete();
+    }
+}
+
+void tst_gadgetsframe::intoADirectoryFromWhereTheChosenTabsAre(){
+    class MoveTable : public GraphicsTableView {
+    public:
+        NodeCollectionType GetNodeCollectionType() const override { return Foldable; }
+        void choose(Node *hovered, const NodeList &nodes){
+            for(int i = 0; i < m_DisplayThumbnails.length(); i++)
+                if(m_DisplayThumbnails[i]->GetNode() == hovered) SetHoveredItem(i);
+            m_NodesRegister = nodes;
+        }
+        Node *current() const { return m_CurrentNode;}
+        QSet<Node*> chosen() const { return QSet<Node*>(m_NodesRegister.begin(), m_NodesRegister.end());}
+    };
+    UseStyle(QStringLiteral("FlatStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new MoveTable;
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+
+    ViewNode *root = TreeBank::GetViewRoot();
+    ViewNode *level, *tab, *inner, *a, *b, *target, *kept;
+    {
+        Booting booting;
+        auto page = [](ViewNode *parent, const char *title){
+            ViewNode *vn = parent->MakeChild();
+            vn->SetHoldView(true);
+            vn->SetTitle(QString::fromLatin1(title));
+            vn->SetUrl(QUrl(QStringLiteral("https://example.com/") + QString::fromLatin1(title)));
+            return vn;
+        };
+        level = root->MakeChild();
+        level->SetTitle(QStringLiteral("level"));
+        tab = page(level, "tab");
+        inner = level->MakeChild();
+        inner->SetTitle(QStringLiteral("inner"));
+        inner->SetFolded(false);
+        a = page(inner, "a");
+        b = page(inner, "b");
+        target = level->MakeChild();
+        target->SetTitle(QStringLiteral("target"));
+        target->SetFolded(true);
+        kept = page(target, "kept");
+    }
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(tab);
+
+    table->choose(target, NodeList() << a << b << target);
+    QVERIFY(table->ThumbList_TransferToDownDirectory());
+    QCOMPARE(a->GetParent(), static_cast<Node*>(target));
+    QCOMPARE(b->GetParent(), static_cast<Node*>(target));
+    QCOMPARE(target->GetParent(), static_cast<Node*>(level));
+    QCOMPARE(kept->GetParent(), static_cast<Node*>(target));
+    QVERIFY(inner->HasNoChildren());
+    QCOMPARE(table->current()->GetParent(), static_cast<Node*>(target));
+    QCOMPARE(table->chosen(), QSet<Node*>() << a << b);
+
+    table->Deactivate();
+    delete table;
+    root->RemoveChild(level);
+    level->Delete();
+}
+
+void tst_gadgetsframe::aPasteTakesTheSelectionOnlyWhenTheSettingSaysSo(){
+    class ClipTable : public GraphicsTableView {
+    public:
+        void choose(Node *hovered, const NodeList &nodes){
+            for(int i = 0; i < m_DisplayThumbnails.length(); i++)
+                if(m_DisplayThumbnails[i]->GetNode() == hovered) SetHoveredItem(i);
+            m_NodesRegister = nodes;
+        }
+        void setOperation(const QString &operation){ m_SelectionOperation = operation;}
+        Node *current() const { return m_CurrentNode;}
+        bool middle(){ return PasteNodeAt(QPointF(-1.0, -1.0));}
+    };
+    UseStyle(QStringLiteral("FlatStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new ClipTable;
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+
+    ViewNode *root = TreeBank::GetViewRoot();
+    ViewNode *from, *to, *a, *b, *kept;
+    {
+        Booting booting;
+        auto page = [](ViewNode *parent, const char *title){
+            ViewNode *vn = parent->MakeChild();
+            vn->SetHoldView(true);
+            vn->SetTitle(QString::fromLatin1(title));
+            vn->SetUrl(QUrl(QStringLiteral("https://example.com/") + QString::fromLatin1(title)));
+            return vn;
+        };
+        from = root->MakeChild();
+        from->SetTitle(QStringLiteral("from"));
+        a = page(from, "a");
+        b = page(from, "b");
+        to = root->MakeChild();
+        to->SetTitle(QStringLiteral("to"));
+        kept = page(to, "kept");
+    }
+    TreeBank::SetClipboardNodes(NodeList(), false);
+    table->setOperation(QStringLiteral("None"));
+    table->Activate(GraphicsTableView::ViewTree);
+
+    table->SetCurrent(a);
+    QVERIFY(table->ThumbList_SelectAll());
+    QVERIFY(table->ThumbList_UpDirectory());
+    table->choose(to, NodeList() << a << b);
+    QVERIFY(table->ThumbList_DownDirectory());
+    QCOMPARE(table->current()->GetParent(), static_cast<Node*>(to));
+    table->choose(kept, NodeList() << a << b);
+    QVERIFY(!table->middle());
+    QCOMPARE(to->ChildrenLength(), 1);
+    QCOMPARE(a->GetParent(), static_cast<Node*>(from));
+
+    QVERIFY(!table->ThumbList_PasteNode());
+    table->setOperation(QStringLiteral("Copy"));
+    QVERIFY(table->ThumbList_PasteNode());
+    QCOMPARE(to->ChildrenLength(), 3);
+    TreeBank::SetClipboardNodes(NodeList(), false);
+    foreach(Node *nd, to->GetChildren()) if(nd != kept) nd->ToViewNode()->Delete();
+    to->SetChildren(NodeList() << kept);
+    table->SetCurrent(kept);
+    table->choose(kept, NodeList() << a << b);
+
+    table->setOperation(QStringLiteral("Copy"));
+    QVERIFY(table->middle());
+    QCOMPARE(to->ChildrenLength(), 3);
+    QVERIFY(table->middle());
+    QCOMPARE(to->ChildrenLength(), 5);
+    QCOMPARE(a->GetParent(), static_cast<Node*>(from));
+
+    table->SetCurrent(kept);
+    table->choose(kept, NodeList() << kept);
+    QVERIFY(table->ThumbList_CutNode());
+    table->SetCurrent(a);
+    table->choose(a, NodeList() << kept);
+    QVERIFY(table->middle());
+    QCOMPARE(kept->GetParent(), static_cast<Node*>(from));
+
+    table->setOperation(QStringLiteral("Cut"));
+    table->SetCurrent(to->GetFirstChild());
+    table->choose(to->GetFirstChild(), NodeList() << a << b);
+    QVERIFY(table->middle());
+    QCOMPARE(a->GetParent(), static_cast<Node*>(to));
+    QCOMPARE(b->GetParent(), static_cast<Node*>(to));
+    QVERIFY(!table->middle());
+
+    LocalNode file;
+    table->SetCurrent(a);
+    TreeBank::SetClipboardNodes(NodeList() << b, false);
+    table->choose(a, NodeList() << &file);
+    QVERIFY(!table->ThumbList_CutNode());
+    QVERIFY(!table->ThumbList_CopyNode());
+    QVERIFY(TreeBank::ClipboardHolds(NodeList() << b));
+    table->setOperation(QStringLiteral("Cut"));
+    const int before = a->GetParent()->ChildrenLength();
+    QVERIFY(table->middle());
+    QVERIFY(TreeBank::ClipboardHolds(NodeList() << b));
+    QCOMPARE(a->GetParent()->ChildrenLength(), before + 1);
+    table->choose(a, NodeList());
+
+    table->setOperation(QStringLiteral("None"));
+    TreeBank::SetClipboardNodes(NodeList(), false);
+    table->Deactivate();
+    delete table;
+    root->RemoveChild(from);
+    root->RemoveChild(to);
+    from->Delete();
+    to->Delete();
+}
+
+void tst_gadgetsframe::aPasteOnAnEmptyPlaceGoesWhereThePlaceIs(){
+    class PlaceTable : public GraphicsTableView {
+    public:
+        QPointF centerOf(Node *nd) const {
+            for(Thumbnail *thumb : m_DisplayThumbnails)
+                if(thumb->GetNode() == nd) return thumb->boundingRect().center() + thumb->pos();
+            return QPointF();
+        }
+        QPointF titleOf(Node *nd) const {
+            for(NodeTitle *title : m_DisplayNodeTitles)
+                if(title->GetNode() == nd) return title->boundingRect().center() + title->pos();
+            return QPointF();
+        }
+        qreal halfWidth() const { return m_CurrentThumbnailWidth / 2.0;}
+        qreal halfHeight() const { return m_CurrentThumbnailHeight / 2.0;}
+        using GraphicsTableView::PasteNodeAt;
+        void select(Node *nd, const QString &operation){
+            m_NodesRegister = NodeList() << nd;
+            m_SelectionOperation = operation;
+        }
+        void hover(Node *nd){
+            for(int i = 0; i < m_DisplayThumbnails.length(); i++)
+                if(m_DisplayThumbnails[i]->GetNode() == nd) SetHoveredItem(i);
+        }
+        void unhover(){ SetHoveredItem(-1);}
+        void menuAt(const QPointF &pos){ m_MenuPos = pos;}
+        void menuClosed(){ m_MenuPos.reset();}
+        void clearSelection(const QString &operation){
+            m_NodesRegister.clear();
+            m_SelectionOperation = operation;
+        }
+        bool middleClick(const QPointF &pos){
+            QGraphicsSceneMouseEvent ev(QEvent::GraphicsSceneMouseRelease);
+            ev.setButton(Qt::MiddleButton);
+            ev.setPos(pos);
+            ev.setAccepted(false);
+            mouseReleaseEvent(&ev);
+            return ev.isAccepted();
+        }
+    };
+    UseStyle(QStringLiteral("FlatStyle"));
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new PlaceTable;
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+
+    ViewNode *root = TreeBank::GetViewRoot();
+    ViewNode *dir, *a, *b, *c;
+    auto page = [](ViewNode *parent, const char *title){
+        ViewNode *vn = parent->MakeChild();
+        vn->SetHoldView(true);
+        vn->SetTitle(QString::fromLatin1(title));
+        vn->SetUrl(QUrl(QStringLiteral("https://example.com/") + QString::fromLatin1(title)));
+        return vn;
+    };
+    {
+        Booting booting;
+        dir = root->MakeChild();
+        dir->SetTitle(QStringLiteral("dir"));
+        a = page(dir, "a");
+        b = page(dir, "b");
+        c = page(dir, "c");
+    }
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(a);
+
+    auto titles = [dir](){
+        QStringList list;
+        foreach(Node *nd, dir->GetChildren()) list << nd->GetTitle();
+        return list;
+    };
+
+    TreeBank::SetClipboardNodes(NodeList() << a, true);
+    QVERIFY(table->middleClick(table->centerOf(c) - QPointF(table->halfWidth(), 0)));
+    QCOMPARE(titles(), (QStringList{QStringLiteral("b"), QStringLiteral("a"), QStringLiteral("c")}));
+
+    TreeBank::SetClipboardNodes(NodeList() << b, true);
+    table->unhover();
+    QVERIFY(table->PasteNodeAt(table->centerOf(c) + QPointF(table->halfWidth(), 0)));
+    QCOMPARE(titles(), (QStringList{QStringLiteral("a"), QStringLiteral("c"), QStringLiteral("b")}));
+
+    TreeBank::SetClipboardNodes(NodeList() << a, true);
+    QVERIFY(table->PasteNodeAt(table->centerOf(a) + QPointF(0, table->halfHeight() * 3)));
+    QCOMPARE(titles(), (QStringList{QStringLiteral("c"), QStringLiteral("b"), QStringLiteral("a")}));
+
+    TreeBank::SetClipboardNodes(NodeList(), false);
+    table->select(a, QStringLiteral("Cut"));
+    QVERIFY(table->middleClick(table->centerOf(b) - QPointF(table->halfWidth(), 0)));
+    QCOMPARE(titles(), (QStringList{QStringLiteral("c"), QStringLiteral("a"), QStringLiteral("b")}));
+    table->clearSelection(QStringLiteral("None"));
+
+    TreeBank::SetClipboardNodes(NodeList() << b, true);
+    table->hover(c);
+    table->menuAt(table->centerOf(a) + QPointF(table->halfWidth(), 0));
+    QVERIFY(table->ThumbList_PasteNode());
+    QCOMPARE(titles(), (QStringList{QStringLiteral("c"), QStringLiteral("b"), QStringLiteral("a")}));
+
+    TreeBank::SetClipboardNodes(NodeList() << a, true);
+    table->unhover();
+    table->menuAt(table->centerOf(b) - QPointF(table->halfWidth(), 0));
+    QVERIFY(table->ThumbList_PasteNode());
+    QCOMPARE(titles(), (QStringList{QStringLiteral("c"), QStringLiteral("a"), QStringLiteral("b")}));
+    table->menuClosed();
+
+    TreeBank::SetClipboardNodes(NodeList() << c, true);
+    table->unhover();
+    QVERIFY(table->ThumbList_PasteNode());
+    QCOMPARE(titles(), (QStringList{QStringLiteral("a"), QStringLiteral("b"), QStringLiteral("c")}));
+
+    table->Deactivate();
+    delete table;
+
+    UseStyle(QStringLiteral("GlassStyle"));
+    table = new PlaceTable;
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(b);
+    const QPointF aboveA = table->titleOf(a) - QPointF(0, 1);
+    QVERIFY(table->NodeTitleAreaRect().contains(aboveA));
+    TreeBank::SetClipboardNodes(NodeList() << b, true);
+    table->unhover();
+    QVERIFY(table->PasteNodeAt(aboveA));
+    QCOMPARE(titles(), (QStringList{QStringLiteral("b"), QStringLiteral("a"), QStringLiteral("c")}));
+
+    TreeBank::SetClipboardNodes(NodeList(), false);
+    table->Deactivate();
+    delete table;
+    root->RemoveChild(dir);
+    dir->Delete();
+}
+
+void tst_gadgetsframe::theTableDrawsOnceWhenToldAndNotAgainUntilTold(){
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(0, 0), QSizeF(SCREEN)));
+
+    GraphicsTableView *table = new GraphicsTableView(nullptr);
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+
+    ViewNode *root = MakeDirectory(8);
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(root->GetChildAt(0)->GetChildAt(0));
+    QVERIFY(table->isVisible());
+    QVERIFY(!table->m_FrameRateTimerId);
+    QTest::qWait(300);
+
+    QSignalSpy drawn(&scene, &QGraphicsScene::changed);
+    QTest::qWait(700);
+    QCOMPARE(drawn.count(), 0);
+
+    table->ScheduleRepaint();
+    QTRY_VERIFY(drawn.count() > 0);
+    QTest::qWait(200);
+    const int once = drawn.count();
+    for(int i = 0; i < 100; i++) table->ScheduleRepaint();
+    QTRY_COMPARE(drawn.count(), once * 2);
+    QTest::qWait(700);
+    QCOMPARE(drawn.count(), once * 2);
+
+    table->Deactivate();
+    table->hide();
+    table->ScheduleRepaint();
+    QVERIFY(!table->m_RepaintTimer.isActive());
+
+    delete root;
+}
+
+void tst_gadgetsframe::aClockStartedTwiceCountsEachFrameOnce(){
+    QGraphicsScene scene;
+    GraphicsTableView *table = new GraphicsTableView(nullptr);
+    scene.addItem(table);
+
+    table->StartFrameRateTimer();
+    table->StartFrameRateTimer();
+    table->StartAutoUpdateTimer();
+    table->StartAutoUpdateTimer();
+    table->m_Frame = 0;
+    emit scene.changed(QList<QRectF>() << QRectF(0, 0, 10, 10));
+    QCOMPARE(table->m_Frame, 1);
+
+    QVERIFY(table->IsCountingFrames());
+    QVERIFY(table->IsAutoUpdating());
+    table->StopFrameRateTimer();
+    table->StopAutoUpdateTimer();
+    QVERIFY(!table->IsCountingFrames());
+    QVERIFY(!table->IsAutoUpdating());
+    emit scene.changed(QList<QRectF>() << QRectF(0, 0, 10, 10));
+    QCOMPARE(table->m_Frame, 1);
+
+    QGraphicsScene other;
+    table->StartFrameRateTimer();
+    table->StopFrameRateTimer();
+    scene.removeItem(table);
+    other.addItem(table);
+    table->StartFrameRateTimer();
+    table->m_Frame = 0;
+    emit scene.changed(QList<QRectF>() << QRectF(0, 0, 10, 10));
+    QCOMPARE(table->m_Frame, 0);
+    emit other.changed(QList<QRectF>() << QRectF(0, 0, 10, 10));
+    QCOMPARE(table->m_Frame, 1);
+    table->StopFrameRateTimer();
 }
 
 QTEST_MAIN(tst_gadgetsframe)

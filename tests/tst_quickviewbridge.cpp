@@ -128,7 +128,7 @@ private slots:
         const QMap<QString, QString> functions = FunctionsOf(WithoutComments(m_Qml));
         QVERIFY2(functions.size() > 30, "the functions of the view moved");
 
-        foreach(const QString &name, functions.keys())
+        for(const QString &name : functions.keys())
             QVERIFY2(!functions[name].trimmed().isEmpty(),
                      qPrintable(QStringLiteral(
                          "'%1' is an empty QML function: it can be called and does nothing")
@@ -147,7 +147,7 @@ private slots:
         const QMap<QString, QString> functions = FunctionsOf(WithoutComments(m_Qml));
         const QString types = EngineTypes();
 
-        foreach(const QString &name, asked){
+        for(const QString &name : std::as_const(asked)){
             if(functions.contains(name)) continue;
             if(types.isEmpty())
                 QSKIP("no QtWebEngine plugins.qmltypes to check the engine's own names against");
@@ -169,7 +169,7 @@ private slots:
         const QString header = Read(QStringLiteral(VANILLA_SOURCE_DIR "/view/webengine/quickwebengineview.hpp"));
         QVERIFY(!header.isEmpty());
 
-        foreach(const QString &name, called)
+        for(const QString &name : std::as_const(called))
             QVERIFY2(header.contains(QRegularExpression(
                          QStringLiteral("\\b%1\\s*\\(").arg(QRegularExpression::escape(name)))),
                      qPrintable(QStringLiteral(
@@ -192,7 +192,7 @@ private slots:
         int end = types.indexOf(QLatin1Char('}'), begin);
         const QString described = types.mid(begin, end - begin);
 
-        foreach(const QString &name, asked)
+        for(const QString &name : std::as_const(asked))
             QVERIFY2(described.contains(QStringLiteral("\"%1\"").arg(name)),
                      qPrintable(QStringLiteral("the engine has no lifecycle state %1").arg(name)));
     }

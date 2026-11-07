@@ -13,6 +13,7 @@
 #include <QList>
 #include <QMap>
 #include <QSet>
+#include <QPointer>
 #include <QGraphicsView>
 
 #include <functional>
@@ -37,7 +38,7 @@ class TreeBank : public QWidget {
 
 public:
     TreeBank(QWidget *parent = nullptr);
-    ~TreeBank() Q_DECL_OVERRIDE;
+    ~TreeBank() override;
 
     class GraphicsView : public QGraphicsView {
     public:
@@ -46,7 +47,7 @@ public:
             , m_MouseEventSource(Qt::MouseEventNotSynthesized)
         {
         }
-        void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE {
+        void wheelEvent(QWheelEvent *ev) override {
             m_MouseEventSource = ev->source();
             QGraphicsView::wheelEvent(ev);
             m_MouseEventSource = Qt::MouseEventNotSynthesized;
@@ -79,6 +80,7 @@ public:
     inline Notifier *GetNotifier() const { return m_Notifier;}
     inline Receiver *GetReceiver() const { return m_Receiver;}
     QSize ViewSize() const;
+    int MiniMapStripWidth() const;
     void SetMiniMapShelved(bool shelved);
     inline Gadgets  *GetGadgets()  const { return m_Gadgets;}
     inline QGraphicsScene *GetScene() const { return m_Scene;}
@@ -88,11 +90,13 @@ public:
     inline ViewNode *GetCurrentViewNode()  const { return m_CurrentViewNode;}
     static ViewNode *GetViewIterForward()  { return m_ViewIterForward;}
     static ViewNode *GetViewIterBackward() { return m_ViewIterBackward;}
+    static bool GetViewIterForwardPending()  { return m_ViewIterForwardPending;}
+    static bool GetViewIterBackwardPending() { return m_ViewIterBackwardPending;}
 
     inline void SetCurrentView(SharedView view){ m_CurrentView = view;}
     inline void SetCurrentViewNode(ViewNode *vn){ m_CurrentViewNode = vn;}
-    static void SetViewIterForward(ViewNode *vn){ m_ViewIterForward = vn;}
-    static void SetViewIterBackward(ViewNode *vn){ m_ViewIterBackward = vn;}
+    static void SetViewIterForward(ViewNode *vn){ m_ViewIterForward = vn; m_ViewIterForwardPending = false;}
+    static void SetViewIterBackward(ViewNode *vn){ m_ViewIterBackward = vn; m_ViewIterBackwardPending = false;}
 
 signals:
     void TreeStructureChanged();
@@ -104,6 +108,9 @@ signals:
 public:
     static void WhenSomethingChanges(std::function<void()> told);
     static void SomethingChanged();
+
+    static void TabsLookChanged();
+    static void StopTellingTabs();
 
     static void EmitTreeStructureChanged();
     static void EmitNodeCreated(NodeList &nds);
@@ -118,8 +125,25 @@ private:
 
 public:
     bool RenameNode(Node*);
-    static void ReconfigureDirectory(ViewNode*, QString, QString);
+    static bool ReconfigureDirectory(ViewNode*, QString, QString);
+    static bool IsMovingSpace(){ return m_MovingSpace;}
+    static QStringList SpaceNamesInUse();
+    static QSet<QString> StoragesOfViews();
+    static QSet<QObject*> ProfilesOfViews();
 private:
+    static bool RenameSpace(ViewNode *vn, const QString &before, const QString &after,
+                            bool removing = false);
+    static bool MergeSpace(ViewNode *vn, const QString &before, const QString &after);
+    static void LetGoOfViews(const QSet<QObject*> &profiles, const QSet<QString> &edgeNames,
+                             QList<QPair<QPointer<TreeBank>, ViewNode*>> &current,
+                             QList<QPointer<QObject>> &going);
+    static void FinishRenameSpace(ViewNode *vn, const QString &from, const QString &to,
+                                  const QStringList &set,
+                                  const QList<QPair<QPointer<TreeBank>, ViewNode*>> &current,
+                                  QObject *progress);
+    static bool m_MovingSpace;
+    static QString m_MovingFrom;
+    static QString m_MovingTo;
     static void ApplySpecificSettings(ViewNode *vn);
 
     static void ReapplySpecificSettings(ViewNode*);
@@ -131,6 +155,8 @@ public:
     static void Discard(Node *nd, Node *formerParent);
     static void DoDelete();
     static void PassDeleteBarrier(bool mayFree);
+    static NodeList m_ClipboardNodes;
+    static bool m_ClipboardIsCut;
     static int FreshDeleteCount(){ return m_FreshDeleteBox.length();}
     static int RipeDeleteCount(){ return m_NodeDeleteBox.length();}
     static void AddToUpdateBox(SharedView);
@@ -142,6 +168,13 @@ public:
     static AutoLoadWalk WalkToAutoLoad(ViewNode *&iter, bool forward,
                                        const std::function<bool(ViewNode*)> &load,
                                        int budget);
+    static AutoLoadWalk WalkToAutoLoad(ViewNode *&iter, bool forward,
+                                       const std::function<bool(ViewNode*)> &load,
+                                       int budget, bool &pending);
+    static void SteerAutoLoadWalk(Node *node, bool reorder, ViewNode *&iter, bool &pending, bool forward);
+    static void SteerAutoLoadWalks(Node *node, bool reorder);
+    static bool AutoLoadRestsIn(Node *node);
+    static void RewalkAutoLoadFromCurrent();
     static bool AutoLoadStops(bool forwardLeft, bool backwardLeft, int views, int maxViews);
     static int AutoLoadNextCondition(AutoLoadWalk walk, int condition);
     static void ReleaseAutoLoadIterators(ViewNode *vn);
@@ -170,7 +203,11 @@ public:
     static Restoration LoadTree();
     static MainWindow *RestoreIntoWindow(ViewNode *nd, int id);
     static WindowIndexMap WindowIndexSnapshot();
-    static bool SaveTree(const WindowIndexMap &windowIndices);
+    static void LeaveOutOfSaves(quint64 serial);
+    static void PutBackIntoSaves(quint64 serial);
+    static QSet<quint64> LeftOutOfSaves();
+    static bool SaveTree(const WindowIndexMap &windowIndices,
+                         const QSet<quint64> &leftOut = QSet<quint64>());
 #ifdef MEDIATIME
     static void SaveMediaTimesForQuit(VoidCallBack finished);
 #endif
@@ -251,17 +288,15 @@ public:
 public:
     void BeforeStartingDisplayGadgets();
     void AfterFinishingDisplayGadgets();
+private:
+    void PaintGadgetsNow();
+public:
 
     void MousePressEvent(QMouseEvent *ev);
     void MouseReleaseEvent(QMouseEvent *ev);
     void MouseMoveEvent(QMouseEvent *ev);
     void MouseDoubleClickEvent(QMouseEvent *ev);
     void WheelEvent(QWheelEvent *ev);
-    void DragEnterEvent(QDragEnterEvent *ev);
-    void DragMoveEvent(QDragMoveEvent *ev);
-    void DragLeaveEvent(QDragLeaveEvent *ev);
-    void DropEvent(QDropEvent *ev);
-    void ContextMenuEvent(QContextMenuEvent *ev);
     void KeyPressEvent(QKeyEvent *ev);
     void KeyReleaseEvent(QKeyEvent *ev);
 
@@ -296,18 +331,18 @@ public:
     void RestackChildWidgets(OverviewState overview = OverviewAsIs);
 
 protected:
-    void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE;
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void dragEnterEvent(QDragEnterEvent *ev) Q_DECL_OVERRIDE;
-    void dragMoveEvent(QDragMoveEvent *ev) Q_DECL_OVERRIDE;
-    void dragLeaveEvent(QDragLeaveEvent *ev) Q_DECL_OVERRIDE;
-    void dropEvent(QDropEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void contextMenuEvent(QContextMenuEvent *ev) Q_DECL_OVERRIDE;
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent *ev) override;
+    void timerEvent(QTimerEvent *ev) override;
+    void wheelEvent(QWheelEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void dragEnterEvent(QDragEnterEvent *ev) override;
+    void dragMoveEvent(QDragMoveEvent *ev) override;
+    void dragLeaveEvent(QDragLeaveEvent *ev) override;
+    void dropEvent(QDropEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
+    void contextMenuEvent(QContextMenuEvent *ev) override;
+    void keyPressEvent(QKeyEvent *ev) override;
 
 public slots:
     void OpenInNewIfNeed(QUrl);
@@ -315,7 +350,6 @@ public slots:
     void OpenInNewIfNeed(QString);
     void OpenInNewIfNeed(QString, QString);
 
-    void Repaint();
     void Reconfigure();
 
     void Up                   (SharedView view = nullptr);
@@ -388,6 +422,11 @@ public slots:
     void LastView             (ViewNode *vn = nullptr);
     ViewNode *NewViewNode     (ViewNode *vn = nullptr);
     ViewNode *CloneViewNode   (ViewNode *vn = nullptr);
+
+    static void SetClipboardNodes(const NodeList &nodes, bool cut);
+    static bool HasClipboardNodes();
+    static bool ClipboardHolds(const NodeList &nodes);
+    static bool PasteClipboardNodes(Node *parent, Node *anchor, bool before = false);
     ViewNode *MakeLocalNode   (ViewNode *vn = nullptr);
     ViewNode *MakeChildDirectory(ViewNode *vn = nullptr);
     ViewNode *MakeSiblingDirectory(ViewNode *vn = nullptr);
@@ -481,6 +520,9 @@ private:
     static View *m_ExtractingDownloadCarrier;
     static SharedViewList m_ViewUpdateBox;
     static NodeList m_NodeDeleteBox;
+    static bool m_ViewIterForwardPending;
+    static bool m_ViewIterBackwardPending;
+    static QHash<quint64, int> m_LeftOutOfSaves;
     static NodeList m_FreshDeleteBox;
     static QList<QPair<NodeList, Node*>> m_Leaving;
     static bool m_DeleteBarrierBooked;
@@ -494,6 +536,7 @@ private:
     static bool m_PurgeReceiver;
     static bool m_PurgeView;
     static bool m_EnableMiniMap;
+    static bool m_EnableNotifierScrollArea;
     static int  m_MaxViewCount;
     static int  m_MaxTrashEntryCount;
     static enum Viewport {
@@ -515,6 +558,7 @@ public:
     static ViewKind ViewKindNamedIn(const QStringList &set);
     static ViewKind KindOf(View *view);
     static bool PurgeView(){ return m_PurgeView;}
+    static bool EnableNotifierScrollArea(){ return m_EnableNotifierScrollArea;}
 };
 
 #endif

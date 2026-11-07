@@ -33,112 +33,115 @@ class WebEngineView : public QWebEngineView, public View {
 
 public:
     WebEngineView(TreeBank *parent = nullptr, QString id = "", QStringList set = QStringList());
-    ~WebEngineView() Q_DECL_OVERRIDE;
+    ~WebEngineView() override;
 
     static void SetUpEventFilterInstaller();
 
-    QWebEngineView *base() Q_DECL_OVERRIDE;
-    WebEnginePage *page() Q_DECL_OVERRIDE;
+    QWebEngineView *base() override;
+    WebEnginePage *page() override;
 
-    QUrl url() Q_DECL_OVERRIDE;
-    QString html() Q_DECL_OVERRIDE;
-    TreeBank *parent() Q_DECL_OVERRIDE;
-    void setUrl(const QUrl &url) Q_DECL_OVERRIDE;
-    void setHtml(const QString &html, const QUrl &url) Q_DECL_OVERRIDE;
-    void setParent(TreeBank* tb) Q_DECL_OVERRIDE;
+    QUrl url() override;
+    QString html() override;
+    TreeBank *parent() override;
+    void setUrl(const QUrl &url) override;
+    void setHtml(const QString &html, const QUrl &url) override;
+    void setParent(TreeBank* tb) override;
 
-    void Connect(TreeBank *tb) Q_DECL_OVERRIDE;
-    void Disconnect(TreeBank *tb) Q_DECL_OVERRIDE;
+    void Connect(TreeBank *tb) override;
+    void Disconnect(TreeBank *tb) override;
 
-    void ApplySpecificSettings(QStringList set) Q_DECL_OVERRIDE;
-    bool IsOffTheRecord() Q_DECL_OVERRIDE;
+    void ApplySpecificSettings(QStringList set) override;
+    bool IsOffTheRecord() override;
+    QObject *EngineProfile() override;
 
-    void ApplyTheme() Q_DECL_OVERRIDE;
+    void ApplyTheme() override;
     void KeepDrawingWidgetClear(QWidget *drawing);
 
-    void AddSpellCheckMenu(QMenu *menu) Q_DECL_OVERRIDE;
+    void AddSpellCheckMenu(QMenu *menu) override;
 
     void Suspend();
     void WakeUp();
 
-    bool ForbidToOverlap() Q_DECL_OVERRIDE {
+    bool ForbidToOverlap() override {
         return false;
     }
 
-    bool IsOwnDragSource(QObject *source) const Q_DECL_OVERRIDE {
+    bool IsOwnDragSource(QObject *source) const override {
         return source && source == this;
     }
 
-    QWidget *InspectorPane() Q_DECL_OVERRIDE {
+    QWidget *InspectorPane() override {
         if(!m_Inspector || TreeBank::PurgeView() || !InspectorInMainWindow())
             return nullptr;
         return m_Inspector;
     }
 
-    bool CanGoBack() Q_DECL_OVERRIDE {
+    bool CanGoBack() override {
         return page() ? page()->history()->canGoBack() : false;
     }
-    bool CanGoForward() Q_DECL_OVERRIDE {
+    bool CanGoForward() override {
         return page() ? page()->history()->canGoForward() : false;
     }
-    bool RecentlyAudible() Q_DECL_OVERRIDE {
+    bool RecentlyAudible() override {
         return page() ? page()->recentlyAudible() : false;
     }
-    bool IsAudioMuted() Q_DECL_OVERRIDE {
+    bool IsAudioMuted() override {
         return page() ? page()->isAudioMuted() : false;
     }
-    void SetAudioMuted(bool muted) Q_DECL_OVERRIDE {
+    void SetAudioMuted(bool muted) override {
         if(page()) page()->setAudioMuted(muted);
     }
 
-    bool IsRenderable() Q_DECL_OVERRIDE {
+    bool IsRenderable() override {
         return page() != 0 && (visible() || !m_GrabedDisplayData.isNull());
     }
-    bool MakesSidePanels() const Q_DECL_OVERRIDE { return true; }
-    QUrl CommittedUrl() Q_DECL_OVERRIDE {
+    bool MakesSidePanels() const override { return true; }
+    QUrl CommittedUrl() override {
         return page() && page()->history() ? page()->history()->currentItem().url() : QUrl();
     }
-    QImage CaptureVisible() Q_DECL_OVERRIDE {
+    QImage CaptureVisible() override {
         if(!page() || !visible() || !window() || window()->isMinimized()) return QImage();
         return grab().toImage();
     }
-    void Render(QPainter *painter) Q_DECL_OVERRIDE {
+    void Render(QPainter *painter) override {
         if(visible()){
             QImage image(size(), QImage::Format_ARGB32);
+            image.fill(Qt::transparent);
             QPainter p(&image);
-            render(&p);
+            render(&p, QPoint(), QRegion(), QWidget::DrawChildren);
             p.end();
             m_GrabedDisplayData = image;
 
-            render(painter);
+            render(painter, QPoint(), QRegion(), QWidget::DrawChildren);
 
         } else if(!m_GrabedDisplayData.isNull()){
             painter->drawImage(QPoint(), m_GrabedDisplayData);
         }
     }
-    void Render(QPainter *painter, const QRegion &clip) Q_DECL_OVERRIDE {
+    void Render(QPainter *painter, const QRegion &clip) override {
         if(visible()){
             QImage image(size(), QImage::Format_ARGB32);
+            image.fill(Qt::transparent);
             QPainter p(&image);
-            render(&p);
+            render(&p, QPoint(), QRegion(), QWidget::DrawChildren);
             p.end();
             m_GrabedDisplayData = image;
 
             if(!clip.isEmpty())
-                render(painter, clip.boundingRect().topLeft(), clip);
+                render(painter, clip.boundingRect().topLeft(), clip, QWidget::DrawChildren);
         } else if(!m_GrabedDisplayData.isNull()){
             foreach(QRect rect, clip){
                 painter->drawImage(rect, m_GrabedDisplayData.copy(rect));
             }
         }
     }
-    QSize GetViewportSize() Q_DECL_OVERRIDE {
+    QSize GetViewportSize() override {
         return size();
     }
-    void SetViewportSize(QSize size) Q_DECL_OVERRIDE {
+    void SetViewportSize(QSize size) override {
         if(!visible()) resize(size);
     }
-    bool PageGeometry(QSizeF *contents, QRectF *viewport) Q_DECL_OVERRIDE {
+    bool PageGeometry(QSizeF *contents, QRectF *viewport) override {
         if(!page()) return false;
         const QSizeF whole = page()->contentsSize();
         if(whole.isEmpty()) return false;
@@ -146,37 +149,37 @@ public:
         *viewport = QRectF(page()->scrollPosition(), QSizeF(size()));
         return true;
     }
-    void SetSource(const QUrl &url) Q_DECL_OVERRIDE {
+    void SetSource(const QUrl &url) override {
         if(page()) page()->SetSource(url);
     }
-    void SetSource(const QByteArray &html) Q_DECL_OVERRIDE {
+    void SetSource(const QByteArray &html) override {
         if(page()) page()->SetSource(html);
     }
-    void SetSource(const QString &html) Q_DECL_OVERRIDE {
+    void SetSource(const QString &html) override {
         if(page()) page()->SetSource(html);
     }
 
-    QString GetTitle() Q_DECL_OVERRIDE {
+    QString GetTitle() override {
         return title();
     }
-    QIcon GetIcon() Q_DECL_OVERRIDE {
+    QIcon GetIcon() override {
         return page() ? page()->icon() : QIcon();
     }
 
-    void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) Q_DECL_OVERRIDE {
+    void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) override {
         if(page()) page()->TriggerAction(a, data);
     }
-    QAction *Action(Page::CustomAction a, QVariant data = QVariant()) Q_DECL_OVERRIDE {
+    QAction *Action(Page::CustomAction a, QVariant data = QVariant()) override {
         return page() ? page()->Action(a, data) : 0;
     }
 
     ExtensionController *Extensions() const override;
     QWidget *CreateExtensionView(const QUrl &url, ExtensionPage page, QWidget *parent,
                                  const std::function<void()> &closed = std::function<void()>()) override;
-    void TriggerNativeLoadAction(const QUrl &url) Q_DECL_OVERRIDE;
+    void TriggerNativeLoadAction(const QUrl &url) override;
     void TriggerNativeLoadAction(const QNetworkRequest &req,
                                  QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
-                                 const QByteArray &body = QByteArray()) Q_DECL_OVERRIDE {
+                                 const QByteArray &body = QByteArray()) override {
         emit urlChanged(req.url());
 
         QWebEngineHttpRequest request
@@ -199,78 +202,78 @@ public:
 
         LoadAfterExtensions(request);
     }
-    void TriggerNativeGoBackAction() Q_DECL_OVERRIDE {
+    void TriggerNativeGoBackAction() override {
         if(page()) page()->triggerAction(QWebEnginePage::Back);
     }
-    void TriggerNativeGoForwardAction() Q_DECL_OVERRIDE {
+    void TriggerNativeGoForwardAction() override {
         if(page()) page()->triggerAction(QWebEnginePage::Forward);
     }
-    void TriggerNativeRewindAction() Q_DECL_OVERRIDE {
+    void TriggerNativeRewindAction() override {
         QWebEngineHistory *h = history();
         h->goToItem(h->itemAt(0));
     }
-    void TriggerNativeFastForwardAction() Q_DECL_OVERRIDE {
+    void TriggerNativeFastForwardAction() override {
         QWebEngineHistory *h = history();
         h->goToItem(h->itemAt(h->count()-1));
     }
 
-    void UpKeyEvent() Q_DECL_OVERRIDE {
+    void UpKeyEvent() override {
         CallWithEvaluatedJavaScriptResult(UpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
-    void DownKeyEvent() Q_DECL_OVERRIDE {
+    void DownKeyEvent() override {
         CallWithEvaluatedJavaScriptResult(DownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
-    void RightKeyEvent() Q_DECL_OVERRIDE {
+    void RightKeyEvent() override {
         CallWithEvaluatedJavaScriptResult(RightKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
-    void LeftKeyEvent() Q_DECL_OVERRIDE {
+    void LeftKeyEvent() override {
         CallWithEvaluatedJavaScriptResult(LeftKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
-    void PageDownKeyEvent() Q_DECL_OVERRIDE {
+    void PageDownKeyEvent() override {
         CallWithEvaluatedJavaScriptResult(PageDownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
-    void PageUpKeyEvent() Q_DECL_OVERRIDE {
+    void PageUpKeyEvent() override {
         CallWithEvaluatedJavaScriptResult(PageUpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
-    void HomeKeyEvent() Q_DECL_OVERRIDE {
+    void HomeKeyEvent() override {
         CallWithEvaluatedJavaScriptResult(HomeKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
-    void EndKeyEvent() Q_DECL_OVERRIDE {
+    void EndKeyEvent() override {
         CallWithEvaluatedJavaScriptResult(EndKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
     }
 
-    void KeyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE { keyPressEvent(ev);}
-    void KeyReleaseEvent(QKeyEvent *ev) Q_DECL_OVERRIDE { keyReleaseEvent(ev);}
-    void MousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mousePressEvent(ev);}
-    void MouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseReleaseEvent(ev);}
-    void MouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseMoveEvent(ev);}
-    void MouseDoubleClickEvent(QMouseEvent *ev) Q_DECL_OVERRIDE { mouseDoubleClickEvent(ev);}
-    void WheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE;
+    void KeyPressEvent(QKeyEvent *ev) override { keyPressEvent(ev);}
+    void KeyReleaseEvent(QKeyEvent *ev) override { keyReleaseEvent(ev);}
+    void MousePressEvent(QMouseEvent *ev) override { mousePressEvent(ev);}
+    void MouseReleaseEvent(QMouseEvent *ev) override { mouseReleaseEvent(ev);}
+    void MouseMoveEvent(QMouseEvent *ev) override { mouseMoveEvent(ev);}
+    void MouseDoubleClickEvent(QMouseEvent *ev) override { mouseDoubleClickEvent(ev);}
+    void WheelEvent(QWheelEvent *ev) override;
     void EngineWheel(QWheelEvent *ev);
 
-    void CallWithGotBaseUrl(UrlCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithGotCurrentBaseUrl(UrlCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithFoundElements(Page::FindElementsOption option, WebElementListCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithHitElement(const QPoint &pos, WebElementCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithHitImageUrl(const QPoint &pos, UrlCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithSelectedText(StringCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithSelectedHtml(StringCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithWholeText(StringCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithWholeHtml(StringCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithSelectionRegion(RegionCallBack callBack) Q_DECL_OVERRIDE;
-    void CallWithEvaluatedJavaScriptResult(const QString &code, VariantCallBack callBack) Q_DECL_OVERRIDE;
+    void CallWithGotBaseUrl(UrlCallBack callBack) override;
+    void CallWithGotCurrentBaseUrl(UrlCallBack callBack) override;
+    void CallWithFoundElements(Page::FindElementsOption option, WebElementListCallBack callBack) override;
+    void CallWithHitElement(const QPoint &pos, WebElementCallBack callBack) override;
+    void CallWithHitLinkUrl(const QPoint &pos, UrlCallBack callBack) override;
+    void CallWithHitImageUrl(const QPoint &pos, UrlCallBack callBack) override;
+    void CallWithSelectedText(StringCallBack callBack) override;
+    void CallWithSelectedHtml(StringCallBack callBack) override;
+    void CallWithWholeText(StringCallBack callBack) override;
+    void CallWithWholeHtml(StringCallBack callBack) override;
+    void CallWithSelectionRegion(RegionCallBack callBack) override;
+    void CallWithEvaluatedJavaScriptResult(const QString &code, VariantCallBack callBack) override;
 
 public slots:
-    QSize size() Q_DECL_OVERRIDE { return base()->size();}
-    void resize(QSize size) Q_DECL_OVERRIDE {
+    QSize size() override { return base()->size();}
+    void resize(QSize size) override {
         if(TreeBank::PurgeView() && m_TreeBank){
             base()->setGeometry(QRect(m_TreeBank->mapToGlobal(QPoint()), size));
         } else {
             base()->setGeometry(QRect(QPoint(), size));
         }
     }
-    void show() Q_DECL_OVERRIDE {
+    void show() override {
         const bool wasVisible = base()->isVisible();
         WakeUp();
         base()->show();
@@ -296,53 +299,53 @@ public slots:
             }
         });
     }
-    void hide()    Q_DECL_OVERRIDE { base()->hide(); Suspend();}
-    void raise()   Q_DECL_OVERRIDE { base()->raise();}
-    void lower()   Q_DECL_OVERRIDE { base()->lower();}
-    void repaint() Q_DECL_OVERRIDE { base()->repaint();}
-    bool visible() Q_DECL_OVERRIDE { return base()->isVisible();}
-    void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {
+    void hide()    override { base()->hide(); Suspend();}
+    void raise()   override { base()->raise();}
+    void lower()   override { base()->lower();}
+    void repaint() override { base()->repaint();}
+    bool visible() override { return base()->isVisible();}
+    void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) override {
         QTimer::singleShot(0, this, [this, reason](){ base()->setFocus(reason);});
     }
 
-    void Load()                           Q_DECL_OVERRIDE { View::Load();}
-    void Load(const QString &url)         Q_DECL_OVERRIDE { View::Load(url);}
-    void Load(const QUrl &url)            Q_DECL_OVERRIDE { View::Load(url);}
-    void Load(const QNetworkRequest &req) Q_DECL_OVERRIDE { View::Load(req);}
+    void Load()                           override { View::Load();}
+    void Load(const QString &url)         override { View::Load(url);}
+    void Load(const QUrl &url)            override { View::Load(url);}
+    void Load(const QNetworkRequest &req) override { View::Load(req);}
 
-    void OnBeforeStartingDisplayGadgets() Q_DECL_OVERRIDE {}
-    void OnAfterFinishingDisplayGadgets() Q_DECL_OVERRIDE {
+    void OnBeforeStartingDisplayGadgets() override {}
+    void OnAfterFinishingDisplayGadgets() override {
     }
 
-    void OnSetViewNode(ViewNode*) Q_DECL_OVERRIDE;
-    void OnSetThis(WeakView) Q_DECL_OVERRIDE;
-    void OnSetMaster(WeakView) Q_DECL_OVERRIDE;
-    void OnSetSlave(WeakView) Q_DECL_OVERRIDE;
-    void OnLoadStarted() Q_DECL_OVERRIDE;
-    void OnLoadProgress(int) Q_DECL_OVERRIDE;
-    void OnLoadFinished(bool) Q_DECL_OVERRIDE;
-    void OnTitleChanged(const QString&) Q_DECL_OVERRIDE;
-    void OnUrlChanged(const QUrl&) Q_DECL_OVERRIDE;
-    void OnViewChanged() Q_DECL_OVERRIDE;
-    void OnScrollChanged() Q_DECL_OVERRIDE;
+    void OnSetViewNode(ViewNode*) override;
+    void OnSetThis(WeakView) override;
+    void OnSetMaster(WeakView) override;
+    void OnSetSlave(WeakView) override;
+    void OnLoadStarted() override;
+    void OnLoadProgress(int) override;
+    void OnLoadFinished(bool) override;
+    void OnTitleChanged(const QString&) override;
+    void OnUrlChanged(const QUrl&) override;
+    void OnViewChanged() override;
+    void OnScrollChanged() override;
 
-    void EmitScrollChanged() Q_DECL_OVERRIDE;
+    void EmitScrollChanged() override;
 
     void CallWithScroll(PointFCallBack callBack);
-    void SetScrollBarState() Q_DECL_OVERRIDE;
-    QPointF GetScroll() Q_DECL_OVERRIDE;
-    void SetScroll(QPointF pos) Q_DECL_OVERRIDE;
-    bool SaveScroll() Q_DECL_OVERRIDE;
-    bool RestoreScroll() Q_DECL_OVERRIDE;
-    bool SaveZoom() Q_DECL_OVERRIDE;
-    bool RestoreZoom() Q_DECL_OVERRIDE;
-    float MinimumZoom() const Q_DECL_OVERRIDE { return ChromiumMinimumZoom / DeviceZoomScale();}
-    float MaximumZoom() const Q_DECL_OVERRIDE { return ChromiumMaximumZoom / DeviceZoomScale();}
-    bool SaveHistory() Q_DECL_OVERRIDE;
-    bool RestoreHistory() Q_DECL_OVERRIDE;
+    void SetScrollBarState() override;
+    QPointF GetScroll() override;
+    void SetScroll(QPointF pos) override;
+    bool SaveScroll() override;
+    bool RestoreScroll() override;
+    bool SaveZoom() override;
+    bool RestoreZoom() override;
+    float MinimumZoom() const override { return ChromiumMinimumZoom / DeviceZoomScale();}
+    float MaximumZoom() const override { return ChromiumMaximumZoom / DeviceZoomScale();}
+    bool SaveHistory() override;
+    bool RestoreHistory() override;
 #ifdef MEDIATIME
-    bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) Q_DECL_OVERRIDE;
-    bool RestoreMediaTime() Q_DECL_OVERRIDE;
+    bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) override;
+    bool RestoreMediaTime() override;
 #endif
 
     void KeyEvent(QString);
@@ -353,39 +356,39 @@ public slots:
     void SetTextValue(QString, QString);
     void OnIconChanged(const QIcon &icon);
 
-    void Copy() Q_DECL_OVERRIDE;
-    void Cut() Q_DECL_OVERRIDE;
-    void Paste() Q_DECL_OVERRIDE;
+    void Copy() override;
+    void Cut() override;
+    void Paste() override;
 
 #define VANILLA_EDIT_ACTION(name)                                       \
-    void name() Q_DECL_OVERRIDE {                                       \
+    void name() override {                                       \
         if(page()) page()->triggerAction(QWebEnginePage::name);         \
     }
     FOR_EACH_EDIT_EVENTS(VANILLA_EDIT_ACTION)
 #undef VANILLA_EDIT_ACTION
-    void Undo() Q_DECL_OVERRIDE;
-    void Redo() Q_DECL_OVERRIDE;
-    void SelectAll() Q_DECL_OVERRIDE;
-    void Unselect() Q_DECL_OVERRIDE;
-    void Reload() Q_DECL_OVERRIDE;
-    void ReloadAndBypassCache() Q_DECL_OVERRIDE;
-    void Stop() Q_DECL_OVERRIDE;
-    void StopAndUnselect() Q_DECL_OVERRIDE;
-    void Print() Q_DECL_OVERRIDE;
-    void Save() Q_DECL_OVERRIDE;
-    void ZoomIn() Q_DECL_OVERRIDE;
-    void ZoomOut() Q_DECL_OVERRIDE;
+    void Undo() override;
+    void Redo() override;
+    void SelectAll() override;
+    void Unselect() override;
+    void Reload() override;
+    void ReloadAndBypassCache() override;
+    void Stop() override;
+    void StopAndUnselect() override;
+    void Print() override;
+    void Save() override;
+    void ZoomIn() override;
+    void ZoomOut() override;
 
-    void ToggleMediaControls() Q_DECL_OVERRIDE;
-    void ToggleMediaLoop() Q_DECL_OVERRIDE;
-    void ToggleMediaPlayPause() Q_DECL_OVERRIDE;
-    void ToggleMediaMute() Q_DECL_OVERRIDE;
+    void ToggleMediaControls() override;
+    void ToggleMediaLoop() override;
+    void ToggleMediaPlayPause() override;
+    void ToggleMediaMute() override;
 
-    void ExitFullScreen() Q_DECL_OVERRIDE;
-    void InspectElement() Q_DECL_OVERRIDE;
+    void ExitFullScreen() override;
+    void InspectElement() override;
     void CloseInspector();
-    void AddSearchEngine(QPoint pos) Q_DECL_OVERRIDE;
-    void AddBookmarklet(QPoint pos)  Q_DECL_OVERRIDE;
+    void AddSearchEngine(QPoint pos) override;
+    void AddBookmarklet(QPoint pos)  override;
 
     void LoadAfterExtensions(const QWebEngineHttpRequest &request);
 signals:
@@ -396,26 +399,27 @@ signals:
     void ScrollChanged(QPointF);
 
 protected:
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void childEvent(QChildEvent *ev) Q_DECL_OVERRIDE;
-    void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void keyReleaseEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE;
-    void contextMenuEvent(QContextMenuEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseDoubleClickEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void dragEnterEvent(QDragEnterEvent *ev) Q_DECL_OVERRIDE;
-    void dragMoveEvent(QDragMoveEvent *ev) Q_DECL_OVERRIDE;
-    void dropEvent(QDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragLeaveEvent(QDragLeaveEvent *ev) Q_DECL_OVERRIDE;
-    void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE;
-    void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE;
-    void focusOutEvent(QFocusEvent *ev) Q_DECL_OVERRIDE;
-    bool focusNextPrevChild(bool next) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) override;
+    void childEvent(QChildEvent *ev) override;
+    void hideEvent(QHideEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
+    void keyPressEvent(QKeyEvent *ev) override;
+    void keyReleaseEvent(QKeyEvent *ev) override;
+    void resizeEvent(QResizeEvent *ev) override;
+    void contextMenuEvent(QContextMenuEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
+    void mouseDoubleClickEvent(QMouseEvent *ev) override;
+    ButtonHooks Buttons();
+    void dragEnterEvent(QDragEnterEvent *ev) override;
+    void dragMoveEvent(QDragMoveEvent *ev) override;
+    void dropEvent(QDropEvent *ev) override;
+    void dragLeaveEvent(QDragLeaveEvent *ev) override;
+    void wheelEvent(QWheelEvent *ev) override;
+    void focusInEvent(QFocusEvent *ev) override;
+    void focusOutEvent(QFocusEvent *ev) override;
+    bool focusNextPrevChild(bool next) override;
 
 private:
     QImage m_GrabedDisplayData;
@@ -449,7 +453,7 @@ private:
     }
 
 protected:
-    bool eventFilter(QObject *obj, QEvent *ev) Q_DECL_OVERRIDE {
+    bool eventFilter(QObject *obj, QEvent *ev) override {
         QWidget *widget = qobject_cast<QWidget*>(obj);
 
         switch(ev->type()){
@@ -546,13 +550,8 @@ protected:
                     QString cur = m_View->GestureToString(m_View->m_Gesture);
                     if(gesture != cur){
                         gesture = cur;
-                        QString action =
-                            !m_View->m_ScrollGestureMap.contains(gesture)
-                              ? tr("NoAction")
-                            : Page::IsValidAction(m_View->m_ScrollGestureMap[gesture])
-                              ? m_View->Action(Page::StringToAction(m_View->m_ScrollGestureMap[gesture]))->text()
-                            : m_View->m_ScrollGestureMap[gesture];
-                        emit m_View->statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
+                        emit m_View->statusBarMessage
+                            (m_View->GestureStatusLine(m_View->m_ScrollGestureMap, tr("NoAction")));
                     }
                 }
                 m_View->EngineWheel(we);

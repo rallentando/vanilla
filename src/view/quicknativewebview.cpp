@@ -74,21 +74,21 @@ QuickNativeWebView::QuickNativeWebView(TreeBank *parent, QString id, QStringList
     m_RequestId = 0;
 
     m_Icon = QIcon();
-    connect(this, SIGNAL(iconUrlChanged(const QUrl&)),
-            this, SLOT(UpdateIcon(const QUrl&)));
+    connect(this, &QuickNativeWebView::iconUrlChanged,
+            this, &QuickNativeWebView::UpdateIcon);
 
-    connect(this, SIGNAL(windowCloseRequested()),
-            this, SLOT(HandleWindowClose()));
-    connect(this, SIGNAL(javascriptConsoleMessage(int, const QString&)),
-            this, SLOT(HandleJavascriptConsoleMessage(int, const QString&)));
-    connect(this, SIGNAL(featurePermissionRequested(const QUrl&, int)),
-            this, SLOT(HandleFeaturePermission(const QUrl&, int)));
-    connect(this, SIGNAL(renderProcessTerminated(int, int)),
-            this, SLOT(HandleRenderProcessTermination(int, int)));
-    connect(this, SIGNAL(fullScreenRequested(bool)),
-            this, SLOT(HandleFullScreen(bool)));
-    connect(this, SIGNAL(downloadRequested(QObject*)),
-            this, SLOT(HandleDownload(QObject*)));
+    connect(this, &QuickNativeWebView::windowCloseRequested,
+            this, &QuickNativeWebView::HandleWindowClose);
+    connect(this, &QuickNativeWebView::javascriptConsoleMessage,
+            this, &QuickNativeWebView::HandleJavascriptConsoleMessage);
+    connect(this, &QuickNativeWebView::featurePermissionRequested,
+            this, &QuickNativeWebView::HandleFeaturePermission);
+    connect(this, &QuickNativeWebView::renderProcessTerminated,
+            this, &QuickNativeWebView::HandleRenderProcessTermination);
+    connect(this, &QuickNativeWebView::fullScreenRequested,
+            this, &QuickNativeWebView::HandleFullScreen);
+    connect(this, &QuickNativeWebView::downloadRequested,
+            this, &QuickNativeWebView::HandleDownload);
 
 }
 
@@ -245,70 +245,14 @@ void QuickNativeWebView::Connect(TreeBank *tb){
     View::Connect(tb);
 
     if(!tb || !page()) return;
-
-    connect(this, SIGNAL(titleChanged(const QString&)),
-            tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    if(Notifier *notifier = tb->GetNotifier()){
-        connect(this, SIGNAL(statusBarMessage(const QString&)),
-                notifier, SLOT(SetStatus(const QString&)));
-        connect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                notifier, SLOT(SetStatus(const QString&, const QString&)));
-        connect(this, SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
-                notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
-
-        connect(this, SIGNAL(ScrollChanged(QPointF)),
-                notifier, SLOT(SetScroll(QPointF)));
-        connect(notifier, SIGNAL(ScrollRequest(QPointF)),
-                this, SLOT(SetScroll(QPointF)));
-    }
-    if(Receiver *receiver = tb->GetReceiver()){
-        connect(receiver, SIGNAL(OpenBookmarklet(const QString&)),
-                this, SLOT(Load(const QString&)));
-        connect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                this, SLOT(SeekText(const QString&, View::FindFlags)));
-        connect(receiver, SIGNAL(KeyEvent(QString)),
-                this, SLOT(KeyEvent(QString)));
-
-        connect(receiver, SIGNAL(SuggestRequest(const QUrl&)),
-                page(), SLOT(DownloadSuggest(const QUrl&)));
-        connect(page(), SIGNAL(SuggestResult(const QByteArray&)),
-                receiver, SLOT(DisplaySuggest(const QByteArray&)));
-    }
+    WireWebView(this, this, tb, true);
 }
 
 void QuickNativeWebView::Disconnect(TreeBank *tb){
     View::Disconnect(tb);
 
     if(!tb || !page()) return;
-
-    disconnect(this, SIGNAL(titleChanged(const QString&)),
-               tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    if(Notifier *notifier = tb->GetNotifier()){
-        disconnect(this, SIGNAL(statusBarMessage(const QString&)),
-                   notifier, SLOT(SetStatus(const QString&)));
-        disconnect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                   notifier, SLOT(SetStatus(const QString&, const QString&)));
-        disconnect(this, SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
-                   notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
-
-        disconnect(this, SIGNAL(ScrollChanged(QPointF)),
-                   notifier, SLOT(SetScroll(QPointF)));
-        disconnect(notifier, SIGNAL(ScrollRequest(QPointF)),
-                   this, SLOT(SetScroll(QPointF)));
-    }
-    if(Receiver *receiver = tb->GetReceiver()){
-        disconnect(receiver, SIGNAL(OpenBookmarklet(const QString&)),
-                   this, SLOT(Load(const QString&)));
-        disconnect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                   this, SLOT(SeekText(const QString&, View::FindFlags)));
-        disconnect(receiver, SIGNAL(KeyEvent(QString)),
-                   this, SLOT(KeyEvent(QString)));
-
-        disconnect(receiver, SIGNAL(SuggestRequest(const QUrl&)),
-                   page(), SLOT(DownloadSuggest(const QUrl&)));
-        disconnect(page(), SIGNAL(SuggestResult(const QByteArray&)),
-                   receiver, SLOT(DisplaySuggest(const QByteArray&)));
-    }
+    WireWebView(this, this, tb, false);
 }
 
 void QuickNativeWebView::OnSetViewNode(ViewNode*){}
@@ -420,18 +364,7 @@ void QuickNativeWebView::CallWithScroll(PointFCallBack callBack){
 
 void QuickNativeWebView::SetScrollBarState(){
     CallWithEvaluatedJavaScriptResult
-        (GetScrollBarStateJsCode(), [this](QVariant var){
-            if(!var.isValid()) return;
-            QVariantList list = var.toList();
-            int hmax = list[0].toInt();
-            int vmax = list[1].toInt();
-            if(hmax < 0) hmax = 0;
-            if(vmax < 0) vmax = 0;
-            if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
-            else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
-            else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
-            else             m_ScrollBarState = NoScrollBarEnabled;
-        });
+        (GetScrollBarStateJsCode(), [](QVariant var){ SetScrollBarStateFrom(var);});
 }
 
 QPointF QuickNativeWebView::GetScroll(){
@@ -587,6 +520,7 @@ void QuickNativeWebView::SetTextValue(QString xpath, QString text){
 
 void QuickNativeWebView::UpdateIcon(const QUrl &iconUrl){
     m_Icon = QIcon();
+    TreeBank::TabsLookChanged();
     if(!page()) return;
     QString host = url().host();
     const bool offTheRecord = Page::OffTheRecord(this);
@@ -605,7 +539,10 @@ void QuickNativeWebView::UpdateIcon(const QUrl &iconUrl){
         if(pixmap.loadFromData(result)){
             QIcon icon = QIcon(pixmap);
             Application::RegisterIcon(host, icon, offTheRecord || Page::OffTheRecord(this));
-            if(url().host() == host) m_Icon = icon;
+            if(url().host() == host){
+                m_Icon = icon;
+                TreeBank::TabsLookChanged();
+            }
         }
     });
 }
@@ -616,25 +553,15 @@ void QuickNativeWebView::HandleWindowClose(){
 
 void QuickNativeWebView::HandleJavascriptConsoleMessage(int level, const QString &msg){
     if(level != 0) return;
-    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
-        QStringList args = msg.split(QStringLiteral(","));
-        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
-        if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
-        if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
-        if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
-        QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
-        Application::InputScope key(true);
-        KeyPressEvent(&ke);
-    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
-        QStringList args = msg.split(QStringLiteral(","));
-        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
-        if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
-        if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
-        if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
-        QKeyEvent ke = QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
-        KeyReleaseEvent(&ke);
+    Application::PageKey pageKey;
+    if(Application::PageKeyFromMessage(msg, pageKey)){
+        QKeyEvent ke = QKeyEvent(pageKey.type, pageKey.key, pageKey.modifiers);
+        if(pageKey.type == QEvent::KeyPress){
+            Application::InputScope key(true);
+            KeyPressEvent(&ke);
+        } else {
+            KeyReleaseEvent(&ke);
+        }
     }
     else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventToken()), msg)){
         m_PreventScrollRestoration = true;
@@ -983,125 +910,15 @@ void QuickNativeWebView::contextMenuEvent(QContextMenuEvent *ev){
 }
 
 void QuickNativeWebView::mouseMoveEvent(QMouseEvent *ev){
-    if(!m_TreeBank) return;
-
-    Application::SetCurrentWindow(m_TreeBank->GetMainWindow());
-
-    if(m_DragStarted){
-        QWidget::mouseMoveEvent(ev);
-        ev->setAccepted(false);
-        return;
-    }
-    if(m_EnableRightGestureLocal &&
-       ev->buttons() & Qt::RightButton &&
-       !m_GestureStartedPos.isNull()){
-
-        GestureMoved(ev->pos());
-        QString gesture = GestureToString(m_Gesture);
-        QString action =
-            !m_RightGestureMap.contains(gesture)
-              ? tr("NoAction")
-            : Page::IsValidAction(m_RightGestureMap[gesture])
-              ? Action(Page::StringToAction(m_RightGestureMap[gesture]))->text()
-            : m_RightGestureMap[gesture];
-        emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
-        ev->setAccepted(false);
-        return;
-    }
-
-    int scrollBarWidth = Application::style()->pixelMetric(QStyle::PM_ScrollBarExtent);
-    bool horizontal = m_ScrollBarState == BothScrollBarEnabled
-        ||            m_ScrollBarState == HorizontalScrollBarEnabled;
-    bool vertical   = m_ScrollBarState == BothScrollBarEnabled
-        ||            m_ScrollBarState == VerticalScrollBarEnabled;
-    QRect touchableRect =
-        QRect(QPoint(),
-              size() - QSize(vertical   ? scrollBarWidth : 0,
-                             horizontal ? scrollBarWidth : 0));
-
-    if(ev->buttons() & Qt::LeftButton &&
-       !m_GestureStartedPos.isNull() &&
-       touchableRect.contains(m_GestureStartedPos) &&
-       (m_ClickedElement &&
-        !m_ClickedElement->IsNull() &&
-        !m_ClickedElement->IsEditableElement())){
-
-        if(QLineF(ev->pos(), m_GestureStartedPos).length() < 2){
-            QWidget::mouseMoveEvent(ev);
-            ev->setAccepted(false);
-            return;
-        }
-        QDrag *drag = new QDrag(this);
-
-        Application::ClearTemporaryDirectory();
-
-        NetworkAccessManager *nam =
-            page()->GetNetworkAccessManager();
-
-        QMimeData *mime = m_HadSelection
-            ? CreateMimeDataFromSelection(nam)
-            : CreateMimeDataFromElement(nam);
-
-        if(!mime){
-            drag->deleteLater();
-
-            GestureAborted();
-            QWidget::mouseMoveEvent(ev);
-            ev->setAccepted(false);
-            return;
-        }
-
-        QPixmap pixmap = m_HadSelection
-            ? CreatePixmapFromSelection()
-            : CreatePixmapFromElement();
-
-        QRect rect = m_HadSelection
-            ? m_SelectionRegion.boundingRect()
-            : m_ClickedElement->Rectangle().intersected(QRect(QPoint(), size()));
-        QPoint pos = ev->pos() - rect.topLeft();
-
-        if(pixmap.size().width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
-           pixmap.size().height() > MAX_DRAGGING_PIXMAP_HEIGHT){
-
-            pos /= qMax(static_cast<float>(pixmap.size().width()) /
-                        static_cast<float>(MAX_DRAGGING_PIXMAP_WIDTH),
-                        static_cast<float>(pixmap.size().height()) /
-                        static_cast<float>(MAX_DRAGGING_PIXMAP_HEIGHT));
-            pixmap = pixmap.scaled(MAX_DRAGGING_PIXMAP_WIDTH,
-                                   MAX_DRAGGING_PIXMAP_HEIGHT,
-                                   Qt::KeepAspectRatio,
-                                   Qt::SmoothTransformation);
-        }
-
-        if(m_HadSelection){
-            mime->setImageData(pixmap.toImage());
-        } else {
-            QPixmap element = m_ClickedElement->Pixmap();
-            if(element.isNull())
-                mime->setImageData(pixmap.toImage());
-            else
-                mime->setImageData(element.toImage());
-        }
-        if(m_EnableDragGestureLocal){
-            GestureMoved(ev->pos());
-        } else {
-            GestureAborted();
-        }
-        m_DragStarted = true;
-        drag->setMimeData(mime);
-        drag->setPixmap(pixmap);
-        drag->setHotSpot(pos);
-        {
-            View::DragOutScope dragging;
-            drag->exec(Qt::CopyAction | Qt::MoveAction);
-        }
-        drag->deleteLater();
-        ev->setAccepted(true);
-    } else {
-        GestureAborted();
-        QWidget::mouseMoveEvent(ev);
-        ev->setAccepted(false);
-    }
+    MoveHooks hooks;
+    hooks.dragParent = this;
+    hooks.forward = [this](QMouseEvent *move){ QWidget::mouseMoveEvent(move);};
+    hooks.networkAccessManager = [this](){ return page()->GetNetworkAccessManager();};
+    hooks.status = [this](){
+        emit statusBarMessage(GestureStatusLine(m_RightGestureMap, tr("NoAction")));
+    };
+    hooks.acceptForwardedWhileDragging = false;
+    MouseMoveWithGestures(ev, hooks);
 }
 
 void QuickNativeWebView::mousePressEvent(QMouseEvent *ev){
@@ -1115,7 +932,10 @@ void QuickNativeWebView::mousePressEvent(QMouseEvent *ev){
 
         QString str = m_MouseMap[mouse];
         if(!str.isEmpty()){
+            const bool right = (ev->buttons() | ev->button()) & Qt::RightButton;
+            if(right) View::ConsumeRightButton();
             if(!View::TriggerAction(str, ev->pos())){
+                if(right) View::TakeRightButtonConsumed();
                 ev->setAccepted(false);
                 return;
             }
@@ -1198,14 +1018,7 @@ void QuickNativeWebView::dragMoveEvent(QDragMoveEvent *ev){
     if(m_EnableDragGestureLocal && !m_GestureStartedPos.isNull()){
 
         GestureMoved(ev->position().toPoint());
-        QString gesture = GestureToString(m_Gesture);
-        QString action =
-            !m_DragGestureMap.contains(gesture)
-              ? tr("NoAction")
-            : Page::IsValidAction(m_DragGestureMap[gesture])
-              ? Action(Page::StringToAction(m_DragGestureMap[gesture]))->text()
-            : m_DragGestureMap[gesture];
-        emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
+        emit statusBarMessage(GestureStatusLine(m_DragGestureMap, tr("NoAction")));
     }
     QWidget::dragMoveEvent(ev);
     ev->setAccepted(true);
@@ -1219,7 +1032,7 @@ void QuickNativeWebView::dropEvent(QDropEvent *ev){
     QString text = ev->mimeData()->text();
     QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
 
-    foreach(QUrl u, urls){ if(u.isLocalFile()) isLocal = true;}
+    for(QUrl u : std::as_const(urls)){ if(u.isLocalFile()) isLocal = true;}
 
     if(text.isEmpty() && !urls.isEmpty()){
         foreach(QUrl u, urls){
@@ -1333,9 +1146,6 @@ void QuickNativeWebView::CallWithFoundElements(Page::FindElementsOption option,
     CallWithEvaluatedJavaScriptResult
         (FindElementsJsCode(option), [this, callBack](QVariant var){
             if(!var.isValid()) return callBack(SharedWebElementList());
-            QVariantList list = var.toMap().values();
-            SharedWebElementList result;
-
             MainWindow *win = Application::GetCurrentWindow();
             QSize s =
                 m_TreeBank ? m_TreeBank->size() :
@@ -1343,15 +1153,7 @@ void QuickNativeWebView::CallWithFoundElements(Page::FindElementsOption option,
                 !size().isEmpty() ? size() :
                 DEFAULT_WINDOW_SIZE;
             QRect viewport = QRect(QPoint(), s);
-
-            for(int i = 0; i < list.length(); i++){
-                std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
-                *e = JsWebElement(this, list[i]);
-                if(!viewport.intersects(e->Rectangle()))
-                    e->SetRectangle(QRect());
-                result << e;
-            }
-            callBack(result);
+            callBack(ElementsFrom(this, var, viewport));
         });
 }
 
@@ -1414,18 +1216,7 @@ void QuickNativeWebView::CallWithSelectionRegion(RegionCallBack callBack){
     QRect viewport = QRect(QPoint(), size());
     CallWithEvaluatedJavaScriptResult
         (SelectionRegionJsCode(), [viewport, callBack](QVariant var){
-            if(!var.isValid() || !var.canConvert<QVariantMap>())
-                return callBack(QRegion());
-            QRegion region;
-            QVariantMap map = var.toMap();
-            foreach(QString key, map.keys()){
-                QVariantMap m = map[key].toMap();
-                region |= QRect(m["x"].toInt(),
-                                m["y"].toInt(),
-                                m["width"].toInt(),
-                                m["height"].toInt()).intersected(viewport);
-            }
-            callBack(region);
+            callBack(SelectionRegionFrom(var, viewport));
         });
 }
 

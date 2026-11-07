@@ -21,7 +21,6 @@ JsWebElement::JsWebElement()
     m_ImageHtml    = QString();
     m_Rectangle    = QRect();
     m_IsEditable   = false;
-    m_IsJsCommand  = false;
     m_IsTextInput  = false;
     m_IsQueryInput = false;
     m_IsFrame      = false;
@@ -47,7 +46,6 @@ JsWebElement::JsWebElement(View *provider, QVariant var)
     m_Rectangle = QRect(map[QStringLiteral("x")].toInt(),     map[QStringLiteral("y")].toInt(),
                         map[QStringLiteral("width")].toInt(), map[QStringLiteral("height")].toInt());
     m_IsEditable   = map[QStringLiteral("isEditable")].toBool();
-    m_IsJsCommand  = map[QStringLiteral("isJsCommand")].toBool();
     m_IsTextInput  = map[QStringLiteral("isTextInput")].toBool();
     m_IsQueryInput = map[QStringLiteral("isQueryInput")].toBool();
     m_IsFrame      = map[QStringLiteral("isFrame")].toBool();
@@ -59,7 +57,7 @@ JsWebElement::JsWebElement(View *provider, QVariant var)
     m_Region = QRegion();
     QVariantMap regionMap = map[QStringLiteral("region")].toMap();
     QRect viewport = QRect(QPoint(), m_Provider->size());
-    foreach(QString key, regionMap.keys()){
+    for(QString key : regionMap.keys()){
         QVariantMap m = regionMap[key].toMap();
         m_Region |= QRect(m["x"].toInt(),
                           m["y"].toInt(),
@@ -142,10 +140,6 @@ QRegion JsWebElement::Region() const {
     return m_Region;
 }
 
-void JsWebElement::SetPosition(QPoint pos){
-    m_Rectangle.moveCenter(pos);
-}
-
 void JsWebElement::SetRectangle(QRect rect){
     m_Rectangle = rect;
 }
@@ -182,10 +176,6 @@ bool JsWebElement::IsEditableElement() const {
     return m_IsEditable;
 }
 
-bool JsWebElement::IsJsCommandElement() const {
-    return m_IsJsCommand;
-}
-
 bool JsWebElement::IsTextInputElement() const {
     return m_IsTextInput;
 }
@@ -215,9 +205,5 @@ WebElement::Action JsWebElement::GetAction() const {
     if(m_Action == QStringLiteral("Click")) return Click;
     if(m_Action == QStringLiteral("Hover")) return Hover;
     return None;
-}
-
-bool JsWebElement::Equals(const WebElement &other) const {
-    return m_XPath == static_cast<const JsWebElement*>(&other)->m_XPath;
 }
 

@@ -385,7 +385,7 @@ public:
             if(!last.told || !DiffNamed(last.names) || Holding(it.key(), alive)) continue;
             const QJsonArray events = Diff(last.tabs, tabs, last.focused, focused, sees(it.key()));
             bool heard = false;
-            foreach(const QJsonValue &event, events)
+            for(const QJsonValue &event : events)
                 if(last.names.contains(event.toObject().value(QStringLiteral("name")).toString())) heard = true;
             if(heard){ wake << it.key(); continue; }
             last.tabs = tabs;
@@ -582,6 +582,13 @@ public:
         foreach(const Held &h, of.held) if(now - h.since <= WAKE_KEEP) out << h.event;
         of.held.clear();
         return out;
+    }
+    void Expect(const QString &extension){ m_Of[extension]; }
+    void Answered(const QString &extension){
+        if(!m_Of.contains(extension)) return;
+        Of &of = m_Of[extension];
+        of.waking = false;
+        of.failures = 0;
     }
     bool Hold(const QString &extension, const QJsonObject &event, qint64 now){
         if(!m_Of.contains(extension)) return false;

@@ -156,7 +156,7 @@ bool Star(const QString &p, const QString &s){
     return pi == p.size();
 }
 
-const char COPY_FORMAT[] = "copy format 13";
+const char COPY_FORMAT[] = "copy format 15";
 
 QByteArray CompleteMark(int stamp){
     return QByteArray(COPY_FORMAT) + ' ' + QByteArray::number(stamp);
@@ -364,7 +364,7 @@ Rewritten Rewrite(const QJsonObject &manifest, int stamp){
         result.contentShim = CONTENT_SHIM;
     }
     QJsonArray where;
-    foreach(const QJsonValue &permission, manifest.value(QStringLiteral("host_permissions")).toArray()){
+    for(const QJsonValue &permission : manifest.value(QStringLiteral("host_permissions")).toArray()){
         if(!permission.isString() || !CarriablePattern(permission.toString())) continue;
         const QJsonValue host(HostPatternOf(permission.toString()));
         if(!where.contains(host)) where << host;
@@ -411,7 +411,7 @@ Rewritten Rewrite(const QJsonObject &manifest, int stamp){
     result.pageShimOpen = PAGE_SHIM_OPEN;
     result.relayPage = RELAY_PAGE;
     result.relayScript = RELAY_SCRIPT;
-    foreach(const QJsonValue &page, manifest.value(QStringLiteral("sandbox")).toObject().value(QStringLiteral("pages")).toArray()){
+    for(const QJsonValue &page : manifest.value(QStringLiteral("sandbox")).toObject().value(QStringLiteral("pages")).toArray()){
         QString path = page.toString();
         while(path.startsWith(QLatin1Char('/'))) path.remove(0, 1);
         if(!path.isEmpty()) result.sandboxed << path;
@@ -420,10 +420,10 @@ Rewritten Rewrite(const QJsonObject &manifest, int stamp){
     const QJsonValue accessible = manifest.value(QStringLiteral("web_accessible_resources"));
     if(!accessible.isUndefined() && !accessible.isNull()){
         if(!accessible.isArray()) result.keyless = true;
-        foreach(const QJsonValue &entry, accessible.toArray()){
+        for(const QJsonValue &entry : accessible.toArray()){
             const QJsonValue resources = entry.toObject().value(QStringLiteral("resources"));
             if(!entry.isObject() || !resources.isArray()){ result.keyless = true; continue; }
-            foreach(const QJsonValue &resource, resources.toArray()){
+            for(const QJsonValue &resource : resources.toArray()){
                 if(!resource.isString()){ result.keyless = true; continue; }
                 result.webAccessible << resource.toString();
             }
@@ -525,6 +525,8 @@ int Stamp(const QString &source, const QByteArray &manifestBytes, const QByteArr
     QCryptographicHash hash(QCryptographicHash::Sha1);
     hash.addData(QByteArray(COPY_FORMAT));
     hash.addData(Cdp::WorkerShim().toUtf8());
+    hash.addData(Cdp::WorkerShim(QStringList(), true).toUtf8());
+    hash.addData(Cdp::PageShim(true).toUtf8());
     hash.addData(Cdp::ContentShim().toUtf8());
     hash.addData(Cdp::PageShim().toUtf8());
     hash.addData(Cdp::RelayScript().toUtf8());
@@ -558,6 +560,13 @@ int Stamp(const QString &source, const QByteArray &manifestBytes, const QByteArr
     const QByteArray digest = hash.result();
     const int n = (static_cast<quint8>(digest.at(0)) << 8) | static_cast<quint8>(digest.at(1));
     return n ? n : 1;
+}
+
+static QStringList PermissionsOf(const QJsonObject &manifest){
+    QStringList permissions;
+    for(const QLatin1String key : { QLatin1String("permissions"), QLatin1String("optional_permissions") })
+        for(const QJsonValue &one : manifest.value(key).toArray()) permissions << one.toString();
+    return permissions;
 }
 
 Made Make(const QString &source, const QString &root, const QString &id, const QByteArray &key, const QString &locale){
@@ -610,10 +619,23 @@ Made Make(const QString &source, const QString &root, const QString &id, const Q
         if(ok && !rewritten.carrier.isEmpty())
             ok = Write(making + QLatin1Char('/') + rewritten.carrier, QByteArray(CARRIER_MARK) + messages + Cdp::ContentShim().toUtf8() + ";\n");
         const QByteArray note = hasKey && rewritten.keyless ? QByteArray(KEYLESS_NOTE) : QByteArray();
+        bool askedAlarms = givesKey && PermissionsOf(manifest).contains(QStringLiteral("alarms"));
+        if(ok && askedAlarms){
+            const QDir base(making);
+            QDirIterator pages(making, QStringList() << QStringLiteral("*.html") << QStringLiteral("*.htm"),
+                               QDir::Files | QDir::Hidden | QDir::System, QDirIterator::Subdirectories);
+            while(askedAlarms && pages.hasNext()){
+                const QString path = pages.next(), relative = base.relativeFilePath(path);
+                if(AnyGlobbed(rewritten.sandboxed, relative)) continue;
+                QFile page(path);
+                askedAlarms = !Readable(rewritten.webAccessible, relative) && QFileInfo(path).size() <= PAGE_LIMIT
+                    && page.open(QIODevice::ReadOnly) && PlaceOfPageShim(page.readAll()) >= 0;
+            }
+        }
         if(ok && !rewritten.workerWrapper.isEmpty())
-            ok = Write(making + QLatin1Char('/') + rewritten.workerShim, note + messages + keyed(Cdp::WorkerShim()) + ";\n")
+            ok = Write(making + QLatin1Char('/') + rewritten.workerShim, note + messages + keyed(Cdp::WorkerShim(PermissionsOf(manifest), askedAlarms)) + ";\n")
               && Write(making + QLatin1Char('/') + rewritten.workerWrapper, rewritten.workerWrapperText.toUtf8());
-        if(ok) ok = Write(making + QLatin1Char('/') + rewritten.pageShim, messages + keyed(Cdp::PageShim()) + ";\n")
+        if(ok) ok = Write(making + QLatin1Char('/') + rewritten.pageShim, messages + keyed(Cdp::PageShim(askedAlarms)) + ";\n")
                  && Write(making + QLatin1Char('/') + rewritten.pageShimOpen, messages + Cdp::PageShim().toUtf8() + ";\n");
         if(ok){
             const QDir base(making);
@@ -646,7 +668,7 @@ Made Make(const QString &source, const QString &root, const QString &id, const Q
                                      : answer(why.toLatin1().constData(), detail);
     }
 
-    foreach(const QFileInfo &other, QDir(home).entryInfoList(QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot)){
+    for(const QFileInfo &other : QDir(home).entryInfoList(QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot)){
         if(other.absoluteFilePath() == to || other.isSymLink() || other.isJunction()) continue;
         if(other.fileName().startsWith(MAKING) && other.lastModified().secsTo(QDateTime::currentDateTime()) < 3600) continue;
         QFile::remove(other.absoluteFilePath() + QLatin1Char('/') + COMPLETE);

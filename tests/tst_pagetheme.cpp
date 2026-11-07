@@ -223,7 +223,7 @@ void tst_pagetheme::theGeneratedBlockCarriesBothSchemes(){
 
     static const QRegularExpression colour(
         QStringLiteral("\\A(?:#[0-9a-f]{6}|rgb\\([0-9 ]+/ [0-9.]+\\))\\z"));
-    foreach(const auto &declaration, declarations){
+    for(const auto &declaration : declarations){
         QVERIFY2(colour.match(declaration.second).hasMatch(),
                  qPrintable(QStringLiteral("\"%1\" came out as \"%2\".")
                             .arg(declaration.first).arg(declaration.second)));

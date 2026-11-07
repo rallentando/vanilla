@@ -42,7 +42,7 @@ QString UnescapeKeyName(const QString &name){
 QStringList NamesUnder(const SettingsIO::Map &settings, const QString &group){
     const QString prefix = group + SLASH;
     QStringList names;
-    foreach(QString key, settings.keys()){
+    for(QString key : settings.keys()){
         if(!key.startsWith(prefix)) continue;
         const QString name = key.mid(prefix.length());
         if(name.isEmpty() || name.contains(SLASH)) continue;
@@ -157,7 +157,7 @@ QString CanonicalMouseName(const QString &name){
     if(!buttons.contains(last) && !WHEELS.contains(last)) return QString();
 
     QList<int> modifiers, held;
-    foreach(QString token, tokens){
+    for(QString token : std::as_const(tokens)){
         const int modifier = MODIFIERS.indexOf(token);
         const int button = buttons.indexOf(token);
         if(modifier >= 0 && !modifiers.contains(modifier)) modifiers << modifier;
@@ -188,7 +188,7 @@ bool LoadKeyMap(const SettingsIO::Map &settings, const QString &group,
     const QStringList names = NamesUnder(settings, group);
 
     if(names.isEmpty()){
-        foreach(QString action, map.values())
+        for(QString action : map.values())
             if(!hooks.Valid(action)) hooks.ReportInvalid(action);
         return false;
     }
@@ -201,12 +201,19 @@ bool LoadKeyMap(const SettingsIO::Map &settings, const QString &group,
     return true;
 }
 
+void AddKeyIfUnassigned(KeyMap &map, const QKeySequence &seq, const QString &action,
+                        const QString &former){
+    if(map.values().contains(action)) return;
+    if(map.contains(seq) && (former.isEmpty() || map.value(seq) != former)) return;
+    map[seq] = action;
+}
+
 bool LoadGestureMap(const SettingsIO::Map &settings, const QString &group,
                     GestureMap &map, const Hooks &hooks){
     const QStringList names = NamesUnder(settings, group);
 
     if(names.isEmpty()){
-        foreach(QString action, map.values())
+        for(QString action : map.values())
             if(!hooks.Valid(action)) hooks.ReportInvalid(action);
         return false;
     }
@@ -219,7 +226,7 @@ bool LoadGestureMap(const SettingsIO::Map &settings, const QString &group,
 }
 
 void SaveKeyMap(SettingsIO::Map &settings, const QString &group, const KeyMap &map){
-    foreach(QKeySequence seq, map.keys()){
+    for(QKeySequence seq : map.keys()){
         const QString name = seq.toString();
         if(seq.isEmpty() || name.isEmpty()) continue;
         settings.insert(Entry(group, EscapeKeyName(name)), map[seq]);
@@ -227,7 +234,7 @@ void SaveKeyMap(SettingsIO::Map &settings, const QString &group, const KeyMap &m
 }
 
 void SaveGestureMap(SettingsIO::Map &settings, const QString &group, const GestureMap &map){
-    foreach(QString gesture, map.keys()){
+    for(QString gesture : map.keys()){
         if(gesture.isEmpty()) continue;
         settings.insert(Entry(group, gesture), map[gesture]);
     }

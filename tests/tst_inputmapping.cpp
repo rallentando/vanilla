@@ -30,7 +30,9 @@ private slots:
     void writesTheWheelDirectionOfAGesture();
 
     void translatesJavascriptKeyCodes();
-    void javascriptKeyCodesDoNotRoundTrip();
+
+    void readsAKeyThePageReported();
+    void refusesALineWithoutTheMark();
 
     void exactMatchIsAnchored();
     void exactMatchIsAnchored_data();
@@ -188,18 +190,42 @@ void tst_inputmapping::translatesJavascriptKeyCodes(){
     QCOMPARE(Application::JsKeyToQtKey(0x1B), int(Qt::Key_Escape));
     QCOMPARE(Application::JsKeyToQtKey(0x28), int(Qt::Key_Down));
     QCOMPARE(Application::JsKeyToQtKey(0x60), int(Qt::Key_0));
-
-    QCOMPARE(Application::QtKeyToJsKey(Qt::Key_A), 0x41);
-    QCOMPARE(Application::QtKeyToJsKey(Qt::Key_0), 0x30);
-    QCOMPARE(Application::QtKeyToJsKey(Qt::Key_F1), 0x70);
-    QCOMPARE(Application::QtKeyToJsKey(Qt::Key_Backspace), 0x08);
-    QCOMPARE(Application::QtKeyToJsKey(Qt::Key_Escape), 0x1B);
-    QCOMPARE(Application::QtKeyToJsKey(Qt::Key_Down), 0x28);
 }
 
-void tst_inputmapping::javascriptKeyCodesDoNotRoundTrip(){
-    QCOMPARE(Application::JsKeyToQtKey(0x60), int(Qt::Key_0));
-    QCOMPARE(Application::QtKeyToJsKey(Application::JsKeyToQtKey(0x60)), 0x30);
+void tst_inputmapping::readsAKeyThePageReported(){
+    const QString token = Application::EventToken();
+    Application::PageKey key;
+
+    QVERIFY(Application::PageKeyFromMessage
+            (QStringLiteral("keyPressEvent%1,81,false,true,false,false").arg(token), key));
+    QCOMPARE(key.type, QEvent::KeyPress);
+    QCOMPARE(key.key, int(Qt::Key_Q));
+    QCOMPARE(key.modifiers, Qt::KeyboardModifiers(Qt::ControlModifier));
+
+    QVERIFY(Application::PageKeyFromMessage
+            (QStringLiteral("keyReleaseEvent%1,13,true,false,true,true").arg(token), key));
+    QCOMPARE(key.type, QEvent::KeyRelease);
+    QCOMPARE(key.key, int(Qt::Key_Return));
+    QCOMPARE(key.modifiers, Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier);
+}
+
+void tst_inputmapping::refusesALineWithoutTheMark(){
+    const QString token = Application::EventToken();
+    QVERIFY(!token.isEmpty());
+    Application::PageKey key;
+    const QStringList lines = {
+        QStringLiteral("keyPressEvent,81,false,true,false,false"),
+        QStringLiteral("keyPressEventx%1,81,false,true,false,false").arg(token),
+        QStringLiteral("keyPressEvent%1x,81,false,true,false,false").arg(token),
+        QStringLiteral("keyPressEvent%1,81,false,true,false").arg(token),
+        QStringLiteral("keyPressEvent%1,81,false,true,false,false,false").arg(token),
+        QStringLiteral("keyPressEvent%1,-1,false,true,false,false").arg(token),
+        QStringLiteral("keyPressEvent%1,81,no,true,false,false").arg(token),
+        QStringLiteral("mousePressEvent%1,0,1,2,false,false,false,false").arg(token),
+        QStringLiteral(" keyPressEvent%1,81,false,true,false,false").arg(token),
+    };
+    for(const QString &line : lines)
+        QVERIFY2(!Application::PageKeyFromMessage(line, key), qPrintable(line));
 }
 
 void tst_inputmapping::exactMatchIsAnchored_data(){

@@ -13,17 +13,18 @@ class GraphicsTableView;
 class QString;
 
 class AbstractNodeItem : public QGraphicsItem {
+    friend class tst_gadgetsframe;
 
 public:
     explicit AbstractNodeItem(Node *nd, int nest, QGraphicsItem *parent = nullptr);
-    virtual ~AbstractNodeItem() Q_DECL_OVERRIDE;
+    virtual ~AbstractNodeItem() override;
 
     Node *GetNode() const;
     GraphicsTableView *GetTableView() const;
     void SetIndex(int index);
     int GetIndex() const { return m_Index;}
 
-    const QStaticText &TitleText(const QString &text, const QFont &font);
+    const QStaticText &TitleText(const QString &text, const QFont &font, int elideWidth = -1);
 
     virtual int GetNest() const;
     virtual void SetNest(int nest);
@@ -55,21 +56,23 @@ protected:
     int m_Index;
     int m_NestLevel;
     QStaticText m_TitleText;
+    QString m_TitleTextSource;
     QFont m_TitleTextFont;
+    int m_TitleTextElideWidth = -1;
 
-    virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
-    void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dropEvent             (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent       (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void wheelEvent            (QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
+    virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+    void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) override;
+    void dropEvent             (QGraphicsSceneDragDropEvent *ev) override;
+    void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) override;
+    void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) override;
+    void mousePressEvent       (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) override;
+    void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) override;
+    void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) override;
+    void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) override;
+    void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) override;
+    void wheelEvent            (QGraphicsSceneWheelEvent *ev) override;
 };
 
 #endif

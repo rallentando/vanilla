@@ -35,6 +35,8 @@ private slots:
     void theNextCurrentIsNotChosenInADiscardedDirectory();
     void theNextCurrentIsNotChosenInTheTrash();
     void theSweepOfTwentyThousandNodes();
+    void aReorderTakingAChildFromElsewhereWalksTheFolderAgain();
+    void aMoveWithNoCurrentWalksTheWholeTreeAgain();
 
 private:
     static ViewNode *Tab(ViewNode *parent){
@@ -105,6 +107,64 @@ void tst_privatetree::theSweepMarksThePrivateNodesAndOnlyThose(){
     TreeBank::SweepOffDisk();
     QVERIFY(!inside->IsOffDisk());
     QVERIFY(!child->IsOffDisk());
+}
+
+namespace {
+    QStringList WalkOn(bool forward){
+        ViewNode *iter = forward ? TreeBank::GetViewIterForward() : TreeBank::GetViewIterBackward();
+        bool pending = forward ? TreeBank::GetViewIterForwardPending() : TreeBank::GetViewIterBackwardPending();
+        QStringList offered;
+        TreeBank::WalkToAutoLoad(iter, forward, [&](ViewNode *vn){
+            offered << vn->GetTitle();
+            return false;
+        }, std::numeric_limits<int>::max(), pending);
+        return offered;
+    }
+}
+
+void tst_privatetree::aReorderTakingAChildFromElsewhereWalksTheFolderAgain(){
+    ViewNode *root = TreeBank::GetViewRoot();
+    ViewNode *s = Directory(root, QStringLiteral("S"));
+    Tab(s)->SetTitle(QStringLiteral("s"));
+    ViewNode *x = Directory(s, QStringLiteral("X"));
+    Tab(x)->SetTitle(QStringLiteral("x"));
+    ViewNode *p = Directory(root, QStringLiteral("P"));
+    ViewNode *a = Tab(p);
+    a->SetTitle(QStringLiteral("A"));
+    ViewNode *b = Tab(p);
+    b->SetTitle(QStringLiteral("B"));
+    Tab(root)->SetTitle(QStringLiteral("C"));
+
+    TreeBank::SetViewIterForward(nullptr);
+    TreeBank::SetViewIterBackward(b);
+    QVERIFY(TreeBank::SetChildrenOrder(p, NodeList() << a << b << x));
+    const QStringList offered = WalkOn(false);
+    QVERIFY2(offered.contains(QStringLiteral("A")), qPrintable(offered.join(QStringLiteral(","))));
+    QVERIFY(offered.contains(QStringLiteral("x")));
+    QVERIFY(offered.contains(QStringLiteral("s")));
+    TreeBank::SetViewIterBackward(nullptr);
+}
+
+void tst_privatetree::aMoveWithNoCurrentWalksTheWholeTreeAgain(){
+    ViewNode *root = TreeBank::GetViewRoot();
+    ViewNode *q = Directory(root, QStringLiteral("Q"));
+    ViewNode *x = Directory(root, QStringLiteral("X"));
+    ViewNode *x1 = Tab(x);
+    x1->SetTitle(QStringLiteral("x1"));
+    Tab(x)->SetTitle(QStringLiteral("x2"));
+    Tab(root)->SetTitle(QStringLiteral("Z"));
+    QVERIFY(!m_Bank->GetCurrentViewNode());
+
+    TreeBank::SetViewIterForward(x1);
+    TreeBank::SetViewIterBackward(x1);
+    QVERIFY(TreeBank::MoveNode(x, q));
+    QCOMPARE(TreeBank::GetViewIterForward(), root);
+    QVERIFY(TreeBank::GetViewIterForwardPending());
+    QVERIFY(!TreeBank::GetViewIterBackward());
+    const QStringList offered = WalkOn(true);
+    QVERIFY2(offered.contains(QStringLiteral("x2")), qPrintable(offered.join(QStringLiteral(","))));
+    QVERIFY(offered.contains(QStringLiteral("Z")));
+    TreeBank::SetViewIterForward(nullptr);
 }
 
 void tst_privatetree::aNodeMovedIntoAPrivateDirectoryIsMarkedAtOnce(){

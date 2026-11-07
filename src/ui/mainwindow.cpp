@@ -542,10 +542,6 @@ void MainWindow::CreateMenuBar(){
     menuBar()->show();
 }
 
-bool MainWindow::IsContentFullScreen() const {
-    return m_ContentFullScreen;
-}
-
 bool MainWindow::IsShaded() const {
     return windowOpacity() == 0.0;
 }
@@ -605,7 +601,7 @@ void MainWindow::Unshade(){
     }
     AdjustAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
-    if(notifier && notifier->IsPurged()) notifier->show();
+    if(notifier && notifier->IsPurged()) notifier->ResizeNotify(m_TreeBank->size());
     SetFocus();
 }
 
@@ -855,22 +851,6 @@ void MainWindow::SetMenuBar(bool on){
     }
 }
 
-void MainWindow::SetTreeBar(bool on){
-    if(on && m_TreeBar->isHidden()){
-        m_TreeBar->show();
-    } else if(!on && !m_TreeBar->isVisible()){
-        m_TreeBar->hide();
-    }
-}
-
-void MainWindow::SetToolBar(bool on){
-    if(on && m_ToolBar->isHidden()){
-        m_ToolBar->show();
-    } else if(!on && !m_ToolBar->isVisible()){
-        m_ToolBar->hide();
-    }
-}
-
 void MainWindow::SetFullScreen(bool on){
     if(on == m_ContentFullScreen) return;
 
@@ -908,33 +888,6 @@ void MainWindow::SetFullScreen(bool on){
     AdjustAllEdgeWidgets();
     RaiseAllEdgeWidgets();
     SetFocus();
-}
-
-void MainWindow::SetMaximized(bool on){
-    if(on && !isMaximized()){
-        showMaximized();
-    } else if(!on && isMaximized()){
-        showNormal();
-    }
-    SetFocus();
-}
-
-void MainWindow::SetMinimized(bool on){
-    if(on && !isMinimized()){
-        showMinimized();
-    } else if(!on && isMinimized()){
-        showNormal();
-        SetFocus();
-    }
-}
-
-void MainWindow::SetShaded(bool on){
-    if(on && !IsShaded()){
-        Shade();
-    } else if(!on && IsShaded()){
-        Unshade();
-        SetFocus();
-    }
 }
 
 void MainWindow::SetFocus(){
@@ -1042,7 +995,7 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
             QList<QAction*> actions;
             m_SystemMenu = m_TreeBank->GlobalContextMenu();
             const QList<SystemMenu::Entry> entries = SystemMenu::Entries(m_SystemMenu, actions);
-            foreach(QAction *action, actions) m_SystemMenuActions.append(QPointer<QAction>(action));
+            for(QAction *action : std::as_const(actions)) m_SystemMenuActions.append(QPointer<QAction>(action));
             SystemMenu::Install(internalWinId(), entries);
             return false;
         }
@@ -1177,7 +1130,7 @@ void MainWindow::showEvent(QShowEvent *ev){
     }
     ShowAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
-    if(notifier && notifier->IsPurged()) notifier->show();
+    if(notifier && notifier->IsPurged()) notifier->ResizeNotify(m_TreeBank->size());
 }
 
 void MainWindow::hideEvent(QHideEvent *ev){
@@ -1541,33 +1494,44 @@ QRect MainWindowSouthEastWidget::ComputeNewRect(QRect rect, QPoint pos){
 
 #define EDGE_SHADOW_COLOR qRgba(0,0,0,static_cast<int>(c))
 
-void MainWindowNorthWidget::paintEvent(QPaintEvent *ev){
+void MainWindowEdgeWidget::PaintSide(QPaintEvent *ev, Qt::Edge side){
     QPainter painter(this);
-    if(disp == none){
+    auto ghost = [&](){
         painter.setPen(GhostPen());
         painter.setBrush(GhostBrush());
         painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
+    };
+    const bool horizontal = side == Qt::TopEdge || side == Qt::BottomEdge;
+    if(disp == none){
+        ghost();
     } else {
         if(disp & shadow){
             if(m_MainWindow == Application::GetCurrentWindow()){
                 QImage image(size(), QImage::Format_ARGB32);
                 image.fill(0);
+                const int along  = horizontal ? width()  : height();
+                const int across = horizontal ? height() : width();
                 double i, j, w, c;
                 const double f = ScaleByDevice(25);
-                for(i=0; i < width(); i++){
-                    for(j=0; j < height(); j++){
-                        w = width();
+                for(i=0; i < along; i++){
+                    for(j=0; j < across; j++){
+                        w = along;
                         c = 77*j*j/e/e;
                         if(  i<f) c = c*sqrt(   i /f);
                         if(w-i<f) c = c*sqrt((w-i)/f);
-                        image.setPixel(static_cast<int>(i), static_cast<int>(j), EDGE_SHADOW_COLOR);
+                        const int a = static_cast<int>(i);
+                        const int b = static_cast<int>(j);
+                        switch(side){
+                        case Qt::TopEdge:    image.setPixel(a, b,       EDGE_SHADOW_COLOR); break;
+                        case Qt::BottomEdge: image.setPixel(a, e-b-1,   EDGE_SHADOW_COLOR); break;
+                        case Qt::LeftEdge:   image.setPixel(b, a,       EDGE_SHADOW_COLOR); break;
+                        case Qt::RightEdge:  image.setPixel(e-b-1, a,   EDGE_SHADOW_COLOR); break;
+                        }
                     }
                 }
                 painter.drawImage(QPoint(), image);
             } else {
-                painter.setPen(GhostPen());
-                painter.setBrush(GhostBrush());
-                painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
+                ghost();
             }
         }
         if(disp & edge){
@@ -1578,139 +1542,31 @@ void MainWindowNorthWidget::paintEvent(QPaintEvent *ev){
         if(disp & line){
             painter.setPen(EdgePen());
             painter.setBrush(Qt::NoBrush);
-            painter.drawLine(QPoint(0,e-1), QPoint(width(),e-1));
+            switch(side){
+            case Qt::TopEdge:    painter.drawLine(QPoint(0,e-1), QPoint(width(),e-1)); break;
+            case Qt::BottomEdge: painter.drawLine(QPoint(0,0),   QPoint(width(),0));   break;
+            case Qt::LeftEdge:   painter.drawLine(QPoint(e-1,0), QPoint(e-1,height())); break;
+            case Qt::RightEdge:  painter.drawLine(QPoint(0,0),   QPoint(0,height()));   break;
+            }
         }
     }
     ev->setAccepted(true);
+}
+
+void MainWindowNorthWidget::paintEvent(QPaintEvent *ev){
+    PaintSide(ev, Qt::TopEdge);
 }
 
 void MainWindowSouthWidget::paintEvent(QPaintEvent *ev){
-    QPainter painter(this);
-    if(disp == none){
-        painter.setPen(GhostPen());
-        painter.setBrush(GhostBrush());
-        painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-    } else {
-        if(disp & shadow){
-            if(m_MainWindow == Application::GetCurrentWindow()){
-                QImage image(size(), QImage::Format_ARGB32);
-                image.fill(0);
-                double i, j, w, c;
-                const double f = ScaleByDevice(25);
-                for(i=0; i < width(); i++){
-                    for(j=0; j < height(); j++){
-                        w = width();
-                        c = 77*j*j/e/e;
-                        if(  i<f) c = c*sqrt(   i /f);
-                        if(w-i<f) c = c*sqrt((w-i)/f);
-                        image.setPixel(static_cast<int>(i), static_cast<int>(e-j-1), EDGE_SHADOW_COLOR);
-                    }
-                }
-                painter.drawImage(QPoint(), image);
-            } else {
-                painter.setPen(GhostPen());
-                painter.setBrush(GhostBrush());
-                painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-            }
-        }
-        if(disp & edge){
-            painter.setPen(EdgePen());
-            painter.setBrush(GhostBrush());
-            painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-        }
-        if(disp & line){
-            painter.setPen(EdgePen());
-            painter.setBrush(Qt::NoBrush);
-            painter.drawLine(QPoint(0,0), QPoint(width(),0));
-        }
-    }
-    ev->setAccepted(true);
+    PaintSide(ev, Qt::BottomEdge);
 }
 
 void MainWindowWestWidget::paintEvent(QPaintEvent *ev){
-    QPainter painter(this);
-    if(disp == none){
-        painter.setPen(GhostPen());
-        painter.setBrush(GhostBrush());
-        painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-    } else {
-        if(disp & shadow){
-            if(m_MainWindow == Application::GetCurrentWindow()){
-                QImage image(size(), QImage::Format_ARGB32);
-                image.fill(0);
-                double i, j, w, c;
-                const double f = ScaleByDevice(25);
-                for(i=0; i < height(); i++){
-                    for(j=0; j < width(); j++){
-                        w = height();
-                        c = 77*j*j/e/e;
-                        if(  i<f) c = c*sqrt(   i /f);
-                        if(w-i<f) c = c*sqrt((w-i)/f);
-                        image.setPixel(static_cast<int>(j), static_cast<int>(i), EDGE_SHADOW_COLOR);
-                    }
-                }
-                painter.drawImage(QPoint(), image);
-            } else {
-                painter.setPen(GhostPen());
-                painter.setBrush(GhostBrush());
-                painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-            }
-        }
-        if(disp & edge){
-            painter.setPen(EdgePen());
-            painter.setBrush(GhostBrush());
-            painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-        }
-        if(disp & line){
-            painter.setPen(EdgePen());
-            painter.setBrush(Qt::NoBrush);
-            painter.drawLine(QPoint(e-1,0), QPoint(e-1,height()));
-        }
-    }
-    ev->setAccepted(true);
+    PaintSide(ev, Qt::LeftEdge);
 }
 
 void MainWindowEastWidget::paintEvent(QPaintEvent *ev){
-    QPainter painter(this);
-    if(disp == none){
-        painter.setPen(GhostPen());
-        painter.setBrush(GhostBrush());
-        painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-    } else {
-        if(disp & shadow){
-            if(m_MainWindow == Application::GetCurrentWindow()){
-                QImage image(size(), QImage::Format_ARGB32);
-                image.fill(0);
-                double i, j, w, c;
-                const double f = ScaleByDevice(25);
-                for(i=0; i < height(); i++){
-                    for(j=0; j < width(); j++){
-                        w = height();
-                        c = 77*j*j/e/e;
-                        if(  i<f) c = c*sqrt(   i /f);
-                        if(w-i<f) c = c*sqrt((w-i)/f);
-                        image.setPixel(static_cast<int>(e-j-1), static_cast<int>(i), EDGE_SHADOW_COLOR);
-                    }
-                }
-                painter.drawImage(QPoint(), image);
-            } else {
-                painter.setPen(GhostPen());
-                painter.setBrush(GhostBrush());
-                painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-            }
-        }
-        if(disp & edge){
-            painter.setPen(EdgePen());
-            painter.setBrush(GhostBrush());
-            painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-        }
-        if(disp & line){
-            painter.setPen(EdgePen());
-            painter.setBrush(Qt::NoBrush);
-            painter.drawLine(QPoint(0,0), QPoint(0,height()));
-        }
-    }
-    ev->setAccepted(true);
+    PaintSide(ev, Qt::RightEdge);
 }
 
 void MainWindowNorthWestWidget::paintEvent(QPaintEvent *ev){

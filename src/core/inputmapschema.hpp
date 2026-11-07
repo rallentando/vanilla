@@ -24,6 +24,7 @@ enum Vocabulary {
     PageActions,
     TreeBankActions,
     GadgetsActions,
+    ReceiverActions,
 };
 
 struct Table {
@@ -41,6 +42,9 @@ const Table *Find(const QString &group);
 QStringList Actions(Vocabulary vocabulary);
 bool IsAction(Vocabulary vocabulary, const QString &action);
 QString ActionLabel(Vocabulary vocabulary, const QString &action);
+QString LabelSource(const QString &action);
+
+bool TypesIntoTheField(const QKeySequence &seq);
 
 QString Placeholder();
 
@@ -49,6 +53,17 @@ QList<QPair<QString, QString> > Current(const SettingsIO::Map &settings, const T
 
 QString Write(SettingsIO::Map &settings, const Table &table, const QJsonArray &entries);
 void Reset(SettingsIO::Map &settings, const Table &table);
+
+struct Binding {
+    QString shown;
+    QString input;
+    QString action;
+    QString actionLabel;
+    QString table;
+    Vocabulary vocabulary;
+};
+QList<Binding> Bindings(const SettingsIO::Map &settings, bool singleKeys);
+bool IsThisInput(const Binding &binding, const QString &typed);
 
 QJsonObject DescribeTable(const SettingsIO::Map &settings, const Table &table);
 QJsonObject Describe(const SettingsIO::Map &settings);

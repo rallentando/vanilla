@@ -1,6 +1,7 @@
 #include "switch.hpp"
 #include "theme.hpp"
 #include "application.hpp"
+#include "runninguploads.hpp"
 
 #include <QSurfaceFormat>
 #include "treebank.hpp"
@@ -10,6 +11,7 @@
 #ifdef EDGEWEBVIEW
 
 #include "edgewebview_p.hpp"
+#include "spacerename.hpp"
 #include "extensionhost.hpp"
 #include "edgehostwindow.hpp"
 
@@ -17,6 +19,7 @@
 #include <QShowEvent>
 #include <QHideEvent>
 #include <QTimer>
+#include <QDir>
 #include <QDebug>
 
 #include "directorypage.hpp"
@@ -111,6 +114,7 @@ bool EdgeWebView::IsGoing() const {
 }
 
 void EdgeWebView::Retire(bool force){
+    RunningUploads::Instance()->Ended(this);
 
     if(m_Impl->m_State.IsRetired()) return;
 
@@ -143,6 +147,8 @@ void EdgeWebView::Retire(bool force){
     PullCookiesIntoJar();
 
     m_Impl->m_History.Release();
+
+    if(!Application::IsQuitting()) PutBackIntoSaves();
 
     m_Impl->m_Aborts.Retire();
 
@@ -182,12 +188,23 @@ QIcon EdgeWebView::GetIcon(){
     return m_Impl->m_Icon;
 }
 
-bool EdgeWebView::IsPrivateMode() const {
-    return m_Impl->m_PrivateMode;
+void EdgeWebView::ForgetMissingProfiles(){
+    EdgeEnvironment::ForgetMissingProfiles();
+}
+
+QObject *EdgeWebView::BrowserExitIfNoViews(){
+    if(!s_Profiles.LiveViews().isEmpty()) return nullptr;
+    if(!SpaceRename::BrowserHoldsFolder(QDir::fromNativeSeparators(EdgeEnvironment::UserDataFolder())
+                                        + QStringLiteral("/EBWebView/"))) return nullptr;
+    return EdgeEnvironment::Instance()->BrowserExit();
 }
 
 bool EdgeWebView::IsOffTheRecord(){
     return m_Impl->m_PrivateMode;
+}
+
+QString EdgeWebView::EngineProfileName(){
+    return m_Impl->m_ProfileName;
 }
 
 static QString EdgeFailureHint(long result){
@@ -643,6 +660,8 @@ void EdgeWebView::GoForwardToInferedUrl(){
 }
 
 bool EdgeWebView::SaveHistory(){
+    if(!m_Impl->m_History.IsEmpty()) PutBackIntoSaves();
+
     if(!GetViewNode()) return false;
 
     const QByteArray data = m_Impl->m_History.Serialize();
@@ -653,6 +672,17 @@ bool EdgeWebView::SaveHistory(){
 
     GetViewNode()->SetHistoryData(data, KeepsOffDisk());
     return true;
+}
+
+void EdgeWebView::LeaveOutOfSaves(){
+    if(m_Impl->m_LeftOutOfSaves || !GetViewNode()) return;
+    m_Impl->m_LeftOutOfSaves = GetViewNode()->GetSerial();
+    TreeBank::LeaveOutOfSaves(m_Impl->m_LeftOutOfSaves);
+}
+
+void EdgeWebView::PutBackIntoSaves(){
+    const quint64 serial = std::exchange(m_Impl->m_LeftOutOfSaves, 0);
+    if(serial) TreeBank::PutBackIntoSaves(serial);
 }
 
 bool EdgeWebView::RestoreHistory(){
@@ -761,72 +791,14 @@ void EdgeWebView::Connect(TreeBank *tb){
     View::Connect(tb);
 
     if(!tb || !page()) return;
-
-    connect(this, SIGNAL(titleChanged(const QString&)),
-            tb->parent(), SLOT(SetWindowTitle(const QString&)));
-
-    if(Notifier *notifier = tb->GetNotifier()){
-        connect(this, SIGNAL(statusBarMessage(const QString&)),
-                notifier, SLOT(SetStatus(const QString&)));
-        connect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                notifier, SLOT(SetStatus(const QString&, const QString&)));
-        connect(this, SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
-                notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
-
-        connect(this, SIGNAL(ScrollChanged(QPointF)),
-                notifier, SLOT(SetScroll(QPointF)));
-        connect(notifier, SIGNAL(ScrollRequest(QPointF)),
-                this, SLOT(SetScroll(QPointF)));
-    }
-    if(Receiver *receiver = tb->GetReceiver()){
-        connect(receiver, SIGNAL(OpenBookmarklet(const QString&)),
-                this, SLOT(Load(const QString&)));
-        connect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                this, SLOT(SeekText(const QString&, View::FindFlags)));
-        connect(receiver, SIGNAL(KeyEvent(QString)),
-                this, SLOT(KeyEvent(QString)));
-
-        connect(receiver, SIGNAL(SuggestRequest(const QUrl&)),
-                page(), SLOT(DownloadSuggest(const QUrl&)));
-        connect(page(), SIGNAL(SuggestResult(const QByteArray&)),
-                receiver, SLOT(DisplaySuggest(const QByteArray&)));
-    }
+    WireWebView(this, this, tb, true);
 }
 
 void EdgeWebView::Disconnect(TreeBank *tb){
     View::Disconnect(tb);
 
     if(!tb || !page()) return;
-
-    disconnect(this, SIGNAL(titleChanged(const QString&)),
-               tb->parent(), SLOT(SetWindowTitle(const QString&)));
-
-    if(Notifier *notifier = tb->GetNotifier()){
-        disconnect(this, SIGNAL(statusBarMessage(const QString&)),
-                   notifier, SLOT(SetStatus(const QString&)));
-        disconnect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                   notifier, SLOT(SetStatus(const QString&, const QString&)));
-        disconnect(this, SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
-                   notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
-
-        disconnect(this, SIGNAL(ScrollChanged(QPointF)),
-                   notifier, SLOT(SetScroll(QPointF)));
-        disconnect(notifier, SIGNAL(ScrollRequest(QPointF)),
-                   this, SLOT(SetScroll(QPointF)));
-    }
-    if(Receiver *receiver = tb->GetReceiver()){
-        disconnect(receiver, SIGNAL(OpenBookmarklet(const QString&)),
-                   this, SLOT(Load(const QString&)));
-        disconnect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                   this, SLOT(SeekText(const QString&, View::FindFlags)));
-        disconnect(receiver, SIGNAL(KeyEvent(QString)),
-                   this, SLOT(KeyEvent(QString)));
-
-        disconnect(receiver, SIGNAL(SuggestRequest(const QUrl&)),
-                   page(), SLOT(DownloadSuggest(const QUrl&)));
-        disconnect(page(), SIGNAL(SuggestResult(const QByteArray&)),
-                   receiver, SLOT(DisplaySuggest(const QByteArray&)));
-    }
+    WireWebView(this, this, tb, false);
 }
 
 void EdgeWebView::OnLoadStarted(){

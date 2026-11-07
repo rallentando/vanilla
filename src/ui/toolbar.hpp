@@ -25,7 +25,7 @@ class ToolBar : public QToolBar {
 
 public:
     ToolBar(TreeBank *tb, QWidget *parent = nullptr);
-    ~ToolBar() Q_DECL_OVERRIDE;
+    ~ToolBar() override;
 
     template <class T> T ScaleByDevice(T t) const {
         return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));
@@ -36,13 +36,12 @@ public:
     static void LoadSettings();
     static void SaveSettings();
 
-    QSize sizeHint() const Q_DECL_OVERRIDE;
-    QSize minimumSizeHint() const Q_DECL_OVERRIDE;
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
 
     void Connect(SharedView view);
     void Disconnect(SharedView view);
 
-    QMenu *ToolBarMenu();
     DownloadBar *GetDownloadBar() const { return m_DownloadBar;}
 
 public slots:
@@ -50,20 +49,22 @@ public slots:
     void SetFinished(bool);
 
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    void resizeEvent(QResizeEvent *ev) override;
 
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
-    void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
-    void enterEvent(QEnterEvent *ev) Q_DECL_OVERRIDE;
-    void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
+    void hideEvent(QHideEvent *ev) override;
+    void enterEvent(QEnterEvent *ev) override;
+    void leaveEvent(QEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
+    bool eventFilter(QObject *watched, QEvent *ev) override;
 
 private:
+    void SyncActions(bool loading);
+
     SharedView m_View;
     TreeBank *m_TreeBank;
     LineEdit *m_LineEdit;
@@ -78,8 +79,15 @@ private:
     QAction *m_ReloadAction;
     QAction *m_StopAction;
 
+    void FillCandidates(const QString &text);
+
     static QStringList m_CommandCandidates;
     static QStringList m_InputUrlHistory;
+
+public:
+    static QStringList CommandCandidates();
+    static QStringList UrlAncestors(const QString &text, const QUrl &current);
+    static QStringList UrlCandidates(const QString &text, const QUrl &current, const QStringList &nearby);
 
 public slots:
     void DisplaySuggest(const QByteArray&);

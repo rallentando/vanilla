@@ -83,7 +83,7 @@ private slots:
 
     void cleanup(){
         QDir dir(m_Dir.path());
-        foreach(QString name, dir.entryList(QDir::Files)) dir.remove(name);
+        for(QString name : dir.entryList(QDir::Files)) dir.remove(name);
     }
 
     void thetypesJsonCanExpressAreWrittenNatively(){

@@ -14,6 +14,7 @@
 #include <QToolBar>
 #include <QGraphicsView>
 #include <QGraphicsObject>
+#include <QTimer>
 
 class Node;
 class TreeBank;
@@ -30,7 +31,7 @@ class TreeBar : public QToolBar {
 
 public:
     TreeBar(TreeBank *tb, QWidget *parent = nullptr);
-    ~TreeBar() Q_DECL_OVERRIDE;
+    ~TreeBar() override;
 
     enum LastAction {
         None,
@@ -48,12 +49,12 @@ public:
             , m_MouseEventSource(Qt::MouseEventNotSynthesized)
         {
         }
-        void wheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE {
+        void wheelEvent(QWheelEvent *ev) override {
             m_MouseEventSource = ev->source();
             QGraphicsView::wheelEvent(ev);
             m_MouseEventSource = Qt::MouseEventNotSynthesized;
         }
-        QSize minimumSizeHint() const Q_DECL_OVERRIDE {
+        QSize minimumSizeHint() const override {
             return QSize(0, 0);
         }
         Qt::MouseEventSource MouseEventSource() const {
@@ -106,8 +107,8 @@ public:
 
     void ClearLowerLayer(int index);
 
-    QSize sizeHint() const Q_DECL_OVERRIDE;
-    QSize minimumSizeHint() const Q_DECL_OVERRIDE;
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
 
     GraphicsView *GetView(){ return m_View;}
 
@@ -141,18 +142,16 @@ public slots:
     void StartFrameRateTimer();
     void StopFrameRateTimer();
 
-    void StartAutoUpdateTimer();
-    void StopAutoUpdateTimer();
-    void RestartAutoUpdateTimer();
+    void ScheduleRepaint();
 
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    void resizeEvent(QResizeEvent *ev) override;
 
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
-    void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
-    void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
+    void hideEvent(QHideEvent *ev) override;
+    void leaveEvent(QEvent *ev) override;
 
 private:
     QRect HandlePaintRect(const QRect &rect) const;
@@ -167,7 +166,7 @@ private:
     QWidget *m_ResizeGrip;
     QSize m_OverrideSize;
     QList<LayerItem*> m_LayerList;
-    int m_AutoUpdateTimerId;
+    QTimer m_RepaintTimer;
     int m_Frame;
     int m_FrameRateTimerId;
     int m_CurrentFrameRate;
@@ -193,10 +192,10 @@ class LayerItem : public QGraphicsObject {
 
 public:
     LayerItem(TreeBank *tb, TreeBar *bar, Node *nd, Node *pnd = nullptr, QGraphicsItem *parent = nullptr);
-    ~LayerItem() Q_DECL_OVERRIDE;
+    ~LayerItem() override;
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE;
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    QRectF boundingRect() const override;
 
     void ApplyTheme();
 
@@ -252,7 +251,6 @@ public:
     bool HasItemOf(Node *nd) const;
     QList<NodeItem*> &GetNodeItems();
     void AppendToNodeItems(NodeItem *item);
-    void PrependToNodeItems(NodeItem *item);
     void RemoveFromNodeItems(NodeItem *item);
     void SwapWithNext(int index);
     void SwapWithPrev(int index);
@@ -265,13 +263,13 @@ public slots:
     void DisplayTrashTree();
 
 protected:
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void dropEvent(QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragMoveEvent(QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragLeaveEvent(QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void wheelEvent(QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) override;
+    void dropEvent(QGraphicsSceneDragDropEvent *ev) override;
+    void dragMoveEvent(QGraphicsSceneDragDropEvent *ev) override;
+    void dragLeaveEvent(QGraphicsSceneDragDropEvent *ev) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) override;
+    void wheelEvent(QGraphicsSceneWheelEvent *ev) override;
 
 private:
     TreeBank *m_TreeBank;
@@ -300,7 +298,7 @@ class NodeItem : public QGraphicsObject {
 
 public:
     NodeItem(TreeBank *tb, TreeBar *bar, Node *nd, QGraphicsItem *parent = nullptr);
-    ~NodeItem() Q_DECL_OVERRIDE;
+    ~NodeItem() override;
 
     enum ButtonState {
         NotHovered,
@@ -312,8 +310,8 @@ public:
         SoundPressed,
     } m_ButtonState;
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) Q_DECL_OVERRIDE;
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    QRectF boundingRect() const override;
     QRectF CloseButtonRect() const;
     QRectF CloneButtonRect() const;
     QRectF SoundButtonRect() const;
@@ -345,6 +343,7 @@ public:
     void OnCreated(QRectF target, QRectF start = QRectF());
     void StayUnderWhileGrowing();
     void OnDeleted(QRectF target, QRectF start = QRectF());
+    qreal TransitionRatio() const;
 
     void ForgetNode();
     void OnNestChanged();
@@ -352,18 +351,18 @@ public:
     void Slide(int step);
     bool OutOfSight(const QRectF &rect) const;
 
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 
     QRect GlobalRect() const;
     void RequestPreview();
 
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void hoverEnterEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent *ev) override;
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *ev) override;
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *ev) override;
+    void hoverMoveEvent(QGraphicsSceneHoverEvent *ev) override;
     QPointF ScheduledPosition();
 
     QMenu *NodeMenu();

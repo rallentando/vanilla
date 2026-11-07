@@ -181,20 +181,10 @@ void EdgeWebView::CallWithFoundElements(Page::FindElementsOption option,
                                         WebElementListCallBack callBack){
     QPointer<EdgeWebView> alive(this);
     CallWithScriptResult(FindElementsJsCode(option), [alive, callBack](const QVariant &var){
-        if(!alive || !var.isValid()) return callBack(SharedWebElementList());
-
-        const QVariantList list = var.toMap().values();
-        SharedWebElementList result;
-        const QRect viewport = QRect(QPoint(), alive->size());
-
-        for(int i = 0; i < list.length(); i++){
-            std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
-            *e = JsWebElement(alive.data(), list[i]);
-            const QRect rect = alive->WidgetRectOf(e->Rectangle());
-            e->SetRectangle(viewport.intersects(rect) ? rect : QRect());
-            result << e;
-        }
-        callBack(result);
+        if(!alive) return callBack(SharedWebElementList());
+        EdgeWebView *view = alive.data();
+        callBack(ElementsFrom(view, var, QRect(QPoint(), view->size()),
+                              [view](const QRect &rect){ return view->WidgetRectOf(rect);}));
     });
 }
 
@@ -252,21 +242,10 @@ void EdgeWebView::CallWithWholeHtml(StringCallBack callBack){
 void EdgeWebView::CallWithSelectionRegion(RegionCallBack callBack){
     QPointer<EdgeWebView> alive(this);
     CallWithScriptResult(SelectionRegionJsCode(), [alive, callBack](const QVariant &var){
-        if(!alive || !var.isValid() || !var.canConvert<QVariantMap>())
-            return callBack(QRegion());
-
-        const QRect viewport = QRect(QPoint(), alive->size());
-        QRegion region;
-        const QVariantMap map = var.toMap();
-        foreach(const QString &key, map.keys()){
-            const QVariantMap m = map[key].toMap();
-            const QRect rect(m[QStringLiteral("x")].toInt(),
-                             m[QStringLiteral("y")].toInt(),
-                             m[QStringLiteral("width")].toInt(),
-                             m[QStringLiteral("height")].toInt());
-            region |= alive->WidgetRectOf(rect).intersected(viewport);
-        }
-        callBack(region);
+        if(!alive) return callBack(QRegion());
+        EdgeWebView *view = alive.data();
+        callBack(SelectionRegionFrom(var, QRect(QPoint(), view->size()),
+                                     [view](const QRect &rect){ return view->WidgetRectOf(rect);}));
     });
 }
 
@@ -407,6 +386,7 @@ void EdgeWebView::SetAudioMuted(bool muted){
     if(FAILED(webview8->put_IsMuted(muted ? TRUE : FALSE))) return;
     m_Impl->m_Muted = muted;
     emit ViewChanged();
+    TreeBank::TabsLookChanged();
 }
 
 void EdgeWebView::RestoreStateAfterLoad(){
@@ -421,6 +401,7 @@ void EdgeWebView::HandleAudioStateChanged(bool playing){
     if(m_Impl->m_Audible == playing) return;
     m_Impl->m_Audible = playing;
     emit ViewChanged();
+    TreeBank::TabsLookChanged();
 
 #ifdef MEDIATIME
     if(m_Impl->m_Audible){

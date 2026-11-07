@@ -17,18 +17,6 @@
 #include "gadgetsstyle.hpp"
 #include "devicescale.hpp"
 
-namespace {
-
-    int ScaleByDevice(int t){
-        return DeviceScale::Primary(t);
-    }
-
-    QSize ScaleByDevice(const QSize &size){
-        return DeviceScale::PrimarySize(size);
-    }
-
-}
-
 AccessibleWebElement::AccessibleWebElement(QGraphicsItem *parent)
     : QGraphicsItem(parent)
 {
@@ -69,7 +57,7 @@ QRectF AccessibleWebElement::boundingRect() const {
 
         QStringList actions = m_Gadgets->GetAccessKeyKeyMap().values();
         actions.removeDuplicates();
-        foreach(QString action, actions){
+        for(QString action : std::as_const(actions)){
             rect = rect.united(keyrectmap[action]);
             rect = rect.united(exprectmap[action]);
         }
@@ -102,7 +90,7 @@ QPainterPath AccessibleWebElement::shape() const {
 
         QStringList actions = m_Gadgets->GetAccessKeyKeyMap().values();
         actions.removeDuplicates();
-        foreach(QString action, actions){
+        for(QString action : std::as_const(actions)){
             path.addRect(keyrectmap[action]);
             path.addRect(exprectmap[action]);
         }
@@ -151,11 +139,11 @@ QMap<QString, QRect> AccessibleWebElement::KeyRects() const {
     int i = 0;
     QStringList actions = m_Gadgets->GetAccessKeyKeyMap().values();
     actions.removeDuplicates();
-    foreach(QString action, actions){
+    for(QString action : std::as_const(actions)){
 
         QStringList list;
 
-        foreach(QKeySequence seq, m_Gadgets->GetAccessKeyKeyMap().keys(action)){
+        for(QKeySequence seq : m_Gadgets->GetAccessKeyKeyMap().keys(action)){
             list << seq.toString();
         }
 
@@ -183,7 +171,7 @@ QMap<QString, QRect> AccessibleWebElement::ExpRects() const {
     int i = 0;
     QStringList actions = m_Gadgets->GetAccessKeyKeyMap().values();
     actions.removeDuplicates();
-    foreach(QString action, actions){
+    for(QString action : std::as_const(actions)){
 
         QString exp = action;
 
@@ -271,7 +259,7 @@ void AccessibleWebElement::UpdateMinimal(){
 
         QStringList actions = m_Gadgets->GetAccessKeyKeyMap().values();
         actions.removeDuplicates();
-        foreach(QString action, actions){
+        for(QString action : std::as_const(actions)){
             m_Gadgets->update(keyrectmap[action]);
             m_Gadgets->update(exprectmap[action]);
         }

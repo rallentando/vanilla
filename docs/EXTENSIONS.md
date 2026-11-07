@@ -5,11 +5,11 @@ vanilla で Chrome 拡張（Manifest V3）がどこまで動くかを、拡張�
 
 ## 前提
 
-- **導入できるのは展開済みのフォルダーだけ。** Chrome ウェブストアや CRX からは入れられない。アドレスバー右のパズルのボタンから登録・有効 / 無効・ピン留めをする
+- **導入できるのは展開済みのフォルダだけ。** Chrome ウェブストアや CRX からは入れられない。アドレスバー右のパズルのボタンから登録・有効 / 無効・ピン留めをする
 - 拡張が動くのは、ページを表示するエンジンが用意する仕組みの上。エンジンは 2 つあり、拡張 API の出どころが違う
   - **Edge WebView2**（Windows の既定）: API の大部分は WebView2 自身のもの。vanilla が答えるのは、アプリの木構造に関わる部分（タブ・ウィンドウ・ブックマーク・履歴）と、ボタンやサイドパネルなどアプリの画面に出るもの
-  - **Qt WebEngine**（Windows 以外の既定。Windows でもディレクトリ単位で選べる）: エンジンが素で持つ API が少ないため、vanilla は拡張のコピーに互換レイヤー（シム）を入れて足りない API を埋める（設定 `network/@ExtensionShims`）。Windows 以外の OS の分はビルドも確認もしていない
-- Qt WebEngine では、ページから拡張のリソース（`web_accessible_resources`）を読む機能に Qt WebEngine へのパッチが要る（[README](../README.md)「Qt WebEngine へのパッチ」）
+  - **Qt WebEngine**（Windows 以外の既定。Windows でもディレクトリ単位で選べる）: エンジンが素で持つ API が少ないため、vanilla は拡張のコピーに互換レイヤー（シム）を入れて足りない API を埋める（設定 `network/@ExtensionShims`）。Windows 以外の OS では、Linux でビルドとテストを通しているが、実際の拡張の動作は確認していない。macOS はビルドもしていない
+- Qt WebEngine では、ページから拡張のリソース（`web_accessible_resources`）を読む機能に Qt WebEngine へのパッチが要る（[BUILD.md](BUILD.md)「Qt WebEngine へのパッチ」）
 - private（OTR）のプロファイルでは拡張を動かさない
 - 開発中に実機で使って確かめてきた拡張は Vimium、uBlock Origin Lite、Stands、SingleFile、Dark Reader。どこまで動くかは拡張の版とエンジンによる
 
@@ -193,7 +193,7 @@ Chrome で権限の要る名前空間（`alarms` / `scripting` / `userScripts` �
 |  | `update` | ○ | ○ |
 <!-- END -->
 
-注: 表はテスト（`tst_cdpshims`）が互換レイヤーから作って文書と照合しており、2026-10-03 の時点の状態。Edge 列のうち WebView2 自身が答えるものは、2026-10-03 に実機（WebView2 154.0.4258.48）で確かめた。
+注: 表はテスト（`tst_cdpshims`）が互換レイヤーから作って文書と照合している。Edge 列のうち WebView2 自身が答えるものは、2026-10-03 に実機（WebView2 154.0.4258.48）で確かめた。
 
 ---
 

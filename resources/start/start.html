@@ -595,9 +595,10 @@
           if(more) more.hidden = !(cards.length > count || data.more);
         }
         window.addEventListener('resize', fit);
-        // back from another window, where tabs may have been closed or
-        // restored: the history as it is now (R-414 mid 3).
-        window.addEventListener('focus', function(){ if(history) loadHistory(0); });
+        // back from another window or tab, where tabs may have been looked
+        // at, closed or restored: the history as it is now (R-414 mid 3),
+        // and the cards too, in the order of the last look.
+        window.addEventListener('focus', function(){ if(history) loadHistory(0); else refresh(); });
 
         function render(tabs, heading, text){
           found = text || '';
@@ -1001,6 +1002,18 @@
         // they come; the cards are not shown in between.
         if(location.hash === '#history'){
           try { restoring = parseInt(sessionStorage.getItem('history-scroll') || '0', 10) || 0; } catch(e){}
+          // opened at '#history' with no step of the cards before it -- the
+          // tab restored at a start-up keeps its address, not its steps --
+          // the back button had nowhere to go: the cards' step is put in
+          // under it again. A reload, or a step back to the page, has it.
+          try {
+            var nav = window.navigation, here = location.href.split('#')[0];
+            var before = nav && nav.currentEntry.index > 0 ? nav.entries()[nav.currentEntry.index - 1] : null;
+            if(nav && !(before && before.url && before.url.split('#')[0] === here)){
+              window.history.replaceState(null, '', location.pathname + location.search);
+              window.history.pushState(null, '', '#history');
+            }
+          } catch(e){}
           showHistory('', true);
         } else {
           render(data.recent, data.recentTitle);

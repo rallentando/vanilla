@@ -1,6 +1,8 @@
 # ビルド手順
 
-最終更新: 2026-09-06
+最終更新: 2026-11-03
+
+この文書のパスは例で、版は vanilla の開発者が確かめたもの。パスは自分の環境に置き換えて読む。
 
 ビルドシステムは **CMake**（[CMakeLists.txt](../CMakeLists.txt)）。qmake project は
 0.3.0だけ移行用に残し、公開後に削除した（D-296）。
@@ -11,7 +13,7 @@
 
 ### Qt
 
-**Qt 6.11 で動作確認済み。Qt5 では動かない**（D-003）。
+**Windows は Qt 6.12.0 + QtWebEngine 6.140.0、Linux はディストリの Qt 6.10.2 で動作確認済み。Qt5 では動かない**（D-003）。
 CMake は 6.5 以上を要求する。
 
 必要なモジュール:
@@ -20,8 +22,9 @@ CMake は 6.5 以上を要求する。
 |---|---|
 | 必須 | `core` `gui` `widgets` `network` `xml` `opengl` `openglwidgets` `webchannel` `multimedia` `multimediawidgets` `qml` `quick` `quickwidgets` |
 | 必須（ビルド時のみ） | `linguisttools`（`lupdate` / `lrelease`） |
-| 任意（あれば有効化） | `webenginecore` `webenginewidgets` `webenginequick` — **無いとページを表示できるビューが無くなる** |
+| 任意（あれば有効化） | `webenginecore` `webenginewidgets` `webenginequick` — **無いと Qt WebEngine のビューなしでビルドされる** |
 | 任意（あれば有効化） | `printsupport` |
+| 任意（あれば有効化） | `webview` — `QuickNativeWebView` が有効になる |
 
 任意モジュールの有無は CMake の `find_package(Qt6 QUIET COMPONENTS ...)` と `if(TARGET Qt6::...)` で
 判定し、対応する定義（`WEBENGINEVIEW` など）を自動で付ける。
@@ -31,142 +34,72 @@ WebEngine が見つからないときは configure 時に警告が出る。
 > 明示的にチェックすること。
 > **Qt 6.12 から QtWebEngine は Qt とは別の製品で、版も別**（Qt 6.12.0 と組むのは QtWebEngine 6.140.0。
 > 6.140 は土台の Chromium 140 を表す）。Maintenance Tool では Qt の版の下の「Extensions」に出る。
-> 入る先は従来どおり `C:/Qt/6.12.0/msvc2022_64`。
+> 既定の場所へ入れると `C:/Qt/6.12.0/msvc2022_64` になる。
 
-#### この環境の QtWebEngine —— 自前ビルドと公式を行き来できる
+#### Qt WebEngine へのパッチ
 
-**開発機には QtWebEngine が2つある。** どちらが `C:/Qt/6.12.0/msvc2022_64`
-に入っているかで挙動が変わるので、**不具合を追う前に今どちらかを見ること。**
+Qt WebEngine（6.11.2 と、Qt 6.12.0 と組む 6.140.0 で確認）は、Web ページから拡張のリソース（manifest の `web_accessible_resources`）を
+読む要求を必ず `chrome-extension://invalid/` に書き換える（Qt が自前の判定表を持つが、そこに誰も登録しないため）。
+このため、Vimium の vomnibar（`o` / `b` / `T`）・HUD・ページの上のヘルプなど、拡張が Web ページの中に
+自分のページを iframe で置く機能が動かない。**配布物にはパッチを当てた Qt WebEngine を入れていない。**
+Edge のビューには関係しない。パッチ無しでも、拡張自身のページ（オプションなど）とページ内の操作は動く。
 
-| | どこ | 見分け方 |
-|---|---|---|
-| 自前ビルド | 成果物一式が `C:/qtwe-staging`（534 ファイル / 295MB）、ビルドツリーは `C:/qtwe` | `bin/Qt6WebEngineCore.dll` の SHA256 が `65BE5235…`（2026-10-02、QtWebEngine 6.140.0、パッチ 3 本入り。Qt 6.11.2 のときは `3E977233…`） |
-| 公式バイナリ | 退避してある一式が `C:/qtwe-official-backup` | 同 `475A605D…`（Qt 6.11.2 のときは `D6995CE6…`。その一式は `C:/qtwe-official-backup-6.11.2`） |
+パッチは tools/patches/ の 3 本（Qt WebEngine 6.140.0 と 6.11.2 の Sources にそのまま当たる）:
 
-**入れ替えは [scripts/swap-webengine.ps1](../scripts/swap-webengine.ps1) でやる。**
+- `qtwebengine-6.140.0-web-accessible-resources.patch`: `src/core/renderer/` の 3 ファイル。Qt 側の `WillSendRequest` が
+  Chromium 本体の判定を呼ぶようにする（上の `web_accessible_resources`）
+- `qtwebengine-6.140.0-isolated-world-unsafe-eval.patch`: MV3 の content script の world で eval を許す。
+  Qt のビューの `scripting.executeScript` に関数を渡す拡張（SingleFile など）に要る
+- `qtwebengine-6.140.0-ime-to-active-widget.patch`: IME の入力を別プロセスの iframe（vomnibar など）へも送る
+
+用意と適用:
 
 ```powershell
-.\scripts\swap-webengine.ps1 -To selfbuilt   # H.264 / AAC が使える方
-.\scripts\swap-webengine.ps1 -To official    # MaintenanceTool が入れる方
-.\scripts\swap-webengine.ps1 -To selfbuilt -WhatIf
+# 1. Qt の Maintenance Tool で Qt WebEngine の Sources を入れる（例: C:\Qt\6.12.0\Src\qtwebengine）
+# 2. 当てる（Git for Windows の patch。-p1 は先頭の a/ b/ を落とす。--binary は改行を書き換えないため。PowerShell の < は使えないので -i で渡す）
+$patch = "$env:ProgramFiles\Git\usr\bin\patch.exe"   # Git for Windows に入っている patch（PATH には無い）
+foreach ($p in Get-ChildItem tools\patches\*.patch) { & $patch --binary -p1 -d C:\Qt\6.12.0\Src\qtwebengine -i $p.FullName }
+# 3. Qt WebEngine を configure してビルドし、Qt のインストール先へ入れる（下の「Qt WebEngine をビルドする」）
+# 4. vanilla を再ビルドする
 ```
 
-- **初回の `selfbuilt` で、上書きする公式ファイルを丸ごと退避する**
-  （`C:/qtwe-official-backup` に同じ相対配置で。対応が無いファイルは
-  一覧に控えて、戻すときに消す）。だから**どちらへも往復できる**
-- **Qt を掴んでいるプロセスがあると中断する。** 途中まで上書きした状態が
-  一番たちが悪いので、消極的に止める側にしてある
-- **入れ替えたら vanilla を再ビルドして package も作り直すこと。**
-  エンジンの DLL は package に配置されるので、古い方が混ざる
-- **入れ替えたら、その exe が使う WebEngine プロファイルの `GPUCache` も消すこと**
-  （別ビルドの blob を拾わないための衛生。ちらつきの原因そのものではなかった。
-  下の「入れ替え後のちらつき: D3D11 の受け渡し競合」）。
-  インストール版なら vanilla を完全終了してから:
+パッチは当てる先のファイルの改行に合わせてある（`isolated-world-unsafe-eval` だけが LF。`.gitattributes` で変換を止めている）。
+当たっているかは、Vimium を入れた Qt のビューで `o` を押して vomnibar が出るかで分かる。
+`patch` が当たらないときは、Qt 側で直ったか、当てる先のコードが変わっている
+（`extensions_renderer_client_qt.cpp` の `WillSendRequest` が `extensions::ExtensionsRendererClient::WillSendRequest` を呼んでいれば直っている）。
+パッチを外すには `patch --binary -R -p1` で戻す。
 
-  ```powershell
-  Get-ChildItem "$env:APPDATA\vanilla\QtWebEngine" -Directory -Recurse -Filter GPUCache | Remove-Item -Recurse -Force
-  ```
-- **Qt 本体を更新すると上書きは失われる**（公式で塗り替えられる）。
-  そのときは `-To selfbuilt` をもう一度
+#### Qt WebEngine をビルドする
 
-**2026-10-02 時点ではパッチ入りの自前ビルド（QtWebEngine 6.140.0）が入っている**。configure の結果（`config.summary`）は
-6.11.2 の自前ビルドと全く同じで、`Build with rust` も `no`（6.140.0 では Rust は任意。公式の DLL にも Rust の痕跡は無い）。
-以下は 6.11.2 の自前ビルドの経緯（Qt 6.11.2 への移行時に
-同じ configure で再ビルドし、2026-09-16 に英語版 cl で全体を作り直したもの。
-公式より画面がちらつく件で一度公式へ戻し、共有 GPUCache を疑って自前へ戻したが、
-ちらつきは再発した。**正体は Chromium → Qt Quick の D3D11 テクスチャ受け渡しの競合で、
-`QSG_RHI_BACKEND=opengl` で消える**（2026-09-18）。下の「英語の言語パック」と
-「入れ替え後のちらつき: D3D11 の受け渡し競合」。
-6.11.1 時代に A-8 の切り分けで一度公式に戻した経緯は D-096）。確かめ方は `vanilla://` で
-`document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"')`
-—— 自前ビルドなら `probably`、公式なら空文字。
+公式の Qt WebEngine をそのまま使うなら、この節は要らない。上のパッチを当てるとき、または H.264 / AAC（公式バイナリには入っていない）を
+再生したいときだけ、自分でビルドする。全体のビルドには数時間かかる。
 
-ソースはどちらも `C:/Qt/6.12.0/Src/qtwebengine`。**2026-09-22 から `tools/patches/qtwebengine-6.140.0-web-accessible-resources.patch`
-が当たっている**（3 ファイル。当てる前の原本は `C:/qtwe-src-orig/` に同じ相対配置で退避。D-365）。
-**2026-09-23 から `tools/patches/qtwebengine-6.140.0-isolated-world-unsafe-eval.patch` も当たっている**（1 ファイル `csp_info.cc`。MV3 の
-content script の world で eval を許す。拡張の `scripting.executeScript` に要る。D-376 追記 2）。
-**2026-09-25 から `tools/patches/qtwebengine-6.140.0-ime-to-active-widget.patch` も当たっている**（1 ファイル `render_widget_host_view_qt_delegate_client.cpp`。
-IME を別プロセスの iframe へも送る。Vimium の vomnibar の日本語と候補窓の位置に要る。D-432）。
-3 本とも 6.140.0 のソースにそのまま当たった（2026-10-01。原本は `C:/qtwe-src-orig/`、6.11.2 の原本は `C:/qtwe-src-orig-6.11.2/`）。
-`csp_info.cc` は LF のファイルなので、`isolated-world-unsafe-eval` のパッチだけは LF で持つ（`.gitattributes` の `-text`）。3 本とも `patch --binary` でそのまま当たる。ファイル名の版は最後に確かめた QtWebEngine の版（2026-10-03 に 6.11.2 から改名。D-464 追記 2）。
-staging の `bin/Qt6WebEngineCore.dll` は `65BE5235…`。
-この 1 ファイルだけの再ビルドは ninja で 4 分ほど（2026-09-25 実測。ソースを直して `ninja` → install → `swap-webengine.ps1 -To selfbuilt`）。
-Qt を上げたら Src が公式に戻るので、`patch --binary -p1 -d C:/Qt/6.x.y/Src/qtwebengine < tools/patches/...` で当て直してから configure する
-（当たらなければ Qt 側が直ったか、形が変わったか。`src/core/renderer/extensions/extensions_renderer_client_qt.cpp` の `WillSendRequest`
-が本体の `extensions::ExtensionsRendererClient::WillSendRequest` を呼んでいれば直っている）。
-再ビルドの手順は `C:/qtwe/config.redo.bat`（実体は `qt-configure-module.bat` に
-`-webengine-proprietary-codecs` を渡すだけ）→ `ninja` → `cmake --install . --prefix C:/qtwe-staging`。
-全体のビルドは約 4 時間 15 分（2026-10-01 20:05〜10-02 00:21、途中で vanilla のビルドとテストも並べて回した）。
-**日本語 Windows では `PYTHONUTF8=1` を設定してから走らせること** —— 6.11.2 の
-ソースに cp932 で読めないバイトがあり、GN の `gn_find_mocables.py` が
-`UnicodeDecodeError` で落ちる（2026-09-01 に踏んだ）。perl（Git 付属で可）を
-PATH に入れないと opus の一部最適化が外れた旨の警告が configure に出る。
-bison / flex / gperf は `C:/qtwe-tools/bin`（winflexbison 2.5.25 の exe を `bison.exe` /
-`flex.exe` の名前でも置いたもの ＋ `winget install oss-winget.gperf` の gperf 3.1）、
-node はユーザーのホームの `.local/node`（`%USERPROFILE%\.local\node`）。
-**英語の言語パック**: `VSLANG=1033` は VS の英語言語パックが入っていて初めて効く
-（`...\MSVC\<ver>\bin\Hostx64\x64\1033\` があること）。2026-09-01 の自前ビルドは
-`VSLANG=1033` を指定していたが英語パックが無く、日本語版 cl で作られていた。
-公式より画面がちらつく件の切り分けとして 2026-09-16 に英語パックを入れ、`C:/qtwe` を
-空にして全体を作り直した（config.summary は 09-01 と同一）が、**ユーザー実機で
-ちらつきは変わらなかった**（2026-09-17）。cl の言語は原因ではなかった（真の原因は次項）。
-手順一式は `.claude/skills/qt-upgrade/SKILL.md`。
+下の例は Qt 6.12.0 を既定の場所へ入れたときのもの。`<...>` は自分の環境の場所に置き換える。
 
-**入れ替え後のちらつき: D3D11 の受け渡し競合**（2026-09-17〜18、ユーザー実機）。
-症状は、動画再生・スクロール・タブ切替・リサイズ・窓移動のときに、黒い 40px 程度のボックスが
-等間隔に並ぶ、または画面の半分が黒くなり、1〜数フレームで戻るもの。次の 3 つの**どれでも消える**:
+```bat
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+set VSLANG=1033
+set PYTHONUTF8=1
+set QTDIR=C:\Qt\6.12.0\msvc2022_64
+set PATH=C:\Qt\Tools\CMake_64\bin;C:\Qt\Tools\Ninja;<bison・flex・gperf の場所>;<node の場所>;<Python の場所>;%QTDIR%\bin;%PATH%;C:\Program Files\Git\usr\bin
+cd /d <空のビルドディレクトリ>
+call "%QTDIR%\bin\qt-configure-module.bat" C:/Qt/6.12.0/Src/qtwebengine -webengine-proprietary-codecs -- -G Ninja -DCMAKE_BUILD_TYPE=Release -DQT_SHOW_EXTRA_IDE_SOURCES=OFF
+ninja
+cmake --install . --prefix <出力先>
+```
 
-| 変更 | 触る段 |
-|---|---|
-| `QSG_RHI_BACKEND=opengl`（環境変数。Chromium 側は既定のまま） | Qt Quick が D3D11 の共有テクスチャを受け取る段 |
-| `--disable-gpu-compositing`（`application/@ChromiumFlags`） | Chromium の GPU 合成と共有テクスチャ |
-| `--disable-gpu-rasterization`（同上） | GPU ラスタしたタイルの完了待ち |
-
-つまり Chromium のプロセス内 GPU スレッドが描き終える前に Qt 側が読む競合で、経路か時間差を
-変えればどこでも消える。上流でも「Qt 6 の D3D11 RHI と WebEngine の同期が甘く、
-`QQuickWindow::setGraphicsApi(OpenGL)` か `QSG_RHI_BACKEND=opengl` で逃がす」のが定番
-（[Qt Forum](https://forum.qt.io/topic/156183/qwebengineview-and-opengl-rendering-problem)、
-[anki #4470](https://github.com/ankitects/anki/issues/4470)）。公式ビルドで出にくい理由は
-未特定（コード生成の差でタイミングが変わる、までは言えるが確認していない）。
-回避策は設定にした: `application/@GraphicsApi`（設定画面「描画とエンジン」の「描画 API（WebEngineView）」、
-`Auto|Software|OpenGL|Direct3D11|Direct3D12|Vulkan|Metal`、既定は Windows で `OpenGL`（2026-10-19、D-342 追記 2。それまでは `Auto`）、再起動で反映。D-340 / D-342）。環境変数 `QSG_RHI_BACKEND` があればそちらが勝つ。
-
-その前段で疑った**共有 GPUCache**（結論: 交絡要因ではあるが原因ではない）:
-widget の WebEngine プロファイルは `%APPDATA%/vanilla/QtWebEngine/<MD5(実行ディレクトリ + id)>`
-で、鍵が実行パスなので**中のエンジンを公式と自前で入れ替えても同じディレクトリを使い続ける**。
-その `GPUCache`（Chromium のシェーダ／プログラムキャッシュ）は「シェーダのハッシュ ＋ Chromium 版
-＋ GPU/ドライバ」を鍵にするため、同じ Chromium 版・同じドライバの公式と自前では鍵が衝突し、
-片方の ANGLE が作った blob をもう片方が拾う。インストール版のプロファイルは 8/1 から
-6.11.1 公式 → 自前 → 6.11.2 公式 → 自前 → 公式 → 自前と同じ `GPUCache` で通していた。
-自前に入れ替えたあと `GPUCache` だけを消して起動した直後は、ちらつきが本家 Chrome と同程度の
-頻度まで減ったように見えたが、**しばらく使うと再発し、もう一度消しても変わらなかった**
-（2026-09-18）。以前より頻度が下がった印象は残るものの、観測が短い区間の比較なので
-ノイズの可能性がある。したがって GPUCache は「別ビルドの blob を拾い得る交絡要因」であって
-原因ではなく、公式と自前の差の説明はついていない。
-この見立ては Codex（Sol）への相談で「原因ではなくても最初に排除すべき交絡要因」として出たもの。
-裏付けとして、公式と自前の `chrome://gpu` は Graphics Feature Status・ANGLE（D3D11、GL ES 2.0）・
-Driver Bug Workarounds・ANGLE Features まで全項目同一で、差は Video Acceleration の HEVC
-（proprietary codecs で加わる）だけだった（2026-09-17 ユーザー採取）。Qt WebEngine は
-`--in-process-gpu` で Direct composition も overlay も使わない構成なので、残るちらつきに
-DComp／overlay 系のフラグは効かない。
-`C:/qtwe/config.summary` のうち効いているもの:
-
-| | |
-|---|---|
-| Proprietary Codecs | **yes** —— 恐らくこれが自前ビルドの動機。公式バイナリには H.264 / AAC が入っていない |
-| Extensions | **yes** —— `QWebEngineExtensionManager` が使えるのはこのため |
-| Spellchecker | yes |
-| Jumbo Build | yes |
-| Developer build | no（Release） |
-
-**これを知らないと解釈を誤る場面がある。**
-
-- **動画（H.264 / AAC）が再生できるのは自前ビルドのときだけ。**
-  公式が入っている間は同じページが再生できない
-- **`vanilla-build/package` は入れた側の DLL を同梱する。**
-  配る前に、どちらが入っているか確かめること
-- エンジン由来の挙動を追うときは、**両方で試せる**のが強みになる。
-  A-8 は実際それで決着した（自前ビルドのせいではなかった —— D-096）
+- **`-webengine-proprietary-codecs`** が H.264 / AAC を有効にする。
+- **`PYTHONUTF8=1`**: 日本語の Windows では、これが無いと GN の `gn_find_mocables.py` が `UnicodeDecodeError` で落ちる。
+- **`VSLANG=1033`** は Visual Studio の英語の言語パックが入っていて初めて効く（`...\MSVC\<ver>\bin\Hostx64\x64\1033\` があること）。
+- **ツール**: bison と flex は winflexbison 2.5.25 の `win_bison.exe` / `win_flex.exe` を `bison.exe` / `flex.exe` の名前でも置く。
+  gperf は `winget install oss-winget.gperf` で入れる。perl は Git for Windows のもの（上の PATH の末尾）でよく、無いと opus の一部の最適化が外れた旨の警告が configure に出る。
+- **入れかた**: `<出力先>` の中身を `%QTDIR%` へ上書きコピーする。公式に戻せるよう、上書きされるファイルを先に退避しておく。
+  Qt を更新すると、上書きしたファイルは公式のものに戻る。
+- **入れ替えたら vanilla を再ビルドし、package も作り直す。** エンジンの DLL は package に配置される。
+- **確かめかた**: vanilla の Qt WebEngine のビューで `document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"')` が
+  `probably` なら H.264 入り、空文字なら入っていない。
+- **画面のちらつき**: 自分でビルドした Qt WebEngine を Direct3D 11 で動かすと、動画の再生やスクロールのときに黒いボックスが並ぶ、
+  または画面の半分が黒くなることがある。OpenGL では消える。設定画面の「描画とエンジン」にある「描画 API（WebEngineView）」で選ぶ（Windows の既定は `OpenGL`）。
 
 ### WebView2 SDK（任意。Windows x64 のみ）
 
@@ -226,7 +159,7 @@ vanilla-build/
 - **リポジトリ内に置くと、コードを探すたびに生成物が引っかかる。**
   `moc_*.cpp` や `*_autogen/` は本物のソースと同じ識別子を持つので、
   全文検索の結果が倍以上になり、実装かコピーかを毎回見分けることになる。
-- **`git add -A` が巻き込む。** 一度実際に起きた（HANDOVER.md の「6.」）。
+- **`git add -A` が巻き込む。** 一度実際に起きた。
   `.gitignore` の `build/` / `build-*/` は**その事故の名残として残してある**が、
   外に置いていれば `.gitignore` に頼る必要がそもそもない。
 - **設定とセッションは実行ファイルの隣の `data/` に作られる**ので、
@@ -250,8 +183,7 @@ cmake --build --preset release
 
 > **`VSLANG=1033` を入れておくこと**（`set VSLANG=1033`）。ninja がヘッダ依存を拾うのは
 > `cl.exe` の `Note: including file:` を読めたときだけで、**日本語の `cl.exe` は別の行を出す**。
-> 読めないと **ヘッダだけを直したときに何も作り直されない**（HANDOVER.md の
-> 「ビルド」に症状）。
+> 読めないと **ヘッダだけを直したときに何も作り直されない**。
 
 プリセットが置き場・ジェネレータ・ビルド種別を持っているので、
 **`-B` も `-G` も `-DCMAKE_BUILD_TYPE=` も `-DCMAKE_PREFIX_PATH=` も要らない**
@@ -268,7 +200,7 @@ cmake --build ..\vanilla-build\release
 - デバッグビルドは `cmake --preset debug`（プリセットを使わないなら
   `-DCMAKE_BUILD_TYPE=Debug`）。置き場は `..\vanilla-build\debug`。
 - 実行時に Qt の DLL が必要なので、`%QTDIR%\bin` に PATH を通したまま起動するか、
-  配布用ディレクトリを作る（Phase 4-2）。
+  配布用ディレクトリを作る（下の「配布物を作る」）。
 
 ### テストを走らせる
 
@@ -292,7 +224,7 @@ ctest --test-dir ..\vanilla-build\release --output-on-failure
 
 ### Qt Creator / VS Code
 
-`CMakeLists.txt` を開き、Qt 6.11 + MSVC 2022 のキットを選ぶだけでよい。
+`CMakeLists.txt` を開き、Qt 6.12 + MSVC 2022 のキットを選ぶだけでよい。
 **ビルドディレクトリは `../vanilla-build/` の下に向けること**（上の「ビルドディレクトリ」）。
 Qt Creator は既定でリポジトリ内の `build/` に作るので、キットを選んだあとに
 「ビルド設定」でシャドウビルドの場所を直すこと。
@@ -335,6 +267,7 @@ cmake --build ../vanilla-build/release
 
 WebEngine のビューのパスワードの保存は Qt D-Bus があれば入り、GNOME Keyring か KWallet に置く。
 libsecret を使わせるなら `sudo apt install libsecret-1-dev` も入れる（無くてもビルドは通る）。
+QuickWebEngine のビューで iframe の中のフォームも扱うには、Qt の `WebEngineQuickPrivate` モジュールとそのヘッダが要る（無ければメインフレームだけ）。apt の `qt6-webengine-dev` はヘッダを入れないので、メインフレームだけになる。
 
 `qt6-l10n-tools` は `lupdate` を持っている。Qt を自分で入れた場合は
 `-DCMAKE_PREFIX_PATH=$HOME/Qt/6.12.0/gcc_64` を足す。
@@ -400,7 +333,7 @@ cmake --build ../vanilla-build/release                                # .qm は�
 - UIでは `ViewNode` / ビューノードを `Tab` / タブと表示する。内部の型名・アクションID・
   設定キーは維持する。互換性のためアクション名と `tr()` のキーは元の
   `NewViewNode` / `OpenViewNode` / `NextView` / `PrevView` / `BuryView` / `DigView` 等を維持し、
-  タブ表記への変更は英日 `.ts` の訳だけで行う（2026-09-07 ユーザー訂正）。
+  タブ表記への変更は英日 `.ts` の訳だけで行う。
   既存の短い動詞と語順に合わせ、文章や括弧をキーへ持ち込まない。新規・複製は対象を明記し、
   複数の対象を扱う項目は「複製（タブ/ディレクトリ）」のように併記する。
   アプリケーションメニューは「タブ一覧」、前後移動・最前面/最背面への移動も「タブ」と表示する。
@@ -431,16 +364,8 @@ cmake --install ..\vanilla-build\release --prefix %BUILDROOT%\package
 `%BUILDROOT%` は `..\vanilla-build` の**絶対パス**（`--prefix` は相対だと止まる。下の注意）。
 この文書では以後もその意味で使う。
 
-> **配る package は公式の QtWebEngine で作ること**（D-241 追記4）。開発機は
-> 自前ビルド（H.264 / AAC 入り）を入れていることがあり、**install はそのとき Qt に
-> 入っている方の DLL をそのまま配布物へ入れる**。作る前に
-> `.\scripts\swap-webengine.ps1 -To official` を通し、`Qt6WebEngineCore.dll` の
-> SHA256 が上の表の公式バイナリ（Qt 6.12.0 / QtWebEngine 6.140.0 では `475A605D…`）であることを確かめる。
-> 表の値は Qt か QtWebEngine を上げるたびに変わる（6.11.2 の公式は `D6995CE6…`、6.11.1 は `02FFF5F4…` だった）。
-> **自前ビルドには 2026-09-22 から vanilla のパッチ（`tools/patches/`）が入っている。配布物にパッチ済みの
-> QtWebEngine を入れない**（ユーザー方針 2026-09-22）: 配るのは差分だけで、リリースノートに
-> 「拡張の `web_accessible_resources`（Vimium の vomnibar・HUD）を出すには QtWebEngine にこのパッチが要る」と書く。
-> IME のパッチ（D-432）も同じ扱いで、「別プロセスの iframe（vomnibar など）で IME を使うにはこのパッチが要る」と書く。
+> **人に配る package は公式の QtWebEngine で作ること**（D-241 追記4）。install はそのとき Qt に
+> 入っている方の DLL をそのまま配布物へ入れるので、自分でビルドしたものを入れているなら先に公式へ戻す。
 
 Qt の入っていないマシンで動くディレクトリが1発でできる。中身は `windeployqt`（macOS では
 `macdeployqt`）が決めるので、こちらで DLL を並べる必要はない。**実測 426MB / 1600 ファイル**（2026-08-30、0.3.0 の配布物。FFmpeg 除外後、ライセンス通知込み）。
@@ -464,8 +389,8 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
   一度動かすとプロファイルが丸ごと残る。**実測で 229 ファイル / 100MB 増えた。**
   `temp/` も同じ。
   - **WebEngine のプロファイルだけは `data/` の外にできる**（D-099）——
-    `%APPDATA%/vanilla/QtWebEngine/<MD5(実行パス + id)>`。配布物には混ざらないので
-    消し忘れても配り物は汚れないが、**この機械には残る**。ハッシュに実行パスが
+    `%APPDATA%/vanilla/QtWebEngine/<MD5(実行パス + id)>`。配布物には混ざらないが、
+    **その exe を動かしたマシンには残る**。ハッシュに実行パスが
     入っているので、package の exe を試したぶんは package 専用のディレクトリになる。
 - `windeployqt` が `qtposition_nmea.dll` の依存（`Qt6SerialPort.dll`。Qt の
   インストールに入っていない）を解決できず警告を出す。位置情報プラグインは
@@ -489,25 +414,19 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
   - **配布用（既定）は入らない**: deploy に `--no-ffmpeg` と
     `--exclude-plugins ffmpegmediaplugin` が渡り、`plugins/multimedia/` に残るのは
     `windowsmediaplugin.dll` だけになる。
-  - **ローカル用（この機械から出さない package）は入れてよい**:
+  - **人に配らない、自分のマシンだけで使う package には入れてよい**:
     `cmake --preset release -DVANILLA_PACKAGE_FFMPEG=ON` で configure してから
-    install すると av* 5 DLL と `ffmpegmediaplugin.dll` が同梱され、
+    install すると av* の 5 つの DLL と `ffmpegmediaplugin.dll` が同梱され、
     **Qt Multimedia は FFmpeg バックエンドを選ぶ**（`LocalView` は WMF で
     再生できない形式もこちらで動く）。**キャッシュに残るので、配布物を作る前に
-    OFF へ戻すこと**（下の「リリース手順」0.）。エンジンの対応表:
-    ローカル = 自前 WebEngine ＋ FFmpeg あり、配布 = 公式 WebEngine ＋ FFmpeg なし。
-  - **置き場所の名前で種類が分かるようにする**（2026-10-08）: 配布用は `packageanilla-<版>`、
-    ローカル用は `packageanilla-<版>-patched-encoder-enabled-ffmpeg`（パッチ入りの自前 WebEngine と
-    H.264 / AAC、FFmpeg）。`package` の直下には入れない。ローカル用を作ったら、
-    `swap-webengine.ps1 -To official` と `-DVANILLA_PACKAGE_FFMPEG=OFF` で配布用の状態へ戻しておく
+    OFF へ戻すこと**。
 - **`vc_redist.x64.exe` が入るのは vcvars を通した環境だけ。** windeployqt は
   既定でコンパイラランタイムを配るが、置き場を `VCINSTALLDIR` から探すので、
   **素のシェルで install すると警告も出さずに落とす**（`--compiler-runtime` を
   明示したときだけ "VCINSTALLDIR is not set" と言う。`--dry-run` で
   VCINSTALLDIR の有無 × 既定 / `--compiler-runtime` の4通りを確認、2026-08-24）。
-  2026-08-24 の監査 prefix に無かったのはこれが原因で、8/13 の package には入っている。
   **配る package は必ず vcvars のシェルで作り、`vc_redist.x64.exe` の有無を
-  確かめること**（下の「リリース手順」）。
+  確かめること**。
   CMake は `--compiler-runtime` を明示して渡すが、**それで気づけるわけではない** ——
   2026-08-27 に Qt 6.11.1 で測り直したところ、`VCINSTALLDIR` の無いシェルでは
   明示しても何も言わず、`--no-compiler-runtime` との差も出なかった
@@ -516,9 +435,8 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
 - `qt.conf` は `windeployqt` が `Prefix = .` で書き出す。**リポジトリの `qt.conf` は同梱していない**
   （`Data = .` は `Prefix = .` に含まれるため）。
 
-配布の方針は D-241（zip、コード署名は保留で SHA-256 公開）。**0.3.0 は 2026-08-30 に
-この手順で公開した** —— 通しの手順は次の「リリース手順」。次版へ向けた課題は
-ROADMAP.md の「D」の印の項目。CI は当面入れない（D-016）。
+配布の方針は D-241（zip、コード署名は保留で SHA-256 公開）。
+CI は当面入れない（D-016）。
 
 ## Windows Sandbox で smoke test（2026-09-28）
 
@@ -534,132 +452,8 @@ WebView2 ランタイムは入っている。有効にするのは管理者の P
    止まるので、PowerShell で `Start-Process <デスクトップ>\vanilla\vc_redist.x64.exe -ArgumentList '/install','/quiet','/norestart' -Wait`。
 4. 見るもの: 起動、既定のビュー（`msedgewebview2.exe` の有無）、メニューの言語、設定の保存と再起動。
 
-Sandbox の表示言語は日本語の次に英語で、この機械（日本語だけ）では出ない翻訳の順の不具合が出た（D-460）。
+Sandbox の表示言語は日本語の次に英語で、日本語だけの Windows では起きない、翻訳を読み込む順の不具合が出た（D-460）。
 DirectComposition の使えない環境は作れない。
-
-## リリース手順（0.3.0 で実際に踏んだ手順、2026-08-30）
-
-公開は GitHub（github.com/rallentando/vanilla）への**スナップショット方式**（D-242）。
-私有リポジトリ（Bitbucket）の履歴は公開側に繋がない。順番は次のとおりで、
-**成果物はすべてタグのコミットから作る**。途中で私有側にコミットを足したら、タグを
-打ち直して package から作り直す（0.3.0 はそれを一度やった）。
-
-### 0. 出す前に確かめること
-
-- `VERSION` の版番号。exe の VersionInfo は `vanilla.rc` が `<VERSION>` を include して
-  同じ値になる。出したあと exe のプロパティで見る
-- `.ts` の未訳が英日とも 0（`grep -c 'type="unfinished"' translations/*.ts`）
-- `third_party/qt/NOTICE.txt` の Qt と Chromium の版が、ビルドに使う Qt と合っている
-  （食い違うと configure が warning）。WebView2 の通知は無いと configure が止まる
-- **QtWebEngine が公式ビルドであること**（上の「配布物を作る」の冒頭）
-- **release ツリーの `VANILLA_PACKAGE_FFMPEG` が OFF であること**（ローカル package 用に
-  ON にしてあることがある。`cmake --preset release -DVANILLA_PACKAGE_FFMPEG=OFF` で戻す。
-  D-241 追記6）
-- ROADMAP の「D」の印の項目に、その版で片づけると決めた項目が残っていないこと
-
-### 1. 私有側: タグと push
-
-```bat
-git tag 0.3.0
-git push origin master
-git push origin 0.3.0
-```
-
-タグは lightweight（0.2.x までと同じ形）。打ち直すときは `git tag -f 0.3.0 <commit>` と
-`git push --force origin 0.3.0`。既存の `0.2.2` は 2016 年の別履歴を指すので触らない。
-
-### 2. package と zip（vcvars のシェルで）
-
-```bat
-call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-set PATH=C:\Qt\Tools\CMake_64\bin;C:\Qt\6.12.0\msvc2022_64\bin;%PATH%
-for %I in (..\vanilla-build) do set BUILDROOT=%~fI
-cmake --build %BUILDROOT%\release
-ctest --test-dir %BUILDROOT%\release --output-on-failure
-rmdir /s /q %BUILDROOT%\package\vanilla-0.3.0
-cmake --install %BUILDROOT%\release --prefix %BUILDROOT%\package\vanilla-0.3.0
-cd /d %BUILDROOT%\package
-C:\Windows\System32\tar.exe -a -c -f ..\vanilla-0.3.0-x64.zip vanilla-0.3.0
-certutil -hashfile ..\vanilla-0.3.0-x64.zip SHA256
-```
-
-`for %I … set BUILDROOT=%~fI` は `..\vanilla-build` を絶対パスにする（`--prefix` が相対を断るため）。
-バッチファイルに書くなら `%%I`。
-
-- prefix を `package\vanilla-0.3.0` にするのは、zip の根に展開先ディレクトリを1つ持たせるため。
-  zip の名前は過去のリリースに合わせて `vanilla-<版>-x64.zip`
-- **zip は Windows 同梱の `tar.exe`（bsdtar）で作る。** .NET の
-  `ZipFile.CreateFromDirectory` はエントリ名の区切りが `\` になり（ZIP の仕様は `/`）、
-  Windows 以外の展開ツールで壊れる。Git Bash の GNU tar は zip を作れない。
-  作ったら `\` を含むエントリ数、FFmpeg の有無、`vc_redist.x64.exe`、`licenses/` の中身を数える
-- **zip はタイムスタンプを含むので、同じ手順で作り直すとハッシュが変わる。**
-  （余談だがこの文書のコードブロックでは行を `\` で継がない —— リポジトリは CRLF なので
-  Linux で `\` の直後に CR が来て継続にならず、2026-08-30 には継ぎの `\` が
-  文字どおりの `\r` に化けたまま公開された。1コマンド1行にする）
-  Release に上げた実物をそのまま配り、ノートの SHA-256 はその実物の値にする
-- package の exe を起動して試したなら `data/` `temp/` を消してから zip にする
-  （検証用の probe を置いたなら、それも）
-
-### 3. 公開ツリー: スナップショットと2コミット
-
-```bat
-python scripts\make-public-snapshot.py --dest ..\vanilla-gh --ref 0.3.0 ^
-    --report %BUILDROOT%\snapshot-report.txt
-```
-
-レポートの **`needs a human` と `must not ship` が 0** であること、除外一覧が想定どおり
-（AGENTS / CLAUDE / 内部 docs / `docs/relay/` / リリースノート / このスクリプト /
-WebView2 のヘッダ）であることを見る。`third_party/qt/` と `third_party/webview2/` の
-通知、`third_party/qtkeychain/`（ソースごと）、`docs/deodorant.zip` は出る。
-
-vanilla-gh のコミット作者は公開の履歴に合わせて `rallentando <materialismyearnings@gmail.com>`
-（vanilla-gh の `.git/config` に local で設定済み。0.3.0 の 2 コミットはマシン名のまま出た）。
-
-vanilla-gh では**コミットを2つに分ける**（0.2.2 までの作法）:
-
-1. **変更コミット** —— `VERSION` 以外の全部（`git add -A` して `git restore --staged VERSION`）。
-   メッセージは、触った領域を小文字で並べて `and periodic update.` で締める要約1行、
-   空行、`* …` の箇条書き（過去の版の本文と同じ形）。
-2. **リリースコミット** —— `VERSION` だけ。メッセージは版番号だけ（`0.3.0`）。
-   `RELEASE_NOTES.md` はリポジトリに置かない（ノートは Release の本文だけ）。
-
-どちらにも `Co-Authored-By:` を、その版に関わったモデルの数だけ（Claude Opus / Claude Fable / Codex CLI、日本語の校正に使ったなら Gemini も: `Gemini (gemini-3.1-pro, gemini-3.8-flash) <noreply@google.com>`）。
-Codex の行は上流の既定に合わせ `Codex CLI (<model>) <noreply@openai.com>`
-（このアドレスが GitHub 上の Codex bot に対応する）。
-
-```bat
-git tag 0.3.0
-git push origin master
-git push origin 0.3.0
-```
-
-### 4. GitHub Release
-
-本文は `docs/RELEASE_NOTES-<版>.md`（この側にだけ置く。公開ツリーには出ない）。
-形は過去のリリースに合わせ、**リリース名は空**（タグ名が見出しになる）、本文は英語の
-`## What's new in vanilla <版>.` ＋箇条書き。末尾に zip の名前と SHA-256、Credits。
-
-```powershell
-gh release create 0.3.0 -R rallentando/vanilla --verify-tag `
-    --notes-file docs\RELEASE_NOTES-0.3.0.md `
-    ..\vanilla-build\vanilla-0.3.0-x64.zip
-```
-
-- **`--title ""` を渡さないこと。** PowerShell 5.1 は空文字の引数を落とすので、
-  `--title` が次の `--notes-file` を題名として食い、本文が空になってノートの `.md` が
-  資産として上がる（0.3.0 で踏んだ）。題名を省けば gh が空にする。
-  直すなら `gh release delete-asset` で余計な資産を消し、
-  `gh api --method PATCH repos/rallentando/vanilla/releases/<id> --input body.json` で
-  `name` と `body` を書き直す。**`--input` の JSON は BOM 無し**（`Set-Content -Encoding utf8`
-  は BOM を付けて 400 になる。`[IO.File]::WriteAllText` に `UTF8Encoding($false)` を渡す）
-- 作ったら `gh release view 0.3.0 --json name,tagName,assets,body` で、名前が空、
-  資産が zip 1本、バイト数が手元と一致することを見る
-
-### 5. あとに
-
-- ROADMAP の「D」の印の項目を次版に向けたものへ書き換え、決定の記録（D-241 / D-242）に結果を追記する
-- `vanilla-build\package` と zip は次に作り直すまで残しておく（配った実物）
-- 引継ぎ資料の「まだ確かめていないこと」に、その版で見ていないもの（別環境の起動など）を書く
 
 ---
 
@@ -685,7 +479,7 @@ macOS / Linux では `AppLocalDataLocation` を使う。
 - **デバッグビルドが起動直後に Chromium の DCHECK で落ちる**ことがある
   （`DCHECK failed: used_count == used_items_`）。qmake が残っていた時期にも CMake と
   同じように起きたため、**ビルドシステムとは無関係**。
-  Release ビルドでは起きない。詳細は HANDOVER.md。
+  Release ビルドでは起きない。
 
 ---
 

@@ -83,6 +83,9 @@ static const Entry TheEntries[] = {
     { "(?:[dD]isplay)?[tT]rash[tT]ree",   "DisplayTrashTree",  Signal },
     { "[rR]elease[hH]idden[vV]iew",       "ReleaseHiddenView", Signal },
     { "(?:[oO]pen)?[cC]ommand(?:[lL]ine)?", "OpenCommand",     Signal },
+    { "[oO]pen[tT]ext[sS]eeker",          "OpenTextSeeker",    Signal },
+    { "[oO]pen[qQ]uery[eE]ditor",         "OpenQueryEditor",   Signal },
+    { "[oO]pen[uU]rl[eE]ditor",           "OpenUrlEditor",     Signal },
 
     { "[cC]opy",                          "Copy",                 Signal },
     { "[cC]ut",                           "Cut",                  Signal },
@@ -213,6 +216,8 @@ static const Entry TheEntries[] = {
     { "[dD]elete[rR]ight[nN]ode",                          "DeleteRightNode",                 Signal },
     { "[dD]elete[lL]eft[nN]ode",                           "DeleteLeftNode",                  Signal },
     { "[dD]elete[oO]ther[nN]ode",                          "DeleteOtherNode",                 Signal },
+    { "[cC]ut[nN]ode",                                     "CutNode",                         Signal },
+    { "[cC]opy[nN]ode",                                    "CopyNode",                        Signal },
     { "[pP]aste[nN]ode",                                   "PasteNode",                       Signal },
     { "[rR]estore[nN]ode",                                 "RestoreNode",                     Signal },
     { "[nN]ew[nN]ode",                                     "NewNode",                         Signal },
@@ -315,10 +320,64 @@ Kind Resolve(const QString &word, QString *action){
 
 #define COLLECT_SIGNAL_ACTION(ACTION) << QStringLiteral(#ACTION)
 
-bool IsSignalAction(const QString &action){
+static const QStringList &SignalActions(){
     static const QStringList actions = QStringList()
         COMMANDMAP_FOR_EACH_SIGNAL_ACTION(COLLECT_SIGNAL_ACTION);
-    return actions.contains(action);
+    return actions;
+}
+
+QStringList ArgumentCommands(){
+    return QStringList()
+        << QStringLiteral("open ") << QStringLiteral("load ") << QStringLiteral("query ")
+        << QStringLiteral("download ") << QStringLiteral("search ") << QStringLiteral("set ")
+        << QStringLiteral("unset ") << QStringLiteral("key ") << QStringLiteral("blank");
+}
+
+QStringList FirstCommands(){
+    return QStringList() << QStringLiteral("NewViewNode") << QStringLiteral("OpenSettings");
+}
+
+QStringList AllCommands(){
+    static const QStringList names = []{
+        QStringList list = ArgumentCommands();
+        foreach(const QString &action, SignalActions()){
+            QString resolved;
+            if(Resolve(action, &resolved) == Signal && resolved == action) list << action;
+        }
+        return list;
+    }();
+    return names;
+}
+
+QStringList Suggestions(const QString &typed, int limit,
+                        const std::function<QString(const QString&)> &label,
+                        const QStringList &named){
+    static const QRegularExpression space(QStringLiteral("\\s+"),
+                                          QRegularExpression::UseUnicodePropertiesOption);
+    const QStringList words = typed.split(space, Qt::SkipEmptyParts);
+    if(words.isEmpty()) return QStringList();
+
+    QStringList begins, holds, labelled;
+    foreach(const QString &name, named + AllCommands()){
+        bool inName = true, found = true;
+        for(const QString &word : words){
+            if(name.contains(word, Qt::CaseInsensitive)) continue;
+            inName = false;
+            if(!label || !label(name.trimmed()).contains(word, Qt::CaseInsensitive)){
+                found = false;
+                break;
+            }
+        }
+        if(!found) continue;
+        if(!inName) labelled << name;
+        else if(name.startsWith(words.first(), Qt::CaseInsensitive)) begins << name;
+        else holds << name;
+    }
+    return (begins + holds + labelled).mid(0, limit);
+}
+
+bool IsSignalAction(const QString &action){
+    return SignalActions().contains(action);
 }
 
 }

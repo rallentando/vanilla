@@ -47,6 +47,9 @@ extern EdgeProfileCoordinator s_Profiles;
 
 extern EdgeDragOutLedger s_DragOut;
 
+bool EdgeInspectorTraceOn();
+void EdgeInputTrace(const char *format, ...);
+
 class EdgeEnvironment : public QObject {
 public:
     static EdgeEnvironment *Instance();
@@ -55,6 +58,9 @@ public:
     void Forget(int token);
 
     ICoreWebView2Environment *GetEnvironment() const { return m_Environment.Get();}
+
+    QObject *BrowserExit();
+    static void ForgetMissingProfiles();
 
     static QString UserDataFolder();
     static void PinExtensionCopies();
@@ -67,6 +73,9 @@ private:
 
     EdgeEnvironmentState m_State;
     ComPtr<ICoreWebView2Environment> m_Environment;
+    bool HookBrowserExit();
+    QList<QPointer<QObject>> m_ExitMarks;
+    bool m_ExitHooked = false;
     QHash<int, QPointer<EdgeWebView>> m_Waiters;
 };
 
@@ -148,6 +157,8 @@ struct EdgeWebView::Private {
 
     bool m_KeptAfterRelease;
 
+    quint64 m_LeftOutOfSaves;
+
     EdgeAbortLatch m_Aborts;
 
     EdgeDocumentCoordinator m_Document;
@@ -225,6 +236,7 @@ struct EdgeWebView::Private {
         , m_HasFocus(false)
         , m_Downloads(EdgeDownloadCloseLedger())
         , m_KeptAfterRelease(false)
+        , m_LeftOutOfSaves(0)
         , m_ProfileName(QString())
         , m_PrivateMode(false)
         , m_ActualProfileName(QString())

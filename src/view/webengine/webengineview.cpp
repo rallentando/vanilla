@@ -75,6 +75,10 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
             this, SLOT(OnIconChanged(const QIcon&)));
     connect(page(), &QWebEnginePage::zoomFactorChanged,
             this, [this](qreal factor){ m_ReportedZoomFactor = factor; });
+    connect(page(), &QWebEnginePage::recentlyAudibleChanged,
+            this, [](bool){ TreeBank::TabsLookChanged();});
+    connect(page(), &QWebEnginePage::audioMutedChanged,
+            this, [](bool){ TreeBank::TabsLookChanged();});
 
 #ifdef MEDIATIME
     connect(page(), &QWebEnginePage::recentlyAudibleChanged,
@@ -193,75 +197,23 @@ void WebEngineView::Connect(TreeBank *tb){
     View::Connect(tb);
 
     if(!tb || !page()) return;
-
-    connect(this, SIGNAL(titleChanged(const QString&)),
-            tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    if(Notifier *notifier = tb->GetNotifier()){
-        connect(this, SIGNAL(statusBarMessage(const QString&)),
-                notifier, SLOT(SetStatus(const QString&)));
-        connect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                notifier, SLOT(SetStatus(const QString&, const QString&)));
-        connect(page(), SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
-                notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
-
-        connect(this, SIGNAL(ScrollChanged(QPointF)),
-                notifier, SLOT(SetScroll(QPointF)));
-        connect(notifier, SIGNAL(ScrollRequest(QPointF)),
-                this, SLOT(SetScroll(QPointF)));
-    }
-    if(Receiver *receiver = tb->GetReceiver()){
-        connect(receiver, SIGNAL(OpenBookmarklet(const QString&)),
-                this, SLOT(Load(const QString&)));
-        connect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                this, SLOT(SeekText(const QString&, View::FindFlags)));
-        connect(receiver, SIGNAL(KeyEvent(QString)),
-                this, SLOT(KeyEvent(QString)));
-
-        connect(receiver, SIGNAL(SuggestRequest(const QUrl&)),
-                page(), SLOT(DownloadSuggest(const QUrl&)));
-        connect(page(), SIGNAL(SuggestResult(const QByteArray&)),
-                receiver, SLOT(DisplaySuggest(const QByteArray&)));
-    }
+    WireWebView(this, page(), tb, true);
 }
 
 void WebEngineView::Disconnect(TreeBank *tb){
     View::Disconnect(tb);
 
     if(!tb || !page()) return;
-
-    disconnect(this, SIGNAL(titleChanged(const QString&)),
-               tb->parent(), SLOT(SetWindowTitle(const QString&)));
-    if(Notifier *notifier = tb->GetNotifier()){
-        disconnect(this, SIGNAL(statusBarMessage(const QString&)),
-                   notifier, SLOT(SetStatus(const QString&)));
-        disconnect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                   notifier, SLOT(SetStatus(const QString&, const QString&)));
-        disconnect(page(), SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
-                   notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
-
-        disconnect(this, SIGNAL(ScrollChanged(QPointF)),
-                   notifier, SLOT(SetScroll(QPointF)));
-        disconnect(notifier, SIGNAL(ScrollRequest(QPointF)),
-                   this, SLOT(SetScroll(QPointF)));
-    }
-    if(Receiver *receiver = tb->GetReceiver()){
-        disconnect(receiver, SIGNAL(OpenBookmarklet(const QString&)),
-                   this, SLOT(Load(const QString&)));
-        disconnect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                   this, SLOT(SeekText(const QString&, View::FindFlags)));
-        disconnect(receiver, SIGNAL(KeyEvent(QString)),
-                   this, SLOT(KeyEvent(QString)));
-
-        disconnect(receiver, SIGNAL(SuggestRequest(const QUrl&)),
-                   page(), SLOT(DownloadSuggest(const QUrl&)));
-        disconnect(page(), SIGNAL(SuggestResult(const QByteArray&)),
-                   receiver, SLOT(DisplaySuggest(const QByteArray&)));
-    }
+    WireWebView(this, page(), tb, false);
 }
 
 bool WebEngineView::IsOffTheRecord(){
     if(page() && page()->profile()) return page()->profile()->isOffTheRecord();
     return View::IsOffTheRecord();
+}
+
+QObject *WebEngineView::EngineProfile(){
+    return page() ? page()->profile() : nullptr;
 }
 
 void WebEngineView::ApplySpecificSettings(QStringList set){
@@ -308,7 +260,7 @@ void WebEngineView::AddSpellCheckMenu(QMenu *menu){
     const QStringList suggestions = request->spellCheckerSuggestions();
     if(suggestions.isEmpty()) return;
 
-    foreach(const QString &suggestion, suggestions){
+    for(const QString &suggestion : suggestions){
         QAction *action = menu->addAction(suggestion);
         connect(action, &QAction::triggered, this, [this, suggestion](){
             if(page()) page()->replaceMisspelledWord(suggestion);
@@ -450,19 +402,7 @@ void WebEngineView::CallWithScroll(PointFCallBack callBack){
 void WebEngineView::SetScrollBarState(){
     if(!page()) return;
     page()->runJavaScript
-        (GetScrollBarStateJsCode(), [this](QVariant var){
-            Q_UNUSED(this)
-            if(!var.isValid()) return;
-            QVariantList list = var.toList();
-            int hmax = list[0].toInt();
-            int vmax = list[1].toInt();
-            if(hmax < 0) hmax = 0;
-            if(vmax < 0) vmax = 0;
-            if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
-            else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
-            else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
-            else             m_ScrollBarState = NoScrollBarEnabled;
-        });
+        (GetScrollBarStateJsCode(), [](QVariant var){ SetScrollBarStateFrom(var);});
 }
 
 QPointF WebEngineView::GetScroll(){
@@ -597,6 +537,7 @@ void WebEngineView::SetTextValue(QString xpath, QString text){
 
 void WebEngineView::OnIconChanged(const QIcon &icon){
     Application::RegisterIcon(url().host(), icon, Page::OffTheRecord(this));
+    TreeBank::TabsLookChanged();
 }
 
 void WebEngineView::Copy(){
@@ -882,224 +823,37 @@ void WebEngineView::contextMenuEvent(QContextMenuEvent *ev){
 }
 
 void WebEngineView::mouseMoveEvent(QMouseEvent *ev){
-    if(!m_TreeBank) return;
+    MoveHooks hooks;
+    hooks.dragParent = this;
+    hooks.forward = [this](QMouseEvent *move){ QWebEngineView::mouseMoveEvent(move);};
+    hooks.networkAccessManager = [this](){ return static_cast<NetworkAccessManager*>(page()->networkAccessManager());};
+    hooks.status = [this](){
+        emit statusBarMessage(GestureStatusLine(m_RightGestureMap, tr("NoAction")));
+    };
+    hooks.acceptForwardedWhileDragging = true;
+    MouseMoveWithGestures(ev, hooks);
+}
 
-    Application::SetCurrentWindow(m_TreeBank->GetMainWindow());
-
-    if(m_DragStarted){
-        QWebEngineView::mouseMoveEvent(ev);
-        ev->setAccepted(true);
-        return;
-    }
-    if(m_EnableRightGestureLocal &&
-       ev->buttons() & Qt::RightButton &&
-       !m_GestureStartedPos.isNull()){
-
-        GestureMoved(ev->pos());
-        QString gesture = GestureToString(m_Gesture);
-        QString action =
-            !m_RightGestureMap.contains(gesture)
-              ? tr("NoAction")
-            : Page::IsValidAction(m_RightGestureMap[gesture])
-              ? Action(Page::StringToAction(m_RightGestureMap[gesture]))->text()
-            : m_RightGestureMap[gesture];
-        emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
-        ev->setAccepted(false);
-        return;
-    }
-
-    int scrollBarWidth = Application::style()->pixelMetric(QStyle::PM_ScrollBarExtent);
-    bool horizontal = m_ScrollBarState == BothScrollBarEnabled
-        ||            m_ScrollBarState == HorizontalScrollBarEnabled;
-    bool vertical   = m_ScrollBarState == BothScrollBarEnabled
-        ||            m_ScrollBarState == VerticalScrollBarEnabled;
-    QRect touchableRect =
-        QRect(QPoint(),
-              size() - QSize(vertical   ? scrollBarWidth : 0,
-                             horizontal ? scrollBarWidth : 0));
-
-    if(ev->buttons() & Qt::LeftButton &&
-       !m_GestureStartedPos.isNull() &&
-       touchableRect.contains(m_GestureStartedPos) &&
-       (m_ClickedElement &&
-        !m_ClickedElement->IsNull() &&
-        !m_ClickedElement->IsEditableElement())){
-
-        if(QLineF(ev->pos(), m_GestureStartedPos).length() < 2){
-            QWebEngineView::mouseMoveEvent(ev);
-            ev->setAccepted(false);
-            return;
-        }
-        QDrag *drag = new QDrag(this);
-
-        Application::ClearTemporaryDirectory();
-
-        NetworkAccessManager *nam =
-            static_cast<NetworkAccessManager*>(page()->networkAccessManager());
-
-        QMimeData *mime = m_HadSelection
-            ? CreateMimeDataFromSelection(nam)
-            : CreateMimeDataFromElement(nam);
-
-        if(!mime){
-            drag->deleteLater();
-
-            GestureAborted();
-            QWebEngineView::mouseMoveEvent(ev);
-            ev->setAccepted(false);
-            return;
-        }
-
-        QPixmap pixmap = m_HadSelection
-            ? CreatePixmapFromSelection()
-            : CreatePixmapFromElement();
-
-        QRect rect = m_HadSelection
-            ? m_SelectionRegion.boundingRect()
-            : m_ClickedElement->Rectangle().intersected(QRect(QPoint(), size()));
-        QPoint pos = ev->pos() - rect.topLeft();
-
-        if(pixmap.width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
-           pixmap.height() > MAX_DRAGGING_PIXMAP_HEIGHT){
-
-            pos /= qMax(static_cast<float>(pixmap.width()) /
-                        static_cast<float>(MAX_DRAGGING_PIXMAP_WIDTH),
-                        static_cast<float>(pixmap.height()) /
-                        static_cast<float>(MAX_DRAGGING_PIXMAP_HEIGHT));
-            pixmap = pixmap.scaled(MAX_DRAGGING_PIXMAP_WIDTH,
-                                   MAX_DRAGGING_PIXMAP_HEIGHT,
-                                   Qt::KeepAspectRatio,
-                                   Qt::SmoothTransformation);
-        }
-
-        if(m_HadSelection){
-            mime->setImageData(pixmap.toImage());
-        } else {
-            QPixmap element = m_ClickedElement->Pixmap();
-            if(element.isNull())
-                mime->setImageData(pixmap.toImage());
-            else
-                mime->setImageData(element.toImage());
-        }
-        if(m_EnableDragGestureLocal){
-            GestureMoved(ev->pos());
-        } else {
-            GestureAborted();
-        }
-        m_DragStarted = true;
-        drag->setMimeData(mime);
-        drag->setPixmap(pixmap);
-        drag->setHotSpot(pos);
-        {
-            View::DragOutScope dragging;
-            drag->exec(Qt::CopyAction | Qt::MoveAction);
-        }
-        drag->deleteLater();
-        ev->setAccepted(true);
-    } else {
-        GestureAborted();
-        QWebEngineView::mouseMoveEvent(ev);
-        ev->setAccepted(false);
-    }
+View::ButtonHooks WebEngineView::Buttons(){
+    ButtonHooks hooks;
+    hooks.pressToEngine = [this](QMouseEvent *ev){ QWebEngineView::mousePressEvent(ev);};
+    hooks.releaseToEngine = [this](QMouseEvent *ev){ QWebEngineView::mouseReleaseEvent(ev);};
+    hooks.doubleClickToEngine = [this](QMouseEvent *ev){ QWebEngineView::mouseDoubleClickEvent(ev);};
+    hooks.acceptForwarded = false;
+    hooks.clearStatus = [this](){ emit statusBarMessage(QString());};
+    return hooks;
 }
 
 void WebEngineView::mousePressEvent(QMouseEvent *ev){
-    QString mouse;
-
-    Application::AddModifiersToString(mouse, ev->modifiers());
-    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
-    Application::AddMouseButtonToString(mouse, ev->button());
-
-    if(m_MouseMap.contains(mouse)){
-
-        QString str = m_MouseMap[mouse];
-        if(!str.isEmpty()){
-            if(!View::TriggerAction(str, ev->pos())){
-                m_SpentButtons.Press(ev->button(), false);
-                ev->setAccepted(false);
-                return;
-            }
-            m_SpentButtons.Press(ev->button(), true);
-            GestureAborted();
-            ev->setAccepted(true);
-            return;
-        }
-    }
-
-    m_SpentButtons.Press(ev->button(), false);
-    GestureStarted(ev->pos());
-    QWebEngineView::mousePressEvent(ev);
-    ev->setAccepted(false);
+    MousePressWithMap(ev, Buttons());
 }
 
 void WebEngineView::mouseReleaseEvent(QMouseEvent *ev){
-    emit statusBarMessage(QString());
-
-    if(m_SpentButtons.Settle(ev->button())){
-        ev->setAccepted(true);
-        return;
-    }
-
-    if(m_DragStarted){
-        m_DragStarted = false;
-        ev->setAccepted(true);
-        return;
-    }
-
-    QUrl link = m_ClickedElement ? m_ClickedElement->LinkUrl() : QUrl();
-
-    if(!link.isEmpty() &&
-       m_Gesture.isEmpty() &&
-       (ev->button() == Qt::LeftButton ||
-        ev->button() == Qt::MiddleButton)){
-
-        QNetworkRequest req(link);
-        req.setRawHeader("Referer", url().toEncoded());
-
-        if(Application::HasShiftModifier(ev) ||
-           Application::HasCtrlModifier(ev) ||
-           ev->button() == Qt::MiddleButton){
-
-            GestureAborted();
-            m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
-            ev->setAccepted(true);
-            return;
-
-        }
-    }
-
-    if(ev->button() == Qt::RightButton){
-
-        if(!m_Gesture.isEmpty()){
-            GestureFinished(ev->pos(), ev->button());
-        } else if(!m_GestureStartedPos.isNull()){
-            ev->setAccepted(false);
-            return;
-        }
-        ev->setAccepted(true);
-        return;
-    }
-
-    if(ev->button() == Qt::LeftButton && !m_Gesture.isEmpty())
-        ;
-    else
-        GestureAborted();
-
-    QWebEngineView::mouseReleaseEvent(ev);
-    ev->setAccepted(false);
+    MouseReleaseWithGestures(ev, Buttons());
 }
 
 void WebEngineView::mouseDoubleClickEvent(QMouseEvent *ev){
-    QString mouse;
-    Application::AddModifiersToString(mouse, ev->modifiers());
-    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
-    Application::AddMouseButtonToString(mouse, ev->button());
-    if(m_MouseMap.contains(mouse) && !m_MouseMap[mouse].isEmpty()){
-        mousePressEvent(ev);
-        return;
-    }
-    QWebEngineView::mouseDoubleClickEvent(ev);
-    ev->setAccepted(false);
+    MouseDoubleClickWithMap(ev, Buttons());
 }
 
 void WebEngineView::dragEnterEvent(QDragEnterEvent *ev){
@@ -1114,14 +868,7 @@ void WebEngineView::dragMoveEvent(QDragMoveEvent *ev){
     if(m_EnableDragGestureLocal && !m_GestureStartedPos.isNull()){
 
         GestureMoved(ev->position().toPoint());
-        QString gesture = GestureToString(m_Gesture);
-        QString action =
-            !m_DragGestureMap.contains(gesture)
-              ? tr("NoAction")
-            : Page::IsValidAction(m_DragGestureMap[gesture])
-              ? Action(Page::StringToAction(m_DragGestureMap[gesture]))->text()
-            : m_DragGestureMap[gesture];
-        emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
+        emit statusBarMessage(GestureStatusLine(m_DragGestureMap, tr("NoAction")));
     }
     QWebEngineView::dragMoveEvent(ev);
     ev->setAccepted(true);
@@ -1135,7 +882,7 @@ void WebEngineView::dropEvent(QDropEvent *ev){
     QString text = ev->mimeData()->text();
     QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
 
-    foreach(QUrl u, urls){ if(u.isLocalFile()) isLocal = true;}
+    for(QUrl u : std::as_const(urls)){ if(u.isLocalFile()) isLocal = true;}
 
     if(text.isEmpty() && !urls.isEmpty()){
         foreach(QUrl u, urls){
@@ -1215,27 +962,10 @@ void WebEngineView::EngineWheel(QWheelEvent *ev){
 }
 
 void WebEngineView::WheelEvent(QWheelEvent *ev){
-    if(ev->source() != Qt::MouseEventSynthesizedBySystem){
-        QString wheel;
-        bool up = Application::WheelWentUp(ev);
-
-        Application::AddModifiersToString(wheel, ev->modifiers());
-        Application::AddMouseButtonsToString(wheel, ev->buttons());
-        Application::AddWheelDirectionToString(wheel, up);
-
-        if(m_MouseMap.contains(wheel)){
-            QString str = m_MouseMap[wheel];
-            if(!str.isEmpty()){
-                GestureAborted();
-                if(ev->buttons() & Qt::RightButton)
-                    View::ConsumeRightButton();
-                View::TriggerAction(str, mapFromGlobal(ev->globalPosition()));
-            }
-            ev->setAccepted(true);
-            return;
-        }
-    }
-    EngineWheel(ev);
+    WheelHooks hooks;
+    hooks.toEngine = [this](QWheelEvent *wheel){ EngineWheel(wheel);};
+    hooks.actionPos = [this](QWheelEvent *wheel){ return QPointF(mapFromGlobal(wheel->globalPosition()));};
+    WheelWithMap(ev, hooks);
 }
 
 void WebEngineView::focusInEvent(QFocusEvent *ev){
@@ -1282,9 +1012,6 @@ void WebEngineView::CallWithFoundElements(Page::FindElementsOption option,
     page()->runJavaScript
         (FindElementsJsCode(option), [this, callBack](QVariant var){
             if(!var.isValid()) return callBack(SharedWebElementList());
-            QVariantList list = var.toMap().values();
-            SharedWebElementList result;
-
             MainWindow *win = Application::GetCurrentWindow();
             QSize s =
                 m_TreeBank ? m_TreeBank->ViewSize() :
@@ -1292,15 +1019,7 @@ void WebEngineView::CallWithFoundElements(Page::FindElementsOption option,
                 !size().isEmpty() ? size() :
                 DEFAULT_WINDOW_SIZE;
             QRect viewport = QRect(QPoint(), s);
-
-            for(int i = 0; i < list.length(); i++){
-                std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
-                *e = JsWebElement(this, list[i]);
-                if(!viewport.intersects(e->Rectangle()))
-                    e->SetRectangle(QRect());
-                result << e;
-            }
-            callBack(result);
+            callBack(ElementsFrom(this, var, viewport));
         });
 }
 
@@ -1364,18 +1083,7 @@ void WebEngineView::CallWithSelectionRegion(RegionCallBack callBack){
     QRect viewport = QRect(QPoint(), size());
     page()->runJavaScript
         (SelectionRegionJsCode(), [viewport, callBack](QVariant var){
-            if(!var.isValid() || !var.canConvert<QVariantMap>())
-                return callBack(QRegion());
-            QRegion region;
-            QVariantMap map = var.toMap();
-            foreach(QString key, map.keys()){
-                QVariantMap m = map[key].toMap();
-                region |= QRect(m["x"].toInt(),
-                                m["y"].toInt(),
-                                m["width"].toInt(),
-                                m["height"].toInt()).intersected(viewport);
-            }
-            callBack(region);
+            callBack(SelectionRegionFrom(var, viewport));
         });
 }
 

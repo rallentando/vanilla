@@ -17,7 +17,7 @@ public:
         setObjectName(QStringLiteral("MenuKeys::Mute"));
         action->installEventFilter(this);
     }
-    bool eventFilter(QObject *, QEvent *ev) Q_DECL_OVERRIDE {
+    bool eventFilter(QObject *, QEvent *ev) override {
         if(ev->type() != QEvent::Shortcut) return false;
         ev->accept();
         return true;

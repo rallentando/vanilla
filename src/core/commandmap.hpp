@@ -4,7 +4,10 @@
 #include "switch.hpp"
 
 #include <QString>
+#include <QStringList>
 #include <QVector>
+
+#include <functional>
 
 #define COMMANDMAP_FOR_EACH_SIGNAL_ACTION(F) \
     F(Up) F(Down) F(Right) F(Left) \
@@ -28,7 +31,8 @@
     F(SixthView) F(SeventhView) F(EighthView) F(NinthView) \
     F(TenthView) F(LastView) F(NewViewNode) F(CloneViewNode) \
     F(MakeLocalNode) F(DisplayAccessKey) F(DisplayViewTree) F(DisplayTrashTree) \
-    F(ReleaseHiddenView) F(OpenCommand) F(Copy) F(Cut) F(Paste) \
+    F(ReleaseHiddenView) F(OpenCommand) F(OpenTextSeeker) F(OpenQueryEditor) F(OpenUrlEditor) \
+    F(Copy) F(Cut) F(Paste) \
     F(Undo) F(Redo) F(SelectAll) F(Unselect) \
     F(Reload) F(ReloadAndBypassCache) F(Stop) F(StopAndUnselect) \
     F(Print) F(Save) F(ZoomIn) F(ZoomOut) \
@@ -36,7 +40,7 @@
     F(CopyTitle) F(CopyPageAsLink) F(CopySelectedHtml) F(OpenWithDefault) \
     F(Deactivate) F(Refresh) F(RefreshNoScroll) F(OpenNode) \
     F(OpenNodeOnNewWindow) F(DeleteNode) F(DeleteRightNode) F(DeleteLeftNode) \
-    F(DeleteOtherNode) F(PasteNode) F(RestoreNode) F(NewNode) \
+    F(DeleteOtherNode) F(CutNode) F(CopyNode) F(PasteNode) F(RestoreNode) F(NewNode) \
     F(CloneNode) F(DownDirectory) F(MakeDirectory) F(MakeDirectoryWithSelectedNode) \
     F(MakeDirectoryWithSameDomainNode) F(RenameNode) F(CopyNodeUrl) F(CopyNodeTitle) \
     F(CopyNodeAsLink) F(OpenNodeWithDefault) F(ToggleTrash) F(ScrollUp) \
@@ -84,6 +88,15 @@ const QVector<Entry> &Entries();
 Kind Resolve(const QString &word, QString *action = nullptr);
 
 bool IsSignalAction(const QString &action);
+
+QStringList ArgumentCommands();
+
+QStringList FirstCommands();
+QStringList AllCommands();
+
+QStringList Suggestions(const QString &typed, int limit,
+                        const std::function<QString(const QString&)> &label,
+                        const QStringList &named = QStringList());
 
 }
 

@@ -10,6 +10,11 @@
 #include "settingspage.hpp"
 #include "directorypage.hpp"
 #include "treebank.hpp"
+#include "permissiontable.hpp"
+
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include "lightnode.hpp"
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -36,6 +41,18 @@ private:
     }
 
 private slots:
+    void aKeyBeingRecordedIsSaidToTheBackends(){
+        const QUrl url(QStringLiteral("vanilla://settings/api/input-recording"));
+        const QUrl initiator = VanillaPage::SettingsUrl();
+        QVERIFY(!VanillaPage::IsRecordingKey());
+        QCOMPARE(VanillaPage::Answer(url, QByteArrayLiteral("GET"), QByteArray(), initiator).m_Status, 403);
+        QVERIFY(!VanillaPage::IsRecordingKey());
+        VanillaPage::Answer(url, QByteArrayLiteral("POST"), "{\"on\":true}", initiator);
+        QVERIFY(VanillaPage::IsRecordingKey());
+        VanillaPage::Answer(url, QByteArrayLiteral("POST"), "{\"on\":false}", initiator);
+        QVERIFY(!VanillaPage::IsRecordingKey());
+    }
+
     void initTestCase(){ TestSupport::SilenceDebugOutput();}
 
     void onlyTheTwoPagesAreThisSchemes();
@@ -171,6 +188,18 @@ void tst_vanillapage::everyEndpointTakesOneMethodAndNoOther(){
          VanillaPage::SettingsUrl());
     QCOMPARE(remove.m_Status, 200);
     QVERIFY(remove.m_UserInteraction == VanillaPageResponse::UserInteraction::Deferred);
+    QCOMPARE(Get(Settings(QStringLiteral("/api/passwords-never-remove")),
+                 VanillaPage::SettingsUrl()).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/passwords-never-remove")),
+                  QByteArrayLiteral("{\"space\":\"s\",\"origin\":\"https://a.example\"}"),
+                  QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+    QVERIFY(Post(Settings(QStringLiteral("/api/passwords-never-remove")),
+                 QByteArrayLiteral("{\"space\":\"s\",\"origin\":\"https://a.example\"}"),
+                 VanillaPage::SettingsUrl()).m_UserInteraction ==
+            VanillaPageResponse::UserInteraction::Deferred);
+    QVERIFY(Post(Settings(QStringLiteral("/api/passwords-never-remove")),
+                 QByteArrayLiteral("{\"space\":\"s\",\"origin\":\"\"}"),
+                 VanillaPage::SettingsUrl()).m_Body.contains("\"error\""));
     const VanillaPageResponse removeAll = Post
         (Settings(QStringLiteral("/api/passwords-remove-all")), QByteArrayLiteral("{}"),
          VanillaPage::SettingsUrl());
@@ -190,6 +219,20 @@ void tst_vanillapage::everyEndpointTakesOneMethodAndNoOther(){
     QCOMPARE(permissions.m_Status, 200);
     QVERIFY(permissions.m_Body.contains("\"entries\""));
     QVERIFY(permissions.m_Body.contains("\"notifications\""));
+    QVERIFY(permissions.m_Body.contains("\"kinds\":[\"notifications\",\"geolocation\",\"microphone\",\"camera\""));
+    {
+        const QJsonArray kinds = QJsonDocument::fromJson(permissions.m_Body).object()
+            .value(QStringLiteral("kinds")).toArray();
+        const int edge = kinds.toVariantList().indexOf(QStringLiteral("clipboard-read"));
+        const int engine = kinds.toVariantList().indexOf(QStringLiteral("clipboard"));
+        QVERIFY(edge != -1 && engine != -1);
+        QCOMPARE(kinds.size(), PermissionTable::Kinds().size());
+#ifdef EDGEWEBVIEW
+        QVERIFY(edge < engine);
+#else
+        QVERIFY(engine < edge);
+#endif
+    }
     const VanillaPageResponse setOne = Post
         (Settings(QStringLiteral("/api/permissions-set")),
          QByteArrayLiteral("{\"origin\":\"https://a.example\",\"kind\":\"camera\",\"state\":\"block\"}"),
@@ -206,6 +249,23 @@ void tst_vanillapage::everyEndpointTakesOneMethodAndNoOther(){
         QVERIFY(!refused.NeedsUserInteraction());
         QVERIFY(refused.m_Body.contains("\"error\""));
     }
+    QVERIFY(Post(Settings(QStringLiteral("/api/permissions-set")),
+                 QByteArrayLiteral("{\"site\":\"A.example/x\",\"kind\":\"camera\",\"state\":\"allow\"}"),
+                 VanillaPage::SettingsUrl()).m_UserInteraction ==
+            VanillaPageResponse::UserInteraction::Deferred);
+    for(const QByteArray &wrong : {
+            QByteArrayLiteral("{\"site\":\"ftp://a.example\",\"kind\":\"camera\",\"state\":\"allow\"}"),
+            QByteArrayLiteral("{\"site\":\"\",\"kind\":\"camera\",\"state\":\"allow\"}"),
+            QByteArrayLiteral("{\"site\":\"a.example\",\"kind\":\"no-such\",\"state\":\"allow\"}"),
+            QByteArrayLiteral("{\"site\":\"a.example\",\"origin\":\"https://a.example\",\"kind\":\"camera\",\"state\":\"allow\"}")}){
+        const VanillaPageResponse refused = Post
+            (Settings(QStringLiteral("/api/permissions-set")), wrong, VanillaPage::SettingsUrl());
+        QVERIFY2(!refused.NeedsUserInteraction(), wrong.constData());
+        QVERIFY(refused.m_Body.contains("\"error\""));
+    }
+    QVERIFY(Post(Settings(QStringLiteral("/api/permissions-remove")),
+                 QByteArrayLiteral("{\"site\":\"a.example\",\"kind\":\"camera\"}"),
+                 VanillaPage::SettingsUrl()).m_Body.contains("\"error\""));
     QVERIFY(Post(Settings(QStringLiteral("/api/permissions-remove")),
                  QByteArrayLiteral("{\"origin\":\"https://a.example\",\"kind\":\"camera\"}"),
                  VanillaPage::SettingsUrl()).m_UserInteraction ==
@@ -345,7 +405,7 @@ void tst_vanillapage::aRequestFromSomewhereElseIsRefused(){
         << Settings(QStringLiteral("/")) << Settings(QStringLiteral("/settings.js"))
         << Settings(QStringLiteral("/settings.css")) << DirectoryPageUrl()
         << QUrl(DirectoryPageUrl().toString() + QStringLiteral("directory.js"));
-    foreach(const QUrl &document, documents){
+    for(const QUrl &document : documents){
         QCOMPARE(Get(document, stranger).m_Status, 403);
         QCOMPARE(Get(document, QUrl(QStringLiteral("null"))).m_Status, 403);
         QVERIFY2(Get(document).m_Status != 403, qPrintable(document.toString()));

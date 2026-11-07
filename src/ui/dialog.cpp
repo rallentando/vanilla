@@ -38,6 +38,7 @@ const ButtonSpec ButtonSpecs[] = {
     { Dialog::Block,  QT_TRANSLATE_NOOP("Dialog", "Block"),  true  },
     { Dialog::Yes,    QT_TRANSLATE_NOOP("Dialog", "Yes"),    true  },
     { Dialog::No,     QT_TRANSLATE_NOOP("Dialog", "No"),     false },
+    { Dialog::Never,  QT_TRANSLATE_NOOP("Dialog", "Never for this site"), false },
     { Dialog::Cancel, QT_TRANSLATE_NOOP("Dialog", "Cancel"), false },
     { Dialog::Open,   QT_TRANSLATE_NOOP("Dialog", "Open"),   true  },
     { Dialog::Close,  QT_TRANSLATE_NOOP("Dialog", "Close"),  false },
@@ -329,40 +330,6 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     return result;
 }
 
-int ModalDialog::GetInt(QString title, QString caption, int val, int min, int max, int step, bool *ok){
-    ModalDialog *dialog = new ModalDialog();
-    DialogIntSpinBox *intSpinBox = new DialogIntSpinBox(dialog);
-    intSpinBox->setValue(val);
-    intSpinBox->setRange(min, max);
-    intSpinBox->setSingleStep(step);
-    dialog->m_InputWidget = intSpinBox;
-    dialog->m_Title = title;
-    dialog->m_Caption = caption;
-    connect(intSpinBox, &DialogIntSpinBox::Returned, dialog, &ModalDialog::Returned);
-    connect(intSpinBox, &DialogIntSpinBox::Aborted,  dialog, &ModalDialog::Aborted);
-    bool result = dialog->Execute(intSpinBox);
-    if(ok) *ok = result;
-    if(result) return intSpinBox->value();
-    return 0;
-}
-
-double ModalDialog::GetDouble(QString title, QString caption, double val, double min, double max, int decimals, bool *ok){
-    ModalDialog *dialog = new ModalDialog();
-    DialogDoubleSpinBox *doubleSpinBox = new DialogDoubleSpinBox(dialog);
-    doubleSpinBox->setValue(val);
-    doubleSpinBox->setRange(min, max);
-    doubleSpinBox->setDecimals(decimals);
-    dialog->m_InputWidget = doubleSpinBox;
-    dialog->m_Title = title;
-    dialog->m_Caption = caption;
-    connect(doubleSpinBox, &DialogDoubleSpinBox::Returned, dialog, &ModalDialog::Returned);
-    connect(doubleSpinBox, &DialogDoubleSpinBox::Aborted,  dialog, &ModalDialog::Aborted);
-    bool result = dialog->Execute(doubleSpinBox);
-    if(ok) *ok = result;
-    if(result) return doubleSpinBox->value();
-    return 0;
-}
-
 QString ModalDialog::GetItem(QString title, QString caption, QStringList items, bool editable, bool *ok){
     ModalDialog *dialog = new ModalDialog();
     DialogComboBox *comboBox = new DialogComboBox(dialog);
@@ -463,6 +430,17 @@ bool ModalDialog::Question(const QString &title, const QString &text, const QStr
     dialog->m_Buttons = Dialog::Yes | Dialog::No;
     dialog->m_DefaultButton = Dialog::Yes;
     return dialog->Execute();
+}
+
+Dialog::Button ModalDialog::AllowBlockOrCancel(const QString &title, const QString &question, const QString &detail){
+    ModalDialog *dialog = new ModalDialog();
+    dialog->SetTitle(title);
+    dialog->SetCaption(title);
+    dialog->SetInformativeText(question);
+    dialog->SetDetailedText(detail);
+    dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
+    dialog->Execute();
+    return dialog->ClickedButton();
 }
 
 QString ModalDialog::SiteTitle(const QUrl &origin){
@@ -699,7 +677,7 @@ void ModelessDialog::Discard(){
 void ModelessDialog::TakeAway(){
     ModelessDialogFrame::DeregisterDialog(this);
 
-    disconnect();
+    blockSignals(true);
     deleteLater();
 }
 
@@ -725,6 +703,13 @@ void ModelessDialog::Execute(){
         DialogLabel *captionLabel = new DialogLabel(m_Caption, DialogTextFont(), this);
         captionLabel->setContentsMargins(ScaleByDevice(5), 0, 0, 0);
         vlayout->addWidget(captionLabel);
+    }
+
+    if(m_Content){
+        m_Content->show();
+        vlayout->addWidget(m_Content);
+        m_Content->installEventFilter(this);
+        foreach(QWidget *child, m_Content->findChildren<QWidget*>()) child->installEventFilter(this);
     }
 
     if(m_Buttons == Dialog::NoButton)
@@ -840,6 +825,22 @@ void ModelessDialog::Renew(){
     if(m_TimerId) StartTimer();
     if(m_Frame) m_Frame->raise();
     raise();
+}
+
+void ModelessDialog::SetContent(QWidget *content){
+    m_Content = content;
+    if(content){
+        content->setParent(this);
+        content->hide();
+    }
+}
+
+bool ModelessDialog::eventFilter(QObject *watched, QEvent *ev){
+    if(ev->type() == QEvent::FocusIn || ev->type() == QEvent::MouseButtonPress){
+        m_AutoCancel = false;
+        StopTimer();
+    }
+    return QWidget::eventFilter(watched, ev);
 }
 
 void ModelessDialog::StartTimer(){

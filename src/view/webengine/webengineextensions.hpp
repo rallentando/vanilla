@@ -22,6 +22,7 @@ namespace WebEngineExtensions {
     void Install(QQuickWebEngineProfile *profile);
 
     QQuickWebEngineProfile *CreateQuickProfile(QObject *owner, const QVariantMap &initial);
+    void DeleteQuickProfile(QQuickWebEngineProfile *profile);
 
     QWidget *CreatePopup(const SharedProfile &profile, const QUrl &url, bool fits, const WeakView &opener, QWidget *parent,
                          const std::function<void()> &closed = std::function<void()>(), bool docked = false);

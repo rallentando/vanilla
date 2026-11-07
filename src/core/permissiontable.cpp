@@ -2,29 +2,14 @@
 
 #include "permissiontable.hpp"
 
-#include <QHostAddress>
+#include "urlorigin.hpp"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QSet>
 
 namespace {
-
-    int DefaultPort(const QString &scheme){
-        return scheme == QStringLiteral("https") ? 443 : 80;
-    }
-
-    QString OriginHost(const QUrl &url){
-        const QString host = url.host();
-        if(host.isEmpty()) return QString();
-
-        QHostAddress address;
-        if(address.setAddress(host) &&
-           address.protocol() == QAbstractSocket::IPv6Protocol)
-            return QStringLiteral("[") + address.toString().toLower() + QStringLiteral("]");
-
-        return QString::fromLatin1(QUrl::toAce(host)).toLower();
-    }
 
     int KindOrder(const QString &kind){
         const int index = PermissionTable::Kinds().indexOf(kind);
@@ -35,13 +20,24 @@ namespace {
 QString PermissionTable::Origin(const QUrl &url){
     if(!url.isValid()) return QString();
     const QString scheme = url.scheme().toLower();
-    if(scheme != QStringLiteral("https") && scheme != QStringLiteral("http"))
+    const bool extension = scheme == QStringLiteral("chrome-extension");
+    if(!extension && scheme != QStringLiteral("https") && scheme != QStringLiteral("http"))
         return QString();
-    const QString host = OriginHost(url);
+    const QString host = UrlOrigin::Host(url);
     if(host.isEmpty()) return QString();
-    const int port = url.port(DefaultPort(scheme));
-    if(port == DefaultPort(scheme)) return scheme + QStringLiteral("://") + host;
+    if(extension) return scheme + QStringLiteral("://") + host;
+    const int port = url.port(UrlOrigin::DefaultPort(scheme));
+    if(port == UrlOrigin::DefaultPort(scheme)) return scheme + QStringLiteral("://") + host;
     return scheme + QStringLiteral("://") + host + QStringLiteral(":") + QString::number(port);
+}
+
+QString PermissionTable::OriginFromUserText(const QString &text){
+    const QString trimmed = text.trimmed();
+    if(trimmed.isEmpty() || trimmed.contains(QLatin1Char(' '))) return QString();
+    static const QRegularExpression scheme(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]*://"));
+    const QString spelled = scheme.match(trimmed).hasMatch()
+        ? trimmed : QStringLiteral("https://") + trimmed;
+    return Origin(QUrl(spelled, QUrl::StrictMode));
 }
 
 QStringList PermissionTable::Kinds(){
@@ -103,7 +99,7 @@ PermissionTable PermissionTable::FromJson(const QByteArray &json, bool *broken){
         return table;
     }
 
-    foreach(const QJsonValue &value, rows.toArray()){
+    for(const QJsonValue &value : rows.toArray()){
         const QJsonObject row = value.toObject();
         const QString spelled = row.value(QStringLiteral("origin")).toString();
         const QString origin = Origin(spelled);

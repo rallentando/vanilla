@@ -29,18 +29,6 @@ QJsonValue TaggedJson(QString tag, const QJsonValue &body){
     return QJsonValue(obj);
 }
 
-QByteArray ReadWholeFile(const QString &path, bool *ok){
-    QFile file(path);
-    if(!file.open(QIODevice::ReadOnly)){
-        if(ok) *ok = false;
-        return QByteArray();
-    }
-    QByteArray data = file.readAll();
-    file.close();
-    if(ok) *ok = true;
-    return data;
-}
-
 }
 
 QJsonValue VariantToJson(const QVariant &var){
@@ -111,7 +99,7 @@ QVariant JsonToVariant(const QJsonValue &val){
 
     if(val.isArray()){
         QStringList list;
-        foreach(QJsonValue elem, val.toArray()) list << elem.toString();
+        for(QJsonValue elem : val.toArray()) list << elem.toString();
         return QVariant(list);
     }
     if(val.isObject()){
@@ -164,14 +152,14 @@ bool ReadJson(const QByteArray &json, Map &map){
 
 QByteArray WriteJson(const Map &map){
     QJsonObject obj;
-    foreach(QString key, map.keys())
+    for(QString key : map.keys())
         obj[key] = VariantToJson(map.value(key));
     return QJsonDocument(obj).toJson(QJsonDocument::Indented);
 }
 
 bool ReadJsonFile(const QString &path, Map &map){
     bool ok = false;
-    QByteArray data = ReadWholeFile(path, &ok);
+    QByteArray data = FileExchange::ReadWhole(path, &ok);
     return ok && ReadJson(data, map);
 }
 
@@ -199,7 +187,7 @@ void Load(const QString &directory, const QString &filename, Map &map, const Hoo
     QStringList list =
         dir.entryList(hooks.BackUpFilters(), QDir::NoFilter, QDir::Name | QDir::Reversed);
 
-    foreach(QString backup, list){
+    for(QString backup : std::as_const(list)){
 
         if(!backup.endsWith(filename)) continue;
         if(!ReadJsonFile(directory + backup, map)) continue;

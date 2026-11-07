@@ -308,7 +308,7 @@ void tst_extensionui::theButtonsOwnItemsAreItsMenu(){
     QVERIFY(menus.Create(Obj("{\"id\": \"sep\", \"type\": \"separator\", \"contexts\": [\"action\"]}")).value(QStringLiteral("ok")).toBool());
     const QList<ExtensionUi::MenuShown> shown = menus.ActionShown(QUrl(QStringLiteral("https://a.example/")));
     QStringList ids;
-    foreach(const ExtensionUi::MenuShown &one, shown) ids << one.item.id;
+    for(const ExtensionUi::MenuShown &one : shown) ids << one.item.id;
     QCOMPARE(ids.join(QLatin1Char(' ')), QStringLiteral("everywhere a1 a2 a3 a4 a5"));
     const ExtensionUi::MenuContext context = ExtensionUi::Menus::ActionContext(QUrl(QStringLiteral("https://a.example/")));
     QVERIFY(context.contexts.contains(QStringLiteral("action")));

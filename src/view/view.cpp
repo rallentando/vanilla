@@ -25,6 +25,10 @@
 #include <QWidgetAction>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QDrag>
+#include <QMimeData>
+#include <QLineF>
+#include <QStyle>
 #ifdef WEBENGINEVIEW
 #  include <QWebEngineProfile>
 #endif
@@ -38,6 +42,7 @@
 #include "receiver.hpp"
 #include "mainwindow.hpp"
 #include "application.hpp"
+#include "runninguploads.hpp"
 #include "networkcontroller.hpp"
 #include "dialog.hpp"
 #include "directorypage.hpp"
@@ -57,15 +62,6 @@ QMap<QString, QString> View::m_MouseMap = QMap<QString, QString>();
 QMap<QString, QString> View::m_DragGestureMap = QMap<QString, QString>();
 QMap<QString, QString> View::m_RightGestureMap = QMap<QString, QString>();
 QMap<QString, QString> View::m_ScrollGestureMap = QMap<QString, QString>();
-
-QKeyEvent *View::m_UpKey       = new QKeyEvent(QEvent::KeyPress, Qt::Key_Up, Qt::KeyboardModifiers());
-QKeyEvent *View::m_DownKey     = new QKeyEvent(QEvent::KeyPress, Qt::Key_Down, Qt::KeyboardModifiers());
-QKeyEvent *View::m_RightKey    = new QKeyEvent(QEvent::KeyPress, Qt::Key_Right, Qt::KeyboardModifiers());
-QKeyEvent *View::m_LeftKey     = new QKeyEvent(QEvent::KeyPress, Qt::Key_Left, Qt::KeyboardModifiers());
-QKeyEvent *View::m_PageUpKey   = new QKeyEvent(QEvent::KeyPress, Qt::Key_PageUp, Qt::KeyboardModifiers());
-QKeyEvent *View::m_PageDownKey = new QKeyEvent(QEvent::KeyPress, Qt::Key_PageDown, Qt::KeyboardModifiers());
-QKeyEvent *View::m_HomeKey     = new QKeyEvent(QEvent::KeyPress, Qt::Key_Home, Qt::KeyboardModifiers());
-QKeyEvent *View::m_EndKey      = new QKeyEvent(QEvent::KeyPress, Qt::Key_End, Qt::KeyboardModifiers());
 
 SharedWebElement View::m_ClickedElement = 0;
 QRegion View::m_SelectionRegion = QRegion();
@@ -186,6 +182,7 @@ View::View(TreeBank *parent, QString id, QStringList set){
 }
 
 View::~View(){
+    RunningUploads::Instance()->Ended(this);
 
     if(m_TreeBank && m_TreeBank->GetCurrentView().get() == this){
         m_TreeBank->SetCurrentView(SharedView());
@@ -364,7 +361,49 @@ static QList<int> Compare(QUrlQuery query1, QUrlQuery query2){
     return list;
 }
 
-void View::GoBackTo(QUrl target){
+void View::SetScrollBarStateFrom(const QVariant &answer){
+    if(!answer.isValid()) return;
+    const QVariantList list = answer.toList();
+    if(list.size() < 2) return;
+    const int hmax = qMax(0, list[0].toInt());
+    const int vmax = qMax(0, list[1].toInt());
+    if(hmax && vmax) m_ScrollBarState = BothScrollBarEnabled;
+    else if(hmax)    m_ScrollBarState = HorizontalScrollBarEnabled;
+    else if(vmax)    m_ScrollBarState = VerticalScrollBarEnabled;
+    else             m_ScrollBarState = NoScrollBarEnabled;
+}
+
+SharedWebElementList View::ElementsFrom(View *provider, const QVariant &answer,
+                                       const QRect &viewport, const RectPlacer &place){
+    SharedWebElementList result;
+    if(!answer.isValid()) return result;
+    for(const QVariant &value : answer.toMap().values()){
+        std::shared_ptr<JsWebElement> e = std::make_shared<JsWebElement>();
+        *e = JsWebElement(provider, value);
+        const QRect rect = place ? place(e->Rectangle()) : e->Rectangle();
+        e->SetRectangle(viewport.intersects(rect) ? rect : QRect());
+        result << e;
+    }
+    return result;
+}
+
+QRegion View::SelectionRegionFrom(const QVariant &answer, const QRect &viewport,
+                                  const RectPlacer &place){
+    QRegion region;
+    if(!answer.isValid() || !answer.canConvert<QVariantMap>()) return region;
+    const QVariantMap map = answer.toMap();
+    for(const QVariant &value : map.values()){
+        const QVariantMap m = value.toMap();
+        const QRect rect(m[QStringLiteral("x")].toInt(),
+                         m[QStringLiteral("y")].toInt(),
+                         m[QStringLiteral("width")].toInt(),
+                         m[QStringLiteral("height")].toInt());
+        region |= (place ? place(rect) : rect).intersected(viewport);
+    }
+    return region;
+}
+
+void View::FollowInferedUrl(const QUrl &target){
     if(target.isEmpty()) return;
 
     QNetworkRequest req(target);
@@ -374,249 +413,142 @@ void View::GoBackTo(QUrl target){
     Load(req);
 }
 
-void View::GoForwardTo(QUrl target){
-    if(target.isEmpty()) return;
+QUrl View::InferedUrl(const QUrl &current, const SharedWebElementList &elements, bool forward){
+    QUrl base = current;
+    base.setFragment(QString());
 
-    QNetworkRequest req(target);
-    req.setRawHeader("Referer", url().toEncoded());
+    QUrlQuery basequery = QUrlQuery(base);
+    QStringList basebody = base.toString(QUrl::RemoveQuery).split(QStringLiteral("/"));
+    basebody.removeFirst();
 
-    SetScroll(QPointF());
-    Load(req);
+    SharedWebElement currentHighValidityElement = 0;
+    QList<int> currentHighValidityDistance = QList<int>();
+
+    const QRegularExpression reg = forward
+        ? QRegularExpression(QObject::tr("(?:>>.*|.*>>|>|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*)"))
+        : QRegularExpression(QObject::tr("(?:<<.*|.*<<|<|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*rear.*|.*behind.*|.*before.*)"));
+
+    auto wrongWay = [forward](int r){
+        return r == INT_MAX || (forward ? r < 0 : r > 0);
+    };
+    auto pageStep = [forward](int r){
+        static const int steps[] = { 1, 2, 10, 20, 100, 200, 4, 5, 40, 50, 400, 500 };
+        for(const int step : steps)
+            if(r == (forward ? step : -step)) return true;
+        return false;
+    };
+    auto further = [forward](int r, int c){
+        return forward ? r > c : r < c;
+    };
+
+    foreach(SharedWebElement elem, elements){
+        QString text = elem->InnerText();
+        int length = text.length();
+        QUrl url = elem->LinkUrl();
+
+        if(url.toString().startsWith(QStringLiteral("javascript:")))
+            continue;
+
+        if(reg.match(text.toLower()).hasMatch())
+            return url;
+
+        QString fragment = url.fragment();
+        url.setFragment(QString());
+
+        QUrlQuery query = QUrlQuery(url);
+        QStringList body = url.toString(QUrl::RemoveQuery).split(QStringLiteral("/"));
+        body.removeFirst();
+        QList<int> result;
+        result << Compare(basebody, body);
+        int delim = result.length();
+        result << Compare(basequery, query);
+
+        int max = qMax(currentHighValidityDistance.length(), result.length());
+
+        for(int i = 0; i < result.length(); i++){
+            if(result[i] != 0){
+                break;
+            } else if(i != result.length() - 1){
+                continue;
+            } else {
+                goto escape;
+            }
+        }
+
+        for(int i = 0; i < max; i++){
+            if(i >= result.length()){
+                if(i == result.length() - 1){
+                    goto entry;
+                } else {
+                    continue;
+                }
+            } else {
+                if(i < delim && wrongWay(result[i]))
+                    goto escape;
+                if(i >= delim && pageStep(result[i])){
+
+                    if(0 < length && length < 20){
+                        if(Application::ExactMatch(QStringLiteral("[0-9]+"), text.trimmed())){
+                            url.setFragment(fragment);
+                            return url;
+                        } else {
+                            goto entry;
+                        }
+                    } else {
+                        continue;
+                    }
+                }
+                if(wrongWay(result[i]))
+                    goto escape;
+
+                if(i >= currentHighValidityDistance.length()){
+                    if(i == currentHighValidityDistance.length() - 1){
+                        goto escape;
+                    } else {
+                        continue;
+                    }
+                } else {
+                    if(further(result[i], currentHighValidityDistance[i])){
+                        goto escape;
+                    } else {
+                        continue;
+                    }
+                }
+            }
+        }
+    entry:
+        currentHighValidityElement  = elem;
+        currentHighValidityDistance = result;
+    escape:
+        ;
+    }
+
+    if(currentHighValidityElement && !currentHighValidityElement->IsNull())
+        return currentHighValidityElement->LinkUrl();
+    return QUrl();
+}
+
+namespace {
+
+    void GoToInferedUrl(View *view, bool forward){
+        view->CallWithFoundElements(forward ? Page::RelIsNext : Page::RelIsPrev,
+                                    [view, forward](SharedWebElementList rels){
+
+        if(!rels.isEmpty() && !rels[0]->LinkUrl().isEmpty())
+            return view->FollowInferedUrl(rels[0]->LinkUrl());
+
+        view->CallWithFoundElements(Page::HaveReference, [view, forward](SharedWebElementList elements){
+            view->FollowInferedUrl(View::InferedUrl(view->url(), elements, forward));
+        });});
+    }
 }
 
 void View::GoBackToInferedUrl(){
-    CallWithFoundElements(Page::RelIsPrev, [this](SharedWebElementList prevs){
-
-    if(!prevs.isEmpty() && !prevs[0]->LinkUrl().isEmpty())
-        return GoBackTo(prevs[0]->LinkUrl());
-
-    CallWithFoundElements(Page::HaveReference, [this](SharedWebElementList elements){
-
-    QUrl base = url();
-    QUrl copy = base;
-    base.setFragment(QString());
-
-    QUrlQuery basequery = QUrlQuery(base);
-    QStringList basebody = base.toString(QUrl::RemoveQuery).split(QStringLiteral("/"));
-    basebody.removeFirst();
-
-    SharedWebElement currentHighValidityElement = 0;
-    QList<int> currentHighValidityDistance = QList<int>();
-
-    QRegularExpression reg =
-        QRegularExpression(QObject::tr("(?:<<.*|.*<<|<|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*rear.*|.*behind.*|.*before.*)"));
-
-    foreach(SharedWebElement elem, elements){
-        QString text = elem->InnerText();
-        int length = text.length();
-        QUrl url = elem->LinkUrl();
-
-        if(url.toString().startsWith(QStringLiteral("javascript:")))
-            continue;
-
-        if(reg.match(text.toLower()).hasMatch())
-            return GoBackTo(url);
-
-        QString fragment = url.fragment();
-        url.setFragment(QString());
-
-        QUrlQuery query = QUrlQuery(url);
-        QStringList body = url.toString(QUrl::RemoveQuery).split(QStringLiteral("/"));
-        body.removeFirst();
-        QList<int> result;
-        result << Compare(basebody, body);
-        int delim = result.length();
-        result << Compare(basequery, query);
-
-        int max = qMax(currentHighValidityDistance.length(), result.length());
-
-        for(int i = 0; i < result.length(); i++){
-            if(result[i] != 0){
-                break;
-            } else if(i != result.length() - 1){
-                continue;
-            } else {
-                goto escape;
-            }
-        }
-
-        for(int i = 0; i < max; i++){
-            if(i >= result.length()){
-                if(i == result.length() - 1){
-                    goto entry;
-                } else {
-                    continue;
-                }
-            } else {
-                if(i < delim && result[i] > 0)
-                    goto escape;
-                if(i >= delim &&
-                   (result[i] ==   -1 || result[i] ==   -2 ||
-                    result[i] ==  -10 || result[i] ==  -20 ||
-                    result[i] == -100 || result[i] == -200 ||
-
-                    result[i] ==   -4 || result[i] ==   -5 ||
-                    result[i] ==  -40 || result[i] ==  -50 ||
-                    result[i] == -400 || result[i] == -500)){
-
-                    if(0 < length && length < 20){
-                        if(Application::ExactMatch(QStringLiteral("[0-9]+"), text.trimmed())){
-                            url.setFragment(fragment);
-                            return GoBackTo(url);
-                        } else {
-                            goto entry;
-                        }
-                    } else {
-                        continue;
-                    }
-                }
-                if(result[i] > 0)
-                    goto escape;
-
-                if(i >= currentHighValidityDistance.length()){
-                    if(i == currentHighValidityDistance.length() - 1){
-                        goto escape;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    if(result[i] < currentHighValidityDistance[i]){
-                        goto escape;
-                    } else {
-                        continue;
-                    }
-                }
-            }
-        }
-    entry:
-        currentHighValidityElement  = elem;
-        currentHighValidityDistance = result;
-    escape:
-        ;
-    }
-
-    if(currentHighValidityElement && !currentHighValidityElement->IsNull())
-        return GoBackTo(currentHighValidityElement->LinkUrl());
-
-    });});
+    GoToInferedUrl(this, false);
 }
 
 void View::GoForwardToInferedUrl(){
-
-    CallWithFoundElements(Page::RelIsNext, [this](SharedWebElementList nexts){
-
-    if(!nexts.isEmpty() && !nexts[0]->LinkUrl().isEmpty())
-        return GoForwardTo(nexts[0]->LinkUrl());
-
-    CallWithFoundElements(Page::HaveReference, [this](SharedWebElementList elements){
-
-    QUrl base = url();
-    QUrl copy = base;
-    base.setFragment(QString());
-
-    QUrlQuery basequery = QUrlQuery(base);
-    QStringList basebody = base.toString(QUrl::RemoveQuery).split(QStringLiteral("/"));
-    basebody.removeFirst();
-
-    SharedWebElement currentHighValidityElement = 0;
-    QList<int> currentHighValidityDistance = QList<int>();
-
-    QRegularExpression reg =
-        QRegularExpression(QObject::tr("(?:>>.*|.*>>|>|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*)"));
-
-    foreach(SharedWebElement elem, elements){
-        QString text = elem->InnerText();
-        int length = text.length();
-        QUrl url = elem->LinkUrl();
-
-        if(url.toString().startsWith(QStringLiteral("javascript:")))
-            continue;
-
-        if(reg.match(text.toLower()).hasMatch())
-            return GoForwardTo(url);
-
-        QString fragment = url.fragment();
-        url.setFragment(QString());
-
-        QUrlQuery query = QUrlQuery(url);
-        QStringList body = url.toString(QUrl::RemoveQuery).split(QStringLiteral("/"));
-        body.removeFirst();
-        QList<int> result;
-        result << Compare(basebody, body);
-        int delim = result.length();
-        result << Compare(basequery, query);
-
-        int max = qMax(currentHighValidityDistance.length(), result.length());
-
-        for(int i = 0; i < result.length(); i++){
-            if(result[i] != 0){
-                break;
-            } else if(i != result.length() - 1){
-                continue;
-            } else {
-                goto escape;
-            }
-        }
-
-        for(int i = 0; i < max; i++){
-            if(i >= result.length()){
-                if(i == result.length() - 1){
-                    goto entry;
-                } else {
-                    continue;
-                }
-            } else {
-                if(i < delim && (result[i] < 0 || result[i] == INT_MAX))
-                    goto escape;
-                if(i >= delim &&
-                   (result[i] ==   1 || result[i] ==   2 ||
-                    result[i] ==  10 || result[i] ==  20 ||
-                    result[i] == 100 || result[i] == 200 ||
-
-                    result[i] ==   4 || result[i] ==   5 ||
-                    result[i] ==  40 || result[i] ==  50 ||
-                    result[i] == 400 || result[i] == 500)){
-
-                    if(0 < length && length < 20){
-                        if(Application::ExactMatch(QStringLiteral("[0-9]+"), text.trimmed())){
-                            url.setFragment(fragment);
-                            return GoForwardTo(url);
-                        } else {
-                            goto entry;
-                        }
-                    } else {
-                        continue;
-                    }
-                }
-                if(result[i] < 0 || result[i] == INT_MAX)
-                    goto escape;
-
-                if(i >= currentHighValidityDistance.length()){
-                    if(i == currentHighValidityDistance.length() - 1){
-                        goto escape;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    if(result[i] > currentHighValidityDistance[i]){
-                        goto escape;
-                    } else {
-                        continue;
-                    }
-                }
-            }
-        }
-    entry:
-        currentHighValidityElement  = elem;
-        currentHighValidityDistance = result;
-    escape:
-        ;
-    }
-
-    if(currentHighValidityElement && !currentHighValidityElement->IsNull())
-        return GoForwardTo(currentHighValidityElement->LinkUrl());
-
-    });});
+    GoToInferedUrl(this, true);
 }
 
 QMimeData *View::CreateMimeDataFromSelection(NetworkAccessManager *nam){
@@ -725,7 +657,7 @@ QPixmap View::CreatePixmapFromElement(){
 QMenu *View::BookmarkletMenu(){
     QMenu *menu = new QMenu(QObject::tr("Bookmarklet"));
     if(Page *page = base()->findChild<Page*>()){
-        foreach(QString key, Page::GetBookmarkletMap().keys()){
+        for(QString key : Page::GetBookmarkletMap().keys()){
             menu->addAction(key, page, SLOT(OpenBookmarklet()));
         }
     }
@@ -735,7 +667,7 @@ QMenu *View::BookmarkletMenu(){
 QMenu *View::SearchMenu(){
     QMenu *menu = new QMenu(QObject::tr("SearchWith"));
     if(Page *page = base()->findChild<Page*>()){
-        foreach(QString key, Page::GetSearchEngineMap().keys()){
+        for(QString key : Page::GetSearchEngineMap().keys()){
             QAction *action = menu->addAction(key, page, SLOT(SearchWith()));
             QUrl url = QUrl::fromEncoded(Page::GetSearchEngine(key).first().toLatin1());
             action->setIcon(Application::GetIcon(url));
@@ -837,7 +769,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
             name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
         name = QStringLiteral("(") + name + QStringLiteral(")");
 
-        foreach(QString str, View::GetLinkMenu().split(comma)){
+        for(QString str : View::GetLinkMenu().split(comma)){
             if(str == QStringLiteral("LinkUrl")){
                 menu->addAction(MenuCaption(menu, name, Qt::AlignLeft));
             }
@@ -862,7 +794,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
             name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
         name = QStringLiteral("(") + name + QStringLiteral(")");
 
-        foreach(QString str, type == Page::MediaTypePlayable ? View::GetMediaMenu().split(comma) : View::GetImageMenu().split(comma)){
+        for(QString str : type == Page::MediaTypePlayable ? View::GetMediaMenu().split(comma) : View::GetImageMenu().split(comma)){
             if(str == QStringLiteral("ImageUrl") || str == QStringLiteral("MediaUrl")){
                 menu->addAction(MenuCaption(menu, name, Qt::AlignLeft));
             }
@@ -878,7 +810,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
     if(editable){
         if(!menu->isEmpty()) menu->addSeparator();
 
-        foreach(QString str, View::GetTextMenu().split(comma)){
+        for(QString str : View::GetTextMenu().split(comma)){
             if(str == QStringLiteral("Separator")) menu->addSeparator();
             else menu->addAction(Action(str, data));
         }
@@ -888,7 +820,7 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
         if(!menu->isEmpty() && !editable)
             menu->addSeparator();
 
-        foreach(QString str, View::GetSelectionMenu().split(comma)){
+        for(QString str : View::GetSelectionMenu().split(comma)){
             if     (str == QStringLiteral("Separator"))  menu->addSeparator();
             else if(str == QStringLiteral("SearchMenu")) menu->addMenu(SearchMenu());
             else menu->addAction(Action(str, data));
@@ -973,7 +905,7 @@ void View::AddRegularMenu(QMenu *menu, SharedWebElement elem){
 
     if(!menu->isEmpty()) menu->addSeparator();
 
-    foreach(QString str, View::GetRegularMenu().split(comma)){
+    for(QString str : View::GetRegularMenu().split(comma)){
         if     (str == QStringLiteral("Separator"))       menu->addSeparator();
         else if(str == QStringLiteral("BookmarkletMenu")) menu->addMenu(BookmarkletMenu());
         else if(str == QStringLiteral("OpenWithOtherBrowser"))
@@ -1304,7 +1236,7 @@ void View::SaveSettings(){
     InputMap::SaveGestureMap(s, QStringLiteral("webview/scrollgesture"), m_ScrollGestureMap);
 
     QMap<QString, SearchEngine> search = Page::GetSearchEngineMap();
-    foreach(QString key, search.keys()){
+    for(QString key : search.keys()){
         if(search[key].length() == 1)
             s.setValue(QStringLiteral("webview/searchengine/") + key, search[key].first());
         else
@@ -1312,7 +1244,7 @@ void View::SaveSettings(){
     }
 
     QMap<QString, Bookmarklet> bookmark = Page::GetBookmarkletMap();
-    foreach(QString key, bookmark.keys()){
+    for(QString key : bookmark.keys()){
         if(bookmark[key].length() == 1)
             s.setValue(QStringLiteral("webview/bookmarklet/") + key, bookmark[key].first());
         else
@@ -1439,7 +1371,7 @@ void View::ApplySpecificSettings(QStringList set){
         if(pos != -1)
             s->setDefaultTextEncoding(set[pos].split(QStringLiteral(" ")).last());
 
-        foreach(QWebEngineSettings::WebAttribute attr, m_WebEngineSwitches.keys()){
+        for(QWebEngineSettings::WebAttribute attr : m_WebEngineSwitches.keys()){
             const int state = DirectoryPage::StateIn(set, m_WebEngineSwitches[attr]);
             s->setAttribute(attr, state == -1 ? g->testAttribute(attr) : state == 1);
         }
@@ -1458,37 +1390,66 @@ void View::ApplySpecificSettings(QStringList set){
     if(drag != -1) m_EnableDragGestureLocal = drag == 1;
 }
 
+namespace {
+
+    void Wire(bool on, QObject *sender, const char *signal, QObject *receiver, const char *slot){
+        if(on) QObject::connect(sender, signal, receiver, slot);
+        else   QObject::disconnect(sender, signal, receiver, slot);
+    }
+
+    void WirePage(QObject *page, TreeBank *tb, bool on){
+        if(Receiver *receiver = tb->GetReceiver()){
+            Wire(on, receiver, SIGNAL(OpenUrl(QUrl)),
+                 page, SLOT(OpenInNew(QUrl)));
+            Wire(on, receiver, SIGNAL(OpenUrl(QList<QUrl>)),
+                 page, SLOT(OpenInNew(QList<QUrl>)));
+            Wire(on, receiver, SIGNAL(OpenQueryUrl(QString)),
+                 page, SLOT(OpenInNew(QString)));
+            Wire(on, receiver, SIGNAL(SearchWith(QString, QString)),
+                 page, SLOT(OpenInNew(QString, QString)));
+            Wire(on, receiver, SIGNAL(Download(QString, QString)),
+                 page, SLOT(Download(QString, QString)));
+        }
+    }
+}
+
 void View::Connect(TreeBank *tb){
     if(!tb || !page()) return;
-
-    if(Receiver *receiver = tb->GetReceiver()){
-        QObject::connect(receiver, SIGNAL(OpenUrl(QUrl)),
-                         page(), SLOT(OpenInNew(QUrl)));
-        QObject::connect(receiver, SIGNAL(OpenUrl(QList<QUrl>)),
-                         page(), SLOT(OpenInNew(QList<QUrl>)));
-        QObject::connect(receiver, SIGNAL(OpenQueryUrl(QString)),
-                         page(), SLOT(OpenInNew(QString)));
-        QObject::connect(receiver, SIGNAL(SearchWith(QString, QString)),
-                         page(), SLOT(OpenInNew(QString, QString)));
-        QObject::connect(receiver, SIGNAL(Download(QString, QString)),
-                         page(), SLOT(Download(QString, QString)));
-    }
+    WirePage(page(), tb, true);
 }
 
 void View::Disconnect(TreeBank *tb){
     if(!tb || !page()) return;
+    WirePage(page(), tb, false);
+}
 
+void View::WireWebView(QObject *view, QObject *linkSource, TreeBank *tb, bool on){
+    Wire(on, view, SIGNAL(titleChanged(const QString&)),
+         tb->parent(), SLOT(SetWindowTitle(const QString&)));
+    if(Notifier *notifier = tb->GetNotifier()){
+        Wire(on, view, SIGNAL(statusBarMessage(const QString&)),
+             notifier, SLOT(SetStatus(const QString&)));
+        Wire(on, view, SIGNAL(statusBarMessage2(const QString&, const QString&)),
+             notifier, SLOT(SetStatus(const QString&, const QString&)));
+        Wire(on, linkSource, SIGNAL(linkHovered(const QString&, const QString&, const QString&)),
+             notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
+        Wire(on, view, SIGNAL(ScrollChanged(QPointF)),
+             notifier, SLOT(SetScroll(QPointF)));
+        Wire(on, notifier, SIGNAL(ScrollRequest(QPointF)),
+             view, SLOT(SetScroll(QPointF)));
+    }
     if(Receiver *receiver = tb->GetReceiver()){
-        QObject::disconnect(receiver, SIGNAL(OpenUrl(QUrl)),
-                            page(), SLOT(OpenInNew(QUrl)));
-        QObject::disconnect(receiver, SIGNAL(OpenUrl(QList<QUrl>)),
-                            page(), SLOT(OpenInNew(QList<QUrl>)));
-        QObject::disconnect(receiver, SIGNAL(OpenQueryUrl(QString)),
-                            page(), SLOT(OpenInNew(QString)));
-        QObject::disconnect(receiver, SIGNAL(SearchWith(QString, QString)),
-                            page(), SLOT(OpenInNew(QString, QString)));
-        QObject::disconnect(receiver, SIGNAL(Download(QString, QString)),
-                            page(), SLOT(Download(QString, QString)));
+        Wire(on, receiver, SIGNAL(OpenBookmarklet(const QString&)),
+             view, SLOT(Load(const QString&)));
+        Wire(on, receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
+             view, SLOT(SeekText(const QString&, View::FindFlags)));
+        Wire(on, receiver, SIGNAL(KeyEvent(QString)),
+             view, SLOT(KeyEvent(QString)));
+
+        Wire(on, receiver, SIGNAL(SuggestRequest(const QUrl&)),
+             page(), SLOT(DownloadSuggest(const QUrl&)));
+        Wire(on, page(), SIGNAL(SuggestResult(const QByteArray&)),
+             receiver, SLOT(DisplaySuggest(const QByteArray&)));
     }
 }
 
@@ -1515,6 +1476,7 @@ void View::UpdateThumbnail(){
         }
 
         QImage image(parentsize, QImage::Format_ARGB32);
+        image.fill(Qt::transparent);
         QPainter painter(&image);
         Render(&painter,
                QRegion(QRect(QPoint(0, 0),
@@ -1709,6 +1671,257 @@ void View::OnFocusOut(){
     m_CurrentBaseUrl = QUrl();
     m_SelectedText = QString();
     m_SelectedHtml = QString();
+}
+
+QString View::GestureStatusLine(const QMap<QString, QString> &map, const QString &noAction){
+    const QString shape = GestureToString(m_Gesture);
+    if(!map.contains(shape))
+        return shape + QStringLiteral(" (") + noAction + QStringLiteral(")");
+    const QString name = map.value(shape);
+    QAction *action = Page::IsValidAction(name)
+        ? Action(Page::StringToAction(name)) : nullptr;
+    return shape + QStringLiteral(" (") + (action ? action->text() : name) + QStringLiteral(")");
+}
+
+void View::MouseMoveWithGestures(QMouseEvent *ev, const MoveHooks &hooks){
+    if(!m_TreeBank) return;
+
+    Application::SetCurrentWindow(m_TreeBank->GetMainWindow());
+
+    if(m_DragStarted){
+        hooks.forward(ev);
+        ev->setAccepted(hooks.acceptForwardedWhileDragging);
+        return;
+    }
+    if(m_EnableRightGestureLocal &&
+       ev->buttons() & Qt::RightButton &&
+       !m_GestureStartedPos.isNull()){
+
+        GestureMoved(ev->pos());
+        hooks.status();
+        ev->setAccepted(false);
+        return;
+    }
+
+    int scrollBarWidth = Application::style()->pixelMetric(QStyle::PM_ScrollBarExtent);
+    bool horizontal = m_ScrollBarState == BothScrollBarEnabled
+        ||            m_ScrollBarState == HorizontalScrollBarEnabled;
+    bool vertical   = m_ScrollBarState == BothScrollBarEnabled
+        ||            m_ScrollBarState == VerticalScrollBarEnabled;
+    QRect touchableRect =
+        QRect(QPoint(),
+              size() - QSize(vertical   ? scrollBarWidth : 0,
+                             horizontal ? scrollBarWidth : 0));
+
+    if(ev->buttons() & Qt::LeftButton &&
+       !m_GestureStartedPos.isNull() &&
+       touchableRect.contains(m_GestureStartedPos) &&
+       (m_ClickedElement &&
+        !m_ClickedElement->IsNull() &&
+        !m_ClickedElement->IsEditableElement())){
+
+        if(QLineF(ev->pos(), m_GestureStartedPos).length() < 2){
+            hooks.forward(ev);
+            ev->setAccepted(false);
+            return;
+        }
+        QDrag *drag = new QDrag(hooks.dragParent);
+
+        Application::ClearTemporaryDirectory();
+
+        NetworkAccessManager *nam = hooks.networkAccessManager();
+
+        QMimeData *mime = m_HadSelection
+            ? CreateMimeDataFromSelection(nam)
+            : CreateMimeDataFromElement(nam);
+
+        if(!mime){
+            drag->deleteLater();
+
+            GestureAborted();
+            hooks.forward(ev);
+            ev->setAccepted(false);
+            return;
+        }
+
+        QPixmap pixmap = m_HadSelection
+            ? CreatePixmapFromSelection()
+            : CreatePixmapFromElement();
+
+        QRect rect = m_HadSelection
+            ? m_SelectionRegion.boundingRect()
+            : m_ClickedElement->Rectangle().intersected(QRect(QPoint(), size()));
+        QPoint pos = ev->pos() - rect.topLeft();
+
+        if(pixmap.width()  > MAX_DRAGGING_PIXMAP_WIDTH ||
+           pixmap.height() > MAX_DRAGGING_PIXMAP_HEIGHT){
+
+            pos /= qMax(static_cast<float>(pixmap.width()) /
+                        static_cast<float>(MAX_DRAGGING_PIXMAP_WIDTH),
+                        static_cast<float>(pixmap.height()) /
+                        static_cast<float>(MAX_DRAGGING_PIXMAP_HEIGHT));
+            pixmap = pixmap.scaled(MAX_DRAGGING_PIXMAP_WIDTH,
+                                   MAX_DRAGGING_PIXMAP_HEIGHT,
+                                   Qt::KeepAspectRatio,
+                                   Qt::SmoothTransformation);
+        }
+
+        if(m_HadSelection){
+            mime->setImageData(pixmap.toImage());
+        } else {
+            QPixmap element = m_ClickedElement->Pixmap();
+            if(element.isNull())
+                mime->setImageData(pixmap.toImage());
+            else
+                mime->setImageData(element.toImage());
+        }
+        if(m_EnableDragGestureLocal){
+            GestureMoved(ev->pos());
+        } else {
+            GestureAborted();
+        }
+        m_DragStarted = true;
+        drag->setMimeData(mime);
+        drag->setPixmap(pixmap);
+        drag->setHotSpot(pos);
+        {
+            View::DragOutScope dragging;
+            drag->exec(Qt::CopyAction | Qt::MoveAction);
+        }
+        drag->deleteLater();
+        ev->setAccepted(true);
+    } else {
+        GestureAborted();
+        hooks.forward(ev);
+        ev->setAccepted(false);
+    }
+}
+
+void View::MousePressWithMap(QMouseEvent *ev, const ButtonHooks &hooks){
+    QString mouse;
+
+    Application::AddModifiersToString(mouse, ev->modifiers());
+    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
+    Application::AddMouseButtonToString(mouse, ev->button());
+
+    if(m_MouseMap.contains(mouse)){
+
+        QString str = m_MouseMap[mouse];
+        if(!str.isEmpty()){
+            const bool right = (ev->buttons() | ev->button()) & Qt::RightButton;
+            if(right) View::ConsumeRightButton();
+            if(!View::TriggerAction(str, ev->pos())){
+                if(right) View::TakeRightButtonConsumed();
+                m_SpentButtons.Press(ev->button(), false);
+                ev->setAccepted(false);
+                return;
+            }
+            m_SpentButtons.Press(ev->button(), true);
+            GestureAborted();
+            ev->setAccepted(true);
+            return;
+        }
+    }
+
+    m_SpentButtons.Press(ev->button(), false);
+    GestureStarted(ev->pos());
+    hooks.pressToEngine(ev);
+    ev->setAccepted(hooks.acceptForwarded);
+}
+
+void View::MouseDoubleClickWithMap(QMouseEvent *ev, const ButtonHooks &hooks){
+    QString mouse;
+    Application::AddModifiersToString(mouse, ev->modifiers());
+    Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
+    Application::AddMouseButtonToString(mouse, ev->button());
+    if(m_MouseMap.contains(mouse) && !m_MouseMap[mouse].isEmpty()){
+        MousePressWithMap(ev, hooks);
+        return;
+    }
+    hooks.doubleClickToEngine(ev);
+    ev->setAccepted(false);
+}
+
+void View::MouseReleaseWithGestures(QMouseEvent *ev, const ButtonHooks &hooks){
+    hooks.clearStatus();
+
+    if(m_SpentButtons.Settle(ev->button())){
+        ev->setAccepted(true);
+        return;
+    }
+
+    if(m_DragStarted){
+        m_DragStarted = false;
+        ev->setAccepted(true);
+        return;
+    }
+
+    QUrl link = m_ClickedElement ? m_ClickedElement->LinkUrl() : QUrl();
+
+    if(!link.isEmpty() &&
+       m_Gesture.isEmpty() &&
+       (ev->button() == Qt::LeftButton ||
+        ev->button() == Qt::MiddleButton)){
+
+        QNetworkRequest req(link);
+        req.setRawHeader("Referer", url().toEncoded());
+
+        if(Application::HasShiftModifier(ev) ||
+           Application::HasCtrlModifier(ev) ||
+           ev->button() == Qt::MiddleButton){
+
+            GestureAborted();
+            m_TreeBank->OpenInNewViewNode(req, Page::Activate(), GetViewNode());
+            ev->setAccepted(true);
+            return;
+
+        }
+    }
+
+    if(ev->button() == Qt::RightButton){
+
+        if(!m_Gesture.isEmpty()){
+            GestureFinished(ev->pos(), ev->button());
+        } else if(!m_GestureStartedPos.isNull()){
+            hooks.releaseToEngine(ev);
+            ev->setAccepted(hooks.acceptForwarded);
+            return;
+        }
+        ev->setAccepted(true);
+        return;
+    }
+
+    if(ev->button() == Qt::LeftButton && !m_Gesture.isEmpty())
+        ;
+    else
+        GestureAborted();
+
+    hooks.releaseToEngine(ev);
+    ev->setAccepted(hooks.acceptForwarded);
+}
+
+void View::WheelWithMap(QWheelEvent *ev, const WheelHooks &hooks){
+    if(ev->source() != Qt::MouseEventSynthesizedBySystem){
+        QString wheel;
+        bool up = Application::WheelWentUp(ev);
+
+        Application::AddModifiersToString(wheel, ev->modifiers());
+        Application::AddMouseButtonsToString(wheel, ev->buttons());
+        Application::AddWheelDirectionToString(wheel, up);
+
+        if(m_MouseMap.contains(wheel)){
+            QString str = m_MouseMap[wheel];
+            if(!str.isEmpty()){
+                GestureAborted();
+                if(ev->buttons() & Qt::RightButton)
+                    View::ConsumeRightButton();
+                View::TriggerAction(str, hooks.actionPos(ev));
+            }
+            ev->setAccepted(true);
+            return;
+        }
+    }
+    hooks.toEngine(ev);
 }
 
 void View::GestureStarted(QPoint pos){
@@ -1923,9 +2136,14 @@ void View::OnLoadStarted(){
     TreeBank::SomethingChanged();
 }
 
+void View::UploadStarted(const QUrl &url){
+    RunningUploads::Instance()->Started(this, url, [this](){ Stop();});
+}
+
 void View::OnLoadFinished(bool ok){
     m_LoadProgress = 100;
     m_IsLoading = false;
+    RunningUploads::Instance()->Ended(this);
     if(ok) m_RenderProcessLedger.Clear();
     TreeBank::SomethingChanged();
 }

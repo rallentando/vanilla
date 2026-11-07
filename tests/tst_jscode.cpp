@@ -26,7 +26,6 @@ private:
     static QList<NamedScript> Helpers(){
         const QString xpath = QStringLiteral("//div[@id=\"a\"]/input");
         const QString text  = QStringLiteral("hello");
-        const QString data  = QStringLiteral("{\"user\":\"a\"}");
         const QPoint  pos   = QPoint(12, 34);
         const QPointF ratio = QPointF(0.25, 0.5);
 
@@ -76,7 +75,6 @@ private:
         ADD(ToggleMediaLoopJsCode());
         ADD(ToggleMediaPlayPauseJsCode());
         ADD(InstallSubmitEventJsCode());
-        ADD(SubmitFormDataJsCode(data));
         ADD(InstallEventFilterJsCode(types));
 #ifdef EDGEWEBVIEW
         ADD(EdgeInputBridgeJsCode(QList<int>() << 81 << 87, QList<int>() << 81));
@@ -108,7 +106,7 @@ private slots:
     void everyHelperIsJavascript(){
         QJSEngine engine;
         const QList<NamedScript> helpers = Helpers();
-        int expected = 42;
+        int expected = 41;
 #ifdef MEDIATIME
         expected += 2;
 #endif
@@ -116,7 +114,7 @@ private slots:
         expected += 3;
 #endif
         QCOMPARE(helpers.length(), expected);
-        foreach(const NamedScript &helper, helpers){
+        for(const NamedScript &helper : helpers){
             QVERIFY2(!helper.second.isEmpty(),
                      qPrintable(helper.first + QStringLiteral(" is empty")));
             const QString error = ParseError(engine, helper.second);
@@ -560,6 +558,136 @@ private slots:
         QCOMPARE(out.property(QStringLiteral("prevented")).toInt(), prevented);
     }
 
+    void thePageCannotRenameARealKeystroke_data(){
+        QTest::addColumn<QString>("tamper");
+        QTest::addColumn<int>("code");
+        QTest::addColumn<bool>("ctrl");
+        QTest::addColumn<QString>("focus");
+        QTest::addColumn<int>("reported");
+
+        const QString none = QStringLiteral("function(w, e){}");
+        QTest::newRow("untouched") << none << 81 << false << QStringLiteral("div") << 81;
+        QTest::newRow("an unbound key, untouched") << none << 70 << false << QStringLiteral("div") << 0;
+        QTest::newRow("a letter typed into a box, untouched") << none << 81 << false << QStringLiteral("text") << 0;
+        QTest::newRow("the keyCode getter replaced")
+            << QStringLiteral("function(w, e){ Object.defineProperty(w.KeyboardEvent.prototype, 'keyCode',\n"
+                              "    { get: function(){ return 87; }, configurable: true }); }")
+            << 81 << false << QStringLiteral("div") << 81;
+        QTest::newRow("a keyCode put on the event")
+            << QStringLiteral("function(w, e){ Object.defineProperty(e, 'keyCode', { value: 87 }); }")
+            << 81 << false << QStringLiteral("div") << 81;
+        QTest::newRow("an unbound key dressed as a bound one")
+            << QStringLiteral("function(w, e){ Object.defineProperty(w.KeyboardEvent.prototype, 'keyCode',\n"
+                              "    { get: function(){ return 81; }, configurable: true }); }")
+            << 70 << false << QStringLiteral("div") << 0;
+        QTest::newRow("a code claimed on Object.prototype")
+            << QStringLiteral("function(w, e){ Object.prototype[70] = 1; }")
+            << 70 << false << QStringLiteral("div") << 0;
+        QTest::newRow("Ctrl hidden by its getter")
+            << QStringLiteral("function(w, e){ Object.defineProperty(w.KeyboardEvent.prototype, 'ctrlKey',\n"
+                              "    { get: function(){ return false; }, configurable: true }); }")
+            << 81 << true << QStringLiteral("div") << 0;
+        QTest::newRow("Shift claimed by its getter")
+            << QStringLiteral("function(w, e){ Object.defineProperty(w.KeyboardEvent.prototype, 'shiftKey',\n"
+                              "    { get: function(){ return true; }, configurable: true }); }")
+            << 81 << false << QStringLiteral("div") << 81;
+        QTest::newRow("the box's type made a button")
+            << QStringLiteral("function(w, e){ Object.defineProperty(w.HTMLInputElement.prototype, 'type',\n"
+                              "    { get: function(){ return 'button'; }, configurable: true }); }")
+            << 81 << false << QStringLiteral("text") << 0;
+        QTest::newRow("the box's tag made a div")
+            << QStringLiteral("function(w, e){ Object.defineProperty(w.Element.prototype, 'tagName',\n"
+                              "    { get: function(){ return 'DIV'; }, configurable: true }); }")
+            << 81 << false << QStringLiteral("text") << 0;
+        QTest::newRow("Reflect.apply and postMessage replaced")
+            << QStringLiteral("function(w, e){ Reflect.apply = function(){ return undefined; };\n"
+                              "    w.chrome.webview.postMessage = function(){}; }")
+            << 81 << false << QStringLiteral("div") << 81;
+    }
+
+    void thePageCannotRenameARealKeystroke(){
+        QFETCH(QString, tamper);
+        QFETCH(int, code);
+        QFETCH(bool, ctrl);
+        QFETCH(QString, focus);
+        QFETCH(int, reported);
+
+        QJSEngine engine;
+        const QString script =
+            View::EdgeInputBridgeJsCode(QList<int>() << 81, QList<int>());
+
+        const QString harness = QStringLiteral(
+            "(function(tamper, code, ctrl, focus){\n"
+            "  var out = { reported: 0, code: 0, shift: false };\n"
+            "  var slots = new WeakMap();\n"
+            "  var make = function(proto, fields){\n"
+            "      var o = Object.create(proto); slots.set(o, fields); return o; };\n"
+            "  var define = function(type, names){\n"
+            "      names.forEach(function(n){\n"
+            "          Object.defineProperty(type.prototype, n, { configurable: true,\n"
+            "              get: function(){ var f = slots.get(this);\n"
+            "                  if(!f) throw new TypeError('Illegal invocation');\n"
+            "                  return f[n]; } }); }); };\n"
+            "  var Event = function(){}, KeyboardEvent = function(){};\n"
+            "  KeyboardEvent.prototype = Object.create(Event.prototype);\n"
+            "  define(KeyboardEvent, ['keyCode', 'shiftKey', 'ctrlKey', 'altKey',\n"
+            "                         'metaKey', 'repeat', 'isComposing']);\n"
+            "  define(Event, ['defaultPrevented']);\n"
+            "  Event.prototype.composedPath = function(){ return []; };\n"
+            "  Event.prototype.preventDefault = function(){ slots.get(this).defaultPrevented = true; };\n"
+            "  var Element = function(){}, HTMLElement = function(){}, HTMLInputElement = function(){};\n"
+            "  HTMLElement.prototype = Object.create(Element.prototype);\n"
+            "  HTMLInputElement.prototype = Object.create(HTMLElement.prototype);\n"
+            "  define(Element, ['tagName', 'shadowRoot']);\n"
+            "  define(HTMLElement, ['isContentEditable']);\n"
+            "  define(HTMLInputElement, ['type']);\n"
+            "  var Document = function(){}, ShadowRoot = function(){};\n"
+            "  define(Document, ['activeElement']);\n"
+            "  define(ShadowRoot, ['activeElement']);\n"
+            "  var el = focus === 'text'\n"
+            "      ? make(HTMLInputElement.prototype, { tagName: 'INPUT', type: 'text',\n"
+            "                                           isContentEditable: false, shadowRoot: null })\n"
+            "      : make(HTMLElement.prototype, { tagName: 'DIV', isContentEditable: false,\n"
+            "                                      shadowRoot: null });\n"
+            "  var handler = null, timers = [];\n"
+            "  var document = make(Document.prototype, { activeElement: el });\n"
+            "  document.addEventListener = function(t, f){ if(t === 'keydown') handler = f; };\n"
+            "  var window = {\n"
+            "      chrome: { webview: { postMessage: function(m){\n"
+            "          if(m.kind !== 'key') return;\n"
+            "          out.reported++; out.code = m.code; out.shift = m.shift; } } },\n"
+            "      setTimeout: function(f){ timers.push(f); },\n"
+            "      Event: Event, KeyboardEvent: KeyboardEvent, Element: Element,\n"
+            "      HTMLElement: HTMLElement, HTMLInputElement: HTMLInputElement,\n"
+            "      Document: Document, ShadowRoot: ShadowRoot };\n"
+            "  window.top = window;\n"
+            "%1\n"
+            "  var e = make(KeyboardEvent.prototype, { keyCode: code, shiftKey: false,\n"
+            "      ctrlKey: ctrl, altKey: false, metaKey: false, repeat: false,\n"
+            "      isComposing: false, defaultPrevented: false });\n"
+            "  Object.defineProperty(e, 'isTrusted', { value: true });\n"
+            "  tamper(window, e);\n"
+            "  handler(e);\n"
+            "  while(timers.length) timers.shift()();\n"
+            "  return out;\n"
+            "})").arg(script);
+
+        const QJSValue fn = engine.evaluate(harness);
+        QVERIFY2(!fn.isError(),
+                 qPrintable(fn.property(QStringLiteral("message")).toString()));
+        const QJSValue page = engine.evaluate(QStringLiteral("(") + tamper + QStringLiteral(")"));
+        QVERIFY2(!page.isError(),
+                 qPrintable(page.property(QStringLiteral("message")).toString()));
+        const QJSValue out = fn.call(QJSValueList() << page << code << ctrl << focus);
+        QVERIFY2(!out.isError(),
+                 qPrintable(out.property(QStringLiteral("message")).toString()));
+        QCOMPARE(out.property(QStringLiteral("reported")).toInt(), reported ? 1 : 0);
+        if(reported){
+            QCOMPARE(out.property(QStringLiteral("code")).toInt(), reported);
+            QCOMPARE(out.property(QStringLiteral("shift")).toBool(), false);
+        }
+    }
+
     void theBridgesOutliveTheHiddenWebview(){
         QJSEngine engine;
         const QString script =
@@ -967,6 +1095,54 @@ private slots:
                      qPrintable(name + QStringLiteral(" escapes the dropped "
                                                       "text itself (A-25)")));
         }
+    }
+
+    void aBindingAskedForIsInTheFragment(){
+        QFile file(QStringLiteral(VANILLA_RESOURCE_DIR "/settings/settings.js"));
+        QVERIFY2(file.open(QFile::ReadOnly | QFile::Text), qPrintable(file.fileName()));
+        const QString source = QString::fromUtf8(file.readAll());
+        const int begin = source.indexOf(QStringLiteral("function categoryOfFragment() {"));
+        const int end = source.indexOf(QStringLiteral("function showFindOfFragment() {"), begin);
+        QVERIFY(begin >= 0);
+        QVERIFY(end > begin);
+
+        QJSEngine engine;
+        engine.evaluate(QStringLiteral("var window = {location: {hash: ''}};"
+                                       "var state = {categories: [{name: 'appearance'}, {name: 'input'}]};"));
+        engine.evaluate(source.mid(begin, end - begin));
+        const auto at = [&engine](const QString &hash, const QString &code){
+            engine.evaluate(QStringLiteral("window.location.hash = '%1';").arg(hash));
+            return engine.evaluate(code).toString();
+        };
+        QCOMPARE(at(QStringLiteral("#input"), QStringLiteral("categoryOfFragment()")), QStringLiteral("input"));
+        QCOMPARE(at(QStringLiteral("#input"), QStringLiteral("findOfFragment()")), QString());
+        QCOMPARE(at(QStringLiteral("#input?find=ctrl%2Bt%20page"), QStringLiteral("categoryOfFragment()")), QStringLiteral("input"));
+        QCOMPARE(at(QStringLiteral("#input?find=ctrl%2Bt%20page"), QStringLiteral("findOfFragment()")), QStringLiteral("ctrl+t page"));
+        QCOMPARE(at(QStringLiteral("#input?find=%"), QStringLiteral("findOfFragment()")), QString());
+    }
+
+    void anActionIsFoundByEveryWordOfWhatItIsCalled(){
+        QFile file(QStringLiteral(VANILLA_RESOURCE_DIR "/settings/settings.js"));
+        QVERIFY2(file.open(QFile::ReadOnly | QFile::Text), qPrintable(file.fileName()));
+        const QString source = QString::fromUtf8(file.readAll());
+        const int begin = source.indexOf(QStringLiteral("function actionWords(query) {"));
+        const int end = source.indexOf(QStringLiteral("// what is open now"), begin);
+        QVERIFY(begin >= 0);
+        QVERIFY(end > begin);
+
+        QJSEngine engine;
+        engine.evaluate(source.mid(begin, end - begin));
+        const auto matches = [&engine](const QString &query){
+            return engine.evaluate(QStringLiteral(
+                "actionMatches({label: 'Indent More', name: 'Indent'}, 'Edit', actionWords('%1'))").arg(query)).toBool();
+        };
+        QVERIFY(matches(QString()));
+        QVERIFY(matches(QStringLiteral("more")));
+        QVERIFY(matches(QStringLiteral("INDENT")));
+        QVERIFY(matches(QStringLiteral("edit")));
+        QVERIFY(matches(QStringLiteral("more  ind")));
+        QVERIFY(!matches(QStringLiteral("more zzz")));
+        QVERIFY(!matches(QStringLiteral("zzz")));
     }
 
     void settingsCategoryIsTheAddressFragment(){
@@ -1426,26 +1602,24 @@ private slots:
     }
 
     void thePageCannotReadTheMark(){
-        static const QStringList installers = QStringList()
-            << QStringLiteral("/app/networkcontroller.cpp")
-            << QStringLiteral("/view/webengine/quickwebengineview6.qml");
+        struct Installer { const char *file; const char *from; const char *to; };
+        static const Installer installers[] = {
+            {"/app/networkcontroller.cpp", "InstallEventFilterJsCode", "scripts()->insert"},
+            {"/app/networkcontroller.cpp", "static void InstallQuickFrameScript", "\"insert\""},
+            {"/view/webengine/quickwebengineview6.qml", "function makeDefaultScript", "return script"},
+        };
 
-        foreach(const QString &name, installers){
-            QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + name);
-            QVERIFY2(file.open(QFile::ReadOnly | QFile::Text),
-                     qPrintable(file.fileName()));
+        for(const Installer &installer : installers){
+            QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + QLatin1String(installer.file));
+            QVERIFY2(file.open(QFile::ReadOnly | QFile::Text), qPrintable(file.fileName()));
             const QString source = QString::fromUtf8(file.readAll());
             file.close();
-
-            const bool qml = name.endsWith(QStringLiteral(".qml"));
-            const int from = source.indexOf(qml ? QStringLiteral("function makeDefaultScript")
-                                                : QStringLiteral("InstallEventFilterJsCode"));
-            const int to = source.indexOf(qml ? QStringLiteral("return script")
-                                              : QStringLiteral("scripts()->insert"), from);
-            QVERIFY2(from >= 0 && to > from, qPrintable(name));
+            const int from = source.indexOf(QLatin1String(installer.from));
+            const int to = source.indexOf(QLatin1String(installer.to), from);
+            QVERIFY2(from >= 0 && to > from, installer.from);
             const QString part = source.mid(from, to - from);
-            QVERIFY2(part.contains(QStringLiteral("ApplicationWorld")), qPrintable(name));
-            QVERIFY2(!part.contains(QStringLiteral("MainWorld")), qPrintable(name));
+            QVERIFY2(part.contains(QStringLiteral("ApplicationWorld")), installer.from);
+            QVERIFY2(!part.contains(QStringLiteral("MainWorld")), installer.from);
         }
 
         const QString edge =
@@ -1511,6 +1685,28 @@ private slots:
         QVERIFY2(!framed.isError(), qPrintable(framed.toString()));
         QVERIFY(framed.property(QStringLiteral("threw")).toBool());
         QCOMPARE(framed.property(QStringLiteral("left")).toString(), QString());
+    }
+
+    void theScrollBarAnswerIsReadWithCare(){
+        auto answer = [](const QVariantList &list){ return QVariant(list);};
+
+        View::SetScrollBarStateFrom(answer({ 0, 0 }));
+        QCOMPARE(View::GetScrollBarState(), View::NoScrollBarEnabled);
+        View::SetScrollBarStateFrom(answer({ 120, 0 }));
+        QCOMPARE(View::GetScrollBarState(), View::HorizontalScrollBarEnabled);
+        View::SetScrollBarStateFrom(answer({ -5, 300 }));
+        QCOMPARE(View::GetScrollBarState(), View::VerticalScrollBarEnabled);
+        View::SetScrollBarStateFrom(answer({ 1, 1 }));
+        QCOMPARE(View::GetScrollBarState(), View::BothScrollBarEnabled);
+
+        View::SetScrollBarStateFrom(QVariant());
+        QCOMPARE(View::GetScrollBarState(), View::BothScrollBarEnabled);
+        View::SetScrollBarStateFrom(answer({ 0 }));
+        QCOMPARE(View::GetScrollBarState(), View::BothScrollBarEnabled);
+        View::SetScrollBarStateFrom(answer({}));
+        QCOMPARE(View::GetScrollBarState(), View::BothScrollBarEnabled);
+        View::SetScrollBarStateFrom(QVariant(QStringLiteral("0,0")));
+        QCOMPARE(View::GetScrollBarState(), View::BothScrollBarEnabled);
     }
 };
 

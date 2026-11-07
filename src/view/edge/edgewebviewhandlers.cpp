@@ -23,6 +23,7 @@
 #include "treebar.hpp"
 #include "mainwindow.hpp"
 #include "application.hpp"
+#include "runninguploads.hpp"
 #include "networkcontroller.hpp"
 #include "notifier.hpp"
 #include "downloadname.hpp"
@@ -229,7 +230,7 @@ namespace {
         case COREWEBVIEW2_PERMISSION_KIND_OTHER_SENSORS:
             return EdgeWebView::tr("OtherSensors");
         case COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ:
-            return EdgeWebView::tr("ClipboardReadWrite");
+            return EdgeWebView::tr("ClipboardRead");
         case COREWEBVIEW2_PERMISSION_KIND_MULTIPLE_AUTOMATIC_DOWNLOADS:
             return EdgeWebView::tr("MultipleAutomaticDownloads");
         case COREWEBVIEW2_PERMISSION_KIND_FILE_READ_WRITE:
@@ -297,6 +298,23 @@ void EdgeWebView::RegisterNavigationHandlers(){
              emit loadStarted();
              emit loadProgress(0);
              emit statusBarMessage(tr("Started loading."));
+
+             if(args){
+                 ComPtr<ICoreWebView2HttpRequestHeaders> headers;
+                 LPWSTR type = nullptr;
+                 if(SUCCEEDED(args->get_RequestHeaders(&headers)) && headers &&
+                    SUCCEEDED(headers->GetHeader(L"Content-Type", &type)) && type){
+                     const bool multipart = RunningUploads::IsMultipart(QString::fromWCharArray(type).toLatin1());
+                     CoTaskMemFree(type);
+                     if(multipart){
+                         LPWSTR uri = nullptr;
+                         if(SUCCEEDED(args->get_Uri(&uri)) && uri){
+                             UploadStarted(QUrl(QString::fromWCharArray(uri)));
+                             CoTaskMemFree(uri);
+                         }
+                     }
+                 }
+             }
              return S_OK;
          }).Get(), &token)))
         VANILLA_KEEP_WEBVIEW_EVENT(webview, NavigationStarting, token);
@@ -382,6 +400,27 @@ void EdgeWebView::RegisterNavigationHandlers(){
         VANILLA_KEEP_WEBVIEW_EVENT(webview, DocumentTitleChanged, token);
     VANILLA_STOP_IF_RETIRED();
 
+    ComPtr<ICoreWebView2_12> webview12;
+    if(SUCCEEDED(webview->QueryInterface(IID_PPV_ARGS(&webview12))) && webview12){
+        VANILLA_STOP_IF_RETIRED();
+        if(SUCCEEDED(webview12->add_StatusBarTextChanged
+            (Callback<ICoreWebView2StatusBarTextChangedEventHandler>
+             ([this](ICoreWebView2 *sender, IUnknown*) -> HRESULT {
+                 if(m_Impl->m_State.IsRetired()) return S_OK;
+                 ComPtr<ICoreWebView2_12> sender12;
+                 if(!sender || FAILED(sender->QueryInterface(IID_PPV_ARGS(&sender12))) || !sender12)
+                     return S_OK;
+                 LPWSTR text = nullptr;
+                 const bool has = SUCCEEDED(sender12->get_StatusBarText(&text)) && text;
+                 const QString words = has ? QString::fromWCharArray(text) : QString();
+                 if(text) CoTaskMemFree(text);
+                 emit linkHovered(words, QString(), QString());
+                 return S_OK;
+             }).Get(), &token)))
+            VANILLA_KEEP_WEBVIEW_EVENT(webview12.Get(), StatusBarTextChanged, token);
+    }
+    VANILLA_STOP_IF_RETIRED();
+
     ComPtr<ICoreWebView2_15> webview15;
     if(SUCCEEDED(webview->QueryInterface(IID_PPV_ARGS(&webview15))) && webview15){
         VANILLA_STOP_IF_RETIRED();
@@ -398,6 +437,7 @@ void EdgeWebView::RegisterNavigationHandlers(){
                  if(uri) CoTaskMemFree(uri);
                  if(!has){
                      m_Impl->m_Icon = QIcon();
+                     TreeBank::TabsLookChanged();
                      return S_OK;
                  }
                  QPointer<EdgeWebView> alive(this);
@@ -419,7 +459,10 @@ void EdgeWebView::RegisterNavigationHandlers(){
                           const bool same = SUCCEEDED(sender15->get_FaviconUri(&now)) && now &&
                               QString::fromWCharArray(now) == requested;
                           if(now) CoTaskMemFree(now);
-                          if(same) alive->m_Impl->m_Icon = icon;
+                          if(same){
+                              alive->m_Impl->m_Icon = icon;
+                              TreeBank::TabsLookChanged();
+                          }
                           return S_OK;
                       }).Get());
                  return S_OK;
@@ -673,7 +716,6 @@ void EdgeWebView::WireDownload(ICoreWebView2DownloadOperation *rawOperation,
             const QString address = QString::fromWCharArray(uri);
             remote = QUrl(address);
             CoTaskMemFree(uri);
-            m_Impl->m_Aborts.DownloadStarted(address);
         }
     }
 
@@ -761,6 +803,14 @@ void EdgeWebView::RegisterDocumentHandlers(){
              if(FAILED(args->get_DownloadOperation(&operation)) || !operation)
                  return S_OK;
 
+             {
+                 LPWSTR uri = nullptr;
+                 if(SUCCEEDED(operation->get_Uri(&uri)) && uri){
+                     m_Impl->m_Aborts.DownloadStarted(QString::fromWCharArray(uri));
+                     CoTaskMemFree(uri);
+                 }
+             }
+
              QUrl source;
              {
                  LPWSTR text = nullptr;
@@ -811,6 +861,7 @@ void EdgeWebView::RegisterDocumentHandlers(){
              QPointer<EdgeWebView> alive(this);
              const QString offered = name;
              m_Impl->m_Downloads.AskPlaced();
+             if(m_Impl->m_History.IsEmpty()) LeaveOutOfSaves();
              const bool start = DownloadAsks().Push
                  ([alive, held, deferral, operation, offered, source, offTheRecord](){
                  auto usable = [&alive](){
@@ -864,6 +915,9 @@ void EdgeWebView::RegisterDocumentHandlers(){
                              waiting->m_Impl->m_History.IsEmpty();
                      });
                  }
+
+                 if(alive && !Application::IsQuitting() && !alive->m_Impl->m_Downloads.Asking())
+                     alive->PutBackIntoSaves();
 
                  {
                      EdgeBackendCall call(EdgeDownloadCarriers::Instance()->Calls());
@@ -1630,15 +1684,8 @@ int EdgeWebView::DecideCertificateError(const QUrl &url, const QString &descript
         if(Application::GetAllowedHosts().contains(host))
             return COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_ALWAYS_ALLOW;
 
-        ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
-        dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
-        dialog->SetInformativeText(tr("Allow or Block this host?"));
-        dialog->SetDetailedText(detail);
-        dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-        dialog->Execute();
-
-        const Dialog::Button clicked = dialog->ClickedButton();
+        const Dialog::Button clicked = ModalDialog::AllowBlockOrCancel
+            (tr("SSL errors on host: %1").arg(host), tr("Allow or Block this host?"), detail);
         if(clicked == Dialog::Allow){
             Application::AppendToAllowedHosts(host, offTheRecord);
             return COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_ALWAYS_ALLOW;
@@ -1663,15 +1710,9 @@ int EdgeWebView::DecideCertificateError(const QUrl &url, const QString &descript
             break;
         }
 
-        ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
-        dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
-        dialog->SetInformativeText(tr("Allow or Block this certificate?"));
-        dialog->SetDetailedText(detail + QStringLiteral("\nSHA-256: ") + fingerprint);
-        dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-        dialog->Execute();
-
-        const Dialog::Button clicked = dialog->ClickedButton();
+        const Dialog::Button clicked = ModalDialog::AllowBlockOrCancel
+            (tr("SSL errors on host: %1").arg(host), tr("Allow or Block this certificate?"),
+             detail + QStringLiteral("\nSHA-256: ") + fingerprint);
         if(clicked == Dialog::Allow){
             Application::RememberCertificate(key, true, offTheRecord);
             return COREWEBVIEW2_SERVER_CERTIFICATE_ERROR_ACTION_ALWAYS_ALLOW;
@@ -1808,9 +1849,12 @@ bool EdgeWebView::KeepForDownloads(){
     if(!m_Impl->m_Downloads.KeepsAlive()) return false;
     SharedView self = GetThis().lock();
     if(!self) return false;
+    const bool sending = RunningUploads::Instance()->Ended(this);
     m_Impl->m_KeptAfterRelease = true;
+    PutBackIntoSaves();
     EdgeDownloadCarriers::Instance()->Add(self);
     View::Orphan();
+    if(sending) Stop();
     return true;
 }
 
@@ -1860,7 +1904,7 @@ void EdgeDownloadCarriers::ReleaseAll(){
 void EdgeDownloadCarriers::RetireEveryCarrier(){
     SharedViewList carriers = m_Carriers;
     m_Carriers.clear();
-    foreach(SharedView view, carriers) RetireCarrier(view);
+    for(SharedView view : std::as_const(carriers)) RetireCarrier(view);
 }
 
 void EdgeWebView::ReleaseDownloadCarriers(){

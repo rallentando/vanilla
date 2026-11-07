@@ -21,7 +21,7 @@ class ExtensionBar : public QWidget {
 
 public:
     explicit ExtensionBar(QWidget *parent);
-    ~ExtensionBar() Q_DECL_OVERRIDE;
+    ~ExtensionBar() override;
 
     template <class T> T ScaleByDevice(T t) const {
         return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));

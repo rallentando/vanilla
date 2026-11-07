@@ -14,6 +14,25 @@ class tst_downloadname : public QObject {
 
 private slots:
 
+    void aPageSavedAsHtmlIsNamedSo_data(){
+        QTest::addColumn<QString>("given");
+        QTest::addColumn<QString>("expected");
+
+        QTest::newRow("the engine's name") << QStringLiteral("Title.mhtml") << QStringLiteral("Title.html");
+        QTest::newRow("the short one") << QStringLiteral("Title.mht") << QStringLiteral("Title.html");
+        QTest::newRow("without case") << QStringLiteral("Title.MHTML") << QStringLiteral("Title.html");
+        QTest::newRow("only the end") << QStringLiteral("a.mhtml.b.mhtml") << QStringLiteral("a.mhtml.b.html");
+        QTest::newRow("not the extension") << QStringLiteral("mhtml") << QStringLiteral("mhtml");
+        QTest::newRow("another extension") << QStringLiteral("Title.pdf") << QStringLiteral("Title.pdf");
+        QTest::newRow("html already") << QStringLiteral("Title.html") << QStringLiteral("Title.html");
+    }
+
+    void aPageSavedAsHtmlIsNamedSo(){
+        QFETCH(QString, given);
+        QFETCH(QString, expected);
+        QCOMPARE(DownloadName::AsHtml(given), expected);
+    }
+
     void aNameIsOneComponentSpelledWithCharactersAFileSystemTakes_data(){
         QTest::addColumn<QString>("given");
         QTest::addColumn<QString>("expected");

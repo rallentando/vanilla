@@ -13,15 +13,31 @@
 #include <QStyle>
 #include <QStyleOptionToolBar>
 #include <QToolBar>
+#include <QSignalSpy>
 
 #include "application.hpp"
 #include "lightnode.hpp"
+#include "nodepreview.hpp"
 #include "theme.hpp"
 #include "treebar.hpp"
+#include "view.hpp"
 
 #include "testsupport.hpp"
 
 namespace {
+
+class StubView : public View {
+public:
+    QSize size() override { return QSize();}
+    void resize(QSize) override {}
+    void show() override {}
+    void hide() override {}
+    void raise() override {}
+    void lower() override {}
+    void repaint() override {}
+    bool visible() override { return false;}
+    void setFocus(Qt::FocusReason) override {}
+};
 
 class HandleReferenceToolBar : public QToolBar {
 public:
@@ -48,9 +64,12 @@ private slots:
     void foldingNearTheTopCostsWhatFoldingAtTheBottomDoes();
     void foldingMovesAlongTheDirectorysCentreLine_data();
     void foldingMovesAlongTheDirectorysCentreLine();
+    void aComingOrGoingTabFades_data();
+    void aComingOrGoingTabFades();
     void foldingADirectoryWithItsParentSlidesTheRestOnce();
     void foldingLetsGoOfAFocusedChild();
     void aFolderPressCanFinishLayoutButNotDragOrScroll();
+    void aPressKeepsThePreviewAwayUntilThePointerMoves();
     void finishingAnimationsSurvivesLayerDestruction();
     void foldingSurvivesLayerDestruction_data();
     void foldingSurvivesLayerDestruction();
@@ -62,6 +81,10 @@ private slots:
 
     void anItemLetGoOfItsNodeDrawsNothingAndGoesNextTurn();
     void anItemLetGoOfItsNodeDrawsNothingAndGoesNextTurn_data();
+
+    void theBarDrawsOnceWhenToldAndNotAgainUntilTold();
+    void aLoadedTabWithNoIconOfItsOwnLooksLoaded_data();
+    void aLoadedTabWithNoIconOfItsOwnLooksLoaded();
 
     void theBarLetsGoOfEveryItemAboutTheNodesItIsGiven();
     void theBarLetsGoOfAnItemWhichIsAlreadyLeaving();
@@ -423,6 +446,54 @@ void tst_treebaritem::foldingMovesAlongTheDirectorysCentreLine(){
     TearDown();
 }
 
+void tst_treebaritem::aComingOrGoingTabFades_data(){
+    QTest::addColumn<int>("orientation");
+    QTest::newRow("vertical") << int(Qt::Vertical);
+    QTest::newRow("horizontal") << int(Qt::Horizontal);
+}
+
+void tst_treebaritem::aComingOrGoingTabFades(){
+    QFETCH(int, orientation);
+    const bool vertical = orientation == Qt::Vertical;
+    Build();
+    TreeBar::m_EnableAnimation = true;
+    {
+        QSignalBlocker blocker(m_Bar);
+        m_Bar->setOrientation(static_cast<Qt::Orientation>(orientation));
+    }
+    m_Bar->m_VerticalNodeHeight = 24;
+    m_Bar->m_HorizontalNodeWidth = 160;
+    m_Bar->m_Scene->setSceneRect(0, 0, 640, 640);
+    const qreal whole = vertical ? 24 : 160;
+    const auto extent = [&](const QRectF &rect){
+        return vertical ? rect.height() : rect.width();
+    };
+    auto *node = m_Root->MakeChild();
+    node->SetHoldView(true);
+    NodeItem *item = m_Layer->CreateNodeItem(node, 0, 0, 0, vertical ? 300 : 24);
+    QCOMPARE(item->TransitionRatio(), 1.0);
+
+    item->OnCreated(item->GetRect());
+    QCOMPARE(item->GetAnimation()->state(), QAbstractAnimation::Running);
+    QCOMPARE(item->GetAnimation()->duration(), 200);
+    item->GetAnimation()->setCurrentTime(50);
+    qreal ratio = item->TransitionRatio();
+    QVERIFY(ratio > 0 && ratio < 1);
+    QCOMPARE(ratio, extent(item->GetRect()) / whole);
+    QVERIFY(m_Layer->FinishAnimations());
+    QCOMPARE(item->TransitionRatio(), 1.0);
+
+    QRectF target = item->GetRect();
+    if(vertical) target.setHeight(0); else target.setWidth(0);
+    item->OnDeleted(target);
+    item->GetAnimation()->setCurrentTime(100);
+    ratio = item->TransitionRatio();
+    QVERIFY(ratio > 0 && ratio < 1);
+    QCOMPARE(ratio, extent(item->GetRect()) / whole);
+    QVERIFY(m_Layer->FinishAnimations());
+    TearDown();
+}
+
 void tst_treebaritem::foldingADirectoryWithItsParentSlidesTheRestOnce(){
     Build();
     TreeBar::m_EnableAnimation = true;
@@ -585,6 +656,37 @@ void tst_treebaritem::aFolderPressCanFinishLayoutButNotDragOrScroll(){
     QVERIFY(!press());
     folder->OnDeleted(QRectF(0, 120, 300, 0));
     QVERIFY(!press());
+    TearDown();
+}
+
+void tst_treebaritem::aPressKeepsThePreviewAwayUntilThePointerMoves(){
+    Build();
+    NodeItem *item = AddItem(m_Root->MakeChild());
+    NodePreview *preview = NodePreview::Instance();
+    const QRect bar(0, 0, 320, 640);
+    const QRect tab(0, 0, 300, 24);
+    const QPoint pointer = QCursor::pos();
+
+    preview->HoldUntilPointerMoves(QPoint(-10000, -10000));
+    preview->Request(QImage(), QStringLiteral("a"), QString(), tab, bar, Qt::RightEdge, pointer);
+    QTRY_VERIFY(preview->isVisible());
+
+    QGraphicsSceneMouseEvent event(QEvent::GraphicsSceneMousePress);
+    event.setButton(Qt::LeftButton);
+    event.setButtons(Qt::LeftButton);
+    event.setPos(QPointF(50, 12));
+    item->mousePressEvent(&event);
+    QVERIFY(!preview->isVisible());
+
+    preview->Request(QImage(), QStringLiteral("a"), QString(), tab, bar, Qt::RightEdge, pointer);
+    QVERIFY(!preview->isVisible());
+    QVERIFY(!preview->IsAbout(QStringLiteral("a"), tab));
+
+    preview->Request(QImage(), QStringLiteral("a"), QString(), tab, bar, Qt::RightEdge,
+                     pointer + QPoint(1, 0));
+    QVERIFY(!preview->isVisible());
+    QVERIFY(preview->IsAbout(QStringLiteral("a"), tab));
+    preview->Dismiss();
     TearDown();
 }
 
@@ -1137,7 +1239,7 @@ public:
     WatchingItem(TreeBar *bar, Node *nd, LayerItem *layer)
         : NodeItem(nullptr, bar, nd, layer), m_Layer(layer) {}
     bool DestroyedIsHooked() const { return receivers(SIGNAL(destroyed(QObject*))) > 0;}
-    ~WatchingItem() Q_DECL_OVERRIDE {
+    ~WatchingItem() override {
         s_Died = true;
         s_DestroyedHooked = QObject::disconnect(this, &QObject::destroyed, m_Layer, nullptr);
         s_FinishedHooked = QObject::disconnect(GetAnimation(), &QPropertyAnimation::finished,
@@ -1382,7 +1484,7 @@ void tst_treebaritem::theScrollArrowLinesUpWithThePlusIconAcrossTheBar(){
 void tst_treebaritem::theHandleUsesTheToolBarsCrossAxisMargin(){
     const QList<Qt::Orientation> orientations =
         { Qt::Horizontal, Qt::Vertical };
-    foreach(Qt::Orientation orientation, orientations){
+    for(Qt::Orientation orientation : orientations){
         QMainWindow barWindow;
         QMainWindow referenceWindow;
         TreeBar *bar = new TreeBar(nullptr, &barWindow);
@@ -1486,6 +1588,109 @@ void tst_treebaritem::aThumbnailTooThinToShowKeepsEveryControlOnTheTitleBand(){
     QCOMPARE(textRect.top(), qreal(titleBand.top() - m_Bar->ScaleByDevice(1)));
 
     TearDown();
+}
+
+void tst_treebaritem::theBarDrawsOnceWhenToldAndNotAgainUntilTold(){
+    QMainWindow window;
+    TreeBar *bar = new TreeBar(nullptr, &window);
+    ViewNode *root = new ViewNode();
+    LayerItem *layer = new LayerItem(nullptr, bar, root, nullptr, nullptr);
+    bar->m_Scene->addItem(layer);
+    bar->m_LayerList << layer;
+    window.addToolBar(Qt::TopToolBarArea, bar);
+    window.resize(500, 300);
+    window.show();
+    QVERIFY(bar->isVisible());
+    QTest::qWait(300);
+
+    QSignalSpy drawn(bar->m_Scene, &QGraphicsScene::changed);
+    for(int i = 0; i < 100; i++) bar->ScheduleRepaint();
+    QTRY_COMPARE(drawn.count(), 1);
+    QTest::qWait(700);
+    QCOMPARE(drawn.count(), 1);
+
+    window.hide();
+    QVERIFY(!bar->isVisible());
+    bar->ScheduleRepaint();
+    QVERIFY(!bar->m_RepaintTimer.isActive());
+
+    bar->m_LayerList.clear();
+    delete root;
+}
+
+void tst_treebaritem::aLoadedTabWithNoIconOfItsOwnLooksLoaded_data(){
+    QTest::addColumn<QUrl>("url");
+    QTest::addColumn<QString>("scheme");
+    for(const QString scheme : {QStringLiteral("Light"), QStringLiteral("Dark")}){
+        QTest::newRow(qPrintable(QStringLiteral("no icon, ") + scheme))
+            << QUrl(QStringLiteral("http://127.0.0.1:1/")) << scheme;
+        QTest::newRow(qPrintable(QStringLiteral("settings, ") + scheme))
+            << QUrl(QStringLiteral("vanilla://settings/")) << scheme;
+    }
+}
+
+void tst_treebaritem::aLoadedTabWithNoIconOfItsOwnLooksLoaded(){
+    QFETCH(QUrl, url);
+    QFETCH(QString, scheme);
+    Theme::ApplyScheme(scheme);
+    QMainWindow window;
+    TreeBar *bar = new TreeBar(nullptr, &window);
+    ViewNode *root = new ViewNode();
+    LayerItem *layer = new LayerItem(nullptr, bar, root, nullptr, nullptr);
+    bar->m_Scene->addItem(layer);
+    bar->m_LayerList << layer;
+    window.addToolBar(Qt::TopToolBarArea, bar);
+    window.resize(500, 300);
+    window.show();
+
+    bar->m_HorizontalNodeWidth = 160;
+    ViewNode *node = root->MakeChild();
+    node->SetHoldView(true);
+    node->SetUrl(url);
+    layer->CreateNodeItem(node, 0, 0, 0, 28);
+
+    const auto draw = [&](){
+        bar->m_Scene->setSceneRect(0, 0, 400, 40);
+        QImage image(400, 40, QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::transparent);
+        QPainter painter(&image);
+        bar->m_Scene->render(&painter);
+        return image;
+    };
+
+    const QImage unloaded = draw();
+    StubView view;
+    node->SetView(&view);
+    view.SetViewNode(node);
+    const QImage loaded = draw();
+    const auto ink = [](const QImage &image){
+        const QColor ground = image.pixelColor(image.width() - 1, image.height() / 2);
+        int count = 0;
+        for(int y = 0; y < image.height(); y++)
+            for(int x = 0; x < image.width(); x++){
+                const QColor c = image.pixelColor(x, y);
+                if(qAbs(c.lightness() - ground.lightness()) > 60) count++;
+            }
+        return count;
+    };
+    QVERIFY2(ink(loaded) > ink(unloaded) + 8,
+             qPrintable(QStringLiteral("%1 against %2").arg(ink(loaded)).arg(ink(unloaded))));
+
+    if(url.scheme() == QStringLiteral("vanilla")){
+        const QImage filled = node->GetIcon().pixmap(QSize(16, 16)).toImage();
+        node->SetView(nullptr);
+        const QImage hollow = node->GetIcon().pixmap(QSize(16, 16)).toImage();
+        QVERIFY(!filled.isNull());
+        QVERIFY(filled != hollow);
+        QCOMPARE(Application::GetIcon(url).pixmap(QSize(16, 16)).toImage(), hollow);
+    }
+
+    window.hide();
+    bar->m_LayerList.clear();
+    node->SetView(nullptr);
+    view.SetViewNode(nullptr);
+    delete root;
+    Theme::ApplyScheme(QStringLiteral("Auto"));
 }
 
 QTEST_MAIN(tst_treebaritem)

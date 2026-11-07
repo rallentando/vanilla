@@ -12,6 +12,8 @@
 
 #include <QMenu>
 #include <QThread>
+#include <atomic>
+#include <QMutex>
 #include <QGraphicsScene>
 #include <QGraphicsObject>
 #include <QJsonDocument>
@@ -26,6 +28,11 @@
 #include <QFileInfo>
 #include <QStyle>
 #include <QTimer>
+#include <QElapsedTimer>
+#include <QProgressDialog>
+#ifdef WEBENGINEVIEW
+#  include <QWebEngineProfile>
+#endif
 
 #include <memory>
 
@@ -56,6 +63,8 @@
 #include "toolbar.hpp"
 #include "localview.hpp"
 #include "dialog.hpp"
+#include "spacerename.hpp"
+#include "passwordstore.hpp"
 
 QString TreeBank::m_RootName = QString();
 ViewNode *TreeBank::m_ViewRoot  = nullptr;
@@ -63,13 +72,19 @@ ViewNode *TreeBank::m_TrashRoot = nullptr;
 
 ViewNode *TreeBank::m_ViewIterForward  = nullptr;
 ViewNode *TreeBank::m_ViewIterBackward = nullptr;
+bool TreeBank::m_ViewIterForwardPending  = false;
+bool TreeBank::m_ViewIterBackwardPending = false;
 
 int TreeBank::ChangeScope::m_Depth = 0;
 bool TreeBank::m_TraverseAllView = false;
 bool TreeBank::m_PurgeNotifier = false;
 bool TreeBank::m_PurgeReceiver = false;
 bool TreeBank::m_PurgeView = false;
+bool TreeBank::m_MovingSpace = false;
+QString TreeBank::m_MovingFrom = QString();
+QString TreeBank::m_MovingTo = QString();
 bool TreeBank::m_EnableMiniMap = false;
+bool TreeBank::m_EnableNotifierScrollArea = false;
 int  TreeBank::m_MaxViewCount = 0;
 int  TreeBank::m_MaxTrashEntryCount = 0;
 int  TreeBank::m_TraverseCondition = 0;
@@ -79,7 +94,10 @@ SharedViewList TreeBank::m_AllViews = SharedViewList();
 View *TreeBank::m_ExtractingDownloadCarrier = nullptr;
 SharedViewList TreeBank::m_ViewUpdateBox = SharedViewList();
 NodeList TreeBank::m_NodeDeleteBox = NodeList();
+QHash<quint64, int> TreeBank::m_LeftOutOfSaves = QHash<quint64, int>();
 NodeList TreeBank::m_FreshDeleteBox = NodeList();
+NodeList TreeBank::m_ClipboardNodes = NodeList();
+bool TreeBank::m_ClipboardIsCut = false;
 QList<QPair<NodeList, Node*>> TreeBank::m_Leaving = QList<QPair<NodeList, Node*>>();
 bool TreeBank::m_DeleteBarrierBooked = false;
 
@@ -190,7 +208,46 @@ void TreeBank::WhenSomethingChanges(std::function<void()> told){
 }
 
 void TreeBank::SomethingChanged(){
+    TabsLookChanged();
     if(ToldOfChanges()) ToldOfChanges()();
+}
+
+namespace {
+    QMutex &TellingLock(){
+        static QMutex lock;
+        return lock;
+    }
+    bool &Telling(){
+        static bool telling = true;
+        return telling;
+    }
+}
+
+void TreeBank::TabsLookChanged(){
+    {   QMutexLocker locker(&TellingLock());
+        if(!Telling()) return;
+        QCoreApplication *app = QCoreApplication::instance();
+        if(!app) return;
+        if(QThread::currentThread() != app->thread()){
+            static std::atomic<bool> posted(false);
+            if(posted.exchange(true)) return;
+            QMetaObject::invokeMethod(app, [](){
+                posted = false;
+                TabsLookChanged();
+            }, Qt::QueuedConnection);
+            return;
+        }
+    }
+    foreach(MainWindow *win, Application::GetMainWindows()){
+        if(TreeBar *bar = win->GetTreeBar()) bar->ScheduleRepaint();
+        if(TreeBank *bank = win->GetTreeBank())
+            if(Gadgets *gadgets = bank->GetGadgets()) gadgets->ScheduleRepaint();
+    }
+}
+
+void TreeBank::StopTellingTabs(){
+    QMutexLocker locker(&TellingLock());
+    Telling() = false;
 }
 
 void TreeBank::EmitTreeStructureChanged(){
@@ -221,6 +278,7 @@ void TreeBank::ForgetNodeItems(NodeList &nds){
 }
 
 void TreeBank::EmitFoldedChanged(NodeList &nds){
+    TabsLookChanged();
     foreach(MainWindow *win, Application::GetMainWindows()){
         emit win->GetTreeBank()->FoldedChanged(nds);
     }
@@ -228,37 +286,37 @@ void TreeBank::EmitFoldedChanged(NodeList &nds){
 
 void TreeBank::ConnectToNotifier(){
     if(m_Notifier){
-        connect(m_Gadgets,  SIGNAL(statusBarMessage(const QString&)),
-                m_Notifier, SLOT(SetStatus(const QString&)));
-        connect(m_Gadgets,  SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                m_Notifier, SLOT(SetStatus(const QString&, const QString&)));
-        connect(m_Gadgets,  SIGNAL(ItemHovered(const QString&, const QString&, const QString&)),
-                m_Notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
+        connect(m_Gadgets,  &Gadgets::statusBarMessage,
+                m_Notifier, QOverload<QString>::of(&Notifier::SetStatus));
+        connect(m_Gadgets,  &Gadgets::statusBarMessage2,
+                m_Notifier, QOverload<QString, QString>::of(&Notifier::SetStatus));
+        connect(m_Gadgets,  &Gadgets::ItemHovered,
+                m_Notifier, &Notifier::SetLink);
 
-        connect(m_Gadgets,  SIGNAL(ScrollChanged(QPointF)),
-                m_Notifier, SLOT(SetScroll(QPointF)));
-        connect(m_Notifier, SIGNAL(ScrollRequest(QPointF)),
-                m_Gadgets,  SLOT(SetScroll(QPointF)));
+        connect(m_Gadgets,  &Gadgets::ScrollChanged,
+                m_Notifier, &Notifier::SetScroll);
+        connect(m_Notifier, &Notifier::ScrollRequest,
+                m_Gadgets,  QOverload<QPointF>::of(&GraphicsTableView::SetScroll));
 
-        connect(Application::GetAutoSaver(), SIGNAL(Started()),
-                m_Notifier, SLOT(AutoSaveStarted()));
-        connect(Application::GetAutoSaver(), SIGNAL(Failed()),
-                m_Notifier, SLOT(AutoSaveFailed()));
-        connect(Application::GetAutoSaver(), SIGNAL(Finished(const QString&)),
-                m_Notifier, SLOT(AutoSaveFinished(const QString&)));
+        connect(Application::GetAutoSaver(), &AutoSaver::Started,
+                m_Notifier, &Notifier::AutoSaveStarted);
+        connect(Application::GetAutoSaver(), &AutoSaver::Failed,
+                m_Notifier, &Notifier::AutoSaveFailed);
+        connect(Application::GetAutoSaver(), &AutoSaver::Finished,
+                m_Notifier, &Notifier::AutoSaveFinished);
     }
 }
 
 void TreeBank::ConnectToReceiver(){
     if(m_Receiver){
-        connect(m_Receiver, SIGNAL(OpenUrl(QUrl)),
-                this, SLOT(OpenInNewIfNeed(QUrl)));
-        connect(m_Receiver, SIGNAL(OpenUrl(QList<QUrl>)),
-                this, SLOT(OpenInNewIfNeed(QList<QUrl>)));
-        connect(m_Receiver, SIGNAL(OpenQueryUrl(QString)),
-                this, SLOT(OpenInNewIfNeed(QString)));
-        connect(m_Receiver, SIGNAL(SearchWith(QString, QString)),
-                this, SLOT(OpenInNewIfNeed(QString, QString)));
+        connect(m_Receiver, QOverload<QUrl>::of(&Receiver::OpenUrl),
+                this, QOverload<QUrl>::of(&TreeBank::OpenInNewIfNeed));
+        connect(m_Receiver, QOverload<QList<QUrl>>::of(&Receiver::OpenUrl),
+                this, QOverload<QList<QUrl>>::of(&TreeBank::OpenInNewIfNeed));
+        connect(m_Receiver, &Receiver::OpenQueryUrl,
+                this, QOverload<QString>::of(&TreeBank::OpenInNewIfNeed));
+        connect(m_Receiver, &Receiver::SearchWith,
+                this, QOverload<QString, QString>::of(&TreeBank::OpenInNewIfNeed));
     }
 }
 
@@ -312,28 +370,68 @@ bool TreeBank::RenameNode(Node *nd){
 
     nd->SetTitle(after);
 
-    if(directory)
-        ReconfigureDirectory(nd->ToViewNode(), before, after);
+    if(directory && !ReconfigureDirectory(nd->ToViewNode(), before, after))
+        return false;
 
     return true;
 }
 
-void TreeBank::ReconfigureDirectory(ViewNode *vn, QString before, QString after){
+namespace {
+    int CountSpaces(Node *nd, ViewNode *except, const QString &name);
+    void RebuildBelow(ViewNode *vn);
+}
+
+bool TreeBank::ReconfigureDirectory(ViewNode *vn, QString before, QString after){
 
     Node *parent = vn->GetParent();
     QString parentid = parent ? GetNetworkSpaceId(parent->ToViewNode()) : QString();
     QString befname = before.split(QStringLiteral(";")).first();
     QString aftname = after .split(QStringLiteral(";")).first();
     QStringList aftset = after .split(QStringLiteral(";")).mid(1);
-    bool bef = !parent || DirectoryPage::SaysId(before);
-    bool aft = !parent || DirectoryPage::SaysId(after);
+    bool bef = !parent || DirectoryPage::SaysId(before) || DirectoryPage::NameSpellsId(befname);
+    bool aft = !parent || DirectoryPage::SaysId(after) || DirectoryPage::NameSpellsId(aftname);
 
     if(vn == m_ViewRoot) m_RootName = after;
 
+    if(m_MovingSpace){
+        const QStringList moving = { m_MovingFrom, m_MovingTo };
+        if(!bef && !aft && moving.contains(parentid)){
+            MarkOffDisk(vn);
+            return true;
+        }
+        if((bef && moving.contains(befname)) || (aft && moving.contains(aftname))){
+            vn->SetTitle(before);
+            if(vn == m_ViewRoot) m_RootName = before;
+            return false;
+        }
+    }
+
+    if(bef && aft && befname != aftname &&
+       !NetworkController::FindNetworkAccessManager(aftname))
+        return RenameSpace(vn, before, after);
+    if(bef && aft && befname != aftname)
+        return MergeSpace(vn, before, after);
+
+    const bool shared = CountSpaces(m_ViewRoot, vn, befname) || CountSpaces(m_TrashRoot, vn, befname);
+    if(bef && !aft && !shared)
+        return RenameSpace(vn, before, after, true);
+
+    if(!bef && aft && !NetworkController::FindNetworkAccessManager(aftname) &&
+       NetworkController::StorageInUse(aftname)){
+        vn->SetTitle(before);
+        ModelessDialog::Information
+            (tr("Cannot change this directory."),
+             tr("The data of the network space \"%1\" is still being closed. "
+                "Wait a moment and try again.").arg(aftname));
+        return false;
+    }
+    const bool joining = !bef && aft && NetworkController::FindNetworkAccessManager(aftname);
+
     NetworkAccessManager *nam = bef ?
         (aft ? NetworkController::MoveNetworkAccessManager(befname, aftname, aftset) :
-               NetworkController::KillNetworkAccessManager(befname)) :
-        (aft ? NetworkController::CopyNetworkAccessManager(parentid, aftname, aftset) :
+               NetworkController::GetNetworkAccessManager(parentid, aftset)) :
+        (aft ? (joining ? NetworkController::GetNetworkAccessManager(aftname, aftset) :
+                          NetworkController::CopyNetworkAccessManager(parentid, aftname, aftset)) :
                NetworkController::GetNetworkAccessManager(parentid, aftset));
 
     if(!nam) nam = NetworkController::GetNetworkAccessManager(parentid, aftset);
@@ -342,7 +440,414 @@ void TreeBank::ReconfigureDirectory(ViewNode *vn, QString before, QString after)
     foreach(Node *nd, vn->GetChildren()){
         ReapplySpecificSettings(nd->ToViewNode());
     }
+    if(bef != aft) RebuildBelow(vn);
     MarkOffDisk(vn);
+    return true;
+}
+
+namespace {
+
+    bool NamesSpace(ViewNode *vn, const QString &name){
+        if(!vn || !(vn->IsDirectory() || vn->IsRoot())) return false;
+        const QString title = vn->GetTitle();
+        const bool boundary = vn->IsRoot() || DirectoryPage::SaysId(title) ||
+            DirectoryPage::NameSpellsId(DirectoryPage::TitleName(title));
+        return boundary && title.split(QStringLiteral(";")).first() == name;
+    }
+
+    int CountSpaces(Node *nd, ViewNode *except, const QString &name){
+        ViewNode *vn = nd ? nd->ToViewNode() : nullptr;
+        if(!vn) return 0;
+        int count = vn != except && NamesSpace(vn, name) ? 1 : 0;
+        foreach(Node *child, vn->GetChildren()) count += CountSpaces(child, except, name);
+        return count;
+    }
+
+    void CollectSpaceNames(Node *nd, QStringList &names){
+        ViewNode *vn = nd ? nd->ToViewNode() : nullptr;
+        if(!vn) return;
+        if(vn->IsDirectory() || vn->IsRoot()){
+            const QString title = vn->GetTitle();
+            const bool boundary = vn->IsRoot() || DirectoryPage::SaysId(title) ||
+                DirectoryPage::NameSpellsId(DirectoryPage::TitleName(title));
+            const QString name = title.split(QStringLiteral(";")).first();
+            if(boundary && !names.contains(name)) names << name;
+        }
+        foreach(Node *child, vn->GetChildren()) CollectSpaceNames(child, names);
+    }
+
+    void RebuildBelow(ViewNode *vn){
+        foreach(Node *child, vn->GetChildren()){
+            ViewNode *below = child->ToViewNode();
+            if(!below) continue;
+            if(below->IsDirectory()){
+                const QString title = below->GetTitle();
+                if(DirectoryPage::SaysId(title) ||
+                   DirectoryPage::NameSpellsId(DirectoryPage::TitleName(title))) continue;
+            }
+            if(View *view = below->GetView()) view->RebuildForOffTheRecord();
+            RebuildBelow(below);
+        }
+    }
+
+    SpaceRename::Places SpacePlaces(const QList<QObject*> &profiles){
+        SpaceRename::Places places;
+        places.widgetStorage = NetworkController::WidgetStorageDirectory();
+#ifdef WEBENGINEVIEW
+        foreach(QObject *object, profiles){
+            QWebEngineProfile *profile = qobject_cast<QWebEngineProfile*>(object);
+            if(!profile || profile->isOffTheRecord()) continue;
+            places.widgetStorage = QFileInfo(profile->persistentStoragePath()).absolutePath() + QStringLiteral("/");
+            break;
+        }
+#else
+        Q_UNUSED(profiles)
+#endif
+        places.data = Application::DataDirectory();
+        places.state = Application::StateDirectory();
+        places.storageName = [](const QString &id){ return NetworkController::ProfileStorageName(id);};
+#ifdef EDGEWEBVIEW
+        places.edgeProfiles = EdgeWebView::ProfilesFolder();
+        places.edgeJournal = [](const QString &name){ return EdgeWebView::ExtensionJournal(name);};
+#endif
+        return places;
+    }
+
+    QString StoreName(SpaceRename::What what){
+        switch(what){
+        case SpaceRename::WidgetStorage: return TreeBank::tr("WebEngineView site data");
+        case SpaceRename::WidgetCache:   return TreeBank::tr("WebEngineView cache");
+        case SpaceRename::QuickStorage:  return TreeBank::tr("QuickWebEngineView site data");
+        case SpaceRename::QuickCache:    return TreeBank::tr("QuickWebEngineView cache");
+        case SpaceRename::EdgeProfile:   return TreeBank::tr("EdgeWebView site data");
+        case SpaceRename::ExtensionState: return TreeBank::tr("Extension settings");
+        }
+        return QString();
+    }
+
+    struct SpaceWait {
+        QList<QPointer<QObject>> going;
+        QElapsedTimer waited;
+        std::function<void()> then;
+    };
+
+    void WaitForViews(std::shared_ptr<SpaceWait> state){
+        bool gone = true;
+        foreach(const QPointer<QObject> &view, state->going) if(view){ gone = false; break;}
+        if(!gone && state->waited.elapsed() < 10000){
+            QTimer::singleShot(20, qApp, [state](){ WaitForViews(state);});
+            return;
+        }
+        state->then();
+    }
+
+    void ReportRenameSpace(const QString &to, const QList<SpaceRename::Move> &failed, int passwords){
+        if(failed.isEmpty() && !passwords) return;
+        QStringList lines;
+        foreach(const SpaceRename::Move &move, failed)
+            lines << QStringLiteral("- ") + StoreName(move.what) + QStringLiteral("\n  ") +
+                QDir::toNativeSeparators(move.from);
+        if(passwords)
+            lines << QStringLiteral("- ") + TreeBank::tr("Password data: %1").arg(passwords);
+        ModelessDialog::Information
+            (TreeBank::tr("Some data was not moved."),
+             TreeBank::tr("The directory was renamed to \"%1\", but the following could not be moved "
+                          "to the new name and was left where it was. Under the new name, it starts empty.")
+             .arg(to) + QStringLiteral("\n\n") + lines.join(QStringLiteral("\n")));
+    }
+}
+
+namespace {
+    void ReportMergeSpace(const QString &from, const QString &to, bool edgeFailed,
+                          bool qtLeft, int passwords){
+        QStringList lines;
+        if(qtLeft)
+            lines << QStringLiteral("- ") + TreeBank::tr("WebEngineView and QuickWebEngineView site data "
+                                                          "(sign-ins included): it cannot be carried over.");
+        if(edgeFailed)
+            lines << QStringLiteral("- ") + TreeBank::tr("EdgeWebView cookies: they could not be copied.");
+        if(passwords)
+            lines << QStringLiteral("- ") + TreeBank::tr("Password data: %1").arg(passwords);
+        if(lines.isEmpty()) return;
+        ModelessDialog::Information
+            (TreeBank::tr("Some data was not carried over."),
+             TreeBank::tr("\"%1\" was joined to \"%2\", but the following of \"%1\" was not carried over. "
+                          "It is kept where it was.").arg(from, to)
+             + QStringLiteral("\n\n") + lines.join(QStringLiteral("\n")));
+    }
+}
+
+QStringList TreeBank::SpaceNamesInUse(){
+    QStringList names;
+    CollectSpaceNames(m_ViewRoot, names);
+    CollectSpaceNames(m_TrashRoot, names);
+    return names;
+}
+
+QSet<QString> TreeBank::StoragesOfViews(){
+    QSet<QString> storages;
+    foreach(SharedView view, m_AllViews){
+        if(QObject *profile = view->EngineProfile()){
+            QString name;
+#ifdef WEBENGINEVIEW
+            if(QWebEngineProfile *widget = qobject_cast<QWebEngineProfile*>(profile))
+                name = widget->isOffTheRecord() ? QString() : widget->storageName();
+            else
+#endif
+                name = profile->property("storageName").toString();
+            if(!name.isEmpty()) storages << name;
+        }
+        const QString edge = view->EngineProfileName();
+        if(!edge.isEmpty()) storages << edge;
+    }
+    return storages;
+}
+
+QSet<QObject*> TreeBank::ProfilesOfViews(){
+    QSet<QObject*> profiles;
+    foreach(SharedView view, m_AllViews)
+        if(QObject *profile = view->EngineProfile()) profiles << profile;
+    return profiles;
+}
+
+bool TreeBank::RenameSpace(ViewNode *vn, const QString &before, const QString &after, bool removing){
+    const QString from = before.split(QStringLiteral(";")).first();
+    const QString to   = removing ? QString() : after.split(QStringLiteral(";")).first();
+    const QStringList set = after.split(QStringLiteral(";")).mid(1);
+    const QList<QObject*> profiles = NetworkController::SpaceProfiles(from);
+    const SpaceRename::Places places = SpacePlaces(profiles);
+
+    QString refusal;
+    if(m_MovingSpace)
+        refusal = tr("Another directory is still being renamed.");
+    else if(DownloadItem::Running())
+        refusal = removing ? tr("A download is in progress. Change this directory after it has finished.")
+                           : tr("A download is in progress. Rename this directory after it has finished.");
+    else if(CountSpaces(m_ViewRoot, vn, from) || CountSpaces(m_TrashRoot, vn, from))
+        refusal = tr("Another directory (or one in the trash) is the same network space \"%1\". "
+                     "Renaming this one would leave the other without its data.").arg(from);
+    else if(!removing && NetworkController::StorageInUse(to))
+        refusal = tr("The data of the network space \"%1\" is still being closed. "
+                     "Wait a moment and try again.").arg(to);
+    else if(!removing && !SpaceRename::Occupied(SpaceRename::Candidates(from, to, places)).isEmpty())
+        refusal = tr("Data of a network space named \"%1\" is already on disk. "
+                     "Choose another name.").arg(to);
+    if(!refusal.isEmpty()){
+        vn->SetTitle(before);
+        if(vn == m_ViewRoot) m_RootName = before;
+        ModelessDialog::Information(removing ? tr("Cannot change this directory.")
+                                             : tr("Cannot rename this directory."), refusal);
+        return false;
+    }
+
+    m_MovingSpace = true;
+    m_MovingFrom = from;
+    m_MovingTo = to;
+
+    QProgressDialog *progress = new QProgressDialog
+        (removing ? tr("Closing the data of \"%1\"...").arg(from)
+                  : tr("Moving the data of \"%1\" to \"%2\"...").arg(from, to), QString(), 0, 0,
+         Application::GetCurrentWindow());
+    progress->setWindowModality(Qt::ApplicationModal);
+    progress->setCancelButton(nullptr);
+    progress->setMinimumDuration(0);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
+    progress->show();
+
+    const QSet<QObject*> ours(profiles.begin(), profiles.end());
+    const QString edgeName = NetworkController::ProfileStorageName(from);
+    QList<QPair<QPointer<TreeBank>, ViewNode*>> current;
+    QList<QPointer<QObject>> going;
+    LetGoOfViews(ours, QSet<QString>{edgeName}, current, going);
+    SidePanels::UpdateAll();
+    QList<QPointer<QObject>> releasing;
+    foreach(QObject *profile, profiles) releasing << QPointer<QObject>(profile);
+#ifdef EDGEWEBVIEW
+    releasing << QPointer<QObject>(EdgeWebView::ReleaseExtensionsOf(edgeName));
+#endif
+
+    std::shared_ptr<SpaceWait> state(new SpaceWait);
+    state->going = going;
+    state->waited.start();
+    state->then = [=](){
+        NetworkController::ReleaseSpace(from);
+        foreach(const QPointer<QObject> &object, going + releasing)
+            NetworkController::NoteReleasing(from, object.data());
+        if(removing){
+            FinishRenameSpace(vn, from, QString(), set, current, progress);
+            return;
+        }
+        std::shared_ptr<SpaceWait> released(new SpaceWait);
+        released->going = releasing;
+#ifdef EDGEWEBVIEW
+        if(QObject *exit = EdgeWebView::BrowserExitIfNoViews()) released->going << QPointer<QObject>(exit);
+#endif
+        released->waited.start();
+        released->then = [=](){
+            SpaceRename::Mover *mover = new SpaceRename::Mover
+                (SpaceRename::Candidates(from, to, places), &SpaceRename::Mover::DefaultMove,
+                 20, 10000, qApp);
+            QPointer<QObject> dialog(progress);
+            mover->Start([=](const QList<SpaceRename::Move> &failed){
+                mover->deleteLater();
+#ifdef EDGEWEBVIEW
+                EdgeWebView::ForgetMissingProfiles();
+#endif
+                FinishRenameSpace(vn, from, to, set, current, dialog.data());
+                const QList<SpaceRename::Move> left = failed;
+#ifdef VANILLA_PASSWORDS
+                if(PasswordStore *store = PasswordStore::Instance()){
+                    store->MoveSpace(from, to, [to, left](int passwords){ ReportRenameSpace(to, left, passwords);});
+                    return;
+                }
+#endif
+                ReportRenameSpace(to, left, 0);
+            });
+        };
+        WaitForViews(released);
+    };
+    WaitForViews(state);
+    return true;
+}
+
+void TreeBank::LetGoOfViews(const QSet<QObject*> &profiles, const QSet<QString> &edgeNames,
+                            QList<QPair<QPointer<TreeBank>, ViewNode*>> &current,
+                            QList<QPointer<QObject>> &going){
+    ChangeScope changing;
+    foreach(SharedView view, SharedViewList(m_AllViews)){
+        QObject *profile = view->EngineProfile();
+        if(!(profile && profiles.contains(profile)) && !edgeNames.contains(view->EngineProfileName())) continue;
+        ViewNode *node = view->GetViewNode();
+        TreeBank *tb = view->GetTreeBank();
+        if(tb && IsLive(tb) && tb->GetCurrentView() == view) current << qMakePair(QPointer<TreeBank>(tb), node);
+        going << QPointer<QObject>(view->base());
+        if(node && node->GetView() == view.get()) DislinkView(node);
+        else { RemoveFromAllViews(view); RemoveFromUpdateBox(view);}
+    }
+}
+
+bool TreeBank::MergeSpace(ViewNode *vn, const QString &before, const QString &after){
+    const QString from = before.split(QStringLiteral(";")).first();
+    const QString to   = after .split(QStringLiteral(";")).first();
+    const QStringList set = after.split(QStringLiteral(";")).mid(1);
+    const bool shared = CountSpaces(m_ViewRoot, vn, from) || CountSpaces(m_TrashRoot, vn, from);
+    const QList<QObject*> profiles = shared ? QList<QObject*>() : NetworkController::SpaceProfiles(from);
+    const SpaceRename::Places places = SpacePlaces(NetworkController::SpaceProfiles(from));
+
+    QString refusal;
+    if(m_MovingSpace)
+        refusal = tr("Another directory is still being renamed.");
+    else if(DownloadItem::Running())
+        refusal = tr("A download is in progress. Rename this directory after it has finished.");
+    if(!refusal.isEmpty()){
+        vn->SetTitle(before);
+        if(vn == m_ViewRoot) m_RootName = before;
+        ModelessDialog::Information(tr("Cannot rename this directory."), refusal);
+        return false;
+    }
+
+    m_MovingSpace = true;
+    m_MovingFrom = from;
+    m_MovingTo = to;
+    QProgressDialog *progress = new QProgressDialog
+        (tr("Joining \"%1\" to \"%2\"...").arg(from, to), QString(), 0, 0,
+         Application::GetCurrentWindow());
+    progress->setWindowModality(Qt::ApplicationModal);
+    progress->setCancelButton(nullptr);
+    progress->setMinimumDuration(0);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
+    progress->show();
+
+    const QString edgeFrom = NetworkController::ProfileStorageName(from);
+    const QString edgeTo = NetworkController::ProfileStorageName(to);
+    QSet<QString> edgeNames{edgeTo};
+    if(!shared) edgeNames << edgeFrom;
+    QList<QPair<QPointer<TreeBank>, ViewNode*>> current;
+    QList<QPointer<QObject>> going;
+    LetGoOfViews(QSet<QObject*>(profiles.begin(), profiles.end()), edgeNames, current, going);
+    SidePanels::UpdateAll();
+#ifdef EDGEWEBVIEW
+    for(const QString &name : std::as_const(edgeNames))
+        going << QPointer<QObject>(EdgeWebView::ReleaseExtensionsOf(name));
+#endif
+
+    bool qtLeft = false;
+    foreach(const SpaceRename::Move &move, SpaceRename::Candidates(from, to, places))
+        if((move.what == SpaceRename::WidgetStorage || move.what == SpaceRename::QuickStorage) &&
+           QFileInfo::exists(move.from)) qtLeft = true;
+    const bool edgeThere = !places.edgeProfiles.isEmpty() &&
+        QFileInfo::exists(places.edgeProfiles + QStringLiteral("WV2Profile_") + edgeFrom);
+
+    QPointer<QObject> dialog(progress);
+    SpaceRename::WhenGone(going, 10000, [=](bool allGone){
+        const auto joined = [=](bool edgeOk){
+            NetworkController::JoinSpace(from, to, set, !shared);
+            if(!shared)
+                for(const QPointer<QObject> &object : std::as_const(going))
+                    NetworkController::NoteReleasing(from, object.data());
+            m_MovingSpace = false;
+            m_MovingFrom.clear();
+            m_MovingTo.clear();
+            if(QWidget *widget = qobject_cast<QWidget*>(dialog.data())){
+                widget->hide();
+                widget->deleteLater();
+            }
+            foreach(Node *nd, vn->GetChildren()) ReapplySpecificSettings(nd->ToViewNode());
+            RebuildBelow(vn);
+            MarkOffDisk(vn);
+            for(const auto &shown : current){
+                if(!shown.first || !IsLive(shown.first) || !shown.second) continue;
+                if(shown.first->GetCurrentView()) continue;
+                shown.first->SetCurrent(shown.second);
+            }
+#ifdef VANILLA_PASSWORDS
+            if(!shared){
+                if(PasswordStore *store = PasswordStore::Instance()){
+                    store->MoveSpace(from, to, [=](int passwords){
+                        ReportMergeSpace(from, to, !edgeOk, qtLeft, passwords);
+                    });
+                    return;
+                }
+            }
+#endif
+            ReportMergeSpace(from, to, !edgeOk, qtLeft, 0);
+        };
+#ifdef EDGEWEBVIEW
+        if(edgeThere){
+            if(!allGone){ joined(false); return;}
+            EdgeWebView::CopyCookiesForMerge(edgeFrom, edgeTo, [joined](bool ok, int){ joined(ok);});
+            return;
+        }
+#endif
+        Q_UNUSED(allGone)
+        joined(true);
+    });
+    return true;
+}
+
+void TreeBank::FinishRenameSpace(ViewNode *vn, const QString &from, const QString &to,
+                                 const QStringList &set,
+                                 const QList<QPair<QPointer<TreeBank>, ViewNode*>> &current,
+                                 QObject *progress){
+    if(to.isEmpty()) NetworkController::DropHeldCookies(from);
+    else NetworkController::PlaceSpace(from, to, set);
+    m_MovingSpace = false;
+    m_MovingFrom.clear();
+    m_MovingTo.clear();
+    if(QWidget *dialog = qobject_cast<QWidget*>(progress)){
+        dialog->hide();
+        dialog->deleteLater();
+    }
+    foreach(Node *nd, vn->GetChildren()) ReapplySpecificSettings(nd->ToViewNode());
+    if(to.isEmpty()) RebuildBelow(vn);
+    MarkOffDisk(vn);
+    for(const auto &shown : current){
+        if(!shown.first || !IsLive(shown.first) || !shown.second) continue;
+        if(shown.first->GetCurrentView()) continue;
+        shown.first->SetCurrent(shown.second);
+    }
 }
 
 void TreeBank::ApplySpecificSettings(ViewNode *vn){
@@ -435,7 +940,7 @@ void TreeBank::DoUpdate(){
 
 void TreeBank::DoDelete(){
     const NodeList ripe = std::exchange(m_NodeDeleteBox, NodeList());
-    foreach(Node *nd, ripe){
+    for(Node *nd : ripe){
         nd->Delete();
     }
 }
@@ -476,11 +981,13 @@ void TreeBank::PassDeleteBarrier(bool mayFree){
     for(int i = 0; i < leaving.length(); i++)
         groups << qMakePair(sets[i], landing(leaving[i].second));
 
+    m_ClipboardNodes.removeIf([&going](Node *nd){ return going.contains(nd);});
+
     QList<MainWindow*> windows = Application::GetMainWindows().values();
     foreach(QWidget *widget, QApplication::topLevelWidgets())
         if(MainWindow *win = qobject_cast<MainWindow*>(widget))
             if(!windows.contains(win)) windows << win;
-    foreach(MainWindow *win, windows){
+    for(MainWindow *win : std::as_const(windows)){
         if(TreeBar *bar = win->GetTreeBar()) bar->LetGoOf(going);
         if(TreeBank *tb = win->GetTreeBank())
             if(Gadgets *g = tb->GetGadgets())
@@ -535,16 +1042,25 @@ int TreeBank::AutoLoadNextCondition(AutoLoadWalk walk, int condition){
 TreeBank::AutoLoadWalk TreeBank::WalkToAutoLoad(ViewNode *&iter, bool forward,
                                                 const std::function<bool(ViewNode*)> &load,
                                                 int budget){
+    bool pending = false;
+    return WalkToAutoLoad(iter, forward, load, budget, pending);
+}
+
+TreeBank::AutoLoadWalk TreeBank::WalkToAutoLoad(ViewNode *&iter, bool forward,
+                                                const std::function<bool(ViewNode*)> &load,
+                                                int budget, bool &pending){
     bool askTrash = true;
     int steps = 0;
     while(ViewNode *vn = iter){
         if(askTrash && IsTrash(vn)){
             iter = nullptr;
+            pending = false;
             return AutoLoadExhausted;
         }
         askTrash = false;
         if(steps >= budget) return AutoLoadBudgetSpent;
-        iter = vn = forward ? vn->Next() : vn->Prev();
+        if(pending) pending = false;
+        else iter = vn = forward ? vn->Next() : vn->Prev();
         steps++;
         if(!vn) return AutoLoadExhausted;
         if(vn->GetView() || vn->IsDirectory() || vn->GetUrl().isEmpty()) continue;
@@ -558,14 +1074,79 @@ TreeBank::AutoLoadWalk TreeBank::LoadViewForward(){
     ChangeScope changing;
     return WalkToAutoLoad(m_ViewIterForward, true,
                           [](ViewNode *vn){ return !!AutoLoadWithLink(vn);},
-                          AUTO_LOAD_WALK_BUDGET);
+                          AUTO_LOAD_WALK_BUDGET, m_ViewIterForwardPending);
 }
 
 TreeBank::AutoLoadWalk TreeBank::LoadViewBackward(){
     ChangeScope changing;
     return WalkToAutoLoad(m_ViewIterBackward, false,
                           [](ViewNode *vn){ return !!AutoLoadWithLink(vn);},
-                          AUTO_LOAD_WALK_BUDGET);
+                          AUTO_LOAD_WALK_BUDGET, m_ViewIterBackwardPending);
+}
+
+void TreeBank::SteerAutoLoadWalk(Node *node, bool reorder, ViewNode *&iter, bool &pending, bool forward){
+    if(!iter || !node || !node->IsViewNode()) return;
+    bool under = false;
+    for(Node *nd = reorder ? iter->GetParent() : iter; nd; nd = nd->GetParent()){
+        if(nd == node){ under = true; break;}
+    }
+    if(!under) return;
+
+    ViewNode *vn = node->ToViewNode();
+    if(reorder){
+        if(forward){
+            iter = vn;
+        } else {
+            Node *last = vn;
+            while(!last->HasNoChildren()) last = last->GetLastChild();
+            iter = last->ToViewNode();
+        }
+        pending = true;
+        return;
+    }
+    if(forward){
+        Node *nd = vn;
+        while(nd->GetParent() && nd->GetLastSibling() == nd)
+            nd = nd->GetParent();
+        if(nd->IsRoot() || !nd->GetParent()){
+            iter = nullptr;
+        } else {
+            const NodeList siblings = nd->GetSiblings();
+            iter = siblings[siblings.indexOf(nd) + 1]->ToViewNode();
+        }
+    } else {
+        iter = vn->Prev();
+    }
+    pending = iter != nullptr;
+}
+
+void TreeBank::SteerAutoLoadWalks(Node *node, bool reorder){
+    SteerAutoLoadWalk(node, reorder, m_ViewIterForward,  m_ViewIterForwardPending,  true);
+    SteerAutoLoadWalk(node, reorder, m_ViewIterBackward, m_ViewIterBackwardPending, false);
+}
+
+bool TreeBank::AutoLoadRestsIn(Node *node){
+    if(!node) return false;
+    foreach(Node *iter, QList<Node*>() << m_ViewIterForward << m_ViewIterBackward){
+        for(Node *nd = iter; nd; nd = nd->GetParent())
+            if(nd == node) return true;
+    }
+    return false;
+}
+
+void TreeBank::RewalkAutoLoadFromCurrent(){
+    MainWindow *win = Application::GetCurrentWindow();
+    TreeBank *tb = win ? win->GetTreeBank() : nullptr;
+    ViewNode *current = tb ? tb->GetCurrentViewNode() : nullptr;
+    if(current && !IsTrash(current)){
+        SetViewIterForward(current);
+        SetViewIterBackward(current);
+    } else if(m_ViewRoot){
+        SetViewIterForward(m_ViewRoot);
+        m_ViewIterForwardPending = true;
+        SetViewIterBackward(nullptr);
+    }
+    Application::RestartAutoLoadTimer();
 }
 
 Node* TreeBank::GetRoot(Node* nd){
@@ -599,7 +1180,7 @@ bool TreeBank::IsCurrent(SharedView view){
 
 int TreeBank::WinIndex(){
     WinMap windows = Application::GetMainWindows();
-    foreach(int key, windows.keys()){
+    for(int key : windows.keys()){
         if(windows[key] && windows[key]->GetTreeBank() == this)
             return key;
     }
@@ -608,7 +1189,7 @@ int TreeBank::WinIndex(){
 
 int TreeBank::WinIndex(Node* nd){
     WinMap windows = Application::GetMainWindows();
-    foreach(int key, windows.keys()){
+    for(int key : windows.keys()){
         if(windows[key] && windows[key]->GetTreeBank()->IsCurrent(nd))
             return key;
     }
@@ -617,7 +1198,7 @@ int TreeBank::WinIndex(Node* nd){
 
 int TreeBank::WinIndex(SharedView view){
     WinMap windows = Application::GetMainWindows();
-    foreach(int key, windows.keys()){
+    for(int key : windows.keys()){
         if(windows[key] && windows[key]->GetTreeBank()->IsCurrent(view))
             return key;
     }
@@ -645,12 +1226,15 @@ static TreeSerializer::Hooks TreeHooks(TreeBank::Restoration *restored){
     return hooks;
 }
 
-static TreeSerializer::Hooks TreeSaveHooks(const TreeBank::WindowIndexMap &windowIndices){
+static TreeSerializer::Hooks TreeSaveHooks(const TreeBank::WindowIndexMap &windowIndices,
+                                           const QSet<quint64> &leftOut){
     TreeSerializer::Hooks hooks;
     hooks.WindowIndexOf = [windowIndices](ViewNode *nd){
         return windowIndices.value(nd, 0);
     };
     hooks.KeepsSideFiles = [](ViewNode *nd){ return !TreeBank::IsTrash(nd) && !nd->IsOffDisk();};
+    if(!leftOut.isEmpty())
+        hooks.Skips = [leftOut](ViewNode *nd){ return nd && leftOut.contains(nd->GetSerial());};
     return hooks;
 }
 
@@ -705,7 +1289,7 @@ TreeBank::Restoration TreeBank::LoadTree(){
                 dir.entryList(Application::BackUpFileFilters(),
                               QDir::NoFilter, QDir::Name | QDir::Reversed);
 
-            foreach(QString backup, list){
+            for(QString backup : std::as_const(list)){
 
                 if(!backup.endsWith(filename)) continue;
                 check = TreeSerializer::ReadJsonFile(datadir + backup, root, hooks);
@@ -728,7 +1312,7 @@ TreeBank::Restoration TreeBank::LoadTree(){
 }
 
 void TreeBank::UpdateCurrentThumbnails(){
-    foreach(MainWindow *win, Application::GetMainWindows().values()){
+    for(MainWindow *win : Application::GetMainWindows().values()){
         if(TreeBank *tb = win->GetTreeBank()){
             if(SharedView view = tb->GetCurrentView()){
                 if(view->visible()) view->UpdateThumbnail();
@@ -749,10 +1333,27 @@ TreeBank::WindowIndexMap TreeBank::WindowIndexSnapshot(){
     return snapshot;
 }
 
-bool TreeBank::SaveTree(const WindowIndexMap &windowIndices){
+void TreeBank::LeaveOutOfSaves(quint64 serial){
+    if(serial) m_LeftOutOfSaves[serial]++;
+}
+
+void TreeBank::PutBackIntoSaves(quint64 serial){
+    auto it = m_LeftOutOfSaves.find(serial);
+    if(it == m_LeftOutOfSaves.end()) return;
+    if(--it.value() <= 0) m_LeftOutOfSaves.erase(it);
+}
+
+QSet<quint64> TreeBank::LeftOutOfSaves(){
+    QSet<quint64> serials;
+    for(auto it = m_LeftOutOfSaves.cbegin(); it != m_LeftOutOfSaves.cend(); ++it)
+        serials.insert(it.key());
+    return serials;
+}
+
+bool TreeBank::SaveTree(const WindowIndexMap &windowIndices, const QSet<quint64> &leftOut){
 
     QString datadir = Application::StateDirectory();
-    TreeSerializer::Hooks hooks = TreeSaveHooks(windowIndices);
+    TreeSerializer::Hooks hooks = TreeSaveHooks(windowIndices, leftOut);
 
     QString primary  = datadir + Application::PrimaryTreeFileName(false);
     QString primaryb = datadir + Application::PrimaryTreeFileName(true);
@@ -813,6 +1414,7 @@ void TreeBank::LoadSettings(){
     m_PurgeReceiver        = s.value(QStringLiteral("application/@PurgeReceiver")        , false).value<bool>();
     m_PurgeView            = s.value(QStringLiteral("application/@PurgeView")            , false).value<bool>();
     m_EnableMiniMap        = s.value(QStringLiteral("application/@EnableMiniMap")        , false).value<bool>();
+    m_EnableNotifierScrollArea = s.value(QStringLiteral("application/@EnableNotifierScrollArea"), false).value<bool>();
 
     QString viewport = s.value(QStringLiteral("application/@Viewport"), QStringLiteral("Widget")).value<QString>();
     if(viewport == QStringLiteral("Widget"))       m_Viewport = Widget;
@@ -856,6 +1458,7 @@ void TreeBank::SaveSettings(){
     s.setValue(QStringLiteral("application/@PurgeReceiver"),        m_PurgeReceiver);
     s.setValue(QStringLiteral("application/@PurgeView"),            m_PurgeView);
     s.setValue(QStringLiteral("application/@EnableMiniMap"),        m_EnableMiniMap);
+    s.setValue(QStringLiteral("application/@EnableNotifierScrollArea"), m_EnableNotifierScrollArea);
 
     if(m_Viewport == Widget)       s.setValue(QStringLiteral("application/@Viewport"), QStringLiteral("Widget"));
     if(m_Viewport == GLWidget)     s.setValue(QStringLiteral("application/@Viewport"), QStringLiteral("GLWidget"));
@@ -879,11 +1482,12 @@ void TreeBank::QuarantineViewNode(ViewNode *vn){
 }
 
 void TreeBank::ReleaseAutoLoadIterators(ViewNode *vn){
-    if(vn == m_ViewIterForward)  m_ViewIterForward  = nullptr;
-    if(vn == m_ViewIterBackward) m_ViewIterBackward = nullptr;
+    if(vn == m_ViewIterForward)  SetViewIterForward(nullptr);
+    if(vn == m_ViewIterBackward) SetViewIterBackward(nullptr);
 }
 
 void TreeBank::DisownNode(Node *nd){
+    SteerAutoLoadWalks(nd, false);
     nd->GetParent()->RemoveChild(nd);
     if(nd->IsPrimaryOfParent()){
         if(nd->HasNoSiblings())
@@ -959,10 +1563,11 @@ bool TreeBank::MoveToTrash(ViewNode *vn){
 }
 
 void TreeBank::DiscardFromTree(ViewNode *vn){
+    SteerAutoLoadWalks(vn, false);
     Node *prevparent = vn->GetParent();
     NodeList all = NodeList() << vn << vn->GetDescendants();
     StripSubTree(vn);
-    foreach(Node *nd, all){
+    for(Node *nd : std::as_const(all)){
         if(ViewNode *each = nd->ToViewNode()) each->SetOffDisk(true);
     }
     DisownNode(vn);
@@ -984,7 +1589,7 @@ bool TreeBank::WhollyOffTheRecord(ViewNode *vn, bool off){
 int TreeBank::PruneOffTheRecord(ViewNode *vn, bool off){
     int pruned = 0;
     const NodeList children = vn->GetChildren();
-    foreach(Node *nd, children){
+    for(Node *nd : children){
         ViewNode *child = nd->ToViewNode();
         if(!child) continue;
         const bool childOff = OffTheRecordBelow(child, off);
@@ -1214,6 +1819,7 @@ SharedView TreeBank::ExtractDownloadCarrier(ViewNode *vn){
     ViewNode *next = FindCurrentAfterDelete(prevparent, vn);
     if(!next) return SharedView();
 
+    SteerAutoLoadWalks(vn, false);
     QuarantineViewNode(vn);
     m_ExtractingDownloadCarrier = held.get();
     DislinkView(vn);
@@ -1294,6 +1900,7 @@ bool TreeBank::CloseWithoutTrash(ViewNode *vn){
         if(win->GetTreeBank() && win->GetTreeBank()->GetCurrentViewNode() == vn) return false;
 
     SharedView held = vn->GetView() ? vn->GetView()->GetThis().lock() : SharedView();
+    SteerAutoLoadWalks(vn, false);
     QuarantineViewNode(vn);
     DislinkView(vn);
     if(held) held->ForgetViewNode(vn);
@@ -1339,9 +1946,11 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
                          dir->ChildrenLength() - 1 :
                        (n > dir->ChildrenIndexOf(nd)) ?
                          n - 1 : n);
+        SteerAutoLoadWalks(dir, true);
         EmitTreeStructureChanged();
     } else {
         bool wasTrash = IsTrash(nd);
+        const bool walkedIn = AutoLoadRestsIn(nd);
         DisownNode(nd);
         nd->SetParent(dir);
         dir->InsertChild((n < 0 || n > dir->ChildrenLength()) ?
@@ -1355,6 +1964,7 @@ bool TreeBank::MoveNode(Node *nd, Node *dir, int n){
 
         if(wasTrash && !isTrash) EmitNodeCreated(NodeList() << nd);
         if(!wasTrash && isTrash) EmitNodeDeleted(NodeList() << nd);
+        if(walkedIn && !isTrash) RewalkAutoLoadFromCurrent();
     }
     return true;
 }
@@ -1369,6 +1979,18 @@ bool TreeBank::SetChildrenOrder(Node *parent, NodeList children){
     if(QSet<Node*>(children.begin(), children.end()).intersects(QSet<Node*>(ancestors.begin(), ancestors.end())))
         return false;
 
+    bool walkedIn = false;
+    for(int round = 0; round <= children.length(); round++){
+        bool moved = false;
+        foreach(Node *child, children){
+            if(!child->GetParent() || child->GetParent() == parent || !AutoLoadRestsIn(child)) continue;
+            walkedIn = true;
+            moved = true;
+            SteerAutoLoadWalks(child, false);
+        }
+        if(!moved) break;
+    }
+
     parent->ClearChildren();
     parent->SetChildren(children);
 
@@ -1381,6 +2003,8 @@ bool TreeBank::SetChildrenOrder(Node *parent, NodeList children){
                 ApplySpecificSettings(child->ToViewNode());
         }
     }
+    SteerAutoLoadWalks(parent, true);
+    if(walkedIn && !IsTrash(parent)) RewalkAutoLoadFromCurrent();
     EmitTreeStructureChanged();
     return true;
 }
@@ -1412,7 +2036,7 @@ bool TreeBank::SetCurrent(Node *nd){
         }
     }
 
-    if(m_Receiver) m_Receiver->hide();
+    if(m_Receiver) m_Receiver->Dismiss();
     if(m_Notifier) m_Notifier->ResetStatus();
 
     if(m_Gadgets && m_Gadgets->IsActive()) m_Gadgets->Dismiss();
@@ -1426,7 +2050,8 @@ bool TreeBank::SetCurrent(Node *nd){
 
     m_CurrentViewNode->SetLastAccessDateToCurrent();
 
-    m_ViewIterForward = m_ViewIterBackward = m_CurrentViewNode;
+    SetViewIterForward(m_CurrentViewNode);
+    SetViewIterBackward(m_CurrentViewNode);
 
     if(!m_CurrentView){
         m_CurrentView = LoadWithLink(m_CurrentViewNode);
@@ -1611,12 +2236,15 @@ void TreeBank::BeforeStartingDisplayGadgets(){
     if(m_CurrentView){
         m_Gadgets->SetMaster(m_CurrentView->GetThis());
         m_CurrentView->SetSlave(m_Gadgets->GetThis());
-        m_CurrentView->OnBeforeStartingDisplayGadgets();
     }
 
     RestackChildWidgets(OverviewUp);
-    m_View->viewport()->repaint();
     m_View->setFocus();
+}
+
+void TreeBank::PaintGadgetsNow(){
+    m_View->viewport()->repaint();
+    if(m_CurrentView) m_CurrentView->OnBeforeStartingDisplayGadgets();
 }
 
 void TreeBank::AfterFinishingDisplayGadgets(){
@@ -1663,26 +2291,6 @@ void TreeBank::WheelEvent(QWheelEvent *ev){
     QWidget::wheelEvent(ev);
 }
 
-void TreeBank::DragEnterEvent(QDragEnterEvent *ev){
-    QWidget::dragEnterEvent(ev);
-}
-
-void TreeBank::DragMoveEvent(QDragMoveEvent *ev){
-    QWidget::dragMoveEvent(ev);
-}
-
-void TreeBank::DragLeaveEvent(QDragLeaveEvent *ev){
-    QWidget::dragLeaveEvent(ev);
-}
-
-void TreeBank::DropEvent(QDropEvent *ev){
-    QWidget::dropEvent(ev);
-}
-
-void TreeBank::ContextMenuEvent(QContextMenuEvent *ev){
-    QWidget::contextMenuEvent(ev);
-}
-
 void TreeBank::KeyPressEvent(QKeyEvent *ev){
     QWidget::keyPressEvent(ev);
 }
@@ -1691,15 +2299,29 @@ void TreeBank::KeyReleaseEvent(QKeyEvent *ev){
     QWidget::keyReleaseEvent(ev);
 }
 
+namespace {
+
+    class SwitchingScope {
+    public:
+        SwitchingScope() : m_Was(View::GetSwitchingState()){
+            if(!m_Was) View::SetSwitchingState(true);
+        }
+        ~SwitchingScope(){
+            if(!m_Was) View::SetSwitchingState(false);
+        }
+        SwitchingScope(const SwitchingScope&) = delete;
+        SwitchingScope &operator=(const SwitchingScope&) = delete;
+    private:
+        const bool m_Was;
+    };
+}
+
 SharedView TreeBank::OpenInNewViewNode(QNetworkRequest req, bool activate, ViewNode *older){
     ChangeScope changing;
-    bool had_been_switching = View::GetSwitchingState();
-    if(!had_been_switching) View::SetSwitchingState(true);
+    SwitchingScope switching;
 
     if(!older) older = m_CurrentViewNode;
     if(!older){
-        if(!had_been_switching)
-            View::SetSwitchingState(false);
         return nullptr;
     }
     ViewNode *young = older->MakeSibling();
@@ -1713,8 +2335,6 @@ SharedView TreeBank::OpenInNewViewNode(QNetworkRequest req, bool activate, ViewN
         view->hide();
         RaiseDisplayedViewPriority();
     }
-
-    if(!had_been_switching) View::SetSwitchingState(false);
 
     return view;
 }
@@ -1752,13 +2372,10 @@ SharedView TreeBank::OpenInNewViewNode(QList<QUrl> urls, bool activate, ViewNode
 
 SharedView TreeBank::OpenOnSuitableNode(QNetworkRequest req, bool activate, ViewNode *parent, int position){
     ChangeScope changing;
-    bool had_been_switching = View::GetSwitchingState();
-    if(!had_been_switching) View::SetSwitchingState(true);
+    SwitchingScope switching;
 
     if(!parent) parent = m_ViewRoot;
     if(!parent){
-        if(!had_been_switching)
-            View::SetSwitchingState(false);
         return nullptr;
     }
     ViewNode *page = parent->MakeChild(position);
@@ -1771,8 +2388,6 @@ SharedView TreeBank::OpenOnSuitableNode(QNetworkRequest req, bool activate, View
         view->hide();
         RaiseDisplayedViewPriority();
     }
-
-    if(!had_been_switching) View::SetSwitchingState(false);
 
     return view;
 }
@@ -1809,13 +2424,10 @@ SharedView TreeBank::OpenOnSuitableNode(QList<QUrl> urls, bool activate, ViewNod
 
 SharedView TreeBank::OpenInNewDirectory(QNetworkRequest req, bool activate, ViewNode *older){
     ChangeScope changing;
-    bool had_been_switching = View::GetSwitchingState();
-    if(!had_been_switching) View::SetSwitchingState(true);
+    SwitchingScope switching;
 
     if(!older) older = m_CurrentViewNode;
     if(!older){
-        if(!had_been_switching)
-            View::SetSwitchingState(false);
         return nullptr;
     }
     ViewNode *young  = older->NewDir();
@@ -1828,8 +2440,6 @@ SharedView TreeBank::OpenInNewDirectory(QNetworkRequest req, bool activate, View
         view->hide();
         RaiseDisplayedViewPriority();
     }
-
-    if(!had_been_switching) View::SetSwitchingState(false);
 
     return view;
 }
@@ -2072,10 +2682,12 @@ void TreeBank::JoinChildWidgetsIfNeed(){
     if(m_Receiver && !m_PurgeReceiver && !m_PurgeView) m_Receiver->Join();
 }
 
+int TreeBank::MiniMapStripWidth() const {
+    return m_MiniMap && m_MiniMap->IsActive() ? m_MiniMap->MapWidth() : 0;
+}
+
 QSize TreeBank::ViewSize() const {
-    if(m_MiniMap && m_MiniMap->IsActive())
-        return QSize(width() - m_MiniMap->MapWidth(), height());
-    return size();
+    return QSize(width() - MiniMapStripWidth(), height());
 }
 
 void TreeBank::ResizeViewArea(QSize size){
@@ -2123,7 +2735,10 @@ void TreeBank::resizeEvent(QResizeEvent *ev){
     if(m_CurrentView) m_CurrentView->resize(viewSize);
     GetMainWindow()->AdjustAllEdgeWidgets();
     if(m_Notifier) m_Notifier->ResizeNotify(ev->size());
-    if(m_Receiver) m_Receiver->ResizeNotify(ev->size());
+    if(m_Receiver){
+        m_Receiver->ResizeNotify(ev->size());
+        m_Receiver->RefillIfShown();
+    }
     if(m_MiniMap) m_MiniMap->ResizeNotify(ev->size());
     ev->setAccepted(true);
 }
@@ -2229,10 +2844,6 @@ void TreeBank::OpenInNewIfNeed(QString query){
 
 void TreeBank::OpenInNewIfNeed(QString query, QString key){
     if(!m_CurrentView) OpenOnSuitableNode(Page::CreateQueryUrl(query, key), true);
-}
-
-void TreeBank::Repaint(){
-    if(m_CurrentView) m_CurrentView->repaint();
 }
 
 void TreeBank::Reconfigure(){
@@ -2691,6 +3302,18 @@ void TreeBank::Recreate(ViewNode *vn){
     SetCurrent(vn);
 }
 
+namespace {
+
+    bool CurrentSomewhere(Node *nd){
+        TreeBank *tb = nd->GetView() ? nd->GetView()->GetTreeBank() : nullptr;
+        return tb && tb->GetCurrentViewNode() == nd;
+    }
+
+    bool NotOpenable(Node *nd){
+        return (!nd->GetView() && nd->GetUrl().isEmpty()) || CurrentSomewhere(nd);
+    }
+}
+
 void TreeBank::NextView(ViewNode *vn){
     if(!vn) vn = m_CurrentViewNode;
     if(!vn) return;
@@ -2698,10 +3321,7 @@ void TreeBank::NextView(ViewNode *vn){
     Node *next = vn;
     if(m_TraverseAllView){
         do next = next->Next();
-        while(next &&
-              ((!next->GetView() && next->GetUrl().isEmpty()) ||
-               ( next->GetView() && next->GetView()->GetTreeBank() &&
-                 next->GetView()->GetTreeBank()->GetCurrentViewNode() == next)));
+        while(next && NotOpenable(next));
 
         if(next && SetCurrent(next)){
         } else {
@@ -2709,10 +3329,7 @@ void TreeBank::NextView(ViewNode *vn){
             while(!next->HasNoChildren())
                 next = next->GetFirstChild();
 
-            while(next &&
-                  ((!next->GetView() && next->GetUrl().isEmpty()) ||
-                   ( next->GetView() && next->GetView()->GetTreeBank() &&
-                     next->GetView()->GetTreeBank()->GetCurrentViewNode() == next))){
+            while(next && NotOpenable(next)){
                 if(next == vn) return;
                 next = next->Next();
             }
@@ -2720,25 +3337,16 @@ void TreeBank::NextView(ViewNode *vn){
             SetCurrent(next);
         }
     } else {
-        NodeList sibling = next->GetSiblings();
+        const NodeList sibling = next->GetSiblings();
+        auto step = [&sibling](Node *nd){
+            const auto index = sibling.indexOf(nd);
+            return index < sibling.length() - 1 ? sibling[index + 1] : sibling.first();
+        };
 
-        if(sibling.indexOf(next) < sibling.length() - 1){
-            next = sibling[sibling.indexOf(next) + 1];
-        } else {
-            next = sibling.first();
-        }
-
-        while(next &&
-              (next->GetView() && next->GetView()->GetTreeBank() &&
-               next->GetView()->GetTreeBank()->GetCurrentViewNode() == next)){
-
+        next = step(next);
+        while(next && CurrentSomewhere(next)){
             if(next == vn) return;
-
-            if(sibling.indexOf(next) < sibling.length() - 1){
-                next = sibling[sibling.indexOf(next) + 1];
-            } else {
-                next = sibling.first();
-            }
+            next = step(next);
         }
 
         SetCurrent(next);
@@ -2752,10 +3360,7 @@ void TreeBank::PrevView(ViewNode *vn){
     Node* prev = vn;
     if(m_TraverseAllView){
         do prev = prev->Prev();
-        while(prev &&
-              ((!prev->GetView() && prev->GetUrl().isEmpty()) ||
-               ( prev->GetView() && prev->GetView()->GetTreeBank() &&
-                 prev->GetView()->GetTreeBank()->GetCurrentViewNode() == prev)));
+        while(prev && NotOpenable(prev));
 
         if(prev && SetCurrent(prev)){
         } else {
@@ -2763,10 +3368,7 @@ void TreeBank::PrevView(ViewNode *vn){
             while(!prev->HasNoChildren())
                 prev = prev->GetLastChild();
 
-            while(prev &&
-                  ((!prev->GetView() && prev->GetUrl().isEmpty()) ||
-                   ( prev->GetView() && prev->GetView()->GetTreeBank() &&
-                     prev->GetView()->GetTreeBank()->GetCurrentViewNode() == prev))){
+            while(prev && NotOpenable(prev)){
                 if(prev == vn) return;
                 prev = prev->Prev();
             }
@@ -2774,25 +3376,16 @@ void TreeBank::PrevView(ViewNode *vn){
             SetCurrent(prev);
         }
     } else {
-        NodeList sibling = prev->GetSiblings();
+        const NodeList sibling = prev->GetSiblings();
+        auto step = [&sibling](Node *nd){
+            const auto index = sibling.indexOf(nd);
+            return index > 0 ? sibling[index - 1] : sibling.last();
+        };
 
-        if(sibling.indexOf(prev) > 0){
-            prev = sibling[sibling.indexOf(prev) - 1];
-        } else {
-            prev = sibling.last();
-        }
-
-        while(prev &&
-              (prev->GetView() && prev->GetView()->GetTreeBank() &&
-               prev->GetView()->GetTreeBank()->GetCurrentViewNode() == prev)){
-
+        prev = step(prev);
+        while(prev && CurrentSomewhere(prev)){
             if(prev == vn) return;
-
-            if(sibling.indexOf(prev) > 0){
-                prev = sibling[sibling.indexOf(prev) - 1];
-            } else {
-                prev = sibling.last();
-            }
+            prev = step(prev);
         }
 
         SetCurrent(prev);
@@ -2945,6 +3538,89 @@ ViewNode *TreeBank::CloneViewNode(ViewNode *vn){
     return clone;
 }
 
+void TreeBank::SetClipboardNodes(const NodeList &nodes, bool cut){
+    m_ClipboardNodes = nodes;
+    m_ClipboardIsCut = cut;
+}
+
+bool TreeBank::HasClipboardNodes(){
+    return !m_ClipboardNodes.isEmpty();
+}
+
+bool TreeBank::ClipboardHolds(const NodeList &nodes){
+    return QSet<Node*>(nodes.begin(), nodes.end()) ==
+        QSet<Node*>(m_ClipboardNodes.begin(), m_ClipboardNodes.end());
+}
+
+bool TreeBank::PasteClipboardNodes(Node *parent, Node *anchor, bool before){
+    ChangeScope changing;
+    if(!parent || !parent->IsViewNode() || IsTrash(parent) || IsDiscarded(parent))
+        return false;
+
+    NodeList eligible;
+    foreach(Node *nd, m_ClipboardNodes){
+        if(IsTrash(nd) || IsDiscarded(nd)) continue;
+        if(nd == parent || parent->IsDescendantOf(nd)) continue;
+        eligible << nd;
+    }
+    NodeList nodes;
+    foreach(Node *nd, eligible){
+        bool below = false;
+        foreach(Node *other, eligible)
+            if(nd != other && nd->IsDescendantOf(other)) below = true;
+        if(!below) nodes << nd;
+    }
+    if(nodes.isEmpty()) return false;
+
+    const NodeList children = parent->GetChildren();
+    const NodeList leaving = m_ClipboardIsCut ? nodes : NodeList();
+    NodeList rest;
+    foreach(Node *nd, children)
+        if(!leaving.contains(nd)) rest << nd;
+
+    int at = rest.length();
+    const int anchorAt = anchor ? children.indexOf(anchor) : -1;
+    if(anchorAt != -1 && before){
+        for(int i = anchorAt; i < children.length(); i++){
+            if(!leaving.contains(children[i])){
+                at = rest.indexOf(children[i]);
+                break;
+            }
+        }
+    } else if(anchorAt != -1){
+        at = 0;
+        for(int i = anchorAt; i >= 0; i--){
+            if(!leaving.contains(children[i])){
+                at = rest.indexOf(children[i]) + 1;
+                break;
+            }
+        }
+    }
+
+    NodeList placed = nodes;
+    if(!m_ClipboardIsCut){
+        placed.clear();
+        ViewNode *dir = parent->ToViewNode();
+        const bool offDisk = IsOffTheRecord(dir);
+        foreach(Node *nd, nodes){
+            ViewNode *vn = nd->ToViewNode();
+            if(!vn) continue;
+            MarkOffDisk(vn);
+            if(ViewNode *clone = vn->Clone(dir, offDisk)){
+                ApplySpecificSettings(clone);
+                EmitNodeCreated(NodeList() << clone);
+                placed << clone;
+            }
+        }
+        if(placed.isEmpty()) return false;
+    }
+
+    if(!SetChildrenOrder(parent, rest.mid(0, at) + placed + rest.mid(at)))
+        return false;
+    if(m_ClipboardIsCut) m_ClipboardNodes.clear();
+    return true;
+}
+
 ViewNode *TreeBank::MakeLocalNode(ViewNode *older){
     ChangeScope changing;
     if(m_Gadgets && m_Gadgets->IsActive()) return nullptr;
@@ -3006,6 +3682,7 @@ void TreeBank::DisplayViewTree(ViewNode *vn){
     if(!vn && !m_ViewRoot->HasNoChildren())
         vn = m_ViewRoot->GetFirstChild()->ToViewNode();
     m_Gadgets->SetCurrent(vn);
+    PaintGadgetsNow();
 }
 
 void TreeBank::DisplayTrashTree(ViewNode *vn){
@@ -3016,6 +3693,7 @@ void TreeBank::DisplayTrashTree(ViewNode *vn){
         m_Gadgets->SetCurrent(vn);
     else if(!m_TrashRoot->HasNoChildren())
         m_Gadgets->SetCurrent(m_TrashRoot->GetFirstChild());
+    PaintGadgetsNow();
 }
 
 void TreeBank::DisplayAccessKey(SharedView view){
@@ -3026,6 +3704,7 @@ void TreeBank::DisplayAccessKey(SharedView view){
     m_Gadgets->Activate(Gadgets::AccessKey);
     if(!view) view = m_CurrentView;
     if(view) m_Gadgets->SetCurrentView(view.get());
+    PaintGadgetsNow();
 }
 
 void TreeBank::OpenTextSeeker(SharedView view){
@@ -3239,7 +3918,7 @@ void TreeBank::SetActionIcon(QAction *action, TreeBankAction a){
 }
 
 void TreeBank::ApplyTheme(){
-    foreach(TreeBankAction a, m_ActionTable.keys())
+    for(TreeBankAction a : m_ActionTable.keys())
         SetActionIcon(m_ActionTable[a], a);
 
     foreach(SharedView view, m_AllViews){

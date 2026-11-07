@@ -4,6 +4,9 @@
 
 #include "graphicstableview.hpp"
 
+#include <QCursor>
+#include <QGraphicsView>
+
 #include <QtCore>
 #include <QGraphicsObject>
 #include <QPropertyAnimation>
@@ -20,10 +23,6 @@
 #include "webengineview.hpp"
 
 namespace {
-    bool NearlyEqual(const qreal a, const qreal b){
-        return qFabs(a - b) < 0.001;
-    }
-
     QRectF FoldOrigin(const QRectF &directory, const QRectF &rect, bool title){
         QRectF origin(0, 0, title ? rect.width() : 1, 1);
         origin.moveCenter(QPointF(title ? rect.center().x() : directory.center().x(),
@@ -47,6 +46,7 @@ bool GraphicsTableView::m_EnableLoadedSpotLight   = false;
 bool GraphicsTableView::m_EnableInPlaceNotifier   = false;
 bool GraphicsTableView::m_EnableCloseButton       = false;
 bool GraphicsTableView::m_EnableCloneButton       = false;
+QString GraphicsTableView::m_SelectionOperation   = QStringLiteral("None");
 bool GraphicsTableView::m_EnableAnimation         = false;
 bool GraphicsTableView::m_EnableFrameRate         = false;
 
@@ -64,7 +64,7 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
     setZValue(MAIN_CONTENTS_LAYER);
 
     class DummyViewNode : public ViewNode {
-        bool IsDummy() const Q_DECL_OVERRIDE { return true;}
+        bool IsDummy() const override { return true;}
     };
 
     m_Frame = 0;
@@ -72,6 +72,9 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
     m_CurrentFrameRate = 0;
 
     m_AutoUpdateTimerId = 0;
+    m_RepaintTimer.setSingleShot(true);
+    m_RepaintTimer.setInterval(0);
+    connect(&m_RepaintTimer, &QTimer::timeout, this, [this](){ Update();});
 
     m_DummyViewNode = new DummyViewNode();
     m_LoadedSpotLights = QList<SpotLight*>();
@@ -89,8 +92,17 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
     m_SoundButton = new SoundButton(this);
 
     m_ScrollIndicator = new ScrollIndicator(this);
+    m_DisplayType = OtherTree;
+    m_TableHeader = new TableHeader(this);
+    m_HeaderFilter = new HeaderFilter(this);
+    m_FilterDirectory = nullptr;
     m_UpDirectoryButton = new UpDirectoryButton(this);
     m_ToggleTrashButton = new ToggleTrashButton(this);
+    m_CloseTableButton = new CloseTableButton(this);
+    m_UpDirectoryButton->setZValue(HEADER_BUTTON_LAYER);
+    m_ToggleTrashButton->setZValue(HEADER_BUTTON_LAYER);
+    m_CloseTableButton->setZValue(HEADER_BUTTON_LAYER);
+    m_CloseTableButton->setToolTip(tr("Close the tab list"));
 
     m_CurrentThumbnailZoomFactor = 1.0f;
     m_ScrollAnimation = new QPropertyAnimation(this, "scroll");
@@ -153,11 +165,12 @@ GraphicsTableView::~GraphicsTableView(){
 void GraphicsTableView::LoadSettings(){
     Settings &s = Application::GlobalSettings();
 
-    QString style = s.value(QStringLiteral("gadgets/@Style"), QStringLiteral("FlatStyle")).value<QString>();
+    QString style = s.value(QStringLiteral("gadgets/@Style"), QStringLiteral("PlainStyle")).value<QString>();
     GadgetsStyle *style_ = m_Style;
 
     if(style == QStringLiteral("FlatStyle"))  m_Style = new FlatStyle;
     if(style == QStringLiteral("GlassStyle")) m_Style = new GlassStyle;
+    if(style == QStringLiteral("PlainStyle")) m_Style = new PlainStyle;
     if(style_) delete style_;
 
     m_DefaultNodeCollectionType = NodeCollectionTypeFromName
@@ -171,6 +184,7 @@ void GraphicsTableView::LoadSettings(){
     m_EnableInPlaceNotifier   = s.value(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),    true).value<bool>();
     m_EnableCloseButton       = s.value(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),        true).value<bool>();
     m_EnableCloneButton       = s.value(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),        true).value<bool>();
+    m_SelectionOperation      = s.value(QStringLiteral("gadgets/thumblist/@SelectionOperation"), QStringLiteral("None")).value<QString>();
     m_EnableAnimation         = s.value(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         true ).value<bool>();
     m_EnableFrameRate         = s.value(QStringLiteral("gadgets/thumblist/@EnableFrameRate"),         false).value<bool>();
 }
@@ -188,6 +202,7 @@ void GraphicsTableView::SaveSettings(){
     s.setValue(QStringLiteral("gadgets/thumblist/@EnableInPlaceNotifier"),   m_EnableInPlaceNotifier);
     s.setValue(QStringLiteral("gadgets/thumblist/@EnableCloseButton"),       m_EnableCloseButton);
     s.setValue(QStringLiteral("gadgets/thumblist/@EnableCloneButton"),       m_EnableCloneButton);
+    s.setValue(QStringLiteral("gadgets/thumblist/@SelectionOperation"),      m_SelectionOperation);
     s.setValue(QStringLiteral("gadgets/thumblist/@EnableAnimation"),         m_EnableAnimation);
 }
 
@@ -217,7 +232,6 @@ void GraphicsTableView::Activate(DisplayType type){
     if(m_EnableFrameRate){
         StartFrameRateTimer();
     }
-    StartAutoUpdateTimer();
 }
 
 void GraphicsTableView::Deactivate(){
@@ -226,6 +240,9 @@ void GraphicsTableView::Deactivate(){
         StopFrameRateTimer();
     }
     StopAutoUpdateTimer();
+    m_RepaintTimer.stop();
+    ResetFilter();
+    m_FilterDirectory = nullptr;
 
     foreach(QGraphicsItem *item, childItems()){
         item->setSelected(false);
@@ -247,11 +264,13 @@ void GraphicsTableView::IncrementFrame(const QList<QRectF> &region){
 void GraphicsTableView::StartFrameRateTimer(){
     if(m_FrameRateTimerId) killTimer(m_FrameRateTimerId);
     m_FrameRateTimerId = startTimer(1000);
-    connect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::IncrementFrame);
+    connect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::IncrementFrame,
+            Qt::UniqueConnection);
 }
 
 void GraphicsTableView::StopFrameRateTimer(){
-    disconnect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::IncrementFrame);
+    if(scene())
+        disconnect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::IncrementFrame);
     if(m_FrameRateTimerId) killTimer(m_FrameRateTimerId);
     m_FrameRateTimerId = 0;
 }
@@ -259,11 +278,13 @@ void GraphicsTableView::StopFrameRateTimer(){
 void GraphicsTableView::StartAutoUpdateTimer(){
     if(m_AutoUpdateTimerId) killTimer(m_AutoUpdateTimerId);
     m_AutoUpdateTimerId = startTimer(200);
-    connect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer);
+    connect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer,
+            Qt::UniqueConnection);
 }
 
 void GraphicsTableView::StopAutoUpdateTimer(){
-    disconnect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer);
+    if(scene())
+        disconnect(scene(), &QGraphicsScene::changed, this, &GraphicsTableView::RestartAutoUpdateTimer);
     if(m_AutoUpdateTimerId) killTimer(m_AutoUpdateTimerId);
     m_AutoUpdateTimerId = 0;
 }
@@ -286,11 +307,12 @@ void GraphicsTableView::SetCurrent(Node *nd){
     CollectNodes(nd);
 }
 
-void GraphicsTableView::CollectNodes(Node *nd, QString filter){
+void GraphicsTableView::CollectNodes(Node *nd){
     FinishFoldAnimation();
     if(!nd) return;
 
     foreach(QGraphicsItem *item, childItems()){
+        if(item == m_TableHeader || item == m_HeaderFilter) continue;
         item->setSelected(false);
         item->setVisible(false);
         item->setEnabled(false);
@@ -314,6 +336,10 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
     if(!nd->IsDummy())
         nd->ResetPrimaryPath();
 
+    if(nd->GetParent() != m_FilterDirectory) ResetFilter();
+    m_FilterDirectory = nd->GetParent();
+    const QString filter = m_FilterText;
+
     QString title = nd->GetParent()->GetTitle();
     if(!title.isEmpty()){
         emit titleChanged(tr("Dir - %1").arg(title.split(QStringLiteral(";")).first()));
@@ -332,7 +358,7 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
                     return;
             } else {
                 QStringList keys = filter.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
-                foreach(QString key, keys){
+                for(QString key : std::as_const(keys)){
                     if(!nd->GetTitle().toLower().contains(key.toLower()))
                         return;
                 }
@@ -511,22 +537,24 @@ void GraphicsTableView::CollectNodes(Node *nd, QString filter){
 
     m_UpDirectoryButton->SetState(GraphicsButton::NotHovered);
     m_ToggleTrashButton->SetState(GraphicsButton::NotHovered);
+    m_CloseTableButton->SetState(GraphicsButton::NotHovered);
 
     if(IsDisplayingViewNode()){
         m_ToggleTrashButton->setEnabled(true);
         m_ToggleTrashButton->setVisible(true);
+        m_CloseTableButton->setEnabled(true);
+        m_CloseTableButton->setVisible(true);
     } else {
         m_ToggleTrashButton->setEnabled(false);
         m_ToggleTrashButton->setVisible(false);
+        m_CloseTableButton->setEnabled(false);
+        m_CloseTableButton->setVisible(false);
     }
 
-    if(IsDisplayingViewNode() && nd && nd->GetParent() && nd->GetParent()->GetParent()){
-        m_UpDirectoryButton->setEnabled(true);
-        m_UpDirectoryButton->setVisible(true);
-    } else {
-        m_UpDirectoryButton->setEnabled(false);
-        m_UpDirectoryButton->setVisible(false);
-    }
+    m_UpDirectoryButton->setVisible(IsDisplayingViewNode());
+    m_UpDirectoryButton->setEnabled(IsDisplayingViewNode() && nd && nd->GetParent() && nd->GetParent()->GetParent());
+
+    RelocateHeader();
 
     RelocateContents();
     RelocateScrollBar();
@@ -885,6 +913,11 @@ void GraphicsTableView::ToggleSortByLastAccessDate(){
     ApplySort();
 }
 
+void GraphicsTableView::ScheduleRepaint(){
+    if(!scene() || !isVisible()) return;
+    if(!m_RepaintTimer.isActive()) m_RepaintTimer.start();
+}
+
 void GraphicsTableView::Update(QRectF rect){
     if(!scene()) return;
     if(rect.isNull()) rect = scene()->sceneRect();
@@ -1008,7 +1041,7 @@ void GraphicsTableView::SetPrimaryItem(int index){
         list << GetPrimaryNodeTitle()->boundingRect();
     }
 
-    foreach(QRectF rect, list){
+    for(QRectF rect : std::as_const(list)){
         update(rect);
     }
 }
@@ -1158,6 +1191,7 @@ void GraphicsTableView::Resize(QSizeF size){
     scene()->setSceneRect(0.0, 0.0, size.width(), size.height());
     prepareGeometryChange();
     m_Size = size;
+    RelocateHeader();
     if(IsDisplayingNode()){
         RelocateContents();
         RelocateScrollBar();
@@ -1173,8 +1207,10 @@ QRectF GraphicsTableView::ComputeRect(const Thumbnail *thumb, const int index) c
     Q_UNUSED(thumb)
     if(index == -1) return QRectF();
     const int dpi = m_TreeBank ? m_TreeBank->logicalDpiY() : DeviceScale::BaseDpi;
-    return QRectF(DeviceScale::FromDpi(DISPLAY_PADDING_X, dpi) + (index % m_CurrentThumbnailColumnCount) * m_CurrentThumbnailWidth,
-                  DeviceScale::FromDpi(DISPLAY_PADDING_Y, dpi) + (index / m_CurrentThumbnailColumnCount) * m_CurrentThumbnailHeight
+    return QRectF(DeviceScale::FromDpi(DISPLAY_PADDING_LEFT, dpi) + (index % m_CurrentThumbnailColumnCount) * m_CurrentThumbnailWidth,
+                  DeviceScale::FromDpi(DISPLAY_PADDING_Y, dpi)
+                  + (HasHeader() ? DeviceScale::FromDpi(GADGETS_HEADER_HEIGHT, dpi) : 0)
+                  + (index / m_CurrentThumbnailColumnCount) * m_CurrentThumbnailHeight
                   - round(m_CurrentScroll
                           / m_CurrentThumbnailColumnCount
                           * m_CurrentThumbnailHeight),
@@ -1188,18 +1224,20 @@ QRectF GraphicsTableView::ComputeRect(const NodeTitle *title, const int index) c
     if(index == -1) return QRectF();
     const int dpi = m_TreeBank ? m_TreeBank->logicalDpiY() : DeviceScale::BaseDpi;
     const int paddingX = DeviceScale::FromDpi(DISPLAY_PADDING_X, dpi);
+    const int paddingLeft = DeviceScale::FromDpi(DISPLAY_PADDING_LEFT, dpi);
     const int scrollBar = DeviceScale::FromDpi(GADGETS_SCROLL_BAR_MARGIN, dpi) * 2
                         + DeviceScale::FromDpi(GADGETS_SCROLL_BAR_WIDTH, dpi);
-    return QRectF(paddingX
+    return QRectF(paddingLeft
                   + m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
                   + scrollBar,
-                  DeviceScale::FromDpi(DISPLAY_PADDING_Y, dpi) + height * index
+                  DeviceScale::FromDpi(DISPLAY_PADDING_Y, dpi)
+                  + (HasHeader() ? DeviceScale::FromDpi(GADGETS_HEADER_HEIGHT, dpi) : 0)
+                  + height * index
                   - round(m_CurrentScroll * height),
 
                   m_Size.width()
-                  - (GetStyle()->NodeTitleDrawBorder() ?
-                     paddingX * 2 :
-                     paddingX)
+                  - paddingLeft
+                  - (GetStyle()->NodeTitleDrawBorder() ? paddingX : 0)
                   - m_CurrentThumbnailWidth * m_CurrentThumbnailColumnCount
                   - scrollBar,
                   height);
@@ -1512,7 +1550,7 @@ void GraphicsTableView::paint(QPainter *painter,
     if(GADGETS_SCROLL_BAR_DRAW_BORDER || GetStyle()->NodeTitleDrawBorder())
         painter->setRenderHint(QPainter::Antialiasing, false);
 
-    if(GADGETS_SCROLL_BAR_DRAW_BORDER){
+    if(GADGETS_SCROLL_BAR_DRAW_BORDER && GetStyle()->DrawsScrollBarTrack()){
         const QColor white(255,255,255,255);
         const QPen pen(white);
         painter->setPen(pen);
@@ -1540,6 +1578,129 @@ void GraphicsTableView::paint(QPainter *painter,
         }
     }
     painter->restore();
+}
+
+int GraphicsTableView::ContentsTop() const {
+    return ScaleByDevice(DISPLAY_PADDING_Y)
+        + (HasHeader() ? ScaleByDevice(GADGETS_HEADER_HEIGHT) : 0);
+}
+
+QRectF GraphicsTableView::HeaderRect() const {
+    return QRectF(0.0, 0.0, m_Size.width(), ScaleByDevice(GADGETS_HEADER_HEIGHT));
+}
+
+QString GraphicsTableView::HeaderButtonLabel(const GraphicsButton *button) const {
+    if(button == m_UpDirectoryButton) return tr("Up");
+    if(button == m_ToggleTrashButton)
+        return m_DisplayType == TrashTree ? tr("Tab list") : tr("Trash");
+    return QString();
+}
+
+QRectF GraphicsTableView::HeaderButtonRect(const GraphicsButton *button) const {
+    const qreal height = ScaleByDevice(GADGETS_HEADER_BUTTON_HEIGHT);
+    const qreal top = (ScaleByDevice(GADGETS_HEADER_HEIGHT) - height) / 2.0;
+    const qreal chrome = ScaleByDevice(8) * 2
+                       + ScaleByDevice(GADGETS_HEADER_ICON_SIZE)
+                       + ScaleByDevice(5);
+    const QFontMetricsF metrics(GadgetsHeaderFont());
+    const GraphicsButton *buttons[] = { m_UpDirectoryButton, m_ToggleTrashButton };
+
+    qreal left = ScaleByDevice(DISPLAY_PADDING_X);
+    QRectF rect;
+    for(const GraphicsButton *b : buttons){
+        if(b == m_ToggleTrashButton && m_DisplayType != ViewTree && m_DisplayType != TrashTree)
+            continue;
+        rect = QRectF(left, top, chrome + metrics.horizontalAdvance(HeaderButtonLabel(b)), height);
+        if(b == button) return rect;
+        left = rect.right() + ScaleByDevice(6);
+    }
+    return button ? QRectF() : rect;
+}
+
+QRectF GraphicsTableView::HeaderCloseRect() const {
+    if(m_DisplayType != ViewTree && m_DisplayType != TrashTree) return QRectF();
+    const qreal side = ScaleByDevice(GADGETS_HEADER_BUTTON_HEIGHT);
+    const qreal top = (ScaleByDevice(GADGETS_HEADER_HEIGHT) - side) / 2.0;
+    const qreal right = m_Size.width() - ScaleByDevice(6);
+    return QRectF(right - side, top, side, side);
+}
+
+namespace {
+    NodeList BreadcrumbNodes(Node *current){
+        NodeList nodes;
+        if(!current) return nodes;
+        for(Node *nd = current->GetParent(); nd; nd = nd->GetParent())
+            nodes.prepend(nd);
+        return nodes;
+    }
+}
+
+QStringList GraphicsTableView::BreadcrumbTitles(){
+    QStringList titles;
+    const NodeList nodes = BreadcrumbNodes(m_CurrentNode);
+    for(int i = 0; i < nodes.length(); i++){
+        if(i == 0) titles << (m_DisplayType == TrashTree ? tr("Trash") : tr("Tab list"));
+        else titles << nodes[i]->ReadableTitle();
+    }
+    return titles;
+}
+
+void GraphicsTableView::BreadcrumbActivated(int index){
+    const NodeList nodes = BreadcrumbNodes(m_CurrentNode);
+    if(!IsDisplayingNode() || index < 0 || index >= nodes.length() - 1) return;
+
+    m_HoveredItemIndex = -1;
+    m_PrimaryItemIndex = -1;
+
+    qreal scroll = m_CurrentScroll;
+    SetCurrent(nodes[index + 1]);
+    if(NearlyEqual(scroll, m_CurrentScroll)) Update();
+}
+
+QRectF GraphicsTableView::HeaderFilterRect() const {
+    const qreal height = ScaleByDevice(GADGETS_HEADER_BUTTON_HEIGHT);
+    const qreal top = (ScaleByDevice(GADGETS_HEADER_HEIGHT) - height) / 2.0;
+    const QRectF close = HeaderCloseRect();
+    const qreal right = close.isNull()
+        ? m_Size.width() - ScaleByDevice(DISPLAY_PADDING_X)
+        : close.left() - ScaleByDevice(6);
+    const qreal width = qMin<qreal>(ScaleByDevice(GADGETS_HEADER_FILTER_WIDTH), m_Size.width() / 4.0);
+    return QRectF(right - width, top, width, height);
+}
+
+QString GraphicsTableView::HeaderFilterPlaceholder() const {
+    return tr("Filter");
+}
+
+void GraphicsTableView::SetFilter(const QString &text){
+    if(m_FilterText == text) return;
+    m_FilterText = text;
+    if(m_HeaderFilter->Text() != text) m_HeaderFilter->SetText(text);
+    OnFilterChanged();
+}
+
+void GraphicsTableView::ResetFilter(){
+    m_FilterText.clear();
+    if(!m_HeaderFilter->Text().isEmpty()) m_HeaderFilter->SetText(QString());
+}
+
+void GraphicsTableView::OnFilterChanged(){
+    if(!m_CurrentNode) return;
+    CollectNodes(m_CurrentNode);
+    ThumbList_MoveToFirstItem();
+    update();
+}
+
+void GraphicsTableView::RelocateHeader(){
+    m_TableHeader->setVisible(HasHeader());
+    m_TableHeader->setEnabled(HasHeader());
+    m_TableHeader->SetRect(HeaderRect());
+    m_UpDirectoryButton->SetRect(HeaderButtonRect(m_UpDirectoryButton));
+    m_ToggleTrashButton->SetRect(HeaderButtonRect(m_ToggleTrashButton));
+    m_CloseTableButton->SetRect(HeaderCloseRect());
+    m_HeaderFilter->setVisible(HasHeader());
+    m_HeaderFilter->setEnabled(HasHeader());
+    m_HeaderFilter->SetRect(HeaderFilterRect());
 }
 
 QRectF GraphicsTableView::ThumbnailAreaRect(){
@@ -1619,6 +1780,7 @@ void GraphicsTableView::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
 }
 
 void GraphicsTableView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    ForgetSpentPress(ev->button());
     FinishFoldAnimation();
     switch(ev->button()){
     case Qt::LeftButton:
@@ -1643,6 +1805,14 @@ void GraphicsTableView::mousePressEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    if(SettleSpentPress(ev->button())){
+        if(m_SelectRect && m_SelectRect->isVisible()){
+            update(m_SelectRect->rect().normalized());
+            m_SelectRect->hide();
+        }
+        ev->setAccepted(true);
+        return;
+    }
     if(ev->button() == Qt::LeftButton){
         QRectF rect;
         QList<QGraphicsItem*> collidings;
@@ -1722,7 +1892,9 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
             menu = m_TreeBank->GlobalContextMenu();
 
         if(menu){
+            m_MenuPos = ev->pos();
             menu->exec(ev->screenPos());
+            m_MenuPos.reset();
             delete menu;
             ev->setAccepted(true);
         }
@@ -1731,7 +1903,12 @@ void GraphicsTableView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
               ev->button() == Qt::MiddleButton
               ){
 
-        ev->setAccepted(ThumbList_PasteNode());
+        if(IsDisplayingViewNode()){
+            SetHoveredItem(-1);
+            ev->setAccepted(PasteNodeAt(ev->pos()));
+        } else {
+            ev->setAccepted(ThumbList_PasteNode());
+        }
     }
 }
 
@@ -1825,6 +2002,7 @@ void GraphicsTableView::timerEvent(QTimerEvent *ev){
     if(m_FrameRateTimerId && ev->timerId() == m_FrameRateTimerId){
         m_CurrentFrameRate = m_Frame;
         m_Frame = 0;
+        ScheduleRepaint();
     }
     if(m_TreeBank && m_TreeBank->parentWidget()->isActiveWindow() &&
        m_AutoUpdateTimerId && ev->timerId() == m_AutoUpdateTimerId){
@@ -1985,6 +2163,7 @@ void GraphicsTableView::OnFoldedChanged(const NodeList &nodes){
             entry.item->setOpacity(entry.entering ? 0 : entry.opacity);
         }
         m_FoldAnimation->start();
+        m_FoldAnimation->setCurrentTime(16);
     }
 }
 
@@ -2098,53 +2277,100 @@ bool GraphicsTableView::ThumbList_DeleteOtherNode(){
     return DeleteNodes(list);
 }
 
-bool GraphicsTableView::ThumbList_PasteNode(){
-    if(!m_CurrentNode || !IsDisplayingViewNode()) return false;
+NodeList GraphicsTableView::NodesToPutAside(){
+    NodeList list;
+    if(!m_CurrentNode || !IsDisplayingViewNode() || m_DisplayType == TrashTree)
+        return list;
 
-    Node *nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
-    Node *parent = nd->GetParent();
-    NodeList sibling = nd->GetSiblings();
-    NodeList neworder;
+    if(!m_NodesRegister.isEmpty()){
+        list = QSet<Node*>(m_NodesRegister.begin(), m_NodesRegister.end()).values();
+        list.removeIf([](Node *nd){ return !nd->IsViewNode() || nd->IsDummy();});
+        SortNodesByDisplayOrder(list);
+    } else if(Node *nd = GetHoveredNode()){
+        if(!nd->IsDummy()) list << nd;
+    }
+    return list;
+}
 
-    m_NodesRegister = QSet<Node*>(m_NodesRegister.begin(), m_NodesRegister.end()).values();
+bool GraphicsTableView::ThumbList_CutNode(){
+    const NodeList list = NodesToPutAside();
+    if(list.isEmpty()) return false;
+    TreeBank::SetClipboardNodes(list, true);
+    emit statusBarMessage(tr("Cut %1 nodes.").arg(list.length()));
+    return true;
+}
 
-    if(m_NodesRegister.isEmpty())
+bool GraphicsTableView::ThumbList_CopyNode(){
+    const NodeList list = NodesToPutAside();
+    if(list.isEmpty()) return false;
+    TreeBank::SetClipboardNodes(list, false);
+    emit statusBarMessage(tr("Copied %1 nodes.").arg(list.length()));
+    return true;
+}
+
+bool GraphicsTableView::PasteTakesSelection() const {
+    return !m_NodesRegister.isEmpty() &&
+        (m_SelectionOperation == QStringLiteral("Copy") ||
+         m_SelectionOperation == QStringLiteral("Cut"));
+}
+
+void GraphicsTableView::TakeSelectionForPaste(){
+    if(!PasteTakesSelection()) return;
+    const NodeList selected = NodesToPutAside();
+    if(!selected.isEmpty() && !TreeBank::ClipboardHolds(selected))
+        TreeBank::SetClipboardNodes(selected, m_SelectionOperation == QStringLiteral("Cut"));
+}
+
+QPointF GraphicsTableView::PastePosition() const {
+    if(m_MenuPos) return *m_MenuPos;
+    if(scene() && !scene()->views().isEmpty()){
+        QGraphicsView *view = scene()->views().first();
+        return mapFromScene(view->mapToScene(view->mapFromGlobal(QCursor::pos())));
+    }
+    return QPointF(-1.0, -1.0);
+}
+
+bool GraphicsTableView::PasteNodeAt(const QPointF &pos){
+    if(!m_CurrentNode || !IsDisplayingViewNode() || m_DisplayType == TrashTree)
         return false;
 
-    foreach(Node *nd, nd->GetAncestors()){
-        if(m_NodesRegister.contains(nd)){
-            m_NodesRegister.removeOne(nd);
+    TakeSelectionForPaste();
+
+    Node *anchor = GetHoveredNode();
+    bool before = false;
+    if(!anchor && ThumbnailAreaRect().contains(pos) && !m_DisplayThumbnails.isEmpty()){
+        const qreal row = ceil((pos.y() - ContentsTop()) / m_CurrentThumbnailHeight);
+        for(Thumbnail *thumb : std::as_const(m_DisplayThumbnails)){
+            const QPointF center = thumb->boundingRect().center() + thumb->pos();
+            const qreal itemRow = ceil((center.y() - ContentsTop()) / m_CurrentThumbnailHeight);
+            if(row < itemRow || (row == itemRow && pos.x() < center.x())){
+                anchor = thumb->GetNode();
+                before = true;
+                break;
+            }
         }
-    }
-
-    foreach(Node *nd, m_NodesRegister){
-        if(sibling.contains(nd)){
-            sibling.removeOne(nd);
+        if(!anchor) anchor = m_DisplayThumbnails.last()->GetNode();
+    } else if(!anchor && NodeTitleAreaRect().contains(pos) && !m_DisplayNodeTitles.isEmpty()){
+        for(NodeTitle *title : std::as_const(m_DisplayNodeTitles)){
+            if(pos.y() < title->boundingRect().center().y() + title->pos().y()){
+                anchor = title->GetNode();
+                before = true;
+                break;
+            }
         }
+        if(!anchor) anchor = m_DisplayNodeTitles.last()->GetNode();
     }
 
-    SortNodesByDisplayOrder(m_NodesRegister);
-
-    int insertPoint = sibling.indexOf(nd);
-    if(GetHoveredNode() && insertPoint != -1){
-
-        neworder =
-            sibling.mid(0, insertPoint+1) +
-            m_NodesRegister +
-            sibling.mid(insertPoint+1);
-
-    } else {
-        neworder = sibling + m_NodesRegister;
-    }
-
-    m_TreeBank->SetChildrenOrder(parent, neworder);
+    Node *parent = anchor ? anchor->GetParent() : m_CurrentNode->GetParent();
+    if(!TreeBank::PasteClipboardNodes(parent, anchor, before))
+        return false;
 
     ThumbList_RefreshNoScroll();
-
-    if(m_HoveredItemIndex == -1){
-        ThumbList_MoveToLastItem();
-    }
     return true;
+}
+
+bool GraphicsTableView::ThumbList_PasteNode(){
+    return PasteNodeAt(PastePosition());
 }
 
 bool GraphicsTableView::ThumbList_RestoreNode(){
@@ -2358,7 +2584,7 @@ bool GraphicsTableView::ThumbList_MakeDirectoryWithSameDomainNode(){
         return false;
     }
 
-    foreach(QString domain, groups.keys()){
+    for(QString domain : groups.keys()){
         Node *directory = parent->MakeChild();
         directory->SetTitle(domain);
         m_TreeBank->SetChildrenOrder(directory, groups[domain]);
@@ -2532,8 +2758,8 @@ bool GraphicsTableView::ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF b
                 if(t2->isSelected()) p2 = basepos;
             }
 
-            if(ceil((p1.y() - ScaleByDevice(DISPLAY_PADDING_Y)) / m_CurrentThumbnailHeight) ==
-               ceil((p2.y() - ScaleByDevice(DISPLAY_PADDING_Y)) / m_CurrentThumbnailHeight)){
+            if(ceil((p1.y() - ContentsTop()) / m_CurrentThumbnailHeight) ==
+               ceil((p2.y() - ContentsTop()) / m_CurrentThumbnailHeight)){
                 return p1.x() < p2.x();
             } else {
                 return p1.y() < p2.y();
@@ -2690,7 +2916,7 @@ qreal GraphicsTableView::MaxScrollOf(int count, int columns, int lines, int titl
 int GraphicsTableView::NodeTitleCountInScreen() const {
     const int height = GetStyle()->NodeTitleHeight(const_cast<GraphicsTableView* const>(this));
     if(height <= 0) return 0;
-    return (static_cast<int>(m_Size.height()) - ScaleByDevice(DISPLAY_PADDING_Y)) / height;
+    return (static_cast<int>(m_Size.height()) - ContentsTop()) / height;
 }
 
 qreal GraphicsTableView::MaxScroll() const {
@@ -2718,7 +2944,7 @@ void GraphicsTableView::Scroll(qreal delta){
 
     ClearScrollIndicatorSelection();
 
-    if(m_EnableAnimation
+    if(m_EnableAnimation && m_TreeBank
        && m_TreeBank->GetView()->MouseEventSource() != Qt::MouseEventSynthesizedBySystem){
 
         qreal orig = m_TargetScroll;
@@ -3207,75 +3433,52 @@ bool GraphicsTableView::ThumbList_TransferToLast(){
 }
 
 bool GraphicsTableView::ThumbList_TransferToUpDirectory(){
-    if(!m_CurrentNode || !IsDisplayingNode() || m_NodesRegister.isEmpty())
-        return false;
-
-    m_NodesRegister = QSet<Node*>(m_NodesRegister.begin(), m_NodesRegister.end()).values();
-
-    Node *nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
-    NodeList sibling = nd->GetSiblings();
-
-    foreach(Node *nd, m_NodesRegister){
-        if(!sibling.contains(nd))
-            m_NodesRegister.removeOne(nd);
-    }
-
-    SortNodesByDisplayOrder(m_NodesRegister);
-
-    int len = m_NodesRegister.length();
-
-    if(!ThumbList_UpDirectory()) return false;
-
-    nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
-    m_TreeBank->SetChildrenOrder
-        (nd->GetParent(), nd->GetSiblings() + m_NodesRegister);
-
-    bool hasSuspended = StatusBarMessageIsSuspended();
-    if(!hasSuspended) SuspendStatusBarMessage();
-
-    ThumbList_Refresh();
-
-    if(!hasSuspended) ResumeStatusBarMessage();
-
-    for(int i = 1; i <= len; i++){
-        SetSelectedByIndex(m_DisplayThumbnails.length() - i);
-    }
-    return true;
+    return TransferToDirectory(true);
 }
 
 bool GraphicsTableView::ThumbList_TransferToDownDirectory(){
+    return TransferToDirectory(false);
+}
+
+bool GraphicsTableView::TransferToDirectory(bool up){
     if(!m_CurrentNode || !IsDisplayingNode() || m_NodesRegister.isEmpty())
         return false;
 
     m_NodesRegister = QSet<Node*>(m_NodesRegister.begin(), m_NodesRegister.end()).values();
 
     Node *nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
-    NodeList sibling = nd->GetSiblings();
-
-    foreach(Node *nd, m_NodesRegister){
-        if(!sibling.contains(nd))
-            m_NodesRegister.removeOne(nd);
+    if(up){
+        const NodeList sibling = nd->GetSiblings();
+        m_NodesRegister.removeIf([&sibling](Node *registered){ return !sibling.contains(registered);});
+    } else {
+        const NodeList ancestors = nd->GetAncestors();
+        m_NodesRegister.removeIf([nd, &ancestors](Node *registered){
+            return registered == nd || registered->GetParent() == nd || ancestors.contains(registered);
+        });
     }
 
     SortNodesByDisplayOrder(m_NodesRegister);
 
-    int len = m_NodesRegister.length();
+    const NodeList moving = m_NodesRegister;
 
-    if(!ThumbList_DownDirectory()) return false;
+    Node *from = nd->GetParent();
+    const bool viewMoves = !up || from == m_CurrentNode->GetParent();
+    if(up && (!from || !from->GetParent())) return false;
+    if(viewMoves && !(up ? ThumbList_UpDirectory() : ThumbList_DownDirectory())) return false;
 
-    nd = GetHoveredNode() ? GetHoveredNode() : m_CurrentNode;
-    m_TreeBank->SetChildrenOrder
-        (nd->GetParent(), nd->GetSiblings() + m_NodesRegister);
+    Node *beside = up ? from : (GetHoveredNode() ? GetHoveredNode() : m_CurrentNode);
+    TreeBank::SetChildrenOrder(beside->GetParent(), beside->GetSiblings() + moving);
 
     bool hasSuspended = StatusBarMessageIsSuspended();
     if(!hasSuspended) SuspendStatusBarMessage();
 
-    ThumbList_Refresh();
+    if(viewMoves) ThumbList_Refresh();
+    else ThumbList_RefreshNoScroll();
 
     if(!hasSuspended) ResumeStatusBarMessage();
 
-    for(int i = 1; i <= len; i++){
-        SetSelectedByIndex(m_DisplayThumbnails.length() - i);
+    for(int i = 0; i < m_DisplayThumbnails.length(); i++){
+        if(moving.contains(m_DisplayThumbnails[i]->GetNode())) SetSelectedByIndex(i);
     }
     return true;
 }
@@ -3495,18 +3698,7 @@ ScrollIndicator::~ScrollIndicator(){}
 void ScrollIndicator::paint(QPainter *painter,
                              const QStyleOptionGraphicsItem *option, QWidget *widget){
     Q_UNUSED(option) Q_UNUSED(widget)
-
-    painter->save();
-
-    painter->setPen(Theme::Pen(Theme::GadgetsScrollIndicatorBorder));
-    painter->setBrush(Theme::Brush(isSelected()
-                                   ? Theme::GadgetsScrollIndicatorSelected
-                                   : Theme::GadgetsScrollIndicator));
-
-    painter->setRenderHint(QPainter::Antialiasing, false);
-    painter->drawRect(rect());
-
-    painter->restore();
+    m_TableView->GetStyle()->Render(this, painter);
 }
 
 QVariant ScrollIndicator::itemChange(GraphicsItemChange change, const QVariant &value){
@@ -3901,17 +4093,11 @@ void SoundButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 UpDirectoryButton::UpDirectoryButton(QGraphicsItem *parent)
-    : GraphicsButton(parent)
+    : HeaderButton(parent)
 {
 }
 
 UpDirectoryButton::~UpDirectoryButton(){}
-
-QRectF UpDirectoryButton::boundingRect() const {
-    return QRectF(-m_TableView->ScaleByDevice(5), -m_TableView->ScaleByDevice(5),
-                  m_TableView->ScaleByDevice(23),
-                  m_TableView->ScaleByDevice(23));
-}
 
 void UpDirectoryButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
     Q_UNUSED(item) Q_UNUSED(widget)
@@ -3926,17 +4112,11 @@ void UpDirectoryButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 ToggleTrashButton::ToggleTrashButton(QGraphicsItem *parent)
-    : GraphicsButton(parent)
+    : HeaderButton(parent)
 {
 }
 
 ToggleTrashButton::~ToggleTrashButton(){}
-
-QRectF ToggleTrashButton::boundingRect() const {
-    return QRectF(-m_TableView->ScaleByDevice(5), m_TableView->ScaleByDevice(23),
-                  m_TableView->ScaleByDevice(23),
-                  m_TableView->ScaleByDevice(23));
-}
 
 void ToggleTrashButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
     Q_UNUSED(item) Q_UNUSED(widget)
@@ -3947,5 +4127,292 @@ void ToggleTrashButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
     bool pressed = m_ButtonState == Pressed;
     GraphicsButton::mousePressEvent(ev);
     if(pressed) m_TableView->ThumbList_ToggleTrash();
+    ev->setAccepted(true);
+}
+
+CloseTableButton::CloseTableButton(QGraphicsItem *parent)
+    : HeaderButton(parent)
+{
+}
+
+CloseTableButton::~CloseTableButton(){}
+
+void CloseTableButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
+    Q_UNUSED(item) Q_UNUSED(widget)
+    m_TableView->GetStyle()->Render(this, painter);
+}
+
+void CloseTableButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    bool pressed = m_ButtonState == Pressed;
+    GraphicsButton::mouseReleaseEvent(ev);
+    if(pressed) m_TableView->Deactivate();
+    ev->setAccepted(true);
+}
+
+TableHeader::TableHeader(GraphicsTableView *parent)
+    : QGraphicsItem(parent)
+{
+    m_TableView = parent;
+    m_HoveredSegment = -1;
+    m_PressedSegment = -1;
+    setZValue(HEADER_LAYER);
+    setAcceptHoverEvents(true);
+}
+
+TableHeader::~TableHeader(){}
+
+void TableHeader::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
+    Q_UNUSED(item) Q_UNUSED(widget)
+    m_TableView->GetStyle()->Render(this, painter);
+}
+
+QFont TableHeader::SegmentFont(bool last){
+    QFont font = GadgetsHeaderFont();
+    font.setBold(last);
+    return font;
+}
+
+qreal TableHeader::TextShift(const QFont &font){
+    const QFontMetricsF metrics(font);
+    return metrics.height() / 2.0 - metrics.ascent()
+         - metrics.tightBoundingRect(QStringLiteral("H")).center().y();
+}
+
+qreal TableHeader::SegmentPadding() const {
+    return m_TableView->ScaleByDevice(8);
+}
+
+qreal TableHeader::SeparatorWidth() const {
+    return QFontMetricsF(SegmentFont(false)).horizontalAdvance(QChar(0x203A))
+        + m_TableView->ScaleByDevice(4) * 2;
+}
+
+qreal TableHeader::EllipsisWidth() const {
+    return QFontMetricsF(SegmentFont(false)).horizontalAdvance(QChar(0x2026));
+}
+
+qreal TableHeader::BreadcrumbLeft() const {
+    return m_TableView->HeaderButtonRect(nullptr).right() + m_TableView->ScaleByDevice(14);
+}
+
+qreal TableHeader::BreadcrumbRight() const {
+    return m_TableView->HeaderFilterRect().left() - m_TableView->ScaleByDevice(14);
+}
+
+QList<QRectF> TableHeader::SegmentRects(const QStringList &titles) const {
+    QList<QRectF> rects;
+    const int count = titles.length();
+    if(!count) return rects;
+
+    const qreal height = m_TableView->ScaleByDevice(GADGETS_HEADER_BUTTON_HEIGHT);
+    const qreal top = (boundingRect().height() - height) / 2.0;
+    const qreal left = BreadcrumbLeft();
+    const qreal right = BreadcrumbRight();
+    const qreal separator = SeparatorWidth();
+    const qreal ellipsis = EllipsisWidth() + separator;
+
+    QList<qreal> widths;
+    for(int i = 0; i < count; i++)
+        widths << QFontMetricsF(SegmentFont(i == count - 1)).horizontalAdvance(titles[i])
+                + SegmentPadding() * 2;
+
+    auto widthFrom = [&](int first){
+        qreal width = first ? ellipsis : 0.0;
+        for(int i = first; i < count; i++)
+            width += widths[i] + (i < count - 1 ? separator : 0.0);
+        return width;
+    };
+    int first = 0;
+    while(first < count - 1 && widthFrom(first) > right - left) first++;
+
+    qreal x = left + (first ? ellipsis : 0.0);
+    for(int i = 0; i < count; i++){
+        if(i < first){
+            rects << QRectF();
+            continue;
+        }
+        QRectF rect(x, top, widths[i], height);
+        if(rect.right() > right) rect.setRight(qMax(x, right));
+        rects << rect;
+        x += widths[i] + separator;
+    }
+    return rects;
+}
+
+int TableHeader::SegmentAt(QPointF pos) const {
+    const QList<QRectF> rects = SegmentRects(m_TableView->BreadcrumbTitles());
+    for(int i = 0; i < rects.length() - 1; i++){
+        if(!rects[i].isEmpty() && rects[i].contains(pos)) return i;
+    }
+    return -1;
+}
+
+void TableHeader::SetHoveredSegment(int index){
+    if(m_HoveredSegment == index) return;
+    m_HoveredSegment = index;
+    setCursor(index == -1 ? Qt::ArrowCursor : Qt::PointingHandCursor);
+    update();
+}
+
+void TableHeader::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    m_PressedSegment = ev->button() == Qt::LeftButton ? SegmentAt(ev->pos()) : -1;
+    ev->setAccepted(true);
+}
+
+void TableHeader::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
+    const int pressed = m_PressedSegment;
+    m_PressedSegment = -1;
+    if(ev->button() == Qt::LeftButton && pressed != -1 && SegmentAt(ev->pos()) == pressed){
+        SetHoveredSegment(-1);
+        m_TableView->BreadcrumbActivated(pressed);
+    }
+    ev->setAccepted(true);
+}
+
+HeaderFilter::HeaderFilter(GraphicsTableView *parent)
+    : QGraphicsItem(parent)
+{
+    m_TableView = parent;
+    m_Silent = false;
+    setZValue(HEADER_BUTTON_LAYER);
+    setAcceptHoverEvents(true);
+    setFlag(QGraphicsItem::ItemClipsChildrenToShape);
+
+    m_TextItem = new HeaderFilterText(this);
+    m_TextItem->setFont(GadgetsHeaderFont());
+    m_TextItem->setTextInteractionFlags(Qt::TextEditorInteraction);
+    m_TextItem->setTabChangesFocus(true);
+    m_TextItem->document()->setDocumentMargin(0);
+    QObject::connect(m_TextItem->document(), &QTextDocument::contentsChanged,
+                     m_TextItem, [this](){ OnContentsChanged();});
+}
+
+HeaderFilter::~HeaderFilter(){}
+
+void HeaderFilter::SetRect(const QRectF &rect){
+    prepareGeometryChange();
+    m_Rect = rect;
+    const qreal padding = m_TableView->ScaleByDevice(8);
+    m_TextItem->setPos(rect.left() + padding,
+                       rect.center().y() - m_TextItem->boundingRect().height() / 2.0
+                       + TableHeader::TextShift(m_TextItem->font()));
+    update();
+}
+
+void HeaderFilter::paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget){
+    Q_UNUSED(item) Q_UNUSED(widget)
+    m_TableView->GetStyle()->Render(this, painter);
+}
+
+QString HeaderFilter::Text() const {
+    return m_TextItem->toPlainText();
+}
+
+void HeaderFilter::SetText(const QString &text){
+    m_Silent = true;
+    m_TextItem->setPlainText(text);
+    m_Silent = false;
+    update();
+}
+
+bool HeaderFilter::IsEditing() const {
+    return m_TextItem->hasFocus();
+}
+
+QRectF HeaderFilter::ClearRect() const {
+    if(Text().isEmpty()) return QRectF();
+    const qreal side = m_TableView->ScaleByDevice(GADGETS_HEADER_ICON_SIZE);
+    const qreal padding = m_TableView->ScaleByDevice(7);
+    return QRectF(m_Rect.right() - padding - side, m_Rect.center().y() - side / 2.0, side, side);
+}
+
+void HeaderFilter::OnContentsChanged(){
+    const QString text = Text();
+    if(text.contains(QLatin1Char('\n')) || text.contains(QChar::ParagraphSeparator)){
+        QString line = text;
+        line.replace(QLatin1Char('\n'), QLatin1Char(' ')).replace(QChar::ParagraphSeparator, QLatin1Char(' '));
+        m_TextItem->setPlainText(line);
+        QTextCursor cursor = m_TextItem->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        m_TextItem->setTextCursor(cursor);
+        return;
+    }
+    update();
+    if(!m_Silent) m_TableView->SetFilter(text);
+}
+
+void HeaderFilter::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    if(ev->button() == Qt::LeftButton && ClearRect().adjusted(-4, -4, 4, 4).contains(ev->pos())){
+        m_TextItem->setPlainText(QString());
+    }
+    m_TextItem->setFocus(Qt::MouseFocusReason);
+    QTextCursor cursor = m_TextItem->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    m_TextItem->setTextCursor(cursor);
+    ev->setAccepted(true);
+}
+
+void HeaderFilter::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
+    m_TableView->SetHoveredItem(-1);
+    setCursor(ClearRect().adjusted(-4, -4, 4, 4).contains(ev->pos())
+              ? Qt::PointingHandCursor : Qt::IBeamCursor);
+    ev->setAccepted(true);
+}
+
+HeaderFilterText::HeaderFilterText(HeaderFilter *parent)
+    : QGraphicsTextItem(parent)
+{
+    m_Filter = parent;
+}
+
+void HeaderFilterText::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget){
+    QStyleOptionGraphicsItem plain(*option);
+    plain.state &= ~(QStyle::State_HasFocus | QStyle::State_Selected);
+    QGraphicsTextItem::paint(painter, &plain, widget);
+}
+
+void HeaderFilterText::keyPressEvent(QKeyEvent *ev){
+    switch(ev->key()){
+    case Qt::Key_Escape:
+        if(!toPlainText().isEmpty()) setPlainText(QString());
+        m_Filter->GetTableView()->setFocus(Qt::OtherFocusReason);
+        ev->setAccepted(true);
+        return;
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+    case Qt::Key_Down:
+        m_Filter->GetTableView()->setFocus(Qt::OtherFocusReason);
+        ev->setAccepted(true);
+        return;
+    default:
+        QGraphicsTextItem::keyPressEvent(ev);
+        return;
+    }
+}
+
+void HeaderFilterText::focusInEvent(QFocusEvent *ev){
+    QGraphicsTextItem::focusInEvent(ev);
+    m_Filter->update();
+}
+
+void HeaderFilterText::focusOutEvent(QFocusEvent *ev){
+    QGraphicsTextItem::focusOutEvent(ev);
+    m_Filter->update();
+}
+
+void TableHeader::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){
+    m_TableView->SetHoveredItem(-1);
+    SetHoveredSegment(SegmentAt(ev->pos()));
+    ev->setAccepted(true);
+}
+
+void TableHeader::hoverLeaveEvent(QGraphicsSceneHoverEvent *ev){
+    SetHoveredSegment(-1);
+    ev->setAccepted(true);
+}
+
+void TableHeader::hoverMoveEvent(QGraphicsSceneHoverEvent *ev){
+    m_TableView->SetHoveredItem(-1);
+    SetHoveredSegment(SegmentAt(ev->pos()));
     ev->setAccepted(true);
 }

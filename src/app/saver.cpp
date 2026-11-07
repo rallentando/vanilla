@@ -58,6 +58,7 @@ bool AutoSaver::CaptureProductionSnapshot(SaveSnapshot *snapshot){
     snapshot->icons = Application::IconDatabaseSnapshot();
     snapshot->cookies = NetworkController::CookieSnapshot();
     snapshot->windowIndices = TreeBank::WindowIndexSnapshot();
+    snapshot->leftOut = TreeBank::LeftOutOfSaves();
     return true;
 }
 
@@ -143,7 +144,7 @@ bool AutoSaver::WriteProductionSnapshot(const SaveSnapshot &snapshot){
     }
 
     TRY{
-        stages.Run([&](){ return TreeBank::SaveTree(snapshot.windowIndices);});
+        stages.Run([&](){ return TreeBank::SaveTree(snapshot.windowIndices, snapshot.leftOut);});
     } CATCH {
         stages.Fail();
     }

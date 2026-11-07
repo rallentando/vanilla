@@ -19,6 +19,7 @@
 
 #include "extensionhostwire.hpp"
 #include "extensionmainscripts.hpp"
+#include "extensionalarms.hpp"
 #include "extensionuserscripts.hpp"
 #include "extensionui.hpp"
 
@@ -221,6 +222,16 @@ private:
     void KeepUserScripts();
     void ReadUserStore(const QString &path);
     void WriteUserStoreSoon();
+    QJsonObject AlarmsCall(const ExtensionHostWire::Call &asked, const QString &id);
+    void RingAlarms();
+    bool AlarmsMayRing(const QString &id) const;
+    void ReadAlarmStore(const QString &path);
+    void WriteAlarmStoreSoon();
+    ExtensionAlarms::Book m_Alarms;
+    QTimer *m_AlarmTimer = nullptr;
+    QString m_AlarmStoreFile;
+    QByteArray m_AlarmStoreWritten;
+    bool m_AlarmStoreSoon = false;
 };
 
 #endif

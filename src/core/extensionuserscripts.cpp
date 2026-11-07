@@ -105,7 +105,7 @@ bool Read(const QJsonValue &value, Registration *out, QString *error, const QStr
         *error = QStringLiteral("Script with ID '%1' has too many js sources.").arg(out->id);
         return false;
     }
-    foreach(const QJsonValue &source, js.toArray()){
+    for(const QJsonValue &source : js.toArray()){
         const QJsonObject s = source.toObject();
         const bool code = s.value(QStringLiteral("code")).isString(), file = s.value(QStringLiteral("file")).isString();
         if(!source.isObject() || code == file || (code && s.contains(QStringLiteral("file")))
@@ -189,7 +189,7 @@ Book Book::Of(const QJsonArray &kept){
         const QJsonObject o = value.toObject();
         if(value.isObject() && o.contains(QStringLiteral("worlds")) && !o.contains(QStringLiteral("id"))){
             QString error;
-            foreach(const QJsonValue &one, o.value(QStringLiteral("worlds")).toArray()) book.Configure(one, &error);
+            for(const QJsonValue &one : o.value(QStringLiteral("worlds")).toArray()) book.Configure(one, &error);
             continue;
         }
         Registration r;
@@ -280,7 +280,7 @@ bool Book::Register(const QJsonValue &scripts, const Reader &read, QString *erro
     foreach(const Registration &r, m_List) ids.insert(r.id);
     QList<Registration> all = m_List;
     QHash<QString, bool> known;
-    foreach(const QJsonValue &value, scripts.toArray()){
+    for(const QJsonValue &value : scripts.toArray()){
         Registration r;
         if(!Read(value, &r, error)) return false;
         if(ids.contains(r.id)){ *error = QStringLiteral("Duplicate script ID '%1'").arg(r.id); return false; }
@@ -299,7 +299,7 @@ bool Book::Update(const QJsonValue &scripts, const Reader &read, QString *error)
     QList<Registration> all = m_List;
     QSet<QString> seen;
     QHash<QString, bool> known;
-    foreach(const QJsonValue &value, scripts.toArray()){
+    for(const QJsonValue &value : scripts.toArray()){
         const QJsonObject given = value.toObject();
         const QJsonValue id = given.value(QStringLiteral("id"));
         if(!value.isObject() || !id.isString()){ *error = Invocation(QStringLiteral("update")); return false; }

@@ -9,6 +9,7 @@
 #include <QByteArray>
 #include <QElapsedTimer>
 #include <QMap>
+#include <QSet>
 
 #include <functional>
 
@@ -19,6 +20,7 @@ struct SaveSnapshot {
     Settings icons;
     QByteArray cookies;
     QMap<ViewNode*, int> windowIndices;
+    QSet<quint64> leftOut;
 };
 
 class AutoSaver : public QObject {

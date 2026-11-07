@@ -6,6 +6,7 @@
 
 #include <QFile>
 #include <QRegularExpression>
+#include <QThread>
 
 #include <limits>
 
@@ -66,6 +67,9 @@ private slots:
     void theAutoLoadWalkStepsOverRefusedTabsWithoutGrowingTheStack();
     void theAutoLoadWalkCountsEveryNodeItStepsTo();
     void theAutoLoadWalkResumedTickByTickOffersWhatOneWalkOffers();
+    void aWalkWhoseNodeLeavesMissesNothingOfWhatStays();
+    void aWalkBelowAReorderedFolderMissesNothing();
+    void everyMoveOfTheTreeSteersTheWalksFirst();
     void theAutoLoadWalkStopsOnTheTabItLoadsWithinItsBudget();
     void theAutoLoadTimerStopsOnlyAtTheEndsOrTheLimit();
     void aWalkCutShortGoesOnInTheSameDirection();
@@ -92,6 +96,7 @@ private slots:
     void aLeafWithNothingBesideItLeavesNobodyToBeCurrent();
 
     void theDownloadCarrierIsTakenApartInOneOrder();
+    void aTabIsLeftOutOfTheSavesUntilItsLastRegistrationGoes();
     void nothingAboutADownloadCarrierGoesThroughTheTrash();
     void quarantineLetsGoOfAllThreePointers();
     void theClosedNodeIsStrippedBeforeTheTrashIsTrimmed();
@@ -112,6 +117,8 @@ private slots:
     void showingATabStampsItsLastAccessWhicheverEngineShowsIt();
     void aFinishedLoadTakesItsThumbnailWhateverTheBarShows();
     void hidingAFullScreenViewLeavesFullScreenWhicheverEngine();
+    void everyInputATabDrawsTellsTheBars();
+    void aWorkerTellsTheTabsOnceThroughTheApplicationUntilItStops();
 };
 
 namespace {
@@ -484,6 +491,198 @@ void tst_viewnode::theAutoLoadWalkResumedTickByTickOffersWhatOneWalkOffers(){
     delete root;
 }
 
+namespace {
+
+ViewNode *MakeWalkTree(QList<ViewNode*> *all){
+    ViewNode *root = new ViewNode();
+    ViewNode *parent = root;
+    for(int i = 0; i < 60; i++){
+        ViewNode *vn = nullptr;
+        switch(i % 5){
+        case 0: vn = MakeFolder(parent, QStringLiteral("f%1").arg(i)); break;
+        case 3: vn = MakeTab(parent, QStringLiteral("blank%1").arg(i)); break;
+        default: vn = MakeTab(parent, QStringLiteral("t%1").arg(i),
+                              QStringLiteral("https://t%1.test/").arg(i)); break;
+        }
+        *all << vn;
+        if(i % 10 == 0) parent = vn;
+        else if(i % 13 == 0) parent = root;
+    }
+    return root;
+}
+
+QSet<QString> SubtreeTitles(Node *nd){
+    QSet<QString> titles;
+    titles << nd->GetTitle();
+    foreach(Node *child, nd->GetDescendants()) titles << child->GetTitle();
+    return titles;
+}
+
+}
+
+void tst_viewnode::aWalkWhoseNodeLeavesMissesNothingOfWhatStays(){
+    int cases = 0;
+    for(int pass = 0; pass < 2; pass++){
+        const bool forward = pass == 0;
+        for(int budget = 1; budget <= 5; budget++){
+            for(int ticksBefore = 1; ticksBefore <= 4; ticksBefore++){
+                for(int above = 0; above < 2; above++){
+                    QList<ViewNode*> all;
+                    ViewNode *root = MakeWalkTree(&all);
+                    ViewNode *elsewhere = new ViewNode();
+                    ViewNode *from = forward ? all.first() : all.last();
+
+                    QStringList whole;
+                    ViewNode *iter = from;
+                    TreeBank::WalkToAutoLoad(iter, forward, [&](ViewNode *vn){
+                        whole << vn->GetTitle();
+                        return false;
+                    }, Unbounded);
+
+                    QStringList ticked;
+                    auto offer = [&](ViewNode *vn){ ticked << vn->GetTitle(); return false;};
+                    iter = from;
+                    bool pending = false;
+                    TreeBank::AutoLoadWalk walk = TreeBank::AutoLoadBudgetSpent;
+                    for(int t = 0; t < ticksBefore && walk == TreeBank::AutoLoadBudgetSpent; t++)
+                        walk = TreeBank::WalkToAutoLoad(iter, forward, offer, budget, pending);
+                    if(walk != TreeBank::AutoLoadBudgetSpent || !iter || iter == root){
+                        delete root; delete elsewhere; continue;
+                    }
+
+                    Node *leaving = iter;
+                    if(above && iter->GetParent() && iter->GetParent() != root) leaving = iter->GetParent();
+                    const QStringList before = ticked;
+                    const QSet<QString> gone = SubtreeTitles(leaving);
+
+                    TreeBank::SteerAutoLoadWalk(leaving, false, iter, pending, forward);
+                    leaving->GetParent()->RemoveChild(leaving);
+                    leaving->SetParent(elsewhere);
+                    elsewhere->AppendChild(leaving);
+
+                    int ticks = 0;
+                    do {
+                        walk = TreeBank::WalkToAutoLoad(iter, forward, offer, budget, pending);
+                        QVERIFY(++ticks < 1000);
+                    } while(walk == TreeBank::AutoLoadBudgetSpent);
+
+                    QStringList expected = before;
+                    foreach(const QString &title, whole.mid(before.length()))
+                        if(!gone.contains(title)) expected << title;
+                    QVERIFY2(ticked == expected,
+                             qPrintable(QStringLiteral("%1 budget %2 after %3 ticks, %4 left")
+                                        .arg(forward ? QStringLiteral("forward") : QStringLiteral("backward"))
+                                        .arg(budget).arg(ticksBefore).arg(leaving->GetTitle())));
+                    QVERIFY(!iter);
+                    cases++;
+                    delete root;
+                    delete elsewhere;
+                }
+            }
+        }
+    }
+    QVERIFY(cases > 20);
+}
+
+void tst_viewnode::aWalkBelowAReorderedFolderMissesNothing(){
+    int cases = 0;
+    for(int pass = 0; pass < 2; pass++){
+        const bool forward = pass == 0;
+        for(int budget = 1; budget <= 5; budget++){
+            for(int ticksBefore = 1; ticksBefore <= 4; ticksBefore++){
+                QList<ViewNode*> all;
+                ViewNode *root = MakeWalkTree(&all);
+                ViewNode *from = forward ? all.first() : all.last();
+
+                QStringList whole;
+                ViewNode *iter = from;
+                TreeBank::WalkToAutoLoad(iter, forward, [&](ViewNode *vn){
+                    whole << vn->GetTitle();
+                    return false;
+                }, Unbounded);
+
+                QStringList ticked;
+                auto offer = [&](ViewNode *vn){ ticked << vn->GetTitle(); return false;};
+                iter = from;
+                bool pending = false;
+                TreeBank::AutoLoadWalk walk = TreeBank::AutoLoadBudgetSpent;
+                for(int t = 0; t < ticksBefore && walk == TreeBank::AutoLoadBudgetSpent; t++)
+                    walk = TreeBank::WalkToAutoLoad(iter, forward, offer, budget, pending);
+                if(walk != TreeBank::AutoLoadBudgetSpent || !iter || !iter->GetParent()){
+                    delete root; continue;
+                }
+
+                Node *folder = iter->GetParent();
+                NodeList reversed = folder->GetChildren();
+                std::reverse(reversed.begin(), reversed.end());
+                folder->SetChildren(reversed);
+                TreeBank::SteerAutoLoadWalk(folder, true, iter, pending, forward);
+
+                int ticks = 0;
+                do {
+                    walk = TreeBank::WalkToAutoLoad(iter, forward, offer, budget, pending);
+                    QVERIFY(++ticks < 1000);
+                } while(walk == TreeBank::AutoLoadBudgetSpent);
+
+                foreach(const QString &title, whole)
+                    QVERIFY2(ticked.contains(title),
+                             qPrintable(QStringLiteral("%1 missed (%2, budget %3, after %4 ticks)")
+                                        .arg(title, forward ? QStringLiteral("forward") : QStringLiteral("backward"))
+                                        .arg(budget).arg(ticksBefore)));
+                QVERIFY(ticked.length() <= whole.length() + all.length());
+                cases++;
+                delete root;
+            }
+        }
+    }
+    QVERIFY(cases > 10);
+}
+
+void tst_viewnode::everyMoveOfTheTreeSteersTheWalksFirst(){
+    const QString tree = TreeBankSource();
+    QVERIFY2(!tree.isEmpty(), "treebank.cpp was not read; check VANILLA_SOURCE_DIR");
+    const QString disown = BodyOf(tree, QStringLiteral("void TreeBank::DisownNode(Node *nd)"));
+    QVERIFY(disown.indexOf(QStringLiteral("SteerAutoLoadWalks(nd, false);")) != -1);
+    QVERIFY(disown.indexOf(QStringLiteral("SteerAutoLoadWalks(nd, false);")) <
+            disown.indexOf(QStringLiteral("RemoveChild(nd)")));
+    const QString move = BodyOf(tree, QStringLiteral("bool TreeBank::MoveNode(Node *nd, Node *dir, int n)"));
+    QVERIFY(move.indexOf(QStringLiteral("SteerAutoLoadWalks(dir, true);")) != -1);
+    QVERIFY(move.indexOf(QStringLiteral("SteerAutoLoadWalks(dir, true);")) >
+            move.indexOf(QStringLiteral("dir->MoveChild(")));
+    const QString order = BodyOf(tree, QStringLiteral("bool TreeBank::SetChildrenOrder(Node *parent, NodeList children)"));
+    QVERIFY(order.indexOf(QStringLiteral("SteerAutoLoadWalks(parent, true);")) != -1);
+    QVERIFY(order.indexOf(QStringLiteral("SteerAutoLoadWalks(parent, true);")) >
+            order.indexOf(QStringLiteral("DisownNode(child);")));
+    const QString host = SourceFile(QStringLiteral("/app/extensionhost.cpp"));
+    QVERIFY2(!host.isEmpty(), "extensionhost.cpp was not read");
+    const int steer = host.indexOf(QStringLiteral("TreeBank::SteerAutoLoadWalks(dir, true);"));
+    QVERIFY(steer != -1);
+    QVERIFY(steer > host.indexOf(QStringLiteral("dir->MoveChild(from, final);")));
+    foreach(const QString &signature, QStringList()
+            << QStringLiteral("void TreeBank::DiscardFromTree(ViewNode *vn)")
+            << QStringLiteral("SharedView TreeBank::ExtractDownloadCarrier(ViewNode *vn)")
+            << QStringLiteral("bool TreeBank::CloseWithoutTrash(ViewNode *vn)")){
+        const QString body = BodyOf(tree, signature);
+        const int steered = body.indexOf(QStringLiteral("SteerAutoLoadWalks(vn, false);"));
+        const int strip = body.indexOf(QStringLiteral("StripSubTree(vn)"));
+        const int quarantine = body.indexOf(QStringLiteral("QuarantineViewNode(vn)"));
+        QVERIFY2(steered != -1, qPrintable(signature));
+        QVERIFY2(steered < (strip != -1 ? strip : quarantine), qPrintable(signature));
+    }
+    QVERIFY(move.indexOf(QStringLiteral("const bool walkedIn = AutoLoadRestsIn(nd);")) <
+            move.indexOf(QStringLiteral("DisownNode(nd);")));
+    QVERIFY(move.contains(QStringLiteral("if(walkedIn && !isTrash) RewalkAutoLoadFromCurrent();")));
+    QVERIFY(order.indexOf(QStringLiteral("SteerAutoLoadWalks(child, false);")) != -1);
+    QVERIFY(order.indexOf(QStringLiteral("SteerAutoLoadWalks(child, false);")) <
+            order.indexOf(QStringLiteral("parent->ClearChildren();")));
+    QVERIFY(order.contains(QStringLiteral("if(walkedIn && !IsTrash(parent)) RewalkAutoLoadFromCurrent();")));
+    QVERIFY(!tree.contains(QStringLiteral("m_ViewIterForward = m_ViewIterBackward")));
+
+    foreach(const QString &edit, QStringList() << QStringLiteral("->MoveChild(") << QStringLiteral("->RemoveChild(")
+                                               << QStringLiteral("->SetChildren("))
+        QVERIFY2(tree.count(edit) == 1, qPrintable(edit));
+}
+
 void tst_viewnode::theAutoLoadWalkStopsOnTheTabItLoadsWithinItsBudget(){
     ViewNode *root = new ViewNode();
     ViewNode *start = MakeTab(root, QStringLiteral("start"), QStringLiteral("https://start.test/"));
@@ -828,7 +1027,7 @@ void tst_viewnode::theDownloadCarrierIsTakenApartInOneOrder(){
         << QStringLiteral("SetCurrent(next)");
 
     int at = -1;
-    foreach(const QString &step, steps){
+    for(const QString &step : steps){
         const int found = body.indexOf(step);
         QVERIFY2(found != -1, qPrintable(QStringLiteral("missing step: ") + step));
         QVERIFY2(found > at, qPrintable(QStringLiteral("out of order: ") + step));
@@ -951,6 +1150,7 @@ void tst_viewnode::theTrashsNodeMenuOffersTheWayBackFirst(){
     for(const QString &name : { QStringLiteral("_DeleteRightNode"),
                                 QStringLiteral("_DeleteLeftNode"), QStringLiteral("_DeleteOtherNode"),
                                 QStringLiteral("_NewNode"), QStringLiteral("_MakeDirectory"),
+                                QStringLiteral("_CutNode"), QStringLiteral("_CopyNode"),
                                 QStringLiteral("_PasteNode"), QStringLiteral("_CloneNode")}){
         QVERIFY2(!inTrash.contains(name), qPrintable(name));
         if(name != QStringLiteral("_CloneNode"))
@@ -1004,6 +1204,8 @@ void tst_viewnode::theNodeMenuGoesFromTheNodeToLeaving(){
         QStringLiteral("DirectoryPage::CreateSettingsMenu"),
         QStringLiteral("Action(_NewNode)"),
         QStringLiteral("Action(_MakeDirectory)"),
+        QStringLiteral("Action(_CutNode)"),
+        QStringLiteral("Action(_CopyNode)"),
         QStringLiteral("Action(_PasteNode)"),
         QStringLiteral("Action(_MakeDirectoryWithSelectedNode)"),
         QStringLiteral("Action(_MakeDirectoryWithSameDomainNode)"),
@@ -1093,7 +1295,7 @@ namespace {
     int g_Freed = 0;
     class CountedNode : public ViewNode {
     public:
-        ~CountedNode() Q_DECL_OVERRIDE { g_Freed++;}
+        ~CountedNode() override { g_Freed++;}
     };
     CountedNode *MakeCounted(ViewNode *parent){
         CountedNode *nd = new CountedNode();
@@ -1242,11 +1444,32 @@ void tst_viewnode::overviewSharesTheWebViewAreaAndLeavesCompanionsAlone(){
              "opening the overview still hides the minimap");
     QVERIFY2(!after.contains(QStringLiteral("m_MiniMap->show()")),
              "closing the overview still shows the minimap again");
-    const int restack = before.indexOf(QStringLiteral("RestackChildWidgets(OverviewUp)"));
-    const int repaint = before.indexOf(QStringLiteral("m_View->viewport()->repaint()"));
-    QVERIFY(restack != -1);
-    QVERIFY2(repaint > restack,
-             "a native page can disappear before the raised overview is painted");
+    QVERIFY(before.contains(QStringLiteral("RestackChildWidgets(OverviewUp)")));
+    QVERIFY2(!before.contains(QStringLiteral("repaint()")),
+             "the overview is painted before its current is set");
+    const QStringList ways = QStringList()
+        << QStringLiteral("void TreeBank::DisplayViewTree")
+        << QStringLiteral("void TreeBank::DisplayTrashTree")
+        << QStringLiteral("void TreeBank::DisplayAccessKey");
+    for(const QString &way : ways){
+        const QString body = BodyOf(tree, way);
+        QVERIFY2(!body.isEmpty(), qPrintable(way));
+        const int activate = body.indexOf(QStringLiteral("m_Gadgets->Activate("));
+        const int current = qMax(body.lastIndexOf(QStringLiteral("m_Gadgets->SetCurrent(")),
+                                 body.lastIndexOf(QStringLiteral("m_Gadgets->SetCurrentView(")));
+        const int paint = body.lastIndexOf(QStringLiteral("PaintGadgetsNow()"));
+        QVERIFY2(activate != -1 && current > activate, qPrintable(way));
+        QVERIFY2(paint > current,
+                 qPrintable(way + QStringLiteral(": a native page can disappear before the raised overview is painted")));
+    }
+    QVERIFY2(!before.contains(QStringLiteral("OnBeforeStartingDisplayGadgets")),
+             "a native page is hidden before the overview is painted");
+    const QString paintNow = BodyOf(tree, QStringLiteral("void TreeBank::PaintGadgetsNow"));
+    const int repaint = paintNow.indexOf(QStringLiteral("m_View->viewport()->repaint()"));
+    const int hide = paintNow.indexOf(QStringLiteral("m_CurrentView->OnBeforeStartingDisplayGadgets()"));
+    QVERIFY(repaint != -1);
+    QVERIFY2(hide > repaint,
+             "a native page is hidden before the overview is painted");
 }
 
 void tst_viewnode::showingAnAlreadyVisibleEngineViewDoesNotJiggleItsSize(){
@@ -1254,10 +1477,10 @@ void tst_viewnode::showingAnAlreadyVisibleEngineViewDoesNotJiggleItsSize(){
         << QStringLiteral("/view/webengine/webengineview.hpp")
         << QStringLiteral("/view/webengine/quickwebengineview.hpp");
 
-    foreach(const QString &file, files){
+    for(const QString &file : files){
         const QString source = SourceFile(file);
         QVERIFY2(!source.isEmpty(), qPrintable(file + QStringLiteral(" was not read")));
-        const QString body = BodyOf(source, QStringLiteral("void show() Q_DECL_OVERRIDE"));
+        const QString body = BodyOf(source, QStringLiteral("void show() override"));
         QVERIFY2(!body.isEmpty(), qPrintable(file + QStringLiteral(" has no show body")));
 
         const int visible = body.indexOf(QStringLiteral("const bool wasVisible = base()->isVisible()"));
@@ -1327,7 +1550,7 @@ void tst_viewnode::aFinishedLoadTakesItsThumbnailWhateverTheBarShows(){
         << Place{ QStringLiteral("/view/edge/edgewebviewhandlers.cpp"),
                   QStringLiteral("add_NavigationCompleted") };
 
-    foreach(const Place &place, places){
+    for(const Place &place : places){
         const QString source = SourceFile(place.file);
         QVERIFY2(!source.isEmpty(), qPrintable(place.file + QStringLiteral(" was not read")));
         const QString body = BodyOf(source, place.signature);
@@ -1354,7 +1577,7 @@ void tst_viewnode::hidingAFullScreenViewLeavesFullScreenWhicheverEngine(){
         << Place{ QStringLiteral("/view/edge/edgewebview.cpp"),
                   QStringLiteral("void EdgeWebView::hideEvent(QHideEvent *ev)") };
 
-    foreach(const Place &place, places){
+    for(const Place &place : places){
         const QString source = SourceFile(place.file);
         QVERIFY2(!source.isEmpty(), qPrintable(place.file + QStringLiteral(" was not read")));
         const QString body = BodyOf(source, place.signature);
@@ -1362,6 +1585,158 @@ void tst_viewnode::hidingAFullScreenViewLeavesFullScreenWhicheverEngine(){
         QVERIFY2(body.contains(QStringLiteral("if(GetDisplayObscured()) ExitFullScreen();")),
                  qPrintable(place.file + QStringLiteral(" hides without leaving full screen")));
     }
+}
+
+void tst_viewnode::everyInputATabDrawsTellsTheBars(){
+    const QString told = QStringLiteral("TabsLookChanged()");
+    struct Place { const char *file; const char *signature; int least; };
+    const QList<Place> places = {
+        { "/ui/treebank.cpp",   "void TreeBank::SomethingChanged()", 1 },
+        { "/ui/treebank.cpp",   "void TreeBank::EmitFoldedChanged(", 1 },
+        { "/core/lightnode.cpp", "void ViewNode::SetImage(", 1 },
+        { "/core/lightnode.cpp", "QImage ViewNode::GetImage()", 1 },
+        { "/core/lightnode.cpp", "void Node::SetView(", 1 },
+        { "/core/lightnode.cpp", "void Node::SetPrimary(", 1 },
+        { "/core/lightnode.cpp", "void Node::ResetPrimaryPath()", 1 },
+        { "/app/application.cpp", "void Application::RegisterIcon(", 1 },
+        { "/view/webengine/webengineview.cpp", "void WebEngineView::OnIconChanged(", 1 },
+        { "/view/webengine/quickwebengineview.cpp", "void QuickWebEngineView::UpdateIcon(", 2 },
+        { "/view/quicknativewebview.cpp", "void QuickNativeWebView::UpdateIcon(", 2 },
+        { "/view/webengine/quickwebengineview.hpp", "void SetAudioMuted(bool muted) override", 1 },
+        { "/view/edge/edgewebviewpage.cpp", "void EdgeWebView::SetAudioMuted(", 1 },
+        { "/view/edge/edgewebviewpage.cpp", "void EdgeWebView::HandleAudioStateChanged(", 1 },
+        { "/ui/treebar.cpp", "void TreeBar::LoadSettings()", 1 },
+        { "/ui/treebar.cpp", "void TreeBar::ToggleEnableCloseButton()", 1 },
+        { "/ui/treebar.cpp", "void TreeBar::ToggleEnableCloneButton()", 1 },
+    };
+    for(const Place &place : places){
+        const QString source = SourceFile(QString::fromLatin1(place.file));
+        QVERIFY2(!source.isEmpty(), place.file);
+        const QString body = BodyOf(source, QString::fromLatin1(place.signature));
+        QVERIFY2(!body.isEmpty(), place.signature);
+        QVERIFY2(body.count(told) >= place.least, place.signature);
+    }
+
+    {
+        const QString body = BodyOf(SourceFile(QStringLiteral("/core/lightnode.cpp")),
+                                    QStringLiteral("QImage ViewNode::GetImage()"));
+        QVERIFY(body.contains(QStringLiteral("arrived = !image.isNull();")));
+        QVERIFY(body.contains(QStringLiteral("if(arrived) TreeBank::TabsLookChanged();")));
+    }
+
+    {
+        const QString widgets = SourceFile(QStringLiteral("/view/webengine/webengineview.cpp"));
+        foreach(const QString &signal, QStringList() << QStringLiteral("recentlyAudibleChanged,")
+                                                     << QStringLiteral("audioMutedChanged,")){
+            const int at = widgets.indexOf(QStringLiteral("&QWebEnginePage::") + signal);
+            QVERIFY2(at != -1, qPrintable(signal));
+            const int end = widgets.indexOf(QLatin1Char(';'), at);
+            QVERIFY2(widgets.mid(at, end - at + 1).contains(QStringLiteral("TabsLookChanged")),
+                     qPrintable(signal));
+        }
+        const QString quick = SourceFile(QStringLiteral("/view/webengine/quickwebengineview.cpp"));
+        const int at = quick.indexOf(QStringLiteral("[](bool){ TreeBank::TabsLookChanged();}"));
+        QVERIFY(at != -1);
+        QVERIFY(quick.lastIndexOf(QStringLiteral("&QuickWebEngineView::recentlyAudibleChanged"), at) > at - 120);
+        const QString edge = SourceFile(QStringLiteral("/view/edge/edgewebviewhandlers.cpp"));
+        QVERIFY(edge.count(told) >= 2);
+    }
+
+    QVERIFY(BodyOf(SourceFile(QStringLiteral("/app/application.cpp")),
+                   QStringLiteral("Application::~Application()"))
+            .contains(QStringLiteral("TreeBank::StopTellingTabs();")));
+
+    QVERIFY(!SourceFile(QStringLiteral("/ui/treebar.cpp")).contains(QStringLiteral("AutoUpdateTimer")));
+
+    QVERIFY(BodyOf(SourceFile(QStringLiteral("/ui/treebank.cpp")),
+                   QStringLiteral("void TreeBank::TabsLookChanged()"))
+            .contains(QStringLiteral("gadgets->ScheduleRepaint();")));
+    QVERIFY(!BodyOf(SourceFile(QStringLiteral("/gadgets/graphicstableview.cpp")),
+                    QStringLiteral("void GraphicsTableView::Activate("))
+            .contains(QStringLiteral("StartAutoUpdateTimer")));
+
+    {
+        const QString hide = BodyOf(SourceFile(QStringLiteral("/view/localview.cpp")),
+                                    QStringLiteral("void LocalView::hide()"));
+        QVERIFY(hide.contains(QStringLiteral("StopAutoUpdateTimer();")));
+        QVERIFY(hide.contains(QStringLiteral("StopFrameRateTimer();")));
+        const QString move = BodyOf(SourceFile(QStringLiteral("/view/localview.cpp")),
+                                    QStringLiteral("void LocalView::setParent(TreeBank *tb)"));
+        const int removed = move.indexOf(QStringLiteral("removeItem(this)"));
+        QVERIFY(removed != -1);
+        QVERIFY(move.indexOf(QStringLiteral("StopAutoUpdateTimer();")) != -1);
+        QVERIFY(move.indexOf(QStringLiteral("StopAutoUpdateTimer();")) < removed);
+        QVERIFY(move.indexOf(QStringLiteral("StopFrameRateTimer();")) != -1);
+        QVERIFY(move.indexOf(QStringLiteral("StopFrameRateTimer();")) < removed);
+        const QString table = SourceFile(QStringLiteral("/gadgets/graphicstableview.cpp"));
+        foreach(const QString &start, QStringList()
+                << QStringLiteral("void GraphicsTableView::StartAutoUpdateTimer()")
+                << QStringLiteral("void GraphicsTableView::StartFrameRateTimer()")){
+            QVERIFY2(BodyOf(table, start).contains(QStringLiteral("Qt::UniqueConnection")),
+                     qPrintable(start));
+        }
+    }
+}
+
+namespace {
+void OnAnotherThread(std::function<void()> work){
+    QThread *thread = QThread::create(work);
+    thread->start();
+    thread->wait();
+    delete thread;
+}
+
+class MetaCallCounter : public QObject {
+public:
+    int count = 0;
+protected:
+    bool eventFilter(QObject *watched, QEvent *ev) override {
+        if(watched == qApp && ev->type() == QEvent::MetaCall) count++;
+        return QObject::eventFilter(watched, ev);
+    }
+};
+}
+
+void tst_viewnode::aWorkerTellsTheTabsOnceThroughTheApplicationUntilItStops(){
+    QCoreApplication::processEvents();
+    MetaCallCounter counter;
+    qApp->installEventFilter(&counter);
+
+    OnAnotherThread([](){
+        for(int i = 0; i < 50; i++) TreeBank::TabsLookChanged();
+    });
+    QTRY_COMPARE(counter.count, 1);
+    QCoreApplication::processEvents();
+    OnAnotherThread([](){ TreeBank::TabsLookChanged();});
+    QTRY_COMPARE(counter.count, 2);
+    QCoreApplication::processEvents();
+
+    TreeBank::StopTellingTabs();
+    OnAnotherThread([](){ TreeBank::TabsLookChanged();});
+    QTest::qWait(100);
+    QCOMPARE(counter.count, 2);
+
+    qApp->removeEventFilter(&counter);
+}
+
+void tst_viewnode::aTabIsLeftOutOfTheSavesUntilItsLastRegistrationGoes(){
+    const quint64 serial = 4242;
+    QVERIFY(!TreeBank::LeftOutOfSaves().contains(serial));
+    TreeBank::PutBackIntoSaves(serial);
+    QVERIFY(!TreeBank::LeftOutOfSaves().contains(serial));
+
+    TreeBank::LeaveOutOfSaves(serial);
+    TreeBank::LeaveOutOfSaves(serial);
+    const QSet<quint64> taken = TreeBank::LeftOutOfSaves();
+    QVERIFY(taken.contains(serial));
+
+    TreeBank::PutBackIntoSaves(serial);
+    QVERIFY(TreeBank::LeftOutOfSaves().contains(serial));
+    TreeBank::PutBackIntoSaves(serial);
+    QVERIFY(!TreeBank::LeftOutOfSaves().contains(serial));
+    QVERIFY(taken.contains(serial));
+    TreeBank::LeaveOutOfSaves(0);
+    QVERIFY(!TreeBank::LeftOutOfSaves().contains(0));
 }
 
 QTEST_MAIN(tst_viewnode)

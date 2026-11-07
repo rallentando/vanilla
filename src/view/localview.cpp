@@ -10,6 +10,7 @@
 #include <QNetworkRequest>
 #include <QDesktopServices>
 #include <QFileSystemModel>
+#include <QDir>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QFileIconProvider>
@@ -61,7 +62,7 @@ LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
     m_ParentNode = new LocalNode();
 
     class DummyLocalNode : public LocalNode {
-        bool IsDummy() const Q_DECL_OVERRIDE { return true;}
+        bool IsDummy() const override { return true;}
     };
 
     m_DummyLocalNode = new DummyLocalNode();
@@ -111,6 +112,7 @@ LocalView::LocalView(TreeBank *parent, QString id, QStringList set)
 }
 
 LocalView::~LocalView(){
+    foreach(Node *nd, m_ParentNode->GetChildren()) m_NodesRegister.removeAll(nd);
     m_ParentNode->Delete();
     m_DummyLocalNode->Delete();
 }
@@ -128,10 +130,20 @@ TreeBank *LocalView::parent(){
 }
 
 void LocalView::setParent(TreeBank *tb){
+    const bool updating = IsAutoUpdating();
+    const bool counting = IsCountingFrames();
+    StopFrameRateTimer();
+    StopAutoUpdateTimer();
+
     View::SetTreeBank(tb);
     GraphicsTableView::SetTreeBank(tb);
     if(base()->scene()) scene()->removeItem(this);
     if(tb) tb->GetScene()->addItem(this);
+
+    if(scene() && isVisible()){
+        if(counting) StartFrameRateTimer();
+        if(updating) StartAutoUpdateTimer();
+    }
 }
 
 void LocalView::Load(const QUrl &url){
@@ -152,10 +164,12 @@ void LocalView::Load(const QUrl &url){
     m_DisplayType = LocalFolderTree;
 
     foreach(Node *nd, m_ParentNode->GetChildren()){
+        m_NodesRegister.removeAll(nd);
         nd->Delete();
     }
     m_ParentNode->ClearChildren();
     m_ParentNode->SetUrl(directory);
+    ResetFilter();
 
     RegisterNodes(directory);
 
@@ -174,13 +188,9 @@ void LocalView::Load(const QUrl &url){
 
     m_UpDirectoryButton->SetState(GraphicsButton::NotHovered);
 
-    if(url.toLocalFile() != QStringLiteral("/")){
-        m_UpDirectoryButton->setEnabled(true);
-        m_UpDirectoryButton->setVisible(true);
-    } else {
-        m_UpDirectoryButton->setEnabled(false);
-        m_UpDirectoryButton->setVisible(false);
-    }
+    m_UpDirectoryButton->setVisible(true);
+    m_UpDirectoryButton->setEnabled(!UpDirectoryPath(directory.toLocalFile()).isEmpty());
+    RelocateHeader();
 
     emit urlChanged(url);
     emit titleChanged(url.toLocalFile());
@@ -217,7 +227,7 @@ QMenu *LocalView::CreateNodeMenu(){
     QMenu *menu = new QMenu(GetTreeBank());
     menu->setToolTipsVisible(true);
 
-    menu->addAction(Action(Gadgets::_Deactivate));
+    if(GetMaster().lock()) menu->addAction(Action(Gadgets::_Deactivate));
     menu->addAction(Action(Gadgets::_Refresh));
     menu->addSeparator();
 
@@ -253,6 +263,11 @@ QMenu *LocalView::CreateNodeMenu(){
 void LocalView::RenderBackground(QPainter *painter){
     if(!GetTreeBank()) return;
 
+    if(GetStyle()->CoversViewBehind(this)){
+        GraphicsTableView::RenderBackground(painter);
+        return;
+    }
+
     bool nativeMasterBehind = false;
 #ifdef NATIVEWEBVIEW
     if(SharedView master = GetMaster().lock())
@@ -263,7 +278,7 @@ void LocalView::RenderBackground(QPainter *painter){
         if(SharedView master = GetMaster().lock())
             nativeMasterBehind = qobject_cast<EdgeWebView*>(master->base()) != nullptr;
 #endif
-    if(GetStyle()->StyleName() != QStringLiteral("FlatStyle")
+    if(!dynamic_cast<FlatStyle*>(GetStyle())
        && !nativeMasterBehind){
         GraphicsTableView::RenderBackground(painter);
         return;
@@ -390,6 +405,7 @@ void LocalView::Activate(DisplayType type){
 }
 
 void LocalView::Deactivate(){
+    if(!GetMaster().lock()) return;
     UpdateThumbnail();
     GraphicsTableView::Deactivate();
 
@@ -441,6 +457,9 @@ void LocalView::show(){
 void LocalView::hide(){
     SaveViewState();
 
+    StopFrameRateTimer();
+    StopAutoUpdateTimer();
+
     QGraphicsObject::hide();
     m_NodesRegister.clear();
 
@@ -466,34 +485,34 @@ void LocalView::Connect(TreeBank *tb){
         connect(this, SIGNAL(titleChanged(const QString&)),
                 tb->parent(), SLOT(SetWindowTitle(const QString&)));
         if(Notifier *notifier = tb->GetNotifier()){
-            connect(this, SIGNAL(statusBarMessage(const QString&)),
-                    notifier, SLOT(SetStatus(const QString&)));
-            connect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                    notifier, SLOT(SetStatus(const QString&, const QString&)));
-            connect(this, SIGNAL(ItemHovered(const QString&, const QString&, const QString&)),
-                    notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
+            connect(this, QOverload<const QString&>::of(&LocalView::statusBarMessage),
+                    notifier, QOverload<QString>::of(&Notifier::SetStatus));
+            connect(this, QOverload<const QString&, const QString&>::of(&LocalView::statusBarMessage2),
+                    notifier, QOverload<QString, QString>::of(&Notifier::SetStatus));
+            connect(this, &LocalView::ItemHovered,
+                    notifier, &Notifier::SetLink);
 
-            connect(this, SIGNAL(ScrollChanged(QPointF)),
-                    notifier, SLOT(SetScroll(QPointF)));
-            connect(notifier, SIGNAL(ScrollRequest(QPointF)),
-                    this, SLOT(SetScroll(QPointF)));
+            connect(this, &LocalView::ScrollChanged,
+                    notifier, &Notifier::SetScroll);
+            connect(notifier, &Notifier::ScrollRequest,
+                    this, QOverload<QPointF>::of(&LocalView::SetScroll));
         }
         if(Receiver *receiver = tb->GetReceiver()){
-            connect(receiver, SIGNAL(Download(QString, QString)),
-                    this, SLOT(Download(QString, QString)));
-            connect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                    this, SLOT(SeekText(const QString&, View::FindFlags)));
-            connect(receiver, SIGNAL(KeyEvent(QString)),
-                    this, SLOT(KeyEvent(QString)));
-            connect(receiver, SIGNAL(OpenNodeWithCommand(QString)),
-                    this, SLOT(ThumbList_OpenNodeWithCommand(QString)));
+            connect(receiver, &Receiver::Download,
+                    this, &LocalView::Download);
+            connect(receiver, &Receiver::SeekText,
+                    this, &LocalView::SeekText);
+            connect(receiver, &Receiver::KeyEvent,
+                    this, &LocalView::KeyEvent);
+            connect(receiver, &Receiver::OpenNodeWithCommand,
+                    this, QOverload<QString>::of(&LocalView::ThumbList_OpenNodeWithCommand));
 
         }
     }
 
     if(m_VideoItem){
-        connect(m_VideoItem, SIGNAL(statusBarMessage(const QString&)),
-                this, SIGNAL(statusBarMessage(const QString&)));
+        connect(m_VideoItem, &VideoItem::statusBarMessage,
+                this, QOverload<const QString&>::of(&LocalView::statusBarMessage));
     }
 }
 
@@ -504,33 +523,33 @@ void LocalView::Disconnect(TreeBank *tb){
         disconnect(this, SIGNAL(titleChanged(const QString&)),
                    tb->parent(), SLOT(SetWindowTitle(const QString&)));
         if(Notifier *notifier = tb->GetNotifier()){
-            disconnect(this, SIGNAL(statusBarMessage(const QString&)),
-                       notifier, SLOT(SetStatus(const QString&)));
-            disconnect(this, SIGNAL(statusBarMessage2(const QString&, const QString&)),
-                       notifier, SLOT(SetStatus(const QString&, const QString&)));
-            disconnect(this, SIGNAL(ItemHovered(const QString&, const QString&, const QString&)),
-                       notifier, SLOT(SetLink(const QString&, const QString&, const QString&)));
+            disconnect(this, QOverload<const QString&>::of(&LocalView::statusBarMessage),
+                       notifier, QOverload<QString>::of(&Notifier::SetStatus));
+            disconnect(this, QOverload<const QString&, const QString&>::of(&LocalView::statusBarMessage2),
+                       notifier, QOverload<QString, QString>::of(&Notifier::SetStatus));
+            disconnect(this, &LocalView::ItemHovered,
+                       notifier, &Notifier::SetLink);
 
-            disconnect(this, SIGNAL(ScrollChanged(QPointF)),
-                       notifier, SLOT(SetScroll(QPointF)));
-            disconnect(notifier, SIGNAL(ScrollRequest(QPointF)),
-                       this, SLOT(SetScroll(QPointF)));
+            disconnect(this, &LocalView::ScrollChanged,
+                       notifier, &Notifier::SetScroll);
+            disconnect(notifier, &Notifier::ScrollRequest,
+                       this, QOverload<QPointF>::of(&LocalView::SetScroll));
         }
         if(Receiver *receiver = tb->GetReceiver()){
-            disconnect(receiver, SIGNAL(Download(QString, QString)),
-                       this, SLOT(Download(QString, QString)));
-            disconnect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                       this, SLOT(SeekText(const QString&, View::FindFlags)));
-            disconnect(receiver, SIGNAL(KeyEvent(QString)),
-                       this, SLOT(KeyEvent(QString)));
-            disconnect(receiver, SIGNAL(OpenNodeWithCommand(QString)),
-                       this, SLOT(ThumbList_OpenNodeWithCommand(QString)));
+            disconnect(receiver, &Receiver::Download,
+                       this, &LocalView::Download);
+            disconnect(receiver, &Receiver::SeekText,
+                       this, &LocalView::SeekText);
+            disconnect(receiver, &Receiver::KeyEvent,
+                       this, &LocalView::KeyEvent);
+            disconnect(receiver, &Receiver::OpenNodeWithCommand,
+                       this, QOverload<QString>::of(&LocalView::ThumbList_OpenNodeWithCommand));
         }
     }
 
     if(m_VideoItem){
-        disconnect(m_VideoItem, SIGNAL(statusBarMessage(const QString&)),
-                   this, SIGNAL(statusBarMessage(const QString&)));
+        disconnect(m_VideoItem, &VideoItem::statusBarMessage,
+                   this, QOverload<const QString&>::of(&LocalView::statusBarMessage));
     }
 }
 
@@ -856,6 +875,8 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
         DEFINE_ACTION(DeleteRightNode,                 tr("DeleteRightNode"));
         DEFINE_ACTION(DeleteLeftNode,                  tr("DeleteLeftNode"));
         DEFINE_ACTION(DeleteOtherNode,                 tr("DeleteOtherNode"));
+        DEFINE_ACTION(CutNode,                         tr("CutNode"));
+        DEFINE_ACTION(CopyNode,                        tr("CopyNode"));
         DEFINE_ACTION(PasteNode,                       tr("PasteNode"));
         DEFINE_ACTION(NewNode,                         tr("NewNode"));
         DEFINE_ACTION(CloneNode,                       tr("CloneNode"));
@@ -1159,14 +1180,67 @@ bool LocalView::ThumbList_CloneNode(){
     return false;
 }
 
+QString LocalView::UpDirectoryPath(const QString &path){
+    if(path == QStringLiteral("/")) return QString();
+    QDir directory(path);
+    if(directory.isRoot()){
+#ifdef Q_OS_WIN
+        return QStringLiteral("/");
+#else
+        return QString();
+#endif
+    }
+    if(!directory.cdUp()) return QString();
+    QString up = directory.absolutePath();
+    if(!up.endsWith(QLatin1Char('/'))) up += QLatin1Char('/');
+    return up;
+}
+
+QStringList LocalView::PathFolders(const QString &path){
+    QStringList folders = path.split(QLatin1Char('/'), Qt::SkipEmptyParts);
+#ifdef Q_OS_WIN
+    folders.prepend(QStringLiteral("/"));
+#else
+    if(path.startsWith(QLatin1Char('/'))) folders.prepend(QStringLiteral("/"));
+#endif
+    return folders;
+}
+
+QString LocalView::PathOfFolder(const QStringList &folders, int index){
+    if(index < 0 || index >= folders.length()) return QString();
+    QStringList path = folders.mid(0, index + 1);
+#ifdef Q_OS_WIN
+    if(path.length() > 1 && path.first() == QStringLiteral("/")) path.removeFirst();
+#endif
+    QString directory = path.join(QLatin1Char('/'));
+    if(directory.startsWith(QStringLiteral("//"))) directory.remove(0, 1);
+    if(!directory.endsWith(QLatin1Char('/'))) directory += QLatin1Char('/');
+    return directory;
+}
+
+QStringList LocalView::BreadcrumbTitles(){
+    return PathFolders(m_ParentNode->GetUrl().toLocalFile());
+}
+
+void LocalView::BreadcrumbActivated(int index){
+    const QStringList folders = PathFolders(m_ParentNode->GetUrl().toLocalFile());
+    if(!IsDisplayingNode() || index < 0 || index >= folders.length() - 1) return;
+
+    m_HoveredItemIndex = -1;
+    m_PrimaryItemIndex = -1;
+
+    Load(QUrl::fromLocalFile(PathOfFolder(folders, index)));
+}
+
 bool LocalView::ThumbList_UpDirectory(){
     if(!IsDisplayingNode()) return false;
 
     m_HoveredItemIndex = -1;
     m_PrimaryItemIndex = -1;
 
-    QUrl url = m_ParentNode->GetUrl();
-    Load(url.resolved(QUrl(url.toString().endsWith(QStringLiteral("/")) ? QStringLiteral("../") : QStringLiteral("./"))));
+    const QString up = UpDirectoryPath(m_ParentNode->GetUrl().toLocalFile());
+    if(up.isEmpty()) return false;
+    Load(QUrl::fromLocalFile(up));
     return true;
 }
 
@@ -1477,17 +1551,6 @@ void LocalView::OpenNode(Node *nd){
     }
 }
 
-void LocalView::OpenNodes(NodeList list){
-    for(int i = 0; i < list.length(); i++){
-        Node *nd = list[i];
-        if(nd->IsDirectory()){
-            GetTreeBank()->OpenInNewViewNode(nd->GetUrl(), i == list.length()-1, m_ViewNode);
-        } else {
-            QDesktopServices::openUrl(nd->GetUrl());
-        }
-    }
-}
-
 void LocalView::DeleteNode(Node *nd){
     DeleteNodes(NodeList() << nd);
 }
@@ -1567,7 +1630,7 @@ void LocalView::AskThenDelete(){
         (tr("Deleting..."),
          [paths](){
              QStringList failed;
-             foreach(const QString &path, paths)
+             for(const QString &path : paths)
                  FileOperation::Remove(path, &failed);
              return failed;
          },
@@ -1621,15 +1684,13 @@ void LocalView::NewNode(Node *ln){
          tr("Input new file name."),
          QString(), &ok);
     if(!ok) return;
-    if(name.isEmpty()){
+    QFile file(parent + QStringLiteral("/") + name);
+    if(name.isEmpty() || !file.open(QIODevice::WriteOnly | QIODevice::NewOnly)){
         ModelessDialog::Information
             (tr("Invalid file name."),
              tr("Cannot make file with such name."), this);
         return;
     }
-
-    QFile file(parent + QStringLiteral("/") + name);
-    file.open(QIODevice::WriteOnly);
     file.close();
 }
 
@@ -1991,9 +2052,12 @@ void LocalView::Download(QString, QString){}
 
 void LocalView::SeekText(const QString &text, View::FindFlags flags){
     Q_UNUSED(flags)
+    SetFilter(text);
+}
+
+void LocalView::OnFilterChanged(){
     if(!m_CurrentNode) return;
-    CollectNodes(m_CurrentNode, text);
-    ThumbList_MoveToFirstItem();
+    GraphicsTableView::OnFilterChanged();
     RestartImageCollector();
 }
 
@@ -2077,14 +2141,7 @@ void LocalView::mouseMoveEvent(QGraphicsSceneMouseEvent *ev){
        !m_GestureStartedPos.isNull()){
 
         GestureMoved(ev->pos().toPoint());
-        QString gesture = GestureToString(m_Gesture);
-        QString action =
-            !m_RightGestureMap.contains(gesture)
-              ? tr("NoAction")
-            : Page::IsValidAction(m_RightGestureMap[gesture])
-              ? Action(Page::StringToAction(m_RightGestureMap[gesture]))->text()
-            : m_RightGestureMap[gesture];
-        emit statusBarMessage(gesture + QStringLiteral(" (") + action + QStringLiteral(")"));
+        emit statusBarMessage(GestureStatusLine(m_RightGestureMap, tr("NoAction")));
         ev->setAccepted(true);
     } else {
         GraphicsTableView::mouseMoveEvent(ev);
@@ -2138,7 +2195,9 @@ void LocalView::mouseReleaseEvent(QGraphicsSceneMouseEvent *ev){
 }
 
 void LocalView::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *ev){
-    GraphicsTableView::mouseDoubleClickEvent(ev);
+    if(!ScrollBarAreaRect().contains(ev->pos()) && !ScrollToChangeDirectory())
+        ThumbList_UpDirectory();
+    ev->setAccepted(true);
 }
 
 void LocalView::hoverEnterEvent(QGraphicsSceneHoverEvent *ev){

@@ -34,6 +34,7 @@ private slots:
     void shutdownFlowQueuesEveryAsynchronousBoundaryAndFinishesOnce();
     void aLateSaveForcesAnotherMediaCapture();
     void shutdownReturnsToQtBetweenMediaAnswerAndDestruction();
+    void aChangedAutoSaveSettingReachesTheTimerAndNoOtherDoes();
     void priorSaveHasBothEndingsAndASeparateFinalSave();
     void asynchronousSaveIsClaimedBeforeItsWorkerIsQueued();
     void coalescedSaveWritesTheLatestSnapshotAfterItsPredecessor_data();
@@ -158,6 +159,29 @@ void tst_shutdown::shutdownReturnsToQtBetweenMediaAnswerAndDestruction(){
     QVERIFY(!queueBody.contains(QStringLiteral("[](){ TakeDown();}();")));
 }
 
+void tst_shutdown::aChangedAutoSaveSettingReachesTheTimerAndNoOtherDoes(){
+    const QString app = Source(QStringLiteral("app/application.cpp"));
+    const int begin = app.indexOf(QStringLiteral("void Application::Reconfigure(){"));
+    QVERIFY(begin >= 0);
+    const QString body = app.mid(begin, app.indexOf(QStringLiteral("\nvoid Application::"), begin + 1) - begin);
+    const int load = body.indexOf(QStringLiteral("LoadGlobalSettings();"));
+    QVERIFY(load >= 0);
+    QVERIFY(body.lastIndexOf(QStringLiteral("wasAutoSave = m_EnableAutoSave"), load) >= 0);
+    QVERIFY(body.lastIndexOf(QStringLiteral("wasInterval = m_AutoSaveInterval"), load) >= 0);
+    const int restart = body.indexOf(QStringLiteral("RestartAutoSaveTimer();"), load);
+    QVERIFY(restart > load);
+    const QString guard = body.mid(load, restart - load);
+    QVERIFY(guard.contains(QStringLiteral("m_EnableAutoSave != wasAutoSave")));
+    QVERIFY(guard.contains(QStringLiteral("m_AutoSaveInterval != wasInterval")));
+    QVERIFY(guard.contains(QStringLiteral("!IsQuitting()")));
+    QVERIFY(guard.contains(QStringLiteral("m_AutoSaveMayStart")));
+    QCOMPARE(app.count(QStringLiteral("m_AutoSaveMayStart = true;")), 1);
+    const int opened = app.indexOf(QStringLiteral("m_AutoSaveMayStart = true;"));
+    QVERIFY(app.lastIndexOf(QStringLiteral("TreeBank::LoadTree()"), opened) >= 0);
+    QVERIFY(app.lastIndexOf(QStringLiteral("CreateBackUpFiles();"), opened) >= 0);
+    QVERIFY(app.contains(QStringLiteral("startTimer(qMax(m_AutoSaveInterval, 1000))")));
+}
+
 void tst_shutdown::priorSaveHasBothEndingsAndASeparateFinalSave(){
     const QString app = Source(QStringLiteral("app/application.cpp"));
     QVERIFY(!app.isEmpty());
@@ -224,13 +248,14 @@ void tst_shutdown::asynchronousSaveIsClaimedBeforeItsWorkerIsQueued(){
     QVERIFY(saveTree >= 0);
     QVERIFY(media > saveTree);
     const QString saveTreeBody = tree.mid(saveTree, media - saveTree);
-    QVERIFY(saveTreeBody.contains(QStringLiteral("TreeSaveHooks(windowIndices)")));
+    QVERIFY(saveTreeBody.contains(QStringLiteral("TreeSaveHooks(windowIndices, leftOut)")));
     QVERIFY(saveTreeBody.contains(QStringLiteral("primarySaved && secondarySaved")));
     QVERIFY(!saveTreeBody.contains(QStringLiteral("GetMainWindows")));
     QVERIFY(!saveTreeBody.contains(QStringLiteral("UpdateCurrentThumbnails")));
 
     const QString productionWriter = saver.mid(writer);
-    QVERIFY(productionWriter.contains(QStringLiteral("TreeBank::SaveTree(snapshot.windowIndices)")));
+    QVERIFY(productionWriter.contains(QStringLiteral("TreeBank::SaveTree(snapshot.windowIndices, snapshot.leftOut)")));
+    QVERIFY(saver.contains(QStringLiteral("snapshot->leftOut = TreeBank::LeftOutOfSaves();")));
     QVERIFY(productionWriter.contains(QStringLiteral("NetworkController::SaveCookieSnapshot(snapshot.cookies)")));
     QVERIFY(productionWriter.contains(QStringLiteral("return stages.Succeeded();")));
     QVERIFY(!productionWriter.contains(QStringLiteral("return false;")));

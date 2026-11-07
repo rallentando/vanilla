@@ -21,6 +21,7 @@ html.translucent .directory-panel > details > summary,
 html.translucent .directory-panel > details[open] { background: color-mix(in srgb, var(--bg-sunken) 50%, transparent); }
 html.translucent .directory-panel > details > .dir { background: color-mix(in srgb, var(--bg) 50%, transparent); }
 html.translucent #search { background: color-mix(in srgb, var(--field-bg) 70%, transparent); }
+html.translucent .input-contents { background: color-mix(in srgb, var(--bg-sunken) 85%, transparent); backdrop-filter: blur(30px); }
 
 body {
     min-height: 100vh;
@@ -456,8 +457,9 @@ mark {
     flex-wrap: wrap;
     align-items: baseline;
     gap: 6px 20px;
-    padding: 12px 4px;
-    background: var(--bg);
+    margin-inline: -24px;
+    padding: 12px 28px;
+    background: var(--bg-sunken);
     border-bottom: 1px solid var(--line);
     font-size: 15px;
 }
@@ -532,7 +534,7 @@ mark {
 
 .binding.inactive .input,
 .binding.inactive .does,
-.binding.inactive select { opacity: .45; }
+.binding.inactive select, .binding.inactive .action { opacity: .45; }
 
 .binding .input {
     flex: none;
@@ -571,18 +573,47 @@ kbd {
     background: var(--field-bg);
 }
 
-.bindings:has(select) { columns: auto; }
+.bindings:has(.action) { columns: auto; }
 
-.binding select.action { width: 320px; }
+.binding .action {
+    position: relative;
+    width: 320px;
+    max-width: 100%;
+    padding: 2px 24px 2px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--field-bg);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.binding .action:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.binding .action:disabled { opacity: .45; cursor: default; }
+.binding .action::after { content: "▾"; position: absolute; right: 8px; color: var(--fg-dim); }
 .binding select.short { width: auto; }
 
-@supports (appearance: base-select) {
-    select.action::picker(select) {
-        min-height: 0;
-        max-height: 60vh;
-        overflow-y: auto;
-    }
+.action-picker {
+    position: fixed;
+    z-index: 10;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px;
+    background: var(--field-bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
 }
+.action-picker input[type="text"] { flex: none; box-sizing: border-box; width: 100%; }
+.action-picker .list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.action-picker .group { padding: 6px 10px 2px; color: var(--fg-dim); font-size: 12px; }
+.action-picker .option { padding: 6px 10px; border-radius: var(--radius); cursor: pointer; }
+.action-picker .option.active { background: var(--bg-sunken); outline: 2px solid var(--accent); outline-offset: -2px; }
 
 .remove, .arrow, .recorder {
     flex: none;
@@ -620,10 +651,10 @@ kbd {
         flex: 1;
         width: auto;
     }
-    .binding select.action { width: auto; flex: 1; }
-    .binding:has(select) { flex-wrap: wrap; row-gap: 6px; }
-    .binding:has(select) > .input { flex-basis: 100%; min-width: 0; }
-    .binding:has(select) > select.action { flex: 1 1 0; min-width: 0; }
+    .binding .action { width: auto; flex: 1; }
+    .binding:has(> .action) { flex-wrap: wrap; row-gap: 6px; }
+    .binding:has(> .action) > .input { flex-basis: 100%; min-width: 0; }
+    .binding:has(> .action) > .action { flex: 1 1 0; min-width: 0; }
     .binding.adding > * { min-width: 0; max-width: 100%; }
     .binding.adding .recorder { min-width: 0; flex: 1 1 100%; }
 }
@@ -634,6 +665,7 @@ kbd {
     #nav { width: 150px; padding: 16px 4px; }
     #nav button { padding: 8px 8px; }
     #main { padding: 8px 16px 40px; }
+    .input-contents { margin-inline: -16px; padding-inline: 20px; }
 }
 
 @media (max-width: 480px) {

@@ -33,13 +33,11 @@ public:
     virtual QPoint Position() const { return QPoint();}
     virtual QRect Rectangle() const { return QRect();}
     virtual QRegion Region() const { return QRegion();}
-    virtual void SetPosition(QPoint){}
     virtual void SetRectangle(QRect){}
     virtual void SetText(QString){}
     virtual QPixmap Pixmap(){ return QPixmap();}
     virtual bool IsNull() const { return true;}
     virtual bool IsEditableElement() const { return false;}
-    virtual bool IsJsCommandElement() const { return false;}
     virtual bool IsTextInputElement() const { return false;}
     virtual bool IsQueryInputElement() const { return false;}
     virtual bool IsFrameElement() const { return false;}
@@ -47,7 +45,6 @@ public:
     virtual bool IsPaused() const { return false;}
     virtual bool IsMuted() const { return false;}
     virtual Action GetAction() const { return None;}
-    virtual bool Equals(const WebElement&) const { return false;}
 };
 
 typedef std::shared_ptr<WebElement> SharedWebElement;
@@ -64,33 +61,30 @@ public:
     explicit JsWebElement(View *provider, const QPoint &pos, const QUrl &linkUrl, const QUrl &imageUrl, bool isEditable);
     virtual ~JsWebElement();
 
-    virtual bool SetFocus() Q_DECL_OVERRIDE;
-    virtual bool ClickEvent() Q_DECL_OVERRIDE;
-    virtual QString TagName() const Q_DECL_OVERRIDE;
-    virtual QString InnerText() const Q_DECL_OVERRIDE;
-    virtual QUrl BaseUrl() const Q_DECL_OVERRIDE;
-    virtual QUrl LinkUrl() const Q_DECL_OVERRIDE;
-    virtual QUrl ImageUrl() const Q_DECL_OVERRIDE;
-    virtual QString LinkHtml() const Q_DECL_OVERRIDE;
-    virtual QString ImageHtml() const Q_DECL_OVERRIDE;
-    virtual QPoint Position() const Q_DECL_OVERRIDE;
-    virtual QRect Rectangle() const Q_DECL_OVERRIDE;
-    virtual QRegion Region() const Q_DECL_OVERRIDE;
-    virtual void SetPosition(QPoint) Q_DECL_OVERRIDE;
-    virtual void SetRectangle(QRect) Q_DECL_OVERRIDE;
-    virtual void SetText(QString) Q_DECL_OVERRIDE;
-    virtual QPixmap Pixmap() Q_DECL_OVERRIDE;
-    virtual bool IsNull() const Q_DECL_OVERRIDE;
-    virtual bool IsEditableElement() const Q_DECL_OVERRIDE;
-    virtual bool IsJsCommandElement() const Q_DECL_OVERRIDE;
-    virtual bool IsTextInputElement() const Q_DECL_OVERRIDE;
-    virtual bool IsQueryInputElement() const Q_DECL_OVERRIDE;
-    virtual bool IsFrameElement() const Q_DECL_OVERRIDE;
-    virtual bool IsLooped() const Q_DECL_OVERRIDE;
-    virtual bool IsPaused() const Q_DECL_OVERRIDE;
-    virtual bool IsMuted() const Q_DECL_OVERRIDE;
-    virtual Action GetAction() const Q_DECL_OVERRIDE;
-    virtual bool Equals(const WebElement&) const Q_DECL_OVERRIDE;
+    virtual bool SetFocus() override;
+    virtual bool ClickEvent() override;
+    virtual QString TagName() const override;
+    virtual QString InnerText() const override;
+    virtual QUrl BaseUrl() const override;
+    virtual QUrl LinkUrl() const override;
+    virtual QUrl ImageUrl() const override;
+    virtual QString LinkHtml() const override;
+    virtual QString ImageHtml() const override;
+    virtual QPoint Position() const override;
+    virtual QRect Rectangle() const override;
+    virtual QRegion Region() const override;
+    virtual void SetRectangle(QRect) override;
+    virtual void SetText(QString) override;
+    virtual QPixmap Pixmap() override;
+    virtual bool IsNull() const override;
+    virtual bool IsEditableElement() const override;
+    virtual bool IsTextInputElement() const override;
+    virtual bool IsQueryInputElement() const override;
+    virtual bool IsFrameElement() const override;
+    virtual bool IsLooped() const override;
+    virtual bool IsPaused() const override;
+    virtual bool IsMuted() const override;
+    virtual Action GetAction() const override;
 
 protected:
     View *m_Provider;
@@ -103,7 +97,6 @@ protected:
     QString m_ImageHtml;
     QRect m_Rectangle;
     QRegion m_Region;
-    bool m_IsJsCommand;
     bool m_IsTextInput;
     bool m_IsQueryInput;
     bool m_IsEditable;

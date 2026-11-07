@@ -104,6 +104,7 @@ private slots:
     void theOptionsPageIsOpenedAsATab();
     void aContentScriptTellsItsOwnWorkerItsNonce();
     void aTabWithNoLinkIsFoundByAskingItsDocument();
+    void whatARegisteredScriptSendsAheadOfTheShimIsOfOurTab();
     void anEdgePageHasItsScriptingRunByTheWorker();
     void anEdgePageRunsAFuncInTheTabItLooksUp();
     void aDownloadIsAskedOfTheApplication();
@@ -284,6 +285,13 @@ private slots:
     void theUserScriptsAreTheApplications();
     void aUserScriptsMessageIsAnsweredOnce();
     void theUserScriptPreludeSendsWithItsSecretAlone();
+    void noShimCarriesALineOfComment();
+    void askedAlarmsAreAskedOfTheApplication();
+    void askedAlarmsAreTakenAsAWorkerStartsAndWhenItIsTold();
+    void aWorkerWithNoListenerThrowsAwayWhatItTakes();
+    void aWorkerNobodyCanWakeIsKeptUpWhileItListens();
+    void askedAlarmsAreNotAskedOnWebView2();
+    void aWorkerHasOnlyThePiecesItsPermissionsUse();
     void theWordWhichWakesTheWorkerReachesNoListener();
     void theVisibleTabIsCapturedByTheApplication();
     void theSidePanelIsTheApplications();
@@ -545,12 +553,16 @@ private:
     static void Pump(QJSEngine *engine){
         for(int i = 0; i < 16; i++){ engine->evaluate(QStringLiteral("runTimers();")); QCoreApplication::processEvents(); }
     }
+    static void Turn(){
+        for(int i = 0; i < 32; i++) QCoreApplication::sendPostedEvents();
+        QCoreApplication::processEvents();
+    }
     static void Settle(QJSEngine *engine){
         const QString state = QStringLiteral("timers.map(function(t){ return t.ms; }).join('.') + '/' + fetched.length + '/' + reading");
         for(int round = 0; round < 8; round++){
             QString seen = Value(engine, state);
             for(int quiet = 0, i = 0; i < 200 && quiet < 3; i++){
-                QTest::qWait(1);
+                Turn();
                 const QString now = Value(engine, state);
                 quiet = (now == seen) ? quiet + 1 : 0;
                 seen = now;
@@ -559,7 +571,7 @@ private:
                 "var spun = 0; Promise.resolve().then(function(){}).then(function(){}).then(function(){})"
                 "  .then(function(){}).then(function(){ spun = 1; });"));
             for(int i = 0; i < 200 && Value(engine, QStringLiteral("spun")) != QStringLiteral("1"); i++)
-                QTest::qWait(1);
+                Turn();
             if(Value(engine, state) == seen) return;
         }
     }
@@ -2784,6 +2796,182 @@ void tst_cdpshims::aUserScriptsMessageIsAnsweredOnce(){
     QCOMPARE(Value(&edge, QStringLiteral("engineHeard")), QStringLiteral("1"));
 }
 
+void tst_cdpshims::aWorkerHasOnlyThePiecesItsPermissionsUse(){
+    const QStringList pieces = QStringList() << QStringLiteral("installIdentity") << QStringLiteral("installAlarms") << QStringLiteral("installIdle")
+        << QStringLiteral("prepareUserScriptMessage") << QStringLiteral("registerContentScripts");
+    const QStringList permissions = QStringList() << QStringLiteral("identity") << QStringLiteral("alarms") << QStringLiteral("idle")
+        << QStringLiteral("userScripts") << QStringLiteral("scripting");
+    for(int i = 0; i < pieces.size(); i++){
+        QVERIFY(Cdp::WorkerShim().contains(pieces[i]));
+        QVERIFY(!Cdp::WorkerShim(QStringList()).contains(pieces[i]));
+        for(int j = 0; j < pieces.size(); j++)
+            QCOMPARE(Cdp::WorkerShim(QStringList() << permissions[i]).contains(pieces[j]), i == j);
+    }
+
+    auto run = [](const QString &shim){
+        QJSEngine engine;
+        engine.evaluate(QStringLiteral(
+            "var self = this, warned = [];\n"
+            "var console = { warn(m){ warned.push(m); }, error(m){ warned.push(m); } };\n"
+            "function setTimeout(f){ return 0; }\n"
+            "function clearTimeout(){}\n"
+            "var event = () => ({ addListener(){}, removeListener(){} });\n"
+            "var chrome = { runtime: { id: 'x', getManifest(){ return { permissions: [] }; }, sendMessage(){},\n"
+            "                          onMessage: event(), onConnect: event() },\n"
+            "               storage: { local: { get(){ return Promise.resolve({}); } } } };\n"));
+        const QJSValue made = engine.evaluate(shim);
+        return QStringList() << made.toString() << engine.evaluate(QStringLiteral("warned.join('; ')")).toString();
+    };
+    const QStringList whole = run(Cdp::WorkerShim()), chosen = run(Cdp::WorkerShim(QStringList()));
+    QVERIFY2(whole[0].contains(QStringLiteral("runtime.onMessage")), qPrintable(whole[0]));
+    QVERIFY2(whole[1].isEmpty(), qPrintable(whole[1]));
+    QCOMPARE(chosen, whole);
+
+    QJSEngine worker;
+    worker.evaluate(QStringLiteral(
+        "var self = this, later = [], told = [];\n"
+        "function setTimeout(f){ later.push(f); return later.length; }\n"
+        "function clearTimeout(){}\n"
+        "var event = () => ({ addListener(){}, removeListener(){} });\n"
+        "var chrome = { runtime: { id: 'x', getManifest(){ return { permissions: ['idle'] }; }, sendMessage(){},\n"
+        "                          onMessage: event(), onConnect: event() },\n"
+        "               idle: { queryState(interval, callback){ callback('idle'); }, setDetectionInterval(){} } };\n"));
+    worker.evaluate(Cdp::WorkerShim(QStringList() << QStringLiteral("idle")));
+    const QJSValue heard = worker.evaluate(QStringLiteral(
+        "chrome.idle.onStateChanged.addListener((state) => told.push(state));\n"
+        "for (let i = 0; i < 16 && later.length && !told.length; i++) later.shift()();\n"
+        "told.join(',')"));
+    QCOMPARE(heard.toString(), QStringLiteral("idle"));
+}
+
+namespace {
+const char ASKED_ALARMS_WORLD[] = R"js(
+    var fetched = [], heldEvents = [], due = [], keep = false, platform = 0, heard = [], enginesCalled = 0;
+    var crypto = { getRandomValues: function(b){ for (var i = 0; i < b.length; i++) b[i] = i; return b; } };
+    chrome.runtime.getManifest = function(){ return { permissions: ['alarms'] }; };
+    chrome.runtime.getPlatformInfo = function(f){ platform++; f({}); };
+    chrome.alarms = { getAll: function(){ enginesCalled++; return Promise.resolve([]); } };
+    function fetch(url, options){
+      var call = JSON.parse(decodeURIComponent(options.headers['X-Vanilla-Call']));
+      if (options.body) call.args = JSON.parse(options.body);
+      fetched.push(call);
+      if (call.api === 'vanilla.events') return new Promise(function(r){ heldEvents.push(r); });
+      var value = call.api === 'vanilla.alarmsTake' ? { due: due.splice(0), keep: keep }
+                : call.api === 'alarms.getAll' ? ['the host\'s'] : undefined;
+      return Promise.resolve({ json: function(){ return Promise.resolve({ ok: true, value: value }); } });
+    }
+    function tellEvents(){
+      heldEvents.shift()({ json: function(){ return Promise.resolve({ ok: true, value: { events: [{ name: 'alarms.onAlarm', args: [] }] } }); } });
+    }
+    function namesOf(){ return fetched.map(function(c){ return c.api; }).filter(function(a){ return a !== 'vanilla.events'; }).join(','); }
+    function takes(){ return fetched.filter(function(c){ return c.api === 'vanilla.alarmsTake'; }).length; }
+)js";
+}
+
+void tst_cdpshims::askedAlarmsAreAskedOfTheApplication(){
+    QJSEngine worker;
+    worker.evaluate(World());
+    QVERIFY(!worker.evaluate(QString::fromLatin1(ASKED_ALARMS_WORLD)).isError());
+    const QString shim = Cdp::WorkerShim(QStringList() << QStringLiteral("alarms"), true)
+        .replace(QLatin1String(ExtensionHostWire::KEY_PLACE), QString(64, QLatin1Char('a')));
+    QVERIFY(!shim.contains(QStringLiteral("installAlarms")));
+    const QJSValue made = worker.evaluate(shim);
+    QVERIFY2(!made.isError(), qPrintable(made.toString()));
+    QVERIFY2(made.toString().contains(QStringLiteral("alarms")), qPrintable(made.toString()));
+    worker.evaluate(QStringLiteral(
+        "var all = 'pending', made = 'pending', called = 'pending';"
+        "chrome.alarms.getAll(function(v){ all = JSON.stringify(v); });"
+        "chrome.alarms.create('a', { when: 1 }).then(function(){ made = 'answered'; });"
+        "chrome.alarms.clear('a', function(v){ called = 'called back'; });"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("all")), QStringLiteral("[\"the host's\"]"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("made")), QStringLiteral("answered"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("called")), QStringLiteral("called back"));
+    QCOMPARE(Value(&worker, QStringLiteral("enginesCalled")), QStringLiteral("0"));
+    QCOMPARE(Value(&worker, QStringLiteral("namesOf().split(',').filter(function(a){ return a !== 'vanilla.alarmsTake'; }).join()")),
+             QStringLiteral("alarms.getAll,alarms.create,alarms.clear"));
+    QCOMPARE(Value(&worker, QStringLiteral("JSON.stringify(fetched.find(function(c){ return c.api === 'alarms.create'; }).args)")),
+             QStringLiteral("[\"a\",{\"when\":1}]"));
+    const QString before = Value(&worker, QStringLiteral("takes()"));
+    worker.evaluate(QStringLiteral("made = 'pending'; chrome.alarms.create('b', { when: 1 }).then(function(){ made = 'answered'; });"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("made")), QStringLiteral("answered"));
+    QTRY_VERIFY(Value(&worker, QStringLiteral("takes()")).toInt() > before.toInt());
+}
+
+void tst_cdpshims::askedAlarmsAreTakenAsAWorkerStartsAndWhenItIsTold(){
+    QJSEngine worker;
+    worker.evaluate(World());
+    worker.evaluate(QString::fromLatin1(ASKED_ALARMS_WORLD) + QStringLiteral("due = [{ name: 'while it slept', scheduledTime: 1 }];"));
+    worker.evaluate(Cdp::WorkerShim(QStringList() << QStringLiteral("alarms"), true).replace(QLatin1String(ExtensionHostWire::KEY_PLACE), QString(64, QLatin1Char('a'))));
+    worker.evaluate(QStringLiteral("chrome.alarms.onAlarm.addListener(function(a){ heard.push(a.name); });"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("heard.join()")), QStringLiteral("while it slept"));
+    QTRY_VERIFY(Value(&worker, QStringLiteral("heldEvents.length")) == QStringLiteral("1"));
+
+    worker.evaluate(QStringLiteral("due = [{ name: 'now', scheduledTime: 2, periodInMinutes: 1 }]; tellEvents();"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("heard.join()")), QStringLiteral("while it slept,now"));
+
+    worker.evaluate(QStringLiteral("due = [{ name: 'woken', scheduledTime: 3 }];"
+                                   "chrome.runtime.id = chrome.runtime.id;"
+                                   "listeners.forEach(function(f){ f({ __vanillaWake: 1 }, { id: chrome.runtime.id, url: 'chrome-extension://' + chrome.runtime.id + '/vanilla_wake.html' }, function(){}); });"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("heard.join()")), QStringLiteral("while it slept,now,woken"));
+}
+
+void tst_cdpshims::aWorkerWithNoListenerThrowsAwayWhatItTakes(){
+    QJSEngine worker;
+    worker.evaluate(World());
+    worker.evaluate(QString::fromLatin1(ASKED_ALARMS_WORLD) + QStringLiteral("due = [{ name: 'nobody', scheduledTime: 1 }];"));
+    worker.evaluate(Cdp::WorkerShim(QStringList() << QStringLiteral("alarms"), true).replace(QLatin1String(ExtensionHostWire::KEY_PLACE), QString(64, QLatin1Char('a'))));
+    QCOMPARE(Value(&worker, QStringLiteral("takes()")), QStringLiteral("0"));
+    Drain(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("takes()")), QStringLiteral("1"));
+    QCOMPARE(Value(&worker, QStringLiteral("due.length")), QStringLiteral("0"));
+    worker.evaluate(QStringLiteral("chrome.alarms.onAlarm.addListener(function(a){ heard.push(a.name); });"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("heard.length")), QStringLiteral("0"));
+}
+
+void tst_cdpshims::aWorkerNobodyCanWakeIsKeptUpWhileItListens(){
+    QJSEngine worker;
+    worker.evaluate(World());
+    worker.evaluate(QString::fromLatin1(ASKED_ALARMS_WORLD) + QStringLiteral("keep = true;"));
+    worker.evaluate(Cdp::WorkerShim(QStringList() << QStringLiteral("alarms"), true).replace(QLatin1String(ExtensionHostWire::KEY_PLACE), QString(64, QLatin1Char('a'))));
+    Drain(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("timers.some(function(t){ return t.ms === 20000; })")), QStringLiteral("false"));
+    QCOMPARE(Value(&worker, QStringLiteral("platform")), QStringLiteral("0"));
+    worker.evaluate(QStringLiteral("chrome.alarms.onAlarm.addListener(function(a){ heard.push(a.name); });"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("timers.filter(function(t){ return t.ms === 20000; }).length")), QStringLiteral("1"));
+    worker.evaluate(QStringLiteral("due = [{ name: 'a', scheduledTime: 1 }]; runNextTimer();"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("platform")), QStringLiteral("1"));
+    QCOMPARE(Value(&worker, QStringLiteral("heard.join()")), QStringLiteral("a"));
+    QCOMPARE(Value(&worker, QStringLiteral("timers.filter(function(t){ return t.ms === 20000; }).length")), QStringLiteral("1"));
+    worker.evaluate(QStringLiteral("keep = false; runNextTimer();"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("timers.filter(function(t){ return t.ms === 20000; }).length")), QStringLiteral("0"));
+}
+
+void tst_cdpshims::askedAlarmsAreNotAskedOnWebView2(){
+    QJSEngine worker;
+    worker.evaluate(World());
+    worker.evaluate(QString::fromLatin1(ASKED_ALARMS_WORLD)
+                    + QStringLiteral("var navigator = { userAgentData: { brands: [{ brand: 'Microsoft Edge WebView2' }] } };"
+                                     "chrome.alarms.create = function(){ return 'the engine'; };"));
+    worker.evaluate(Cdp::WorkerShim(QStringList() << QStringLiteral("alarms"), true).replace(QLatin1String(ExtensionHostWire::KEY_PLACE), QString(64, QLatin1Char('a'))));
+    QCOMPARE(Value(&worker, QStringLiteral("chrome.alarms.create()")), QStringLiteral("the engine"));
+    QCOMPARE(Value(&worker, QStringLiteral("enginesCalled")), QStringLiteral("0"));
+    QCOMPARE(Value(&worker, QStringLiteral("takes()")), QStringLiteral("0"));
+}
+
+void tst_cdpshims::noShimCarriesALineOfComment(){
+    const QStringList scripts = QStringList() << Cdp::WorkerShim() << Cdp::ContentShim() << Cdp::PageShim() << Cdp::RelayScript()
+        << Cdp::UserScriptPrelude(QStringLiteral("abcdefghijklmnopabcdefghijklmnop"), QByteArray(64, 'a'));
+    for(const QString &script : scripts){
+        QVERIFY(!script.isEmpty());
+        for(const QString &line : script.split(QLatin1Char('\n')))
+            QVERIFY2(!line.trimmed().startsWith(QStringLiteral("//")), qPrintable(line));
+    }
+}
+
 void tst_cdpshims::theUserScriptPreludeSendsWithItsSecretAlone(){
     const QByteArray secret(64, 'a');
     const QString prelude = Cdp::UserScriptPrelude(QStringLiteral("abcdefghijklmnopabcdefghijklmnop"), secret);
@@ -2895,6 +3083,73 @@ void tst_cdpshims::aContentScriptTellsItsOwnWorkerItsNonce(){
     MakeEdgeContent(&child, QStringLiteral("window.top = {};"));
     QCOMPARE(Value(&child, QStringLiteral("String(listeners[0]({ __vanillaWho: 1 }, { id: chrome.runtime.id }, function(){}))")),
              QStringLiteral("false"));
+}
+
+void tst_cdpshims::whatARegisteredScriptSendsAheadOfTheShimIsOfOurTab(){
+    QJSEngine worker;
+    MakeEdgeWorker(&worker, Scripting() + QStringLiteral(
+        "var whoAsked = [], whoAnswers = { 945650011: { nonce: 'b2000000000000000000000000000000' } };"
+        "chrome.tabs.query = function(){ return Promise.resolve([]); };"
+        "chrome.tabs.sendMessage = function(id, m, o){ whoAsked.push(id + JSON.stringify(m) + JSON.stringify(o));"
+        "  return id in whoAnswers ? Promise.resolve(whoAnswers[id]) : Promise.reject(new Error('Receiving end does not exist.')); };"));
+    worker.evaluate(ScriptingTabs() + QStringLiteral(
+        "var heard = [], kept = [];"
+        "chrome.runtime.onMessage.addListener(function(m, s, r){ heard.push(s); r('answered ' + m.what); });"
+        "function fromEngine(what, tab){ var replies = []; kept.push(replies);"
+        "  var sender = { id: chrome.runtime.id, frameId: 7, url: 'https://b.example/x' };"
+        "  if (tab) sender.tab = tab;"
+        "  var says = listeners.map(function(f){ return f({ what: what }, sender, function(r){ replies.push(r); }); });"
+        "  return says.join(); }"));
+    QCOMPARE(Value(&worker, QStringLiteral("fromEngine('a', { id: 945650011, windowId: 77, index: 3, openerTabId: 5, url: 'https://b.example/x' })")),
+             QStringLiteral("true"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("whoAsked.join(' ')")), QStringLiteral("945650011{\"__vanillaWho\":1}{\"frameId\":0}"));
+    QCOMPARE(Value(&worker, QStringLiteral("heard.length")), QStringLiteral("0"));
+    worker.evaluate(QStringLiteral("tabOf('b2000000000000000000000000000000', 140);"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("heard.length")), QStringLiteral("1"));
+    QCOMPARE(Value(&worker, QStringLiteral("[heard[0].tab.id, heard[0].tab.windowId, heard[0].tab.url, heard[0].frameId, 'openerTabId' in heard[0].tab].join()")),
+             QStringLiteral("140,1,https://b.example/x,7,false"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("kept[0].join()")), QStringLiteral("answered a"));
+
+    worker.evaluate(QStringLiteral("heard = []; fromEngine('b', { id: 945650099, windowId: 77 });"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("heard.length")), QStringLiteral("1"));
+    QCOMPARE(Value(&worker, QStringLiteral("heard[0].tab.id + '/' + heard[0].tab.windowId")), QStringLiteral("-1/-1"));
+
+    worker.evaluate(QStringLiteral("heard = []; whoAsked = []; fromEngine('c');"));
+    QCOMPARE(Value(&worker, QStringLiteral("heard.length + '/' + whoAsked.length + '/' + ('tab' in heard[0])")), QStringLiteral("1/0/false"));
+
+    worker.evaluate(QStringLiteral("heard = []; kept = []; whoAsked = [];"
+                                   "var saidWhat = []; chrome.runtime.onMessage.addListener(function(m){ saidWhat.push(m.what); });"
+                                   "for (var i = 0; i < 70; i++) fromEngine('m' + i, { id: 945650011, windowId: 77 });"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("whoAsked.length + '/' + heard.length")), QStringLiteral("1/0"));
+    worker.evaluate(QStringLiteral("tabOf('b2000000000000000000000000000000', 140);"));
+    QTRY_COMPARE(Value(&worker, QStringLiteral("heard.length")), QStringLiteral("70"));
+    QCOMPARE(Value(&worker, QStringLiteral("heard.every(function(s){ return s.tab.id === 140; })")), QStringLiteral("true"));
+    QCOMPARE(Value(&worker, QStringLiteral("saidWhat.every(function(w, i){ return w === 'm' + i; })")), QStringLiteral("true"));
+    worker.evaluate(QStringLiteral("whoAsked = []; fromEngine('later', { id: 945650011, windowId: 77 });"));
+    Settle(&worker);
+    QCOMPARE(Value(&worker, QStringLiteral("whoAsked.length")), QStringLiteral("1"));
+    worker.evaluate(QStringLiteral("tabOf('b2000000000000000000000000000000', 140);"));
+    Settle(&worker);
+
+    worker.evaluate(QStringLiteral("heard = []; whoAsked = []; listeners.forEach(function(f){ f({ what: 'd' }, { id: 'another', tab: { id: 945650011 } }, function(){}); });"));
+    QCOMPARE(Value(&worker, QStringLiteral("heard.length + '/' + whoAsked.length + '/' + heard[0].tab.id")), QStringLiteral("1/0/945650011"));
+
+    QJSEngine nobody;
+    MakeEdgeWorker(&nobody, Scripting() + QStringLiteral(
+        "var whoAsked = []; chrome.tabs.query = function(){ return Promise.resolve([]); };"
+        "chrome.tabs.sendMessage = function(id){ whoAsked.push(id); return new Promise(function(){}); };"));
+    QCOMPARE(Value(&nobody, QStringLiteral("var replied = 0; listeners.map(function(f){ return f({ what: 'n' }, { id: chrome.runtime.id, tab: { id: 945650011 } }, function(){ replied++; }); }).join() + '/' + whoAsked.length")),
+             QStringLiteral("/0"));
+    Settle(&nobody);
+    QCOMPARE(Value(&nobody, QStringLiteral("replied")), QStringLiteral("0"));
+
+    QJSEngine qt;
+    MakeAsking(&qt, Fetching());
+    qt.evaluate(QStringLiteral("var heard = []; chrome.runtime.onMessage.addListener(function(m, s){ heard.push(s); });"
+                               "listeners.forEach(function(f){ f({ what: 'e' }, { id: chrome.runtime.id, tab: { id: 945650011 } }, function(){}); });"));
+    QCOMPARE(Value(&qt, QStringLiteral("heard.length + '/' + heard[0].tab.id")), QStringLiteral("1/945650011"));
 }
 
 void tst_cdpshims::aTabWithNoLinkIsFoundByAskingItsDocument(){
@@ -3997,7 +4252,7 @@ void tst_cdpshims::whatTurnsAnExtensionOffIsNotPassedThrough(){
     struct Case { const char *name; int kind; };
     const QList<Case> cases{ {"qt worker", 0}, {"qt worker with the other root", 1}, {"qt page", 2},
                              {"edge worker", 3}, {"edge page", 4} };
-    foreach(const Case &c, cases){
+    for(const Case &c : cases){
         QJSEngine engine;
         switch(c.kind){
         case 0: Make(&engine, false, Fetching() + engines); break;
@@ -5336,7 +5591,7 @@ void tst_cdpshims::theOrderOfAnAnswerWritesOverTheTableOfIndexes(){
         << QStringLiteral("[777, '555']") << QStringLiteral("[777, 0, 555]")
         << QStringLiteral("[777, 1.5, 555]") << QStringLiteral("[777, null, 555]")
         << QStringLiteral("[777, 555, 777]") << QStringLiteral("[777, 9, 555, 9]");
-    foreach(const QString &order, bad){
+    for(const QString &order : bad){
         worker.evaluate(QStringLiteral("answers.push({ ok: true, value: { events: [], order: %1 } }, 'HELD'); held.pop()();").arg(order));
         Settle(&worker);
         QVERIFY2(Value(&worker, where) == QStringLiteral("555@2,777@0"), qPrintable(order + QStringLiteral(" -> ") + Value(&worker, where)));
@@ -7784,7 +8039,7 @@ void tst_cdpshims::whichEngineThisIsComesFromOneBrandAndNothingElse(){
                  QStringLiteral("engine:qt"), QStringLiteral("false") }
         << Case{ QStringLiteral("var navigator = { userAgentData: { brands: 'Microsoft Edge WebView2' } };"),
                  QStringLiteral("engine:qt"), QStringLiteral("false") };
-    foreach(const Case one, cases){
+    for(const Case one : cases){
         QJSEngine worker;
         worker.evaluate(World());
         worker.evaluate(QStringLiteral("document = undefined;") + Fetching() + HostFetches() + one.world + EdgesOwn());

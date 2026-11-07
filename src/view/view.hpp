@@ -125,6 +125,13 @@ public:
         VerticalScrollBarEnabled,
         BothScrollBarEnabled,
     };
+    static void SetScrollBarStateFrom(const QVariant &answer);
+    static ScrollBarState GetScrollBarState(){ return m_ScrollBarState;}
+    typedef std::function<QRect(const QRect&)> RectPlacer;
+    static SharedWebElementList ElementsFrom(View *provider, const QVariant &answer,
+                                             const QRect &viewport, const RectPlacer &place = nullptr);
+    static QRegion SelectionRegionFrom(const QVariant &answer, const QRect &viewport,
+                                       const RectPlacer &place = nullptr);
 
     virtual QObject *base();
     virtual QObject *page();
@@ -151,10 +158,10 @@ public:
     void SetMaster(WeakView);
     void SetSlave(WeakView);
 
-    void GoBackTo(QUrl);
-    void GoForwardTo(QUrl);
+    void FollowInferedUrl(const QUrl &target);
     virtual void GoBackToInferedUrl();
     virtual void GoForwardToInferedUrl();
+    static QUrl InferedUrl(const QUrl &current, const SharedWebElementList &elements, bool forward);
 
     QMimeData *CreateMimeDataFromSelection(NetworkAccessManager *nam);
     QMimeData *CreateMimeDataFromElement(NetworkAccessManager *nam);
@@ -185,6 +192,8 @@ public:
     QStringList SpecificSettings() const { return m_SpecificSettings;}
     virtual void RebuildForOffTheRecord();
     virtual bool IsOffTheRecord();
+    virtual QObject *EngineProfile(){ return nullptr;}
+    virtual QString EngineProfileName(){ return QString();}
     bool KeepsOffDisk();
 
     static bool ActivateNewViewDefault(){ return m_ActivateNewViewDefault;}
@@ -248,8 +257,37 @@ public:
     virtual void setHtml(const QString&, const QUrl&){}
     virtual void setParent(TreeBank*){}
 
+    QString GestureStatusLine(const QMap<QString, QString> &map, const QString &noAction);
+
+    struct MoveHooks {
+        QObject *dragParent = nullptr;
+        std::function<void(QMouseEvent*)> forward;
+        std::function<NetworkAccessManager*()> networkAccessManager;
+        std::function<void()> status;
+        bool acceptForwardedWhileDragging = false;
+    };
+    void MouseMoveWithGestures(QMouseEvent *ev, const MoveHooks &hooks);
+
+    struct ButtonHooks {
+        std::function<void(QMouseEvent*)> pressToEngine;
+        std::function<void(QMouseEvent*)> releaseToEngine;
+        std::function<void(QMouseEvent*)> doubleClickToEngine;
+        bool acceptForwarded = false;
+        std::function<void()> clearStatus;
+    };
+    void MousePressWithMap(QMouseEvent *ev, const ButtonHooks &hooks);
+    void MouseDoubleClickWithMap(QMouseEvent *ev, const ButtonHooks &hooks);
+    void MouseReleaseWithGestures(QMouseEvent *ev, const ButtonHooks &hooks);
+
+    struct WheelHooks {
+        std::function<void(QWheelEvent*)> toEngine;
+        std::function<QPointF(QWheelEvent*)> actionPos;
+    };
+    void WheelWithMap(QWheelEvent *ev, const WheelHooks &hooks);
+
     virtual void Connect(TreeBank*);
     virtual void Disconnect(TreeBank*);
+    void WireWebView(QObject *view, QObject *linkSource, TreeBank *tb, bool on);
 
     virtual void UpdateThumbnail();
 
@@ -282,6 +320,7 @@ public:
     virtual void Reload(){}
     virtual void ReloadAndBypassCache(){}
     virtual void Stop(){}
+    void UploadStarted(const QUrl &url);
     virtual void StopAndUnselect(){}
     virtual void Print(){}
     virtual void Save(){}
@@ -512,18 +551,6 @@ protected:
         if(vec == Gv_LowerRight) return QStringLiteral("DR");
         if(vec == Gv_LowerLeft)  return QStringLiteral("DL");
         return QStringLiteral("N");
-    }
-
-    static inline GestureVector CharToGesture(QString str){
-        if(str == QStringLiteral("U"))  return Gv_Up;
-        if(str == QStringLiteral("D"))  return Gv_Down;
-        if(str == QStringLiteral("R"))  return Gv_Right;
-        if(str == QStringLiteral("L"))  return Gv_Left;
-        if(str == QStringLiteral("UR")) return Gv_UpperRight;
-        if(str == QStringLiteral("UL")) return Gv_UpperLeft;
-        if(str == QStringLiteral("DR")) return Gv_LowerRight;
-        if(str == QStringLiteral("DL")) return Gv_LowerLeft;
-        return Gv_NoMove;
     }
 
     static inline QString GestureToString(Gesture vecs){
@@ -996,19 +1023,6 @@ public:
             "                continue;\n"
             "            }\n"
             "        }\n"
-            "        data.isJsCommand = \n"
-            "            (elems[i].onclick ||\n"
-            "             (elems[i].href &&\n"
-            "              elems[i].href.lastIndexOf &&\n"
-            "              elems[i].href.lastIndexOf(\"javascript:\", 0) === 0) ||\n"
-            "             (elems[i].getAttribute &&\n"
-            "              elems[i].getAttribute(\"role\") &&\n"
-            "              (elems[i].getAttribute(\"role\").toLowerCase() == \"button\" ||\n"
-            "               elems[i].getAttribute(\"role\").toLowerCase() == \"link\" ||\n"
-            "               elems[i].getAttribute(\"role\").toLowerCase() == \"menu\" ||\n"
-            "               elems[i].getAttribute(\"role\").toLowerCase() == \"checkbox\" ||\n"
-            "               elems[i].getAttribute(\"role\").toLowerCase() == \"radio\" ||\n"
-            "               elems[i].getAttribute(\"role\").toLowerCase() == \"tab\"))) ? true : false;\n"
             "        data.isTextInput = \n"
             "            (elems[i].tagName == \"TEXTAREA\" ||\n"
             "             (elems[i].tagName == \"INPUT\" &&\n"
@@ -1169,19 +1183,6 @@ public:
             "        data.region[i].width  = rects[i].width  * %3;\n"
             "        data.region[i].height = rects[i].height * %3;\n"
             "    }\n"
-            "    data.isJsCommand = \n"
-            "        (elem.onclick ||\n"
-            "         (elem.href &&\n"
-            "          elem.href.lastIndexOf &&\n"
-            "          elem.href.lastIndexOf(\"javascript:\", 0) === 0) ||\n"
-            "         (elem.getAttribute &&\n"
-            "          elem.getAttribute(\"role\") &&\n"
-            "          (elem.getAttribute(\"role\").toLowerCase() == \"button\" ||\n"
-            "           elem.getAttribute(\"role\").toLowerCase() == \"link\" ||\n"
-            "           elem.getAttribute(\"role\").toLowerCase() == \"menu\" ||\n"
-            "           elem.getAttribute(\"role\").toLowerCase() == \"checkbox\" ||\n"
-            "           elem.getAttribute(\"role\").toLowerCase() == \"radio\" ||\n"
-            "           elem.getAttribute(\"role\").toLowerCase() == \"tab\"))) ? true : false;\n"
             "    data.isTextInput = \n"
             "        (elem.tagName == \"TEXTAREA\" ||\n"
             "         (elem.tagName == \"INPUT\" &&\n"
@@ -1443,44 +1444,6 @@ public:
             "})();").arg(Application::EventKey());
     }
 
-    static inline QString SubmitFormDataJsCode(const QString &data){
-        QString quoted = EscapeJsStringLiteral(data);
-        return QStringLiteral(
-            "(function(){\n"
-            "    var data = \"%1\".split(\"&\");\n"
-            "    var forms = document.querySelectorAll(\"form\");\n"
-            "    var allInputs = Array.from(document.querySelectorAll(\"input,textarea\"));\n"
-            "    for(var i = 0; i < forms.length; i++){\n"
-            "        var inserted = false;\n"
-            "        var form = forms[i];\n"
-            "        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
-            "        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
-            "        if(!submit || !password){\n"
-            "            var inputs = allInputs.filter(function(e){ return e.form == form;});\n"
-            "            if(!submit) submit = inputs.find(function(e){ return e.type == \"submit\";});\n"
-            "            if(!password) password = inputs.find(function(e){ return e.type == \"password\";});\n"
-            "        };\n"
-            "        if(!submit || !password) continue;\n"
-            "        for(var j = 0; j < data.length; j++){\n"
-            "            var pair = data[j].split(\"=\");\n"
-            "            var name = decodeURIComponent(pair[0]);\n"
-            "            var val  = decodeURIComponent(pair[1]);\n"
-            "            var field = form.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
-            "            if(!field) field = document.querySelector(\"*[name=\\\"\" + name + \"\\\"]\");\n"
-            "            if(!field) continue;\n"
-            "            inserted = true;\n"
-            "            field.value = val;\n"
-            "        }\n"
-            "        if(!inserted) continue;\n"
-            "        if(submit.click){\n"
-            "            submit.click();\n"
-            "        } else if(typeof submit == \"function\"){\n"
-            "            form.submit();\n"
-            "        }\n"
-            "    }\n"
-            "})();").arg(quoted);
-    }
-
     static inline QString JsKeyCodeSet(const QList<int> &codes){
         QStringList entries;
         foreach(int code, codes)
@@ -1514,60 +1477,112 @@ public:
                 "    var wv = window.chrome.webview;\n"
                 "    var d = document;\n"
                 "    var later = window.setTimeout;\n"
-                "    var tag = %1;\n")
-                + FocusedElementJsCode() +
-                QStringLiteral(
+                "    var tag = %1;\n"
+                "    var apply = Reflect.apply;\n"
+                "    var own = Object.getOwnPropertyDescriptor;\n"
+                "    var post = wv.postMessage;\n"
+                "    var slot = function(type, name, key){\n"
+                "        var p = type ? type.prototype : undefined;\n"
+                "        var dsc = p ? own(p, name) : undefined;\n"
+                "        return dsc ? dsc[key || \"get\"] : undefined;\n"
+                "    };\n"
+                "    var K = window.KeyboardEvent, E = window.Event, El = window.Element;\n"
+                "    var G = {\n"
+                "        keyCode: slot(K, \"keyCode\"), shiftKey: slot(K, \"shiftKey\"),\n"
+                "        ctrlKey: slot(K, \"ctrlKey\"), altKey: slot(K, \"altKey\"),\n"
+                "        metaKey: slot(K, \"metaKey\"), repeat: slot(K, \"repeat\"),\n"
+                "        isComposing: slot(K, \"isComposing\"),\n"
+                "        defaultPrevented: slot(E, \"defaultPrevented\"),\n"
+                "        composedPath: slot(E, \"composedPath\", \"value\"),\n"
+                "        preventDefault: slot(E, \"preventDefault\", \"value\"),\n"
+                "        tagName: slot(El, \"tagName\"), shadowRoot: slot(El, \"shadowRoot\"),\n"
+                "        isContentEditable: slot(window.HTMLElement, \"isContentEditable\"),\n"
+                "        type: slot(window.HTMLInputElement, \"type\"),\n"
+                "        documentActive: slot(window.Document, \"activeElement\"),\n"
+                "        rootActive: slot(window.ShadowRoot, \"activeElement\")\n"
+                "    };\n"
+                "    var read = function(o, name, get){\n"
+                "        if(o === null || o === undefined) return undefined;\n"
+                "        if(!get) return o[name];\n"
+                "        try { return apply(get, o, []); } catch(x){ return undefined; }\n"
+                "    };\n"
+                "    var invoke = function(o, name, fn){\n"
+                "        if(o === null || o === undefined) return undefined;\n"
+                "        if(!fn) fn = o[name];\n"
+                "        if(typeof fn !== \"function\") return undefined;\n"
+                "        try { return apply(fn, o, []); } catch(x){ return undefined; }\n"
+                "    };\n"
+                "    var send = function(message){ apply(post, wv, [message]); };\n"
+                "    var plainSet = Object.setPrototypeOf(%3, null);\n"
+                "    var shiftedSet = Object.setPrototypeOf(%2, null);\n"
+                "    var notText = Object.setPrototypeOf({button: 1, submit: 1, reset: 1, checkbox: 1,\n"
+                "        radio: 1, image: 1, file: 1, color: 1, range: 1}, null);\n"
+                "    var focusedElement = function(e){\n"
+                "        var path = invoke(e, \"composedPath\", G.composedPath);\n"
+                "        var el = path ? path[0] : null;\n"
+                "        if(!el || !read(el, \"tagName\", G.tagName))\n"
+                "            el = read(d, \"activeElement\", G.documentActive);\n"
+                "        for(;;){\n"
+                "            var root = read(el, \"shadowRoot\", G.shadowRoot);\n"
+                "            var inner = read(root, \"activeElement\", G.rootActive);\n"
+                "            if(!inner) return el;\n"
+                "            el = inner;\n"
+                "        }\n"
+                "    };\n"
                 "    if(window === window.top){\n"
                 "    d.addEventListener(\"keydown\", function(e){\n"
-                "        // a key the page made up is not a key (D-355).\n"
+                "        // a key the page made up is not a key (D-355). 'isTrusted' is the\n"
+                "        // event's own and cannot be redefined.\n"
                 "        if(!e.isTrusted) return;\n"
+                "        var c = read(e, \"keyCode\", G.keyCode);\n"
+                "        var shift = !!read(e, \"shiftKey\", G.shiftKey);\n"
                 "        // the IME owns the keystroke while it is composing.\n"
-                "        if(e.isComposing || e.keyCode == 229) return;\n"
+                "        if(read(e, \"isComposing\", G.isComposing) || c == 229) return;\n"
                 "        // a held key acts once.\n"
-                "        if(e.repeat) return;\n"
+                "        if(read(e, \"repeat\", G.repeat)) return;\n"
                 "        // these are the accelerator's. reporting them here is the double\n"
                 "        // arrival this file exists to avoid.\n"
-                "        if(e.ctrlKey || e.altKey || e.metaKey) return;\n"
-                "        var c = e.keyCode;\n"
-                "        var wanted = e.shiftKey ? %2 : %3;\n"
+                "        if(read(e, \"ctrlKey\", G.ctrlKey) || read(e, \"altKey\", G.altKey) ||\n"
+                "           read(e, \"metaKey\", G.metaKey)) return;\n"
+                "        var wanted = shift ? shiftedSet : plainSet;\n"
                 "        if(!wanted[c]) return;\n"
                 "        if(c == 27){\n"
                 "            later(function(){\n"
-                "                if(e.defaultPrevented) return;\n"
-                "                wv.postMessage({\n"
+                "                if(read(e, \"defaultPrevented\", G.defaultPrevented)) return;\n"
+                "                send({\n"
                 "                    v: 1, tag: tag, kind: \"key\",\n"
                 "                    code: 27, shift: false});\n"
                 "            }, 0);\n"
                 "            return;\n"
                 "        }\n"
                 "        // where the caret is decides what the key means.\n"
-                "        var el = focusedElement(e, d);\n"
-                "        var typed = el && (el.isContentEditable ||\n"
-                "                  el.tagName == \"TEXTAREA\" ||\n"
-                "                  el.tagName == \"SELECT\" ||\n"
-                "                  el.tagName == \"FRAME\" ||\n"
-                "                  el.tagName == \"IFRAME\" ||\n"
-                "                  (el.tagName == \"INPUT\" &&\n"
-                "                   !/^(button|submit|reset|checkbox|radio|image|file|color|range)$/i\n"
-                "                       .test(el.type || \"\")));\n"
+                "        var el = focusedElement(e);\n"
+                "        var name = read(el, \"tagName\", G.tagName);\n"
+                "        var typed = el && (read(el, \"isContentEditable\", G.isContentEditable) ||\n"
+                "                  name == \"TEXTAREA\" ||\n"
+                "                  name == \"SELECT\" ||\n"
+                "                  name == \"FRAME\" ||\n"
+                "                  name == \"IFRAME\" ||\n"
+                "                  (name == \"INPUT\" &&\n"
+                "                   !notText[read(el, \"type\", G.type) || \"\"]));\n"
                 "        if(typed) return;\n"
-                "        if(el && (el.tagName == \"BUTTON\" || el.tagName == \"INPUT\")){\n"
+                "        if(el && (name == \"BUTTON\" || name == \"INPUT\")){\n"
                 "            later(function(){\n"
-                "                if(e.defaultPrevented) return;\n"
-                "                wv.postMessage({\n"
+                "                if(read(e, \"defaultPrevented\", G.defaultPrevented)) return;\n"
+                "                send({\n"
                 "                    v: 1, tag: tag, kind: \"key\",\n"
-                "                    code: c, shift: !!e.shiftKey});\n"
+                "                    code: c, shift: shift});\n"
                 "            }, 0);\n"
                 "            return;\n"
                 "        }\n"
-                "        wv.postMessage({\n"
+                "        send({\n"
                 "            v: 1, tag: tag, kind: \"key\",\n"
-                "            code: c, shift: !!e.shiftKey});\n"
-                "        e.preventDefault();\n"
+                "            code: c, shift: shift});\n"
+                "        invoke(e, \"preventDefault\", G.preventDefault);\n"
                 "    }, false);\n"
                 "    }\n"
                 "    window.print = function(){\n"
-                "        wv.postMessage({\n"
+                "        send({\n"
                 "            v: 1, tag: tag, kind: \"print\"});\n"
                 "    };\n"
                 "})();\n"
@@ -1918,15 +1933,6 @@ private:
     }
 
 protected:
-    static QKeyEvent *m_UpKey;
-    static QKeyEvent *m_DownKey;
-    static QKeyEvent *m_RightKey;
-    static QKeyEvent *m_LeftKey;
-    static QKeyEvent *m_PageUpKey;
-    static QKeyEvent *m_PageDownKey;
-    static QKeyEvent *m_HomeKey;
-    static QKeyEvent *m_EndKey;
-
     static SharedWebElement m_ClickedElement;
     static QRegion m_SelectionRegion;
     static QUrl m_CurrentBaseUrl;

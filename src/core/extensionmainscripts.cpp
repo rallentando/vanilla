@@ -28,7 +28,7 @@ QString Escaped(const QString &text){
 
 QString PathRegex(const QString &path){
     QStringList pieces;
-    foreach(const QString &piece, path.split(QLatin1Char('*'))) pieces << Escaped(piece);
+    for(const QString &piece : path.split(QLatin1Char('*'))) pieces << Escaped(piece);
     return pieces.join(QStringLiteral("[^#]*"));
 }
 
@@ -51,7 +51,7 @@ RunAt RunAtOf(const QString &text, bool *ok){
 
 bool Strings(const QJsonValue &value, QStringList *out){
     if(!value.isArray()) return false;
-    foreach(const QJsonValue &v, value.toArray()){
+    for(const QJsonValue &v : value.toArray()){
         if(!v.isString()) return false;
         out->append(v.toString());
     }
@@ -64,7 +64,7 @@ bool FileNameOk(const QString &name){
        || name.contains(QLatin1Char('?')) || name.contains(QLatin1Char('#'))) return false;
     foreach(const QChar c, name)
         if(c.unicode() < 0x20 || c.unicode() == 0x7f || c.category() == QChar::Other_Format) return false;
-    foreach(const QString &segment, name.split(QLatin1Char('/'))){
+    for(const QString &segment : name.split(QLatin1Char('/'))){
         if(segment.isEmpty() || segment == QStringLiteral(".") || segment == QStringLiteral("..")) return false;
         if(segment.endsWith(QLatin1Char('.')) || segment.endsWith(QLatin1Char(' '))) return false;
         if(IsDevice(segment)) return false;
@@ -181,7 +181,7 @@ bool ReadInside(const QString &folder, const QString &name, QByteArray *bytes){
     const QString root = folder.isEmpty() ? QString() : QDir(folder).canonicalPath();
     if(root.isEmpty()) return false;
     QString step = root;
-    foreach(const QString &segment, name.split(QLatin1Char('/'))){
+    for(const QString &segment : name.split(QLatin1Char('/'))){
         step += QLatin1Char('/') + segment;
         const QFileInfo each(step);
         if(each.isSymLink() || each.isJunction() || each.isShortcut()) return false;
@@ -204,7 +204,7 @@ QList<Registration> Parse(const QJsonArray &args, QString *error){
     const QJsonArray list = args.at(0).toArray();
     if(list.size() > SCRIPTS_LIMIT) return fail(QStringLiteral("Too many content scripts are registered."));
     QSet<QString> seen;
-    foreach(const QJsonValue &value, list){
+    for(const QJsonValue &value : list){
         if(!value.isObject()) return fail(QStringLiteral("Expected a list of scripts."));
         const QJsonObject o = value.toObject();
         Registration r;
@@ -317,7 +317,7 @@ Restore RestoreOf(bool wanted, const QString &keptVersion, const QString &versio
 
 Restored RestoreInto(Table &table, Store &store, const Now &now){
     Restored out;
-    foreach(const QString &id, store.entries.keys()){
+    for(const QString &id : store.entries.keys()){
         if(table.Has(id)) continue;
         const QString folder = now.folder(id);
         const Store::Entry kept = store.entries.value(id);

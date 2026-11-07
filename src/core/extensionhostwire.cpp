@@ -69,7 +69,7 @@ qint64 Whole(const QJsonValue &value, bool *ok){
 
 bool Glob(const QString &pattern, const QString &text){
     QString expression;
-    foreach(const QString &piece, pattern.split(QLatin1Char('*')))
+    for(const QString &piece : pattern.split(QLatin1Char('*')))
         expression += QRegularExpression::escape(piece) + QStringLiteral(".*");
     expression.chop(2);
     return QRegularExpression(QRegularExpression::anchoredPattern(expression),
@@ -103,7 +103,7 @@ QJsonObject Query(const QJsonArray &args, const QList<Tab> &tabs, const Sight &s
         else if(key == QStringLiteral("url")){
             if(!sight.Any()) return Failure(QStringLiteral("tabs.query: 'url' needs the \"tabs\" permission"));
             const QJsonArray list = value.isArray() ? value.toArray() : QJsonArray() << value;
-            foreach(const QJsonValue &one, list){
+            for(const QJsonValue &one : list){
                 bool readable = false;
                 if(one.isString()) Matches(one.toString(), QUrl(), &readable);
                 if(!readable) return Failure(QStringLiteral("tabs.query: not a match pattern: %1").arg(one.toVariant().toString()));
@@ -191,7 +191,7 @@ QJsonObject Windows(const QString &api, const QJsonArray &args, const QList<Tab>
         if(it.key() == QStringLiteral("populate") && value.isBool()) populate = value.toBool();
         else if(it.key() == QStringLiteral("windowTypes") && value.isArray()){
             normal = false;
-            foreach(const QJsonValue &type, value.toArray()){
+            for(const QJsonValue &type : value.toArray()){
                 if(!type.isString()) return Failure(QStringLiteral("%1: 'windowTypes' has a value of the wrong kind").arg(api));
                 normal = normal || type.toString() == QStringLiteral("normal");
             }
@@ -572,7 +572,7 @@ QSet<QString> NamesOfEvents(const Call &call){
     QSet<QString> names;
     if(!call.error.isEmpty() || call.args.size() < 2 || !call.args.at(1).isArray()) return names;
     if(call.api != QStringLiteral("vanilla.events") && call.api != QStringLiteral("vanilla.eventNames")) return names;
-    foreach(const QJsonValue &name, call.args.at(1).toArray())
+    for(const QJsonValue &name : call.args.at(1).toArray())
         if(known.contains(name.toString())) names.insert(name.toString());
     return names;
 }
@@ -667,7 +667,7 @@ QJsonArray Diff(const QList<Tab> &leavesBefore, const QList<Tab> &leavesAfter,
     for(int i = 0; i < after.size(); i++) is.insert(after.at(i).id, i);
 
     QJsonArray events;
-    foreach(const Tab &tab, before){
+    for(const Tab &tab : before){
         if(is.contains(tab.id)) continue;
         QJsonObject info;
         info[QStringLiteral("windowId")] = WINDOW;
@@ -727,7 +727,7 @@ QJsonArray Diff(const QList<Tab> &leavesBefore, const QList<Tab> &leavesAfter,
             zooms.append(Event("tabs.onZoomChange", QJsonArray() << zoom));
         }
     }
-    foreach(const QJsonValue &zoom, zooms) events.append(zoom);
+    for(const QJsonValue &zoom : std::as_const(zooms)) events.append(zoom);
     const qint64 active = ActiveOf(after);
     if(active && active != ActiveOf(before)){
         events.append(Activated(active));
@@ -1228,7 +1228,7 @@ Act ParseAct(const Call &call, const QString &extensionId){
         act.many = args.at(0).isArray();
         const QJsonArray list = act.many ? args.at(0).toArray() : QJsonArray() << args.at(0);
         if(list.isEmpty()) return refuse(QStringLiteral("No tabs given."));
-        foreach(const QJsonValue &one, list){
+        for(const QJsonValue &one : list){
             bool ok = false;
             const qint64 id = Whole(one, &ok);
             if(!ok) return refuse(QStringLiteral("tabs.move takes the id of a tab, or a list of them, and an object"));
@@ -1254,7 +1254,7 @@ Act ParseAct(const Call &call, const QString &extensionId){
     if(api == QStringLiteral("tabs.remove")){
         if(args.size() != 1) return refuse(QStringLiteral("tabs.remove takes the id of a tab, or a list of them"));
         const QJsonArray list = args.at(0).isArray() ? args.at(0).toArray() : QJsonArray() << args.at(0);
-        foreach(const QJsonValue &one, list){
+        for(const QJsonValue &one : list){
             bool ok = false;
             const qint64 id = Whole(one, &ok);
             if(!ok) return refuse(QStringLiteral("tabs.remove takes the id of a tab, or a list of them"));
@@ -1462,7 +1462,7 @@ qint64 IdOf(const QJsonValue &value, bool *ok){
     if(!value.isString()) return -1;
     const QString text = value.toString();
     if(text.isEmpty() || text.size() > 18) return -1;
-    foreach(const QChar &c, text) if(c < QLatin1Char('0') || c > QLatin1Char('9')) return -1;
+    for(const QChar &c : text) if(c < QLatin1Char('0') || c > QLatin1Char('9')) return -1;
     *ok = true;
     return text.toLongLong();
 }
@@ -1548,7 +1548,7 @@ QJsonObject Bookmarks(const Call &call, const Bookmark &root){
         else if(given.isString()) ids.append(given);
         else return Failure(QStringLiteral("bookmarks.get takes an id or a list of ids"));
         QJsonArray found;
-        foreach(const QJsonValue &one, ids){
+        for(const QJsonValue &one : std::as_const(ids)){
             bool ok = false;
             const qint64 id = IdOf(one, &ok);
             if(!ok) return Failure(BadBookmarkId());

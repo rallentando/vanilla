@@ -71,14 +71,9 @@ bool StampReader::PlainDay(const QDate &day){
 }
 
 QDateTime StampReader::Stamp(const QString &str){
-    if(str.length() != 14) return QDateTime();
-    for(int i = 0; i < 14; i++){
-        if(str.at(i) < QLatin1Char('0') || str.at(i) > QLatin1Char('9')) return QDateTime();
-    }
-    const QStringView view(str);
-    const QDate date(view.mid(0, 4).toInt(), view.mid(4, 2).toInt(), view.mid(6, 2).toInt());
-    const QTime time(view.mid(8, 2).toInt(), view.mid(10, 2).toInt(), view.mid(12, 2).toInt());
-    if(!date.isValid() || !time.isValid()) return QDateTime();
+    QDate date;
+    QTime time;
+    if(!NodeDateTimeFields(str, date, time)) return QDateTime();
     if(m_Zone.isValid()){
         const Day &day = Resolve(date);
         if(day.plain) return day.midnight.addMSecs(time.msecsSinceStartOfDay());
@@ -626,13 +621,20 @@ bool ReadJsonFile(const QString &path, ViewNode *root, const Hooks &hooks){
     return true;
 }
 
+static QList<Node*> WrittenChildren(Node *nd, const Hooks &hooks){
+    QList<Node*> children;
+    foreach(Node *child, nd->GetChildren())
+        if(!hooks.Skip(child->ToViewNode())) children << child;
+    return children;
+}
+
 bool WriteJsonFile(const QString &path, ViewNode *root, const Hooks &hooks){
     QFile file(path);
     if(!file.open(QIODevice::WriteOnly)) return false;
 
     QTextStream out(&file);
     out << "{\n";
-    QList<Node*> children = root->GetChildren();
+    const QList<Node*> children = WrittenChildren(root, hooks);
     if(children.isEmpty()){
         out << "\"children\": []\n";
     } else {
@@ -699,7 +701,7 @@ void WriteNode(ViewNode *nd, QTextStream &out, int depth, const Hooks &hooks){
         }
         out << "\n";
     } else {
-        QList<Node*> children = nd->GetChildren();
+        const QList<Node*> children = WrittenChildren(nd, hooks);
         if(children.isEmpty()){
             out << ",\n" << pad << "\"children\": []\n";
         } else {

@@ -8,6 +8,7 @@
 #include <QAction>
 #include <QBuffer>
 #include <QCoreApplication>
+#include <QDeadlineTimer>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -32,12 +33,15 @@
 #include "extensioncontroller.hpp"
 #include "theme.hpp"
 #include "networkcontroller.hpp"
+#include "profiles.hpp"
+#include "profilelist.hpp"
 #include "passwordstore.hpp"
 #include "downloadhistory.hpp"
 #include "sitepermissions.hpp"
 #include "page.hpp"
 
 namespace {
+    QDeadlineTimer s_KeyRecording(0);
 
     const QByteArray SCHEME = VANILLA_SCHEME.toLatin1();
     const char HOST[] = "settings";
@@ -138,6 +142,9 @@ namespace {
         strings[QStringLiteral("removing")]     = QCoreApplication::translate("SettingsPage", "Removing...");
         strings[QStringLiteral("removeFailed")] = QCoreApplication::translate("SettingsPage", "The password could not be removed.");
         strings[QStringLiteral("none")]         = QCoreApplication::translate("SettingsPage", "No passwords are saved.");
+        strings[QStringLiteral("neverHeading")] = QCoreApplication::translate("SettingsPage", "Never saved for these sites");
+        strings[QStringLiteral("neverAbout")]   =
+            QCoreApplication::translate("SettingsPage", "A removed site is asked about again.");
         strings[QStringLiteral("edge")]         =
             QCoreApplication::translate("SettingsPage", "Passwords an Edge view saved are not listed here. "
                    "\"Remove all\" removes them too.");
@@ -145,6 +152,7 @@ namespace {
             QCoreApplication::translate("SettingsPage", "This build does not save passwords in a WebEngine view.");
 
         QJsonArray entries;
+        QJsonArray never;
         bool available = false;
         int pending = 0;
 #ifdef VANILLA_PASSWORDS
@@ -158,11 +166,18 @@ namespace {
                 obj[QStringLiteral("username")] = entry.username;
                 entries.append(obj);
             }
+            foreach(const PasswordStore::Entry &entry, store->NeverEntries()){
+                QJsonObject obj;
+                obj[QStringLiteral("space")]  = entry.space;
+                obj[QStringLiteral("origin")] = entry.origin;
+                never.append(obj);
+            }
         }
 #endif
         QJsonObject reply;
         reply[QStringLiteral("strings")] = strings;
         reply[QStringLiteral("entries")] = entries;
+        reply[QStringLiteral("never")] = never;
         reply[QStringLiteral("available")] = available;
         reply[QStringLiteral("pending")] = pending;
 #ifdef EDGEWEBVIEW
@@ -195,6 +210,18 @@ namespace {
         const QString origin   = request[QStringLiteral("origin")].toString();
         const QString username = request[QStringLiteral("username")].toString();
         if(origin.isEmpty()) return Json(Error(QStringLiteral("no origin")));
+
+        if(endpoint == QStringLiteral("passwords-never-remove")){
+            return Deferred([space, origin](){
+#ifdef VANILLA_PASSWORDS
+                if(PasswordStore *store = PasswordStore::Instance())
+                    store->SetNever(space, origin, false);
+#else
+                Q_UNUSED(space) Q_UNUSED(origin)
+#endif
+                return QByteArrayLiteral("{\"queued\":true}");
+            });
+        }
         return Deferred([space, origin, username](){
 #ifdef VANILLA_PASSWORDS
             if(PasswordStore *store = PasswordStore::Instance())
@@ -219,8 +246,13 @@ namespace {
             QCoreApplication::translate("SettingsPage", "No site has been allowed or blocked.");
         strings[QStringLiteral("about")]      =
             QCoreApplication::translate("SettingsPage", "Shared by every view. A removed one is asked again.");
-        strings[QStringLiteral("edgeOnly")]   = QCoreApplication::translate("SettingsPage", "Edge views only");
-        strings[QStringLiteral("engineOnly")] = QCoreApplication::translate("SettingsPage", "WebEngine views only");
+        strings[QStringLiteral("edgeOnly")]   = QCoreApplication::translate("SettingsPage", "Enabled in Edge");
+        strings[QStringLiteral("engineOnly")] = QCoreApplication::translate("SettingsPage", "Enabled in WebEngine");
+        strings[QStringLiteral("addHeading")] = QCoreApplication::translate("SettingsPage", "Add a site");
+        strings[QStringLiteral("addSite")]    = QCoreApplication::translate("SettingsPage", "Site (example.com)");
+        strings[QStringLiteral("add")]        = QCoreApplication::translate("SettingsPage", "Add");
+        strings[QStringLiteral("badSite")]    =
+            QCoreApplication::translate("SettingsPage", "Enter the address of a site, such as https://example.com.");
 
         static const char *const words[] = {
             QT_TRANSLATE_NOOP("SettingsPage", "Notifications"),
@@ -261,6 +293,9 @@ namespace {
             entry[QStringLiteral("origin")] = row.origin;
             entry[QStringLiteral("kind")]   = row.kind;
             entry[QStringLiteral("state")]  = PermissionTable::StateName(row.state);
+            const QUrl address(row.origin);
+            if(address.scheme() == QStringLiteral("chrome-extension"))
+                entry[QStringLiteral("name")] = ExtensionController::NameOfId(address.host());
             entries.append(entry);
         }
 
@@ -268,8 +303,43 @@ namespace {
         reply[QStringLiteral("strings")] = strings;
         reply[QStringLiteral("labels")]  = labels;
         reply[QStringLiteral("scopes")]  = scopes;
+        QStringList offered;
+        const QStringList order = QStringList() << QString()
+#ifdef EDGEWEBVIEW
+            << QStringLiteral("edge") << QStringLiteral("engine");
+#else
+            << QStringLiteral("engine") << QStringLiteral("edge");
+#endif
+        for(const QString &wanted : order)
+            for(int i = 0; i < kinds.length(); i++)
+                if(QLatin1String(scope[i]) == wanted) offered << kinds[i];
+        reply[QStringLiteral("kinds")]   = QJsonArray::fromStringList(offered);
         reply[QStringLiteral("entries")] = entries;
         return reply;
+    }
+
+    VanillaPageResponse ProfilesApi(const QString &endpoint,
+                                    const QByteArray &method,
+                                    const QByteArray &body){
+        if(endpoint == QStringLiteral("profiles")){
+            if(method != QByteArrayLiteral("GET")) return Failure(403);
+            return Json(Compact(Profiles::Describe()));
+        }
+        if(method != QByteArrayLiteral("POST")) return Failure(403);
+        if(endpoint == QStringLiteral("profiles-remove-all")){
+            return Deferred([](){
+                const QString refused = Profiles::RemoveAll();
+                if(!refused.isEmpty()) return Error(refused);
+                return QByteArrayLiteral("{\"queued\":true}");
+            });
+        }
+        const QString id = QJsonDocument::fromJson(body).object()[QStringLiteral("id")].toString();
+        if(!ProfileList::IsDigest(id)) return Json(Error(QStringLiteral("bad id")));
+        return Deferred([id](){
+            const QString refused = Profiles::Remove(id);
+            if(!refused.isEmpty()) return Error(refused);
+            return QByteArrayLiteral("{\"queued\":true}");
+        });
     }
 
     VanillaPageResponse PermissionsApi(const QString &endpoint,
@@ -290,8 +360,13 @@ namespace {
         }
 
         const QJsonObject request = QJsonDocument::fromJson(body).object();
-        const QString origin = request[QStringLiteral("origin")].toString();
+        QString origin = request[QStringLiteral("origin")].toString();
         const QString kind   = request[QStringLiteral("kind")].toString();
+        if(endpoint == QStringLiteral("permissions-set") && request.contains(QStringLiteral("site"))){
+            if(request.contains(QStringLiteral("origin"))) return Json(Error(QStringLiteral("no such permission")));
+            origin = PermissionTable::OriginFromUserText(request[QStringLiteral("site")].toString());
+            if(origin.isEmpty()) return Json(Error(QStringLiteral("no such site")));
+        }
         PermissionTable::State state = PermissionTable::Ask;
         if(endpoint == QStringLiteral("permissions-set")){
             state = PermissionTable::StateFromName(request[QStringLiteral("state")].toString());
@@ -428,6 +503,13 @@ namespace {
             return Json(SchemaJson());
         }
 
+        if(endpoint == QStringLiteral("input-recording")){
+            if(method != QByteArrayLiteral("POST")) return Failure(403);
+            const bool on = QJsonDocument::fromJson(body).object()[QStringLiteral("on")].toBool();
+            s_KeyRecording.setRemainingTime(on ? 5 * 60 * 1000 : 0);
+            return Json(QByteArrayLiteral("{}"));
+        }
+
         if(endpoint == QStringLiteral("inputs") ||
            endpoint == QStringLiteral("input-set") ||
            endpoint == QStringLiteral("input-reset"))
@@ -435,8 +517,14 @@ namespace {
 
         if(endpoint == QStringLiteral("passwords") ||
            endpoint == QStringLiteral("passwords-remove") ||
+           endpoint == QStringLiteral("passwords-never-remove") ||
            endpoint == QStringLiteral("passwords-remove-all"))
             return PasswordsApi(endpoint, method, body);
+
+        if(endpoint == QStringLiteral("profiles") ||
+           endpoint == QStringLiteral("profiles-remove") ||
+           endpoint == QStringLiteral("profiles-remove-all"))
+            return ProfilesApi(endpoint, method, body);
 
         if(endpoint == QStringLiteral("permissions") ||
            endpoint == QStringLiteral("permissions-set") ||
@@ -678,7 +766,7 @@ namespace {
         QHash<quint64, ViewNode*> map;
         QList<ViewNode*> roots = QList<ViewNode*>() << TreeBank::GetViewRoot();
         if(trashToo) roots << TreeBank::GetTrashRoot();
-        foreach(ViewNode *root, roots){
+        for(ViewNode *root : std::as_const(roots)){
             if(!root) continue;
             foreach(Node *nd, root->GetDescendants())
                 if(nd->IsViewNode() && !nd->IsDirectory()) map.insert(nd->GetSerial(), nd->ToViewNode());
@@ -792,7 +880,7 @@ namespace {
         if(!serial) return nullptr;
         QList<ViewNode*> roots = QList<ViewNode*>() << TreeBank::GetViewRoot();
         if(trashToo) roots << TreeBank::GetTrashRoot();
-        foreach(ViewNode *root, roots){
+        for(ViewNode *root : std::as_const(roots)){
             if(!root) continue;
             foreach(Node *nd, root->GetDescendants())
                 if(nd->IsViewNode() && !nd->IsDirectory() && nd->GetSerial() == serial)
@@ -874,7 +962,7 @@ namespace {
         }
         data[QStringLiteral("actions")] = actions;
         QJsonArray engines;
-        foreach(const QString &key, Page::GetSearchEngineMap().keys())
+        for(const QString &key : Page::GetSearchEngineMap().keys())
             engines.append(key);
         data[QStringLiteral("engines")] = engines;
         data[QStringLiteral("engine")] = PrimarySearchEngineKey();
@@ -1075,6 +1163,10 @@ bool VanillaPage::IsStartUrl(const QUrl &url){
 QUrl VanillaPage::SettingsUrl(){
     return QUrl(VANILLA_SCHEME + QStringLiteral("://") +
                 QLatin1String(HOST) + QStringLiteral("/"));
+}
+
+bool VanillaPage::IsRecordingKey(){
+    return !s_KeyRecording.hasExpired();
 }
 
 bool VanillaPage::IsSettingsUrl(const QUrl &url){
@@ -1331,3 +1423,24 @@ void SettingsSchemeHandler::requestStarted(QWebEngineUrlRequestJob *job){
 }
 
 #endif
+
+namespace {
+    QList<ViewNode*> FindUnder(ViewNode *root, const QString &query, TreeBank *asking, int limit){
+        const QStringList words = query.split(QRegularExpression(QStringLiteral("\\s+"),
+                                                                 QRegularExpression::UseUnicodePropertiesOption),
+                                              Qt::SkipEmptyParts);
+        return CollectTabs(root, words, asking ? asking->WinIndex() : 0).mid(0, limit);
+    }
+}
+
+QList<ViewNode*> VanillaPage::FindTabs(const QString &query, TreeBank *asking, int limit){
+    return FindUnder(TreeBank::GetViewRoot(), query, asking, limit);
+}
+
+QList<ViewNode*> VanillaPage::FindTrashedTabs(const QString &query, TreeBank *asking, int limit){
+    return FindUnder(TreeBank::GetTrashRoot(), query, asking, limit);
+}
+
+ViewNode *VanillaPage::TabOfSerial(quint64 serial){
+    return ViewNodeOfSerial(serial, true);
+}

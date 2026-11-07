@@ -55,6 +55,7 @@ private slots:
     void anEmptyPictureOfAPrivateNodeKeepsItPrivate();
     void goingOffTheDiskTakesTheFilesAndKeepsWhatMemoryHolds();
     void aCopyOfAPrivateNodeHasNoFiles();
+    void aCopyMadeOffTheDiskCopiesNoFile();
     void aCopyOfANodeJustBackFromPrivateWritesWhatMemoryHolds();
     void aNodeWaitsForItsPictureToBeReadBeforeItGoes();
 
@@ -66,10 +67,14 @@ private slots:
     void thePreviewStaysOnTheScreen();
     void thePreviewStaysOnTheScreen_data();
 
-    void thePreviewOfAFolderWithNothingToBorrowSaysSo();
+    void thePreviewLeavesOutWhatIsNotThere();
     void thePreviewKnowsWhichTabItIsWaitingFor();
     void thePreviewHeldStaysAwayUntilThePointerMoves();
     void thePreviewGoesWhenTheFocusWindowChanges();
+    void thePreviewGoesBesideTheBarOnThePageSide_data();
+    void thePreviewGoesBesideTheBarOnThePageSide();
+    void thePreviewStaysUpFromOneTabToTheNext();
+    void thePreviewComesBackAtOnceSoonAfterItWent();
 
 private:
     ViewNode *m_Root;
@@ -84,10 +89,10 @@ void tst_thumbnail::initTestCase(){
 
 void tst_thumbnail::cleanup(){
     QDir dir(Application::ThumbnailDirectory());
-    foreach(const QString &name, dir.entryList(QDir::Files))
+    for(const QString &name : dir.entryList(QDir::Files))
         QFile::remove(Application::ThumbnailDirectory() + name);
     QDir history(Application::HistoryDirectory());
-    foreach(const QString &name, history.entryList(QDir::Files))
+    for(const QString &name : history.entryList(QDir::Files))
         QFile::remove(Application::HistoryDirectory() + name);
 }
 
@@ -177,6 +182,27 @@ void tst_thumbnail::aCopyOfAPrivateNodeHasNoFiles(){
     copy->SaveHistoryIfNeed();
     QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 0);
     QCOMPARE(FilesIn(Application::HistoryDirectory()), 0);
+    copy->Delete();
+    vn->Delete();
+}
+
+void tst_thumbnail::aCopyMadeOffTheDiskCopiesNoFile(){
+    ViewNode *vn = m_Root->MakeChild();
+    vn->SetHoldView(true);
+    vn->SetImage(MakeImage(SAVING_THUMBNAIL_SIZE), false);
+    vn->SetHistoryData(QByteArrayLiteral("history"), false);
+    vn->SaveImageIfNeed();
+    vn->SaveHistoryIfNeed();
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 1);
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 1);
+
+    ViewNode *copy = vn->Clone(nullptr, true);
+    QVERIFY(copy);
+    QVERIFY(copy->IsOffDisk());
+    QVERIFY(copy->GetImageFileName().isEmpty());
+    QVERIFY(copy->GetHistoryFileName().isEmpty());
+    QCOMPARE(FilesIn(Application::ThumbnailDirectory()), 1);
+    QCOMPARE(FilesIn(Application::HistoryDirectory()), 1);
     copy->Delete();
     vn->Delete();
 }
@@ -357,7 +383,7 @@ void tst_thumbnail::thePreviewGoesUnderTheTab(){
     const QSize size(272, 227);
     const QRect tab(800, 30, 150, 28);
 
-    const QRect placed = NodePreview::Place(tab, size, screen, 4);
+    const QRect placed = NodePreview::Place(tab, tab, Qt::BottomEdge, size, screen, 4);
 
     QCOMPARE(placed.size(), size);
     QCOMPARE(placed.y(), tab.y() + tab.height() + 4);
@@ -369,7 +395,7 @@ void tst_thumbnail::thePreviewFlipsAboveTheTabWhenThereIsNoRoomBelow(){
     const QSize size(272, 227);
     const QRect tab(800, 1040, 150, 28);
 
-    const QRect placed = NodePreview::Place(tab, size, screen, 4);
+    const QRect placed = NodePreview::Place(tab, tab, Qt::BottomEdge, size, screen, 4);
 
     QCOMPARE(placed.y(), tab.y() - 4 - size.height());
     QVERIFY(placed.y() >= screen.y());
@@ -395,48 +421,43 @@ void tst_thumbnail::thePreviewStaysOnTheScreen(){
     QFETCH(QRect, tab);
 
     const QSize size(272, 227);
-    const QRect placed = NodePreview::Place(tab, size, screen, 4);
+    foreach(Qt::Edge side, QList<Qt::Edge>() << Qt::TopEdge << Qt::BottomEdge
+                                             << Qt::LeftEdge << Qt::RightEdge){
+        const QRect placed = NodePreview::Place(tab, tab, side, size, screen, 4);
 
-    QCOMPARE(placed.size(), size);
-    QVERIFY2(placed.x() >= screen.x(),
-             qPrintable(QStringLiteral("x %1 is left of the screen").arg(placed.x())));
-    QVERIFY2(placed.y() >= screen.y(),
-             qPrintable(QStringLiteral("y %1 is above the screen").arg(placed.y())));
-    if(size.width() <= screen.width())
-        QVERIFY(placed.x() + placed.width() <= screen.x() + screen.width());
-    if(size.height() <= screen.height())
-        QVERIFY(placed.y() + placed.height() <= screen.y() + screen.height());
+        QCOMPARE(placed.size(), size);
+        QVERIFY2(placed.x() >= screen.x(),
+                 qPrintable(QStringLiteral("x %1 is left of the screen").arg(placed.x())));
+        QVERIFY2(placed.y() >= screen.y(),
+                 qPrintable(QStringLiteral("y %1 is above the screen").arg(placed.y())));
+        if(size.width() <= screen.width())
+            QVERIFY(placed.x() + placed.width() <= screen.x() + screen.width());
+        if(size.height() <= screen.height())
+            QVERIFY(placed.y() + placed.height() <= screen.y() + screen.height());
+    }
 }
 
-void tst_thumbnail::thePreviewOfAFolderWithNothingToBorrowSaysSo(){
-    Theme::ApplyScheme(QStringLiteral("light"));
+void tst_thumbnail::thePreviewLeavesOutWhatIsNotThere(){
+    const QSize full = NodePreview::SizeFor(true, true);
+    const QSize noHost = NodePreview::SizeFor(true, false);
+    const QSize noImage = NodePreview::SizeFor(false, true);
+    const QSize words = NodePreview::SizeFor(false, false);
+
+    QVERIFY(noHost.height() < full.height());
+    QVERIFY(noImage.height() < noHost.height());
+    QVERIFY(words.height() < noImage.height());
+    QCOMPARE(full.height() - noHost.height(), noImage.height() - words.height());
+    foreach(const QSize &size, QList<QSize>() << noHost << noImage << words)
+        QCOMPARE(size.width(), full.width());
 
     NodePreview *preview = NodePreview::Instance();
     const QRect tab(100, 30, 150, 28);
-
-    auto shotOf = [&](bool isDirectory){
-        preview->Request(QImage(), QStringLiteral("t"), tab, isDirectory, QPoint(120, 40));
-        QImage image(preview->size(), QImage::Format_ARGB32);
-        image.fill(Qt::magenta);
-        preview->render(&image);
-        preview->Dismiss();
-        return image;
-    };
-
-    const QImage folder = shotOf(true);
-    const QImage page = shotOf(false);
-
-    auto has = [](const QImage &image, Theme::Role role){
-        const QColor wanted = Theme::Color(role);
-        for(int y = 0; y < image.height(); y++)
-            for(int x = 0; x < image.width(); x++)
-                if(image.pixelColor(x, y) == wanted) return true;
-        return false;
-    };
-
-    QVERIFY(has(folder, Theme::PreviewPlaceholderDirectory));
-    QVERIFY(has(page, Theme::PreviewPlaceholderPage));
-    QVERIFY(folder != page);
+    const QPoint pointer = QCursor::pos() + QPoint(2, 2);
+    preview->Dismiss();
+    preview->Request(QImage(), QStringLiteral("t"), QString(), tab, tab, Qt::BottomEdge, pointer);
+    QTRY_VERIFY(preview->isVisible());
+    QTRY_COMPARE(preview->size(), words);
+    preview->Dismiss();
 }
 
 void tst_thumbnail::thePreviewKnowsWhichTabItIsWaitingFor(){
@@ -446,7 +467,7 @@ void tst_thumbnail::thePreviewKnowsWhichTabItIsWaitingFor(){
     preview->Dismiss();
     QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
 
-    preview->Request(QImage(), QStringLiteral("t"), tab, false, QPoint(120, 40));
+    preview->Request(QImage(), QStringLiteral("t"), QString(), tab, tab, Qt::BottomEdge, QPoint(120, 40));
     QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
     QVERIFY(!preview->IsAbout(QStringLiteral("u"), tab));
     QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab.translated(150, 0)));
@@ -461,14 +482,14 @@ void tst_thumbnail::thePreviewHeldStaysAwayUntilThePointerMoves(){
     const QPoint held(120, 40);
 
     preview->HoldUntilPointerMoves(held);
-    preview->Request(QImage(), QStringLiteral("t"), tab, false, held);
+    preview->Request(QImage(), QStringLiteral("t"), QString(), tab, tab, Qt::BottomEdge, held);
     QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
 
-    preview->Request(QImage(), QStringLiteral("t"), tab, false, held + QPoint(1, 0));
+    preview->Request(QImage(), QStringLiteral("t"), QString(), tab, tab, Qt::BottomEdge, held + QPoint(1, 0));
     QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
 
     preview->Dismiss();
-    preview->Request(QImage(), QStringLiteral("t"), tab, false, held);
+    preview->Request(QImage(), QStringLiteral("t"), QString(), tab, tab, Qt::BottomEdge, held);
     QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
     preview->Dismiss();
 }
@@ -478,16 +499,105 @@ void tst_thumbnail::thePreviewGoesWhenTheFocusWindowChanges(){
     const QRect tab(100, 30, 150, 28);
     const QPoint pointer(120, 40);
 
-    preview->Request(QImage(), QStringLiteral("t"), tab, false, pointer);
+    preview->Request(QImage(), QStringLiteral("t"), QString(), tab, tab, Qt::BottomEdge, pointer);
     QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
 
     emit qGuiApp->focusWindowChanged(nullptr);
     QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
 
-    preview->Request(QImage(), QStringLiteral("t"), tab, false, QCursor::pos());
+    preview->Request(QImage(), QStringLiteral("t"), QString(), tab, tab, Qt::BottomEdge, QCursor::pos());
     QVERIFY(!preview->IsAbout(QStringLiteral("t"), tab));
-    preview->Request(QImage(), QStringLiteral("t"), tab, false, QCursor::pos() + QPoint(1, 0));
+    preview->Request(QImage(), QStringLiteral("t"), QString(), tab, tab, Qt::BottomEdge, QCursor::pos() + QPoint(1, 0));
     QVERIFY(preview->IsAbout(QStringLiteral("t"), tab));
+    preview->Dismiss();
+}
+
+void tst_thumbnail::thePreviewGoesBesideTheBarOnThePageSide_data(){
+    QTest::addColumn<QRect>("bar");
+    QTest::addColumn<int>("side");
+
+    QTest::newRow("top")    << QRect(0,    100, 1920, 80) << int(Qt::BottomEdge);
+    QTest::newRow("bottom") << QRect(0,    900, 1920, 80) << int(Qt::TopEdge);
+    QTest::newRow("left")   << QRect(0,    0,   300, 1080) << int(Qt::RightEdge);
+    QTest::newRow("right")  << QRect(1620, 0,   300, 1080) << int(Qt::LeftEdge);
+}
+
+void tst_thumbnail::thePreviewGoesBesideTheBarOnThePageSide(){
+    QFETCH(QRect, bar);
+    QFETCH(int, side);
+
+    const QRect screen(0, 0, 1920, 1080);
+    const QSize size(272, 227);
+    const bool horizontal = bar.width() > bar.height();
+    const QRect tab = horizontal
+        ? QRect(800, bar.y(), 150, 28)
+        : QRect(bar.x(), 500, bar.width() / 2, 28);
+
+    const QRect placed = NodePreview::Place(tab, bar, Qt::Edge(side), size, screen, 4);
+
+    QCOMPARE(placed.size(), size);
+    switch(side){
+    case Qt::BottomEdge: QCOMPARE(placed.y(), bar.y() + bar.height() + 4); break;
+    case Qt::TopEdge:    QCOMPARE(placed.y() + placed.height() + 4, bar.y()); break;
+    case Qt::RightEdge:  QCOMPARE(placed.x(), bar.x() + bar.width() + 4); break;
+    case Qt::LeftEdge:   QCOMPARE(placed.x() + placed.width() + 4, bar.x()); break;
+    }
+    if(horizontal) QVERIFY(qAbs(placed.center().x() - tab.center().x()) <= 1);
+    else           QVERIFY(qAbs(placed.center().y() - tab.center().y()) <= 1);
+    QVERIFY(!placed.intersects(bar));
+}
+
+void tst_thumbnail::thePreviewStaysUpFromOneTabToTheNext(){
+    NodePreview *preview = NodePreview::Instance();
+    const QRect bar(0, 0, 1920, 40);
+    const QRect first(100, 6, 150, 28);
+    const QRect second(250, 6, 150, 28);
+    const QPoint pointer = QCursor::pos() + QPoint(1, 1);
+
+    preview->HoldUntilPointerMoves(QPoint(-10000, -10000));
+    preview->Request(QImage(), QStringLiteral("a"), QString(), first, bar, Qt::BottomEdge, pointer);
+    preview->LeaveItem();
+    QVERIFY(!preview->IsAbout(QStringLiteral("a"), first));
+    QTest::qWait(700);
+    QVERIFY(!preview->isVisible());
+
+    preview->Request(QImage(), QStringLiteral("a"), QString(), first, bar, Qt::BottomEdge, pointer);
+    QTRY_VERIFY(preview->isVisible());
+    preview->LeaveItem();
+    QVERIFY(preview->isVisible());
+
+    preview->Request(QImage(), QStringLiteral("b"), QString(), second, bar, Qt::BottomEdge, pointer);
+    QVERIFY(preview->isVisible());
+    QVERIFY(preview->IsAbout(QStringLiteral("b"), second));
+
+    preview->Dismiss();
+    QVERIFY(!preview->isVisible());
+}
+
+void tst_thumbnail::thePreviewComesBackAtOnceSoonAfterItWent(){
+    NodePreview *preview = NodePreview::Instance();
+    const QRect bar(0, 0, 1920, 40);
+    const QRect first(100, 6, 150, 28);
+    const QRect second(250, 6, 150, 28);
+    const QPoint pointer = QCursor::pos() + QPoint(3, 3);
+
+    preview->HoldUntilPointerMoves(QPoint(-10000, -10000));
+    preview->Request(QImage(), QStringLiteral("a"), QString(), first, bar, Qt::BottomEdge, pointer);
+    QTRY_VERIFY(preview->isVisible());
+    preview->Dismiss();
+    QVERIFY(!preview->isVisible());
+
+    preview->Request(QImage(), QStringLiteral("b"), QString(), second, bar, Qt::BottomEdge, pointer);
+    QVERIFY(preview->isVisible());
+
+    preview->HoldUntilPointerMoves(pointer);
+    preview->Request(QImage(), QStringLiteral("a"), QString(), first, bar, Qt::BottomEdge, pointer + QPoint(1, 0));
+    QVERIFY(!preview->isVisible());
+    QVERIFY(preview->IsAbout(QStringLiteral("a"), first));
+
+    preview->Dismiss();
+    preview->Request(QImage(), QStringLiteral("b"), QString(), second, bar, Qt::BottomEdge, pointer);
+    QVERIFY(!preview->isVisible());
     preview->Dismiss();
 }
 

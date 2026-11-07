@@ -11,6 +11,14 @@
 #include "lightnode.hpp"
 #include <QJsonArray>
 #include <QScopeGuard>
+#include <QJsonDocument>
+#include <QTemporaryDir>
+#include <QUuid>
+#include <QNetworkCookie>
+#include <QDateTime>
+#include <QPointer>
+#include "networkcontroller.hpp"
+#include "profiles.hpp"
 #ifdef WEBENGINEVIEW
 #  include <QWebEngineProfile>
 #  include <QWebEngineSettings>
@@ -62,6 +70,18 @@ private slots:
     void saysWhereAProfileBegins();
     void saysWhereAProfileBegins_data();
     void namesWrittenInTheIdSpelling();
+    void aRefusedRenameReturnsAnError();
+#ifdef WEBENGINEVIEW
+    void aRenameWaitsForTheProfile_data();
+    void aRenameWaitsForTheProfile();
+    void takingAnIdOffLetsTheSpaceGo();
+    void takingAnIdOffKeepsASpaceAnotherDirectoryIs();
+    void puttingAnIdOnJoinsTheSpaceOfThatName();
+    void aStorageStillOpenIsNotOpenedAgain();
+    void anUnusedProfileIsDeletedAndAUsedOneIsNot();
+    void aMergedSpaceIsLetGoOfAndItsJarJoins();
+    void aMergeLeavesASpaceAnotherDirectoryIs();
+#endif
 
     void everyTokenExplainsItself();
 
@@ -468,7 +488,7 @@ void tst_directorypage::namesWhatATokenIsAbout(){
 void tst_directorypage::theKindOfViewRowReadsTheWordsItWrites(){
     const QStringList words = ViewKindWords();
     QVERIFY(!words.isEmpty());
-    foreach(const QString &word, words){
+    for(const QString &word : words){
         QCOMPARE(ViewKindWordIn(QStringList() << QStringLiteral("ID") << word), word);
         QCOMPARE(ViewKindTokenIn(QStringList() << QStringLiteral("ID") << word), word);
         QCOMPARE(TokenSubject(word), QStringLiteral("viewkind"));
@@ -689,7 +709,249 @@ void tst_directorypage::whatWasLeftToShowIsTakenOnce(){
     QVERIFY(!TakePendingSubject());
 }
 
+void tst_directorypage::aRefusedRenameReturnsAnError(){
+    TreeBank::Initialize();
+    ViewNode *a = TreeBank::GetViewRoot()->MakeChild();
+    ViewNode *b = TreeBank::GetViewRoot()->MakeChild();
+    const QString title = QStringLiteral("duplicate-test;ID");
+    a->SetTitle(title);
+    b->SetTitle(title);
+    const QString id = Describe(a).value(QStringLiteral("current")).toString();
+    const QByteArray reply = HandleSet(QJsonObject{
+        {QStringLiteral("node"), id}, {QStringLiteral("name"), QStringLiteral("refused-new")},
+        {QStringLiteral("tokens"), QJsonArray{QStringLiteral("ID")}}});
+    QVERIFY(QJsonDocument::fromJson(reply).object().contains(QStringLiteral("error")));
+    QCOMPARE(a->GetTitle(), title);
+}
+
 #ifdef WEBENGINEVIEW
+void tst_directorypage::aRenameWaitsForTheProfile_data(){
+    QTest::addColumn<QString>("before");
+    QTest::newRow("explicit ID") << QStringLiteral("rename-wait-test;ID");
+    QTest::newRow("ID in the name") << QStringLiteral("Identify");
+}
+
+void tst_directorypage::aRenameWaitsForTheProfile(){
+    QFETCH(QString, before);
+    TreeBank::Initialize();
+    ViewNode *node = TreeBank::GetViewRoot()->MakeChild();
+    const QString from = TitleName(before);
+    const QString to = QStringLiteral("rename-test-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    QTemporaryDir dir;
+    const QString oldPath = dir.filePath(NetworkController::ProfileStorageName(from));
+    const QString newPath = dir.filePath(NetworkController::ProfileStorageName(to));
+    NetworkAccessManager *old = NetworkController::GetNetworkAccessManager(from);
+    QWebEngineProfile *profile = old->GetProfile(false);
+    profile->setPersistentStoragePath(dir.filePath(QStringLiteral("engine-storage")));
+    connect(profile, &QObject::destroyed, [oldPath](){
+        QDir().mkpath(oldPath);
+        QFile file(oldPath + QStringLiteral("/last-state"));
+        if(file.open(QIODevice::WriteOnly)) file.write("last");
+    });
+    const QString after = to + QStringLiteral(";ID");
+    node->SetTitle(after);
+    QVERIFY(TreeBank::ReconfigureDirectory(node, before, after));
+    QTRY_VERIFY(!TreeBank::IsMovingSpace());
+    QVERIFY(!NetworkController::FindNetworkAccessManager(from));
+    QVERIFY(NetworkController::FindNetworkAccessManager(to));
+    QVERIFY(QFileInfo::exists(newPath + QStringLiteral("/last-state")));
+    QVERIFY(!QFileInfo::exists(oldPath));
+}
+
+namespace {
+    int DiskProfilesOf(const QString &id){
+        int count = 0;
+        foreach(QObject *object, NetworkController::SpaceProfiles(id))
+            if(QWebEngineProfile *profile = qobject_cast<QWebEngineProfile*>(object))
+                if(!profile->isOffTheRecord()) count++;
+        return count;
+    }
+}
+
+void tst_directorypage::takingAnIdOffLetsTheSpaceGo(){
+    TreeBank::Initialize();
+    ViewNode *node = TreeBank::GetViewRoot()->MakeChild();
+    const QString name = QStringLiteral("kill-test-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const QString with = name + QStringLiteral(";ID");
+    node->SetTitle(with);
+    QPointer<NetworkAccessManager> old(NetworkController::GetNetworkAccessManager(name));
+    QPointer<QWebEngineProfile> profile(old->GetProfile(false));
+
+    node->SetTitle(name);
+    QVERIFY(TreeBank::ReconfigureDirectory(node, with, name));
+    QTRY_VERIFY(!TreeBank::IsMovingSpace());
+    QVERIFY(!NetworkController::FindNetworkAccessManager(name));
+    QTRY_VERIFY(!old && !profile);
+    QTRY_VERIFY(!NetworkController::StorageInUse(name));
+
+    node->SetTitle(with);
+    QVERIFY(TreeBank::ReconfigureDirectory(node, name, with));
+    QVERIFY(NetworkController::FindNetworkAccessManager(name));
+    QCOMPARE(DiskProfilesOf(name), 1);
+}
+
+void tst_directorypage::takingAnIdOffKeepsASpaceAnotherDirectoryIs(){
+    TreeBank::Initialize();
+    const QString name = QStringLiteral("kept-test-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const QString with = name + QStringLiteral(";ID");
+    ViewNode *a = TreeBank::GetViewRoot()->MakeChild();
+    ViewNode *b = TreeBank::GetViewRoot()->MakeChild();
+    a->SetTitle(with);
+    b->SetTitle(with);
+    NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(name);
+
+    a->SetTitle(name);
+    QVERIFY(TreeBank::ReconfigureDirectory(a, with, name));
+    QVERIFY(!TreeBank::IsMovingSpace());
+    QCOMPARE(NetworkController::FindNetworkAccessManager(name), nam);
+    QVERIFY(!NetworkController::StorageInUse(name));
+}
+
+void tst_directorypage::puttingAnIdOnJoinsTheSpaceOfThatName(){
+    TreeBank::Initialize();
+    const QString name = QStringLiteral("join-test-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const QString with = name + QStringLiteral(";ID");
+    ViewNode *a = TreeBank::GetViewRoot()->MakeChild();
+    ViewNode *b = TreeBank::GetViewRoot()->MakeChild();
+    a->SetTitle(with);
+    b->SetTitle(name);
+    NetworkAccessManager *nam = NetworkController::GetNetworkAccessManager(name);
+
+    b->SetTitle(with);
+    QVERIFY(TreeBank::ReconfigureDirectory(b, name, with));
+    QCOMPARE(NetworkController::FindNetworkAccessManager(name), nam);
+    QVERIFY(!NetworkController::StorageInUse(name));
+    QCOMPARE(DiskProfilesOf(name), 1);
+}
+
+void tst_directorypage::aStorageStillOpenIsNotOpenedAgain(){
+    TreeBank::Initialize();
+    const QString name = QStringLiteral("open-test-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const QString with = name + QStringLiteral(";ID");
+    NetworkController::GetNetworkAccessManager(name);
+    NetworkController::KillNetworkAccessManager(name);
+    QVERIFY(NetworkController::StorageInUse(name));
+
+    ViewNode *node = TreeBank::GetViewRoot()->MakeChild();
+    node->SetTitle(with);
+    QVERIFY(!TreeBank::ReconfigureDirectory(node, name, with));
+    QCOMPARE(node->GetTitle(), name);
+    QVERIFY(!NetworkController::FindNetworkAccessManager(name));
+    QCOMPARE(DiskProfilesOf(name), 1);
+}
+
+void tst_directorypage::aMergedSpaceIsLetGoOfAndItsJarJoins(){
+    TreeBank::Initialize();
+    const QString a = QStringLiteral("merge-a-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const QString b = QStringLiteral("merge-b-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    ViewNode *from = TreeBank::GetViewRoot()->MakeChild();
+    ViewNode *into = TreeBank::GetViewRoot()->MakeChild();
+    from->SetTitle(a + QStringLiteral(";ID"));
+    into->SetTitle(b + QStringLiteral(";ID"));
+    QNetworkCookie cookie(QByteArrayLiteral("carried"), QByteArrayLiteral("1"));
+    cookie.setDomain(QStringLiteral("example.com"));
+    cookie.setExpirationDate(QDateTime::currentDateTime().addDays(1));
+    QPointer<NetworkAccessManager> old(NetworkController::GetNetworkAccessManager(a));
+    old->GetNetworkCookieJar()->SetAllCookies(QList<QNetworkCookie>() << cookie);
+    NetworkAccessManager *target = NetworkController::GetNetworkAccessManager(b);
+
+    from->SetTitle(b + QStringLiteral(";ID"));
+    QVERIFY(TreeBank::ReconfigureDirectory(from, a + QStringLiteral(";ID"), b + QStringLiteral(";ID")));
+    QTRY_VERIFY(!TreeBank::IsMovingSpace());
+    QCOMPARE(NetworkController::FindNetworkAccessManager(b), target);
+    QVERIFY(!NetworkController::FindNetworkAccessManager(a));
+    QCOMPARE(target->GetNetworkCookieJar()->GetAllCookies().size(), 1);
+    QTRY_VERIFY(!old);
+    QTRY_VERIFY(!NetworkController::StorageInUse(a));
+}
+
+void tst_directorypage::aMergeLeavesASpaceAnotherDirectoryIs(){
+    TreeBank::Initialize();
+    const QString a = QStringLiteral("merge-kept-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const QString b = QStringLiteral("merge-into-") + QUuid::createUuid().toString(QUuid::WithoutBraces);
+    ViewNode *from = TreeBank::GetViewRoot()->MakeChild();
+    ViewNode *other = TreeBank::GetViewRoot()->MakeChild();
+    ViewNode *into = TreeBank::GetViewRoot()->MakeChild();
+    from->SetTitle(a + QStringLiteral(";ID"));
+    other->SetTitle(a + QStringLiteral(";ID"));
+    into->SetTitle(b + QStringLiteral(";ID"));
+    NetworkAccessManager *kept = NetworkController::GetNetworkAccessManager(a);
+    NetworkController::GetNetworkAccessManager(b);
+
+    from->SetTitle(b + QStringLiteral(";ID"));
+    QVERIFY(TreeBank::ReconfigureDirectory(from, a + QStringLiteral(";ID"), b + QStringLiteral(";ID")));
+    QTRY_VERIFY(!TreeBank::IsMovingSpace());
+    QCOMPARE(NetworkController::FindNetworkAccessManager(a), kept);
+    QVERIFY(!NetworkController::StorageInUse(a));
+}
+
+void tst_directorypage::anUnusedProfileIsDeletedAndAUsedOneIsNot(){
+    TreeBank::Initialize();
+    const QString lost = NetworkController::ProfileStorageName(QStringLiteral("profile-test-lost"));
+    const QString lostPath = Application::DataDirectory() + QStringLiteral("webengine/") + lost;
+    QDir().mkpath(lostPath + QStringLiteral("/inner"));
+    { QFile file(lostPath + QStringLiteral("/inner/data")); QVERIFY(file.open(QIODevice::WriteOnly)); file.write("x");}
+
+    ViewNode *node = TreeBank::GetViewRoot()->MakeChild();
+    node->SetTitle(QStringLiteral("profile-test-used;ID"));
+    const QString used = NetworkController::ProfileStorageName(QStringLiteral("profile-test-used"));
+    const QString usedPath = Application::DataDirectory() + QStringLiteral("webenginecache/") + used;
+    QDir().mkpath(usedPath);
+
+    QCOMPARE(Profiles::Remove(used), QStringLiteral("in use"));
+    QVERIFY(QFileInfo::exists(usedPath));
+    QVERIFY(!Profiles::Remove(QStringLiteral("../") + lost).isEmpty());
+    {
+        DownloadItem *running = new DownloadItem(static_cast<QObject*>(nullptr));
+        QCOMPARE(Profiles::Remove(lost), QStringLiteral("busy"));
+        delete running;
+        QVERIFY(QFileInfo::exists(lostPath));
+    }
+    {
+        const QString name = QStringLiteral("profile-test-going");
+        const QString going = NetworkController::ProfileStorageName(name);
+        const QString goingPath = Application::DataDirectory() + QStringLiteral("webenginecache/") + going;
+        QDir().mkpath(goingPath);
+        QObject *still = new QObject();
+        NetworkController::NoteReleasing(name, still);
+        QCOMPARE(Profiles::Remove(going), QStringLiteral("closing"));
+        QVERIFY(QFileInfo::exists(goingPath));
+        delete still;
+        QVERIFY(NetworkController::StorageInUse(name) == false);
+        QDir(goingPath).removeRecursively();
+    }
+    QVERIFY(Profiles::Remove(lost).isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(!Profiles::Removing(), 15000);
+    QVERIFY(!QFileInfo::exists(lostPath));
+
+    QVERIFY2(!QDir::fromNativeSeparators(NetworkController::WidgetStorageDirectory()).contains(QStringLiteral("/vanilla/")),
+             qPrintable(NetworkController::WidgetStorageDirectory()));
+    const QString closing = QStringLiteral("profile-test-closing");
+    const QString closingPath = Application::DataDirectory() + QStringLiteral("webenginecache/")
+        + NetworkController::ProfileStorageName(closing);
+    QDir().mkpath(closingPath);
+    QObject *still = new QObject();
+    NetworkController::NoteReleasing(closing, still);
+    QStringList many;
+    for(int i = 0; i < 3; i++){
+        const QString path = Application::DataDirectory() + QStringLiteral("webengine/")
+            + NetworkController::ProfileStorageName(QStringLiteral("profile-test-many-%1").arg(i));
+        QDir().mkpath(path);
+        many << path;
+    }
+    QVERIFY(Profiles::RemoveAll().isEmpty());
+    QVERIFY(Profiles::Removing());
+    QCOMPARE(Profiles::Remove(NetworkController::ProfileStorageName(QStringLiteral("profile-test-many-2"))),
+             QStringLiteral("busy"));
+    QTRY_VERIFY_WITH_TIMEOUT(!Profiles::Removing(), 15000);
+    for(const QString &path : std::as_const(many)) QVERIFY(!QFileInfo::exists(path));
+    QVERIFY(QFileInfo::exists(closingPath));
+    delete still;
+    QDir(closingPath).removeRecursively();
+    QVERIFY(QFileInfo::exists(usedPath));
+    QDir(usedPath).removeRecursively();
+}
+
 int main(int argc, char **argv){
     QtWebEngineQuick::initialize();
     QApplication application(argc, argv);

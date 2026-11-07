@@ -104,6 +104,9 @@ void Gadgets::LoadSettings(){
     {
         THUMBLIST_KEYMAP
         InputMap::LoadKeyMap(s, QStringLiteral("gadgets/thumblist/keymap"), m_ThumbListKeyMap, InputMap::Hooks(IsValidAction));
+        InputMap::AddKeyIfUnassigned(m_ThumbListKeyMap, QKeySequence(Qt::CTRL | Qt::Key_X), QStringLiteral("CutNode"),
+                                     QStringLiteral("TransferToDownDirectory"));
+        InputMap::AddKeyIfUnassigned(m_ThumbListKeyMap, QKeySequence(Qt::CTRL | Qt::Key_C), QStringLiteral("CopyNode"));
     }
     {
         THUMBLIST_MOUSEMAP
@@ -286,28 +289,28 @@ void Gadgets::Connect(TreeBank *tb){
     if(!tb) return;
 
     if(Receiver *receiver = tb->GetReceiver()){
-        connect(receiver, SIGNAL(OpenUrl(QUrl)),
-                this, SLOT(OpenInNew(QUrl)));
-        connect(receiver, SIGNAL(OpenUrl(QList<QUrl>)),
-                this, SLOT(OpenInNew(QList<QUrl>)));
-        connect(receiver, SIGNAL(OpenQueryUrl(QString)),
-                this, SLOT(OpenInNew(QString)));
-        connect(receiver, SIGNAL(SearchWith(QString, QString)),
-                this, SLOT(OpenInNew(QString, QString)));
-        connect(receiver, SIGNAL(Download(QString, QString)),
-                this, SLOT(Download(QString, QString)));
+        connect(receiver, QOverload<QUrl>::of(&Receiver::OpenUrl),
+                this, QOverload<QUrl>::of(&Gadgets::OpenInNew));
+        connect(receiver, QOverload<QList<QUrl>>::of(&Receiver::OpenUrl),
+                this, QOverload<QList<QUrl>>::of(&Gadgets::OpenInNew));
+        connect(receiver, &Receiver::OpenQueryUrl,
+                this, QOverload<QString>::of(&Gadgets::OpenInNew));
+        connect(receiver, &Receiver::SearchWith,
+                this, QOverload<QString, QString>::of(&Gadgets::OpenInNew));
+        connect(receiver, &Receiver::Download,
+                this, &Gadgets::Download);
 
-        connect(receiver, SIGNAL(OpenBookmarklet(const QString&)),
-                this, SLOT(Load(const QString&)));
-        connect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                this, SLOT(SeekText(const QString&, View::FindFlags)));
-        connect(receiver, SIGNAL(KeyEvent(QString)),
-                this, SLOT(KeyEvent(QString)));
+        connect(receiver, &Receiver::OpenBookmarklet,
+                this, QOverload<const QString&>::of(&Gadgets::Load));
+        connect(receiver, &Receiver::SeekText,
+                this, &Gadgets::SeekText);
+        connect(receiver, &Receiver::KeyEvent,
+                this, &Gadgets::KeyEvent);
 
-        connect(receiver, SIGNAL(TriggerElementAction(Page::CustomAction)),
-                this, SLOT(AccessKey_TriggerElementAction(Page::CustomAction)));
-        connect(receiver, SIGNAL(OpenNodeWithCommand(QString)),
-                this, SLOT(ThumbList_OpenNodeWithCommand(QString)));
+        connect(receiver, &Receiver::TriggerElementAction,
+                this, &Gadgets::AccessKey_TriggerElementAction);
+        connect(receiver, &Receiver::OpenNodeWithCommand,
+                this, &Gadgets::ThumbList_OpenNodeWithCommand);
 
     }
 }
@@ -316,28 +319,28 @@ void Gadgets::Disconnect(TreeBank *tb){
     if(!tb) return;
 
     if(Receiver *receiver = tb->GetReceiver()){
-        disconnect(receiver, SIGNAL(OpenUrl(QUrl)),
-                   this, SLOT(OpenInNew(QUrl)));
-        disconnect(receiver, SIGNAL(OpenUrl(QList<QUrl>)),
-                   this, SLOT(OpenInNew(QList<QUrl>)));
-        disconnect(receiver, SIGNAL(OpenQueryUrl(QString)),
-                   this, SLOT(OpenInNew(QString)));
-        disconnect(receiver, SIGNAL(SearchWith(QString, QString)),
-                   this, SLOT(OpenInNew(QString, QString)));
-        disconnect(receiver, SIGNAL(Download(QString, QString)),
-                   this, SLOT(Download(QString, QString)));
+        disconnect(receiver, QOverload<QUrl>::of(&Receiver::OpenUrl),
+                   this, QOverload<QUrl>::of(&Gadgets::OpenInNew));
+        disconnect(receiver, QOverload<QList<QUrl>>::of(&Receiver::OpenUrl),
+                   this, QOverload<QList<QUrl>>::of(&Gadgets::OpenInNew));
+        disconnect(receiver, &Receiver::OpenQueryUrl,
+                   this, QOverload<QString>::of(&Gadgets::OpenInNew));
+        disconnect(receiver, &Receiver::SearchWith,
+                   this, QOverload<QString, QString>::of(&Gadgets::OpenInNew));
+        disconnect(receiver, &Receiver::Download,
+                   this, &Gadgets::Download);
 
-        disconnect(receiver, SIGNAL(OpenBookmarklet(const QString&)),
-                   this, SLOT(Load(const QString&)));
-        disconnect(receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
-                   this, SLOT(SeekText(const QString&, View::FindFlags)));
-        disconnect(receiver, SIGNAL(KeyEvent(QString)),
-                   this, SLOT(KeyEvent(QString)));
+        disconnect(receiver, &Receiver::OpenBookmarklet,
+                   this, QOverload<const QString&>::of(&Gadgets::Load));
+        disconnect(receiver, &Receiver::SeekText,
+                   this, &Gadgets::SeekText);
+        disconnect(receiver, &Receiver::KeyEvent,
+                   this, &Gadgets::KeyEvent);
 
-        disconnect(receiver, SIGNAL(TriggerElementAction(Page::CustomAction)),
-                   this, SLOT(AccessKey_TriggerElementAction(Page::CustomAction)));
-        disconnect(receiver, SIGNAL(OpenNodeWithCommand(QString)),
-                   this, SLOT(ThumbList_OpenNodeWithCommand(QString)));
+        disconnect(receiver, &Receiver::TriggerElementAction,
+                   this, &Gadgets::AccessKey_TriggerElementAction);
+        disconnect(receiver, &Receiver::OpenNodeWithCommand,
+                   this, &Gadgets::ThumbList_OpenNodeWithCommand);
     }
 }
 
@@ -421,9 +424,7 @@ void Gadgets::Download(QString, QString){}
 
 void Gadgets::SeekText(const QString &text, View::FindFlags flags){
     Q_UNUSED(flags)
-    CollectNodes(m_CurrentNode, text);
-    ThumbList_MoveToFirstItem();
-    update();
+    SetFilter(text);
 }
 
 void Gadgets::KeyEvent(QString str){
@@ -1301,10 +1302,14 @@ QMenu *Gadgets::CreateNodeMenu(){
     if(!trash){
         menu->addAction(Action(_NewNode));
         menu->addAction(Action(_MakeDirectory));
-        if(selected){
-            menu->addAction(Action(_PasteNode));
-            menu->addAction(Action(_MakeDirectoryWithSelectedNode));
+        if(hovered || selected){
+            menu->addAction(Action(_CutNode));
+            menu->addAction(Action(_CopyNode));
         }
+        if(TreeBank::HasClipboardNodes() || PasteTakesSelection())
+            menu->addAction(Action(_PasteNode));
+        if(selected)
+            menu->addAction(Action(_MakeDirectoryWithSelectedNode));
         menu->addAction(Action(_MakeDirectoryWithSameDomainNode));
         menu->addSeparator();
 
@@ -1406,6 +1411,11 @@ QImage Gadgets::BlurBackdrop(const QImage &image, int radius){
 }
 
 void Gadgets::RenderBackground(QPainter *painter){
+    if(GetStyle()->CoversViewBehind(this)){
+        GraphicsTableView::RenderBackground(painter);
+        return;
+    }
+
     bool nativeViewBehind = false;
 #ifdef NATIVEWEBVIEW
     if(GetTreeBank()->GetCurrentView())
@@ -1663,26 +1673,35 @@ void Gadgets::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
     GraphicsTableView::dragLeaveEvent(ev);
 }
 
-void Gadgets::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+bool Gadgets::TakeMappedPress(QGraphicsSceneMouseEvent *ev){
     QString mouse;
 
     Application::AddModifiersToString(mouse, ev->modifiers());
     Application::AddMouseButtonsToString(mouse, ev->buttons() & ~ev->button());
     Application::AddMouseButtonToString(mouse, ev->button());
 
-    if(m_MouseMap.contains(mouse)){
+    const QString str = m_MouseMap.value(mouse);
+    if(str.isEmpty()) return false;
 
-        QString str = m_MouseMap[mouse];
-        if(!str.isEmpty()){
-
-            if(!TriggerAction(str)){
-                ev->setAccepted(false);
-                return;
-            }
-            ev->setAccepted(true);
-            return;
-        }
+    const Qt::MouseButtons down = ev->buttons() | ev->button();
+    for(Qt::MouseButton button : { Qt::LeftButton, Qt::RightButton, Qt::MiddleButton,
+                                   Qt::ExtraButton1, Qt::ExtraButton2 }){
+        if(down & button) m_TakenButtons.Press(button, true);
     }
+    if(!TriggerAction(str)){
+        for(Qt::MouseButton button : { Qt::LeftButton, Qt::RightButton, Qt::MiddleButton,
+                                       Qt::ExtraButton1, Qt::ExtraButton2 }){
+            if(down & button) m_TakenButtons.Press(button, false);
+        }
+        ev->setAccepted(false);
+        return true;
+    }
+    ev->setAccepted(true);
+    return true;
+}
+
+void Gadgets::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    if(TakeMappedPress(ev)) return;
 
     GraphicsTableView::mousePressEvent(ev);
     ev->setAccepted(true);
@@ -1968,6 +1987,8 @@ QAction *Gadgets::Action(GadgetsAction a){
         DEFINE_ACTION(DeleteRightNode,                 tr("DeleteRightNode"));
         DEFINE_ACTION(DeleteLeftNode,                  tr("DeleteLeftNode"));
         DEFINE_ACTION(DeleteOtherNode,                 tr("DeleteOtherNode"));
+        DEFINE_ACTION(CutNode,                         tr("CutNode"));
+        DEFINE_ACTION(CopyNode,                        tr("CopyNode"));
         DEFINE_ACTION(PasteNode,                       tr("PasteNode"));
         DEFINE_ACTION(RestoreNode,                     tr("RestoreNode"));
         DEFINE_ACTION(NewNode,                         tr("NewNode"));
@@ -2153,7 +2174,7 @@ void Gadgets::AccessKey_OpenElement(int index){
 
         list << awe->boundingRect();
 
-        foreach(QRectF rect, list){
+        for(QRectF rect : std::as_const(list)){
             update(rect);
         }
         foreach(AccessibleWebElement *e, m_AccessibleWebElementCache){
@@ -2328,7 +2349,8 @@ void AccessKeyBlockLabel::paint(QPainter *painter,
     painter->setFont(AccessKeyChipLFont());
 
     painter->setPen(Theme::Pen(Theme::GadgetsAccessKeyLabelText));
-    painter->drawText(boundingRect(), Qt::AlignCenter,
+    painter->drawText(AccessibleWebElement::CapCenteredRect(boundingRect(), AccessKeyChipLFont()),
+                      Qt::AlignCenter,
                       m_IsNumber ?
                         QStringLiteral("%1").arg(m_Index) :
                         QStringLiteral("%1").arg(static_cast<Gadgets*>(parentObject())->IndexToString(m_Index)));

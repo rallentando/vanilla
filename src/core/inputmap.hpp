@@ -63,6 +63,8 @@ bool LoadGestureMap(const SettingsIO::Map &settings, const QString &group,
                     GestureMap &map, const Hooks &hooks = Hooks());
 
 void SaveKeyMap(SettingsIO::Map &settings, const QString &group, const KeyMap &map);
+void AddKeyIfUnassigned(KeyMap &map, const QKeySequence &seq, const QString &action,
+                        const QString &former = QString());
 void SaveGestureMap(SettingsIO::Map &settings, const QString &group, const GestureMap &map);
 
 }

@@ -17,6 +17,8 @@ Theme::Role Surface();
 
 void Apply(QWidget *window);
 
+void RoundCorners(QWidget *window);
+
 void Blur(QWidget *window);
 
 enum class Mechanism { None, Accent, SystemBackdrop };

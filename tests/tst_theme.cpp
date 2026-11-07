@@ -167,6 +167,10 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
     ROW(GlassAccessKeyInfoText,             255, 255, 255, 200);
     ROW(GlassSelectRectBorder,              255, 255, 255, 255);
     ROW(GlassSelectRectFill,                255, 255, 255,  50);
+    ROW(GlassHeaderBackground,                0,   0,   0, 215);
+    ROW(GlassHeaderButton,                  255, 255, 255,  30);
+    ROW(GlassHeaderButtonBorder,            255, 255, 255, 110);
+    ROW(GlassHeaderButtonHovered,           255, 255, 255,  70);
 
     ROW(FlatOverlayBackground,              255, 255, 255, 170);
     ROW(FlatBorder,                         255, 255, 255, 255);
@@ -186,6 +190,10 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
     ROW(FlatShadowLight,                    255, 255, 255, 255);
     ROW(FlatSelectRectBorder,               100, 100, 255, 255);
     ROW(FlatSelectRectFill,                 100, 100, 255,  50);
+    ROW(FlatHeaderBackground,               245, 245, 245, 240);
+    ROW(FlatHeaderButton,                   255, 255, 255, 255);
+    ROW(FlatHeaderButtonBorder,             200, 200, 200, 255);
+    ROW(FlatHeaderButtonHovered,            225, 232, 255, 255);
 
     ROW(GadgetsScrollIndicator,             255, 255, 255, 100);
     ROW(GadgetsScrollIndicatorSelected,     200, 200, 255, 100);
@@ -193,26 +201,20 @@ void tst_theme::lightColorsAreTheOnesTheCallSitesUsedToHold_data(){
     ROW(GadgetsAccessKeyLabelText,          255, 255, 255, 200);
     ROW(GadgetsAccessKeyLabelBorder,        255, 255, 255, 100);
 
-    ROW(NotifierBackground,                 240, 240, 240, 180);
-    ROW(NotifierText,                        20,  20,  20, 220);
-    ROW(NotifierTextStrong,                   0,   0,   0, 255);
-    ROW(NotifierDownloadBar,                100, 120, 255, 200);
-    ROW(NotifierUploadBar,                  200, 120, 100, 200);
-    ROW(NotifierBarBorder,                    0,   0,   0, 128);
-    ROW(NotifierCancelItemHovered,          180, 180, 180, 255);
-    ROW(NotifierCancelHovered,              220, 220, 220, 255);
-    ROW(NotifierCancelPressed,              255, 255, 255, 255);
-    ROW(NotifierScrollBorder,                 0,   0,   0, 128);
+    ROW(NotifierBackground,                 250, 250, 250, 255);
+    ROW(NotifierText,                       102, 102, 102, 255);
+    ROW(NotifierTextStrong,                  28,  28,  28, 255);
+    ROW(NotifierScrollBorder,                 0,   0,   0,  30);
     ROW(NotifierScrollMarker,                 0,   0,   0, 200);
-    ROW(NotifierScrollLine,                   0,   0,   0, 100);
+    ROW(NotifierScrollLine,                   0,   0,   0,  35);
 
     ROW(MiniMapBackground,                  245, 245, 245, 255);
     ROW(MiniMapBackgroundTranslucent,       245, 245, 245, 128);
 
-    ROW(ReceiverBackground,                 240, 240, 240, 180);
-    ROW(ReceiverBackgroundContrast,          20,  20,  20, 200);
-    ROW(ReceiverText,                        16,  16,  16, 255);
-    ROW(ReceiverTextContrast,               240, 240, 240, 255);
+    ROW(ReceiverBackground,                 250, 250, 250, 255);
+    ROW(ReceiverBackgroundContrast,         232, 232, 232, 255);
+    ROW(ReceiverText,                        28,  28,  28, 255);
+    ROW(ReceiverTextContrast,                28,  28,  28, 255);
 
     ROW(LineEditBackgroundActive,           255, 255, 255, 255);
     ROW(LineEditBorder,                     240, 240, 240, 255);
@@ -323,6 +325,10 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
     ROW(GlassAccessKeyInfoText,             255, 255, 255, 220);
     ROW(GlassSelectRectBorder,              255, 255, 255, 255);
     ROW(GlassSelectRectFill,                255, 255, 255,  50);
+    ROW(GlassHeaderBackground,                0,   0,   0, 225);
+    ROW(GlassHeaderButton,                  255, 255, 255,  30);
+    ROW(GlassHeaderButtonBorder,            255, 255, 255, 110);
+    ROW(GlassHeaderButtonHovered,           255, 255, 255,  70);
 
     ROW(FlatOverlayBackground,               24,  24,  24, 190);
     ROW(FlatBorder,                          70,  70,  70, 255);
@@ -342,6 +348,10 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
     ROW(FlatShadowLight,                    255, 255, 255, 255);
     ROW(FlatSelectRectBorder,               120, 150, 255, 255);
     ROW(FlatSelectRectFill,                 120, 150, 255,  60);
+    ROW(FlatHeaderBackground,                32,  32,  32, 240);
+    ROW(FlatHeaderButton,                    52,  52,  52, 255);
+    ROW(FlatHeaderButtonBorder,              90,  90,  90, 255);
+    ROW(FlatHeaderButtonHovered,             70,  80, 110, 255);
 
     ROW(GadgetsScrollIndicator,             255, 255, 255, 100);
     ROW(GadgetsScrollIndicatorSelected,     200, 200, 255, 120);
@@ -349,26 +359,20 @@ void tst_theme::darkColorsAreTheOnesTheDarkPaletteMeans_data(){
     ROW(GadgetsAccessKeyLabelText,          255, 255, 255, 220);
     ROW(GadgetsAccessKeyLabelBorder,        255, 255, 255, 120);
 
-    ROW(NotifierBackground,                  32,  32,  32, 180);
-    ROW(NotifierText,                       235, 235, 235, 220);
-    ROW(NotifierTextStrong,                 255, 255, 255, 255);
-    ROW(NotifierDownloadBar,                110, 140, 255, 220);
-    ROW(NotifierUploadBar,                  215, 130, 110, 220);
-    ROW(NotifierBarBorder,                  255, 255, 255, 140);
-    ROW(NotifierCancelItemHovered,          180, 180, 180, 255);
-    ROW(NotifierCancelHovered,              220, 220, 220, 255);
-    ROW(NotifierCancelPressed,              255, 255, 255, 255);
-    ROW(NotifierScrollBorder,               255, 255, 255, 140);
+    ROW(NotifierBackground,                  44,  44,  44, 255);
+    ROW(NotifierText,                       160, 160, 160, 255);
+    ROW(NotifierTextStrong,                 230, 230, 230, 255);
+    ROW(NotifierScrollBorder,               255, 255, 255,  20);
     ROW(NotifierScrollMarker,               255, 255, 255, 220);
-    ROW(NotifierScrollLine,                 255, 255, 255, 110);
+    ROW(NotifierScrollLine,                 255, 255, 255,  40);
 
     ROW(MiniMapBackground,                   38,  38,  38, 255);
     ROW(MiniMapBackgroundTranslucent,        38,  38,  38, 128);
 
-    ROW(ReceiverBackground,                  32,  32,  32, 180);
-    ROW(ReceiverBackgroundContrast,         235, 235, 235, 200);
-    ROW(ReceiverText,                       240, 240, 240, 255);
-    ROW(ReceiverTextContrast,                16,  16,  16, 255);
+    ROW(ReceiverBackground,                  44,  44,  44, 255);
+    ROW(ReceiverBackgroundContrast,          25,  25,  25, 255);
+    ROW(ReceiverText,                       230, 230, 230, 255);
+    ROW(ReceiverTextContrast,               230, 230, 230, 255);
 
     ROW(LineEditBackgroundActive,            64,  64,  64, 255);
     ROW(LineEditBorder,                      48,  48,  48, 255);
@@ -425,7 +429,7 @@ void tst_theme::everyRoleHasAValue(){
                      qPrintable(QStringLiteral("role %1 is transparent black; a row is probably missing").arg(i)));
     }
 
-    QCOMPARE(static_cast<int>(Theme::RoleCount), 134);
+    QCOMPARE(static_cast<int>(Theme::RoleCount), 152);
 }
 
 void tst_theme::schemeSurvivesThePropertiesThatMatter(){
@@ -434,9 +438,6 @@ void tst_theme::schemeSurvivesThePropertiesThatMatter(){
         { Theme::GlassButtonBackground,     "gadgets buttons" },
         { Theme::GlassButtonBackgroundSoft, "gadgets up and trash buttons" },
         { Theme::FlatButtonBackground,      "flat gadgets buttons" },
-        { Theme::NotifierCancelPressed,     "the notifier's cancel button" },
-        { Theme::NotifierCancelHovered,     "the notifier's cancel button" },
-        { Theme::NotifierCancelItemHovered, "the notifier's cancel button" },
         { Theme::BarIconBackdrop,           "the backdrop behind a favicon" },
     };
 

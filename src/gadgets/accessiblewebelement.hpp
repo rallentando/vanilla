@@ -16,11 +16,11 @@ class AccessibleWebElement : public QGraphicsItem {
 
 public:
     AccessibleWebElement(QGraphicsItem *parent = nullptr);
-    ~AccessibleWebElement() Q_DECL_OVERRIDE;
+    ~AccessibleWebElement() override;
 
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
-    QPainterPath shape() const Q_DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    QRectF boundingRect() const override;
+    QPainterPath shape() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
     void SetIndex(int index);
     void SetBoundingPos(QPoint pos);
@@ -44,6 +44,12 @@ public:
         return metrics;
     }
 
+    static QRectF CapCenteredRect(const QRectF &rect, const QFont &font){
+        const QFontMetricsF metrics(font);
+        return rect.translated(0, (metrics.capHeight() - metrics.ascent()
+                                   + metrics.descent()) / 2.0);
+    }
+
     bool IsCurrentBlock() const;
     bool IsSelected() const;
 
@@ -53,13 +59,13 @@ public:
     void UpdateMinimal();
 
 protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) override;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) override;
 
 private:
     Gadgets *m_Gadgets;

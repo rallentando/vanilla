@@ -55,9 +55,9 @@ class Application : public QApplication {
 
 public:
     Application(int &argc, char **argv);
-    ~Application() Q_DECL_OVERRIDE;
+    ~Application() override;
 
-    bool notify(QObject *receiver, QEvent *ev) Q_DECL_OVERRIDE;
+    bool notify(QObject *receiver, QEvent *ev) override;
 
     static void BootApplication(int &argc, char **argv, Application *instance);
     static void Import(TreeBank *tb);
@@ -84,7 +84,6 @@ private:
     static quint64 m_SerialStart;
     static void SeedSerials();
     static void KeepSerials(quint64 next);
-    static int m_DelayFileCount;
     static bool m_Quitting;
     static bool m_RestartRequested;
     static ShutdownFlow m_ShutdownFlow;
@@ -116,8 +115,10 @@ public:
     static void RegisterIcon(QString, QIcon, bool offTheRecord);
     static QIcon GetIcon(QString);
     static QIcon GetIcon(const QUrl &url);
+    static QIcon GetIcon(const QUrl &url, bool loaded);
     static void Reconfigure();
     static bool EnableGoogleSuggest();
+    static QString SuggestEngine();
     static bool EnableFramelessWindow();
     static bool EnableTransparentWindow();
     static void TranslucentWindowUnsupported();
@@ -130,9 +131,11 @@ public:
 private:
     friend class tst_treebaritem;
     friend class tst_directorypage;
+    friend class tst_gadgetsframe;
     static Settings m_GlobalSettings;
     static Settings m_IconTable;
     static bool m_EnableGoogleSuggest;
+    static QString m_SuggestEngine;
     static bool m_EnableFramelessWindow;
     static bool m_EnableTransparentWindow;
     static bool m_TransparentWindowEffective;
@@ -150,14 +153,10 @@ public:
     static void SetUploadDirectory(QString);
     static QString GetUploadDirectory();
 
-    static void AppendChosenFile(QString file);
-    static void RemoveChosenFile(QString file);
-    static QStringList ChosenFiles();
 private:
     static int m_MaxBackUpGenerationCount;
     static QString m_DownloadDirectory;
     static QString m_UploadDirectory;
-    static QStringList m_ChosenFiles;
 
 public:
     enum SslErrorPolicy {
@@ -178,13 +177,10 @@ public:
 
     static bool SaveSessionCookie();
     static QString GetAcceptLanguage();
-    static void SetAcceptLanguage(QString);
     static QStringList GetAllowedHosts();
     static void AppendToAllowedHosts(QString, bool offTheRecord);
-    static void RemoveFromAllowedHosts(QString);
     static QStringList GetBlockedHosts();
     static void AppendToBlockedHosts(QString, bool offTheRecord);
-    static void RemoveFromBlockedHosts(QString);
     static QStringList GetAllowedCertificates();
     static QStringList GetBlockedCertificates();
     static void RememberCertificate(QString key, bool allow, bool offTheRecord);
@@ -222,7 +218,6 @@ public:
     static void SetCurrentWindow(MainWindow *win);
     static void SetCurrentWindow(int id);
 
-    static int WindowId(MainWindow *win);
     static MainWindow *Window(int id);
     static MainWindow *GetCurrentWindow();
     static QWidget *CurrentWidget();
@@ -246,8 +241,6 @@ private:
     static ModelessDialogFrame *m_TemporaryDialogFrame;
 
 public:
-    static void SetMaxBackUpGenerationCount(int);
-
     static QStringList BackUpFileFilters();
 
     static QString BaseDirectory();
@@ -267,10 +260,11 @@ public:
     static QString GlobalSettingsFileName(bool tmp = false);
     static QString IconDatabaseFileName(bool tmp = false);
 protected:
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) override;
 private:
     static bool m_ByKey;
     static int m_AutoSaveTimerId;
+    static bool m_AutoSaveMayStart;
     static int m_AutoLoadTimerId;
     static void CreateBackUpFiles();
 public:
@@ -469,57 +463,6 @@ public:
         return key;
     }
 
-    static inline int QtKeyToJsKey(int key){
-        if(0x41 <= key && key <= 0x5a)
-            return key;
-        if(0x30 <= key && key <= 0x39)
-            return key;
-        if(0x30 <= key && key <= 0x39)
-            return key + (0x60 - 0x30);
-        if(0x01000030 <= key && key <= 0x0100003f)
-            return key - (0x01000030 - 0x70);
-
-        switch(key){
-        case Qt::Key_Backspace:    return 0x08;
-        case Qt::Key_Tab:          return 0x09;
-        case Qt::Key_Return:       return 0x0D;
-        case Qt::Key_Shift:        return 0x10;
-        case Qt::Key_Control:      return 0x11;
-        case Qt::Key_Alt:          return 0x12;
-        case Qt::Key_Pause:        return 0x13;
-        case Qt::Key_CapsLock:     return 0x14;
-        case Qt::Key_Escape:       return 0x1B;
-        case Qt::Key_Space:        return 0x20;
-        case Qt::Key_PageUp:       return 0x21;
-        case Qt::Key_PageDown:     return 0x22;
-        case Qt::Key_End:          return 0x23;
-        case Qt::Key_Home:         return 0x24;
-        case Qt::Key_Left:         return 0x25;
-        case Qt::Key_Up:           return 0x26;
-        case Qt::Key_Right:        return 0x27;
-        case Qt::Key_Down:         return 0x28;
-        case Qt::Key_Insert:       return 0x2D;
-        case Qt::Key_Delete:       return 0x2E;
-        case Qt::Key_Meta:         return 0x5B;
-        case Qt::Key_Asterisk:     return 0x6A;
-        case Qt::Key_Plus:         return 0x6B;
-        case Qt::Key_Minus:        return 0x6D;
-        case Qt::Key_Period:       return 0x6E;
-        case Qt::Key_Slash:        return 0x6F;
-        case Qt::Key_NumLock:      return 0x90;
-        case Qt::Key_ScrollLock:   return 0x91;
-        case Qt::Key_Colon:        return 0xBA;
-        case Qt::Key_Semicolon:    return 0xBB;
-        case Qt::Key_Comma:        return 0xBC;
-        case Qt::Key_At:           return 0xC0;
-        case Qt::Key_BracketLeft:  return 0xDB;
-        case Qt::Key_Backslash:    return 0xDC;
-        case Qt::Key_BracketRight: return 0xDD;
-        case Qt::Key_AsciiCircum:  return 0xDE;
-        }
-        return key;
-    }
-
     static inline void AddModifiersToString(QString &str, Qt::KeyboardModifiers modifiers){
         static const QMap<Qt::KeyboardModifier, QString> table = {
             { Qt::ShiftModifier,   QStringLiteral("Shift") },
@@ -528,7 +471,7 @@ public:
             { Qt::AltModifier,     QStringLiteral("Alt") },
             { Qt::KeypadModifier,  QStringLiteral("Keypad") },
         };
-        foreach(Qt::KeyboardModifier modifier, table.keys()){
+        for(Qt::KeyboardModifier modifier : table.keys()){
             if(modifiers & modifier){
                 if(str.isEmpty()) str += table[modifier];
                 else str += QStringLiteral("+") + table[modifier];
@@ -600,7 +543,7 @@ public:
             { Qt::ExtraButton23, QStringLiteral("ExtraButton23") },
             { Qt::ExtraButton24, QStringLiteral("ExtraButton24") },
         };
-        foreach(Qt::MouseButton button, table.keys()){
+        for(Qt::MouseButton button : table.keys()){
             if(buttons & button){
                 if(str.isEmpty()) str += table[button];
                 else str += QStringLiteral("+") + table[button];
@@ -622,6 +565,13 @@ public:
     static inline bool ExactMatch(const QString &reg, const QString &str){
         return QRegularExpression(QStringLiteral("\\A%1\\Z").arg(reg)).match(str).hasMatch();
     }
+
+    struct PageKey {
+        QEvent::Type type = QEvent::None;
+        int key = 0;
+        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
+    };
+    static bool PageKeyFromMessage(const QString &msg, PageKey &key);
 
 };
 

@@ -18,9 +18,7 @@
 #include <QStyle>
 #include <QStyleOptionToolBar>
 #include <QStandardItemModel>
-#include <QDomDocument>
-#include <QDomNodeList>
-#include <QDomElement>
+#include "searchsuggest.hpp"
 
 QStringList ToolBar::m_CommandCandidates = QStringList()
     << QStringLiteral("Open [text or url]")
@@ -36,61 +34,16 @@ QStringList ToolBar::m_CommandCandidates = QStringList()
     << QStringLiteral("End")
     << QStringLiteral("PageUp")
     << QStringLiteral("PageDown")
-    << QStringLiteral("Import")
-    << QStringLiteral("Export")
-    << QStringLiteral("AboutVanilla")
-    << QStringLiteral("AboutQt")
-    << QStringLiteral("Quit")
-    << QStringLiteral("ToggleNotifier")
-    << QStringLiteral("ToggleReceiver")
-    << QStringLiteral("ToggleMenuBar")
-    << QStringLiteral("ToggleTreeBar")
-    << QStringLiteral("ToggleToolBar")
-    << QStringLiteral("ToggleFullScreen")
-    << QStringLiteral("ToggleMaximized")
-    << QStringLiteral("ToggleMinimized")
-    << QStringLiteral("ToggleShaded")
-    << QStringLiteral("ShadeWindow")
-    << QStringLiteral("UnshadeWindow")
-    << QStringLiteral("NewWindow")
-    << QStringLiteral("CloseWindow")
-    << QStringLiteral("SwitchWindow")
-    << QStringLiteral("NextWindow")
-    << QStringLiteral("PrevWindow")
     << QStringLiteral("Back")
     << QStringLiteral("Forward")
     << QStringLiteral("Rewind")
     << QStringLiteral("FastForward")
     << QStringLiteral("UpDirectory")
     << QStringLiteral("Close")
-    << QStringLiteral("Restore")
     << QStringLiteral("Recreate")
-    << QStringLiteral("NextView")
-    << QStringLiteral("PrevView")
-    << QStringLiteral("BuryView")
-    << QStringLiteral("DigView")
-    << QStringLiteral("FirstView")
-    << QStringLiteral("SecondView")
-    << QStringLiteral("ThirdView")
-    << QStringLiteral("FourthView")
-    << QStringLiteral("FifthView")
-    << QStringLiteral("SixthView")
-    << QStringLiteral("SeventhView")
-    << QStringLiteral("EighthView")
-    << QStringLiteral("NinthView")
-    << QStringLiteral("TenthView")
-    << QStringLiteral("LastView")
-    << QStringLiteral("NewViewNode")
     << QStringLiteral("CloneViewNode")
-    << QStringLiteral("MakeLocalNode")
     << QStringLiteral("DisplayAccessKey")
-    << QStringLiteral("DisplayViewTree")
-    << QStringLiteral("DisplayTrashTree")
     << QStringLiteral("OpenTextSeeker")
-    << QStringLiteral("OpenQueryEditor")
-    << QStringLiteral("OpenUrlEditor")
-    << QStringLiteral("OpenCommand")
-    << QStringLiteral("ReleaseHiddenView")
     << QStringLiteral("Load")
     << QStringLiteral("Copy")
     << QStringLiteral("Cut")
@@ -109,10 +62,6 @@ QStringList ToolBar::m_CommandCandidates = QStringList()
     << QStringLiteral("ZoomOut")
     << QStringLiteral("ViewSource")
     << QStringLiteral("ApplySource")
-    << QStringLiteral("OpenBookmarklet")
-    << QStringLiteral("SearchWith")
-    << QStringLiteral("AddSearchEngine")
-    << QStringLiteral("AddBookmarklet")
     << QStringLiteral("InspectElement")
     << QStringLiteral("CopyUrl")
     << QStringLiteral("CopyTitle")
@@ -123,6 +72,12 @@ QStringList ToolBar::m_CommandCandidates = QStringList()
 QStringList ToolBar::m_InputUrlHistory = QStringList();
 
 namespace {
+    class CompleterPopup : public QTableView {
+    protected:
+        int sizeHintForRow(int) const override {
+            return verticalHeader()->defaultSectionSize();
+        }
+    };
 
     bool IsUrlToLoadInPlace(const QString &text){
         static const QStringList prefixes = QStringList()
@@ -169,7 +124,7 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
     m_Completer->setCaseSensitivity(Qt::CaseInsensitive);
     m_Completer->setCompletionMode(QCompleter::UnfilteredPopupCompletion);
 
-    QTableView *popup = new QTableView();
+    QTableView *popup = new CompleterPopup();
     popup->setFont(ToolBarFieldFont());
     popup->horizontalHeader()->hide();
     popup->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -249,65 +204,89 @@ ToolBar::ToolBar(TreeBank *tb, QWidget *parent)
     connect(m_LineEdit, &QLineEdit::textChanged,
             [this](const QString &text){
 
-                static QIcon blank = Theme::Icon(QStringLiteral(":/resources/blank.png"));
-                static QIcon command = Theme::Icon(QStringLiteral(":/resources/toolbar/command.png"));
-
                 if(!m_Model->findItems(text).isEmpty()) return;
-
-                m_Model->clear();
-
-                foreach(QString cmd, m_CommandCandidates){
-                    if(cmd.startsWith(text, Qt::CaseInsensitive)){
-                        QStandardItem *item = new QStandardItem(cmd);
-                        item->setIcon(command);
-                        m_Model->appendRow(item);
-                    }
-                }
-                foreach(QString url, m_InputUrlHistory){
-                    if(url.startsWith(text, Qt::CaseInsensitive)){
-                        QStandardItem *item = new QStandardItem(url);
-                        QIcon icon = Application::GetIcon(QUrl(url));
-                        if(icon.isNull() || icon.availableSizes().first().width() <= 2)
-                            icon = blank;
-                        item->setIcon(icon);
-                        m_Model->appendRow(item);
-                    }
-                }
-                if(m_View && m_View->GetViewNode()){
-                    foreach(Node *nd, m_View->GetViewNode()->GetSiblings()){
-                        QString url = nd->GetUrl().toString();
-                        if(url.startsWith(text, Qt::CaseInsensitive)){
-                            QStandardItem *item = new QStandardItem(url);
-                            QIcon icon = Application::GetIcon(QUrl(url));
-                            if(icon.isNull() || icon.availableSizes().first().width() <= 2)
-                                icon = blank;
-                            item->setIcon(icon);
-                            m_Model->appendRow(item);
-                        }
-                    }
-                }
-                if(!m_Model->rowCount() && Application::EnableGoogleSuggest() &&
-                   !text.startsWith(QStringLiteral("http://")) &&
-                   !text.startsWith(QStringLiteral("https://")) &&
-                   !text.startsWith(QStringLiteral("javascript:")) &&
-                   !text.startsWith(QStringLiteral("about:")) &&
-                   !text.startsWith(QStringLiteral("Open "), Qt::CaseInsensitive) &&
-                   !text.startsWith(QStringLiteral("Query "), Qt::CaseInsensitive) &&
-                   !text.startsWith(QStringLiteral("Load "), Qt::CaseInsensitive) &&
-                   !text.startsWith(QStringLiteral("Search "), Qt::CaseInsensitive) &&
-                   !text.startsWith(QStringLiteral("Seek "), Qt::CaseInsensitive) &&
-                   !text.startsWith(QStringLiteral("Set"), Qt::CaseInsensitive) &&
-                   !text.startsWith(QStringLiteral("Unset"), Qt::CaseInsensitive)){
-
-                    QUrl base = QUrl(tr("https://www.google.com/complete/search"));
-                    QUrlQuery param;
-                    param.addQueryItem(QStringLiteral("q"), text);
-                    param.addQueryItem(QStringLiteral("output"), QStringLiteral("toolbar"));
-                    param.addQueryItem(QStringLiteral("hl"), tr("en"));
-                    base.setQuery(param);
-                    emit SuggestRequest(base);
-                }
+                FillCandidates(text);
             });
+}
+
+void ToolBar::FillCandidates(const QString &text){
+    const QIcon blank(Theme::Pixmap(QStringLiteral(":/resources/blank.png"), Theme::PreviewText));
+    const QIcon command(Theme::Pixmap(QStringLiteral(":/resources/toolbar/command.png"), Theme::PreviewText));
+
+    m_Model->clear();
+
+    foreach(QString cmd, m_CommandCandidates){
+        if(cmd.startsWith(text, Qt::CaseInsensitive)){
+            QStandardItem *item = new QStandardItem(cmd);
+            item->setIcon(command);
+            m_Model->appendRow(item);
+        }
+    }
+    QStringList nearby = m_InputUrlHistory;
+    if(m_View && m_View->GetViewNode()){
+        foreach(Node *nd, m_View->GetViewNode()->GetSiblings())
+            nearby << nd->GetUrl().toString();
+    }
+    foreach(QString url, UrlCandidates(text, m_View ? m_View->url() : QUrl(), nearby)){
+        QStandardItem *item = new QStandardItem(url);
+        QIcon icon = Application::GetIcon(QUrl(url));
+        if(icon.isNull() || icon.availableSizes().first().width() <= 2)
+            icon = blank;
+        item->setIcon(icon);
+        m_Model->appendRow(item);
+    }
+    if(!m_Model->rowCount() && Application::EnableGoogleSuggest() &&
+       !text.startsWith(QStringLiteral("http://")) &&
+       !text.startsWith(QStringLiteral("https://")) &&
+       !text.startsWith(QStringLiteral("javascript:")) &&
+       !text.startsWith(QStringLiteral("about:")) &&
+       !text.startsWith(QStringLiteral("Open "), Qt::CaseInsensitive) &&
+       !text.startsWith(QStringLiteral("Query "), Qt::CaseInsensitive) &&
+       !text.startsWith(QStringLiteral("Load "), Qt::CaseInsensitive) &&
+       !text.startsWith(QStringLiteral("Search "), Qt::CaseInsensitive) &&
+       !text.startsWith(QStringLiteral("Seek "), Qt::CaseInsensitive) &&
+       !text.startsWith(QStringLiteral("Set"), Qt::CaseInsensitive) &&
+       !text.startsWith(QStringLiteral("Unset"), Qt::CaseInsensitive)){
+
+        emit SuggestRequest(SearchSuggest::Url(Application::SuggestEngine(), text));
+    }
+}
+
+QStringList ToolBar::CommandCandidates(){
+    return m_CommandCandidates;
+}
+
+QStringList ToolBar::UrlCandidates(const QString &text, const QUrl &current, const QStringList &nearby){
+    QStringList list = UrlAncestors(text, current);
+    for(const QString &url : nearby){
+        if(url.startsWith(text, Qt::CaseInsensitive) && url != current.toString()) list << url;
+    }
+    list.removeDuplicates();
+    return list;
+}
+
+QStringList ToolBar::UrlAncestors(const QString &text, const QUrl &current){
+    QStringList list;
+    if(!current.isValid()) return list;
+    const QString whole = current.toString();
+    if(!whole.startsWith(text, Qt::CaseInsensitive) && !text.startsWith(whole, Qt::CaseInsensitive)) return list;
+
+    QUrl up = current;
+    up.setFragment(QString());
+    up.setQuery(QString());
+    if(up != current) list << up.toString();
+    QString path = current.path();
+    if(!path.endsWith(QLatin1Char('/'))) path = path.left(path.lastIndexOf(QLatin1Char('/')) + 1);
+    else if(path.length() > 1) path = path.left(path.lastIndexOf(QLatin1Char('/'), path.length() - 2) + 1);
+    else path.clear();
+    while(!path.isEmpty()){
+        up.setPath(path);
+        list << up.toString();
+        if(path.length() == 1) break;
+        path = path.left(path.lastIndexOf(QLatin1Char('/'), path.length() - 2) + 1);
+    }
+    list.removeAll(text);
+    return list;
 }
 
 ToolBar::~ToolBar(){}
@@ -361,36 +340,23 @@ void ToolBar::Disconnect(SharedView view){
                this, SLOT(DisplaySuggest(const QByteArray&)));
 }
 
-QMenu *ToolBar::ToolBarMenu(){
-    QMenu *menu = new QMenu(this);
-    return menu;
-}
-
 void ToolBar::SetUrl(const QUrl &url){
     m_LineEdit->setText(VanillaPage::IsStartUrl(url) ? QString() : url.toString());
-    if(m_View){
-        m_BackAction->setEnabled(m_View->CanGoBack());
-        m_ForwardAction->setEnabled(m_View->CanGoForward());
-        m_RewindAction->setEnabled(m_View->CanGoBack());
-        m_FastForwardAction->setEnabled(true );
-        if(m_View->IsLoading()){
-            m_ReloadAction->setVisible(false);
-            m_StopAction->setVisible(true);
-        } else {
-            m_ReloadAction->setVisible(true);
-            m_StopAction->setVisible(false);
-        }
-    }
+    if(m_View) SyncActions(m_View->IsLoading());
 }
 
 void ToolBar::SetFinished(bool ok){
     Q_UNUSED(ok)
+    SyncActions(false);
+}
+
+void ToolBar::SyncActions(bool loading){
     m_BackAction->setEnabled(m_View->CanGoBack());
     m_ForwardAction->setEnabled(m_View->CanGoForward());
     m_RewindAction->setEnabled(m_View->CanGoBack());
     m_FastForwardAction->setEnabled(true );
-    m_ReloadAction->setVisible(true);
-    m_StopAction->setVisible(false);
+    m_ReloadAction->setVisible(!loading);
+    m_StopAction->setVisible(loading);
 }
 
 void ToolBar::paintEvent(QPaintEvent *ev){
@@ -427,17 +393,7 @@ void ToolBar::showEvent(QShowEvent *ev){
     if(m_View){
 
         Connect(m_View);
-        m_BackAction->setEnabled(m_View->CanGoBack());
-        m_ForwardAction->setEnabled(m_View->CanGoForward());
-        m_RewindAction->setEnabled(m_View->CanGoBack());
-        m_FastForwardAction->setEnabled(true );
-        if(m_View->IsLoading()){
-            m_ReloadAction->setVisible(false);
-            m_StopAction->setVisible(true);
-        } else {
-            m_ReloadAction->setVisible(true);
-            m_StopAction->setVisible(false);
-        }
+        SyncActions(m_View->IsLoading());
     }
 }
 
@@ -471,6 +427,15 @@ void ToolBar::mouseReleaseEvent(QMouseEvent *ev){
 }
 
 bool ToolBar::eventFilter(QObject *watched, QEvent *ev){
+    if(watched == m_LineEdit && ev->type() == QEvent::KeyPress &&
+       static_cast<QKeyEvent*>(ev)->key() == Qt::Key_Down && !m_Completer->popup()->isVisible() && m_View){
+        FillCandidates(m_LineEdit->text());
+        if(m_Model->rowCount()){
+            m_Completer->setCompletionPrefix(m_LineEdit->text());
+            m_Completer->complete();
+            return true;
+        }
+    }
     if(watched == m_LineEdit && ev->type() == QEvent::MouseButtonPress && m_View)
         m_View->TakeKeyboardBack();
     return QToolBar::eventFilter(watched, ev);
@@ -478,21 +443,16 @@ bool ToolBar::eventFilter(QObject *watched, QEvent *ev){
 
 void ToolBar::DisplaySuggest(const QByteArray &ba){
 
-    static QIcon search = Theme::Icon(QStringLiteral(":/resources/toolbar/search.png"));
+    const QIcon search(Theme::Pixmap(QStringLiteral(":/resources/toolbar/search.png"), Theme::PreviewText));
 
     if(!m_LineEdit->hasFocus()) return;
 
     m_Model->clear();
 
-    QDomDocument doc;
-    if(doc.setContent(ba)){
-        QDomNodeList nodelist = doc.elementsByTagName(QStringLiteral("suggestion"));
-        for(int i = 0; i < nodelist.length(); i++){
-            QString cand = nodelist.item(i).toElement().attribute(QStringLiteral("data"));
-            QStandardItem *item = new QStandardItem(cand);
-            item->setIcon(search);
-            m_Model->appendRow(item);
-        }
-        if(m_Model->rowCount()) m_Completer->popup()->show();
+    foreach(QString cand, SearchSuggest::Parse(ba)){
+        QStandardItem *item = new QStandardItem(cand);
+        item->setIcon(search);
+        m_Model->appendRow(item);
     }
+    if(m_Model->rowCount()) m_Completer->popup()->show();
 }

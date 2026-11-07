@@ -35,19 +35,19 @@ class KeyboardHoldingView : public QObject, public View {
 public:
     KeyboardHoldingView() : QObject(nullptr), View(nullptr), m_TakenBack(0) {}
 
-    QObject *base() Q_DECL_OVERRIDE { return this;}
-    QObject *page() Q_DECL_OVERRIDE { return this;}
+    QObject *base() override { return this;}
+    QObject *page() override { return this;}
 
-    QSize size() Q_DECL_OVERRIDE { return QSize();}
-    void resize(QSize) Q_DECL_OVERRIDE {}
-    void show() Q_DECL_OVERRIDE {}
-    void hide() Q_DECL_OVERRIDE {}
-    void raise() Q_DECL_OVERRIDE {}
-    void lower() Q_DECL_OVERRIDE {}
-    void repaint() Q_DECL_OVERRIDE {}
-    bool visible() Q_DECL_OVERRIDE { return false;}
-    void setFocus(Qt::FocusReason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {}
-    void TakeKeyboardBack() Q_DECL_OVERRIDE { m_TakenBack++;}
+    QSize size() override { return QSize();}
+    void resize(QSize) override {}
+    void show() override {}
+    void hide() override {}
+    void raise() override {}
+    void lower() override {}
+    void repaint() override {}
+    bool visible() override { return false;}
+    void setFocus(Qt::FocusReason = Qt::OtherFocusReason) override {}
+    void TakeKeyboardBack() override { m_TakenBack++;}
 
     int m_TakenBack;
 

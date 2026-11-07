@@ -22,12 +22,14 @@ public:
     std::function<int(ViewNode*)> WindowIndexOf;
     std::function<void(ViewNode*, int)> RestoreIntoWindow;
     std::function<bool(ViewNode*)> KeepsSideFiles;
+    std::function<bool(ViewNode*)> Skips;
     std::function<void()> Tick;
     int TickIntervalMs = 16;
 
     int  WindowIndex(ViewNode *nd) const { return WindowIndexOf ? WindowIndexOf(nd) : 0;}
     void Restore(ViewNode *nd, int id) const { if(RestoreIntoWindow) RestoreIntoWindow(nd, id);}
     bool KeepSideFiles(ViewNode *nd) const { return KeepsSideFiles ? KeepsSideFiles(nd) : true;}
+    bool Skip(ViewNode *nd) const { return Skips && Skips(nd);}
     void Tock() const {
         if(!Tick) return;
         if(TickIntervalMs > 0 && m_TickClock.isValid() && m_TickClock.elapsed() < TickIntervalMs) return;

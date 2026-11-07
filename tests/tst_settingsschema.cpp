@@ -118,6 +118,7 @@ void tst_settingsschema::everyCategoryHasARowAndTheTableKeepsTheirOrder(){
     QStringList expected = order;
     expected.removeOne(QStringLiteral("passwords"));
     expected.removeOne(QStringLiteral("permissions"));
+    expected.removeOne(QStringLiteral("profiles"));
     expected.removeOne(QStringLiteral("directory"));
     QCOMPARE(seen, expected);
 }
@@ -301,6 +302,31 @@ void tst_settingsschema::aDependencyIsDescribedInTheShapeOfTheRowItNames(){
         }
         if(key == QStringLiteral("application/@ColorScheme"))
             QVERIFY(!object.contains(QStringLiteral("appliesWhen")));
+        if(key == QStringLiteral("application/@ExternalCommands") ||
+           key == QStringLiteral("localview/@MediaVolume") ||
+           key == QStringLiteral("localview/@AutoPlayMedia"))
+            QCOMPARE(object[QStringLiteral("category")].toString(), QStringLiteral("page"));
+        if(key == QStringLiteral("localview/@MediaVolume") ||
+           key == QStringLiteral("localview/@AutoPlayMedia"))
+            QCOMPARE(object[QStringLiteral("group")].toString(),
+                     QCoreApplication::translate("SettingsSchema", "Local view"));
+        if(key == QStringLiteral("gadgets/@Style")){
+            const QJsonArray choices = object[QStringLiteral("choices")].toArray();
+            QCOMPARE(choices.count(), 3);
+            QCOMPARE(choices[0].toString(), QStringLiteral("PlainStyle"));
+            QCOMPARE(choices[1].toString(), QStringLiteral("FlatStyle"));
+            QCOMPARE(choices[2].toString(), QStringLiteral("GlassStyle"));
+            QVERIFY(object[QStringLiteral("hint")].toString().isEmpty());
+        }
+        if(key == QStringLiteral("gadgets/thumblist/@EnableBackdropBlur")){
+            const QJsonArray clauses = object[QStringLiteral("appliesWhen")].toArray();
+            QCOMPARE(clauses.count(), 3);
+            QCOMPARE(clauses[0].toObject()[QStringLiteral("value")].toString(), QStringLiteral("FlatStyle"));
+            QCOMPARE(clauses[1].toObject()[QStringLiteral("value")].toString(), QStringLiteral("GlassStyle"));
+            QCOMPARE(clauses[2].toObject()[QStringLiteral("key")].toString(),
+                     QStringLiteral("application/@EnableTransparentWindow"));
+            QCOMPARE(clauses[2].toObject()[QStringLiteral("value")].toBool(), true);
+        }
     }
 }
 
@@ -514,7 +540,7 @@ void tst_settingsschema::everyPreferenceRowIsAppliedByTheView(){
     QSet<QString> applied;
     const QRegularExpression setter
         (QStringLiteral("^\\s*gwes->setAttribute\\(QWebEngineSettings::(\\w+),"));
-    foreach(const QString &line, QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'))){
+    for(const QString &line : QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'))){
         const QRegularExpressionMatch match = setter.match(line);
         if(match.hasMatch()) applied << match.captured(1);
     }
@@ -552,11 +578,11 @@ void tst_settingsschema::everyAttributeTheViewAppliesReachesThePage(){
         (QStringLiteral("^\\s*gwes->setAttribute\\(QWebEngineSettings::(\\w+),"));
     const QRegularExpression copier
         (QStringLiteral("^\\s*s->(?:setAttribute|resetAttribute)\\(QWebEngineSettings::(\\w+)[,)]"));
-    foreach(const QString &line, source.split(QLatin1Char('\n'))){
+    for(const QString &line : source.split(QLatin1Char('\n'))){
         const QRegularExpressionMatch match = setter.match(line);
         if(match.hasMatch()) applied << match.captured(1);
     }
-    foreach(const QString &line, copy.split(QLatin1Char('\n'))){
+    for(const QString &line : copy.split(QLatin1Char('\n'))){
         const QRegularExpressionMatch match = copier.match(line);
         if(match.hasMatch()) copied << match.captured(1);
     }
@@ -580,7 +606,7 @@ void tst_settingsschema::aTabListItemMadeWithTheWindowAsksForARestart(){
     const QRegularExpression made
         (QStringLiteral("^\\s*m_(Enable\\w+)\\s*\\?\\s*new\\s"));
     int rows = 0;
-    foreach(const QString &line, QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'))){
+    for(const QString &line : QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'))){
         const QRegularExpressionMatch match = made.match(line);
         if(!match.hasMatch()) continue;
         const QString key = QStringLiteral("gadgets/thumblist/@") + match.captured(1);
@@ -714,7 +740,7 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
         << QStringLiteral("setPushServiceEnabled")
         << QStringLiteral("setHttpAcceptLanguage");
 
-    foreach(const QString &setter, setters){
+    for(const QString &setter : setters){
         QVERIFY2(widget.contains(QStringLiteral("profile->") + setter),
                  qPrintable(QStringLiteral("the widget profile is no longer told '%1'")
                             .arg(setter)));
@@ -737,7 +763,7 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
         << QStringLiteral(" AdoptPermissions(profile)")
         << QStringLiteral("ApplyQuickBlockRules(profile)")
         << QStringLiteral("ApplyQuickCommonSettings(profile)");
-    foreach(const QString &helper, helpers){
+    for(const QString &helper : helpers){
         QCOMPARE(source.count(helper), 3);
         QVERIFY2(privateBody.contains(helper),
                  qPrintable(QStringLiteral("the private quick profile no longer calls '%1'")
@@ -755,7 +781,7 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
         << QStringLiteral("setSpellCheckLanguages")
         << QStringLiteral("setSpellCheckEnabled")
         << QStringLiteral("setPushServiceEnabled");
-    foreach(const QString &setter, everyProfile){
+    for(const QString &setter : everyProfile){
         QVERIFY2(commonBody.contains(setter),
                  qPrintable(QStringLiteral("'%1' is no longer in the helper both "
                                            "quick profiles call").arg(setter)));
@@ -765,7 +791,7 @@ void tst_settingsschema::everySettingReachesTheProfilesItIsMeantFor(){
         << QStringLiteral("setPersistentCookiesPolicy")
         << QStringLiteral("setHttpCacheType")
         << QStringLiteral("setHttpCacheMaximumSize");
-    foreach(const QString &setter, diskOnly){
+    for(const QString &setter : diskOnly){
         QVERIFY2(!privateBody.contains(setter),
                  qPrintable(QStringLiteral("the private quick profile is told '%1', "
                                            "which is about disk").arg(setter)));
@@ -881,7 +907,7 @@ void tst_settingsschema::everyGraphicsApiChoiceMeansSomethingToQt(){
 #endif
 
     const QStringList choices = QString::fromLatin1(item->choices).split(QLatin1Char('|'));
-    foreach(const QString &choice, choices){
+    for(const QString &choice : choices){
         const QSGRendererInterface::GraphicsApi api = Application::GraphicsApiFor(choice);
         if(choice == QStringLiteral("Auto")){
             QCOMPARE(api, QSGRendererInterface::Unknown);

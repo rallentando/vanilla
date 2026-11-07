@@ -6,16 +6,14 @@
 #include "devicescale.hpp"
 
 #include <QWidget>
-#include <QMap>
-#include <QPointer>
 
 class QMenu;
 class QTimerEvent;
 class QPaintEvent;
+class QShowEvent;
+class QTimer;
 
 class TreeBank;
-class DownloadItem;
-class UploadItem;
 
 class Notifier : public QWidget {
     Q_OBJECT
@@ -29,7 +27,7 @@ public:
     } m_Position;
 
     Notifier(TreeBank *parent = nullptr, bool purge = false);
-    ~Notifier() Q_DECL_OVERRIDE;
+    ~Notifier() override;
 
     template <class T> T ScaleByDevice(T t) const {
         return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));
@@ -39,11 +37,6 @@ public:
     void Purge();
     void Join();
     void ResizeNotify(QSize size);
-    void RepaintIfNeed(const QRect &rect);
-    void RegisterDownload(DownloadItem *item);
-    void RegisterUpload(UploadItem *item);
-    void RemoveDownloadItem(DownloadItem *item);
-    void RemoveUploadItem(UploadItem *item);
 
 public slots:
     void SetStatus(const QString str);
@@ -58,8 +51,6 @@ public slots:
     void AutoSaveFinished(const QString & = QString());
 
     void SetScroll(QPointF pos);
-    void SetSaveProgress(QString file, qint64 received, qint64 total);
-    void SetOpenProgress(QString file, qint64 sent, qint64 total);
 
 signals:
     void ScrollRequest(QPointF);
@@ -70,34 +61,31 @@ private:
 
     TreeBank *m_TreeBank;
 
+    bool ShouldBeVisible() const;
+    void TextChanged();
+
     QPoint m_HotSpot;
     QPointF m_ScrollPos;
 
-    QMap<DownloadItem*, int> m_DownloadItemTable;
-    QMap<UploadItem*, int> m_UploadItemTable;
-
-    QPointer<DownloadItem> m_HoveredDownloadItem;
-    QPointer<UploadItem> m_HoveredUploadItem;
-    enum CancelButtonState {
-        NotHovered,
-        ItemHovered,
-        ButtonHovered,
-        ButtonPressed,
-    } m_CancelButtonState;
-
     bool m_UseLinkText;
+    bool m_LowerIsLink;
     QString m_UpperText;
     QString m_LowerText;
+    QTimer *m_StatusTimer;
+    QTimer *m_LinkTimer;
+    friend class tst_notifier;
     bool EmitScrollRequest(QPoint pos);
+    QRect ScrollAreaRect() const;
+    int ScrollMarkerInset() const;
 
 protected:
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void enterEvent(QEnterEvent *ev) Q_DECL_OVERRIDE;
-    void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
+    void timerEvent(QTimerEvent *ev) override;
+    void paintEvent(QPaintEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
+    void enterEvent(QEnterEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
 };
 
 #endif

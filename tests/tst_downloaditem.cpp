@@ -37,13 +37,13 @@ public:
 
     int Aborted() const { return m_Aborted;}
 
-    void abort() Q_DECL_OVERRIDE {
+    void abort() override {
         m_Aborted++;
         emit finished();
     }
 
 protected:
-    qint64 readData(char*, qint64) Q_DECL_OVERRIDE { return -1;}
+    qint64 readData(char*, qint64) override { return -1;}
 
 private:
     int m_Aborted;

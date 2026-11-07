@@ -15,6 +15,7 @@ const state = {
     inputEditing: false,
     inputBusy: false,
     passwords: null,
+    profiles: null,
     permissions: null,
     downloads: null,
     directory: null,
@@ -332,30 +333,151 @@ function drawInput(table, entry) {
     return holder;
 }
 
+function actionWords(query) {
+    return query.toLowerCase().split(/\s+/u).filter(Boolean);
+}
+function actionMatches(action, groupLabel, words) {
+    const text = (action.label + ' ' + action.name + ' ' + groupLabel).toLowerCase();
+    return words.every(word => text.includes(word));
+}
+
+let closeActionPicker = null;
+
 function actionSelect(table, value) {
-    const select = document.createElement('select');
-    select.className = 'action';
-    let found = false;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'action';
+    button.setAttribute('aria-haspopup', 'listbox');
+    button.value = value || 'NoAction';
+    button.textContent = button.value;
     for (const group of state.inputs.vocabularies[table.vocabulary]) {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = group.label;
         for (const action of group.actions) {
-            const option = document.createElement('option');
-            option.value = action.name;
-            option.textContent = action.label;
-            optgroup.appendChild(option);
-            if (action.name === value) found = true;
+            if (action.name === button.value) button.textContent = action.label;
         }
-        select.appendChild(optgroup);
     }
-    if (value && !found) {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = value;
-        select.insertBefore(option, select.firstChild);
-    }
-    select.value = value || 'NoAction';
-    return select;
+    button.addEventListener('click', () => openActionPicker(button, table));
+    button.addEventListener('keydown', e => {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        openActionPicker(button, table);
+    });
+    return button;
+}
+
+function openActionPicker(button, table) {
+    if (closeActionPicker) closeActionPicker();
+
+    const picker = document.createElement('div');
+    picker.className = 'action-picker';
+    const field = document.createElement('input');
+    field.type = 'text';
+    field.placeholder = state.inputs.strings.searchAction;
+    field.spellcheck = false;
+    const list = document.createElement('div');
+    list.className = 'list';
+    list.setAttribute('role', 'listbox');
+    picker.append(field, list);
+
+    let options = [];
+    let active = -1;
+    const setActive = index => {
+        if (options[active]) options[active].classList.remove('active');
+        active = index;
+        if (!options[active]) return;
+        options[active].classList.add('active');
+        options[active].scrollIntoView({block: 'nearest'});
+    };
+
+    const close = () => {
+        closeActionPicker = null;
+        picker.remove();
+        document.removeEventListener('pointerdown', onOutside, true);
+        window.removeEventListener('scroll', onScroll, true);
+        window.removeEventListener('resize', close);
+    };
+    const onOutside = e => { if (!picker.contains(e.target)) close(); };
+    const onScroll = e => { if (!picker.contains(e.target)) close(); };
+    const choose = action => {
+        close();
+        button.focus();
+        if (action.name === button.value) return;
+        button.value = action.name;
+        button.textContent = action.label;
+        button.dispatchEvent(new Event('change'));
+    };
+
+    const draw = () => {
+        const words = actionWords(field.value);
+        list.textContent = '';
+        options = [];
+        active = -1;
+        for (const group of state.inputs.vocabularies[table.vocabulary]) {
+            const actions = group.actions.filter(a => actionMatches(a, group.label, words));
+            if (!actions.length) continue;
+            const heading = document.createElement('div');
+            heading.className = 'group';
+            heading.textContent = group.label;
+            list.appendChild(heading);
+            for (const action of actions) {
+                const option = document.createElement('div');
+                option.className = 'option';
+                option.setAttribute('role', 'option');
+                option.textContent = action.label;
+                option.addEventListener('pointerdown', e => {
+                    e.preventDefault();
+                    choose(action);
+                });
+                option.addEventListener('pointermove', () => {
+                    if (options[active] !== option) setActive(options.indexOf(option));
+                });
+                option.action = action;
+                list.appendChild(option);
+                options.push(option);
+            }
+        }
+    };
+    field.addEventListener('input', () => {
+        draw();
+        setActive(options.length ? 0 : -1);
+    });
+    field.addEventListener('keydown', e => {
+        if (e.isComposing) return;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!options.length) return;
+            const step = e.key === 'ArrowDown' ? 1 : -1;
+            setActive((active + step + options.length) % options.length);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (options[active]) choose(options[active].action);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            close();
+            button.focus();
+        }
+    });
+
+    document.body.appendChild(picker);
+    draw();
+
+    const rect = button.getBoundingClientRect();
+    const margin = 8;
+    const below = window.innerHeight - rect.bottom - margin;
+    const above = rect.top - margin;
+    const room = below >= above || below >= picker.offsetHeight ? below : above;
+    picker.style.maxHeight = `${Math.min(room, window.innerHeight * 0.6)}px`;
+    picker.style.width = `${Math.max(rect.width, 260)}px`;
+    picker.style.left = `${Math.max(margin, Math.min(rect.left, window.innerWidth - picker.offsetWidth - margin))}px`;
+    if (room === below) picker.style.top = `${rect.bottom + 2}px`;
+    else picker.style.bottom = `${window.innerHeight - rect.top + 2}px`;
+
+    setActive(options.findIndex(o => o.action.name === button.value));
+    field.focus();
+    closeActionPicker = close;
+    document.addEventListener('pointerdown', onOutside, true);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', close);
 }
 
 function heldBack(table, entry) {
@@ -373,6 +495,7 @@ function replaceTable(described) {
 }
 
 function holdInputs() {
+    if (closeActionPicker) closeActionPicker();
     state.inputBusy = true;
     for (const node of el.main.querySelectorAll('.input-table button, .input-table select, .input-table input'))
         node.disabled = true;
@@ -484,9 +607,11 @@ function keyRecorder(onChange) {
     recorder.textContent = words.pressKey;
 
     let recording = false;
+    const hold = (on) => { api('input-recording', {on}).catch(() => {}); };
     const stop = () => {
         recording = false;
         stopRecording = null;
+        hold(false);
         recorder.classList.remove('recording');
         window.removeEventListener('keydown', onKey, true);
     };
@@ -504,13 +629,14 @@ function keyRecorder(onChange) {
         parts.push(name);
         const value = parts.join('+');
         stop();
-        recorder.textContent = value;
+        recorder.textContent = value.replace('Backtab', 'Tab');
         onChange(value);
     };
     recorder.addEventListener('click', () => {
         if (recording) return;
         recording = true;
         stopRecording = stop;
+        hold(true);
         recorder.classList.add('recording');
         recorder.textContent = words.recording;
         onChange('');
@@ -875,6 +1001,20 @@ async function removePassword(entry, button) {
     if (state.passwords.entries.some(e => sameEntry(e, entry))) toast(words.removeFailed);
 }
 
+async function removeNeverSite(entry, button) {
+    const words = state.passwords.strings;
+    button.disabled = true;
+    try {
+        await api('passwords-never-remove', {space: entry.space, origin: entry.origin});
+    } catch (e) {
+        toast(words.removeFailed);
+    }
+    await sleep(150);
+    await refreshPasswords();
+    if ((state.passwords.never || []).some(e => e.space === entry.space && e.origin === entry.origin))
+        toast(words.removeFailed);
+}
+
 async function removeAllPasswords() {
     const words = state.passwords.strings;
     if (!window.confirm(words.confirmAll)) return;
@@ -889,7 +1029,7 @@ async function removeAllPasswords() {
 
 function passwordMatches(entry, query, label) {
     if (!query) return true;
-    const haystack = (entry.origin + ' ' + entry.username + ' ' + label).toLowerCase();
+    const haystack = (entry.origin + ' ' + (entry.username || '') + ' ' + label).toLowerCase();
     return query.split(/\s+/).every(word => haystack.includes(word));
 }
 
@@ -898,7 +1038,8 @@ function renderPasswords(query, searching, label) {
     if (!data) return 0;
     const words = data.strings;
     const entries = data.entries.filter(e => passwordMatches(e, query, label));
-    if (searching && !entries.length) return 0;
+    const neverFound = (data.never || []).some(e => passwordMatches(e, query, label));
+    if (searching && !entries.length && !neverFound) return 0;
 
     const section = document.createElement('section');
     if (searching) {
@@ -948,6 +1089,43 @@ function renderPasswords(query, searching, label) {
         section.appendChild(row);
     }
 
+    const never = (data.never || []).filter(e => passwordMatches(e, query, label));
+    if (never.length) {
+        const heading = document.createElement('h3');
+        heading.className = 'group';
+        heading.textContent = words.neverHeading;
+        section.appendChild(heading);
+        if (!searching) section.appendChild(noticeLine(words.neverAbout));
+        const neverSpaces = new Set(data.never.map(e => e.space));
+        for (const entry of never) {
+            const row = document.createElement('div');
+            row.className = 'row';
+            const text = document.createElement('div');
+            text.className = 'text';
+            const site = document.createElement('span');
+            site.className = 'label';
+            site.textContent = shownOrigin(entry.origin);
+            text.appendChild(site);
+            if (neverSpaces.size > 1) {
+                const where = document.createElement('span');
+                where.className = 'hint';
+                where.textContent = words.space + ': ' + entry.space;
+                text.appendChild(where);
+            }
+            row.appendChild(text);
+            const holder = document.createElement('div');
+            holder.className = 'control';
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'browse';
+            button.textContent = words.remove;
+            button.addEventListener('click', () => removeNeverSite(entry, button));
+            holder.appendChild(button);
+            row.appendChild(holder);
+            section.appendChild(row);
+        }
+    }
+
     if (!searching && (data.edge || data.entries.length)) {
         const row = document.createElement('div');
         row.className = 'row';
@@ -974,6 +1152,155 @@ function renderPasswords(query, searching, label) {
 
     el.main.appendChild(section);
     return Math.max(entries.length, 1);
+}
+
+async function refreshProfiles() {
+    try {
+        state.profiles = await api('profiles');
+        render();
+    } catch (e) {
+    }
+}
+
+function shownBytes(bytes) {
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB';
+    return bytes + ' B';
+}
+
+async function removeProfile(entry, button) {
+    const words = state.profiles.strings;
+    const question = entry.name ? words.confirm.replace('%1', entry.name) : words.confirmNoName;
+    if (!window.confirm(question)) return;
+    button.disabled = true;
+    button.textContent = words.removing;
+    let answer = null;
+    try {
+        answer = await api('profiles-remove', {id: entry.id});
+    } catch (e) {
+        answer = null;
+    }
+    if (!answer || answer.error) {
+        toast(words.removeFailed);
+        render();
+        return;
+    }
+    await settleProfiles();
+}
+
+async function removeAllProfiles(count) {
+    const words = state.profiles.strings;
+    if (!window.confirm(words.confirmAll.replace('%1', count))) return;
+    let answer = null;
+    try {
+        answer = await api('profiles-remove-all', {});
+    } catch (e) {
+        answer = null;
+    }
+    if (!answer || answer.error) {
+        toast(words.removeFailed);
+        render();
+        return;
+    }
+    await settleProfiles();
+}
+
+async function settleProfiles() {
+    for (let i = 0; ; i++) {
+        await sleep(i ? 1000 : 150);
+        try {
+            state.profiles = await api('profiles');
+        } catch (e) {
+            break;
+        }
+        render();
+        if (!state.profiles.removing) break;
+    }
+}
+
+function renderProfiles(query, searching, label) {
+    const data = state.profiles;
+    if (!data) return 0;
+    const words = data.strings;
+    const rows = data.rows.filter(r => {
+        if (!query) return true;
+        const haystack = (r.name + ' ' + r.id + ' ' + label).toLowerCase();
+        return query.split(/\s+/).every(word => haystack.includes(word));
+    });
+    if (searching && !rows.length) return 0;
+
+    const section = document.createElement('section');
+    const heading = document.createElement(searching ? 'h2' : 'h3');
+    if (!searching) heading.className = 'group';
+    heading.textContent = label;
+    section.appendChild(heading);
+    if (!searching && !data.rows.length) section.appendChild(noticeLine(words.none));
+
+    for (const entry of rows) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const text = document.createElement('div');
+        text.className = 'text';
+        const title = document.createElement('span');
+        title.className = 'label';
+        title.textContent = entry.name || entry.id;
+        text.appendChild(title);
+        const state_ = document.createElement('span');
+        state_.className = 'hint';
+        const parts = entry.folders.map(f => f.kind + ' ' + shownBytes(f.bytes)).join(', ');
+        const said = entry.role ? words[entry.role] : entry.used ? words.used : entry.held ? words.held : words.unused;
+        state_.textContent = said +
+            ' / ' + shownBytes(entry.bytes) + (parts ? ' (' + parts + ')' : '') +
+            (entry.modified ? ' / ' + entry.modified.replace('T', ' ') : '');
+        text.appendChild(state_);
+        if (!entry.name) {
+            const warn = document.createElement('span');
+            warn.className = 'hint note';
+            warn.textContent = words.noName;
+            text.appendChild(warn);
+        }
+        row.appendChild(text);
+        if (!entry.used && !entry.held) {
+            const holder = document.createElement('div');
+            holder.className = 'control';
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'browse';
+            button.textContent = data.removing ? words.removing : words.remove;
+            button.disabled = !!data.removing;
+            button.addEventListener('click', () => removeProfile(entry, button));
+            holder.appendChild(button);
+            row.appendChild(holder);
+        }
+        section.appendChild(row);
+    }
+
+    const free = data.rows.filter(r => !r.used && !r.held).length;
+    if (!searching && free) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const text = document.createElement('div');
+        text.className = 'text';
+        const hint = document.createElement('span');
+        hint.className = 'hint';
+        hint.textContent = words.allHint.replace('%1', free);
+        text.appendChild(hint);
+        row.appendChild(text);
+        const holder = document.createElement('div');
+        holder.className = 'control';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'browse';
+        button.textContent = data.removing ? words.removing : words.removeAll;
+        button.disabled = !!data.removing;
+        button.addEventListener('click', () => removeAllProfiles(free));
+        holder.appendChild(button);
+        row.appendChild(holder);
+        section.appendChild(row);
+    }
+    el.main.appendChild(section);
+    return Math.max(rows.length, searching ? 0 : 1);
 }
 
 async function refreshPermissions() {
@@ -1029,9 +1356,90 @@ function kindLabel(data, kind) {
 function permissionMatches(entry, query, label) {
     if (!query) return true;
     const data = state.permissions;
-    const haystack = (entry.origin + ' ' + (kindLabel(data, entry.kind) || entry.kind) + ' ' +
+    const haystack = (entry.origin + ' ' + (entry.name || '') + ' ' +
+                      (kindLabel(data, entry.kind) || entry.kind) + ' ' +
                       data.strings[entry.state] + ' ' + label).toLowerCase();
     return query.split(/\s+/).every(word => haystack.includes(word));
+}
+
+function permissionAddCard(data) {
+    const words = data.strings;
+    const fragment = document.createDocumentFragment();
+    const heading = document.createElement('h3');
+    heading.className = 'group';
+    heading.textContent = words.addHeading;
+    fragment.appendChild(heading);
+    const card = document.createElement('div');
+    card.className = 'card';
+    const row = document.createElement('div');
+    row.className = 'row';
+    const site = document.createElement('input');
+    site.type = 'text';
+    site.className = 'text';
+    site.placeholder = words.addSite;
+    site.setAttribute('aria-label', words.addSite);
+    site.spellcheck = false;
+    row.appendChild(site);
+    const holder = document.createElement('div');
+    holder.className = 'control';
+    const kind = document.createElement('select');
+    const groups = {};
+    for (const name of data.kinds || Object.keys(data.labels)) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = data.labels[name];
+        const scope = Object.hasOwn(data.scopes, name) ? data.scopes[name] : '';
+        if (scope !== 'edge' && scope !== 'engine') {
+            kind.appendChild(option);
+            continue;
+        }
+        if (!groups[scope]) {
+            groups[scope] = document.createElement('optgroup');
+            groups[scope].label = scope === 'edge' ? words.edgeOnly : words.engineOnly;
+            kind.appendChild(groups[scope]);
+        }
+        groups[scope].appendChild(option);
+    }
+    holder.appendChild(kind);
+    const answer = document.createElement('select');
+    for (const name of ['allow', 'block']) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = words[name];
+        answer.appendChild(option);
+    }
+    holder.appendChild(answer);
+    const add = async () => {
+        if (!site.value.trim()) {
+            toast(words.badSite);
+            return;
+        }
+        try {
+            const reply = await api('permissions-set', {site: site.value, kind: kind.value, state: answer.value});
+            if (reply && reply.error) {
+                toast(reply.error === 'no such site' ? words.badSite : words.failed);
+                return;
+            }
+        } catch (e) {
+            toast(words.failed);
+            return;
+        }
+        await sleep(150);
+        await refreshPermissions();
+    };
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'browse';
+    button.textContent = words.add;
+    button.addEventListener('click', add);
+    site.addEventListener('keydown', e => {
+        if (e.key === 'Enter') add();
+    });
+    holder.appendChild(button);
+    row.appendChild(holder);
+    card.appendChild(row);
+    fragment.appendChild(card);
+    return fragment;
 }
 
 function renderPermissions(query, searching, label) {
@@ -1048,6 +1456,7 @@ function renderPermissions(query, searching, label) {
         section.appendChild(heading);
     } else {
         section.appendChild(noticeLine(data.entries.length ? words.about : words.none));
+        section.appendChild(permissionAddCard(data));
     }
 
     let card = null;
@@ -1057,7 +1466,7 @@ function renderPermissions(query, searching, label) {
             origin = entry.origin;
             const heading = document.createElement('h3');
             heading.className = 'group';
-            heading.textContent = origin;
+            heading.textContent = entry.name ? entry.name + ' (' + origin + ')' : origin;
             section.appendChild(heading);
             card = document.createElement('div');
             card.className = 'card';
@@ -1743,10 +2152,14 @@ function renderRows(category, query, searching) {
 
 function render() {
     if (stopRecording) stopRecording();
+    if (closeActionPicker) closeActionPicker();
     hideFloatingToggle();
     const query = state.query.trim().toLowerCase();
     const searching = query !== '';
 
+    const oldDirectoryList = el.main.querySelector('.dir-tree-list');
+    const directoryScroll = oldDirectoryList
+        ? { top: oldDirectoryList.scrollTop, left: oldDirectoryList.scrollLeft } : null;
     el.main.querySelectorAll('section').forEach(s => s.remove());
 
     document.body.classList.toggle('wide',
@@ -1767,6 +2180,10 @@ function render() {
         }
         if (category.name === 'permissions') {
             shown += renderPermissions(query, searching, category.label);
+            continue;
+        }
+        if (category.name === 'profiles') {
+            shown += renderProfiles(query, searching, category.label);
             continue;
         }
         if (category.name === 'downloads') {
@@ -1790,6 +2207,12 @@ function render() {
 
     for (const button of el.nav.querySelectorAll('button'))
         button.setAttribute('aria-current', String(!searching && button.dataset.name === state.current));
+
+    const directoryList = el.main.querySelector('.dir-tree-list');
+    if (directoryList && directoryScroll) {
+        directoryList.scrollTop = directoryScroll.top;
+        directoryList.scrollLeft = directoryScroll.left;
+    }
 }
 
 function jumpToSetting(key) {
@@ -1818,6 +2241,7 @@ function showCategory(name) {
     if (state.inputs && name === state.inputs.category) refreshInputs();
     if (name === 'passwords') refreshPasswords();
     if (name === 'permissions') refreshPermissions();
+    if (name === 'profiles') refreshProfiles();
     if (name === 'downloads') refreshDownloads();
     if (name === 'directory') refreshDirectory(state.directoryId);
 }
@@ -1846,9 +2270,23 @@ function buildNav() {
 }
 
 function categoryOfFragment() {
-    const name = window.location.hash.slice(1);
+    const name = window.location.hash.slice(1).split('?')[0];
     if (state.categories.some(category => category.name === name)) return name;
     return state.categories.length ? state.categories[0].name : null;
+}
+
+function findOfFragment() {
+    const found = window.location.hash.split('?find=')[1];
+    if (!found) return '';
+    try { return decodeURIComponent(found); } catch (e) { return ''; }
+}
+function showFindOfFragment() {
+    const find = findOfFragment();
+    if (!find) return;
+    if (categoryOfFragment() === 'input') state.inputEditing = true;
+    state.query = find;
+    el.search.value = find;
+    render();
 }
 
 async function refreshValues() {
@@ -1887,9 +2325,11 @@ async function main() {
 
     buildNav();
     render();
+    showFindOfFragment();
     document.documentElement.classList.remove('loading');
     if (state.categories.some(category => category.name === 'passwords')) refreshPasswords();
     if (state.categories.some(category => category.name === 'permissions')) refreshPermissions();
+    if (state.categories.some(category => category.name === 'profiles')) refreshProfiles();
     if (state.categories.some(category => category.name === 'downloads')) refreshDownloads();
     if (state.current === 'directory') refreshDirectory(null);
 
@@ -1900,6 +2340,7 @@ async function main() {
     window.addEventListener('hashchange', () => {
         const name = categoryOfFragment();
         if (name !== null) showCategory(name);
+        showFindOfFragment();
     });
 
     let searchTimer = 0;

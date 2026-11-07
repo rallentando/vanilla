@@ -50,6 +50,7 @@ set(VANILLA_HEADERS
     src/core/inputmap.hpp
     src/core/inputmapschema.hpp
     src/core/commandmap.hpp
+    src/core/searchsuggest.hpp
     src/core/commandframe.hpp
     src/core/certificatepolicy.hpp
     src/core/fileoperation.hpp
@@ -61,12 +62,17 @@ set(VANILLA_HEADERS
     src/core/extensioncopy.hpp
     src/core/extensionhostwire.hpp
     src/core/extensionmainscripts.hpp
+    src/core/extensionalarms.hpp
     src/core/extensionuserscripts.hpp
     src/core/extensionui.hpp
     src/core/dnrrules.hpp
     src/core/downloadname.hpp
     src/core/referrer.hpp
     src/core/passwordpolicy.hpp
+    src/core/urlorigin.hpp
+    src/core/spacerename.hpp
+    src/core/profilelist.hpp
+    src/app/profiles.hpp
     src/core/permissiontable.hpp
     src/core/qtlog.hpp
     src/core/loadending.hpp
@@ -83,6 +89,7 @@ set(VANILLA_HEADERS
     src/app/networkcontroller.hpp
     src/app/passwordstore.hpp
     src/app/downloadhistory.hpp
+    src/app/runninguploads.hpp
     src/app/sitepermissions.hpp
     src/core/switch.hpp
     src/core/callback.hpp
@@ -105,6 +112,7 @@ set(VANILLA_HEADERS
     src/view/localview.hpp
     src/view/webengine/webenginepage.hpp
     src/view/webengine/webenginepasswords.hpp
+    src/view/webengine/passwordsuggestions.hpp
     src/view/webengine/webengineview.hpp
     src/view/webengine/quickwebengineview.hpp
     src/view/quicknativewebview.hpp
@@ -144,6 +152,7 @@ set(VANILLA_SOURCES
     src/core/inputmap.cpp
     src/core/inputmapschema.cpp
     src/core/commandmap.cpp
+    src/core/searchsuggest.cpp
     src/core/commandframe.cpp
     src/core/certificatepolicy.cpp
     src/core/fileoperation.cpp
@@ -153,12 +162,16 @@ set(VANILLA_SOURCES
     src/core/extensioncopy.cpp
     src/core/extensionhostwire.cpp
     src/core/extensionmainscripts.cpp
+    src/core/extensionalarms.cpp
     src/core/extensionuserscripts.cpp
     src/core/extensionui.cpp
     src/core/dnrrules.cpp
     src/core/downloadname.cpp
     src/core/referrer.cpp
     src/core/passwordpolicy.cpp
+    src/core/spacerename.cpp
+    src/core/profilelist.cpp
+    src/app/profiles.cpp
     src/core/permissiontable.cpp
     src/core/qtlog.cpp
     src/core/nativehistory.cpp
@@ -172,6 +185,7 @@ set(VANILLA_SOURCES
     src/app/networkcontroller.cpp
     src/app/passwordstore.cpp
     src/app/downloadhistory.cpp
+    src/app/runninguploads.cpp
     src/app/sitepermissions.cpp
     src/ui/theme.cpp
     src/ui/blurbehind.cpp
@@ -190,6 +204,7 @@ set(VANILLA_SOURCES
     src/view/localview.cpp
     src/view/webengine/webenginepage.cpp
     src/view/webengine/webenginepasswords.cpp
+    src/view/webengine/passwordsuggestions.cpp
     src/view/webengine/webengineview.cpp
     src/view/webengine/quickwebengineview.cpp
     src/view/quicknativewebview.cpp
@@ -201,6 +216,7 @@ set(VANILLA_SOURCES
     src/view/edge/edgewebviewinspector.cpp
     src/view/edge/edgewebviewpage.cpp
     src/view/edge/edgewebviewprofile.cpp
+    src/view/edge/edgecookiecopy.cpp
     src/view/edge/edgewebviewstate.cpp
     src/view/edge/edgehostwindow.cpp
     src/view/edge/edgeeventsubscriptions.cpp
@@ -350,6 +366,31 @@ if(TARGET Qt6::WebEngineWidgets AND EXISTS "${VANILLA_QTKEYCHAIN_DIR}/keychain.c
         if(TARGET Qt6::WebChannelQuick)
             target_compile_definitions(vanilla_core PUBLIC VANILLA_QUICK_PASSWORDS)
             target_link_libraries(vanilla_core PUBLIC Qt6::WebChannelQuick)
+            # and the forms in frames, which take the QML item's private
+            # frame type (D-610). Without it, the main frame's only.
+            find_package(Qt6 QUIET COMPONENTS WebEngineQuickPrivate)
+            # a distribution may ship the package's CMake files without the
+            # headers (Ubuntu's 'qt6-webengine-dev'), and the target then
+            # names a directory which is not there; the header is looked for
+            # beside the public ones, or under 'Headers' of a framework, whose
+            # public directory is 'QtWebEngineQuick.framework' (D-610 追記 5).
+            set(VANILLA_QUICK_FRAME_HEADER OFF)
+            if(TARGET Qt6::WebEngineQuickPrivate)
+                get_target_property(_vanilla_quick_includes Qt6::WebEngineQuick INTERFACE_INCLUDE_DIRECTORIES)
+                foreach(_dir IN LISTS _vanilla_quick_includes)
+                    foreach(_sub "" "/Headers")
+                        if(EXISTS "${_dir}${_sub}/${Qt6WebEngineQuick_VERSION}/QtWebEngineQuick/private/qquickwebengineframe_p.h")
+                            set(VANILLA_QUICK_FRAME_HEADER ON)
+                        endif()
+                    endforeach()
+                endforeach()
+            endif()
+            if(VANILLA_QUICK_FRAME_HEADER)
+                target_compile_definitions(vanilla_core PUBLIC VANILLA_QUICK_PASSWORD_FRAMES)
+                target_link_libraries(vanilla_core PUBLIC Qt6::WebEngineQuickPrivate)
+            else()
+                message(STATUS "Qt WebEngineQuickPrivate or its headers were not found. a Quick view will not save passwords in frames.")
+            endif()
         else()
             message(STATUS "Qt WebChannelQuick was not found. a Quick view will not save passwords.")
         endif()

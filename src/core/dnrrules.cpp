@@ -85,7 +85,7 @@ namespace {
 
     QStringList StringList(const QJsonValue &value){
         QStringList list;
-        foreach(const QJsonValue &each, value.toArray())
+        for(const QJsonValue &each : value.toArray())
             if(each.isString()) list << each.toString().toLower();
         return list;
     }
@@ -117,7 +117,7 @@ namespace {
 
     QSet<QString> DomainSet(const QJsonValue &value){
         QSet<QString> set;
-        foreach(const QJsonValue &each, value.toArray())
+        for(const QJsonValue &each : value.toArray())
             if(each.isString()) set.insert(each.toString().toLower());
         return set;
     }
@@ -160,7 +160,7 @@ QString RegistrableDomain(const QString &host){
     const QStringList labels = host.split(QLatin1Char('.'));
     if(labels.size() <= 2) return host;
     bool numeric = true;
-    foreach(const QString &label, labels){
+    for(const QString &label : labels){
         bool ok = false;
         label.toUInt(&ok);
         if(!ok){ numeric = false; break; }
@@ -343,7 +343,7 @@ void Rules::AddRuleset(const QString &extensionId, const QByteArray &json, Skipp
             continue;
         }
         bool unread = false;
-        foreach(const QString &key, condition.keys())
+        for(const QString &key : condition.keys())
             if(!ReadConditions().contains(key)) unread = true;
         if(unread){
             left.unreadCondition++;

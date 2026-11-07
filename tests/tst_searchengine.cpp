@@ -19,6 +19,7 @@ private slots:
     void choosingWritesNothingAndAsksTwiceTheSame();
     void withNoEngineNothingIsAnswered();
     void theAddressIsTheTemplateWithTheQueryEncodedIn();
+    void theDefaultsAreSecureTemplatesWithGooglePrimary();
 };
 
 void tst_searchengine::theOneMarkedPrimaryIsIt(){
@@ -64,6 +65,22 @@ void tst_searchengine::theAddressIsTheTemplateWithTheQueryEncodedIn(){
     Page::RegisterSearchEngine(QStringLiteral("x"), engine);
     QCOMPARE(Page::CreateQueryUrl(QStringLiteral("a b")), QUrl(QStringLiteral("https://x.example/s?q=a%20b&x=1")));
     QCOMPARE(Page::CreateQueryUrl(QStringLiteral("a b"), QStringLiteral("x")), QUrl(QStringLiteral("https://x.example/s?q=a%20b&x=1")));
+}
+
+void tst_searchengine::theDefaultsAreSecureTemplatesWithGooglePrimary(){
+    Page::RegisterDefaultSearchEngines();
+    const QMap<QString, SearchEngine> engines = Page::GetSearchEngineMap();
+    QCOMPARE(engines.keys(), QStringList() << QStringLiteral("amazon") << QStringLiteral("bing")
+             << QStringLiteral("brave") << QStringLiteral("ddg") << QStringLiteral("ecosia")
+             << QStringLiteral("google") << QStringLiteral("wiki") << QStringLiteral("yahoo")
+             << QStringLiteral("yt"));
+    for(const QString &key : engines.keys()){
+        const SearchEngine engine = engines[key];
+        QVERIFY2(engine.length() == 3, qPrintable(key));
+        QVERIFY2(engine[0].startsWith(QStringLiteral("https://")), qPrintable(key));
+        QVERIFY2(engine[0].contains(QStringLiteral("%1")), qPrintable(key));
+        QCOMPARE(engine[2], key == QStringLiteral("google") ? QStringLiteral("true") : QStringLiteral("false"));
+    }
 }
 
 QTEST_MAIN(tst_searchengine)

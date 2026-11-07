@@ -267,7 +267,7 @@ QList<QUrl> Page::ExtractUrlsFromHtml(QString html, QUrl baseUrl, FindElementsOp
 QList<QUrl> Page::ExtractUrlsFromText(QString text, QUrl baseUrl){
     QList<QUrl> list;
     QStringList strs = text.split(QRegularExpression(QStringLiteral("[<>\\{\\}\\(\\)\"\\`\\'\\^\\|\n\r\t \\\\]+")));
-    foreach(QString str, strs){
+    for(QString str : std::as_const(strs)){
         str = str.trimmed();
         if(str.startsWith(QStringLiteral("/")) || str.startsWith(QStringLiteral("./")) || str.startsWith(QStringLiteral("../"))) ;
         else if(str.startsWith(VANILLA_SCHEME + QStringLiteral(":"))) ;
@@ -368,22 +368,31 @@ void Page::RegisterDefaultSearchEngines(){
     SearchEngine google;
     google << tr("https://www.google.com/search?c&q=%1&ie=UTF-8&oe=UTF-8") << QStringLiteral("UTF-8") << QStringLiteral("true");
     SearchEngine yahoo;
-    yahoo << tr("http://search.yahoo.com/search?ei=UTF-8&p=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    yahoo << tr("https://search.yahoo.com/search?ei=UTF-8&p=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine bing;
     bing << tr("https://www.bing.com/search?q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine amazon;
     amazon << tr("https://www.amazon.com/s/?field-keywords=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
     SearchEngine wiki;
     wiki << tr("https://en.wikipedia.org/w/index.php?search=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
-    SearchEngine ifl;
-    ifl << tr("https://www.google.com/search?btnI=I%27m+Feeling+Lucky&ie=UTF-8&oe=UTF-8&q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    SearchEngine ddg;
+    ddg << QStringLiteral("https://duckduckgo.com/?q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    SearchEngine brave;
+    brave << QStringLiteral("https://search.brave.com/search?q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    SearchEngine ecosia;
+    ecosia << QStringLiteral("https://www.ecosia.org/search?q=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
+    SearchEngine yt;
+    yt << QStringLiteral("https://www.youtube.com/results?search_query=%1") << QStringLiteral("UTF-8") << QStringLiteral("false");
 
     m_SearchEngineMap[QStringLiteral("google")] = google;
     m_SearchEngineMap[QStringLiteral("yahoo")] = yahoo;
     m_SearchEngineMap[QStringLiteral("bing")] = bing;
     m_SearchEngineMap[QStringLiteral("amazon")] = amazon;
     m_SearchEngineMap[QStringLiteral("wiki")] = wiki;
-    m_SearchEngineMap[QStringLiteral("ifl")] = ifl;
+    m_SearchEngineMap[QStringLiteral("ddg")] = ddg;
+    m_SearchEngineMap[QStringLiteral("brave")] = brave;
+    m_SearchEngineMap[QStringLiteral("ecosia")] = ecosia;
+    m_SearchEngineMap[QStringLiteral("yt")] = yt;
 }
 
 void Page::RegisterSearchEngine(QString key, SearchEngine engine){
@@ -407,7 +416,7 @@ SearchEngine Page::GetSearchEngine(QString key){
 }
 
 SearchEngine Page::PrimarySearchEngine(){
-    foreach(QString key, m_SearchEngineMap.keys()){
+    for(QString key : m_SearchEngineMap.keys()){
         if(m_SearchEngineMap[key].length() < 3)
             m_SearchEngineMap[key] << QStringLiteral("false");
         else if(m_SearchEngineMap[key][2] == QStringLiteral("true"))
@@ -1177,12 +1186,12 @@ void Page::AddSearchEngineAt(QPoint pos){
     QUrl result = Page::StringToUrl(list[2].toString(), base);
     QUrlQuery queries = QUrlQuery(result);
     QMap<QString, QString> engines;
-    foreach(QString key, list[3].toMap().keys()){
+    for(QString key : list[3].toMap().keys()){
         QString k = QString::fromLatin1(QUrl::toPercentEncoding(key));
         QString v = QString::fromLatin1(QUrl::toPercentEncoding(list[3].toMap()[key].toString()));
         queries.addQueryItem(k, v);
     }
-    foreach(QString key, list[4].toMap().keys()){
+    for(QString key : list[4].toMap().keys()){
         QString k = QString::fromLatin1(QUrl::toPercentEncoding(key));
         QString v = QString::fromLatin1(QUrl::toPercentEncoding(list[4].toMap()[key].toString()));
         engines[k] = v;
@@ -1676,15 +1685,7 @@ void Page::OpenAllUrl(){
 
     UrlCountCheck(urls.length(), [this, open, urls](bool result){
 
-    if(result){
-        QList<QNetworkRequest> reqs;
-        foreach(QUrl url, urls){
-            QNetworkRequest req(url);
-            req.setRawHeader("Referer", m_View->url().toEncoded());
-            reqs << req;
-        }
-        open(reqs);
-    }
+    if(result) open(RequestsFor(urls, true));
 });});});
 }
 
@@ -1699,15 +1700,7 @@ void Page::OpenAllImage(){
 
     UrlCountCheck(urls.length(), [this, open, urls](bool result){
 
-    if(result){
-        QList<QNetworkRequest> reqs;
-        foreach(QUrl url, urls){
-            QNetworkRequest req(url);
-            req.setRawHeader("Referer", m_View->url().toEncoded());
-            reqs << req;
-        }
-        open(reqs);
-    }
+    if(result) open(RequestsFor(urls, true));
 });});});
 }
 
@@ -1722,14 +1715,7 @@ void Page::OpenTextAsUrl(){
 
     UrlCountCheck(urls.length(), [this, open, urls](bool result){
 
-    if(result){
-        QList<QNetworkRequest> reqs;
-        foreach(QUrl url, urls){
-            QNetworkRequest req(url);
-            reqs << req;
-        }
-        open(reqs);
-    }
+    if(result) open(RequestsFor(urls, false));
 });});});
 }
 
@@ -1739,18 +1725,7 @@ void Page::SaveAllUrl(){
 
     QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveReference);
 
-    if(urls.isEmpty()) return;
-    QString directory =
-        ModalDialog::GetExistingDirectory(QString(), Application::GetDownloadDirectory());
-    if(directory.isEmpty()) return;
-    if(Application::GetDownloadPolicy() == Application::Undefined_ ||
-       Application::GetDownloadPolicy() == Application::AskForEachDownload)
-        Application::SetDownloadDirectory(directory + QStringLiteral("/"));
-    foreach(QUrl url, urls){
-        QNetworkRequest req(url);
-        req.setRawHeader("Referer", m_View->url().toEncoded());
-        Download(req, directory + QStringLiteral("/") + url.toString().split(QStringLiteral("/")).last());
-    }
+    DownloadInto(urls, true);
 });});
 }
 
@@ -1760,18 +1735,7 @@ void Page::SaveAllImage(){
 
     QList<QUrl> urls = ExtractUrlsFromHtml(html, base, HaveSource);
 
-    if(urls.isEmpty()) return;
-    QString directory =
-        ModalDialog::GetExistingDirectory(QString(), Application::GetDownloadDirectory());
-    if(directory.isEmpty()) return;
-    if(Application::GetDownloadPolicy() == Application::Undefined_ ||
-       Application::GetDownloadPolicy() == Application::AskForEachDownload)
-        Application::SetDownloadDirectory(directory + QStringLiteral("/"));
-    foreach(QUrl url, urls){
-        QNetworkRequest req(url);
-        req.setRawHeader("Referer", m_View->url().toEncoded());
-        Download(req, directory + QStringLiteral("/") + url.toString().split(QStringLiteral("/")).last());
-    }
+    DownloadInto(urls, true);
 });});
 }
 
@@ -1781,18 +1745,31 @@ void Page::SaveTextAsUrl(){
 
     QList<QUrl> urls = ExtractUrlsFromText(text, base);
 
+    DownloadInto(urls, false);
+});});
+}
+
+QList<QNetworkRequest> Page::RequestsFor(const QList<QUrl> &urls, bool referer) const {
+    QList<QNetworkRequest> reqs;
+    foreach(QUrl url, urls){
+        QNetworkRequest req(url);
+        if(referer) req.setRawHeader("Referer", m_View->url().toEncoded());
+        reqs << req;
+    }
+    return reqs;
+}
+
+void Page::DownloadInto(const QList<QUrl> &urls, bool referer){
     if(urls.isEmpty()) return;
     QString directory =
         ModalDialog::GetExistingDirectory(QString(), Application::GetDownloadDirectory());
     if(directory.isEmpty()) return;
-    if(Application::GetDownloadPolicy() == Application::Undefined_ ||
-       Application::GetDownloadPolicy() == Application::AskForEachDownload)
+    const Application::DownloadPolicy policy = Application::GetDownloadPolicy();
+    if(policy == Application::Undefined_ || policy == Application::AskForEachDownload)
         Application::SetDownloadDirectory(directory + QStringLiteral("/"));
-    foreach(QUrl url, urls){
-        QNetworkRequest req(url);
-        Download(req, directory + QStringLiteral("/") + url.toString().split(QStringLiteral("/")).last());
-    }
-});});
+    const QList<QNetworkRequest> reqs = RequestsFor(urls, referer);
+    for(int i = 0; i < reqs.size(); i++)
+        Download(reqs[i], directory + QStringLiteral("/") + urls[i].toString().split(QStringLiteral("/")).last());
 }
 
 QAction *Page::Action(CustomAction a, QVariant data){

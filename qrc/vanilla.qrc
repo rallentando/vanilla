@@ -14,6 +14,10 @@
     <file>../resources/blank@2x.png</file>
     <file>../resources/blankw.png</file>
     <file>../resources/blankw@2x.png</file>
+    <file>../resources/page.png</file>
+    <file>../resources/page@2x.png</file>
+    <file>../resources/pagew.png</file>
+    <file>../resources/pagew@2x.png</file>
     <file>../resources/folder.png</file>
     <file>../resources/folder@2x.png</file>
     <file>../resources/folderw.png</file>
@@ -60,8 +64,6 @@
     <file>../resources/treebar/table@2x.png</file>
     <file>../resources/treebar/plus.png</file>
     <file>../resources/treebar/plus@2x.png</file>
-    <file>../resources/notifier/close.png</file>
-    <file>../resources/notifier/close@2x.png</file>
     <file>../resources/toolbar/command.png</file>
     <file>../resources/toolbar/command@2x.png</file>
     <file>../resources/toolbar/search.png</file>
@@ -80,6 +82,8 @@
     <file>../resources/toolbar/site@2x.png</file>
     <file>../resources/settings/settings.png</file>
     <file>../resources/settings/settings@2x.png</file>
+    <file>../resources/settings/settings-loaded.png</file>
+    <file>../resources/settings/settings-loaded@2x.png</file>
     <file>../resources/menu/back.png</file>
     <file>../resources/menu/back@2x.png</file>
     <file>../resources/menu/forward.png</file>

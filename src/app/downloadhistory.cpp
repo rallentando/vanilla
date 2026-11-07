@@ -16,13 +16,16 @@
 #include <QMimeDatabase>
 #include <QProcess>
 #include <QSaveFile>
+#include <QSet>
+
+#include <iterator>
 
 namespace {
 
-    const char *StateWords[] = { "running", "completed", "cancelled", "failed", "interrupted" };
+    const char *const StateWords[] = { "running", "completed", "cancelled", "failed", "interrupted" };
 
     DownloadHistory::State StateOf(const QString &word){
-        for(int i = 0; i < 5; i++)
+        for(int i = 0; i < int(std::size(StateWords)); i++)
             if(word == QLatin1String(StateWords[i])) return static_cast<DownloadHistory::State>(i);
         return DownloadHistory::Interrupted;
     }
@@ -31,10 +34,10 @@ namespace {
 DownloadHistory *DownloadHistory::Instance(){
     static DownloadHistory *history = nullptr;
     if(!history){
+        QCoreApplication *application = QCoreApplication::instance();
         history = new DownloadHistory
-            (Application::StateDirectory() + QStringLiteral("downloads.json"),
-             QCoreApplication::instance());
-        if(QCoreApplication *application = QCoreApplication::instance())
+            (Application::StateDirectory() + QStringLiteral("downloads.json"), application);
+        if(application)
             connect(application, &QCoreApplication::aboutToQuit,
                     history, &DownloadHistory::SetClosing);
     }
@@ -57,7 +60,7 @@ QString DownloadHistory::StateName(State state){
 }
 
 bool DownloadHistory::IsRunnable(const QString &path, bool byContent){
-    static const QStringList extensions = QStringList()
+    static const QSet<QString> extensions = QSet<QString>()
         << QStringLiteral("exe") << QStringLiteral("bat") << QStringLiteral("cmd")
         << QStringLiteral("com") << QStringLiteral("msi") << QStringLiteral("msp")
         << QStringLiteral("ps1") << QStringLiteral("psm1") << QStringLiteral("js")
@@ -108,9 +111,7 @@ bool DownloadHistory::IsRunnable(const QString &path, bool byContent){
 }
 
 DownloadHistory::Entry *DownloadHistory::FindMutable(int id){
-    for(int i = 0; i < m_Entries.size(); i++)
-        if(m_Entries[i].id == id) return &m_Entries[i];
-    return nullptr;
+    return const_cast<Entry*>(Find(id));
 }
 
 const DownloadHistory::Entry *DownloadHistory::Find(int id) const {
@@ -120,9 +121,7 @@ const DownloadHistory::Entry *DownloadHistory::Find(int id) const {
 }
 
 QList<DownloadHistory::Entry> DownloadHistory::Entries() const {
-    QList<Entry> list;
-    for(int i = m_Entries.size() - 1; i >= 0; i--) list << m_Entries[i];
-    return list;
+    return QList<Entry>(m_Entries.crbegin(), m_Entries.crend());
 }
 
 QUrl DownloadHistory::SourcePageWorthKeeping(const QUrl &page, const QUrl &url){
@@ -173,9 +172,7 @@ void DownloadHistory::Ended(int id, State state){
     entry->ended = QDateTime::currentDateTime();
     if(state == Completed && entry->total > 0) entry->received = entry->total;
     m_Live.remove(id);
-    Commit();
-    emit ListChanged();
-    emit Changed();
+    CommitListChange();
 }
 
 bool DownloadHistory::Remove(int id){
@@ -184,9 +181,7 @@ bool DownloadHistory::Remove(int id){
         if(m_Entries[i].id != id) continue;
         if(m_Entries[i].state == Running) return false;
         m_Entries.removeAt(i);
-        Commit();
-        emit ListChanged();
-        emit Changed();
+        CommitListChange();
         return true;
     }
     return false;
@@ -194,14 +189,8 @@ bool DownloadHistory::Remove(int id){
 
 void DownloadHistory::Clear(){
     if(m_Closing) return;
-    QList<Entry> kept;
-    foreach(const Entry &entry, m_Entries)
-        if(entry.state == Running) kept << entry;
-    if(kept.size() == m_Entries.size()) return;
-    m_Entries = kept;
-    Commit();
-    emit ListChanged();
-    emit Changed();
+    if(!m_Entries.removeIf([](const Entry &entry){ return entry.state != Running;})) return;
+    CommitListChange();
 }
 
 bool DownloadHistory::Cancel(int id){
@@ -220,10 +209,8 @@ bool DownloadHistory::CanOpen(const Entry &entry){
 
 bool DownloadHistory::Open(int id){
     const Entry *entry = Find(id);
-    if(!entry) return false;
-    const QFileInfo info(entry->path);
-    if(entry->state != Completed || !info.isFile() || IsRunnable(entry->path)) return false;
-    return QDesktopServices::openUrl(QUrl::fromLocalFile(info.absoluteFilePath()));
+    if(!entry || !CanOpen(*entry) || IsRunnable(entry->path)) return false;
+    return QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(entry->path).absoluteFilePath()));
 }
 
 bool DownloadHistory::ShowInFolder(int id){
@@ -259,6 +246,12 @@ void DownloadHistory::Trim(){
     }
 }
 
+void DownloadHistory::CommitListChange(){
+    Commit();
+    emit ListChanged();
+    emit Changed();
+}
+
 void DownloadHistory::Load(){
     m_Entries.clear();
     QFile file(m_Path);
@@ -267,16 +260,16 @@ void DownloadHistory::Load(){
         QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("entries")).toArray();
     foreach(const QJsonValue &value, array){
         const QJsonObject obj = value.toObject();
+        const auto text = [&obj](const char *key){ return obj.value(QLatin1String(key)).toString();};
         Entry entry;
         entry.id = obj.value(QStringLiteral("id")).toInt();
-        entry.path = obj.value(QStringLiteral("path")).toString();
+        entry.path = text("path");
         if(entry.id <= 0 || entry.path.isEmpty()) continue;
-        entry.url = QUrl(obj.value(QStringLiteral("url")).toString());
-        entry.page = SourcePageWorthKeeping
-            (QUrl(obj.value(QStringLiteral("page")).toString()), entry.url);
-        entry.started = QDateTime::fromString(obj.value(QStringLiteral("started")).toString(), Qt::ISODate);
-        entry.ended = QDateTime::fromString(obj.value(QStringLiteral("ended")).toString(), Qt::ISODate);
-        entry.state = StateOf(obj.value(QStringLiteral("state")).toString());
+        entry.url = QUrl(text("url"));
+        entry.page = SourcePageWorthKeeping(QUrl(text("page")), entry.url);
+        entry.started = QDateTime::fromString(text("started"), Qt::ISODate);
+        entry.ended = QDateTime::fromString(text("ended"), Qt::ISODate);
+        entry.state = StateOf(text("state"));
         if(entry.state == Running) entry.state = Interrupted;
         entry.received = obj.value(QStringLiteral("received")).toVariant().toLongLong();
         entry.total = obj.value(QStringLiteral("total")).toVariant().toLongLong();

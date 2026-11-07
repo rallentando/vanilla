@@ -15,7 +15,7 @@ class Counting : public QObject {
     Q_OBJECT
 public:
     Counting(QEvent::Type type) : m_Type(type), count(0) {}
-    bool eventFilter(QObject *, QEvent *ev) Q_DECL_OVERRIDE {
+    bool eventFilter(QObject *, QEvent *ev) override {
         if(ev->type() == m_Type) count++;
         return false;
     }
@@ -28,7 +28,7 @@ class tst_startupwindows : public QObject {
 
     static void dropAllWindows(){
         Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
-        foreach(int id, Application::GetMainWindows().keys()){
+        for(int id : Application::GetMainWindows().keys()){
             MainWindow *win = Application::Window(id);
             Application::RemoveWindow(id);
             delete win;

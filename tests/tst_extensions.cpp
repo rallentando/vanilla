@@ -250,7 +250,7 @@ private slots:
         QCOMPARE(source.count(QStringLiteral("    ForgetPaths();\n")), 2);
         QList<bool> locked;
         int touching = 0, locks = 0;
-        foreach(const QString &line, source.split(QLatin1Char('\n'))){
+        for(const QString &line : source.split(QLatin1Char('\n'))){
             const bool takes = line.contains(QStringLiteral("QMutexLocker lock(&g_PathCacheMutex);"));
             if(takes){ locks++; if(!locked.isEmpty()) locked.last() = true; }
             if((line.contains(QStringLiteral("PathCache().")) || line.contains(QStringLiteral("g_PathCacheGeneration")))
@@ -392,7 +392,7 @@ private slots:
         auto copy = [&](const QString &to, const QString &version){
             QDir(to).removeRecursively();
             QVERIFY(QDir().mkpath(to + "/_locales/en"));
-            foreach(const QFileInfo &f, QDir(Fixture()).entryInfoList(QDir::Files))
+            for(const QFileInfo &f : QDir(Fixture()).entryInfoList(QDir::Files))
                 QVERIFY(QFile::copy(f.absoluteFilePath(), to + "/" + f.fileName()));
             QVERIFY(QFile::copy(Fixture() + "/_locales/en/messages.json", to + "/_locales/en/messages.json"));
             QFile m(to + "/manifest.json"); QVERIFY(m.open(QIODevice::ReadOnly));
@@ -578,7 +578,7 @@ private slots:
         auto copy = [&](const QString &to, const QString &version){
             QDir(to).removeRecursively();
             QVERIFY(QDir().mkpath(to));
-            foreach(const QFileInfo &f, QDir(Fixture()).entryInfoList(QDir::Files))
+            for(const QFileInfo &f : QDir(Fixture()).entryInfoList(QDir::Files))
                 QVERIFY(QFile::copy(f.absoluteFilePath(), to + "/" + f.fileName()));
             QVERIFY(QDir(Fixture() + "/_locales/en").exists());
             QVERIFY(QDir().mkpath(to + "/_locales/en"));
@@ -1092,6 +1092,23 @@ private slots:
         QVERIFY(ExtensionController::EnabledIds().isEmpty());
         s.setValue("network/@DisabledExtensions", QStringList{});
         QCOMPARE(ExtensionController::EnabledIds().size(), 1);
+    }
+    void anExtensionIsNamedByItsIdEnabledOrNot() {
+        Settings &s = Application::GlobalSettings();
+        const QStringList before = s.value("network/@Extensions").toStringList();
+        const QStringList disabledBefore = s.value("network/@DisabledExtensions").toStringList();
+        const ExtensionManifest manifest = ExtensionManifest::Read(Fixture());
+        QVERIFY(!manifest.id.isEmpty());
+        QVERIFY(!manifest.name.isEmpty());
+        s.setValue("network/@Extensions", QStringList{Fixture()});
+        s.setValue("network/@DisabledExtensions", QStringList{Fixture()});
+        QCOMPARE(ExtensionController::NameOfId(manifest.id), manifest.name);
+        QCOMPARE(ExtensionController::NameOfId(QStringLiteral("nothing")), QString());
+        s.setValue("network/@Extensions", QStringList{});
+        s.setValue("network/@DisabledExtensions", QStringList{});
+        QCOMPARE(ExtensionController::NameOfId(manifest.id), QString());
+        s.setValue("network/@Extensions", before);
+        s.setValue("network/@DisabledExtensions", disabledBefore);
     }
     void pickDirectoryFallsBackFromChromesExtensions() {
         QTemporaryDir dir;

@@ -113,7 +113,6 @@ namespace {
 
 Application *Application::m_Instance = nullptr;
 bool Application::m_RestoringWindows = false;
-int Application::m_DelayFileCount = 0;
 
 static SettingsIO::Hooks SettingsHooks(){
     SettingsIO::Hooks hooks;
@@ -136,6 +135,7 @@ Settings    Application::m_GlobalSettings    = Settings();
 Settings    Application::m_IconTable         = Settings();
 
 bool        Application::m_EnableGoogleSuggest = false;
+QString     Application::m_SuggestEngine = QStringLiteral("Google");
 bool        Application::m_EnableFramelessWindow = false;
 bool        Application::m_EnableTransparentWindow = false;
 bool        Application::m_TransparentWindowEffective = false;
@@ -147,11 +147,11 @@ bool        Application::m_EnableAutoLoad    = false;
 int         Application::m_AutoSaveInterval  = 0;
 int         Application::m_AutoLoadInterval  = 0;
 int         Application::m_AutoSaveTimerId   = 0;
+bool        Application::m_AutoSaveMayStart  = false;
 int         Application::m_AutoLoadTimerId   = 0;
 int         Application::m_MaxBackUpGenerationCount = 0;
 QString     Application::m_DownloadDirectory = QString();
 QString     Application::m_UploadDirectory   = QString();
-QStringList Application::m_ChosenFiles       = QStringList();
 bool        Application::m_SaveSessionCookie = false;
 QString     Application::m_AcceptLanguage    = QString();
 QStringList Application::m_AllowedHosts      = QStringList();
@@ -180,7 +180,7 @@ namespace {
     class MenuStyle : public QProxyStyle {
     public:
         int pixelMetric(PixelMetric metric, const QStyleOption *option,
-                        const QWidget *widget) const Q_DECL_OVERRIDE {
+                        const QWidget *widget) const override {
             const int base = QProxyStyle::pixelMetric(metric, option, widget);
             switch(metric){
             case PM_MenuVMargin:
@@ -190,7 +190,7 @@ namespace {
         }
 
         QSize sizeFromContents(ContentsType type, const QStyleOption *option,
-                               const QSize &size, const QWidget *widget) const Q_DECL_OVERRIDE {
+                               const QSize &size, const QWidget *widget) const override {
             QSize contents = QProxyStyle::sizeFromContents(type, option, size, widget);
             if(type == CT_MenuItem){
                 const QStyleOptionMenuItem *item =
@@ -234,7 +234,7 @@ namespace {
         }
 
         void drawControl(ControlElement element, const QStyleOption *option,
-                         QPainter *painter, const QWidget *widget) const Q_DECL_OVERRIDE {
+                         QPainter *painter, const QWidget *widget) const override {
             if(element == CE_MenuItem){
                 const QStyleOptionMenuItem *item =
                     qstyleoption_cast<const QStyleOptionMenuItem*>(option);
@@ -258,7 +258,7 @@ namespace {
         }
 
         void drawPrimitive(PrimitiveElement element, const QStyleOption *option,
-                           QPainter *painter, const QWidget *widget) const Q_DECL_OVERRIDE {
+                           QPainter *painter, const QWidget *widget) const override {
             if(element == PE_PanelMenu && widget && widget->testAttribute(Qt::WA_TranslucentBackground)){
                 painter->save();
                 painter->setRenderHint(QPainter::Antialiasing, true);
@@ -274,7 +274,7 @@ namespace {
             if(element == PE_FrameMenu) DrawSeparatorsAcross(widget, painter);
         }
 
-        void polish(QWidget *widget) Q_DECL_OVERRIDE {
+        void polish(QWidget *widget) override {
             QProxyStyle::polish(widget);
             if(BlurBehind::Enabled() && qobject_cast<QMenu*>(widget)){
                 widget->setAttribute(Qt::WA_TranslucentBackground);
@@ -282,7 +282,7 @@ namespace {
             }
         }
 
-        bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE {
+        bool eventFilter(QObject *watched, QEvent *ev) override {
             if(ev->type() == QEvent::Show)
                 if(QWidget *widget = qobject_cast<QWidget*>(watched)) BlurBehind::Apply(widget);
             return QProxyStyle::eventFilter(watched, ev);
@@ -295,7 +295,7 @@ namespace {
 
     class PopupCloser : public QAbstractNativeEventFilter {
     public:
-        bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) Q_DECL_OVERRIDE {
+        bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) override {
             Q_UNUSED(result)
             if(eventType != "windows_generic_MSG" || !message) return false;
             const MSG *msg = static_cast<const MSG*>(message);
@@ -336,6 +336,7 @@ void Application::CloseAllPopups(){
 }
 
 Application::~Application(){
+    TreeBank::StopTellingTabs();
     if(m_NetworkController){
         m_NetworkController->deleteLater();
     }
@@ -409,11 +410,12 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
         << QStringLiteral("qt")     << QStringLiteral("qtbase")
         << QStringLiteral("custom") << QStringLiteral("vanilla");
 
-    foreach(QString locale, locales){
+    for(QString locale : locales){
         foreach(QString prefix, prefixes){
             QTranslator *translator = new QTranslator(instance);
-            translator->load(prefix + QStringLiteral("_") + locale, path);
-            installTranslator(translator);
+            if(translator->load(prefix + QStringLiteral("_") + locale, path))
+                installTranslator(translator);
+            else delete translator;
         }
     }
     LoadSettingsFile();
@@ -468,6 +470,7 @@ void Application::BootApplication(int &argc, char **argv, Application *instance)
     QTimer::singleShot(0, [=](){
 
         CreateBackUpFiles();
+        m_AutoSaveMayStart = true;
         StartAutoSaveTimer();
         StartAutoLoadTimer();
 
@@ -655,7 +658,7 @@ void Application::AboutVanilla(QWidget *parent){
 
     const QFontMetrics metrics(box.font());
     int widest = 0;
-    foreach(const QString &line, lines)
+    for(const QString &line : std::as_const(lines))
         widest = qMax(widest, metrics.horizontalAdvance(line));
     const QScreen *screen = CurrentWidget() ? CurrentWidget()->screen() : primaryScreen();
     const int limit = screen ? screen->availableGeometry().width() * 3 / 4 : 1200;
@@ -763,7 +766,7 @@ void Application::TakeDown(){
         StopAutoLoadTimer();
         StopAutoSaveTimer();
 
-        foreach(MainWindow *win, Windows().All().values()){
+        for(MainWindow *win : Windows().All().values()){
             win->hide();
         }
 
@@ -846,6 +849,7 @@ void Application::SaveGlobalSettings(){
     Settings &s = GlobalSettings();
 
     s.setValue(QStringLiteral("application/@EnableGoogleSuggest"),      m_EnableGoogleSuggest);
+    s.setValue(QStringLiteral("application/@SuggestEngine"),            m_SuggestEngine);
     s.setValue(QStringLiteral("application/@EnableFramelessWindow"),    m_EnableFramelessWindow);
     s.setValue(QStringLiteral("application/@EnableTransparentWindow"),     m_EnableTransparentWindow);
     s.setValue(QStringLiteral("application/@EnableTranslucentPanels"),  m_EnableTranslucentPanels);
@@ -885,6 +889,7 @@ void Application::LoadGlobalSettings(){
     Settings &s = GlobalSettings();
 
     m_EnableGoogleSuggest      = s.value(QStringLiteral("application/@EnableGoogleSuggest"), false).value<bool>();
+    m_SuggestEngine            = s.value(QStringLiteral("application/@SuggestEngine"), QStringLiteral("Google")).toString();
     m_EnableFramelessWindow    = s.value(QStringLiteral("application/@EnableFramelessWindow"), false).value<bool>();
     m_EnableTransparentWindow     = s.value(QStringLiteral("application/@EnableTransparentWindow"), false).value<bool>();
     m_EnableTranslucentPanels  = s.value(QStringLiteral("application/@EnableTranslucentPanels"), false).value<bool>();
@@ -1154,6 +1159,7 @@ void Application::RegisterIcon(QString host, QIcon icon, bool offTheRecord){
         if(size.width() > 32) size = QSize(32, 32);
         icon = QIcon(icon.pixmap(size));
         m_IconTable[host] = QVariant::fromValue(icon);
+        TreeBank::TabsLookChanged();
     }
 }
 
@@ -1164,17 +1170,28 @@ QIcon Application::GetIcon(QString host){
 }
 
 QIcon Application::GetIcon(const QUrl &url){
+    return GetIcon(url, false);
+}
+
+QIcon Application::GetIcon(const QUrl &url, bool loaded){
     if(url.scheme() == QStringLiteral("vanilla") && url.host() == QStringLiteral("settings")){
+        const QString name = loaded ? QStringLiteral(":/resources/settings/settings-loaded")
+                                    : QStringLiteral(":/resources/settings/settings");
         QIcon icon;
-        icon.addPixmap(Theme::Pixmap(QStringLiteral(":/resources/settings/settings.png"), Theme::BarIcon));
-        icon.addPixmap(Theme::Pixmap(QStringLiteral(":/resources/settings/settings@2x.png"), Theme::BarIcon));
+        icon.addPixmap(Theme::Pixmap(name + QStringLiteral(".png"), Theme::BarIcon));
+        icon.addPixmap(Theme::Pixmap(name + QStringLiteral("@2x.png"), Theme::BarIcon));
         return icon;
     }
     return GetIcon(url.host());
 }
 
 void Application::Reconfigure(){
+    const bool wasAutoSave = m_EnableAutoSave;
+    const int  wasInterval = m_AutoSaveInterval;
     LoadGlobalSettings();
+    if(m_AutoSaveMayStart && !IsQuitting() &&
+       (m_EnableAutoSave != wasAutoSave || m_AutoSaveInterval != wasInterval))
+        RestartAutoSaveTimer();
     const bool schemeChanged = Theme::ApplyScheme(m_ColorScheme);
     LoadIconDatabase();
     TreeBar::LoadSettings();
@@ -1184,6 +1201,13 @@ void Application::Reconfigure(){
     NetworkController::ApplyAcceptLanguage();
 #endif
     ExtensionController::ReloadAll();
+    for(MainWindow *win : Windows().All().values()){
+        TreeBank *tb = win->GetTreeBank();
+        if(Notifier *notifier = tb->GetNotifier()){
+            notifier->ResizeNotify(tb->size());
+            notifier->update();
+        }
+    }
     if(schemeChanged) UpdateAllWidgets();
 }
 
@@ -1197,6 +1221,10 @@ bool Application::EnableAutoLoad(){
 
 bool Application::EnableGoogleSuggest(){
     return m_EnableGoogleSuggest;
+}
+
+QString Application::SuggestEngine(){
+    return m_SuggestEngine;
 }
 
 bool Application::EnableFramelessWindow(){
@@ -1257,7 +1285,7 @@ void Application::UpdateAllWidgets(){
         if(DownloadPanel *panel = qobject_cast<DownloadPanel*>(widget)) panel->ApplyTheme();
         widget->update();
     }
-    foreach(MainWindow *win, Windows().All().values()){
+    for(MainWindow *win : Windows().All().values()){
         win->ApplyTheme();
         if(TreeBar *bar = win->GetTreeBar()) bar->ApplyTheme();
         if(TreeBank *tb = win->GetTreeBank()) tb->ApplyTheme();
@@ -1282,10 +1310,6 @@ QString Application::GetUploadDirectory(){
     if(m_UploadDirectory.isEmpty())
         m_UploadDirectory = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation) + QStringLiteral("/");
     return m_UploadDirectory;
-}
-
-void Application::SetMaxBackUpGenerationCount(int count){
-    m_MaxBackUpGenerationCount = count;
 }
 
 QStringList Application::BackUpFileFilters(){
@@ -1391,18 +1415,6 @@ QString Application::IconDatabaseFileName(bool tmp){
     return (tmp ? BackUpPreposition() : QString()) + QStringLiteral("icondata.json");
 }
 
-void Application::AppendChosenFile(QString file){
-    m_ChosenFiles << file;
-}
-
-void Application::RemoveChosenFile(QString file){
-    m_ChosenFiles.removeOne(file);
-}
-
-QStringList Application::ChosenFiles(){
-    return m_ChosenFiles;
-}
-
 bool Application::SaveSessionCookie(){
     return m_SaveSessionCookie;
 }
@@ -1411,10 +1423,6 @@ QString Application::GetAcceptLanguage(){
     if(m_AcceptLanguage.isEmpty())
         return UserAgent::DefaultAcceptLanguage(QLocale::system().uiLanguages());
     return m_AcceptLanguage;
-}
-
-void Application::SetAcceptLanguage(QString acceptLanguage){
-    m_AcceptLanguage = acceptLanguage;
 }
 
 QStringList Application::GetAllowedHosts(){
@@ -1427,11 +1435,6 @@ void Application::AppendToAllowedHosts(QString host, bool offTheRecord){
         m_AllowedHosts << host;
 }
 
-void Application::RemoveFromAllowedHosts(QString host){
-    if(m_AllowedHosts.contains(host))
-        m_AllowedHosts.removeOne(host);
-}
-
 QStringList Application::GetBlockedHosts(){
     return m_BlockedHosts;
 }
@@ -1440,11 +1443,6 @@ void Application::AppendToBlockedHosts(QString host, bool offTheRecord){
     if(offTheRecord) return;
     if(!m_BlockedHosts.contains(host))
         m_BlockedHosts << host;
-}
-
-void Application::RemoveFromBlockedHosts(QString host){
-    if(m_BlockedHosts.contains(host))
-        m_BlockedHosts.removeOne(host);
 }
 
 QStringList Application::GetAllowedCertificates(){
@@ -1564,6 +1562,23 @@ namespace {
 QString Application::EventToken(){
     static const QString token = RandomToken();
     return token;
+}
+
+bool Application::PageKeyFromMessage(const QString &msg, PageKey &key){
+    static const QString flags = QStringLiteral(",([0-9]+),(true|false),(true|false),(true|false),(true|false)");
+    if(ExactMatch(QStringLiteral("keyPressEvent") + EventToken() + flags, msg))
+        key.type = QEvent::KeyPress;
+    else if(ExactMatch(QStringLiteral("keyReleaseEvent") + EventToken() + flags, msg))
+        key.type = QEvent::KeyRelease;
+    else return false;
+    const QStringList args = msg.split(QStringLiteral(","));
+    key.key = JsKeyToQtKey(args[1].toInt());
+    key.modifiers = Qt::NoModifier;
+    if(args[2] == QStringLiteral("true")) key.modifiers |= Qt::ShiftModifier;
+    if(args[3] == QStringLiteral("true")) key.modifiers |= Qt::ControlModifier;
+    if(args[4] == QStringLiteral("true")) key.modifiers |= Qt::AltModifier;
+    if(args[5] == QStringLiteral("true")) key.modifiers |= Qt::MetaModifier;
+    return true;
 }
 
 QString Application::EdgeEventToken(){
@@ -1690,7 +1705,7 @@ QList<int> Application::SavedWindowIds(const Settings &s){
 void Application::DropIdleShells(const QSet<int> &restored, MainWindow *lastRestored){
     if(lastRestored) Windows().SetCurrent(lastRestored);
     MainWindow *keep = restored.isEmpty() ? Windows().Current() : nullptr;
-    foreach(MainWindow *win, Windows().All().values()){
+    for(MainWindow *win : Windows().All().values()){
         if(win == keep) continue;
         if(restored.contains(Windows().IdOf(win))) continue;
         if(win->GetTreeBank()->GetCurrentViewNode()) continue;
@@ -1741,10 +1756,6 @@ void Application::SetCurrentWindow(MainWindow *win){
 void Application::SetCurrentWindow(int id){
     Windows().SetCurrent(id);
     TreeBank::SomethingChanged();
-}
-
-int Application::WindowId(MainWindow *win){
-    return Windows().IdOf(win);
 }
 
 MainWindow *Application::Window(int id){
@@ -1809,11 +1820,11 @@ bool Application::MayOpenWithDefaultBrowser(const QUrl &url){
     const QString path = url.toLocalFile();
     if(path.isEmpty() || path.startsWith(QStringLiteral("//")) ||
        path.contains(QLatin1Char('\\'))) return false;
-    foreach(const QChar c, path)
+    for(const QChar c : path)
         if(c.unicode() < 0x20 || c.unicode() == 0x7f) return false;
 #if defined(Q_OS_WIN)
     if(path.indexOf(QLatin1Char(':'), 2) >= 0) return false;
-    foreach(const QString &segment, path.split(QLatin1Char('/')))
+    for(const QString &segment : path.split(QLatin1Char('/')))
         if(segment.endsWith(QLatin1Char('.')) || segment.endsWith(QLatin1Char(' '))) return false;
 #endif
     return !DownloadHistory::IsRunnable(path);
@@ -1829,7 +1840,7 @@ QList<QPair<QString, QString> > Application::ExternalCommands(){
     const QStringList lines =
         m_GlobalSettings.value(QStringLiteral("application/@ExternalCommands"),
                                QStringList()).value<QStringList>();
-    foreach(QString line, lines){
+    for(QString line : lines){
         const int equal = line.indexOf(QLatin1Char('='));
         if(equal == -1) continue;
         const QString name = line.left(equal).trimmed();
@@ -1882,7 +1893,7 @@ void Application::CreateBackUpFiles(){
                       << SecondaryTreeFileName()
                       << CookieFileName();
 
-    foreach(QString file, backupfiles){
+    for(QString file : std::as_const(backupfiles)){
         QString original = StateDirectory() + file;
         QString backup   = StateDirectory() + date + file;
 
@@ -1901,7 +1912,7 @@ void Application::CreateBackUpFiles(){
 
 void Application::StartAutoSaveTimer(){
     if(m_EnableAutoSave && !m_AutoSaveTimerId)
-        m_AutoSaveTimerId = m_Instance->startTimer(m_AutoSaveInterval);
+        m_AutoSaveTimerId = m_Instance->startTimer(qMax(m_AutoSaveInterval, 1000));
 }
 
 void Application::StartAutoLoadTimer(){

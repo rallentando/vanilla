@@ -39,6 +39,7 @@
 #include "webenginepasswords.hpp"
 #include "quickwebengineview.hpp"
 #include "application.hpp"
+#include "runninguploads.hpp"
 #include "networkcontroller.hpp"
 #include "sitepermissions.hpp"
 #include "mainwindow.hpp"
@@ -134,6 +135,9 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, bool offTheRecord, QObje
                                             std::function<void(const QVariant&)> done){
             if(page) page->runJavaScript(code, QWebEngineScript::ApplicationWorld, done);
         };
+        host.mainFrame = [page](){
+            return page ? page->mainFrame() : QWebEngineFrame();
+        };
         host.mapToGlobal = [page](const QPoint &pos){
             QWebEngineView *view = page ? QWebEngineView::forPage(page) : nullptr;
             return view ? view->mapToGlobal(pos) : QCursor::pos();
@@ -141,11 +145,19 @@ WebEnginePage::WebEnginePage(NetworkAccessManager *nam, bool offTheRecord, QObje
         host.message = [page](const QString &text){
             if(page) emit page->statusBarMessage(text);
         };
+        host.widget = [page]() -> QWidget* {
+            return page ? QWebEngineView::forPage(page) : nullptr;
+        };
+        host.managePasswords = [page](){
+            if(!page) return;
+            if(TreeBank *tb = page->m_View->GetTreeBank()) tb->OpenPasswords();
+        };
         WebEnginePasswords *passwords = new WebEnginePasswords(this, host);
         QWebChannel *channel = new QWebChannel(passwords);
         channel->registerObject(QStringLiteral("vanillaPasswords"), passwords->Bridge());
         setWebChannel(channel, QWebEngineScript::ApplicationWorld);
         connect(this, &QWebEnginePage::loadStarted, passwords, &WebEnginePasswords::Forget);
+        connect(this, &QWebEnginePage::urlChanged, passwords, &WebEnginePasswords::Navigated);
     }
 #endif
 
@@ -222,35 +234,21 @@ QStringList WebEnginePage::chooseFiles(FileSelectionMode mode, const QStringList
         QStringList path = file.split(QStringLiteral("/"));
         path.removeLast();
         Application::SetUploadDirectory(path.join(QStringLiteral("/")));
-        foreach(QString file, files){
-            Application::AppendChosenFile(file);
-        }
     }
     return files;
 }
 
 void WebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,
                                              int lineNumber, const QString &sourceId){
-    if(Application::ExactMatch(QStringLiteral("keyPressEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
-        QStringList args = msg.split(QStringLiteral(","));
-        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
-        if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
-        if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
-        if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
-        QKeyEvent ke = QKeyEvent(QEvent::KeyPress, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
-        Application::InputScope key(true);
-        m_View->KeyPressEvent(&ke);
-        return;
-    } else if(Application::ExactMatch(QStringLiteral("keyReleaseEvent%1,([0-9]+),(true|false),(true|false),(true|false),(true|false)").arg(Application::EventToken()), msg)){
-        QStringList args = msg.split(QStringLiteral(","));
-        Qt::KeyboardModifiers modifiers = Qt::NoModifier;
-        if(args[2] == QStringLiteral("true")) modifiers |= Qt::ShiftModifier;
-        if(args[3] == QStringLiteral("true")) modifiers |= Qt::ControlModifier;
-        if(args[4] == QStringLiteral("true")) modifiers |= Qt::AltModifier;
-        if(args[5] == QStringLiteral("true")) modifiers |= Qt::MetaModifier;
-        QKeyEvent ke = QKeyEvent(QEvent::KeyRelease, Application::JsKeyToQtKey(args[1].toInt()), modifiers);
-        m_View->KeyReleaseEvent(&ke);
+    Application::PageKey pageKey;
+    if(Application::PageKeyFromMessage(msg, pageKey)){
+        QKeyEvent ke = QKeyEvent(pageKey.type, pageKey.key, pageKey.modifiers);
+        if(pageKey.type == QEvent::KeyPress){
+            Application::InputScope key(true);
+            m_View->KeyPressEvent(&ke);
+        } else {
+            m_View->KeyReleaseEvent(&ke);
+        }
         return;
     }
     QWebEnginePage::javaScriptConsoleMessage(level, msg, lineNumber, sourceId);
@@ -426,6 +424,8 @@ void WebEnginePage::HandleFullScreen(QWebEngineFullScreenRequest request){
 }
 
 void WebEnginePage::HandleProcessTermination(RenderProcessTerminationStatus status, int code){
+    RunningUploads::Instance()->Ended(m_View);
+
     if(lifecycleState() == QWebEnginePage::LifecycleState::Discarded) return;
 
     const RenderProcessLedger::Verdict verdict =
@@ -465,40 +465,37 @@ void WebEnginePage::HandleScrollPositionChange(const QPointF &pos){
     m_View->EmitScrollChanged();
 }
 
+namespace {
+
+    template <class Request>
+    void AskAllowOrBlock(WebEnginePage *page, const QString &title, const QString &info, Request request){
+        ModelessDialog *dialog = new ModelessDialog();
+        QObject::connect(page, &WebEnginePage::destroyed, dialog, &ModelessDialog::Returned);
+        dialog->SetTitle(title);
+        dialog->SetCaption(info);
+        dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
+        dialog->SetDefaultValue(false);
+        dialog->SetCallBack([dialog, request](bool ok) mutable {
+            if(!ok) return;
+            if(dialog->ClickedButton() == Dialog::Allow) request.accept();
+            if(dialog->ClickedButton() == Dialog::Block) request.reject();
+        });
+        QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    }
+}
+
 void WebEnginePage::HandleQuota(QWebEngineQuotaRequest request){
     QString info = tr("This page requests persistent storage.\n");
     info += tr("Url: %1\n").arg(request.origin().toString());
     info += tr("Size: %1 bytes.").arg(request.requestedSize());
-    ModelessDialog *dialog = new ModelessDialog();
-    connect(this, &WebEnginePage::destroyed, dialog, &ModelessDialog::Returned);
-    dialog->SetTitle(tr("Quota requested."));
-    dialog->SetCaption(info);
-    dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-    dialog->SetDefaultValue(false);
-    dialog->SetCallBack([dialog, request](bool ok) mutable {
-        if(!ok) return;
-        if(dialog->ClickedButton() == Dialog::Allow) request.accept();
-        if(dialog->ClickedButton() == Dialog::Block) request.reject();
-    });
-    QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    AskAllowOrBlock(this, tr("Quota requested."), info, request);
 }
 
 void WebEnginePage::HandleRegisterProtocolHandler(QWebEngineRegisterProtocolHandlerRequest request){
     QString info = tr("This page tries to register a custom protocol.\n");
     info += tr("Url: %1\n").arg(request.origin().toString());
     info += tr("Scheme: %1").arg(request.scheme());
-    ModelessDialog *dialog = new ModelessDialog();
-    connect(this, &WebEnginePage::destroyed, dialog, &ModelessDialog::Returned);
-    dialog->SetTitle(tr("Register protocol handler requested."));
-    dialog->SetCaption(info);
-    dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-    dialog->SetDefaultValue(false);
-    dialog->SetCallBack([dialog, request](bool ok) mutable {
-        if(!ok) return;
-        if(dialog->ClickedButton() == Dialog::Allow) request.accept();
-        if(dialog->ClickedButton() == Dialog::Block) request.reject();
-    });
-    QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    AskAllowOrBlock(this, tr("Register protocol handler requested."), info, request);
 }
 
 void WebEnginePage::HandleSelectClientCertificate(QWebEngineClientCertificateSelection selection){
@@ -570,16 +567,10 @@ void WebEnginePage::HandleCertificateError(QWebEngineCertificateError error){
             error.acceptCertificate();
             return;
         }
-        ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
-        dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
-        dialog->SetInformativeText(tr("Allow or Block this host?"));
-        dialog->SetDetailedText(tr("Url: %1\nSsl error : %2")
-                                .arg(error.url().toString(), error.description()));
-        dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-        dialog->Execute();
-
-        const Dialog::Button clicked = dialog->ClickedButton();
+        const Dialog::Button clicked = ModalDialog::AllowBlockOrCancel
+            (tr("SSL errors on host: %1").arg(host),
+             tr("Allow or Block this host?"),
+             tr("Url: %1\nSsl error : %2").arg(error.url().toString(), error.description()));
         if(clicked == Dialog::Allow){
             Application::AppendToAllowedHosts(host, offTheRecord);
             error.acceptCertificate();
@@ -607,19 +598,13 @@ void WebEnginePage::HandleCertificateError(QWebEngineCertificateError error){
             break;
         }
 
-        ModalDialog *dialog = new ModalDialog();
-        dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
-        dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
-        dialog->SetInformativeText(tr("Allow or Block this certificate?"));
         QString detail = tr("Url: %1\nSsl error : %2")
             .arg(error.url().toString(), error.description());
         if(!fingerprint.isEmpty())
             detail += QStringLiteral("\nSHA-256: ") + fingerprint;
-        dialog->SetDetailedText(detail);
-        dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-        dialog->Execute();
-
-        const Dialog::Button clicked = dialog->ClickedButton();
+        const Dialog::Button clicked = ModalDialog::AllowBlockOrCancel
+            (tr("SSL errors on host: %1").arg(host),
+             tr("Allow or Block this certificate?"), detail);
         if(clicked == Dialog::Allow){
             Application::RememberCertificate(key, true, offTheRecord);
             error.acceptCertificate();
@@ -647,18 +632,7 @@ void WebEnginePage::HandleFileSystemAccess(QWebEngineFileSystemAccessRequest req
         .arg(request.filePath().toLocalFile());
     info += write ? tr("Access: read and write") : tr("Access: read");
 
-    ModelessDialog *dialog = new ModelessDialog();
-    connect(this, &WebEnginePage::destroyed, dialog, &ModelessDialog::Returned);
-    dialog->SetTitle(tr("File system access requested."));
-    dialog->SetCaption(info);
-    dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-    dialog->SetDefaultValue(false);
-    dialog->SetCallBack([dialog, request](bool ok) mutable {
-        if(!ok) return;
-        if(dialog->ClickedButton() == Dialog::Allow) request.accept();
-        if(dialog->ClickedButton() == Dialog::Block) request.reject();
-    });
-    QTimer::singleShot(0, dialog, [dialog](){ dialog->Execute();});
+    AskAllowOrBlock(this, tr("File system access requested."), info, request);
 }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)

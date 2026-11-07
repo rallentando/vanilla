@@ -1,9 +1,13 @@
 #ifndef GRAPHICSTABLEVIEW_HPP
 #define GRAPHICSTABLEVIEW_HPP
 
+#include <optional>
 #include "switch.hpp"
+#include "spentbuttons.hpp"
 
 #include <QGraphicsObject>
+#include <QGraphicsTextItem>
+#include <QTimer>
 
 #include "treebank.hpp"
 #include "thumbnail.hpp"
@@ -29,6 +33,10 @@ class CloneButton;
 class SoundButton;
 class UpDirectoryButton;
 class ToggleTrashButton;
+class CloseTableButton;
+class TableHeader;
+class HeaderFilter;
+class GraphicsButton;
 
 class GraphicsTableView : public QGraphicsObject {
     Q_OBJECT
@@ -111,8 +119,12 @@ public slots:
     void StopAutoUpdateTimer();
     void RestartAutoUpdateTimer();
 
+    bool IsAutoUpdating() const { return m_AutoUpdateTimerId != 0;}
+    bool IsCountingFrames() const { return m_FrameRateTimerId != 0;}
+
 public:
     void Update(QRectF rect = QRectF());
+    void ScheduleRepaint();
 
     SpotLight *GetPrimarySpotLight() const;
     SpotLight *GetHoveredSpotLight() const;
@@ -145,8 +157,6 @@ public:
     inline bool IsHovered(NodeTitle *title) const { return title && title == GetHoveredNodeTitle();}
     inline bool IsPrimary(Thumbnail *thumb) const { return thumb && thumb == GetPrimaryThumbnail();}
     inline bool IsPrimary(NodeTitle *title) const { return title && title == GetPrimaryNodeTitle();}
-    inline bool IsLoaded (Thumbnail *thumb) const { return thumb && thumb->GetNode()->GetView();}
-    inline bool IsLoaded (NodeTitle *title) const { return title && title->GetNode()->GetView();}
 
     void ClearThumbnailSelection();
     void ClearNodeTitleSelection();
@@ -163,6 +173,12 @@ public:
     void LetGoOf(const QSet<Node*> &going, Node *formerParent);
     void RelocateScrollBar();
     void AppendToSelection(Node*);
+    NodeList NodesToPutAside();
+    bool PasteTakesSelection() const;
+    void TakeSelectionForPaste();
+    bool PasteNodeAt(const QPointF &pos);
+    QPointF PastePosition() const;
+    std::optional<QPointF> m_MenuPos;
     void RemoveFromSelection(Node*);
     void SetSelectedByIndex(int);
     void SetSelectionRange(Node*, Node*);
@@ -172,11 +188,16 @@ public:
     bool MoveTo(bool, std::function<int(int, int)>);
     bool SelectTo(std::function<void()>);
     bool TransferTo(bool, bool, std::function<int(Thumbnail*, int, int)>);
+    bool TransferToDirectory(bool up);
 
     virtual QMenu *CreateNodeMenu(){ return 0;}
+
+    virtual bool TakeMappedPress(QGraphicsSceneMouseEvent*){ return false;}
+    void ForgetSpentPress(Qt::MouseButton button){ m_TakenButtons.Press(button, false);}
+    bool SettleSpentPress(Qt::MouseButton button){ return m_TakenButtons.Settle(button);}
     virtual void RenderBackground(QPainter *painter);
-    virtual QRectF boundingRect() const Q_DECL_OVERRIDE;
-    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *item = 0, QWidget *widget = 0) Q_DECL_OVERRIDE;
+    virtual QRectF boundingRect() const override;
+    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *item = 0, QWidget *widget = 0) override;
     QRectF ThumbnailAreaRect();
     QRectF NodeTitleAreaRect();
     QRectF ScrollBarAreaRect();
@@ -191,6 +212,23 @@ public:
     static bool EnableCloneButton();
     static bool EnableAnimation();
     static bool EnableFrameRate();
+
+    bool HasHeader() const {
+        return m_DisplayType == ViewTree
+            || m_DisplayType == TrashTree
+            || m_DisplayType == LocalFolderTree;
+    }
+    int ContentsTop() const;
+    QRectF HeaderRect() const;
+    QRectF HeaderButtonRect(const GraphicsButton *button) const;
+    QString HeaderButtonLabel(const GraphicsButton *button) const;
+    QRectF HeaderCloseRect() const;
+    virtual QStringList BreadcrumbTitles();
+    virtual void BreadcrumbActivated(int index);
+    QRectF HeaderFilterRect() const;
+    QString HeaderFilterPlaceholder() const;
+    void SetFilter(const QString &text);
+    virtual void OnFilterChanged();
 
     enum SortFlag {
         NoSort           = 0,
@@ -237,7 +275,8 @@ protected:
     virtual Node *DisplayedViewNode() const {
         return m_TreeBank ? m_TreeBank->GetCurrentViewNode() : nullptr;
     }
-    void CollectNodes(Node *root, QString filter = QString());
+    void CollectNodes(Node *root);
+    void ResetFilter();
 
 public:
     static qreal ScrollIndicatorY(qreal maxY, qreal scroll, qreal maxScroll);
@@ -275,22 +314,22 @@ signals:
     void titleChanged(const QString&);
 
 protected:
-    virtual void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    virtual void dropEvent             (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    virtual void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    virtual void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mousePressEvent       (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    virtual void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    virtual void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    virtual void contextMenuEvent      (QGraphicsSceneContextMenuEvent *ev) Q_DECL_OVERRIDE;
-    virtual void wheelEvent            (QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
-    virtual void focusInEvent          (QFocusEvent *ev) Q_DECL_OVERRIDE;
-    virtual void focusOutEvent         (QFocusEvent *ev) Q_DECL_OVERRIDE;
-    void timerEvent(QTimerEvent *ev) Q_DECL_OVERRIDE;
+    virtual void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) override;
+    virtual void dropEvent             (QGraphicsSceneDragDropEvent *ev) override;
+    virtual void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) override;
+    virtual void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) override;
+    virtual void mousePressEvent       (QGraphicsSceneMouseEvent *ev) override;
+    virtual void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) override;
+    virtual void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) override;
+    virtual void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) override;
+    virtual void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) override;
+    virtual void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) override;
+    virtual void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) override;
+    virtual void contextMenuEvent      (QGraphicsSceneContextMenuEvent *ev) override;
+    virtual void wheelEvent            (QGraphicsSceneWheelEvent *ev) override;
+    virtual void focusInEvent          (QFocusEvent *ev) override;
+    virtual void focusOutEvent         (QFocusEvent *ev) override;
+    void timerEvent(QTimerEvent *ev) override;
 
 public slots:
     virtual bool ThumbList_Refresh();
@@ -302,6 +341,8 @@ public slots:
     virtual bool ThumbList_DeleteRightNode();
     virtual bool ThumbList_DeleteLeftNode();
     virtual bool ThumbList_DeleteOtherNode();
+    virtual bool ThumbList_CutNode();
+    virtual bool ThumbList_CopyNode();
     virtual bool ThumbList_PasteNode();
     virtual bool ThumbList_RestoreNode();
     virtual bool ThumbList_NewNode();
@@ -374,6 +415,7 @@ private:
     int m_CurrentFrameRate;
 
     int m_AutoUpdateTimerId;
+    QTimer m_RepaintTimer;
 
     ViewNode *m_DummyViewNode;
 
@@ -387,6 +429,7 @@ private:
     static bool m_EnableInPlaceNotifier;
     static bool m_EnableCloseButton;
     static bool m_EnableCloneButton;
+    static QString m_SelectionOperation;
     static bool m_EnableAnimation;
     static bool m_EnableFrameRate;
 
@@ -428,6 +471,7 @@ protected:
     float m_CurrentThumbnailZoomFactor;
 
     QGraphicsRectItem *m_SelectRect;
+    SpentButtons m_TakenButtons;
 
     static NodeList m_NodesRegister;
 
@@ -448,6 +492,15 @@ protected:
     UpDirectoryButton *m_UpDirectoryButton;
 
     ToggleTrashButton *m_ToggleTrashButton;
+
+    CloseTableButton *m_CloseTableButton;
+
+    TableHeader *m_TableHeader;
+    HeaderFilter *m_HeaderFilter;
+    QString m_FilterText;
+    Node *m_FilterDirectory;
+
+    void RelocateHeader();
 
     inline bool IsDisplayingNode() const {
         if(!isVisible()) return false;
@@ -484,6 +537,7 @@ protected:
     friend class GadgetsStyle;
     friend class GlassStyle;
     friend class FlatStyle;
+    friend class PlainStyle;
 };
 
 class SpotLight : public QGraphicsItem {
@@ -492,9 +546,9 @@ public:
     SpotLight(GraphicsTableView::SpotLightType type, QGraphicsItem *parent = 0);
     ~SpotLight();
 
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
-    QPainterPath shape() const Q_DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    QRectF boundingRect() const override;
+    QPainterPath shape() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
 private:
     GraphicsTableView::SpotLightType m_Type;
@@ -511,23 +565,23 @@ public:
     ScrollIndicator(QGraphicsItem *parent = 0);
     ~ScrollIndicator();
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
 private:
     GraphicsTableView *m_TableView;
 
 protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
-    void dragEnterEvent    (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dropEvent         (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragMoveEvent     (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void dragLeaveEvent    (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+    void dragEnterEvent    (QGraphicsSceneDragDropEvent *ev) override;
+    void dropEvent         (QGraphicsSceneDragDropEvent *ev) override;
+    void dragMoveEvent     (QGraphicsSceneDragDropEvent *ev) override;
+    void dragLeaveEvent    (QGraphicsSceneDragDropEvent *ev) override;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) override;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) override;
 };
 
 class InPlaceNotifier : public QGraphicsRectItem {
@@ -536,7 +590,7 @@ public:
     InPlaceNotifier(QGraphicsItem *parent = 0);
     ~InPlaceNotifier();
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
     Node *GetNode() const { return m_Node;}
     void SetNode(Node *nd);
@@ -544,14 +598,14 @@ public:
     GraphicsTableView *GetTableView() const { return m_TableView;}
 
 protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) Q_DECL_OVERRIDE;
-    void wheelEvent        (QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+    void wheelEvent        (QGraphicsSceneWheelEvent *ev) override;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) override;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) override;
 
 private:
     GraphicsTableView *m_TableView;
@@ -576,12 +630,12 @@ public:
     GraphicsTableView *GetTableView() const { return m_TableView;}
 
 protected:
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) override;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) override;
 
     void HoverItem();
 
@@ -603,11 +657,11 @@ public:
     void SetItem(Thumbnail *thumb);
     void SetItem(NodeTitle *title);
 
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    QRectF boundingRect() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) override;
 
 private:
     Node *m_Node;
@@ -625,11 +679,11 @@ public:
     void SetItem(Thumbnail *thumb);
     void SetItem(NodeTitle *title);
 
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    QRectF boundingRect() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) override;
 
 private:
     Node *m_Node;
@@ -647,40 +701,149 @@ public:
     void SetItem(Thumbnail *thumb);
     void SetItem(NodeTitle *title);
 
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    QRectF boundingRect() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) override;
 
 private:
     Node *m_Node;
 };
 
-class UpDirectoryButton : public GraphicsButton {
+class HeaderButton : public GraphicsButton {
+
+public:
+    HeaderButton(QGraphicsItem *parent = 0) : GraphicsButton(parent){}
+
+    QRectF boundingRect() const override { return m_Rect;}
+    void SetRect(const QRectF &rect){ prepareGeometryChange(); m_Rect = rect; update();}
+
+private:
+    QRectF m_Rect;
+};
+
+class UpDirectoryButton : public HeaderButton {
 
 public:
     UpDirectoryButton(QGraphicsItem *parent = 0);
     ~UpDirectoryButton();
 
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) override;
 };
 
-class ToggleTrashButton : public GraphicsButton {
+class ToggleTrashButton : public HeaderButton {
 
 public:
     ToggleTrashButton(QGraphicsItem *parent = 0);
     ~ToggleTrashButton();
 
-    QRectF boundingRect() const Q_DECL_OVERRIDE;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) Q_DECL_OVERRIDE;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
 
 protected:
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) override;
+};
+
+class CloseTableButton : public HeaderButton {
+
+public:
+    CloseTableButton(QGraphicsItem *parent = 0);
+    ~CloseTableButton();
+
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
+
+protected:
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *ev) override;
+};
+
+class TableHeader : public QGraphicsItem {
+
+public:
+    TableHeader(GraphicsTableView *parent);
+    ~TableHeader();
+
+    GraphicsTableView *GetTableView() const { return m_TableView;}
+
+    QRectF boundingRect() const override { return m_Rect;}
+    void SetRect(const QRectF &rect){ prepareGeometryChange(); m_Rect = rect; update();}
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
+
+    qreal BreadcrumbLeft() const;
+    qreal BreadcrumbRight() const;
+    QList<QRectF> SegmentRects(const QStringList &titles) const;
+    static QFont SegmentFont(bool last);
+    static qreal TextShift(const QFont &font);
+    qreal SegmentPadding() const;
+    qreal SeparatorWidth() const;
+    qreal EllipsisWidth() const;
+
+    int HoveredSegment() const { return m_HoveredSegment;}
+
+protected:
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) override;
+    void hoverEnterEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverLeaveEvent   (QGraphicsSceneHoverEvent *ev) override;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) override;
+
+private:
+    int SegmentAt(QPointF pos) const;
+    void SetHoveredSegment(int index);
+
+    GraphicsTableView *m_TableView;
+    QRectF m_Rect;
+    int m_HoveredSegment;
+    int m_PressedSegment;
+};
+
+class HeaderFilter : public QGraphicsItem {
+
+public:
+    HeaderFilter(GraphicsTableView *parent);
+    ~HeaderFilter();
+
+    GraphicsTableView *GetTableView() const { return m_TableView;}
+    QGraphicsTextItem *TextItem() const { return m_TextItem;}
+
+    QRectF boundingRect() const override { return m_Rect;}
+    void SetRect(const QRectF &rect);
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *item, QWidget *widget) override;
+
+    QString Text() const;
+    void SetText(const QString &text);
+    bool IsEditing() const;
+    QRectF ClearRect() const;
+
+protected:
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) override;
+    void hoverMoveEvent    (QGraphicsSceneHoverEvent *ev) override;
+
+private:
+    void OnContentsChanged();
+
+    GraphicsTableView *m_TableView;
+    QGraphicsTextItem *m_TextItem;
+    QRectF m_Rect;
+    bool m_Silent;
+};
+
+class HeaderFilterText : public QGraphicsTextItem {
+
+public:
+    HeaderFilterText(HeaderFilter *parent);
+
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+
+protected:
+    void keyPressEvent(QKeyEvent *ev) override;
+    void focusInEvent(QFocusEvent *ev) override;
+    void focusOutEvent(QFocusEvent *ev) override;
+
+private:
+    HeaderFilter *m_Filter;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(GraphicsTableView::SortFlags);

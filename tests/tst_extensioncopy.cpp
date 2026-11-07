@@ -23,6 +23,8 @@ class tst_extensioncopy : public QObject {
     Q_OBJECT
 
 private slots:
+    void theWorkersShimIsPutTogetherForItsManifest();
+    void theAlarmsAreTheApplicationsOnlyWhereEverythingCanAskIt();
     void initTestCase();
     void init();
 
@@ -264,7 +266,7 @@ void tst_extensioncopy::theCopyHasTheShimsAndTheOriginalIsUntouched(){
     QCOMPARE(worker, QStringLiteral("background_scripts/vanilla_worker.js"));
     QCOMPARE(Read(made.path + QLatin1Char('/') + worker),
              "// vanilla copy " + QFileInfo(made.path).fileName().toLatin1() + "\nimport './vanilla_worker_shim.js';\nimport './main.js';\n");
-    QCOMPARE(Read(made.path + QStringLiteral("/background_scripts/vanilla_worker_shim.js")), Cdp::WorkerShim().toUtf8() + ";\n");
+    QCOMPARE(Read(made.path + QStringLiteral("/background_scripts/vanilla_worker_shim.js")), Cdp::WorkerShim(QStringList()).toUtf8() + ";\n");
     QCOMPARE(Read(made.path + QStringLiteral("/vanilla_content_shim.js")), Cdp::ContentShim().toUtf8() + ";\n");
     QCOMPARE(Read(made.path + QStringLiteral("/background_scripts/main.js")), QByteArray("import './other.js';\n"));
     QCOMPARE(Read(made.path + QStringLiteral("/lib/types.js")), QByteArray("var types = 1;\n"));
@@ -596,7 +598,7 @@ void tst_extensioncopy::theKeyGoesIntoTheShimAndTheStamp(){
     const QByteArray shim = Read(made.path + QStringLiteral("/background_scripts/vanilla_worker_shim.js"));
     QVERIFY(shim.contains(key));
     QVERIFY(!shim.contains(place));
-    QCOMPARE(shim, Cdp::WorkerShim().toUtf8().replace(place, key) + ";\n");
+    QCOMPARE(shim, Cdp::WorkerShim(QStringList()).toUtf8().replace(place, key) + ";\n");
 
     const QByteArray bytes = Read(source + QStringLiteral("/manifest.json"));
     QVERIFY(ExtensionCopy::Stamp(source, bytes, key) != ExtensionCopy::Stamp(source, bytes, QByteArray(64, 'd')));
@@ -607,7 +609,7 @@ void tst_extensioncopy::theKeyGoesIntoTheShimAndTheStamp(){
         ExtensionCopy::ForgetForTesting();
         const ExtensionCopy::Made unkeyed = ExtensionCopy::Make(source, dir.filePath(QStringLiteral("copies-") + QString::number(qHash(bad))), QStringLiteral("idid"), bad);
         QVERIFY2(unkeyed.note.isEmpty(), qPrintable(unkeyed.note));
-        QCOMPARE(Read(unkeyed.path + QStringLiteral("/background_scripts/vanilla_worker_shim.js")), Cdp::WorkerShim().toUtf8() + ";\n");
+        QCOMPARE(Read(unkeyed.path + QStringLiteral("/background_scripts/vanilla_worker_shim.js")), Cdp::WorkerShim(QStringList()).toUtf8() + ";\n");
     }
 }
 
@@ -872,7 +874,7 @@ void tst_extensioncopy::whatTheWebMayReadGetsNoKey(){
     QCOMPARE(worker.contains(place), keyless);
     QCOMPARE(page.contains(place), keyless);
     QCOMPARE(worker.startsWith("try { console.warn('vanilla: the shims of this extension were written without their key"), keyless);
-    QVERIFY(worker.endsWith(Cdp::WorkerShim().toUtf8().replace(place, keyless ? place : key) + ";\n"));
+    QVERIFY(worker.endsWith(Cdp::WorkerShim(QStringList()).toUtf8().replace(place, keyless ? place : key) + ";\n"));
     ExtensionCopy::ForgetForTesting();
     const ExtensionCopy::Made unkeyed = ExtensionCopy::Make(source, dir.filePath(QStringLiteral("copies2")), QStringLiteral("idid"));
     QVERIFY(!Read(unkeyed.path + QStringLiteral("/background_scripts/vanilla_worker_shim.js")).startsWith("try { console.warn"));
@@ -1111,7 +1113,7 @@ void tst_extensioncopy::theRelayOfTheWorkerIsInTheKeyedCopyAndInNoOther(){
     QVERIFY(script.contains(key));
     QVERIFY(!script.contains(QByteArray(ExtensionHostWire::KEY_PLACE)));
     QCOMPARE(script, QString(Cdp::RelayScript()).replace(QLatin1String(ExtensionHostWire::KEY_PLACE), QString::fromLatin1(key)).toUtf8() + ";\n");
-    QVERIFY(Read(made.path + QStringLiteral("/.vanilla-copy-complete")).startsWith("copy format 13 "));
+    QVERIFY(Read(made.path + QStringLiteral("/.vanilla-copy-complete")).startsWith("copy format 15 "));
     const QByteArray wake = Read(made.path + QStringLiteral("/vanilla_wake.html"));
     QVERIFY(wake.contains("<script src=\"/vanilla_wake.js\"></script>"));
     QVERIFY(!wake.contains("vanilla_page_shim"));
@@ -1372,6 +1374,77 @@ void tst_extensioncopy::aCarrierGoesAheadWhereTheExtensionMayRegisterScripts(){
     QVERIFY2(made.note.isEmpty(), qPrintable(made.note));
     QCOMPARE(Read(made.path + QStringLiteral("/vanilla_carrier.js")), QByteArray("self.__vanillaCarrier = 1;\n") + Cdp::ContentShim().toUtf8() + ";\n");
     QVERIFY(!QFile::exists(made.path + QStringLiteral("/vanilla_content_shim.js")));
+}
+
+void tst_extensioncopy::theAlarmsAreTheApplicationsOnlyWhereEverythingCanAskIt(){
+    const QByteArray key(64, 'c');
+    auto shims = [&](const QJsonObject &manifest, const QByteArray &given, bool page, const QByteArray &html = "<html><head></head></html>"){
+        QTemporaryDir dir;
+        const QString source = dir.filePath(QStringLiteral("ext"));
+        Extension(source, manifest);
+        if(page) Write(source + QStringLiteral("/open.html"), html);
+        ExtensionCopy::ForgetForTesting();
+        const ExtensionCopy::Made made = ExtensionCopy::Make(source, dir.filePath(QStringLiteral("copies")), QStringLiteral("idid"), given);
+        return QList<QByteArray>() << Read(made.path + QStringLiteral("/background_scripts/vanilla_worker_shim.js"))
+                                   << Read(made.path + QLatin1Char('/') + ExtensionCopy::Rewrite(manifest, 7).pageShim.section(QLatin1Char('/'), -1));
+    };
+    QJsonObject asks = Manifest();
+    asks[QStringLiteral("permissions")] = QJsonArray{ QStringLiteral("alarms") };
+
+    QList<QByteArray> made = shims(asks, key, false);
+    QVERIFY(made[0].contains("prepareAskedAlarms"));
+    QVERIFY(!made[0].contains("installAlarms"));
+    QVERIFY(made[1].contains("installAskedAlarms"));
+
+    made = shims(asks, QByteArray(), false);
+    QVERIFY(!made[0].contains("prepareAskedAlarms"));
+    QVERIFY(made[0].contains("installAlarms"));
+    QVERIFY(!made[1].contains("installAskedAlarms"));
+
+    made = shims(Manifest(), key, false);
+    QVERIFY(!made[0].contains("prepareAskedAlarms"));
+    QVERIFY(!made[0].contains("installAlarms"));
+
+    QJsonObject open = asks;
+    open[QStringLiteral("web_accessible_resources")] = QJsonArray{ QJsonObject{
+        { QStringLiteral("resources"), QJsonArray{ QStringLiteral("open.html") } },
+        { QStringLiteral("matches"), QJsonArray{ QStringLiteral("<all_urls>") } } } };
+    made = shims(open, key, true);
+    QVERIFY(!made[0].contains("prepareAskedAlarms"));
+    QVERIFY(made[0].contains("installAlarms"));
+    QVERIFY(!made[1].contains("installAskedAlarms"));
+
+    const QByteArray utf16("\xFF\xFE<\0h\0t\0m\0l\0>\0", 12);
+    made = shims(asks, key, true, utf16);
+    QVERIFY(!made[0].contains("prepareAskedAlarms"));
+    QVERIFY(made[0].contains("installAlarms"));
+    made = shims(asks, key, true, QByteArray(8 * 1024 * 1024 + 1, ' '));
+    QVERIFY(!made[0].contains("prepareAskedAlarms"));
+    QJsonObject sandboxed = asks;
+    sandboxed[QStringLiteral("sandbox")] = QJsonObject{ { QStringLiteral("pages"), QJsonArray{ QStringLiteral("open.html") } } };
+    made = shims(sandboxed, key, true, utf16);
+    QVERIFY(made[0].contains("prepareAskedAlarms"));
+
+    QJsonObject image = asks;
+    image[QStringLiteral("web_accessible_resources")] = QJsonArray{ QJsonObject{
+        { QStringLiteral("resources"), QJsonArray{ QStringLiteral("icon.png") } },
+        { QStringLiteral("matches"), QJsonArray{ QStringLiteral("<all_urls>") } } } };
+    made = shims(image, key, true);
+    QVERIFY(made[0].contains("prepareAskedAlarms"));
+}
+
+void tst_extensioncopy::theWorkersShimIsPutTogetherForItsManifest(){
+    QTemporaryDir dir;
+    const QString source = dir.filePath(QStringLiteral("ext"));
+    Extension(source);
+    QJsonObject manifest = Manifest();
+    manifest[QStringLiteral("permissions")] = QJsonArray{ QStringLiteral("alarms") };
+    manifest[QStringLiteral("optional_permissions")] = QJsonArray{ QStringLiteral("scripting") };
+    Write(source + QStringLiteral("/manifest.json"), QJsonDocument(manifest).toJson());
+    const ExtensionCopy::Made made = ExtensionCopy::Make(source, dir.filePath(QStringLiteral("copies")), QStringLiteral("idid"));
+    QVERIFY2(made.note.isEmpty(), qPrintable(made.note));
+    QCOMPARE(Read(made.path + QStringLiteral("/background_scripts/vanilla_worker_shim.js")),
+             Cdp::WorkerShim(QStringList() << QStringLiteral("alarms") << QStringLiteral("scripting")).toUtf8() + ";\n");
 }
 
 QTEST_MAIN(tst_extensioncopy)

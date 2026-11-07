@@ -50,7 +50,7 @@ static QStringList Expand(const QString &spelling){
 
         QStringList next;
         foreach(QString head, out)
-            foreach(QString tail, tails)
+            for(QString tail : std::as_const(tails))
                 next << head + tail;
         out = next;
     }

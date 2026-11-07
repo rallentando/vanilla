@@ -2,25 +2,9 @@
 
 #include "passwordpolicy.hpp"
 
-#include <QHostAddress>
+#include "urlorigin.hpp"
 
 namespace {
-
-    int DefaultPort(const QString &scheme){
-        return scheme == QStringLiteral("https") ? 443 : 80;
-    }
-
-    QString OriginHost(const QUrl &url){
-        const QString host = url.host();
-        if(host.isEmpty()) return QString();
-
-        QHostAddress address;
-        if(address.setAddress(host) &&
-           address.protocol() == QAbstractSocket::IPv6Protocol)
-            return QStringLiteral("[") + address.toString().toLower() + QStringLiteral("]");
-
-        return QString::fromLatin1(QUrl::toAce(host)).toLower();
-    }
 
     QString EligibleScheme(const QUrl &url){
         if(!url.isValid()) return QString();
@@ -43,19 +27,19 @@ namespace PasswordPolicy {
 QString Origin(const QUrl &url){
     const QString scheme = EligibleScheme(url);
     if(scheme.isEmpty()) return QString();
-    const QString host = OriginHost(url);
+    const QString host = UrlOrigin::Host(url);
     if(host.isEmpty()) return QString();
     return scheme + QStringLiteral("://") + host + QStringLiteral(":") +
-        QString::number(url.port(DefaultPort(scheme)));
+        QString::number(url.port(UrlOrigin::DefaultPort(scheme)));
 }
 
 QString ScriptOrigin(const QUrl &url){
     const QString scheme = EligibleScheme(url);
     if(scheme.isEmpty()) return QString();
-    const QString host = OriginHost(url);
+    const QString host = UrlOrigin::Host(url);
     if(host.isEmpty()) return QString();
-    const int port = url.port(DefaultPort(scheme));
-    if(port == DefaultPort(scheme)) return scheme + QStringLiteral("://") + host;
+    const int port = url.port(UrlOrigin::DefaultPort(scheme));
+    if(port == UrlOrigin::DefaultPort(scheme)) return scheme + QStringLiteral("://") + host;
     return scheme + QStringLiteral("://") + host + QStringLiteral(":") + QString::number(port);
 }
 

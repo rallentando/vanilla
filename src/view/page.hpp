@@ -448,5 +448,7 @@ private:
     void ImageReq(QAction*, std::function<void(QList<QNetworkRequest>)>);
 
     void UrlCountCheck(int count, BoolCallBack callBack);
+    QList<QNetworkRequest> RequestsFor(const QList<QUrl> &urls, bool referer) const;
+    void DownloadInto(const QList<QUrl> &urls, bool referer);
 };
 #endif

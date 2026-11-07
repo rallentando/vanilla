@@ -4,6 +4,18 @@
 
 namespace FileExchange {
 
+QByteArray ReadWhole(const QString &path, bool *ok){
+    QFile file(path);
+    if(!file.open(QIODevice::ReadOnly)){
+        if(ok) *ok = false;
+        return QByteArray();
+    }
+    QByteArray data = file.readAll();
+    file.close();
+    if(ok) *ok = true;
+    return data;
+}
+
 bool Replace(const QString &temporary, const QString &target){
     const QString previous = target + QStringLiteral(".prev");
 

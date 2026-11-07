@@ -39,7 +39,7 @@ public:
     static void ShutdownEverywhere();
 
 protected:
-    bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE;
+    bool eventFilter(QObject *watched, QEvent *ev) override;
 
 private:
     struct Panel {

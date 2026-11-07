@@ -2,6 +2,7 @@
 #include <QDateTime>
 #include <QNetworkCookie>
 #include <QFile>
+#include <QFileInfo>
 #include <QDirIterator>
 #include <QRegularExpression>
 #include <QMenu>
@@ -148,6 +149,8 @@ private slots:
     void aTimerWhichFiredEarlyLeavesTheEndingWithSomethingToWaitFor();
 
     void theCellIsMadeBeforeTheRegistrationWhichWritesToIt();
+    void aDownloadClaimsItsNavigationBeforeTheQuestion();
+    void aDownloadOnlyTabIsLeftOutOfTheSavesWhileItIsAsked();
     void noRowIsDrawnForADownloadNobodyCanHearTheEndOf();
     void theRowIsToldTheWholeCellBeforeTheTabIsTakenOut();
     void aCarrierIsAskedAgainWhetherItMayGoOnceTheListHasIt();
@@ -230,6 +233,7 @@ private slots:
     void aReportStaysTheDocumentsAcrossAFragmentChange();
     void theDocumentWhichArrivesCorrectsTheAddressWhichWasGuessed();
     void nothingHereWritesIntoTheBackendsCookieStore();
+    void aMovedProfileIsTakenOutOfLocalStateBeforeTheBrowserStarts();
 
     void theInsideOfTheSourceAddressIsStillTheSourceAddress();
     void anAddressTheViewWentToAfterwardsIsTaken();
@@ -2069,6 +2073,7 @@ void tst_edgestate::everyRegistrationIsKeptOnTheListItComesOff(){
     listOf[QStringLiteral("webview4")]              = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("webview8")]              = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("webview11")]             = QStringLiteral("WEBVIEW");
+    listOf[QStringLiteral("webview12")]             = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("webview14")]             = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("webview15")]             = QStringLiteral("WEBVIEW");
     listOf[QStringLiteral("webview24")]             = QStringLiteral("WEBVIEW");
@@ -2101,7 +2106,7 @@ void tst_edgestate::everyRegistrationIsKeptOnTheListItComesOff(){
              "the Edge sources were not found; check VANILLA_SOURCE_DIR");
 
     int registrations = 0;
-    foreach(const QString &name, names){
+    for(const QString &name : std::as_const(names)){
         const QString source = EdgeRegistrationSkeletonOf(name);
         QVERIFY2(!source.isEmpty(),
                  qPrintable(QStringLiteral("%1 was not read; check VANILLA_SOURCE_DIR").arg(name)));
@@ -2186,7 +2191,7 @@ void tst_edgestate::everyRegistrationIsKeptOnTheListItComesOff(){
                  qPrintable(QStringLiteral("%1 was registered and never kept").arg(owedEvent)));
     }
 
-    QCOMPARE(registrations, 21);
+    QCOMPARE(registrations, 22);
 }
 
 void tst_edgestate::everyHandlerListComesOffBeforeTheControllerIsClosed(){
@@ -2216,7 +2221,7 @@ void tst_edgestate::everyHandlerListComesOffBeforeTheControllerIsClosed(){
         << QStringLiteral("m_Impl->m_WebView.Reset();")
         << QStringLiteral("m_Impl->m_Controller.Reset();");
     QList<int> at;
-    foreach(const QString &mark, marks){
+    for(const QString &mark : marks){
         QCOMPARE(retire.count(mark), 1);
         at << retire.indexOf(mark);
     }
@@ -2263,7 +2268,7 @@ void tst_edgestate::theDropSiteIsTakenInOnePieceOrNotAtAll(){
         << QStringLiteral("m_Impl->m_DropTarget = ");
 
     int at = 0;
-    foreach(const QString &step, order){
+    for(const QString &step : order){
         const int found = taking.indexOf(step, at);
         QVERIFY2(found != -1,
                  qPrintable(QStringLiteral("RegisterDropTarget: '%1' is not where it "
@@ -2316,7 +2321,7 @@ void tst_edgestate::theViewHeaderCarriesNothingButThePointer(){
         << QStringLiteral("notifier.hpp")
         << QStringLiteral("networkcontroller.hpp")
         << QStringLiteral("edgewebviewstate.hpp");
-    foreach(const QString &header, gone)
+    for(const QString &header : gone)
         QVERIFY2(!raw.contains(QStringLiteral("#include \"%1\"").arg(header)),
                  qPrintable(QStringLiteral("edgewebview.hpp includes %1 again").arg(header)));
 }
@@ -2364,16 +2369,62 @@ void tst_edgestate::theDocumentWhichArrivesCorrectsTheAddressWhichWasGuessed(){
              "'SourceChanged' no longer adopts the address it reports");
 }
 
+void tst_edgestate::aMovedProfileIsTakenOutOfLocalStateBeforeTheBrowserStarts(){
+    const auto read = [](const char *name){
+        QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) + QLatin1Char('/') + QString::fromLatin1(name));
+        return file.open(QIODevice::ReadOnly) ? QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r')) : QString();
+    };
+    const QString environment = read("view/edge/edgeenvironment.cpp");
+    const QString tree = read("ui/treebank.cpp");
+    QVERIFY(!environment.isEmpty() && !tree.isEmpty());
+    const int start = environment.indexOf(QStringLiteral("void EdgeEnvironment::StartCreation(){"));
+    QVERIFY(start >= 0);
+    const int startForget = environment.indexOf(QStringLiteral("ForgetMissingProfiles();"), start);
+    QVERIFY2(startForget >= 0 &&
+             startForget < environment.indexOf(QStringLiteral("CreateCoreWebView2EnvironmentWithOptions"), start) &&
+             startForget < environment.indexOf(QStringLiteral("\nvoid EdgeEnvironment::"), start),
+             "the browser starts before 'Local State' is put right");
+    QVERIFY2(environment.contains(QStringLiteral("ForgetMissingProfiles();\n                        foreach(const QPointer<QObject> &mark, self->m_ExitMarks)")),
+             "a browser which exited is not followed by putting 'Local State' right");
+    QVERIFY2(environment.contains(QStringLiteral("if(ok) HookBrowserExit();")),
+             "the exit is listened to only once a rename asks");
+    const int forget = environment.indexOf(QStringLiteral("void EdgeEnvironment::ForgetMissingProfiles(){"));
+    QVERIFY2(forget >= 0 &&
+             environment.indexOf(QStringLiteral("if(SpaceRename::BrowserHoldsFolder(folder)) return;"), forget) >= 0 &&
+             environment.indexOf(QStringLiteral("if(SpaceRename::BrowserHoldsFolder(folder)) return;"), forget) <
+             environment.indexOf(QStringLiteral("QSaveFile save("), forget),
+             "'Local State' is written without asking whether a browser runs");
+    QVERIFY2(tree.contains(QStringLiteral("if(QObject *exit = EdgeWebView::BrowserExitIfNoViews()) released->going << QPointer<QObject>(exit);")),
+             "the move does not wait for the browser to exit");
+    const int moveForget = tree.indexOf(QStringLiteral("                EdgeWebView::ForgetMissingProfiles();\n#endif\n                FinishRenameSpace("));
+    QVERIFY2(moveForget >= 0 &&
+             moveForget < tree.indexOf(QStringLiteral("FinishRenameSpace(vn, from, to, set, current, dialog.data());")),
+             "the views are made again before 'Local State' is put right");
+}
+
 void tst_edgestate::nothingHereWritesIntoTheBackendsCookieStore(){
     QString sources;
     QDirIterator it(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)),
                     QStringList() << QStringLiteral("*.cpp") << QStringLiteral("*.hpp"),
                     QDir::Files, QDirIterator::Subdirectories);
+    QString merge;
     while(it.hasNext()){
         QFile file(it.next());
         if(!file.open(QIODevice::ReadOnly)) continue;
-        sources += QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
+        const QString text = QString::fromUtf8(file.readAll()).remove(QLatin1Char('\r'));
+        if(QFileInfo(file.fileName()).fileName() == QStringLiteral("edgecookiecopy.cpp")) merge = text;
+        else sources += text;
     }
+    QVERIFY2(merge.contains(QStringLiteral("SpaceRename::CookiesToAdd(source, there)")),
+             "the merge's copy adds what it has not checked against the other store");
+    QCOMPARE(merge.count(QStringLiteral("AddOrUpdateCookie(")), 1);
+    QVERIFY2(merge.contains(QStringLiteral("if(!read){ done(false, QList<SpaceRename::Cookie>()); return S_OK;}")),
+             "a cookie not read whole is passed over instead of failing the list");
+    QVERIFY2(sources.contains(QStringLiteral("if(!allGone){ joined(false); return;}")),
+             "the merge copies while the other space's views may still be there");
+    QCOMPARE(sources.count(QStringLiteral("CopyCookiesForMerge(")), 2);
+    QVERIFY2(sources.contains(QStringLiteral("EdgeWebView::CopyCookiesForMerge(edgeFrom, edgeTo,")),
+             "the copy is asked by something other than the merge");
     QVERIFY2(!sources.isEmpty(), "the sources were not read; check VANILLA_SOURCE_DIR");
 
     QVERIFY2(!sources.contains(QStringLiteral("AddOrUpdateCookie")),
@@ -2745,7 +2796,7 @@ void tst_edgestate::everyFailureOfARunSaysWhereItWas(){
     int from = 0, found = 0;
     for(;;){
         int at = -1, length = 0;
-        foreach(const QString &failure, failures){
+        for(const QString &failure : failures){
             const int next = body.indexOf(failure, from);
             if(next >= 0 && (at < 0 || next < at)){ at = next; length = failure.length();}
         }
@@ -3007,6 +3058,73 @@ void tst_edgestate::theCellIsMadeBeforeTheRegistrationWhichWritesToIt(){
 
     QVERIFY(cell < registration);
     QVERIFY(wired < registration);
+}
+
+void tst_edgestate::aDownloadClaimsItsNavigationBeforeTheQuestion(){
+    const QString source =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!source.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+
+    const int handler = source.indexOf(QStringLiteral("add_DownloadStarting"));
+    const int claim = source.indexOf(QStringLiteral("m_Aborts.DownloadStarted("));
+    QVERIFY(handler != -1);
+    QVERIFY(claim != -1);
+    QCOMPARE(source.count(QStringLiteral("m_Aborts.DownloadStarted(")), 1);
+    const int deferral = source.indexOf(QStringLiteral("GetDeferral"), handler);
+    const int wiredUnasked = source.indexOf(QStringLiteral("WireDownload(operation.Get()"), handler);
+    QVERIFY(deferral != -1);
+    QVERIFY(wiredUnasked != -1);
+    QVERIFY(handler < claim);
+    QVERIFY(claim < wiredUnasked);
+    QVERIFY(claim < deferral);
+}
+
+void tst_edgestate::aDownloadOnlyTabIsLeftOutOfTheSavesWhileItIsAsked(){
+    const QString handlers =
+        EdgeCodeTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    QVERIFY2(!handlers.isEmpty(), "edgewebviewhandlers.cpp was not read; check VANILLA_SOURCE_DIR");
+    const int placed = handlers.indexOf(QStringLiteral("m_Impl->m_Downloads.AskPlaced();"));
+    const int leave = handlers.indexOf(QStringLiteral("if(m_Impl->m_History.IsEmpty()) LeaveOutOfSaves();"));
+    const int push = handlers.indexOf(QStringLiteral("DownloadAsks().Push"));
+    QVERIFY(placed != -1);
+    QVERIFY(leave != -1);
+    QVERIFY(placed < leave && leave < push);
+    const int back = handlers.indexOf(QStringLiteral(
+        "if(alive && !Application::IsQuitting() && !alive->m_Impl->m_Downloads.Asking())\n"
+        "                     alive->PutBackIntoSaves();"));
+    const int complete = handlers.indexOf(QStringLiteral("deferral->Complete();"), push);
+    QVERIFY(back != -1);
+    QVERIFY(complete != -1);
+    QVERIFY(push < back && back < complete);
+    QCOMPARE(handlers.count(QStringLiteral("PutBackIntoSaves()")), 2);
+    const int keep = handlers.indexOf(QStringLiteral("bool EdgeWebView::KeepForDownloads()"));
+    const int kept = handlers.indexOf(QStringLiteral("m_Impl->m_KeptAfterRelease = true;"), keep);
+    const int keepBack = handlers.indexOf(QStringLiteral("PutBackIntoSaves();"), kept);
+    const int orphaned = handlers.indexOf(QStringLiteral("View::Orphan();"), kept);
+    QVERIFY(keep != -1 && kept != -1 && keepBack != -1 && orphaned != -1);
+    QVERIFY(keepBack < orphaned);
+
+    const QString view = EdgeCodeTextOf(QStringLiteral("edgewebview.cpp"));
+    QVERIFY2(!view.isEmpty(), "edgewebview.cpp was not read");
+    QVERIFY(view.contains(QStringLiteral("if(!Application::IsQuitting()) PutBackIntoSaves();")));
+    const int save = view.indexOf(QStringLiteral("bool EdgeWebView::SaveHistory()"));
+    const int restore = view.indexOf(QStringLiteral("bool EdgeWebView::RestoreHistory()"));
+    const int afterVisit = view.indexOf(QStringLiteral("if(!m_Impl->m_History.IsEmpty()) PutBackIntoSaves();"));
+    QVERIFY(save != -1 && restore != -1);
+    QVERIFY(save < afterVisit && afterVisit < restore);
+    const int firstReturn = view.indexOf(QStringLiteral("return false;"), save);
+    QVERIFY(firstReturn != -1);
+    QVERIFY(afterVisit < firstReturn);
+    int at = 0;
+    int visits = 0;
+    while((at = handlers.indexOf(QStringLiteral("m_History.Visit("), at)) != -1){
+        const int next = handlers.indexOf(QStringLiteral("SaveHistory();"), at);
+        QVERIFY(next != -1);
+        QVERIFY2(next - at < 120, "a Visit without the save right after it");
+        at = next;
+        visits++;
+    }
+    QVERIFY(visits >= 2);
 }
 
 void tst_edgestate::noRowIsDrawnForADownloadNobodyCanHearTheEndOf(){

@@ -35,29 +35,33 @@ public:
     LocalView(TreeBank *parent = 0, QString id = QString(), QStringList set = QStringList());
     virtual ~LocalView();
 
-    virtual QGraphicsObject *base() Q_DECL_OVERRIDE;
-    virtual Page *page() Q_DECL_OVERRIDE;
+    virtual QGraphicsObject *base() override;
+    virtual Page *page() override;
 
-    virtual TreeBank *parent() Q_DECL_OVERRIDE;
-    virtual void setParent(TreeBank *tb) Q_DECL_OVERRIDE;
+    virtual TreeBank *parent() override;
+    virtual void setParent(TreeBank *tb) override;
 
-    virtual QSize size() Q_DECL_OVERRIDE { return Size().toSize();}
-    virtual void resize(QSize size) Q_DECL_OVERRIDE { ResizeNotify(size);}
+    QStringList BreadcrumbTitles() override;
+    void BreadcrumbActivated(int index) override;
+    void OnFilterChanged() override;
 
-    virtual void repaint() Q_DECL_OVERRIDE { QGraphicsObject::update();}
-    virtual bool visible() Q_DECL_OVERRIDE { return QGraphicsObject::isVisible();}
-    virtual void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) Q_DECL_OVERRIDE {
+    virtual QSize size() override { return Size().toSize();}
+    virtual void resize(QSize size) override { ResizeNotify(size);}
+
+    virtual void repaint() override { QGraphicsObject::update();}
+    virtual bool visible() override { return QGraphicsObject::isVisible();}
+    virtual void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason) override {
         QGraphicsObject::setFocus(reason);
     }
 
-    void Load(const QUrl &url) Q_DECL_OVERRIDE;
-    void Load(const QNetworkRequest &req) Q_DECL_OVERRIDE;
+    void Load(const QUrl &url) override;
+    void Load(const QNetworkRequest &req) override;
 
-    void Resize(QSizeF size) Q_DECL_OVERRIDE;
+    void Resize(QSizeF size) override;
 
-    virtual QMenu *CreateNodeMenu() Q_DECL_OVERRIDE;
-    virtual bool DirectoriesFirst() const Q_DECL_OVERRIDE { return true;}
-    virtual void RenderBackground(QPainter *painter) Q_DECL_OVERRIDE;
+    virtual QMenu *CreateNodeMenu() override;
+    virtual bool DirectoriesFirst() const override { return true;}
+    virtual void RenderBackground(QPainter *painter) override;
 
     static bool IsSupported(QUrl url);
     static bool IsSupportedImage(QUrl url);
@@ -68,25 +72,29 @@ public:
     static bool IsSupportedAudio(QString path);
     static bool IsSupportedVideo(QString path);
 
+    static QString UpDirectoryPath(const QString &path);
+    static QStringList PathFolders(const QString &path);
+    static QString PathOfFolder(const QStringList &folders, int index);
+
     virtual void RegisterNodes(const QUrl &url);
 
-    virtual void SetNodeCollectionType(NodeCollectionType type) Q_DECL_OVERRIDE {
+    virtual void SetNodeCollectionType(NodeCollectionType type) override {
         Q_UNUSED(type);
     }
-    virtual NodeCollectionType GetNodeCollectionType() const Q_DECL_OVERRIDE {
+    virtual NodeCollectionType GetNodeCollectionType() const override {
         return Flat;
     }
 
-    virtual void Activate(DisplayType type) Q_DECL_OVERRIDE;
-    virtual void Deactivate() Q_DECL_OVERRIDE;
+    virtual void Activate(DisplayType type) override;
+    virtual void Deactivate() override;
 
-    virtual void show() Q_DECL_OVERRIDE;
-    virtual void hide() Q_DECL_OVERRIDE;
+    virtual void show() override;
+    virtual void hide() override;
 
-    virtual void raise() Q_DECL_OVERRIDE {
+    virtual void raise() override {
         setZValue(COVERING_VIEW_CONTENTS_LAYER);
     }
-    virtual void lower() Q_DECL_OVERRIDE {
+    virtual void lower() override {
         setZValue(HIDDEN_CONTENTS_LAYER);
     }
 
@@ -95,54 +103,54 @@ public:
     static void LoadSettings();
     void SwapMediaItem(int index);
 
-    void OnBeforeStartingDisplayGadgets() Q_DECL_OVERRIDE {}
-    void OnAfterFinishingDisplayGadgets() Q_DECL_OVERRIDE {}
+    void OnBeforeStartingDisplayGadgets() override {}
+    void OnAfterFinishingDisplayGadgets() override {}
 
-    void Connect(TreeBank*) Q_DECL_OVERRIDE;
-    void Disconnect(TreeBank*) Q_DECL_OVERRIDE;
+    void Connect(TreeBank*) override;
+    void Disconnect(TreeBank*) override;
 
-    void ZoomIn()  Q_DECL_OVERRIDE { ThumbList_ZoomIn();}
-    void ZoomOut() Q_DECL_OVERRIDE { ThumbList_ZoomOut();}
+    void ZoomIn()  override { ThumbList_ZoomIn();}
+    void ZoomOut() override { ThumbList_ZoomOut();}
 
-    virtual void UpKeyEvent() Q_DECL_OVERRIDE {
+    virtual void UpKeyEvent() override {
         ThumbList_MoveToUpperItem();
     }
-    virtual void DownKeyEvent() Q_DECL_OVERRIDE {
+    virtual void DownKeyEvent() override {
         ThumbList_MoveToLowerItem();
     }
-    virtual void RightKeyEvent() Q_DECL_OVERRIDE {
+    virtual void RightKeyEvent() override {
         ThumbList_MoveToRightItem();
     }
-    virtual void LeftKeyEvent() Q_DECL_OVERRIDE {
+    virtual void LeftKeyEvent() override {
         ThumbList_MoveToLeftItem();
     }
-    virtual void PageDownKeyEvent() Q_DECL_OVERRIDE {
+    virtual void PageDownKeyEvent() override {
         ThumbList_NextPage();
     }
-    virtual void PageUpKeyEvent() Q_DECL_OVERRIDE {
+    virtual void PageUpKeyEvent() override {
         ThumbList_PrevPage();
     }
-    virtual void HomeKeyEvent() Q_DECL_OVERRIDE {
+    virtual void HomeKeyEvent() override {
         ThumbList_MoveToFirstItem();
     }
-    virtual void EndKeyEvent() Q_DECL_OVERRIDE {
+    virtual void EndKeyEvent() override {
         ThumbList_MoveToLastItem();
     }
 
-    virtual void UpdateThumbnail() Q_DECL_OVERRIDE;
+    virtual void UpdateThumbnail() override;
 
-    virtual bool TriggerKeyEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    virtual bool TriggerKeyEvent(QString str) Q_DECL_OVERRIDE;
+    virtual bool TriggerKeyEvent(QKeyEvent *ev) override;
+    virtual bool TriggerKeyEvent(QString str) override;
 
-    bool TriggerAction(QString str, QVariant data = QVariant()) Q_DECL_OVERRIDE;
+    bool TriggerAction(QString str, QVariant data = QVariant()) override;
     void TriggerAction(Gadgets::GadgetsAction a);
-    void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) Q_DECL_OVERRIDE {
+    void TriggerAction(Page::CustomAction a, QVariant data = QVariant()) override {
         Action(a, data)->trigger();
     }
 
-    QAction *Action(QString str, QVariant data = QVariant()) Q_DECL_OVERRIDE;
+    QAction *Action(QString str, QVariant data = QVariant()) override;
     QAction *Action(Gadgets::GadgetsAction a);
-    QAction *Action(Page::CustomAction a, QVariant data = QVariant()) Q_DECL_OVERRIDE {
+    QAction *Action(Page::CustomAction a, QVariant data = QVariant()) override {
         Q_UNUSED(data);
         switch(a){
         case Page::_Reload:      return Action(Gadgets::_Refresh);
@@ -159,121 +167,121 @@ public:
 
     void ChangeMediaVolume(int diff);
 
-    bool ThumbList_Refresh() Q_DECL_OVERRIDE;
-    bool ThumbList_RefreshNoScroll() Q_DECL_OVERRIDE;
-    bool ThumbList_OpenNode() Q_DECL_OVERRIDE;
-    bool ThumbList_OpenNodeOnNewWindow() Q_DECL_OVERRIDE;
-    bool ThumbList_DeleteNode() Q_DECL_OVERRIDE;
-    bool ThumbList_DeleteRightNode() Q_DECL_OVERRIDE;
-    bool ThumbList_DeleteLeftNode() Q_DECL_OVERRIDE;
-    bool ThumbList_DeleteOtherNode() Q_DECL_OVERRIDE;
-    bool ThumbList_PasteNode() Q_DECL_OVERRIDE;
-    bool ThumbList_RestoreNode() Q_DECL_OVERRIDE;
-    bool ThumbList_NewNode() Q_DECL_OVERRIDE;
-    bool ThumbList_CloneNode() Q_DECL_OVERRIDE;
-    bool ThumbList_UpDirectory() Q_DECL_OVERRIDE;
-    bool ThumbList_DownDirectory() Q_DECL_OVERRIDE;
-    bool ThumbList_MakeLocalNode() Q_DECL_OVERRIDE;
-    bool ThumbList_MakeDirectory() Q_DECL_OVERRIDE;
-    bool ThumbList_MakeDirectoryWithSelectedNode() Q_DECL_OVERRIDE;
-    bool ThumbList_MakeDirectoryWithSameDomainNode() Q_DECL_OVERRIDE;
-    bool ThumbList_RenameNode() Q_DECL_OVERRIDE;
-    bool ThumbList_CopyNodeUrl() Q_DECL_OVERRIDE;
-    bool ThumbList_CopyNodeTitle() Q_DECL_OVERRIDE;
-    bool ThumbList_CopyNodeAsLink() Q_DECL_OVERRIDE;
-    bool ThumbList_OpenNodeWithDefault() Q_DECL_OVERRIDE;
-    bool ThumbList_OpenNodeWithCommand(QString name = QString()) Q_DECL_OVERRIDE;
-    bool ThumbList_ToggleTrash() Q_DECL_OVERRIDE;
-    bool ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF basepos = QPointF()) Q_DECL_OVERRIDE;
-    bool ThumbList_ScrollUp() Q_DECL_OVERRIDE;
-    bool ThumbList_ScrollDown() Q_DECL_OVERRIDE;
-    bool ThumbList_NextPage() Q_DECL_OVERRIDE;
-    bool ThumbList_PrevPage() Q_DECL_OVERRIDE;
-    bool ThumbList_MoveToUpperItem() Q_DECL_OVERRIDE;
-    bool ThumbList_MoveToLowerItem() Q_DECL_OVERRIDE;
-    bool ThumbList_MoveToRightItem() Q_DECL_OVERRIDE;
-    bool ThumbList_MoveToLeftItem() Q_DECL_OVERRIDE;
-    bool ThumbList_MoveToPrevPage() Q_DECL_OVERRIDE;
-    bool ThumbList_MoveToNextPage() Q_DECL_OVERRIDE;
-    bool ThumbList_MoveToFirstItem() Q_DECL_OVERRIDE;
-    bool ThumbList_MoveToLastItem() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectToUpperItem() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectToLowerItem() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectToRightItem() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectToLeftItem() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectToPrevPage() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectToNextPage() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectToFirstItem() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectToLastItem() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectItem() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectRange() Q_DECL_OVERRIDE;
-    bool ThumbList_SelectAll() Q_DECL_OVERRIDE;
-    bool ThumbList_ClearSelection() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToUpper() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToLower() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToRight() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToLeft() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToPrevPage() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToNextPage() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToFirst() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToLast() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToUpDirectory() Q_DECL_OVERRIDE;
-    bool ThumbList_TransferToDownDirectory() Q_DECL_OVERRIDE;
-    bool ThumbList_ZoomIn() Q_DECL_OVERRIDE;
-    bool ThumbList_ZoomOut() Q_DECL_OVERRIDE;
+    bool ThumbList_Refresh() override;
+    bool ThumbList_RefreshNoScroll() override;
+    bool ThumbList_OpenNode() override;
+    bool ThumbList_OpenNodeOnNewWindow() override;
+    bool ThumbList_DeleteNode() override;
+    bool ThumbList_DeleteRightNode() override;
+    bool ThumbList_DeleteLeftNode() override;
+    bool ThumbList_DeleteOtherNode() override;
+    bool ThumbList_PasteNode() override;
+    bool ThumbList_RestoreNode() override;
+    bool ThumbList_NewNode() override;
+    bool ThumbList_CloneNode() override;
+    bool ThumbList_UpDirectory() override;
+    bool ThumbList_DownDirectory() override;
+    bool ThumbList_MakeLocalNode() override;
+    bool ThumbList_MakeDirectory() override;
+    bool ThumbList_MakeDirectoryWithSelectedNode() override;
+    bool ThumbList_MakeDirectoryWithSameDomainNode() override;
+    bool ThumbList_RenameNode() override;
+    bool ThumbList_CopyNodeUrl() override;
+    bool ThumbList_CopyNodeTitle() override;
+    bool ThumbList_CopyNodeAsLink() override;
+    bool ThumbList_OpenNodeWithDefault() override;
+    bool ThumbList_OpenNodeWithCommand(QString name = QString()) override;
+    bool ThumbList_ToggleTrash() override;
+    bool ThumbList_ApplyChildrenOrder(DisplayArea area, QPointF basepos = QPointF()) override;
+    bool ThumbList_ScrollUp() override;
+    bool ThumbList_ScrollDown() override;
+    bool ThumbList_NextPage() override;
+    bool ThumbList_PrevPage() override;
+    bool ThumbList_MoveToUpperItem() override;
+    bool ThumbList_MoveToLowerItem() override;
+    bool ThumbList_MoveToRightItem() override;
+    bool ThumbList_MoveToLeftItem() override;
+    bool ThumbList_MoveToPrevPage() override;
+    bool ThumbList_MoveToNextPage() override;
+    bool ThumbList_MoveToFirstItem() override;
+    bool ThumbList_MoveToLastItem() override;
+    bool ThumbList_SelectToUpperItem() override;
+    bool ThumbList_SelectToLowerItem() override;
+    bool ThumbList_SelectToRightItem() override;
+    bool ThumbList_SelectToLeftItem() override;
+    bool ThumbList_SelectToPrevPage() override;
+    bool ThumbList_SelectToNextPage() override;
+    bool ThumbList_SelectToFirstItem() override;
+    bool ThumbList_SelectToLastItem() override;
+    bool ThumbList_SelectItem() override;
+    bool ThumbList_SelectRange() override;
+    bool ThumbList_SelectAll() override;
+    bool ThumbList_ClearSelection() override;
+    bool ThumbList_TransferToUpper() override;
+    bool ThumbList_TransferToLower() override;
+    bool ThumbList_TransferToRight() override;
+    bool ThumbList_TransferToLeft() override;
+    bool ThumbList_TransferToPrevPage() override;
+    bool ThumbList_TransferToNextPage() override;
+    bool ThumbList_TransferToFirst() override;
+    bool ThumbList_TransferToLast() override;
+    bool ThumbList_TransferToUpDirectory() override;
+    bool ThumbList_TransferToDownDirectory() override;
+    bool ThumbList_ZoomIn() override;
+    bool ThumbList_ZoomOut() override;
 
 protected:
-    virtual void keyPressEvent         (QKeyEvent *ev) Q_DECL_OVERRIDE;
-    virtual void keyReleaseEvent       (QKeyEvent *ev) Q_DECL_OVERRIDE;
-    virtual void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    virtual void dropEvent             (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    virtual void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    virtual void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mousePressEvent       (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    virtual void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    virtual void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) Q_DECL_OVERRIDE;
-    virtual void contextMenuEvent      (QGraphicsSceneContextMenuEvent *ev) Q_DECL_OVERRIDE;
-    virtual void wheelEvent            (QGraphicsSceneWheelEvent *ev) Q_DECL_OVERRIDE;
-    virtual void focusInEvent          (QFocusEvent *ev) Q_DECL_OVERRIDE;
-    virtual void focusOutEvent         (QFocusEvent *ev) Q_DECL_OVERRIDE;
+    virtual void keyPressEvent         (QKeyEvent *ev) override;
+    virtual void keyReleaseEvent       (QKeyEvent *ev) override;
+    virtual void dragEnterEvent        (QGraphicsSceneDragDropEvent *ev) override;
+    virtual void dropEvent             (QGraphicsSceneDragDropEvent *ev) override;
+    virtual void dragMoveEvent         (QGraphicsSceneDragDropEvent *ev) override;
+    virtual void dragLeaveEvent        (QGraphicsSceneDragDropEvent *ev) override;
+    virtual void mouseMoveEvent        (QGraphicsSceneMouseEvent *ev) override;
+    virtual void mousePressEvent       (QGraphicsSceneMouseEvent *ev) override;
+    virtual void mouseReleaseEvent     (QGraphicsSceneMouseEvent *ev) override;
+    virtual void mouseDoubleClickEvent (QGraphicsSceneMouseEvent *ev) override;
+    virtual void hoverEnterEvent       (QGraphicsSceneHoverEvent *ev) override;
+    virtual void hoverLeaveEvent       (QGraphicsSceneHoverEvent *ev) override;
+    virtual void hoverMoveEvent        (QGraphicsSceneHoverEvent *ev) override;
+    virtual void contextMenuEvent      (QGraphicsSceneContextMenuEvent *ev) override;
+    virtual void wheelEvent            (QGraphicsSceneWheelEvent *ev) override;
+    virtual void focusInEvent          (QFocusEvent *ev) override;
+    virtual void focusOutEvent         (QFocusEvent *ev) override;
 
 public:
-    void KeyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void KeyReleaseEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void MousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void MouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void MouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void MouseDoubleClickEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void WheelEvent(QWheelEvent *ev) Q_DECL_OVERRIDE;
+    void KeyPressEvent(QKeyEvent *ev) override;
+    void KeyReleaseEvent(QKeyEvent *ev) override;
+    void MousePressEvent(QMouseEvent *ev) override;
+    void MouseReleaseEvent(QMouseEvent *ev) override;
+    void MouseMoveEvent(QMouseEvent *ev) override;
+    void MouseDoubleClickEvent(QMouseEvent *ev) override;
+    void WheelEvent(QWheelEvent *ev) override;
 
 public slots:
-    void OnSetViewNode(ViewNode*) Q_DECL_OVERRIDE;
-    void OnSetThis(WeakView) Q_DECL_OVERRIDE;
-    void OnSetMaster(WeakView) Q_DECL_OVERRIDE;
-    void OnSetSlave(WeakView) Q_DECL_OVERRIDE;
-    void OnLoadStarted() Q_DECL_OVERRIDE;
-    void OnLoadProgress(int) Q_DECL_OVERRIDE;
-    void OnLoadFinished(bool) Q_DECL_OVERRIDE;
-    void OnTitleChanged(const QString&) Q_DECL_OVERRIDE;
-    void OnUrlChanged(const QUrl&) Q_DECL_OVERRIDE;
-    void OnViewChanged() Q_DECL_OVERRIDE;
-    void OnScrollChanged() Q_DECL_OVERRIDE;
+    void OnSetViewNode(ViewNode*) override;
+    void OnSetThis(WeakView) override;
+    void OnSetMaster(WeakView) override;
+    void OnSetSlave(WeakView) override;
+    void OnLoadStarted() override;
+    void OnLoadProgress(int) override;
+    void OnLoadFinished(bool) override;
+    void OnTitleChanged(const QString&) override;
+    void OnUrlChanged(const QUrl&) override;
+    void OnViewChanged() override;
+    void OnScrollChanged() override;
 
-    void EmitScrollChanged() Q_DECL_OVERRIDE;
+    void EmitScrollChanged() override;
 
-    QPointF GetScroll() Q_DECL_OVERRIDE;
-    void SetScroll(QPointF pos) Q_DECL_OVERRIDE;
+    QPointF GetScroll() override;
+    void SetScroll(QPointF pos) override;
 
-    bool SaveScroll()     Q_DECL_OVERRIDE;
-    bool RestoreScroll()  Q_DECL_OVERRIDE;
-    bool SaveZoom()       Q_DECL_OVERRIDE;
-    bool RestoreZoom()    Q_DECL_OVERRIDE;
-    bool SaveHistory()    Q_DECL_OVERRIDE;
-    bool RestoreHistory() Q_DECL_OVERRIDE;
+    bool SaveScroll()     override;
+    bool RestoreScroll()  override;
+    bool SaveZoom()       override;
+    bool RestoreZoom()    override;
+    bool SaveHistory()    override;
+    bool RestoreHistory() override;
 
     void Download(QString, QString);
     void SeekText(const QString&, View::FindFlags);
@@ -318,7 +326,6 @@ private:
     QAudioOutput *m_AudioOutput;
 
     virtual void OpenNode(Node *ln);
-    virtual void OpenNodes(NodeList list);
     virtual void DeleteNode(Node *ln);
     virtual void DeleteNodes(NodeList list);
     virtual void NewNode(Node *ln);
@@ -361,10 +368,10 @@ public:
     ~PixmapItem();
 
 protected:
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent *ev) override;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) override;
 
 private:
     LocalView *m_LocalView;
@@ -393,10 +400,10 @@ public slots:
     void SetPositionRelative(qint64 diff);
 
 protected:
-    void keyPressEvent(QKeyEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) Q_DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent *ev) override;
+    void mousePressEvent   (QGraphicsSceneMouseEvent *ev) override;
+    void mouseReleaseEvent (QGraphicsSceneMouseEvent *ev) override;
+    void mouseMoveEvent    (QGraphicsSceneMouseEvent *ev) override;
 
 private:
     LocalView *m_LocalView;

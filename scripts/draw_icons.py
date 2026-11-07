@@ -14,8 +14,7 @@
 #     the shape and the colour arrives at paint time).
 #   - left alone: the tree glyphs (blank/folder/folded/unfolded and their
 #     white variants -- kept at their current weight on purpose), table.png
-#     (the vanilla logo itself, the one icon that keeps its fill), and
-#     empty.png.
+#     (the vanilla logo itself, the one icon that keeps its fill).
 #
 # Geometry is written in base-size pixel units. Everything is rendered at
 # 8x supersampling and box-filtered down to the base and @2x sizes, so an

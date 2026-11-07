@@ -5,6 +5,7 @@
 #include "cdpshims.hpp"
 
 #include <QBuffer>
+#include <algorithm>
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QDesktopServices>
@@ -59,6 +60,7 @@
 #include "page.hpp"
 #include "treebank.hpp"
 #include "view.hpp"
+#include "runninguploads.hpp"
 #include "sidepanels.hpp"
 #include "dialog.hpp"
 
@@ -116,12 +118,12 @@ namespace {
             RefuseAsking(this);
         }
     protected:
-        QWebEnginePage *createWindow(WebWindowType) Q_DECL_OVERRIDE { return nullptr; }
-        void javaScriptAlert(const QUrl&, const QString&) Q_DECL_OVERRIDE {}
-        bool javaScriptConfirm(const QUrl&, const QString&) Q_DECL_OVERRIDE { return false; }
-        bool javaScriptPrompt(const QUrl&, const QString&, const QString&, QString*) Q_DECL_OVERRIDE { return false; }
-        QStringList chooseFiles(FileSelectionMode, const QStringList&, const QStringList&) Q_DECL_OVERRIDE { return QStringList(); }
-        bool acceptNavigationRequest(const QUrl &url, NavigationType, bool isMainFrame) Q_DECL_OVERRIDE {
+        QWebEnginePage *createWindow(WebWindowType) override { return nullptr; }
+        void javaScriptAlert(const QUrl&, const QString&) override {}
+        bool javaScriptConfirm(const QUrl&, const QString&) override { return false; }
+        bool javaScriptPrompt(const QUrl&, const QString&, const QString&, QString*) override { return false; }
+        QStringList chooseFiles(FileSelectionMode, const QStringList&, const QStringList&) override { return QStringList(); }
+        bool acceptNavigationRequest(const QUrl &url, NavigationType, bool isMainFrame) override {
             if(isMainFrame) return url.matches(m_Url, QUrl::RemoveFragment);
             const QString scheme = url.scheme();
             if(scheme == QStringLiteral("about") || scheme == QStringLiteral("data") || scheme == QStringLiteral("blob")) return true;
@@ -146,28 +148,28 @@ namespace {
             Disposed();
         }
     protected:
-        QWebEnginePage *createWindow(WebWindowType) Q_DECL_OVERRIDE { return nullptr; }
-        void javaScriptAlert(const QUrl &url, const QString &text) Q_DECL_OVERRIDE {
+        QWebEnginePage *createWindow(WebWindowType) override { return nullptr; }
+        void javaScriptAlert(const QUrl &url, const QString &text) override {
             if(!Shown()) return;
             Asking asking(this);
             QWebEnginePage::javaScriptAlert(url, text);
         }
-        bool javaScriptConfirm(const QUrl &url, const QString &text) Q_DECL_OVERRIDE {
+        bool javaScriptConfirm(const QUrl &url, const QString &text) override {
             if(!Shown()) return false;
             Asking asking(this);
             return QWebEnginePage::javaScriptConfirm(url, text);
         }
-        bool javaScriptPrompt(const QUrl &url, const QString &text, const QString &value, QString *result) Q_DECL_OVERRIDE {
+        bool javaScriptPrompt(const QUrl &url, const QString &text, const QString &value, QString *result) override {
             if(!Shown()) return false;
             Asking asking(this);
             return QWebEnginePage::javaScriptPrompt(url, text, value, result);
         }
-        QStringList chooseFiles(FileSelectionMode mode, const QStringList &old, const QStringList &types) Q_DECL_OVERRIDE {
+        QStringList chooseFiles(FileSelectionMode mode, const QStringList &old, const QStringList &types) override {
             if(!Shown()) return QStringList();
             Asking asking(this);
             return QWebEnginePage::chooseFiles(mode, old, types);
         }
-        bool acceptNavigationRequest(const QUrl &url, NavigationType, bool isMainFrame) Q_DECL_OVERRIDE {
+        bool acceptNavigationRequest(const QUrl &url, NavigationType, bool isMainFrame) override {
             if(!isMainFrame || !ExtensionHostWire::IsAuthRedirect(m_Id, url)) return true;
             if(m_SentBack){
                 const std::function<void(const QUrl&)> sentBack = m_SentBack;
@@ -228,7 +230,7 @@ namespace {
             resize(500, 650);
         }
     protected:
-        void closeEvent(QCloseEvent *event) Q_DECL_OVERRIDE {
+        void closeEvent(QCloseEvent *event) override {
             QWidget::closeEvent(event);
             if(m_Closed){
                 const std::function<void()> closed = m_Closed;
@@ -252,10 +254,32 @@ namespace {
     }
 
 #ifdef WEBENGINEVIEW
+    void WatchForUpload(QWebEngineUrlRequestInfo &info, View *view){
+        if(info.resourceType() != QWebEngineUrlRequestInfo::ResourceTypeMainFrame) return;
+        if(info.requestMethod() != QByteArrayLiteral("POST")) return;
+        if(RunningUploads::IsMultipart(info.httpHeaders().value(QByteArrayLiteral("Content-Type"))))
+            view->UploadStarted(info.requestUrl());
+    }
+
+    class UploadWatch : public QWebEngineUrlRequestInterceptor {
+    public:
+        UploadWatch(QWebEnginePage *page, View *view)
+            : QWebEngineUrlRequestInterceptor(page)
+            , m_View(view)
+        {
+        }
+        void interceptRequest(QWebEngineUrlRequestInfo &info) override {
+            WatchForUpload(info, m_View);
+        }
+    private:
+        View *m_View;
+    };
+
     class ViewStamp : public QWebEngineUrlRequestInterceptor {
     public:
         ViewStamp(QWebEnginePage *page, View *view, std::function<void(quint64)> gone)
             : QWebEngineUrlRequestInterceptor(page)
+            , m_View(view)
             , m_Gone(gone)
         {
             m_Number = NextViewNumber();
@@ -269,7 +293,8 @@ namespace {
             StampedViews().remove(m_Number);
             m_Gone(m_Number);
         }
-        void interceptRequest(QWebEngineUrlRequestInfo &info) Q_DECL_OVERRIDE {
+        void interceptRequest(QWebEngineUrlRequestInfo &info) override {
+            WatchForUpload(info, m_View);
             if(info.requestUrl().scheme() != QLatin1String(ExtensionHostWire::SCHEME)) return;
             Q_ASSERT(QThread::currentThread() == qApp->thread());
             info.setHttpHeader(QByteArray(ExtensionHostWire::VIEW_HEADER),
@@ -277,19 +302,20 @@ namespace {
         }
     private:
         quint64 m_Number;
+        View *m_View;
         std::function<void(quint64)> m_Gone;
     };
 
     class QtAsk : public ExtensionHost::Ask {
     public:
         explicit QtAsk(QWebEngineUrlRequestJob *job) : m_Job(job) {}
-        QByteArray Method() const Q_DECL_OVERRIDE { return m_Job ? m_Job->requestMethod() : QByteArray(); }
-        QUrl Url() const Q_DECL_OVERRIDE { return m_Job ? m_Job->requestUrl() : QUrl(); }
-        QUrl Initiator() const Q_DECL_OVERRIDE { return m_Job ? m_Job->initiator() : QUrl(); }
-        QMap<QByteArray, QByteArray> Headers() const Q_DECL_OVERRIDE {
+        QByteArray Method() const override { return m_Job ? m_Job->requestMethod() : QByteArray(); }
+        QUrl Url() const override { return m_Job ? m_Job->requestUrl() : QUrl(); }
+        QUrl Initiator() const override { return m_Job ? m_Job->initiator() : QUrl(); }
+        QMap<QByteArray, QByteArray> Headers() const override {
             return m_Job ? m_Job->requestHeaders() : QMap<QByteArray, QByteArray>();
         }
-        bool Body(qint64 limit, QByteArray *body) Q_DECL_OVERRIDE {
+        bool Body(qint64 limit, QByteArray *body) override {
             if(!m_Job) return false;
             QIODevice *device = m_Job->requestBody();
             if(!device) return false;
@@ -302,21 +328,21 @@ namespace {
             *body = read;
             return true;
         }
-        bool Alive() const Q_DECL_OVERRIDE { return !m_Job.isNull(); }
-        void Reply(const QJsonObject &answer) Q_DECL_OVERRIDE {
+        bool Alive() const override { return !m_Job.isNull(); }
+        void Reply(const QJsonObject &answer) override {
             if(!m_Job) return;
             QBuffer *buffer = new QBuffer(m_Job);
             buffer->setData(QJsonDocument(answer).toJson(QJsonDocument::Compact));
             buffer->open(QIODevice::ReadOnly);
             m_Job->reply(QByteArrayLiteral("application/json"), buffer);
         }
-        void ReplyNothing() Q_DECL_OVERRIDE {
+        void ReplyNothing() override {
             if(!m_Job) return;
             QBuffer *buffer = new QBuffer(m_Job);
             buffer->open(QIODevice::ReadOnly);
             m_Job->reply(QByteArrayLiteral("text/plain"), buffer);
         }
-        void Fail() Q_DECL_OVERRIDE {
+        void Fail() override {
             if(m_Job) m_Job->fail(QWebEngineUrlRequestJob::RequestDenied);
         }
     private:
@@ -327,7 +353,7 @@ namespace {
     public:
         QtSchemeHandler(QObject *profile, ExtensionHost *host)
             : QWebEngineUrlSchemeHandler(profile), m_Host(host) {}
-        void requestStarted(QWebEngineUrlRequestJob *job) Q_DECL_OVERRIDE {
+        void requestStarted(QWebEngineUrlRequestJob *job) override {
             if(m_Host) m_Host->Handle(std::make_shared<QtAsk>(job), 0);
             else job->fail(QWebEngineUrlRequestJob::RequestDenied);
         }
@@ -505,12 +531,16 @@ ExtensionHost::ExtensionHost(QObject *owner, ExtensionController *controller, co
     connect(controller, &ExtensionController::Changed, this, &ExtensionHost::CloseOffscreenOfOthers);
     connect(controller, &ExtensionController::Changed, this, &ExtensionHost::KeepMainScripts);
     connect(controller, &ExtensionController::Ready, this, &ExtensionHost::KeepMainScripts);
+    connect(controller, &ExtensionController::Changed, this, &ExtensionHost::RingAlarms);
+    connect(controller, &ExtensionController::Ready, this, &ExtensionHost::RingAlarms);
     connect(controller, &ExtensionController::Unlisted, this, [this](const QString &id){
         m_UserChecked.remove(id);
         if(m_UserStore.entries.contains(id)){
             m_UserStore.Drop(id);
             WriteUserStoreSoon();
         }
+        m_Alarms.Drop(id);
+        WriteAlarmStoreSoon();
         if(!m_MainStore.entries.contains(id)) return;
         m_MainStore.Drop(id);
         WriteMainStore();
@@ -526,7 +556,8 @@ ExtensionHost::ExtensionHost(QObject *owner, ExtensionController *controller, co
 }
 
 namespace {
-    void WriteKept(const QString &path, const ExtensionMainScripts::Store &store, QByteArray *written);
+    template<class Kept>
+    void WriteKept(const QString &path, const Kept &store, QByteArray *written);
 }
 
 ExtensionHost::~ExtensionHost(){
@@ -535,6 +566,7 @@ ExtensionHost::~ExtensionHost(){
     CloseOffscreen(true);
     Line().Prune([this](const Pending &pending){ return pending.host != this; });
     if(m_UserStoreSoon) WriteKept(m_UserStoreFile, m_UserStore, &m_UserStoreWritten);
+    if(m_AlarmStoreSoon) WriteKept(m_AlarmStoreFile, m_Alarms, &m_AlarmStoreWritten);
     foreach(const auto &one, m_UserScriptMessages.Drop()) if(StillThere(one.waiter)) one.waiter->Reply(one.answer);
 }
 
@@ -556,7 +588,13 @@ void ExtensionHost::StampRequestsOf(QWebEnginePage *page, View *view){
     if(!page || !view) return;
     bool hosted = false;
     foreach(ExtensionHost *host, Hosts()) hosted = hosted || host->m_Owner == page->profile();
-    if(!hosted) return;
+    if(!hosted){
+        UploadWatch *watch = nullptr;
+        foreach(QObject *child, page->children())
+            if(UploadWatch *found = dynamic_cast<UploadWatch*>(child)) watch = found;
+        page->setUrlRequestInterceptor(watch ? watch : new UploadWatch(page, view));
+        return;
+    }
 
     ViewStamp *stamp = nullptr;
     foreach(const Stamped &entry, StampedViews())
@@ -650,6 +688,7 @@ void ExtensionHost::Install(QWebEngineProfile *profile, ExtensionController *con
     };
     host->ReadMainStore(Application::StateDirectory() + ExtensionMainScripts::StoreFileName(NetworkController::ProfileKey(profile)));
     host->ReadUserStore(Application::StateDirectory() + ExtensionUserScripts::StoreFileName(NetworkController::ProfileKey(profile)));
+    host->ReadAlarmStore(Application::StateDirectory() + ExtensionAlarms::StoreFileName(NetworkController::ProfileKey(profile)));
     connect(profile, &QWebEngineProfile::downloadRequested, host, &ExtensionHost::DownloadRequested);
 }
 
@@ -672,6 +711,7 @@ void ExtensionHost::Install(QQuickWebEngineProfile *profile, ExtensionController
     };
     if(scripts) host->ReadMainStore(Application::StateDirectory() + ExtensionMainScripts::StoreFileName(NetworkController::ProfileKey(profile)));
     if(scripts) host->ReadUserStore(Application::StateDirectory() + ExtensionUserScripts::StoreFileName(NetworkController::ProfileKey(profile)));
+    host->ReadAlarmStore(Application::StateDirectory() + ExtensionAlarms::StoreFileName(NetworkController::ProfileKey(profile)));
     connect(profile, &QQuickWebEngineProfile::downloadRequested, host,
             [host](QQuickWebEngineDownloadRequest *request){ host->DownloadRequested(request); });
 }
@@ -987,6 +1027,10 @@ void ExtensionHost::Handle(const HeldAsk &ask, quint64 view){
         MainScriptsCall(ask, asked.args, id);
         return;
     }
+    if(asked.api.startsWith(QStringLiteral("alarms.")) || asked.api == QStringLiteral("vanilla.alarmsTake")){
+        ask->Reply(AlarmsCall(asked, id));
+        return;
+    }
     if(UserScriptMessageCall(ask, asked, id)) return;
     if(asked.api.startsWith(QStringLiteral("userScripts."))){
         UserScriptsCall(ask, asked.api, asked.args, id);
@@ -1279,7 +1323,7 @@ void ExtensionHost::Subscribe(const HeldAsk &ask, const ExtensionHostWire::Call 
     }
     const QList<QJsonObject> held = m_Wakes.Subscribed(id, Now());
     CloseWaker(id);
-    foreach(const QJsonObject &event, held)
+    for(const QJsonObject &event : held)
         m_Subscribers.FireTo(id, QSet<QByteArray>() << token, event, StillThere, Now());
     DeliverWaitingUserScriptMessages(id, token, m_UserScriptListeners.Of(id).contains(token), true);
     LookSoon(held.isEmpty() ? LOOK_SOON : 0);
@@ -1371,7 +1415,7 @@ QJsonObject ExtensionHost::ActionCall(const ExtensionHostWire::Call &asked, cons
         const qint64 wanted = TabIdOf(named, &whole);
         if(!whole) return Refused(QStringLiteral("Invalid value for argument 1. Property 'tabId': Expected integer."));
         const QList<Tab> tabs = Tabs();
-        foreach(const Tab &one, tabs)
+        for(const Tab &one : tabs)
             if(one.id == wanted){ tab.id = one.id; tab.url = one.url; }
         if(tab.id <= 0) return Refused(NoTab(wanted));
     }
@@ -1654,7 +1698,7 @@ void ExtensionHost::CloseFlows(bool now){
 void ExtensionHost::CloseOffscreen(bool now){
     CloseFlows(now);
     if(now) m_Closed = true;
-    foreach(const QString &id, m_Wakers.keys()){
+    for(const QString &id : m_Wakers.keys()){
         m_Wakes.Forget(id);
         const QPointer<QObject> page = m_Wakers.take(id);
         if(!page) continue;
@@ -1712,7 +1756,8 @@ bool ExtensionHost::ScriptsWanted(const QString &id, const QString &folder, cons
 }
 
 namespace {
-    void ReadKept(const QString &path, ExtensionMainScripts::Store *store, QString *file, QByteArray *written){
+    template<class Kept>
+    void ReadKept(const QString &path, Kept *store, QString *file, QByteArray *written){
         QFile f(path);
         if(!f.open(QIODevice::ReadOnly)){
             if(f.exists()) qWarning("extension host: %s could not be read; nothing is kept this run", qPrintable(path));
@@ -1721,9 +1766,10 @@ namespace {
         }
         *file = path;
         *written = f.readAll();
-        *store = ExtensionMainScripts::Store::FromJson(*written);
+        *store = Kept::FromJson(*written);
     }
-    void WriteKept(const QString &path, const ExtensionMainScripts::Store &store, QByteArray *written){
+    template<class Kept>
+    void WriteKept(const QString &path, const Kept &store, QByteArray *written){
         if(path.isEmpty()) return;
         const QByteArray bytes = store.ToJson();
         if(bytes == *written) return;
@@ -1755,6 +1801,88 @@ void ExtensionHost::WriteUserStoreSoon(){
         m_UserStoreSoon = false;
         WriteKept(m_UserStoreFile, m_UserStore, &m_UserStoreWritten);
     });
+}
+
+void ExtensionHost::ReadAlarmStore(const QString &path){
+    ReadKept(path, &m_Alarms, &m_AlarmStoreFile, &m_AlarmStoreWritten);
+}
+
+void ExtensionHost::WriteAlarmStoreSoon(){
+    if(m_AlarmStoreSoon) return;
+    m_AlarmStoreSoon = true;
+    QTimer::singleShot(0, this, [this](){
+        m_AlarmStoreSoon = false;
+        WriteKept(m_AlarmStoreFile, m_Alarms, &m_AlarmStoreWritten);
+    });
+}
+
+bool ExtensionHost::AlarmsMayRing(const QString &id) const {
+    if(!Runs(id)) return false;
+    const ExtensionRow row = m_Controller->RowOf(id);
+    return row.loaded && row.enabled;
+}
+
+QJsonObject ExtensionHost::AlarmsCall(const ExtensionHostWire::Call &asked, const QString &id){
+    using namespace ExtensionHostWire;
+    if(!m_Qt || !m_Controller || !m_Controller->HasPermission(id, QStringLiteral("alarms")))
+        return Refused(NotAvailable(asked.api));
+    const double now = QDateTime::currentMSecsSinceEpoch();
+    QString error;
+    QJsonObject answer;
+    if(asked.api == QStringLiteral("vanilla.alarmsTake")){
+        const QJsonArray due = m_Alarms.Take(id);
+        answer = Accepted(QJsonObject{ { QStringLiteral("due"), due },
+                                       { QStringLiteral("keep"), !CanWake() && m_Alarms.HasAlarms(id) } });
+        m_Wakes.Answered(id);
+        CloseWaker(id);
+        if(due.isEmpty()) return answer;
+    } else if(asked.api == QStringLiteral("alarms.create")){
+        m_Alarms.Create(id, asked.args, now, &error);
+        answer = error.isEmpty() ? Done() : Refused(error);
+    } else if(asked.api == QStringLiteral("alarms.get")){
+        const QJsonValue found = m_Alarms.Get(id, asked.args, &error);
+        if(!error.isEmpty()) return Refused(error);
+        return found.isUndefined() ? Done() : Accepted(found);
+    } else if(asked.api == QStringLiteral("alarms.getAll")){
+        return Accepted(m_Alarms.GetAll(id));
+    } else if(asked.api == QStringLiteral("alarms.clear")){
+        const bool cleared = m_Alarms.Clear(id, asked.args, &error);
+        answer = error.isEmpty() ? Accepted(cleared) : Refused(error);
+    } else if(asked.api == QStringLiteral("alarms.clearAll")){
+        answer = Accepted(m_Alarms.ClearAll(id));
+    } else return Refused(NotAvailable(asked.api));
+    WriteAlarmStoreSoon();
+    QTimer::singleShot(0, this, &ExtensionHost::RingAlarms);
+    return answer;
+}
+
+void ExtensionHost::RingAlarms(){
+    using namespace ExtensionHostWire;
+    if(!m_Qt || m_Closed) return;
+    const auto mayRing = [this](const QString &id){ return AlarmsMayRing(id); };
+    const double now = QDateTime::currentMSecsSinceEpoch();
+    if(m_Alarms.Advance(now, mayRing)) WriteAlarmStoreSoon();
+    const QStringList due = m_Alarms.WithDue();
+    for(const QString &id : due){
+        if(!mayRing(id)) continue;
+        if(m_Subscribers.Listening(id, StillThere, Now())) Fire(id, QStringLiteral("alarms.onAlarm"), QJsonArray(), 0);
+        else if(CanWake()){
+            m_Wakes.Expect(id);
+            Wake(id, true);
+        }
+    }
+    const double next = m_Alarms.NextAt(mayRing);
+    if(next < 0 && due.isEmpty()){
+        if(m_AlarmTimer) m_AlarmTimer->stop();
+        return;
+    }
+    if(!m_AlarmTimer){
+        m_AlarmTimer = new QTimer(this);
+        m_AlarmTimer->setSingleShot(true);
+        connect(m_AlarmTimer, &QTimer::timeout, this, &ExtensionHost::RingAlarms);
+    }
+    const double wait = next < 0 ? 60000 : next - now;
+    m_AlarmTimer->start(int(std::clamp(wait, 1000.0, 60000.0)));
 }
 
 void ExtensionHost::KeepMainScripts(){
@@ -1846,7 +1974,7 @@ void ExtensionHost::PutUserScripts(const QString &id){
     foreach(const QString &w, book.WorldIds())
         if(!m_UserWorlds.Take(id, QStringList() << w))
             qWarning("extension host: no world is left for the user scripts of %s of the world '%s'", qPrintable(id), qPrintable(w));
-    foreach(const QByteArray &secret, m_WorldSecrets.keys())
+    for(const QByteArray &secret : m_WorldSecrets.keys())
         if(m_WorldSecrets.value(secret).first == id) m_WorldSecrets.remove(secret);
     const QString folder = m_Controller->RunFolderOf(id);
     const ExtensionUserScripts::Prelude prelude = [this, id, folder](const QString &worldId){
@@ -1875,7 +2003,7 @@ void ExtensionHost::KeepUserScripts(){
         return UserScriptsWanted(id, folder);
     });
     if(!change.isEmpty()) m_ApplyMainScripts(change);
-    foreach(const QString &id, m_UserStore.entries.keys()){
+    for(const QString &id : m_UserStore.entries.keys()){
         if(m_UserScripts.Has(id)) continue;
         CheckUserBook(id);
         if(m_UserStore.entries.contains(id) && UserScriptsWanted(id, m_Controller->RunFolderOf(id))) PutUserScripts(id);
@@ -2184,7 +2312,7 @@ qint64 ExtensionHost::Publish(){
         [](const HeldAsk &ask, const QJsonObject &reply){ if(ask && ask->Alive()) ask->Reply(reply); });
     if(!self) return -1;
     qint64 again = -1;
-    foreach(const QString &id, wake){
+    for(const QString &id : wake){
         Wake(id, true);
         const qint64 after = m_Wakes.Resting(id, Now()) ? m_Wakes.RestLeft(id, Now()) + 1 : LOOK_AGAIN;
         if(again < 0 || after < again) again = after;
@@ -2465,6 +2593,7 @@ QJsonObject ExtensionHost::Move(const ExtensionHostWire::Act &act, const Extensi
             const int final = to < 0 ? dir->ChildrenLength() - 1 : to;
             if(from != final){
                 dir->MoveChild(from, final);
+                TreeBank::SteerAutoLoadWalks(dir, true);
                 TreeBank::EmitTreeStructureChanged();
             }
         } else {

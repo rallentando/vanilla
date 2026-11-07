@@ -4,13 +4,15 @@
 #include "switch.hpp"
 
 #include <QString>
+#include <QStringList>
 #include <QJsonArray>
 
 namespace Cdp {
 
 QString WorkerShim();
+QString WorkerShim(const QStringList &permissions, bool askedAlarms = false);
 QString ContentShim();
-QString PageShim();
+QString PageShim(bool askedAlarms = false);
 
 QString RelayScript();
 

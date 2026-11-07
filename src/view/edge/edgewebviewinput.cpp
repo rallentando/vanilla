@@ -4,6 +4,7 @@
 
 #include "edgewebview_p.hpp"
 #include "edgehostwindow.hpp"
+#include "settingspage.hpp"
 
 #include <QAction>
 #include <QKeyEvent>
@@ -206,6 +207,8 @@ bool EdgeWebView::HandleAcceleratorKey(int virtualKey, bool down, bool repeat){
     }
 
     if(repeat) return m_Impl->m_HandledKeys.contains(virtualKey);
+
+    if(VanillaPage::IsRecordingKey() && VanillaPage::IsSettingsUrl(url())) return false;
 
     Qt::KeyboardModifiers modifiers = Qt::NoModifier;
     if(GetKeyState(VK_SHIFT)   & 0x8000) modifiers |= Qt::ShiftModifier;
@@ -492,6 +495,14 @@ static int UpKindOf(Qt::MouseButton button){
     }
 }
 
+static unsigned int MouseDataOf(Qt::MouseButton button){
+    switch(button){
+    case Qt::XButton1: return 1;
+    case Qt::XButton2: return 2;
+    default:           return 0;
+    }
+}
+
 void EdgeWebView::SendMouse(int kind, unsigned int data, const QPointF &pos,
                             Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons){
     if(!m_Impl->m_Composition) return;
@@ -510,10 +521,19 @@ void EdgeWebView::SendMouse(int kind, unsigned int data, const QPointF &pos,
     if(buttons & Qt::RightButton)       keys |= COREWEBVIEW2_MOUSE_EVENT_VIRTUAL_KEYS_RIGHT_BUTTON;
     if(buttons & Qt::MiddleButton)      keys |= COREWEBVIEW2_MOUSE_EVENT_VIRTUAL_KEYS_MIDDLE_BUTTON;
 
-    m_Impl->m_Composition->SendMouseInput
+    if(kind == COREWEBVIEW2_MOUSE_EVENT_KIND_LEAVE){
+        point = POINT{0, 0};
+        keys = COREWEBVIEW2_MOUSE_EVENT_VIRTUAL_KEYS_NONE;
+        data = 0;
+    }
+
+    const HRESULT hr = m_Impl->m_Composition->SendMouseInput
         (static_cast<COREWEBVIEW2_MOUSE_EVENT_KIND>(kind),
          static_cast<COREWEBVIEW2_MOUSE_EVENT_VIRTUAL_KEYS>(keys),
          data, point);
+    if(kind != COREWEBVIEW2_MOUSE_EVENT_KIND_MOVE || FAILED(hr))
+        EdgeInputTrace("send kind=%d keys=%u at=%ld,%ld hr=0x%08lx",
+                       kind, keys, point.x, point.y, static_cast<unsigned long>(hr));
 }
 
 void EdgeWebView::ApplyCursor(unsigned int systemCursorId){
@@ -524,6 +544,7 @@ void EdgeWebView::ApplyCursor(unsigned int systemCursorId){
 
 void EdgeWebView::AbandonMouse(){
     const int owed = m_Impl->m_Input.Abandon();
+    EdgeInputTrace("abandon owed=%d", owed);
 
     const QPointF pos = m_Impl->m_LastMousePos;
     if(owed){
@@ -533,8 +554,10 @@ void EdgeWebView::AbandonMouse(){
             SendMouse(COREWEBVIEW2_MOUSE_EVENT_KIND_RIGHT_BUTTON_UP, 0, pos, Qt::NoModifier, Qt::NoButton);
         if(owed & EdgeInputLedger::MiddleButton)
             SendMouse(COREWEBVIEW2_MOUSE_EVENT_KIND_MIDDLE_BUTTON_UP, 0, pos, Qt::NoModifier, Qt::NoButton);
-        if(owed & (EdgeInputLedger::XButton1 | EdgeInputLedger::XButton2))
-            SendMouse(COREWEBVIEW2_MOUSE_EVENT_KIND_X_BUTTON_UP, 0, pos, Qt::NoModifier, Qt::NoButton);
+        if(owed & EdgeInputLedger::XButton1)
+            SendMouse(COREWEBVIEW2_MOUSE_EVENT_KIND_X_BUTTON_UP, MouseDataOf(Qt::XButton1), pos, Qt::NoModifier, Qt::NoButton);
+        if(owed & EdgeInputLedger::XButton2)
+            SendMouse(COREWEBVIEW2_MOUSE_EVENT_KIND_X_BUTTON_UP, MouseDataOf(Qt::XButton2), pos, Qt::NoModifier, Qt::NoButton);
 
         SendMouse(COREWEBVIEW2_MOUSE_EVENT_KIND_LEAVE, 0, pos, Qt::NoModifier, Qt::NoButton);
     }
@@ -543,17 +566,7 @@ void EdgeWebView::AbandonMouse(){
 }
 
 void EdgeWebView::ShowGestureInProgress(){
-    const QString shape = GestureToString(m_Gesture);
-    if(!m_RightGestureMap.contains(shape)){
-        emit statusBarMessage(shape + QStringLiteral(" (") + tr("NoAction") + QStringLiteral(")"));
-        return;
-    }
-    const QString name = m_RightGestureMap.value(shape);
-    QAction *action = Page::IsValidAction(name)
-        ? Action(Page::StringToAction(name)) : nullptr;
-    emit statusBarMessage(shape + QStringLiteral(" (") +
-                          (action ? action->text() : name) +
-                          QStringLiteral(")"));
+    emit statusBarMessage(GestureStatusLine(m_RightGestureMap, tr("NoAction")));
 }
 
 void EdgeWebView::WheelEvent(QWheelEvent *ev){
@@ -583,6 +596,8 @@ bool EdgeWebView::ForwardMouseEvent(QEvent *ev){
            m_Impl->m_Input.Hold(button)){
             m_Impl->m_Clicks.Reset();
             GestureStarted(me->position().toPoint());
+            EdgeInputTrace("press held button=%d forwarded=%d consumed=%d kept=%d qt=%d",
+                           int(button), m_Impl->m_Input.Forwarded(), m_Impl->m_Input.Consumed(), m_Impl->m_Input.Kept(), int(QGuiApplication::mouseButtons()));
             return true;
         }
 
@@ -593,12 +608,14 @@ bool EdgeWebView::ForwardMouseEvent(QEvent *ev){
             QGuiApplication::styleHints()->mouseDoubleClickInterval(),
             QGuiApplication::styleHints()->mouseDoubleClickDistance(),
             send == EdgeInputLedger::Send::ToBackend);
+        EdgeInputTrace("press button=%d host=%d send=%d double=%d forwarded=%d consumed=%d kept=%d qt=%d",
+                       int(button), hostWants ? 1 : 0, int(send), doubled ? 1 : 0, m_Impl->m_Input.Forwarded(), m_Impl->m_Input.Consumed(), m_Impl->m_Input.Kept(), int(QGuiApplication::mouseButtons()));
 
         if(send == EdgeInputLedger::Send::ToBackend){
             const int kind = doubled ? DoubleKindOf(me->button())
                                      : DownKindOf(me->button());
             if(kind >= 0)
-                SendMouse(kind, 0, me->position(), me->modifiers(), me->buttons());
+                SendMouse(kind, MouseDataOf(me->button()), me->position(), me->modifiers(), me->buttons());
             return true;
         }
         if(hostWants){
@@ -606,6 +623,7 @@ bool EdgeWebView::ForwardMouseEvent(QEvent *ev){
                 m_Impl->m_Input.Drop(kept);
                 GestureAborted();
             }
+            if((me->buttons() | me->button()) & Qt::RightButton) View::ConsumeRightButton();
             View::TriggerAction(action);
             return true;
         }
@@ -620,26 +638,30 @@ bool EdgeWebView::ForwardMouseEvent(QEvent *ev){
 
         if((m_Impl->m_Input.Kept() & button) && !m_Gesture.isEmpty()){
             m_Impl->m_Input.Drop(button);
+            EdgeInputTrace("release gesture button=%d", int(button));
             GestureFinished(me->position().toPoint(), me->button());
             return true;
         }
 
-        switch(m_Impl->m_Input.Release(button)){
+        const EdgeInputLedger::Send released = m_Impl->m_Input.Release(button);
+        EdgeInputTrace("release button=%d send=%d forwarded=%d consumed=%d kept=%d qt=%d",
+                       int(button), int(released), m_Impl->m_Input.Forwarded(), m_Impl->m_Input.Consumed(), m_Impl->m_Input.Kept(), int(QGuiApplication::mouseButtons()));
+        switch(released){
         case EdgeInputLedger::Send::DownThenUp: {
             const int down = DownKindOf(me->button());
             const int up   = UpKindOf(me->button());
             if(down >= 0)
-                SendMouse(down, 0, me->position(), me->modifiers(),
+                SendMouse(down, MouseDataOf(me->button()), me->position(), me->modifiers(),
                           me->buttons() | me->button());
             if(up >= 0)
-                SendMouse(up, 0, me->position(), me->modifiers(), me->buttons());
+                SendMouse(up, MouseDataOf(me->button()), me->position(), me->modifiers(), me->buttons());
             GestureAborted();
             break;
         }
         case EdgeInputLedger::Send::ToBackend: {
             const int kind = UpKindOf(me->button());
             if(kind >= 0)
-                SendMouse(kind, 0, me->position(), me->modifiers(), me->buttons());
+                SendMouse(kind, MouseDataOf(me->button()), me->position(), me->modifiers(), me->buttons());
             break;
         }
         case EdgeInputLedger::Send::Nothing:

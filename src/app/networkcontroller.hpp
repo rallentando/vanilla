@@ -55,9 +55,9 @@ protected:
 
     friend class tst_cookiefilter;
 
-    bool insertCookie(const QNetworkCookie &cookie) Q_DECL_OVERRIDE;
-    bool updateCookie(const QNetworkCookie &cookie) Q_DECL_OVERRIDE;
-    bool deleteCookie(const QNetworkCookie &cookie) Q_DECL_OVERRIDE;
+    bool insertCookie(const QNetworkCookie &cookie) override;
+    bool updateCookie(const QNetworkCookie &cookie) override;
+    bool deleteCookie(const QNetworkCookie &cookie) override;
 
 private:
     QHash<QString, QString> m_Mirrored;
@@ -71,7 +71,7 @@ class RequestInterceptor : public QWebEngineUrlRequestInterceptor {
 
 public:
     RequestInterceptor(QObject *parent = nullptr);
-    void interceptRequest(QWebEngineUrlRequestInfo &info) Q_DECL_OVERRIDE;
+    void interceptRequest(QWebEngineUrlRequestInfo &info) override;
     void AskExtensionRules(QWebEngineUrlRequestInfo &info);
     static Dnr::ResourceType DnrTypeOf(QWebEngineUrlRequestInfo::ResourceType type);
 
@@ -126,9 +126,8 @@ class NetworkAccessManager : public QNetworkAccessManager {
 
 public:
     NetworkAccessManager(QString id);
-    ~NetworkAccessManager() Q_DECL_OVERRIDE;
-    QNetworkReply* createRequest(Operation op, const QNetworkRequest &req, QIODevice *out = nullptr) Q_DECL_OVERRIDE;
-    QString GetId();
+    ~NetworkAccessManager() override;
+    QNetworkReply* createRequest(Operation op, const QNetworkRequest &req, QIODevice *out = nullptr) override;
     void SetNetworkCookieJar(NetworkCookieJar *);
     NetworkCookieJar *GetNetworkCookieJar() const;
     void SetUserAgent(QString ua);
@@ -207,7 +206,16 @@ public:
     void Record(bool hideUrl = false);
     void SetSource(const QUrl &page, bool offTheRecord);
 
+    static int Running(){ return Counted::count;}
+
 private:
+    struct Counted {
+        static inline int count = 0;
+        Counted(){ count++;}
+        ~Counted(){ count--;}
+        Counted(const Counted&) = delete;
+    } m_Counted;
+
     friend class tst_downloaditem;
 
     QByteArray HeaderOfReplyOrRequest(QNetworkRequest::KnownHeaders known,
@@ -252,34 +260,6 @@ signals:
     void DownloadResult(const QByteArray&);
 };
 
-class UploadItem : public QObject {
-    Q_OBJECT
-
-public:
-    UploadItem(QNetworkReply *reply, qint64 size);
-    UploadItem(QNetworkReply *reply, QString name = QString());
-    ~UploadItem();
-    QString GetPath() const;
-    void SetPath(QString name);
-
-private:
-    QString ExpectFileName();
-    QNetworkReply *m_UploadReply;
-    QString        m_Path;
-    qint64         m_FileSize;
-    static int     m_UnknownCount;
-
-private slots:
-    void Finished();
-    void UploadProgress(qint64 sent, qint64 total);
-
-public slots:
-    void Stop();
-
-signals:
-    void Progress(QString, qint64, qint64);
-};
-
 class NetworkController : public QObject {
     Q_OBJECT
 
@@ -301,10 +281,7 @@ public:
     static DownloadItem* Download(NetworkAccessManager *nam,
                                   const QNetworkRequest &request,
                                   DownloadType type = SelectedDirectory);
-    static UploadItem* Upload(QNetworkReply *reply, qint64 filesize);
-    static UploadItem* Upload(QNetworkReply *reply, QString filename);
     static void RemoveItem(DownloadItem *item);
-    static void RemoveItem(UploadItem *item);
 
     static void SetUserAgent(NetworkAccessManager *nam, QStringList set);
     static void SetProxy(NetworkAccessManager *nam, QStringList set);
@@ -350,6 +327,18 @@ public:
     static NetworkAccessManager* MergeNetworkAccessManager(QString bef, QString aft, QStringList set);
     static NetworkAccessManager* KillNetworkAccessManager(QString id);
     static QMap<QString, NetworkAccessManager*> AllNetworkAccessManager();
+    static QList<NetworkAccessManager*> LiveNetworkAccessManagers();
+
+    static QList<QObject*> SpaceProfiles(const QString &id);
+    static void ReleaseSpace(const QString &id);
+    static bool StorageInUse(const QString &id);
+    static void NoteReleasing(const QString &id, QObject *object);
+    static void DropHeldCookies(const QString &id);
+    static QStringList KnownSpaceNames();
+    static NetworkAccessManager* PlaceSpace(const QString &from, const QString &to, QStringList set);
+    static NetworkAccessManager* JoinSpace(const QString &from, const QString &to, QStringList set, bool release);
+    static QString WidgetStorageDirectory();
+
     static void InitializeNetworkAccessManager(QString id, const QList<QNetworkCookie> &cookies);
     static bool LoadCookieFile(QString path);
     static void LoadAllCookies();
@@ -366,8 +355,12 @@ private:
                                   DownloadType type = SelectedDirectory);
 
     static QMap<QString, NetworkAccessManager*> m_NetworkAccessManagerTable;
+    static QList<NetworkAccessManager*> m_RetiredNetworkAccessManagers;
+    static void RetireNetworkAccessManager(NetworkAccessManager *nam);
+    static QList<NetworkAccessManager*> SpaceManagers(const QString &id);
+    static QMap<QString, QList<QNetworkCookie>> m_HeldCookies;
+    static QMap<QString, QList<QPointer<QObject>>> m_Releasing;
     static QList<DownloadItem*> m_DownloadList;
-    static QList<UploadItem*>   m_UploadList;
 };
 
 #endif

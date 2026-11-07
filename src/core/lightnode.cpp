@@ -177,6 +177,25 @@ Node *Node::ImageOwner(){
     return nullptr;
 }
 
+void Node::SetView(View *v){
+    m_View = v;
+    TreeBank::TabsLookChanged();
+}
+
+void Node::SetPrimary(Node *nd){
+    m_Primary = nd;
+    TreeBank::TabsLookChanged();
+}
+
+void Node::ResetPrimaryPath(){
+    Node *nd = this;
+    while(nd->m_Parent){
+        nd->m_Parent->m_Primary = nd;
+        nd = nd->m_Parent;
+    }
+    TreeBank::TabsLookChanged();
+}
+
 QImage Node::VisibleImage(){
     Node *owner = ImageOwner();
     return owner ? owner->GetImage() : QImage();
@@ -189,7 +208,7 @@ QImage Node::VisibleLargeImage(){
 
 QIcon Node::GetIcon(){
     if(GetUrl().isEmpty()) return QIcon();
-    return Application::GetIcon(GetUrl());
+    return Application::GetIcon(GetUrl(), GetView() != nullptr);
 }
 
 ViewNode::ViewNode()
@@ -424,7 +443,7 @@ ViewNode *ViewNode::New(){
     return vn;
 }
 
-ViewNode *ViewNode::Clone(ViewNode *parent){
+ViewNode *ViewNode::Clone(ViewNode *parent, bool offDisk){
     if(m_Booting) return nullptr;
     if(!parent) parent = m_Parent->ToViewNode();
     ViewNode *clone = m_Parent == parent ? MakeSibling() : parent->MakeChild();
@@ -435,10 +454,13 @@ ViewNode *ViewNode::Clone(ViewNode *parent){
     }
 
     if(IsDirectory()){
+        NodeList children;
         foreach(Node *child, GetChildren()){
-            ViewNode *vn = child->ToViewNode()->Clone(clone);
+            ViewNode *vn = child->ToViewNode()->Clone(clone, offDisk);
             if(m_Primary == child) clone->m_Primary = vn;
+            children << vn;
         }
+        clone->SetChildren(children);
     } else {
         clone->m_HoldView = true;
         QString imageFrom, historyFrom;
@@ -446,7 +468,7 @@ ViewNode *ViewNode::Clone(ViewNode *parent){
             clone->m_Url = m_Url;
             clone->m_Image = QImage(m_Image);
             clone->m_HistoryData = QByteArray(m_HistoryData);
-            if(m_OffDisk){
+            if(m_OffDisk || offDisk){
                 clone->m_OffDisk = true;
                 clone->m_NeedToSaveImage = !m_Image.isNull();
                 clone->m_NeedToSaveHistory = !m_HistoryData.isEmpty();
@@ -493,8 +515,14 @@ QImage ViewNode::GetImage(){
                 image = image.scaled(RESIDENT_THUMBNAIL_SIZE,
                                      Qt::KeepAspectRatioByExpanding,
                                      Qt::SmoothTransformation);
-            QMutexLocker locker(&m_DataMutex);
-            if(m_Image.isNull() && m_ImageFileName == filename) m_Image = image;
+            bool arrived = false;
+            {   QMutexLocker locker(&m_DataMutex);
+                if(m_Image.isNull() && m_ImageFileName == filename){
+                    m_Image = image;
+                    arrived = !image.isNull();
+                }
+            }
+            if(arrived) TreeBank::TabsLookChanged();
         });
         return QImage();
     }
@@ -579,20 +607,6 @@ void ViewNode::SetLastAccessDate(QDateTime dt){
     m_LastAccessDate = dt;
 }
 
-void ViewNode::SetCreateDateToCurrent(){
-    SetCreateDate(QDateTime::currentDateTime());
-}
-
-void ViewNode::SetLastUpdateDateToCurrent(){
-    QDateTime current = QDateTime::currentDateTime();
-    SetLastUpdateDate(current);
-    Node *nd = this;
-    while(nd && !nd->IsRoot()){
-        nd->SetLastAccessDate(current);
-        nd = nd->GetParent();
-    }
-}
-
 void ViewNode::SetLastAccessDateToCurrent(){
     QDateTime current = QDateTime::currentDateTime();
     Node *nd = this;
@@ -603,6 +617,7 @@ void ViewNode::SetLastAccessDateToCurrent(){
 }
 
 void ViewNode::SetImage(const QImage &image, bool offTheRecord){
+    struct Told { ~Told(){ TreeBank::TabsLookChanged();} } told;
     if(offTheRecord){
         SetOffDisk(true);
     } else {

@@ -2,6 +2,7 @@
 #include "const.hpp"
 
 #include "bookmarkio.hpp"
+#include "fileexchange.hpp"
 
 #include "lightnode.hpp"
 
@@ -31,18 +32,6 @@ namespace {
 
 ViewNode *Append(ViewNode *parent){
     return parent->MakeChild(INT_MAX);
-}
-
-QByteArray ReadWholeFile(const QString &path, bool *ok){
-    QFile file(path);
-    if(!file.open(QIODevice::ReadOnly)){
-        if(ok) *ok = false;
-        return QByteArray();
-    }
-    QByteArray data = file.readAll();
-    file.close();
-    if(ok) *ok = true;
-    return data;
 }
 
 bool WriteWholeFile(const QString &path, const QByteArray &data){
@@ -420,14 +409,14 @@ bool ReadChromeJson(const QByteArray &json, ViewNode *root){
         }
         QJsonValue val = obj[children];
         if(!val.isArray()) return;
-        foreach(QJsonValue child, val.toArray()){
+        for(QJsonValue child : val.toArray()){
             traverse(vn, child.toObject());
         }
     };
 
     ViewNode *rootnode = Append(root);
     rootnode->SetTitle(QStringLiteral("Favorites"));
-    foreach(QString key, roots.keys()){
+    for(QString key : roots.keys()){
         if(!roots[key].isObject()) continue;
         traverse(rootnode, roots[key].toObject());
     }
@@ -454,7 +443,7 @@ bool ReadFirefoxJson(const QByteArray &json, ViewNode *root){
         }
         QJsonValue val = obj[children];
         if(!val.isArray()) return;
-        foreach(QJsonValue child, val.toArray()){
+        for(QJsonValue child : val.toArray()){
             traverse(vn, child.toObject());
         }
     };
@@ -481,7 +470,7 @@ bool ReadIeFavorites(const QString &directory, ViewNode *root){
         if(QFileInfo(path).isDir()){
             QDir dir = path;
             QStringList files = dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries);
-            foreach(QString file, files){
+            for(QString file : std::as_const(files)){
                 traverse(vn, path + QStringLiteral("/") + file);
             }
         } else {
@@ -497,31 +486,31 @@ bool ReadIeFavorites(const QString &directory, ViewNode *root){
 
 bool ReadInternalXmlFile(const QString &path, ViewNode *root){
     bool ok = false;
-    QByteArray data = ReadWholeFile(path, &ok);
+    QByteArray data = FileExchange::ReadWhole(path, &ok);
     return ok && ReadInternalXml(data, root);
 }
 
 bool ReadXbelFile(const QString &path, ViewNode *root){
     bool ok = false;
-    QByteArray data = ReadWholeFile(path, &ok);
+    QByteArray data = FileExchange::ReadWhole(path, &ok);
     return ok && ReadXbel(data, root);
 }
 
 bool ReadNetscapeHtmlFile(const QString &path, ViewNode *root){
     bool ok = false;
-    QByteArray data = ReadWholeFile(path, &ok);
+    QByteArray data = FileExchange::ReadWhole(path, &ok);
     return ok && ReadNetscapeHtml(QString::fromUtf8(data), root);
 }
 
 bool ReadChromeJsonFile(const QString &path, ViewNode *root){
     bool ok = false;
-    QByteArray data = ReadWholeFile(path, &ok);
+    QByteArray data = FileExchange::ReadWhole(path, &ok);
     return ok && ReadChromeJson(data, root);
 }
 
 bool ReadFirefoxJsonFile(const QString &path, ViewNode *root){
     bool ok = false;
-    QByteArray data = ReadWholeFile(path, &ok);
+    QByteArray data = FileExchange::ReadWhole(path, &ok);
     return ok && ReadFirefoxJson(data, root);
 }
 

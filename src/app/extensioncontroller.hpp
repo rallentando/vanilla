@@ -96,7 +96,7 @@ class ExtensionController : public QObject {
 public:
     explicit ExtensionController(QObject *parent, const QString &journal = QString(),
                                  int timeoutMs = 20000);
-    ~ExtensionController() Q_DECL_OVERRIDE;
+    ~ExtensionController() override;
 
     QList<ExtensionRow> Rows() const;
     bool IsReady() const { return m_Ready;}
@@ -160,6 +160,7 @@ public:
     const Dnr::Held &HeldRules() const { return m_Rules; }
     static QList<ExtensionRuleFiles> EnabledRuleFiles();
     static QSet<QString> EnabledIds();
+    static QString NameOfId(const QString &id);
     static QString DefaultPickDirectory();
     static QString PickDirectoryFrom(const QString &root, const QString &home);
 

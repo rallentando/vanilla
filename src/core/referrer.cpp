@@ -1,6 +1,7 @@
 #include "switch.hpp"
 
 #include "referrer.hpp"
+#include "urlorigin.hpp"
 
 namespace {
 
@@ -9,12 +10,8 @@ namespace {
         return scheme == QStringLiteral("http") || scheme == QStringLiteral("https");
     }
 
-    int DefaultPort(const QUrl &url){
-        return url.scheme() == QStringLiteral("https") ? 443 : 80;
-    }
-
     int EffectivePort(const QUrl &url){
-        return url.port(DefaultPort(url));
+        return url.port(UrlOrigin::DefaultPort(url.scheme()));
     }
 
     bool SameOrigin(const QUrl &a, const QUrl &b){
@@ -26,7 +23,7 @@ namespace {
         QUrl origin;
         origin.setScheme(url.scheme());
         origin.setHost(url.host());
-        if(EffectivePort(url) != DefaultPort(url)) origin.setPort(url.port());
+        if(EffectivePort(url) != UrlOrigin::DefaultPort(url.scheme())) origin.setPort(url.port());
         origin.setPath(QStringLiteral("/"));
         return origin.toEncoded();
     }

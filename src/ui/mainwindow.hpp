@@ -37,7 +37,7 @@ class MainWindow : public
 
 public:
     MainWindow(int id, QPoint pos = QPoint(), bool showNow = true, QWidget *parent = nullptr);
-    ~MainWindow() Q_DECL_OVERRIDE;
+    ~MainWindow() override;
 
     template <class T> T ScaleByDevice(T v) const {
         return DeviceScale::FromDpi(v, static_cast<int>(logicalDpiY()));
@@ -63,13 +63,12 @@ public:
     void ApplyInspectorDockFrame();
 #endif
 
-    QMenu *createPopupMenu() Q_DECL_OVERRIDE;
+    QMenu *createPopupMenu() override;
     void AddDisplayMenuActions(QMenu *menu);
 
     bool IsMenuBarEmpty() const;
     void ClearMenuBar();
     void CreateMenuBar();
-    bool IsContentFullScreen() const;
     bool IsShaded() const;
     void Shade();
     void Unshade();
@@ -90,12 +89,7 @@ public slots:
     void ToggleMinimized();
     void ToggleShaded();
     void SetMenuBar(bool on);
-    void SetTreeBar(bool on);
-    void SetToolBar(bool on);
     void SetFullScreen(bool on);
-    void SetMaximized(bool on);
-    void SetMinimized(bool on);
-    void SetShaded(bool on);
     void SetFocus();
 
 public:
@@ -108,16 +102,16 @@ public:
     void ApplyTheme();
 
 protected:
-    void changeEvent(QEvent *ev) Q_DECL_OVERRIDE;
-    bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE;
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void closeEvent(QCloseEvent *ev) Q_DECL_OVERRIDE;
-    void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE;
-    void moveEvent(QMoveEvent *ev) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE;
-    void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE;
+    void changeEvent(QEvent *ev) override;
+    bool eventFilter(QObject *watched, QEvent *ev) override;
+    void paintEvent(QPaintEvent *ev) override;
+    void closeEvent(QCloseEvent *ev) override;
+    void resizeEvent(QResizeEvent *ev) override;
+    void moveEvent(QMoveEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
+    void hideEvent(QHideEvent *ev) override;
 #if defined(Q_OS_WIN)
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) Q_DECL_OVERRIDE;
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 #endif
 
 private:
@@ -173,13 +167,13 @@ public:
     }
 
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void mouseDoubleClickEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    void enterEvent(QEnterEvent *ev) Q_DECL_OVERRIDE;
-    void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
+    void mouseDoubleClickEvent(QMouseEvent *ev) override;
+    void enterEvent(QEnterEvent *ev) override;
+    void leaveEvent(QEvent *ev) override;
 
 private:
     enum HoveredButton {
@@ -242,14 +236,15 @@ protected:
     const int t = ScaleByDevice(TITLE_BAR_HEIGHT);
     const int et = e+t;
 
-    virtual void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mousePressEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mouseMoveEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void mouseReleaseEvent(QMouseEvent *ev) Q_DECL_OVERRIDE;
-    virtual void enterEvent(QEnterEvent *ev) Q_DECL_OVERRIDE;
-    virtual void leaveEvent(QEvent *ev) Q_DECL_OVERRIDE;
+    virtual void paintEvent(QPaintEvent *ev) override;
+    virtual void mousePressEvent(QMouseEvent *ev) override;
+    virtual void mouseMoveEvent(QMouseEvent *ev) override;
+    virtual void mouseReleaseEvent(QMouseEvent *ev) override;
+    virtual void enterEvent(QEnterEvent *ev) override;
+    virtual void leaveEvent(QEvent *ev) override;
     virtual QRect ComputeNewRect(QRect rect, QPoint pos) = 0;
     virtual Qt::CursorShape CursorShape() = 0;
+    void PaintSide(QPaintEvent *ev, Qt::Edge side);
     MainWindow *m_MainWindow;
     QPoint m_Pos;
 };
@@ -260,9 +255,9 @@ public:
     MainWindowNorthWidget(MainWindow *mainwindow)
         : MainWindowEdgeWidget(mainwindow){}
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    QRect ComputeNewRect(QRect rect, QPoint pos) Q_DECL_OVERRIDE;
-    Qt::CursorShape CursorShape() Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    QRect ComputeNewRect(QRect rect, QPoint pos) override;
+    Qt::CursorShape CursorShape() override;
 };
 
 class MainWindowSouthWidget : public MainWindowEdgeWidget {
@@ -271,9 +266,9 @@ public:
     MainWindowSouthWidget(MainWindow *mainwindow)
         : MainWindowEdgeWidget(mainwindow){}
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    QRect ComputeNewRect(QRect rect, QPoint pos) Q_DECL_OVERRIDE;
-    Qt::CursorShape CursorShape() Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    QRect ComputeNewRect(QRect rect, QPoint pos) override;
+    Qt::CursorShape CursorShape() override;
 };
 
 class MainWindowWestWidget : public MainWindowEdgeWidget {
@@ -282,9 +277,9 @@ public:
     MainWindowWestWidget(MainWindow *mainwindow)
         : MainWindowEdgeWidget(mainwindow){}
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    QRect ComputeNewRect(QRect rect, QPoint pos) Q_DECL_OVERRIDE;
-    Qt::CursorShape CursorShape() Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    QRect ComputeNewRect(QRect rect, QPoint pos) override;
+    Qt::CursorShape CursorShape() override;
 };
 
 class MainWindowEastWidget : public MainWindowEdgeWidget {
@@ -293,9 +288,9 @@ public:
     MainWindowEastWidget(MainWindow *mainwindow)
         : MainWindowEdgeWidget(mainwindow){}
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    QRect ComputeNewRect(QRect rect, QPoint pos) Q_DECL_OVERRIDE;
-    Qt::CursorShape CursorShape() Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    QRect ComputeNewRect(QRect rect, QPoint pos) override;
+    Qt::CursorShape CursorShape() override;
 };
 
 class MainWindowNorthWestWidget : public MainWindowEdgeWidget {
@@ -304,9 +299,9 @@ public:
     MainWindowNorthWestWidget(MainWindow *mainwindow)
         : MainWindowEdgeWidget(mainwindow){}
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    QRect ComputeNewRect(QRect rect, QPoint pos) Q_DECL_OVERRIDE;
-    Qt::CursorShape CursorShape() Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    QRect ComputeNewRect(QRect rect, QPoint pos) override;
+    Qt::CursorShape CursorShape() override;
 };
 
 class MainWindowNorthEastWidget : public MainWindowEdgeWidget {
@@ -315,9 +310,9 @@ public:
     MainWindowNorthEastWidget(MainWindow *mainwindow)
         : MainWindowEdgeWidget(mainwindow){}
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    QRect ComputeNewRect(QRect rect, QPoint pos) Q_DECL_OVERRIDE;
-    Qt::CursorShape CursorShape() Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    QRect ComputeNewRect(QRect rect, QPoint pos) override;
+    Qt::CursorShape CursorShape() override;
 };
 
 class MainWindowSouthWestWidget : public MainWindowEdgeWidget {
@@ -326,9 +321,9 @@ public:
     MainWindowSouthWestWidget(MainWindow *mainwindow)
         : MainWindowEdgeWidget(mainwindow){}
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    QRect ComputeNewRect(QRect rect, QPoint pos) Q_DECL_OVERRIDE;
-    Qt::CursorShape CursorShape() Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    QRect ComputeNewRect(QRect rect, QPoint pos) override;
+    Qt::CursorShape CursorShape() override;
 };
 
 class MainWindowSouthEastWidget : public MainWindowEdgeWidget {
@@ -337,9 +332,9 @@ public:
     MainWindowSouthEastWidget(MainWindow *mainwindow)
         : MainWindowEdgeWidget(mainwindow){}
 protected:
-    void paintEvent(QPaintEvent *ev) Q_DECL_OVERRIDE;
-    QRect ComputeNewRect(QRect rect, QPoint pos) Q_DECL_OVERRIDE;
-    Qt::CursorShape CursorShape() Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *ev) override;
+    QRect ComputeNewRect(QRect rect, QPoint pos) override;
+    Qt::CursorShape CursorShape() override;
 };
 
 #endif

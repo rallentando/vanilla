@@ -95,6 +95,15 @@ void Apply(QWidget *window){
 #endif
 }
 
+void RoundCorners(QWidget *window){
+    if(!window) return;
+#if defined(Q_OS_WIN)
+    const DWORD round = 2;
+    ::DwmSetWindowAttribute(reinterpret_cast<HWND>(window->window()->winId()),
+                            33 , &round, sizeof(round));
+#endif
+}
+
 void Blur(QWidget *window){
     if(!window) return;
 #if defined(Q_OS_WIN)

@@ -88,7 +88,7 @@ namespace {
         if(!match.hasMatch()) return false;
         QList<int> parts;
         bool ok = true;
-        foreach(const QString &part, match.captured(1).split(QLatin1Char('.'))){
+        for(const QString &part : match.captured(1).split(QLatin1Char('.'))){
             parts << part.toInt(&ok);
             if(!ok) return false;
         }
@@ -404,11 +404,11 @@ ExtensionManifest ExtensionManifest::ReadWithBytes(const QString &input, QByteAr
     }
     m.sidePanelPath = json.value(QStringLiteral("side_panel")).toObject().value(QStringLiteral("default_path")).toString();
     if(resourceUrl(m.sidePanelPath).isEmpty()) m.sidePanelPath.clear();
-    foreach(const QJsonValue &permission, json.value(QStringLiteral("permissions")).toArray()){
+    for(const QJsonValue &permission : json.value(QStringLiteral("permissions")).toArray()){
         if(permission.toString() == QStringLiteral("tabs")) m.tabsPermission = true;
         if(permission.isString()) m.permissions << permission.toString();
     }
-    foreach(const QJsonValue &pattern, json.value(QStringLiteral("host_permissions")).toArray())
+    for(const QJsonValue &pattern : json.value(QStringLiteral("host_permissions")).toArray())
         if(pattern.isString()) m.hostPermissions << pattern.toString();
     m.version = json.value(QStringLiteral("version")).toString();
 #if defined(Q_OS_WIN)
@@ -709,6 +709,19 @@ QSet<QString> ExtensionController::EnabledIds(){
     return ids;
 }
 
+QString ExtensionController::NameOfId(const QString &id){
+    foreach(const QPointer<ExtensionController> &c, g_Controllers){
+        if(!c) continue;
+        const QString name = c->RowOf(id).manifest.name;
+        if(!name.isEmpty()) return name;
+    }
+    foreach(const QString &path, Normalized(Application::GlobalSettings().value(PATHS_KEY).toStringList())){
+        const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
+        if(manifest.id == id && !manifest.name.isEmpty()) return manifest.name;
+    }
+    return QString();
+}
+
 ExtensionHostWire::Sight ExtensionController::SightOf(const QString &id) const {
     foreach(const ExtensionManifest &manifest, m_Desired){
         if(manifest.id != id) continue;
@@ -823,7 +836,7 @@ QJsonObject ExtensionController::MirrorCall(const QString &id, const QJsonArray 
     if(!m_MenusMirrored) return ExtensionHostWire::Refused(ExtensionHostWire::NotAvailable(QStringLiteral("vanilla.menuMirror")));
     if(args.size() != 1 || !args.at(0).isArray() || args.at(0).toArray().size() > 256)
         return ExtensionHostWire::Refused(QStringLiteral("vanilla.menuMirror takes a list of calls"));
-    foreach(const QJsonValue &one, args.at(0).toArray()){
+    for(const QJsonValue &one : args.at(0).toArray()){
         const QJsonArray call = one.toArray();
         if(call.size() != 2 || !ops.contains(call.at(0).toString()) || !call.at(1).isArray()) continue;
         const QString api = QStringLiteral("contextMenus.") + call.at(0).toString();
@@ -1188,7 +1201,7 @@ void ExtensionController::Reconcile(const QStringList &paths, const QStringList 
                                     const QStringList &pinned){
     const QStringList sourcePaths = Normalized(paths);
     QStringList order, disabledList, pinnedList;
-    foreach(const QString &path, sourcePaths) order.append(ExtensionManifest::RegistrationKeyOfNormalized(path));
+    for(const QString &path : sourcePaths) order.append(ExtensionManifest::RegistrationKeyOfNormalized(path));
     foreach(const QString &path, Normalized(disabled)) disabledList.append(ExtensionManifest::RegistrationKeyOfNormalized(path));
     foreach(const QString &path, Normalized(pinned)) pinnedList.append(ExtensionManifest::RegistrationKeyOfNormalized(path));
     const QSet<QString> disabledSet(disabledList.begin(), disabledList.end());
@@ -1230,7 +1243,7 @@ void ExtensionController::Reconcile(const QStringList &paths, const QStringList 
             if(i.value().error.isEmpty() && !m_Disabled.contains(i.key())) was.insert(i.value().id, i.value().version);
         for(auto i = desired.constBegin(); i != desired.constEnd(); ++i)
             if(i.value().error.isEmpty() && !disabledSet.contains(i.key())) is.insert(i.value().id, i.value().version);
-        foreach(const QString &id, m_StartupOwed.values())
+        for(const QString &id : m_StartupOwed.values())
             if(!running.contains(id) || was.value(id) != is.value(id)) m_StartupOwed.remove(id);
     }
     m_Desired = desired;
@@ -1464,7 +1477,7 @@ QList<ExtensionRow> ExtensionController::Rows() const {
     for(QMap<QString, QString>::const_iterator i = m_Owned.begin(); i != m_Owned.end(); ++i){
         if(!paths.contains(i.key())) paths.append(i.key());
     }
-    foreach(const QString &path, paths){
+    for(const QString &path : std::as_const(paths)){
         ExtensionRow row;
         row.registered = m_Desired.contains(path);
         row.manifest = row.registered ? m_Desired.value(path)

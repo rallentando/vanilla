@@ -404,6 +404,7 @@ public:
 
     void AskPlaced(){ ++m_Asked;}
     void AskAnswered(){ if(m_Asked > 0) --m_Asked;}
+    bool Asking() const { return m_Asked > 0;}
 
     bool MayClose() const { return !m_Untracked && m_InFlight == 0 && m_Asked == 0;}
 
@@ -1134,7 +1135,7 @@ public:
         const QJsonValue tabs = object.value(QStringLiteral("tabs"));
         if(!document.isString() || document.toString().isEmpty() || document.toString().size() > 64 ||
            !sequence.isDouble() || !tabs.isArray()) return request;
-        foreach(const QJsonValue &value, tabs.toArray()){
+        for(const QJsonValue &value : tabs.toArray()){
             const QJsonObject tab = value.toObject();
             const QJsonValue id = tab.value(QStringLiteral("id"));
             const QJsonValue url = tab.value(QStringLiteral("url"));

@@ -95,7 +95,6 @@ public:
     virtual Node *Next()      { return nullptr;}
     virtual Node *Prev()      { return nullptr;}
     virtual ViewNode  *ToViewNode(){ return nullptr;}
-    virtual LocalNode *ToLocalNode(){ return nullptr;}
 
     NodeType GetType() const { return m_Type;}
     View *GetView()    const { return m_View;}
@@ -176,7 +175,7 @@ public:
         return IsPrimaryOf(m_Parent);
     }
 
-    void SetView(View *v)   { m_View = v;}
+    void SetView(View *v);
     virtual void SetTitle(const QString &s){
         QMutexLocker locker(&m_DataMutex);
         m_Title = s;
@@ -184,15 +183,8 @@ public:
 
     void SetFolded(bool b)   { m_Folded = b;}
     void SetParent(Node *nd) { m_Parent  = nd;}
-    void SetPrimary(Node *nd){ m_Primary = nd;}
-
-    void ResetPrimaryPath(){
-        Node *nd = this;
-        while(nd->m_Parent){
-            nd->m_Parent->m_Primary = nd;
-            nd = nd->m_Parent;
-        }
-    }
+    void SetPrimary(Node *nd);
+    void ResetPrimaryPath();
     void SetChildren(NodeList c){
         QMutexLocker locker(&m_DataMutex);
         m_Children = c;
@@ -263,9 +255,6 @@ public:
         if(!m_Parent) return false;
         return m_Parent->ChildrenContains(nd);
     }
-    void AppendSibling(Node *nd){
-        if(m_Parent) m_Parent->AppendChild(nd);
-    }
     void PrependSibling(Node *nd){
         if(m_Parent) m_Parent->PrependSibling(nd);
     }
@@ -303,8 +292,6 @@ public:
     virtual void SetLastUpdateDate(QDateTime){}
     virtual void SetLastAccessDate(QDateTime){}
 
-    virtual void SetCreateDateToCurrent(){}
-    virtual void SetLastUpdateDateToCurrent(){}
     virtual void SetLastAccessDateToCurrent(){}
 };
 
@@ -339,50 +326,48 @@ private:
 
 public:
     ViewNode();
-    virtual ~ViewNode() Q_DECL_OVERRIDE;
+    virtual ~ViewNode() override;
 
-    bool IsRoot() Q_DECL_OVERRIDE;
-    bool IsDirectory() Q_DECL_OVERRIDE;
-    bool IsViewNode() const Q_DECL_OVERRIDE;
-    bool HoldsView() const Q_DECL_OVERRIDE;
-    bool TitleEditable() Q_DECL_OVERRIDE;
+    bool IsRoot() override;
+    bool IsDirectory() override;
+    bool IsViewNode() const override;
+    bool HoldsView() const override;
+    bool TitleEditable() override;
 
     void SetHoldView(bool b);
 
     ViewNode *MakeChild(int);
-    ViewNode *MakeChild() Q_DECL_OVERRIDE;
-    ViewNode *MakeParent() Q_DECL_OVERRIDE;
+    ViewNode *MakeChild() override;
+    ViewNode *MakeParent() override;
     ViewNode *MakeSibling();
     int SiblingInsertIndex() const;
     ViewNode *NewDir();
-    ViewNode *Next() Q_DECL_OVERRIDE;
-    ViewNode *Prev() Q_DECL_OVERRIDE;
-    ViewNode *ToViewNode() Q_DECL_OVERRIDE { return this;}
-    ViewNode *Clone(ViewNode *parent = nullptr);
+    ViewNode *Next() override;
+    ViewNode *Prev() override;
+    ViewNode *ToViewNode() override { return this;}
+    ViewNode *Clone(ViewNode *parent = nullptr, bool offDisk = false);
     ViewNode *New();
 
-    QUrl GetUrl() Q_DECL_OVERRIDE;
-    QImage GetImage() Q_DECL_OVERRIDE;
-    QImage GetLargeImage() Q_DECL_OVERRIDE;
-    int GetScrollX() Q_DECL_OVERRIDE;
-    int GetScrollY() Q_DECL_OVERRIDE;
-    float GetZoom() Q_DECL_OVERRIDE;
+    QUrl GetUrl() override;
+    QImage GetImage() override;
+    QImage GetLargeImage() override;
+    int GetScrollX() override;
+    int GetScrollY() override;
+    float GetZoom() override;
 #ifdef MEDIATIME
     float GetMediaTime();
 #endif
-    QDateTime GetCreateDate() Q_DECL_OVERRIDE;
-    QDateTime GetLastUpdateDate() Q_DECL_OVERRIDE;
-    QDateTime GetLastAccessDate() Q_DECL_OVERRIDE;
+    QDateTime GetCreateDate() override;
+    QDateTime GetLastUpdateDate() override;
+    QDateTime GetLastAccessDate() override;
 
-    void SetTitle(const QString &title) Q_DECL_OVERRIDE;
-    void SetUrl(const QUrl &u) Q_DECL_OVERRIDE;
-    void SetCreateDate(QDateTime) Q_DECL_OVERRIDE;
-    void SetLastUpdateDate(QDateTime) Q_DECL_OVERRIDE;
-    void SetLastAccessDate(QDateTime) Q_DECL_OVERRIDE;
+    void SetTitle(const QString &title) override;
+    void SetUrl(const QUrl &u) override;
+    void SetCreateDate(QDateTime) override;
+    void SetLastUpdateDate(QDateTime) override;
+    void SetLastAccessDate(QDateTime) override;
 
-    void SetCreateDateToCurrent() Q_DECL_OVERRIDE;
-    void SetLastUpdateDateToCurrent() Q_DECL_OVERRIDE;
-    void SetLastAccessDateToCurrent() Q_DECL_OVERRIDE;
+    void SetLastAccessDateToCurrent() override;
 
     void SetImage(const QImage &i, bool offTheRecord);
     void SetScrollX(int x);
@@ -424,24 +409,22 @@ public:
     QDateTime m_LastAccessDate;
 
     LocalNode();
-    virtual ~LocalNode() Q_DECL_OVERRIDE;
+    virtual ~LocalNode() override;
 
-    bool IsRoot() Q_DECL_OVERRIDE;
-    bool IsDirectory() Q_DECL_OVERRIDE;
-    bool IsViewNode() const Q_DECL_OVERRIDE;
-    bool TitleEditable() Q_DECL_OVERRIDE;
-    void SetTitle(const QString&) Q_DECL_OVERRIDE;
+    bool IsRoot() override;
+    bool IsDirectory() override;
+    bool IsViewNode() const override;
+    bool TitleEditable() override;
+    void SetTitle(const QString&) override;
 
-    LocalNode *ToLocalNode() Q_DECL_OVERRIDE { return this;}
+    QUrl GetUrl() override;
+    void SetUrl(const QUrl&) override;
 
-    QUrl GetUrl() Q_DECL_OVERRIDE;
-    void SetUrl(const QUrl&) Q_DECL_OVERRIDE;
+    QImage GetImage() override;
 
-    QImage GetImage() Q_DECL_OVERRIDE;
-
-    QDateTime GetCreateDate() Q_DECL_OVERRIDE;
-    QDateTime GetLastUpdateDate() Q_DECL_OVERRIDE;
-    QDateTime GetLastAccessDate() Q_DECL_OVERRIDE;
+    QDateTime GetCreateDate() override;
+    QDateTime GetLastUpdateDate() override;
+    QDateTime GetLastAccessDate() override;
 };
 
 #endif

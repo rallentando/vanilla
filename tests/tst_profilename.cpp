@@ -30,7 +30,7 @@ private slots:
         static const QRegularExpression accepted
             (QStringLiteral("\\A[a-zA-Z0-9][a-zA-Z0-9 _.-]{0,63}\\z"));
 
-        foreach(const QString &id, ids){
+        for(const QString &id : ids){
             const QString name = NetworkController::ProfileStorageName
                 (QStringLiteral("C:/app"), id);
             QVERIFY2(accepted.match(name).hasMatch(),

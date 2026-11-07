@@ -69,6 +69,7 @@ private:
     Entry *FindMutable(int id);
     void Load();
     void Commit();
+    void CommitListChange();
     void Trim();
 
     QString m_Path;

@@ -23,6 +23,7 @@ public:
 
     static QString Origin(const QUrl &url);
     static QString Origin(const QString &spelled){ return Origin(QUrl(spelled));}
+    static QString OriginFromUserText(const QString &text);
 
     static QStringList Kinds();
     static bool IsKind(const QString &kind){ return Kinds().contains(kind);}

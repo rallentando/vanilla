@@ -564,6 +564,16 @@ void NetworkAccessManager::HandleError(QNetworkReply::NetworkError code){
     Q_UNUSED(code)
 }
 
+namespace {
+
+    QString SslErrorLines(const QList<QSslError> &errors){
+        QStringList lines;
+        foreach(const QSslError &error, errors)
+            lines << QStringLiteral("Ssl error : ") + error.errorString();
+        return lines.join(QStringLiteral("\n"));
+    }
+}
+
 void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
     QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
 
@@ -587,12 +597,7 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
         dialog->SetCaption(tr("SSL errors."));
         dialog->SetInformativeText(tr("Ignore errors in this access?"));
 
-        QString detail;
-        foreach(QSslError error, errors){
-            if(!detail.isEmpty()) detail += QStringLiteral("\n");
-            detail += QStringLiteral("Ssl error : ") + error.errorString();
-        }
-        dialog->SetDetailedText(detail);
+        dialog->SetDetailedText(SslErrorLines(errors));
         dialog->SetButtons(Dialog::Allow | Dialog::Block);
         if(dialog->Execute() && dialog->ClickedButton() == Dialog::Allow)
             reply->ignoreSslErrors();
@@ -606,21 +611,9 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
         } else if(Application::GetAllowedHosts().contains(host)){
             reply->ignoreSslErrors();
         } else {
-            ModalDialog *dialog = new ModalDialog();
-            dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
-            dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
-            dialog->SetInformativeText(tr("Allow or Block this host?"));
-
-            QString detail;
-            foreach(QSslError error, errors){
-                if(!detail.isEmpty()) detail += QStringLiteral("\n");
-                detail += QStringLiteral("Ssl error : ") + error.errorString();
-            }
-            dialog->SetDetailedText(detail);
-
-            dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-            dialog->Execute();
-            const Dialog::Button clicked = dialog->ClickedButton();
+            const Dialog::Button clicked = ModalDialog::AllowBlockOrCancel
+                (tr("SSL errors on host: %1").arg(host),
+                 tr("Allow or Block this host?"), SslErrorLines(errors));
             if(clicked == Dialog::Allow){
                 Application::AppendToAllowedHosts(host, offTheRecord);
                 reply->ignoreSslErrors();
@@ -646,23 +639,12 @@ void NetworkAccessManager::HandleSslErrors(const QList<QSslError> &errors){
         case CertificatePolicy::Block:
             break;
         case CertificatePolicy::Ask:{
-            ModalDialog *dialog = new ModalDialog();
-            dialog->SetTitle(tr("SSL errors on host: %1").arg(host));
-            dialog->SetCaption(tr("SSL errors on host: %1").arg(host));
-            dialog->SetInformativeText(tr("Allow or Block this certificate?"));
-
-            QString detail;
-            foreach(const QSslError &error, errors){
-                if(!detail.isEmpty()) detail += QStringLiteral("\n");
-                detail += QStringLiteral("Ssl error : ") + error.errorString();
-            }
+            QString detail = SslErrorLines(errors);
             if(!fingerprint.isEmpty())
                 detail += QStringLiteral("\nSHA-256: ") + fingerprint;
-            dialog->SetDetailedText(detail);
-            dialog->SetButtons(Dialog::Allow | Dialog::Block | Dialog::Cancel);
-            dialog->Execute();
-
-            const Dialog::Button clicked = dialog->ClickedButton();
+            const Dialog::Button clicked = ModalDialog::AllowBlockOrCancel
+                (tr("SSL errors on host: %1").arg(host),
+                 tr("Allow or Block this certificate?"), detail);
             if(clicked == Dialog::Allow){
                 Application::RememberCertificate(key, true, offTheRecord);
                 reply->ignoreSslErrors();
@@ -763,7 +745,23 @@ void NetworkAccessManager::HandleDownload(QObject *object){
         url = object->property("url").toUrl();
     }
 
+    const bool savesPage = orig_item && orig_item->isSavePageDownload();
+    QWebEngineDownloadRequest::SavePageFormat pageFormat = QWebEngineDownloadRequest::MimeHtmlSaveFormat;
+    if(savesPage){
+        const QString format =
+            Application::GlobalSettings()
+            .value(QStringLiteral("webview/@SavePageFormat"),
+                   QStringLiteral("MimeHtmlSaveFormat")).value<QString>();
+        if(format == QStringLiteral("SingleHtmlSaveFormat"))
+            pageFormat = QWebEngineDownloadRequest::SingleHtmlSaveFormat;
+        else if(format == QStringLiteral("CompleteHtmlSaveFormat"))
+            pageFormat = QWebEngineDownloadRequest::CompleteHtmlSaveFormat;
+    }
+    const bool savesHtml = savesPage && pageFormat != QWebEngineDownloadRequest::MimeHtmlSaveFormat;
+    if(savesHtml) mime = QStringLiteral("text/html");
+
     QString name = DownloadName::Sanitize(QFileInfo(filename).fileName());
+    if(savesHtml) name = DownloadName::AsHtml(name);
 
     if(name.isEmpty()) name = DownloadName::Suggest(QString(), mime, url);
 
@@ -793,18 +791,7 @@ void NetworkAccessManager::HandleDownload(QObject *object){
 
     item->SetPath(filename);
     if(orig_item){
-        if(orig_item->isSavePageDownload()){
-            const QString format =
-                Application::GlobalSettings()
-                .value(QStringLiteral("webview/@SavePageFormat"),
-                       QStringLiteral("MimeHtmlSaveFormat")).value<QString>();
-            if(format == QStringLiteral("SingleHtmlSaveFormat"))
-                orig_item->setSavePageFormat(QWebEngineDownloadRequest::SingleHtmlSaveFormat);
-            else if(format == QStringLiteral("CompleteHtmlSaveFormat"))
-                orig_item->setSavePageFormat(QWebEngineDownloadRequest::CompleteHtmlSaveFormat);
-            else
-                orig_item->setSavePageFormat(QWebEngineDownloadRequest::MimeHtmlSaveFormat);
-        }
+        if(savesPage) orig_item->setSavePageFormat(pageFormat);
         orig_item->setDownloadDirectory(QFileInfo(filename).path());
         orig_item->setDownloadFileName(QFileInfo(filename).fileName());
     } else {
@@ -849,20 +836,7 @@ QNetworkReply* NetworkAccessManager::createRequest(Operation op,
     connect(rep,  &QNetworkReply::sslErrors,
             this, &NetworkAccessManager::HandleSslErrors);
 
-    QString type = newreq.header(QNetworkRequest::ContentTypeHeader).value<QString>();
-    if(type.toLower().contains(QStringLiteral("multipart/form-data;"))){
-        UploadItem *item = NetworkController::Upload(rep, newreq.header(QNetworkRequest::ContentLengthHeader).value<qint64>());
-        if(item){
-            MainWindow *win = Application::GetCurrentWindow();
-            if(win && win->GetTreeBank()->GetNotifier())
-                win->GetTreeBank()->GetNotifier()->RegisterUpload(item);
-        }
-    }
     return rep;
-}
-
-QString NetworkAccessManager::GetId(){
-    return m_Id;
 }
 
 void NetworkAccessManager::SetNetworkCookieJar(NetworkCookieJar *ncj){
@@ -908,20 +882,15 @@ void NetworkAccessManager::SetUserAgent(QString ua){
 #  else
 #  endif
 #elif defined(Q_OS_MAC)
-    if(Application::ProductVersion().isEmpty() && QSysInfo::productVersion().isEmpty()){
+    const QString product = Application::ProductVersion();
+    const QString sysInfo = QSysInfo::productVersion();
+    if(product.isEmpty() && sysInfo.isEmpty()){
         system = QStringLiteral("Mac OS X");
     } else if(browser == QStringLiteral("Firefox")){
-        if(!QSysInfo::productVersion().isEmpty()){
-            system = QStringLiteral("Intel Mac OS X ") + QSysInfo::productVersion();
-        } else if(!Application::ProductVersion().isEmpty()){
-            system = QStringLiteral("Intel Mac OS X ") + Application::ProductVersion();
-        }
+        system = QStringLiteral("Intel Mac OS X ") + (sysInfo.isEmpty() ? product : sysInfo);
     } else {
-        if(!Application::ProductVersion().isEmpty()){
-            system = QStringLiteral("Intel Mac OS X ") + Application::ProductVersion().replace(".", "_");
-        } else if(!QSysInfo::productVersion().isEmpty()){
-            system = QStringLiteral("Intel Mac OS X ") + QSysInfo::productVersion().replace(".", "_");
-        }
+        system = QStringLiteral("Intel Mac OS X ") +
+            QString(product.isEmpty() ? sysInfo : product).replace(QLatin1Char('.'), QLatin1Char('_'));
     }
 
     system = QStringLiteral("Macintosh; ") + system;
@@ -1712,97 +1681,11 @@ void DownloadItem::DownloadProgress(qint64 received, qint64 total){
     }
 }
 
-int UploadItem::m_UnknownCount = 0;
-
-UploadItem::UploadItem(QNetworkReply *reply, qint64 size)
-    : QObject(nullptr)
-{
-    m_UploadReply = reply;
-    if(m_UploadReply){
-        connect(m_UploadReply, &QNetworkReply::finished, this, &UploadItem::Finished);
-        connect(m_UploadReply, &QNetworkReply::uploadProgress,
-                this, &UploadItem::UploadProgress);
-    }
-    m_FileSize = size;
-    m_Path = ExpectFileName();
-}
-
-UploadItem::UploadItem(QNetworkReply *reply, QString name)
-    : QObject(nullptr)
-{
-    m_UploadReply = reply;
-    if(m_UploadReply){
-        connect(m_UploadReply, &QNetworkReply::finished, this, &UploadItem::Finished);
-        connect(m_UploadReply, &QNetworkReply::uploadProgress,
-                this, &UploadItem::UploadProgress);
-    }
-    m_FileSize = -1;
-    m_Path = name;
-}
-
-UploadItem::~UploadItem(){
-    NetworkController::RemoveItem(this);
-}
-
-QString UploadItem::GetPath() const {
-    return m_Path;
-}
-
-void UploadItem::SetPath(QString name){
-    m_Path = name;
-}
-
-QString UploadItem::ExpectFileName(){
-    QString path = Application::ChosenFiles().last();
-    QFile file(path);
-    qint64 diff = m_FileSize - file.size();
-    qint64 max = 500 + m_FileSize / 20000;
-    if(-max < diff && diff < max){
-        Application::RemoveChosenFile(path);
-        return path;
-    }
-    return tr("Unknown file (%1)").arg(m_UnknownCount++);
-}
-
-void UploadItem::Finished(){
-    emit Progress(m_Path, 100, 100);
-    disconnect();
-    deleteLater();
-}
-
-void UploadItem::Stop(){
-    m_UploadReply->abort();
-    emit Progress(m_Path, 100, 100);
-    disconnect();
-    deleteLater();
-}
-
-void UploadItem::UploadProgress(qint64 sent, qint64 total){
-    if(!m_Path.isEmpty()){
-        if(m_FileSize != -1){
-            emit Progress(m_Path, sent, m_FileSize);
-        } else if(total != -1){
-            emit Progress(m_Path, sent, total);
-        } else {
-            qint64 dummy = 10;
-            qint64 s = sent;
-            while((s /= 10) > 0) dummy *= 10;
-            emit Progress(m_Path, sent, dummy);
-        }
-    } else {
-        qint64 dummy = 10;
-        qint64 s = sent;
-        while((s /= 10) > 0) dummy *= 10;
-        emit Progress(tr("Unknown file"), sent, dummy);
-    }
-
-    if(sent == m_FileSize || m_UploadReply->isFinished())
-        Finished();
-}
-
 QMap<QString, NetworkAccessManager*> NetworkController::m_NetworkAccessManagerTable = QMap<QString, NetworkAccessManager*>();
+QList<NetworkAccessManager*> NetworkController::m_RetiredNetworkAccessManagers = QList<NetworkAccessManager*>();
+QMap<QString, QList<QNetworkCookie>> NetworkController::m_HeldCookies = QMap<QString, QList<QNetworkCookie>>();
+QMap<QString, QList<QPointer<QObject>>> NetworkController::m_Releasing = QMap<QString, QList<QPointer<QObject>>>();
 QList<DownloadItem*> NetworkController::m_DownloadList = QList<DownloadItem*>();
-QList<UploadItem*>   NetworkController::m_UploadList   = QList<UploadItem*>();
 
 NetworkController::NetworkController()
     : QObject(nullptr)
@@ -1872,24 +1755,8 @@ DownloadItem* NetworkController::Download(QNetworkReply *reply,
     return item;
 }
 
-UploadItem* NetworkController::Upload(QNetworkReply *reply, qint64 filesize){
-    UploadItem *item = new UploadItem(reply, filesize);
-    m_UploadList << item;
-    return item;
-}
-
-UploadItem* NetworkController::Upload(QNetworkReply *reply, QString filename){
-    UploadItem *item = new UploadItem(reply, filename);
-    m_UploadList << item;
-    return item;
-}
-
 void NetworkController::RemoveItem(DownloadItem *item){
         m_DownloadList.removeOne(item);
-}
-
-void NetworkController::RemoveItem(UploadItem *item){
-        m_UploadList.removeOne(item);
 }
 
 void NetworkController::SetUserAgent(NetworkAccessManager *nam, QStringList set){
@@ -1948,6 +1815,23 @@ static QMap<QString, QQuickWebEngineProfile*> &QuickProfileTable(){
 static QMap<QString, QQuickWebEngineProfile*> &QuickPrivateProfileTable(){
     static QMap<QString, QQuickWebEngineProfile*> profiles;
     return profiles;
+}
+
+static void InstallQuickFrameScript(QQuickWebEngineProfile *profile){
+    QWebEngineScript script;
+    script.setName(QStringLiteral("vanilla-events-frames"));
+    script.setInjectionPoint(QWebEngineScript::DocumentReady);
+    script.setWorldId(QWebEngineScript::ApplicationWorld);
+    script.setRunsOnSubFrames(true);
+    script.setSourceCode(QuickWebEngineView::DefaultFrameScript());
+    QObject *scripts = profile->property("userScripts").value<QObject*>();
+    if(!scripts || !QMetaObject::invokeMethod(scripts, "insert", Q_ARG(QWebEngineScript, script)))
+        qWarning() << "the key filter could not be put on a quick profile.";
+#ifdef VANILLA_QUICK_PASSWORD_FRAMES
+    WebEnginePasswords::InstallFrameScript(profile);
+#else
+    Q_UNUSED(profile)
+#endif
 }
 
 void NetworkController::ConnectQuickNotifications(QQuickWebEngineProfile *profile){
@@ -2012,7 +1896,7 @@ namespace {
     void MirrorInto(Profile *profile){
         const QList<QWebEnginePermission> all = profile->listAllPermissions();
         QList<PermissionTable::Row> held;
-        foreach(const QWebEnginePermission &permission, all){
+        for(const QWebEnginePermission &permission : all){
             const QString kind = KindOfType(permission.permissionType());
             const QWebEnginePermission::State state = permission.state();
             held << PermissionTable::Row{
@@ -2137,7 +2021,7 @@ void NetworkController::ApplyQuickCommonSettings(QQuickWebEngineProfile *profile
 
 void NetworkController::ApplyAcceptLanguage(){
     const QString language = Application::GetAcceptLanguage();
-    foreach(NetworkAccessManager *nam, AllNetworkAccessManager()){
+    foreach(NetworkAccessManager *nam, LiveNetworkAccessManagers()){
         foreach(QWebEngineProfile *profile, nam->Profiles()){
             if(profile->httpAcceptLanguage() != language)
                 profile->setHttpAcceptLanguage(language);
@@ -2186,6 +2070,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
             ApplyQuickBlockRules(profile);
             ApplyQuickCommonSettings(profile);
             ConnectQuickNotifications(profile);
+            InstallQuickFrameScript(profile);
             profiles[id] = profile;
             return profile;
         }
@@ -2215,6 +2100,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
         ApplyQuickCommonSettings(profile);
 
         ConnectQuickNotifications(profile);
+        InstallQuickFrameScript(profile);
 
         MirrorProfileCookies(profile->cookieStore(), id,
                              QStringLiteral("quick:") + profile->storageName(),
@@ -2239,6 +2125,7 @@ QQuickWebEngineProfile* NetworkController::QuickPrivateProfile(const QString &id
         ApplyQuickBlockRules(profile);
         ApplyQuickCommonSettings(profile);
         ConnectQuickNotifications(profile);
+        InstallQuickFrameScript(profile);
         profiles[id] = profile;
     }
     return profiles[id];
@@ -2316,12 +2203,12 @@ NetworkAccessManager* NetworkController::MergeNetworkAccessManager(QString bef, 
     NetworkCookieJar *b = m_NetworkAccessManagerTable[bef]->GetNetworkCookieJar();
     NetworkCookieJar *a = m_NetworkAccessManagerTable[aft]->GetNetworkCookieJar();
     a->SetAllCookies(a->GetAllCookies() + b->GetPersistableCookies());
-    m_NetworkAccessManagerTable.remove(bef);
+    RetireNetworkAccessManager(m_NetworkAccessManagerTable.take(bef));
     return m_NetworkAccessManagerTable[aft];
 }
 
 NetworkAccessManager* NetworkController::KillNetworkAccessManager(QString id){
-    m_NetworkAccessManagerTable.remove(id);
+    RetireNetworkAccessManager(m_NetworkAccessManagerTable.take(id));
     return nullptr;
 }
 
@@ -2329,12 +2216,136 @@ QMap<QString, NetworkAccessManager*> NetworkController::AllNetworkAccessManager(
     return m_NetworkAccessManagerTable;
 }
 
+QList<NetworkAccessManager*> NetworkController::LiveNetworkAccessManagers(){
+    QList<NetworkAccessManager*> live;
+    foreach(NetworkAccessManager *nam, m_NetworkAccessManagerTable)
+        if(nam && !live.contains(nam)) live << nam;
+    foreach(NetworkAccessManager *nam, m_RetiredNetworkAccessManagers)
+        if(nam && !live.contains(nam)) live << nam;
+    return live;
+}
+
+void NetworkController::RetireNetworkAccessManager(NetworkAccessManager *nam){
+    if(!nam || m_RetiredNetworkAccessManagers.contains(nam) ||
+       std::find(m_NetworkAccessManagerTable.cbegin(), m_NetworkAccessManagerTable.cend(), nam)
+       != m_NetworkAccessManagerTable.cend())
+        return;
+    m_RetiredNetworkAccessManagers << nam;
+}
+
+QList<NetworkAccessManager*> NetworkController::SpaceManagers(const QString &id){
+    QList<NetworkAccessManager*> managers;
+#ifdef WEBENGINEVIEW
+    const QString storage = ProfileStorageName(id);
+    foreach(NetworkAccessManager *nam, LiveNetworkAccessManagers()){
+        const QList<QWebEngineProfile*> profiles = nam->Profiles();
+        if(!profiles.isEmpty() && profiles.first()->storageName() == storage) managers << nam;
+    }
+#else
+    if(NetworkAccessManager *nam = FindNetworkAccessManager(id)) managers << nam;
+#endif
+    return managers;
+}
+
+QList<QObject*> NetworkController::SpaceProfiles(const QString &id){
+    QList<QObject*> profiles;
+#ifdef WEBENGINEVIEW
+    foreach(NetworkAccessManager *nam, SpaceManagers(id))
+        foreach(QWebEngineProfile *profile, nam->Profiles()) profiles << profile;
+    if(QQuickWebEngineProfile *profile = QuickProfileTable().value(id)) profiles << profile;
+    if(QQuickWebEngineProfile *profile = QuickPrivateProfileTable().value(id)) profiles << profile;
+#else
+    Q_UNUSED(id)
+#endif
+    return profiles;
+}
+
+void NetworkController::ReleaseSpace(const QString &id){
+    const QList<NetworkAccessManager*> managers = SpaceManagers(id);
+    foreach(QObject *profile, SpaceProfiles(id)) NoteReleasing(id, profile);
+    if(NetworkAccessManager *nam = FindNetworkAccessManager(id))
+        m_HeldCookies[id] = nam->GetNetworkCookieJar()->GetPersistableCookies();
+    for(NetworkAccessManager *nam : managers){
+        for(auto it = m_NetworkAccessManagerTable.begin(); it != m_NetworkAccessManagerTable.end();){
+            if(it.value() == nam) it = m_NetworkAccessManagerTable.erase(it);
+            else ++it;
+        }
+        m_RetiredNetworkAccessManagers.removeAll(nam);
+        nam->deleteLater();
+    }
+#ifdef WEBENGINEVIEW
+    QList<QQuickWebEngineProfile*> quick;
+    if(QQuickWebEngineProfile *profile = QuickProfileTable().take(id)) quick << profile;
+    if(QQuickWebEngineProfile *profile = QuickPrivateProfileTable().take(id)) quick << profile;
+    for(QQuickWebEngineProfile *profile : std::as_const(quick)){
+        ExtensionHost::CloseOffscreenOf(profile);
+        WebEngineExtensions::DeleteQuickProfile(profile);
+    }
+#endif
+}
+
+NetworkAccessManager* NetworkController::JoinSpace(const QString &from, const QString &to,
+                                                  QStringList set, bool release){
+    NetworkAccessManager *into = GetNetworkAccessManager(to, set);
+    if(NetworkAccessManager *nam = FindNetworkAccessManager(from)){
+        NetworkCookieJar *jar = into->GetNetworkCookieJar();
+        jar->SetAllCookies(jar->GetAllCookies() + nam->GetNetworkCookieJar()->GetPersistableCookies());
+    }
+    if(release){
+        ReleaseSpace(from);
+        DropHeldCookies(from);
+    }
+    return into;
+}
+
+void NetworkController::NoteReleasing(const QString &id, QObject *object){
+    if(object) m_Releasing[id] << QPointer<QObject>(object);
+}
+
+bool NetworkController::StorageInUse(const QString &id){
+    QList<QPointer<QObject>> &going = m_Releasing[id];
+    going.removeAll(QPointer<QObject>());
+    if(going.isEmpty()) m_Releasing.remove(id);
+    else return true;
+    NetworkAccessManager *named = FindNetworkAccessManager(id);
+    foreach(NetworkAccessManager *nam, SpaceManagers(id))
+        if(nam != named) return true;
+    return false;
+}
+
+QStringList NetworkController::KnownSpaceNames(){
+    QStringList names = m_NetworkAccessManagerTable.keys();
+    for(const QString &id : m_HeldCookies.keys()) if(!names.contains(id)) names << id;
+    for(const QString &id : m_Releasing.keys()) if(!names.contains(id)) names << id;
+#ifdef WEBENGINEVIEW
+    for(const QString &id : QuickProfileTable().keys()) if(!names.contains(id)) names << id;
+#endif
+    return names;
+}
+
+void NetworkController::DropHeldCookies(const QString &id){
+    m_HeldCookies.remove(id);
+}
+
+NetworkAccessManager* NetworkController::PlaceSpace(const QString &from, const QString &to, QStringList set){
+    InitializeNetworkAccessManager(to, m_HeldCookies.take(from));
+    NetworkAccessManager *nam = m_NetworkAccessManagerTable[to];
+    SetUserAgent(nam, set);
+    SetProxy(nam, set);
+    SetSslProtocol(nam, set);
+    return nam;
+}
+
+QString NetworkController::WidgetStorageDirectory(){
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+        + QStringLiteral("/QtWebEngine/");
+}
+
 void NetworkController::ClearCookies(){
 #ifdef EDGEWEBVIEW
     EdgeWebView::ClearCookies();
 #endif
-    foreach(NetworkAccessManager *nam, m_NetworkAccessManagerTable){
-        if(!nam) continue;
+    foreach(NetworkAccessManager *nam, LiveNetworkAccessManagers()){
         if(NetworkCookieJar *jar = nam->GetNetworkCookieJar())
             jar->SetAllCookies(QList<QNetworkCookie>());
 #ifdef WEBENGINEVIEW
@@ -2351,6 +2362,7 @@ void NetworkController::ClearCookies(){
             store->deleteAllCookies();
     }
 #endif
+    for(auto it = m_HeldCookies.begin(); it != m_HeldCookies.end(); ++it) it.value().clear();
     if(AutoSaver *saver = Application::GetAutoSaver()) saver->SaveAllAsync();
 }
 
@@ -2359,8 +2371,7 @@ void NetworkController::ClearHttpCache(){
     EdgeWebView::ClearHttpCache();
 #endif
 #ifdef WEBENGINEVIEW
-    foreach(NetworkAccessManager *nam, m_NetworkAccessManagerTable){
-        if(!nam) continue;
+    foreach(NetworkAccessManager *nam, LiveNetworkAccessManagers()){
         foreach(QWebEngineProfile *profile, nam->Profiles())
             profile->clearHttpCache();
     }
@@ -2376,8 +2387,7 @@ void NetworkController::ClearVisitedLinks(){
     EdgeWebView::ClearVisitedLinks();
 #endif
 #ifdef WEBENGINEVIEW
-    foreach(NetworkAccessManager *nam, m_NetworkAccessManagerTable){
-        if(!nam) continue;
+    foreach(NetworkAccessManager *nam, LiveNetworkAccessManagers()){
         foreach(QWebEngineProfile *profile, nam->Profiles())
             profile->clearAllVisitedLinks();
     }
@@ -2399,8 +2409,7 @@ void NetworkController::ClearPasswords(){
 
 void NetworkController::MirrorPermissions(const QList<PermissionTable::Row> &delta){
 #if defined(WEBENGINEVIEW) && QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    foreach(NetworkAccessManager *nam, m_NetworkAccessManagerTable){
-        if(!nam) continue;
+    foreach(NetworkAccessManager *nam, LiveNetworkAccessManagers()){
         foreach(QWebEngineProfile *profile, nam->Profiles()) ApplyDelta(profile, delta);
     }
     foreach(QQuickWebEngineProfile *profile,
@@ -2416,7 +2425,9 @@ void NetworkController::InitializeNetworkAccessManager(QString id, const QList<Q
     NetworkAccessManager *nam = new NetworkAccessManager(id);
     ncj->SetAllCookies(cookies);
     nam->SetNetworkCookieJar(ncj);
+    NetworkAccessManager *replaced = m_NetworkAccessManagerTable.value(id, nullptr);
     m_NetworkAccessManagerTable[id] = nam;
+    RetireNetworkAccessManager(replaced);
 }
 
 bool NetworkController::LoadCookieFile(QString path){
@@ -2432,7 +2443,7 @@ bool NetworkController::LoadCookieFile(QString path){
     QJsonObject obj = doc.object();
     for(QJsonObject::const_iterator it = obj.constBegin(); it != obj.constEnd(); it++){
         QList<QNetworkCookie> cookies;
-        foreach(QJsonValue raw, it.value().toArray()){
+        for(QJsonValue raw : it.value().toArray()){
             cookies << QNetworkCookie::parseCookies(raw.toString().toLatin1());
         }
         InitializeNetworkAccessManager(it.key(), cookies);
@@ -2450,7 +2461,7 @@ void NetworkController::LoadAllCookies(){
         dir.entryList(Application::BackUpFileFilters(),
                       QDir::NoFilter, QDir::Name | QDir::Reversed);
 
-    foreach(QString backup, list){
+    for(QString backup : std::as_const(list)){
 
         if(!backup.endsWith(filename)) continue;
         if(!LoadCookieFile(datadir + backup)) continue;
@@ -2476,13 +2487,22 @@ QByteArray NetworkController::CookieSnapshot(){
 
     QMap<QString, NetworkAccessManager*> table = AllNetworkAccessManager();
     QJsonObject doc;
-    foreach(QString id, table.keys()){
+    for(QString id : table.keys()){
         QJsonArray rawdata;
         foreach(QNetworkCookie cookie, table[id]->GetNetworkCookieJar()->GetPersistableCookies()){
             if(!ShouldSaveCookie(cookie, saveSessionCookie, now)) continue;
             rawdata.append(QString::fromLatin1(cookie.toRawForm()));
         }
         doc[id] = rawdata;
+    }
+    for(auto it = m_HeldCookies.cbegin(); it != m_HeldCookies.cend(); ++it){
+        if(doc.contains(it.key())) continue;
+        QJsonArray rawdata;
+        foreach(QNetworkCookie cookie, it.value()){
+            if(!ShouldSaveCookie(cookie, saveSessionCookie, now)) continue;
+            rawdata.append(QString::fromLatin1(cookie.toRawForm()));
+        }
+        doc[it.key()] = rawdata;
     }
 
     return QJsonDocument(doc).toJson(QJsonDocument::Indented);

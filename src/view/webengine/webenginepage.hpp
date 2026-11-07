@@ -54,23 +54,23 @@ public:
     ~WebEnginePage();
     View* GetView();
     SharedProfile GetSharedProfile() const { return m_Profile; }
-    WebEnginePage* createWindow(WebWindowType type) Q_DECL_OVERRIDE;
-    void triggerAction(WebAction action, bool checked = false) Q_DECL_OVERRIDE;
+    WebEnginePage* createWindow(WebWindowType type) override;
+    void triggerAction(WebAction action, bool checked = false) override;
 
-    bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) Q_DECL_OVERRIDE;
+    bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) override;
     QStringList chooseFiles(FileSelectionMode mode, const QStringList &oldFiles,
-                            const QStringList &acceptedMimeTypes) Q_DECL_OVERRIDE;
+                            const QStringList &acceptedMimeTypes) override;
 
-    void javaScriptAlert(const QUrl &securityOrigin, const QString &msg) Q_DECL_OVERRIDE {
+    void javaScriptAlert(const QUrl &securityOrigin, const QString &msg) override {
         const QUrl origin = ModalDialog::SiteOrigin(securityOrigin, url());
         ModalDialog::Information(ModalDialog::SiteTitle(origin), msg, ModalDialog::SiteIcon());
     }
-    bool javaScriptConfirm(const QUrl &securityOrigin, const QString &msg) Q_DECL_OVERRIDE {
+    bool javaScriptConfirm(const QUrl &securityOrigin, const QString &msg) override {
         const QUrl origin = ModalDialog::SiteOrigin(securityOrigin, url());
         return ModalDialog::Question(ModalDialog::SiteTitle(origin), msg, ModalDialog::SiteIcon());
     }
     bool javaScriptPrompt(const QUrl &securityOrigin, const QString &msg,
-                          const QString &defaultValue, QString *result) Q_DECL_OVERRIDE {
+                          const QString &defaultValue, QString *result) override {
         const QUrl origin = ModalDialog::SiteOrigin(securityOrigin, url());
         bool ok = true;
         const QString text = ModalDialog::GetText(ModalDialog::SiteTitle(origin), msg,
@@ -79,7 +79,7 @@ public:
         return ok;
     }
     void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg,
-                                  int lineNumber, const QString &sourceId) Q_DECL_OVERRIDE;
+                                  int lineNumber, const QString &sourceId) override;
 
     QNetworkAccessManager *networkAccessManager() const;
     void setNetworkAccessManager(QNetworkAccessManager *nam);

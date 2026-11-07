@@ -447,7 +447,7 @@ private slots:
         const auto blocks = MiniMap::ParseBlocks(result.toVariant(), &size, &over);
         QVERIFY(!over);
         QList<QPair<int, qreal>> found;
-        foreach(const MiniMap::Block &block, blocks)
+        for(const MiniMap::Block &block : blocks)
             found << qMakePair(int(block.kind), block.rect.top());
         QCOMPARE(found, (QList<QPair<int, qreal>>{
                      {MiniMap::PositionedBackgroundBlock, 100},
@@ -706,7 +706,7 @@ private slots:
 
         QList<QPair<int, QRectF>> found;
         QList<bool> follows;
-        foreach(const MiniMap::Block &block, blocks){
+        for(const MiniMap::Block &block : blocks){
             found << qMakePair(int(block.kind), block.rect);
             follows << block.followsViewport;
         }

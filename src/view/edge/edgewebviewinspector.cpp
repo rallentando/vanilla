@@ -15,6 +15,8 @@
 #include <QElapsedTimer>
 #include <climits>
 #include <cstdio>
+#include <cstdarg>
+#include <QTime>
 
 #include "treebank.hpp"
 #include "mainwindow.hpp"
@@ -22,6 +24,18 @@
 bool EdgeInspectorTraceOn(){
     static const bool on = qEnvironmentVariableIsSet("VANILLA_EDGE_INSPECTOR_TRACE");
     return on;
+}
+
+void EdgeInputTrace(const char *format, ...){
+    if(!EdgeInspectorTraceOn()) return;
+    fprintf(stderr, "%s edge-input: ",
+            QTime::currentTime().toString(QStringLiteral("HH:mm:ss.zzz")).toLatin1().constData());
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+    fputc('\n', stderr);
+    fflush(stderr);
 }
 static void EdgeInspectorTrace(const char *what, const QWidget *pane, WId id){
     if(!EdgeInspectorTraceOn()) return;
@@ -140,7 +154,7 @@ public:
     }
 
 protected:
-    bool event(QEvent *ev) Q_DECL_OVERRIDE {
+    bool event(QEvent *ev) override {
         switch(ev->type()){
         case QEvent::ParentAboutToChange: EdgeInspectorTrace("ParentAboutToChange", this, m_Hwnd); break;
         case QEvent::ParentChange:
@@ -161,7 +175,7 @@ protected:
         return QWidget::event(ev);
     }
 
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) Q_DECL_OVERRIDE {
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override {
         if(eventType == "windows_generic_MSG"){
             const MSG *msg = static_cast<const MSG*>(message);
             if(msg->message == WM_PARENTNOTIFY){
@@ -185,7 +199,7 @@ protected:
         EdgeInspectorTrace(has ? "click: frontend has focus" : "click: SetFocus(frontend)", this, m_Hwnd);
         if(!has) ::SetFocus(hwnd);
     }
-    bool eventFilter(QObject *watched, QEvent *ev) Q_DECL_OVERRIDE {
+    bool eventFilter(QObject *watched, QEvent *ev) override {
         if(watched == m_Dock.data() &&
            (ev->type() == QEvent::Move || ev->type() == QEvent::Resize ||
             ev->type() == QEvent::LayoutRequest || ev->type() == QEvent::Show)){
@@ -205,16 +219,16 @@ protected:
         }
         return QWidget::eventFilter(watched, ev);
     }
-    void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE {
+    void resizeEvent(QResizeEvent *ev) override {
         QWidget::resizeEvent(ev);
         SyncNativeGeometry();
         Place();
     }
-    void moveEvent(QMoveEvent *ev) Q_DECL_OVERRIDE {
+    void moveEvent(QMoveEvent *ev) override {
         QWidget::moveEvent(ev);
         SyncNativeGeometry();
     }
-    void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE {
+    void showEvent(QShowEvent *ev) override {
         QWidget::showEvent(ev);
         SyncNativeGeometry();
     }

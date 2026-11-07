@@ -116,22 +116,22 @@ namespace {
             }
             m_Origin = QString::fromUtf8(m_Headers.value(QByteArrayLiteral("Origin")));
         }
-        ~EdgeAsk() Q_DECL_OVERRIDE { Answer(403, L"Forbidden", QByteArray(), QByteArray()); }
+        ~EdgeAsk() override { Answer(403, L"Forbidden", QByteArray(), QByteArray()); }
 
-        QByteArray Method() const Q_DECL_OVERRIDE { return m_Method; }
-        QUrl Url() const Q_DECL_OVERRIDE { return m_Url; }
-        QUrl Initiator() const Q_DECL_OVERRIDE {
+        QByteArray Method() const override { return m_Method; }
+        QUrl Url() const override { return m_Url; }
+        QUrl Initiator() const override {
             return m_Origin.isEmpty() || m_Origin == QStringLiteral("null") ? QUrl() : QUrl(m_Origin);
         }
-        QMap<QByteArray, QByteArray> Headers() const Q_DECL_OVERRIDE { return m_Headers; }
-        bool Body(qint64, QByteArray *) Q_DECL_OVERRIDE { return false; }
-        bool Alive() const Q_DECL_OVERRIDE { return !m_Completed && !m_Owner.isNull(); }
-        void Reply(const QJsonObject &answer) Q_DECL_OVERRIDE {
+        QMap<QByteArray, QByteArray> Headers() const override { return m_Headers; }
+        bool Body(qint64, QByteArray *) override { return false; }
+        bool Alive() const override { return !m_Completed && !m_Owner.isNull(); }
+        void Reply(const QJsonObject &answer) override {
             Answer(200, L"OK", QByteArrayLiteral("application/json"),
                    QJsonDocument(answer).toJson(QJsonDocument::Compact));
         }
-        void ReplyNothing() Q_DECL_OVERRIDE { Answer(200, L"OK", QByteArrayLiteral("text/plain"), QByteArray()); }
-        void Fail() Q_DECL_OVERRIDE { Answer(403, L"Forbidden", QByteArray(), QByteArray()); }
+        void ReplyNothing() override { Answer(200, L"OK", QByteArrayLiteral("text/plain"), QByteArray()); }
+        void Fail() override { Answer(403, L"Forbidden", QByteArray(), QByteArray()); }
 
         static QString CorsHeaders(const QString &origin){
             return QStringLiteral("Access-Control-Allow-Origin: ") + (origin.isEmpty() ? QStringLiteral("null") : origin)
@@ -196,24 +196,24 @@ namespace {
             Start();
         }
 
-        QSet<QString> ShimmedIds() const Q_DECL_OVERRIDE {
+        QSet<QString> ShimmedIds() const override {
             QSet<QString> ids;
             if(!ExtensionHost::ShimsOn()) return ids;
             foreach(const ExtensionRow &row, Rows())
                 if(row.loaded && row.enabled && m_Copies.value(row.manifest.id).copied) ids.insert(row.manifest.id);
             return ids;
         }
-        bool HasKeyedShims(const QString &id) const Q_DECL_OVERRIDE {
+        bool HasKeyedShims(const QString &id) const override {
             const Copy copy = m_Copies.value(id);
             return ExtensionHost::ShimsOn() && copy.copied && !copy.keyless;
         }
 
     protected:
-        void Snapshot(SnapshotDone done) Q_DECL_OVERRIDE {
+        void Snapshot(SnapshotDone done) override {
             List(done);
         }
 
-        void Add(const ExtensionManifest &manifest, ItemDone done) Q_DECL_OVERRIDE {
+        void Add(const ExtensionManifest &manifest, ItemDone done) override {
             QPointer<EdgeExtensions> self(this);
             const ComPtr<ICoreWebView2Profile7> profile = m_Profile;
             QString from = manifest.folder;
@@ -256,13 +256,13 @@ namespace {
             if(FAILED(hr) && self) done(ExtensionItem(), Failure(hr));
         }
 
-        void Remove(const QString &id, Done done) Q_DECL_OVERRIDE {
+        void Remove(const QString &id, Done done) override {
             m_Copies.remove(id);
             WriteLedger();
             RemoveFromEngine(id, done);
         }
 
-        void Enable(const QString &id, bool enabled, ItemDone done) Q_DECL_OVERRIDE {
+        void Enable(const QString &id, bool enabled, ItemDone done) override {
             Operate(EdgeExtensionOperation::Kind::Enable, id,
                     [id, enabled](ICoreWebView2BrowserExtension *extension, Answer answer) -> HRESULT {
                         const ComPtr<ICoreWebView2BrowserExtension> object = extension;
@@ -357,7 +357,7 @@ namespace {
             {
                 QHash<QString, QString> current, copies;
                 m_CopyKeyless.clear();
-                foreach(const QString &path, Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList()){
+                for(const QString &path : Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList()){
                     const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
                     if(!manifest.error.isEmpty()) continue;
                     if(current.contains(manifest.id)) continue;
@@ -575,7 +575,7 @@ namespace {
         void ReconcileRelays();
         QHash<QString, EdgeRelayView*> m_Relays;
     public:
-        bool SendToWorker(const QString &id, const QJsonArray &args) Q_DECL_OVERRIDE;
+        bool SendToWorker(const QString &id, const QJsonArray &args) override;
     private:
         bool m_Reconciling = false;
         bool m_ReconcileAgain = false;
@@ -600,7 +600,7 @@ namespace {
         {
             setAttribute(Qt::WA_NativeWindow);
         }
-        ~EdgeExtensionView() Q_DECL_OVERRIDE {
+        ~EdgeExtensionView() override {
             Shutdown();
         }
 
@@ -633,11 +633,11 @@ namespace {
         }
 
     protected:
-        void resizeEvent(QResizeEvent *ev) Q_DECL_OVERRIDE {
+        void resizeEvent(QResizeEvent *ev) override {
             QWidget::resizeEvent(ev);
             Bounds();
         }
-        void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE {
+        void hideEvent(QHideEvent *ev) override {
             QPointer<EdgeExtensionView> self(this);
             if(m_Docked){
                 if(const ComPtr<ICoreWebView2Controller> controller = m_Controller) controller->put_IsVisible(FALSE);
@@ -646,19 +646,19 @@ namespace {
             }
             if(self) QWidget::hideEvent(ev);
         }
-        void showEvent(QShowEvent *ev) Q_DECL_OVERRIDE {
+        void showEvent(QShowEvent *ev) override {
             QWidget::showEvent(ev);
             if(!m_Docked) return;
             QPointer<EdgeExtensionView> self(this);
             if(const ComPtr<ICoreWebView2Controller> controller = m_Controller) controller->put_IsVisible(TRUE);
             if(self) Bounds();
         }
-        void moveEvent(QMoveEvent *ev) Q_DECL_OVERRIDE {
+        void moveEvent(QMoveEvent *ev) override {
             QWidget::moveEvent(ev);
             if(!m_Docked) return;
             if(const ComPtr<ICoreWebView2Controller> controller = m_Controller) controller->NotifyParentWindowPositionChanged();
         }
-        bool event(QEvent *ev) Q_DECL_OVERRIDE {
+        bool event(QEvent *ev) override {
             if(m_Docked && ev->type() == View::SidePanelShutdownEvent()){
                 Shutdown();
                 return true;
@@ -673,7 +673,7 @@ namespace {
             }
             return QWidget::event(ev);
         }
-        void focusInEvent(QFocusEvent *ev) Q_DECL_OVERRIDE {
+        void focusInEvent(QFocusEvent *ev) override {
             QWidget::focusInEvent(ev);
             const ComPtr<ICoreWebView2Controller> controller = m_Controller;
             if(controller) controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
@@ -1016,7 +1016,7 @@ namespace {
                                Qt::WindowStaysOnBottomHint | Qt::WindowTransparentForInput);
             m_Window->setGeometry(QRect(-30000, -30000, 8, 8));
         }
-        ~EdgeRelayView() Q_DECL_OVERRIDE {
+        ~EdgeRelayView() override {
             Shutdown();
             delete m_Window;
         }
@@ -1162,13 +1162,13 @@ namespace {
                 foreach(const ExtensionRow &row, Rows())
                     if(row.loaded && row.enabled && HasKeyedShims(row.manifest.id)) wanted.insert(row.manifest.id);
             const QStringList had = m_Relays.keys();
-            foreach(const QString &id, had){
+            for(const QString &id : had){
                 if(wanted.contains(id)) continue;
                 EdgeRelayView *gone = m_Relays.take(id);
                 delete gone;
                 if(!self) return;
             }
-            foreach(const QString &id, wanted){
+            for(const QString &id : std::as_const(wanted)){
                 if(m_Relays.contains(id)) continue;
                 const QString page = qEnvironmentVariableIsSet("VANILLA_RELAY_PAGE")
                     ? qEnvironmentVariable("VANILLA_RELAY_PAGE") : QStringLiteral("vanilla_relay.html");
@@ -1195,6 +1195,29 @@ namespace {
         }
         return nullptr;
     }
+}
+
+QString EdgeWebView::ProfilesFolder(){
+    return QDir::fromNativeSeparators(EdgeEnvironment::UserDataFolder()) + QStringLiteral("/EBWebView/");
+}
+
+QString EdgeWebView::ExtensionJournal(const QString &profileName){
+    return JournalFor(profileName);
+}
+
+QStringList EdgeWebView::ProfilesWithExtensions(){
+    QStringList names;
+    foreach(QObject *child, EdgeEnvironment::Instance()->children()){
+        ExtensionController *manager = qobject_cast<ExtensionController*>(child);
+        if(manager) names << manager->property("edgeExtensionProfile").toString();
+    }
+    return names;
+}
+
+QObject *EdgeWebView::ReleaseExtensionsOf(const QString &profileName){
+    ExtensionController *manager = ControllerOf(profileName);
+    if(manager) manager->deleteLater();
+    return manager;
 }
 
 HRESULT EdgeAnswerExtensionHost(ExtensionController *controller, quint64 viewNumber, QObject *owner,
@@ -1276,9 +1299,9 @@ void EdgeWebView::StartExtensionCopiesAhead(){
         typedef QPair<QString, QString> Source;
         QList<Source> sources, later;
         QSet<QString> off;
-        foreach(const QString &path, disabled) off.insert(ExtensionManifest::RegistrationKey(path));
+        for(const QString &path : disabled) off.insert(ExtensionManifest::RegistrationKey(path));
         QSet<QString> ids;
-        foreach(const QString &path, paths){
+        for(const QString &path : paths){
             const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
             if(!manifest.error.isEmpty()) continue;
             if(ids.contains(manifest.id)) continue;
@@ -1301,7 +1324,7 @@ void EdgeEnvironment::PinExtensionCopies(){
     JoinCopiesAhead();
     if(!ExtensionHost::ShimsOn()) return;
     QSet<QString> ids;
-    foreach(const QString &path, Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList()){
+    for(const QString &path : Application::GlobalSettings().value(QStringLiteral("network/@Extensions")).toStringList()){
         const ExtensionManifest manifest = ExtensionManifest::ReadCached(path);
         if(!manifest.error.isEmpty()) continue;
         if(ids.contains(manifest.id)) continue;

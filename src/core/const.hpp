@@ -8,6 +8,7 @@
 #include <QFont>
 #include <QFontInfo>
 #include <QFontDatabase>
+#include <QtMath>
 
 static const QString VANILLA_LOCAL_SERVER_NAME_PREFIX = QStringLiteral("vanilla_local_server_");
 
@@ -48,15 +49,21 @@ static const QString DISABLE_FILENAME = "???";
 
 static const QString NODE_DATETIME_FORMAT = QStringLiteral("yyyyMMddhhmmss");
 
-inline QDateTime NodeDateTimeFromString(const QString &str, const QTimeZone &zone){
-    if(str.length() != 14) return QDateTime();
-    for(int i = 0; i < 14; i++){
-        if(str.at(i) < QLatin1Char('0') || str.at(i) > QLatin1Char('9')) return QDateTime();
+inline bool NodeDateTimeFields(const QString &str, QDate &date, QTime &time){
+    if(str.length() != 14) return false;
+    for(const QChar c : str){
+        if(c < QLatin1Char('0') || c > QLatin1Char('9')) return false;
     }
     const QStringView view(str);
-    const QDate date(view.mid(0, 4).toInt(), view.mid(4, 2).toInt(), view.mid(6, 2).toInt());
-    const QTime time(view.mid(8, 2).toInt(), view.mid(10, 2).toInt(), view.mid(12, 2).toInt());
-    if(!date.isValid() || !time.isValid()) return QDateTime();
+    date = QDate(view.mid(0, 4).toInt(), view.mid(4, 2).toInt(), view.mid(6, 2).toInt());
+    time = QTime(view.mid(8, 2).toInt(), view.mid(10, 2).toInt(), view.mid(12, 2).toInt());
+    return date.isValid() && time.isValid();
+}
+
+inline QDateTime NodeDateTimeFromString(const QString &str, const QTimeZone &zone){
+    QDate date;
+    QTime time;
+    if(!NodeDateTimeFields(str, date, time)) return QDateTime();
     if(zone.isValid()) return QDateTime(date, time, zone);
     return QDateTime(date, time);
 }
@@ -126,9 +133,10 @@ static const int DOWNLOAD_PANEL_PROGRESS_HEIGHT = 4;
 static const int DOWNLOAD_PANEL_PROGRESS_STEPS = 1000;
 static const int DOWNLOAD_PANEL_REBUILD_DELAY = 150;
 static const int DOWNLOAD_PANEL_PRESS_POLL = 50;
+static const int UPLOAD_ROW_DELAY = 2000;
 static const int DOWNLOAD_BUTTON_LINGER = 60 * 1000;
-static const double DOWNLOAD_PANEL_QUIET_ALPHA = 0.65;
-static const double DOWNLOAD_PANEL_HOVER_ALPHA = 0.08;
+static const float DOWNLOAD_PANEL_QUIET_ALPHA = 0.65f;
+static const float DOWNLOAD_PANEL_HOVER_ALPHA = 0.08f;
 static const int DOWNLOAD_PANEL_ROW_RADIUS = 4;
 static const int EXTENSION_ROW_NAME_WIDTH = 205;
 static const QSize EXTENSION_POPUP_SIZE = QSize(450, 520);
@@ -158,19 +166,33 @@ static const int STATUS_TEXT_PADDING = 5;
 inline const QFont &NotifierFont(){ return DefaultFont();}
 
 static const int NOTIFIER_WIDTH_PERCENTAGE = 30;
-static const int NOTIFIER_HEIGHT = 50;
 static const int NOTIFIER_MINIMUM_WIDTH = 300;
-
-static const int TRANSFER_ITEM_HEIGHT = 25;
-static const int TRANSFER_PROGRESS_PERCENTAGE = 40;
+static const int NOTIFIER_MARGIN = 8;
+static const int NOTIFIER_PADDING_X = 10;
+static const int NOTIFIER_PADDING_Y = 6;
+static const int NOTIFIER_LINE_HEIGHT = 20;
+static const int NOTIFIER_STATUS_DURATION = 3000;
+static const int NOTIFIER_LINK_LINGER = 500;
 
 inline const QFont &ReceiverFont(){ return DefaultFont();}
 
-static const int RECEIVER_HEIGHT = 50;
-static const int LINEEDIT_HEIGHT = 25;
-static const int SUGGEST_HEIGHT = 25;
+static const int RECEIVER_CENTER_WIDTH = 640;
+static const int RECEIVER_CORNER_WIDTH = 360;
+static const int RECEIVER_MARGIN = 8;
+static const int RECEIVER_PADDING = 8;
+static const int RECEIVER_FIELD_HEIGHT = 34;
+static const int RECEIVER_FIELD_PADDING_X = 14;
+static const int RECEIVER_LIST_GAP = 4;
+static const int SUGGEST_HEIGHT = 28;
+static const int RECEIVER_HEADING_HEIGHT = 24;
+static const int RECEIVER_HEADING_OUTDENT = 5;
+static const int RECEIVER_SOURCE_BAR_HEIGHT = 30;
+static const int RECEIVER_SCROLL_ROWS = 1000;
+static const int RECEIVER_WHEEL_ROWS = 3;
+static const int RECEIVER_SCROLL_MARK_WIDTH = 4;
+static const int RECEIVER_HISTORY_LENGTH = 100;
 static const int SCROLL_AREA_WIDTH = 30;
-static const int SCROLL_AREA_HEIGHT = 50;
+static const int SCROLL_AREA_HEIGHT = 40;
 
 static const int MINIMAP_WIDTH = 80;
 
@@ -200,8 +222,16 @@ inline const QFont &NodeTitleFont(){
     return font;
 }
 
+inline const QFont &GadgetsHeaderFont(){ return ThumbnailTitleFont();}
+
 static const int DISPLAY_PADDING_X = 25;
+static const int DISPLAY_PADDING_LEFT = 10;
 static const int DISPLAY_PADDING_Y = 15;
+
+static const int GADGETS_HEADER_HEIGHT = 36;
+static const int GADGETS_HEADER_BUTTON_HEIGHT = 26;
+static const int GADGETS_HEADER_ICON_SIZE = 12;
+static const int GADGETS_HEADER_FILTER_WIDTH = 330;
 
 static const int GADGETS_SCROLL_BAR_MARGIN = 10;
 static const int GADGETS_SCROLL_BAR_WIDTH = 15;
@@ -213,6 +243,8 @@ static const qreal VIEW_CONTENTS_LAYER = 0.0;
 static const qreal COVERING_VIEW_CONTENTS_LAYER = 5.0;
 static const qreal MAIN_CONTENTS_LAYER = 10.0;
 static const qreal BUTTON_LAYER = 15.0;
+static const qreal HEADER_LAYER = 16.0;
+static const qreal HEADER_BUTTON_LAYER = 17.0;
 static const qreal SPOT_LIGHT_LAYER = 20.0;
 static const qreal DRAGGING_CONTENTS_LAYER = 30.0;
 static const qreal BUTTON_ON_DRAGGING_LAYER = 35.0;
@@ -276,5 +308,9 @@ static const int DEFAULT_LOCALVIEW_MAX_FILEIMAGE = 100;
 static const int MAXIMUM_LOCALVIEW_MAX_FILEIMAGE = 512;
 
 static const int MAX_SAME_ACTION_COUNT = 100;
+
+inline bool NearlyEqual(const qreal a, const qreal b){
+    return qFabs(a - b) < 0.001;
+}
 
 #endif

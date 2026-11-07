@@ -51,10 +51,10 @@ private slots:
             << QStringLiteral("Ctrl+W") << QStringLiteral("F5")
             << QStringLiteral("Alt+Left") << QStringLiteral(",");
 
-        foreach(QString name, names)
+        for(QString name : names)
             QCOMPARE(InputMap::UnescapeKeyName(InputMap::EscapeKeyName(name)), name);
 
-        foreach(QString name, names)
+        for(QString name : names)
             QVERIFY(!InputMap::EscapeKeyName(name).contains(QStringLiteral("/")) &&
                     !InputMap::EscapeKeyName(name).contains(QStringLiteral("\\")));
     }
@@ -127,6 +127,35 @@ private slots:
 
         QVERIFY(!InputMap::LoadKeyMap(settings, KEYS, map));
         QCOMPARE(map.value(QKeySequence(Qt::Key_F5)), QStringLiteral("Reload"));
+    }
+
+    void aKeyIsAddedOnlyWhereNothingIsThere(){
+        const QKeySequence key(Qt::CTRL | Qt::Key_C);
+        const QString action = QStringLiteral("CopyNode");
+
+        InputMap::KeyMap map;
+        InputMap::AddKeyIfUnassigned(map, key, action);
+        QCOMPARE(map.value(key), action);
+
+        InputMap::KeyMap taken;
+        taken[key] = QStringLiteral("NoAction");
+        InputMap::AddKeyIfUnassigned(taken, key, action);
+        QCOMPARE(taken.value(key), QStringLiteral("NoAction"));
+
+        InputMap::KeyMap other;
+        other[QKeySequence(Qt::Key_F2)] = action;
+        InputMap::AddKeyIfUnassigned(other, key, action);
+        QVERIFY(!other.contains(key));
+
+        InputMap::KeyMap former;
+        former[key] = QStringLiteral("Old");
+        InputMap::AddKeyIfUnassigned(former, key, action, QStringLiteral("Old"));
+        QCOMPARE(former.value(key), action);
+
+        InputMap::KeyMap chosen;
+        chosen[key] = QStringLiteral("Mine");
+        InputMap::AddKeyIfUnassigned(chosen, key, action, QStringLiteral("Old"));
+        QCOMPARE(chosen.value(key), QStringLiteral("Mine"));
     }
 
     void agroupWhichIsThereReplacesTheDefaults(){

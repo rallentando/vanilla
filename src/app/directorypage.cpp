@@ -297,8 +297,7 @@ namespace {
                 const QString after = DirectoryPage::TitleFollowing(before, changed);
                 if(before != after){
                     below->SetTitle(after);
-                    TreeBank::ReconfigureDirectory(below, before, after);
-                    followed++;
+                    if(TreeBank::ReconfigureDirectory(below, before, after)) followed++;
                 }
             }
             followed += LetDescendantsFollow(below, changed);
@@ -675,7 +674,7 @@ QJsonObject Describe(ViewNode *subject){
 
     const QList<ViewNode*> directories = ChainOf(subject);
     QJsonArray chain;
-    foreach(ViewNode *vn, directories)
+    for(ViewNode *vn : directories)
         chain.append(DescribeEntry(vn));
     root[QStringLiteral("chain")] = chain;
 
@@ -728,7 +727,7 @@ QByteArray HandleSet(const QJsonObject &request){
     if(name.contains(QLatin1Char(';'))) return Error(QStringLiteral("bad name"));
 
     QStringList tokens;
-    foreach(const QJsonValue &value, request[QStringLiteral("tokens")].toArray()){
+    for(const QJsonValue &value : request[QStringLiteral("tokens")].toArray()){
         if(!value.isString()) return Error(QStringLiteral("bad value"));
         const QString token = value.toString().trimmed();
         if(token.isEmpty()) continue;
@@ -747,7 +746,10 @@ QByteArray HandleSet(const QJsonObject &request){
     int followed = 0;
     if(before != after){
         vn->SetTitle(after);
-        TreeBank::ReconfigureDirectory(vn, before, after);
+        if(!TreeBank::ReconfigureDirectory(vn, before, after)){
+            TreeBank::EmitTreeStructureChanged();
+            return Error(QCoreApplication::translate("TreeBank", "Cannot rename this directory."));
+        }
         followed = LetDescendantsFollow(vn, ChangedWords(before, after));
         TreeBank::EmitTreeStructureChanged();
     }
@@ -802,8 +804,8 @@ QMenu *CreateSettingsMenu(ViewNode *vn, std::function<void()> openPage,
                  if(before == after) return;
                  if(!IsValidTitle(after)) return;
                  nd->SetTitle(after);
-                 TreeBank::ReconfigureDirectory(nd, before, after);
-                 LetDescendantsFollow(nd, ChangedWords(before, after));
+                 if(TreeBank::ReconfigureDirectory(nd, before, after))
+                     LetDescendantsFollow(nd, ChangedWords(before, after));
                  TreeBank::EmitTreeStructureChanged();
              });
         layout->addWidget(check, i, 0);

@@ -1,7 +1,7 @@
 # WebView2 SDK (vendored)
 
 `EdgeWebView` hosts the Edge WebView2 control itself, instead of going through
-Qt WebView, so it needs the SDK's headers and loader (ROADMAP C-7, D-166).
+Qt WebView, so it needs the SDK's headers and loader (D-166).
 
 Taken from the NuGet package, unmodified:
 

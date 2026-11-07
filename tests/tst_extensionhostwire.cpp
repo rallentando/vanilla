@@ -16,6 +16,7 @@ class tst_extensionhostwire : public QObject {
     Q_OBJECT
 
 private slots:
+    void anAlarmMayWakeAnExtensionWhichNeverListened();
     void aUserScriptWorldOpensWithASecretOfItsOwn();
     void aUserScriptsMessageIsAnsweredOnceByWhoeverWasAsked();
     void aWorkerStartedAgainIsListenedToStill();
@@ -143,7 +144,7 @@ private:
     static QString Ids(const QJsonObject &answer){
         if(!answer[QStringLiteral("ok")].toBool()) return QStringLiteral("ERROR");
         QStringList ids;
-        foreach(const QJsonValue &tab, answer[QStringLiteral("value")].toArray()) ids << QString::number(tab.toObject()[QStringLiteral("id")].toInt());
+        for(const QJsonValue &tab : answer[QStringLiteral("value")].toArray()) ids << QString::number(tab.toObject()[QStringLiteral("id")].toInt());
         return ids.join(QLatin1Char(','));
     }
     static QJsonObject Ask(const QString &api, const QString &args,
@@ -648,7 +649,7 @@ void tst_extensionhostwire::anAddressIsOneOfTheFourKindsOrNothing(){
         << QStringLiteral("chrome-extension://") + ID + QStringLiteral(".evil.example/a.html") << QStringLiteral("?") << QStringLiteral("#")
         << QStringLiteral("%00") << QStringLiteral("http://a@b.example/") << QStringLiteral("about:BLANK") << QStringLiteral("vbscript:x")
         << QStringLiteral("filesystem:https://a.example/x") << QStringLiteral("ws://a.example/") << QStringLiteral("ftp://a.example/");
-    foreach(const QString &text, texts){
+    for(const QString &text : texts){
         bool ok = false;
         const QUrl url = ExtensionHostWire::TabUrlOf(ID, text, &ok);
         if(!ok){ QVERIFY2(url.isEmpty(), qPrintable(text)); continue; }
@@ -1059,7 +1060,7 @@ namespace {
         foreach(const QJsonValue &v, events){
             const QJsonObject event = v.toObject();
             QStringList args;
-            foreach(const QJsonValue &a, event.value(QStringLiteral("args")).toArray()){
+            for(const QJsonValue &a : event.value(QStringLiteral("args")).toArray()){
                 if(a.isObject()){
                     const QJsonObject o = a.toObject();
                     if(o.contains(QStringLiteral("tabId"))) args << QStringLiteral("tab %1").arg(o.value(QStringLiteral("tabId")).toInt());
@@ -1260,7 +1261,7 @@ void tst_extensionhostwire::hostPermissionsTellTheTabsTheyCover(){
     const QJsonArray all = Ask(QStringLiteral("tabs.query"), QStringLiteral("[{}]"), sight)[QStringLiteral("value")].toArray();
     QCOMPARE(all.size(), 4);
     QStringList told;
-    foreach(const QJsonValue &tab, all)
+    for(const QJsonValue &tab : all)
         told << tab.toObject()[QStringLiteral("url")].toString() + QLatin1Char('|') + tab.toObject()[QStringLiteral("title")].toString();
     QCOMPARE(told, QStringList() << QStringLiteral("|") << QStringLiteral("https://sub.b.example/two|two")
                                  << QStringLiteral("http://c.example/|three") << QStringLiteral("|"));
@@ -1663,7 +1664,7 @@ namespace {
     QString HistoryIds(const QJsonObject &answer){
         if(!answer[QStringLiteral("ok")].toBool()) return QStringLiteral("ERROR");
         QStringList ids;
-        foreach(const QJsonValue &item, answer[QStringLiteral("value")].toArray()) ids << item.toObject()[QStringLiteral("id")].toString();
+        for(const QJsonValue &item : answer[QStringLiteral("value")].toArray()) ids << item.toObject()[QStringLiteral("id")].toString();
         return ids.join(QLatin1Char(','));
     }
     using ExtensionHostWire::Bookmark;
@@ -1829,7 +1830,7 @@ namespace {
     QString BookmarkIds(const QJsonObject &answer){
         if(!answer[QStringLiteral("ok")].toBool()) return QStringLiteral("ERROR:") + answer[QStringLiteral("error")].toString();
         QStringList ids;
-        foreach(const QJsonValue &item, answer[QStringLiteral("value")].toArray()) ids << item.toObject()[QStringLiteral("id")].toString();
+        for(const QJsonValue &item : answer[QStringLiteral("value")].toArray()) ids << item.toObject()[QStringLiteral("id")].toString();
         return ids.join(QLatin1Char(','));
     }
 }
@@ -2101,7 +2102,7 @@ void tst_extensionhostwire::theEventsAppliedInTurnGiveTheListAfter(){
         QList<qint64> before;
         for(int i = 1; i <= size; i++) before << i;
         QList<qint64> after;
-        foreach(qint64 id, before) if(random.bounded(0, 5)) after << id;
+        for(qint64 id : std::as_const(before)) if(random.bounded(0, 5)) after << id;
         for(int i = after.size() - 1; i > 0; i--) after.swapItemsAt(i, random.bounded(0, i + 1));
         const int made = random.bounded(0, 4);
         for(int i = 0; i < made; i++) after.insert(random.bounded(0, after.size() + 1), 100 + i);
@@ -2251,6 +2252,10 @@ void tst_extensionhostwire::whatIsPrunedIsLetGoOfAfterTheWalk(){
     int looked = 0;
     QList<int> lookedWhenLetGo;
     QList<int> countWhenLetGo;
+    struct LetGo {
+        OneAtATime<Item> &acts;
+        ~LetGo(){ acts.Prune([](const Item &){ return false; }); }
+    } letGo{acts};
     auto holder = [&](int n){
         return Item{ std::shared_ptr<int>(new int(n), [&](int *p){
             lookedWhenLetGo << looked;
@@ -2500,11 +2505,11 @@ void tst_extensionhostwire::aSidePanelButtonIsThisViewsAndThisWindows(){
     QVERIFY(!bar.contains(QStringLiteral("SidePanels::Toggle(")));
     const QString toggle = body(read(QStringLiteral("ui/sidepanels.cpp")), QStringLiteral("QString SidePanels::Toggle("));
     QVERIFY(!toggle.isEmpty() && !toggle.contains(QStringLiteral("All()")));
-    QVERIFY(read(QStringLiteral("view/webengine/webengineview.hpp")).contains(QStringLiteral("bool MakesSidePanels() const Q_DECL_OVERRIDE { return true; }")));
+    QVERIFY(read(QStringLiteral("view/webengine/webengineview.hpp")).contains(QStringLiteral("bool MakesSidePanels() const override { return true; }")));
     QVERIFY(!read(QStringLiteral("view/webengine/quickwebengineview.hpp")).contains(QStringLiteral("MakesSidePanels")));
-    QVERIFY(read(QStringLiteral("view/edge/edgewebview.hpp")).contains(QStringLiteral("bool MakesSidePanels() const Q_DECL_OVERRIDE { return true; }")));
+    QVERIFY(read(QStringLiteral("view/edge/edgewebview.hpp")).contains(QStringLiteral("bool MakesSidePanels() const override { return true; }")));
     const QString edge = read(QStringLiteral("view/edge/edgeextensions.cpp"));
-    const int hide = edge.indexOf(QStringLiteral("        void hideEvent(QHideEvent *ev) Q_DECL_OVERRIDE {"));
+    const int hide = edge.indexOf(QStringLiteral("        void hideEvent(QHideEvent *ev) override {"));
     const QString hidden = edge.mid(hide, edge.indexOf(QStringLiteral("\n        }\n"), hide) - hide);
     QVERIFY(hidden.contains(QStringLiteral("if(m_Docked){")) && hidden.contains(QStringLiteral("controller->put_IsVisible(FALSE);")));
     QVERIFY(hidden.contains(QStringLiteral("} else {\n                Shutdown();")));
@@ -2696,7 +2701,7 @@ void tst_extensionhostwire::aUserScriptWorldOpensWithASecretOfItsOwn(){
         << ExtensionHostWire::WorldSecret(process, QStringLiteral("space"), QStringLiteral("ext"), QStringLiteral("C:/copy2"), QStringLiteral("w"))
         << ExtensionHostWire::WorldSecret(process, QStringLiteral("space"), QStringLiteral("ext"), QStringLiteral("C:/copy"), QString())
         << ExtensionHostWire::WorldSecret(process, QStringLiteral("spac"), QStringLiteral("eext"), QStringLiteral("C:/copy"), QStringLiteral("w"));
-    foreach(const QByteArray &other, others) QVERIFY(other != one && !other.isEmpty());
+    for(const QByteArray &other : others) QVERIFY(other != one && !other.isEmpty());
     QVERIFY(ExtensionHostWire::WorldSecret(QByteArray(31, 'p'), QStringLiteral("space"), QStringLiteral("ext"), QStringLiteral("C:/copy"), QStringLiteral("w")).isEmpty());
     QVERIFY(ExtensionHostWire::IsUserScriptMessageUrl(QUrl(QStringLiteral("vanilla-extension://host/userScriptMessage"))));
     QVERIFY(!ExtensionHostWire::IsUserScriptMessageUrl(QUrl(QStringLiteral("vanilla-extension://host/userScriptMessage?x"))));
@@ -2819,7 +2824,7 @@ void tst_extensionhostwire::aWorkerWhichSleepsIsWokenForWhatItListensTo(){
     auto sees = [](const QString &){ return Sight::All(); };
     QHash<int, QStringList> heard;
     auto answer = [&](int w, const QJsonObject &reply){
-        foreach(const QJsonValue &e, reply.value(QStringLiteral("value")).toObject().value(QStringLiteral("events")).toArray())
+        for(const QJsonValue &e : reply.value(QStringLiteral("value")).toObject().value(QStringLiteral("events")).toArray())
             heard[w] << e.toObject().value(QStringLiteral("name")).toString();
         heard[w] << QStringLiteral("|");
     };
@@ -3106,6 +3111,22 @@ void tst_extensionhostwire::theOrderAndTheGreetingAreOfTheTabsInScope(){
     QCOMPARE(replies.size(), 1);
     QVERIFY(replies.last().endsWith("\"order\":[1,3]}"));
     QVERIFY(!replies.last().contains("[2,"));
+}
+
+void tst_extensionhostwire::anAlarmMayWakeAnExtensionWhichNeverListened(){
+    const QString id = QStringLiteral("idid");
+    ExtensionHostWire::Wakes wakes;
+    QVERIFY(!wakes.ShouldWake(id, 0, true));
+    wakes.Expect(id);
+    QVERIFY(wakes.ShouldWake(id, 0, true));
+    QVERIFY(!wakes.ShouldWake(id, 0, false));
+    wakes.Woke(id, 0);
+    QVERIFY(!wakes.ShouldWake(id, 1, true));
+    wakes.Answered(id);
+    QVERIFY(!wakes.Waking(id));
+    QVERIFY(wakes.ShouldWake(id, 1, true));
+    wakes.Answered(QStringLiteral("other"));
+    QVERIFY(!wakes.ShouldWake(QStringLiteral("other"), 1, true));
 }
 
 QTEST_MAIN(tst_extensionhostwire)

@@ -7,6 +7,11 @@
 #include "extensionhostwire.hpp"
 
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSaveFile>
 #include <QTimer>
 #ifdef WEBENGINEVIEW
 #  include <QWebEngineSettings>
@@ -14,6 +19,7 @@
 #endif
 
 #include "application.hpp"
+#include "spacerename.hpp"
 
 namespace {
 
@@ -268,6 +274,7 @@ void EdgeEnvironment::Forget(int token){
 
 void EdgeEnvironment::StartCreation(){
     const QString folder = UserDataFolder();
+    ForgetMissingProfiles();
     PinExtensionCopies();
 
     ComPtr<ICoreWebView2EnvironmentOptions> options;
@@ -289,15 +296,65 @@ void EdgeEnvironment::StartCreation(){
     }
 }
 
+void EdgeEnvironment::ForgetMissingProfiles(){
+    const QString folder = QDir::fromNativeSeparators(UserDataFolder()) + QStringLiteral("/EBWebView/");
+    if(SpaceRename::BrowserHoldsFolder(folder)) return;
+    QFile file(folder + QStringLiteral("Local State"));
+    if(!file.open(QIODevice::ReadOnly)) return;
+    QJsonParseError error;
+    QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &error);
+    file.close();
+    if(error.error != QJsonParseError::NoError || !document.isObject()) return;
+    QJsonObject state = document.object();
+    if(!SpaceRename::ForgetMissingProfiles(state, [folder](const QString &name){
+        return QFileInfo::exists(folder + name);})) return;
+    QSaveFile save(folder + QStringLiteral("Local State"));
+    if(!save.open(QIODevice::WriteOnly)) return;
+    save.write(QJsonDocument(state).toJson(QJsonDocument::Compact));
+    save.commit();
+}
+
+QObject *EdgeEnvironment::BrowserExit(){
+    if(!m_Environment || !HookBrowserExit()) return nullptr;
+    QObject *mark = new QObject(this);
+    m_ExitMarks << QPointer<QObject>(mark);
+    return mark;
+}
+
+bool EdgeEnvironment::HookBrowserExit(){
+    if(!m_Environment) return false;
+    if(!m_ExitHooked){
+        ComPtr<ICoreWebView2Environment5> environment5;
+        if(FAILED(m_Environment.As(&environment5)) || !environment5) return false;
+        EventRegistrationToken token{};
+        QPointer<EdgeEnvironment> self(this);
+        const HRESULT hr = environment5->add_BrowserProcessExited(
+            Callback<ICoreWebView2BrowserProcessExitedEventHandler>(
+                [self](ICoreWebView2Environment*, ICoreWebView2BrowserProcessExitedEventArgs*) -> HRESULT {
+                    if(self) QTimer::singleShot(0, self, [self](){
+                        if(!self) return;
+                        ForgetMissingProfiles();
+                        foreach(const QPointer<QObject> &mark, self->m_ExitMarks) if(mark) mark->deleteLater();
+                        self->m_ExitMarks.clear();
+                    });
+                    return S_OK;
+                }).Get(), &token);
+        if(FAILED(hr)) return false;
+        m_ExitHooked = true;
+    }
+    return true;
+}
+
 void EdgeEnvironment::Finish(HRESULT result, ICoreWebView2Environment *environment){
     const bool ok = SUCCEEDED(result) && environment;
     if(ok) m_Environment = environment;
+    if(ok) HookBrowserExit();
 
     const QList<int> waiters = ok
         ? m_State.CreationSucceeded()
         : m_State.CreationFailed();
 
-    foreach(int token, waiters){
+    for(int token : waiters){
         const QPointer<EdgeWebView> view = m_Waiters.take(token);
         if(!view) continue;
         if(ok) view->EnvironmentReady();

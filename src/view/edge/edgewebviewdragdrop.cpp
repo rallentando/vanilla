@@ -77,10 +77,17 @@ public:
         const DWORD buttons = MK_LBUTTON | MK_RBUTTON | MK_MBUTTON;
         if(m_Buttons == 0){
             m_Buttons = keyState & buttons;
+            EdgeInputTrace("drag-out first ask keys=%lu buttons=%lu", keyState, m_Buttons);
             if(m_Buttons == 0) m_Buttons = MK_LBUTTON;
         }
-        if(escapePressed || s_DragOut.IsCancelled()) return DRAGDROP_S_CANCEL;
-        if((keyState & m_Buttons) == 0) return DRAGDROP_S_DROP;
+        if(escapePressed || s_DragOut.IsCancelled()){
+            EdgeInputTrace("drag-out cancel escape=%d", escapePressed ? 1 : 0);
+            return DRAGDROP_S_CANCEL;
+        }
+        if((keyState & m_Buttons) == 0){
+            EdgeInputTrace("drag-out drop keys=%lu", keyState);
+            return DRAGDROP_S_DROP;
+        }
         return S_OK;
     }
 
@@ -109,7 +116,10 @@ struct EdgeDragOutSession {
     void CompleteOnce(){
         if(m_Completed) return;
         m_Completed = true;
-        if(m_Deferral) m_Deferral->Complete();
+        if(m_Deferral){
+            const HRESULT hr = m_Deferral->Complete();
+            EdgeInputTrace("drag-out complete owner=%d hr=0x%08lx", m_Owner, static_cast<unsigned long>(hr));
+        }
     }
 };
 
@@ -118,8 +128,12 @@ static void RunDragOut(std::shared_ptr<EdgeDragOutSession> session){
 
     if(!s_DragOut.IsCancelled() && session->m_Data && session->m_Source){
         DWORD effect = 0;
-        DoDragDrop(session->m_Data.Get(), session->m_Source.Get(),
-                   session->m_Allowed, &effect);
+        EdgeInputTrace("drag-out loop begins owner=%d allowed=%lu", session->m_Owner, session->m_Allowed);
+        const HRESULT hr = DoDragDrop(session->m_Data.Get(), session->m_Source.Get(),
+                                      session->m_Allowed, &effect);
+        EdgeInputTrace("drag-out loop ends hr=0x%08lx effect=%lu", static_cast<unsigned long>(hr), effect);
+    } else {
+        EdgeInputTrace("drag-out loop skipped cancelled=%d", s_DragOut.IsCancelled() ? 1 : 0);
     }
 
     s_DragOut.End(session->m_Owner);
@@ -267,9 +281,11 @@ void EdgeWebView::RegisterDragStarting(){
              const quintptr key = IdentityOf(data.Get());
 
              if(!s_DragOut.Begin(m_Impl->m_Token, key)){
+                 EdgeInputTrace("drag-out starting refused: one is running");
                  args->put_Handled(TRUE);
                  return S_OK;
              }
+             EdgeInputTrace("drag-out starting owner=%d", m_Impl->m_Token);
 
              ComPtr<ICoreWebView2Deferral> deferral;
              if(FAILED(args->GetDeferral(&deferral)) || !deferral){
@@ -316,7 +332,9 @@ void EdgeWebView::RevokeDropTarget(){
 }
 
 void EdgeWebView::AbandonDrag(){
-    if(m_Impl->m_Drop.Abandon() != EdgeDropLedger::Send::ToBackend) return;
+    const EdgeDropLedger::Send owed = m_Impl->m_Drop.Abandon();
+    EdgeInputTrace("drop abandon send=%d", int(owed));
+    if(owed != EdgeDropLedger::Send::ToBackend) return;
     if(m_Impl && m_Impl->m_Drag) m_Impl->m_Drag->DragLeave();
 }
 
@@ -344,6 +362,7 @@ void EdgeWebView::OnDragEnter(IDataObject *object, unsigned long keyState,
         : own ? EdgeDropLedger::Take::ForwardOwnUrl
               : EdgeDropLedger::Take::Consume;
 
+    EdgeInputTrace("drop enter own=%d url=%d take=%d", own ? 1 : 0, url.isEmpty() ? 0 : 1, int(take));
     if(m_Impl->m_Drop.Enter(take) != EdgeDropLedger::Send::ToBackend){
         if(m_Impl->m_Drop.IsConsuming())
             *effect = (allowed & DROPEFFECT_LINK) ? DROPEFFECT_LINK
@@ -358,7 +377,9 @@ void EdgeWebView::OnDragEnter(IDataObject *object, unsigned long keyState,
         return;
     }
     DWORD answer = static_cast<DWORD>(allowed);
-    if(FAILED(m_Impl->m_Drag->DragEnter(object, static_cast<DWORD>(keyState), p, &answer))){
+    const HRESULT entered = m_Impl->m_Drag->DragEnter(object, static_cast<DWORD>(keyState), p, &answer);
+    EdgeInputTrace("drop enter backend hr=0x%08lx effect=%lu", static_cast<unsigned long>(entered), answer);
+    if(FAILED(entered)){
         AbandonDrag();
         return;
     }
@@ -385,8 +406,13 @@ void EdgeWebView::OnDragOver(unsigned long keyState, long screenX, long screenY,
 }
 
 void EdgeWebView::OnDragLeave(){
-    if(m_Impl->m_Drop.Leave() != EdgeDropLedger::Send::ToBackend) return;
-    if(m_Impl && m_Impl->m_Drag) m_Impl->m_Drag->DragLeave();
+    const EdgeDropLedger::Send left = m_Impl->m_Drop.Leave();
+    EdgeInputTrace("drop leave send=%d", int(left));
+    if(left != EdgeDropLedger::Send::ToBackend) return;
+    if(m_Impl && m_Impl->m_Drag){
+        const HRESULT hr = m_Impl->m_Drag->DragLeave();
+        EdgeInputTrace("drop leave backend hr=0x%08lx", static_cast<unsigned long>(hr));
+    }
 }
 
 void EdgeWebView::OnDrop(IDataObject *object, unsigned long keyState,
@@ -399,6 +425,7 @@ void EdgeWebView::OnDrop(IDataObject *object, unsigned long keyState,
     const QString url = (consuming || ownUrl) ? UrlFromDataObject(object) : QString();
 
     const EdgeDropLedger::Send send = m_Impl->m_Drop.Drop();
+    EdgeInputTrace("drop send=%d consuming=%d own=%d", int(send), consuming ? 1 : 0, ownUrl ? 1 : 0);
 
     if(send == EdgeDropLedger::Send::ToBackend){
         POINT p = {};
@@ -413,7 +440,9 @@ void EdgeWebView::OnDrop(IDataObject *object, unsigned long keyState,
                            m_Impl->m_DropEchoClock.elapsed());
 
         DWORD answer = static_cast<DWORD>(allowed);
-        if(FAILED(m_Impl->m_Drag->Drop(object, static_cast<DWORD>(keyState), p, &answer))){
+        const HRESULT dropped = m_Impl->m_Drag->Drop(object, static_cast<DWORD>(keyState), p, &answer);
+        EdgeInputTrace("drop backend hr=0x%08lx effect=%lu", static_cast<unsigned long>(dropped), answer);
+        if(FAILED(dropped)){
             if(arming) m_Impl->m_DropEcho.Disarm();
             return;
         }

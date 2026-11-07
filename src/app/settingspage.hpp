@@ -7,7 +7,11 @@
 #include <QString>
 #include <QUrl>
 
+#include <QList>
 #include <functional>
+
+class TreeBank;
+class ViewNode;
 
 struct VanillaPageResponse {
     enum class UserInteraction {
@@ -57,8 +61,14 @@ namespace VanillaPage {
     QUrl StartUrl();
     bool IsStartUrl(const QUrl &url);
 
+    QList<ViewNode*> FindTabs(const QString &query, TreeBank *asking, int limit);
+    QList<ViewNode*> FindTrashedTabs(const QString &query, TreeBank *asking, int limit);
+    ViewNode *TabOfSerial(quint64 serial);
+
     QUrl SettingsUrl();
     bool IsSettingsUrl(const QUrl &url);
+
+    bool IsRecordingKey();
 
     bool IsTranslucentPage(const QUrl &url);
     bool SameDocument(const QUrl &a, const QUrl &b);
@@ -76,9 +86,9 @@ class SettingsSchemeHandler : public QWebEngineUrlSchemeHandler {
 
 public:
     SettingsSchemeHandler(QObject *parent = nullptr);
-    ~SettingsSchemeHandler() Q_DECL_OVERRIDE;
+    ~SettingsSchemeHandler() override;
 
-    void requestStarted(QWebEngineUrlRequestJob *job) Q_DECL_OVERRIDE;
+    void requestStarted(QWebEngineUrlRequestJob *job) override;
 
     static void RegisterScheme();
     static void Install(QWebEngineProfile *profile);
