@@ -45,7 +45,7 @@ private slots:
     void cleanup(){
         Application::SetRestoringWindows(false);
         dropAllWindows();
-        Application::GlobalSettings().setValue(QStringLiteral("application/@EnableFramelessWindow"), false);
+        Application::GlobalSettings().setValue(QStringLiteral("application/@EnableCustomTitleBar"), false);
         Application::LoadGlobalSettings();
     }
 
@@ -69,14 +69,17 @@ private slots:
         foreach(const QString &name, QStringList()
                 << QStringLiteral("tableview") << QStringLiteral("geometry") << QStringLiteral("notifier")
                 << QStringLiteral("receiver") << QStringLiteral("menubar") << QStringLiteral("toolbar")
-                << QStringLiteral("treebar") << QStringLiteral("status")){
+                << QStringLiteral("treebar") << QStringLiteral("status")
+                << QStringLiteral("titlebartoolbar") << QStringLiteral("stripexpanded")
+                << QStringLiteral("minimap")){
             s.setValue(QStringLiteral("mainwindow/%1%2").arg(name).arg(1), 1);
             s.setValue(QStringLiteral("mainwindow/%1%2").arg(name).arg(2), 1);
         }
         s.setValue(QStringLiteral("application/@EnableAutoLoad"), 1);
         Application::SweepWindowSettings(s, QList<int>() << 1);
-        QCOMPARE(s.allKeys(QStringLiteral("mainwindow")).count(), 8);
+        QCOMPARE(s.allKeys(QStringLiteral("mainwindow")).count(), 9);
         QVERIFY(s.contains(QStringLiteral("mainwindow/geometry1")));
+        QVERIFY(!s.contains(QStringLiteral("mainwindow/receiver1")));
         QVERIFY(!s.contains(QStringLiteral("mainwindow/geometry2")));
         QVERIFY(s.contains(QStringLiteral("application/@EnableAutoLoad")));
         Application::SweepWindowSettings(s, QList<int>());
@@ -188,7 +191,7 @@ private slots:
     }
 
     void theTitleBarAndADropWaitToo(){
-        Application::GlobalSettings().setValue(QStringLiteral("application/@EnableFramelessWindow"), true);
+        Application::GlobalSettings().setValue(QStringLiteral("application/@EnableCustomTitleBar"), true);
         Application::LoadGlobalSettings();
         QSet<QWidget*> before;
         foreach(QWidget *widget, QApplication::topLevelWidgets())

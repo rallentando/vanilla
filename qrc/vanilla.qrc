@@ -64,10 +64,6 @@
     <file>../resources/treebar/table@2x.png</file>
     <file>../resources/treebar/plus.png</file>
     <file>../resources/treebar/plus@2x.png</file>
-    <file>../resources/toolbar/command.png</file>
-    <file>../resources/toolbar/command@2x.png</file>
-    <file>../resources/toolbar/search.png</file>
-    <file>../resources/toolbar/search@2x.png</file>
     <file>../resources/toolbar/extension.png</file>
     <file>../resources/toolbar/extension@2x.png</file>
     <file>../resources/toolbar/pin.png</file>

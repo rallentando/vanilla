@@ -17,7 +17,7 @@ Theme::Role Surface();
 
 void Apply(QWidget *window);
 
-void RoundCorners(QWidget *window);
+void RoundCorners(QWidget *window, bool round = true);
 
 void Blur(QWidget *window);
 

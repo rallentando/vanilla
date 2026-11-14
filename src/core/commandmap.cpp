@@ -33,11 +33,10 @@ static const Entry TheEntries[] = {
     { "[sS]how[dD]ownloads",                       "ShowDownloads",         Signal },
     { "(?:[oO]pen)?[dD]ownloads",                  "OpenDownloads",         Signal },
 
-    { "(?:[tT]oggle)?[nN]otifier",                  "ToggleNotifier",   Signal },
-    { "(?:[tT]oggle)?[rR]eceiver",                  "ToggleReceiver",   Signal },
     { "(?:[tT]oggle)?[mM]enu[bB]ar",                "ToggleMenuBar",    Signal },
     { "(?:[tT]oggle)?(?:[tT]ree|[tT]ab)[bB]ar",     "ToggleTreeBar",    Signal },
     { "(?:[tT]oggle)?(?:[tT]ool|[aA]ddress)[bB]ar", "ToggleToolBar",    Signal },
+    { "(?:[tT]oggle)?[mM]ini[mM]ap",                "ToggleMiniMap",    Signal },
     { "(?:[tT]oggle)?[fF]ull[sS]creen",             "ToggleFullScreen", Signal },
     { "[tT]oggle[mM]aximized",                      "ToggleMaximized",  Signal },
     { "[mM]aximize(?:[wW]indow)?",                  "ToggleMaximized",  Signal },
@@ -333,8 +332,9 @@ QStringList ArgumentCommands(){
         << QStringLiteral("unset ") << QStringLiteral("key ") << QStringLiteral("blank");
 }
 
-QStringList FirstCommands(){
-    return QStringList() << QStringLiteral("NewViewNode") << QStringLiteral("OpenSettings");
+QStringList FirstCommands(bool tabList){
+    return QStringList() << QStringLiteral("OpenSettings") << QStringLiteral("NewViewNode")
+                         << (tabList ? QStringLiteral("Deactivate") : QStringLiteral("DisplayViewTree"));
 }
 
 QStringList AllCommands(){

@@ -14,7 +14,7 @@
 class QToolButton;
 class QHBoxLayout;
 class QScrollArea;
-class ExtensionWindow;
+class PanelWindow;
 
 class ExtensionBar : public QWidget {
     Q_OBJECT
@@ -41,6 +41,9 @@ public slots:
     void Execute(const QString &id, qint64 serial);
     void UrlChanged();
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *ev) override;
+
 private:
     void Rebind();
     void RefreshList();
@@ -66,8 +69,8 @@ private:
     QMetaObject::Connection m_UrlConnection;
     QToolButton *m_Button;
     QHBoxLayout *m_Layout;
-    QPointer<ExtensionWindow> m_List;
-    QPointer<ExtensionWindow> m_Popup;
+    QPointer<PanelWindow> m_List;
+    QPointer<PanelWindow> m_Popup;
     QPointer<QScrollArea> m_Rows;
     QList<QToolButton*> m_Pins;
     QStringList m_PinKeys;

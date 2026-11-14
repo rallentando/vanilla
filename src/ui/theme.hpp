@@ -34,8 +34,6 @@ enum Role {
     BarScrollFadeHovered,
     BarScrollFadePressed,
     BarScrollerHandle,
-    BarScrollerHandleHovered,
-    BarScrollerHandlePressed,
     BarScrollThumb,
     BarScrollThumbActive,
     BarScrollThumbRim,
@@ -56,12 +54,10 @@ enum Role {
     BarTabCurrentBackground,
     BarTabCurrentAccent,
 
-    TitleBarBackground,
-    TitleBarBorder,
-    TitleBarButton,
     TitleBarButtonHovered,
     TitleBarText,
-    TitleBarIcon,
+    TitleBarCloseHovered,
+    TitleBarCloseText,
     WindowEdgeGhost,
     WindowEdgeLine,
 
@@ -83,8 +79,6 @@ enum Role {
     GlassPlaceholderDirectory,
     GlassPlaceholderPage,
     GlassInPlaceBackground,
-    GlassButtonBackground,
-    GlassButtonBackgroundSoft,
     GlassAccessKeyChip,
     GlassAccessKeyText,
     GlassAccessKeyInfoBackground,
@@ -100,7 +94,6 @@ enum Role {
     FlatBorder,
     FlatText,
     FlatTextStrong,
-    FlatButtonBackground,
     FlatTitleBackground,
     FlatPlaceholderDirectory,
     FlatPlaceholderPage,
@@ -131,7 +124,6 @@ enum Role {
     PlainPlaceholderPage,
     PlainScrollThumb,
     PlainScrollThumbActive,
-    PlainButton,
 
     GadgetsScrollIndicator,
     GadgetsScrollIndicatorSelected,
@@ -155,6 +147,7 @@ enum Role {
     MiniMapMedia,
     MiniMapFrame,
     MiniMapPositionedBackground,
+    MiniMapMatch,
 
     ReceiverBackground,
     ReceiverBackgroundContrast,
@@ -164,6 +157,7 @@ enum Role {
     LineEditBackgroundActive,
     LineEditBorder,
     LineEditBorderActive,
+    FieldButtonHovered,
 
     PageBackground,
 
@@ -171,8 +165,6 @@ enum Role {
     PreviewBackgroundTranslucent,
     PreviewBorder,
     PreviewText,
-    PreviewPlaceholderDirectory,
-    PreviewPlaceholderPage,
 
     VanillaPageBackground,
     VanillaPageBackgroundSunken,
@@ -182,6 +174,7 @@ enum Role {
     VanillaPageAccent,
     VanillaPageAccentText,
     VanillaPageFieldBackground,
+    VanillaPageRaised,
     VanillaPageInvalidBorder,
     VanillaPageToastBackground,
     VanillaPageToastText,

@@ -199,7 +199,8 @@ public slots:
     void resize(QSize size) override {
         m_QmlWebEngineView->setProperty("width", size.width());
         m_QmlWebEngineView->setProperty("height", size.height());
-        if(TreeBank::PurgeView() && m_TreeBank){
+        if(TreeBank::PurgeView() && m_TreeBank && base()->isWidgetType() &&
+           static_cast<QWidget*>(base())->isWindow()){
             base()->setGeometry(QRect(m_TreeBank->mapToGlobal(QPoint()), size));
         } else {
             base()->setGeometry(QRect(QPoint(), size));
@@ -344,6 +345,7 @@ public slots:
 
     void ExitFullScreen() override;
     void InspectElement() override;
+    SiteDataLink *OpenSiteDataLink() override;
     void CloseInspector();
     void AddSearchEngine(QPoint pos) override;
     void AddBookmarklet(QPoint pos) override;
@@ -446,6 +448,7 @@ signals:
     void CallBackResult(int, QVariant);
     void ViewChanged();
     void ScrollChanged(QPointF);
+    void FindCount(int active, int total);
 
     void titleChanged(const QString&);
     void urlChanged(const QUrl&);

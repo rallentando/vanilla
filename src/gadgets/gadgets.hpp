@@ -290,6 +290,10 @@ private:
     QAction *Action(GadgetsAction a);
 
 public:
+    static GadgetsAction WithoutRepeat(GadgetsAction a, GadgetsAction &previous, int &count);
+    static void InstallAction(QAction *action, GadgetsAction a, QObject *table, TreeBank *tb);
+    static void SyncToggle(QAction *action, GadgetsAction a, TreeBank *tb);
+
     void KeyPressEvent(QKeyEvent *ev) override;
     void KeyReleaseEvent(QKeyEvent *ev) override;
     void MousePressEvent(QMouseEvent *ev) override;

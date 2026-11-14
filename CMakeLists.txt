@@ -34,6 +34,8 @@ set(VANILLA_HEADERS
     src/app/extensionhost.hpp
     src/app/extensioncontroller.hpp
     src/ui/extensionbar.hpp
+    src/ui/panelwindow.hpp
+    src/ui/siteinfo.hpp
     src/ui/sidepanels.hpp
     src/ui/docktitlebar.hpp
     src/view/webengine/webengineextensions.hpp
@@ -41,6 +43,7 @@ set(VANILLA_HEADERS
     src/app/shutdownflow.hpp
     src/input/actionmapper.hpp
     src/ui/mainwindow.hpp
+    src/ui/titlebar.hpp
     src/app/saver.hpp
     src/core/lightnode.hpp
     src/core/devicescale.hpp
@@ -50,6 +53,7 @@ set(VANILLA_HEADERS
     src/core/inputmap.hpp
     src/core/inputmapschema.hpp
     src/core/commandmap.hpp
+    src/core/actiontext.hpp
     src/core/searchsuggest.hpp
     src/core/commandframe.hpp
     src/core/certificatepolicy.hpp
@@ -57,6 +61,7 @@ set(VANILLA_HEADERS
     src/core/fileexchange.hpp
     src/core/windowledger.hpp
     src/core/windowframereveal.hpp
+    src/core/windowframehit.hpp
     src/core/useragent.hpp
     src/core/cdpshims.hpp
     src/core/extensioncopy.hpp
@@ -96,6 +101,7 @@ set(VANILLA_HEADERS
     src/core/const.hpp
     src/ui/theme.hpp
     src/ui/blurbehind.hpp
+    src/ui/ownedraise.hpp
     src/core/settingsschema.hpp
     src/app/settingspage.hpp
     src/app/directorypage.hpp
@@ -106,6 +112,8 @@ set(VANILLA_HEADERS
     src/app/transmitter.hpp
     src/ui/dialog.hpp
     src/view/view.hpp
+    src/view/sitedatalink.hpp
+    src/view/webengine/webenginesitedatalink.hpp
     src/view/page.hpp
     src/view/webelement.hpp
     src/view/mediatype.hpp
@@ -136,11 +144,13 @@ set(VANILLA_SOURCES
     src/app/extensionhost.cpp
     src/app/extensioncontroller.cpp
     src/ui/extensionbar.cpp
+    src/ui/siteinfo.cpp
     src/ui/sidepanels.cpp
     src/ui/docktitlebar.cpp
     src/view/webengine/webengineextensions.cpp
     src/view/edge/edgeextensions.cpp
     src/ui/mainwindow.cpp
+    src/ui/titlebar.cpp
     src/ui/systemmenu.cpp
     src/ui/systemmenu.hpp
     src/app/saver.cpp
@@ -152,6 +162,7 @@ set(VANILLA_SOURCES
     src/core/inputmap.cpp
     src/core/inputmapschema.cpp
     src/core/commandmap.cpp
+    src/core/actiontext.cpp
     src/core/searchsuggest.cpp
     src/core/commandframe.cpp
     src/core/certificatepolicy.cpp
@@ -189,6 +200,7 @@ set(VANILLA_SOURCES
     src/app/sitepermissions.cpp
     src/ui/theme.cpp
     src/ui/blurbehind.cpp
+    src/ui/ownedraise.cpp
     src/core/settingsschema.cpp
     src/app/settingspage.cpp
     src/app/directorypage.cpp
@@ -206,6 +218,7 @@ set(VANILLA_SOURCES
     src/view/webengine/webenginepasswords.cpp
     src/view/webengine/passwordsuggestions.cpp
     src/view/webengine/webengineview.cpp
+    src/view/webengine/webenginesitedatalink.cpp
     src/view/webengine/quickwebengineview.cpp
     src/view/quicknativewebview.cpp
     src/view/edge/edgewebview.cpp

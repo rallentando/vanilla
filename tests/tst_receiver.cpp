@@ -3,10 +3,13 @@
 #include "treebank.hpp"
 #include "receiver.hpp"
 #include "notifier.hpp"
+#include "minimap.hpp"
 #include "commandmap.hpp"
 #include "searchsuggest.hpp"
 #include "toolbar.hpp"
+#include "nodepreview.hpp"
 #include <QClipboard>
+#include <QToolButton>
 #include <QCompleter>
 #include <QHeaderView>
 #include <QLineEdit>
@@ -242,6 +245,13 @@ private slots:
         QCOMPARE(Receiver::HintWidth(600, 500, 550, 10), 300);
     }
 
+    void inputsPastWhatIsShownAreCounted(){
+        const QList<int> widths{ 10, 20, 30 };
+        QCOMPARE(Receiver::InputsWidth(widths, 3, 4, 8), 68);
+        QCOMPARE(Receiver::InputsWidth(widths, 1, 4, 8), 22);
+        QCOMPARE(Receiver::InputsWidth(widths, 0, 4, 8), 8);
+    }
+
     void theCardsOpenFromTheLine(){
         MainWindow window(949, QPoint(100, 100));
         window.show();
@@ -253,60 +263,244 @@ private slots:
         QVERIFY(r->CommandLabel(QStringLiteral("OpenSettings")).isEmpty());
         r->DispatchAction(QStringLiteral("OpenQueryEditor"));
         QCOMPARE(r->m_Mode, Receiver::Query);
+        QCOMPARE(r->m_LineEdit->placeholderText(), Receiver::tr("Input Query."));
         r->DispatchAction(QStringLiteral("OpenUrlEditor"));
         QCOMPARE(r->m_Mode, Receiver::UrlEdit);
+        QCOMPARE(r->m_LineEdit->placeholderText(), Receiver::tr("Enter a URL."));
         r->DispatchAction(QStringLiteral("OpenTextSeeker"));
         QCOMPARE(r->m_Mode, Receiver::Search);
+        QCOMPARE(r->m_LineEdit->placeholderText(), Receiver::tr("Incremental Search"));
     }
 
-    void theAddressBarsPopupHasRoomForItsRows(){
-        MainWindow window(951, QPoint(100, 100));
-        QLineEdit *field = window.findChild<ToolBar*>()->findChild<QLineEdit*>();
-        QVERIFY(field && field->completer());
-        auto *popup = qobject_cast<QTableView*>(field->completer()->popup());
-        QVERIFY(popup);
-        QCOMPARE(static_cast<QAbstractItemView*>(popup)->sizeHintForRow(0),
-                 popup->verticalHeader()->defaultSectionSize());
+    void theToolBarsAddressOpensTheLineOverIt(){
+        MainWindow window(951, QPoint(0, 0));
+        window.resize(760, 560);
+        ToolBar *bar = window.findChild<ToolBar*>();
+        QVERIFY(bar);
+        window.show();
+        bar->show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        LineEdit *field = bar->Field();
+        QVERIFY(field->isVisible());
+        QVERIFY(field->isReadOnly());
+        QCOMPARE(field->focusPolicy(), Qt::NoFocus);
+        QVERIFY(!field->completer());
+
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        QTest::mouseClick(field, Qt::LeftButton, Qt::NoModifier, QPoint(5, field->height() / 2));
+        QVERIFY(r->isVisible());
+        QVERIFY(r->IsAnchored());
+        QCOMPARE(r->m_Anchor.data(), static_cast<QWidget*>(field));
+        r->hide();
+        QTest::mouseClick(field, Qt::RightButton, Qt::NoModifier, QPoint(5, field->height() / 2));
+        QVERIFY(!r->isVisible());
     }
 
-    void theAddressBarIsAboutTheTabItIsOn(){
-        const QStringList commands = ToolBar::CommandCandidates();
-        QVERIFY(commands.contains(QStringLiteral("Reload")));
-        QVERIFY(commands.contains(QStringLiteral("Back")));
-        QVERIFY(commands.contains(QStringLiteral("CopyUrl")));
-        QVERIFY(commands.contains(QStringLiteral("Open [text or url]")));
-        QVERIFY(!commands.contains(QStringLiteral("Quit")));
-        QVERIFY(!commands.contains(QStringLiteral("NewWindow")));
-        QVERIFY(!commands.contains(QStringLiteral("NextView")));
-        for(const QString &command : commands){
-            const QString word = command.split(QLatin1Char(' ')).first();
-            QVERIFY2(CommandMap::Resolve(word) != CommandMap::NotACommand, qPrintable(word));
-        }
-
+    void theWayUpFromTheTab(){
         const QUrl page(QStringLiteral("https://a.com/b/c?x=1#f"));
         const QString whole = page.toString();
         const QStringList up = QStringList() << QStringLiteral("https://a.com/b/c")
                                              << QStringLiteral("https://a.com/b/")
                                              << QStringLiteral("https://a.com/");
-        QCOMPARE(ToolBar::UrlAncestors(whole, page), up);
-        QCOMPARE(ToolBar::UrlAncestors(QStringLiteral("https://a.com/b/"), page),
+        QCOMPARE(Receiver::UrlAncestors(whole, page), up);
+        QCOMPARE(Receiver::UrlAncestors(QStringLiteral("https://a.com/b/"), page),
                  QStringList() << QStringLiteral("https://a.com/b/c") << QStringLiteral("https://a.com/"));
-        QCOMPARE(ToolBar::UrlAncestors(QStringLiteral("HTTPS"), page), up);
-        QVERIFY(ToolBar::UrlAncestors(QStringLiteral("reload"), page).isEmpty());
-        QVERIFY(ToolBar::UrlAncestors(QStringLiteral("https://a.com/"), QUrl(QStringLiteral("https://a.com/"))).isEmpty());
-        QVERIFY(ToolBar::UrlAncestors(QStringLiteral("https://a.com"), QUrl(QStringLiteral("https://a.com"))).isEmpty());
-        QCOMPARE(ToolBar::UrlAncestors(QStringLiteral("https://a.com/b/d/"), QUrl(QStringLiteral("https://a.com/b/d/"))),
+        QCOMPARE(Receiver::UrlAncestors(QStringLiteral("HTTPS"), page), up);
+        QVERIFY(Receiver::UrlAncestors(QStringLiteral("reload"), page).isEmpty());
+        QVERIFY(Receiver::UrlAncestors(QStringLiteral("https://a.com/"), QUrl(QStringLiteral("https://a.com/"))).isEmpty());
+        QVERIFY(Receiver::UrlAncestors(QStringLiteral("https://a.com"), QUrl(QStringLiteral("https://a.com"))).isEmpty());
+        QCOMPARE(Receiver::UrlAncestors(QStringLiteral("https://a.com/b/d/"), QUrl(QStringLiteral("https://a.com/b/d/"))),
                  QStringList() << QStringLiteral("https://a.com/b/") << QStringLiteral("https://a.com/"));
-        const QUrl here(QStringLiteral("https://a.com/b/c"));
-        QCOMPARE(ToolBar::UrlCandidates(QStringLiteral("https://a"), here,
-                                        QStringList() << QStringLiteral("https://a.com/b/c")
-                                                      << QStringLiteral("https://a.com/x")
-                                                      << QStringLiteral("https://z.com/")
-                                                      << QStringLiteral("https://a.com/x")
-                                                      << QStringLiteral("https://a.com/")),
-                 QStringList() << QStringLiteral("https://a.com/b/") << QStringLiteral("https://a.com/")
-                               << QStringLiteral("https://a.com/x"));
-        QVERIFY(ToolBar::UrlAncestors(QStringLiteral("about:blank"), QUrl(QStringLiteral("about:blank"))).isEmpty());
+        QVERIFY(Receiver::UrlAncestors(QStringLiteral("about:blank"), QUrl(QStringLiteral("about:blank"))).isEmpty());
+    }
+
+    void theWebOffersTheWayUpUnderWhatIsTyped(){
+        MainWindow window(969, QPoint(100, 100));
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        const QUrl page(QStringLiteral("https://a.com/b/c?x=1#f"));
+        const auto titles = [](const Receiver::SuggestRows &rows){
+            QStringList list;
+            for(const Receiver::SuggestRow &row : rows) list << row.title;
+            return list;
+        };
+
+        Receiver::SuggestRows rows = r->WebRows(page.toString(), page);
+        QCOMPARE(titles(rows), QStringList() << page.toString()
+                                             << QStringLiteral("https://a.com/b/c")
+                                             << QStringLiteral("https://a.com/b/")
+                                             << QStringLiteral("https://a.com/")
+                                             << page.toString());
+        QCOMPARE(rows.at(0).kind, Receiver::SuggestRow::OpenAddress);
+        QCOMPARE(rows.at(2).kind, Receiver::SuggestRow::OpenAddress);
+        QCOMPARE(rows.at(2).text, QStringLiteral("https://a.com/b/"));
+        QCOMPARE(rows.last().kind, Receiver::SuggestRow::SearchWeb);
+
+        rows = r->WebRows(QStringLiteral("htt"), page);
+        QCOMPARE(rows.first().kind, Receiver::SuggestRow::SearchWeb);
+        QCOMPARE(rows.length(), 4);
+        QCOMPARE(rows.at(1).kind, Receiver::SuggestRow::OpenAddress);
+
+        QCOMPARE(r->WebRows(QStringLiteral("reload"), page).length(), 1);
+        QCOMPARE(r->WebRows(page.toString(), QUrl()).length(), 2);
+        QCOMPARE(r->WebRows(QStringLiteral("about:blank"), QUrl(QStringLiteral("about:blank"))).length(), 2);
+    }
+
+    void overTheFieldItIsTheAddressBar(){
+        MainWindow window(958, QPoint(0, 0));
+        window.resize(760, 560);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        TreeBank *bank = window.GetTreeBank();
+        Receiver *r = bank->GetReceiver();
+        QObject::disconnect(r, nullptr, bank, nullptr);
+        QSignalSpy urls(r, QOverload<QList<QUrl>>::of(&Receiver::OpenUrl));
+        QSignalSpy queries(r, &Receiver::OpenQueryUrl);
+        const bool joined = !r->IsPurged();
+
+        QWidget *bar = new QWidget(&window);
+        bar->setGeometry(0, 0, 760, 560);
+        bar->show();
+        QLineEdit *field = new QLineEdit(bar);
+        field->setGeometry(100, 40, 300, 26);
+        field->show();
+        QToolButton *beside = new QToolButton(bar);
+        beside->setGeometry(20, 40, 26, 26);
+        beside->show();
+        const auto open = [&](){
+            r->OpenAtField(field);
+            QVERIFY(r->isVisible());
+            QVERIFY(r->IsAnchored());
+            QCOMPARE(r->CurrentPlacement(), Receiver::Anchored);
+        };
+
+        open();
+        QVERIFY(r->IsPurged());
+        const QRect line(r->m_LineEdit->mapToGlobal(QPoint(0, 0)), r->m_LineEdit->size());
+        const QRect at(field->mapToGlobal(QPoint(0, 0)), field->size());
+        QCOMPARE(line.topLeft(), at.topLeft());
+        QCOMPARE(line.height(), at.height());
+        QVERIFY(r->width() >= at.width());
+        QVERIFY(!r->m_LineEdit->IsPill());
+        QCOMPARE(r->m_ActiveTab, int(Receiver::SuggestRow::Web) + 1);
+        QCOMPARE(r->m_CurrentSuggestIndex, -1);
+
+        r->m_LineEdit->setText(QStringLiteral("zzq qqz"));
+        QVERIFY(!r->m_Rows.isEmpty());
+        QCOMPARE(r->m_CurrentSuggestIndex, -1);
+        r->m_WebSuggests = QStringList() << QStringLiteral("zzq qqz answered");
+        r->RefillKeepingChoice();
+        QCOMPARE(r->m_Rows.length(), 2);
+        QCOMPARE(r->m_CurrentSuggestIndex, -1);
+
+        r->hide();
+        field->move(100, field->y() + r->screen()->availableGeometry().top() + 2
+                         - field->mapToGlobal(QPoint(0, 0)).y());
+        open();
+        {
+            const QRect topLine(r->m_LineEdit->mapToGlobal(QPoint(0, 0)), r->m_LineEdit->size());
+            const QRect topAt(field->mapToGlobal(QPoint(0, 0)), field->size());
+            QVERIFY(topAt.top() - r->screen()->availableGeometry().top() < r->ScaleByDevice(RECEIVER_PADDING));
+            QCOMPARE(topLine.topLeft(), topAt.topLeft());
+            QVERIFY(r->geometry().top() >= r->screen()->availableGeometry().top());
+            QVERIFY(!r->m_Rows.isEmpty());
+            QVERIFY(r->SuggestRect(0).top() > r->m_LineEdit->geometry().bottom());
+        }
+        r->hide();
+        field->move(100, 40);
+        {
+            struct FirstShow : QObject {
+                int height = -1;
+                bool eventFilter(QObject *o, QEvent *e) override {
+                    if(e->type() == QEvent::Show && height < 0)
+                        height = static_cast<QWidget*>(o)->height();
+                    return false;
+                }
+            } first;
+            r->installEventFilter(&first);
+            open();
+            r->removeEventFilter(&first);
+            QVERIFY(first.height > 0);
+            QCOMPARE(first.height, r->height());
+        }
+        r->m_LineEdit->setText(QStringLiteral("zzq qqz"));
+
+        field->move(140, 40);
+        QCOMPARE(r->m_LineEdit->mapToGlobal(QPoint(0, 0)).x(), field->mapToGlobal(QPoint(0, 0)).x());
+
+        r->SuitableAction();
+        QVERIFY(!r->isVisible());
+        QVERIFY(!r->IsAnchored());
+        QCOMPARE(queries.count(), 0);
+        QCOMPARE(urls.count(), 1);
+
+        open();
+        r->m_LineEdit->setText(QStringLiteral("example.invalid"));
+        QCOMPARE(r->m_Rows.first().kind, Receiver::SuggestRow::OpenAddress);
+        r->SelectNextSuggest();
+        QCOMPARE(r->m_CurrentSuggestIndex, 0);
+        r->SuitableAction();
+        QVERIFY(!r->isVisible());
+        QCOMPARE(urls.count(), 1);
+
+        QTRY_COMPARE(r->IsPurged(), !joined);
+
+        open();
+        r->OpenCommand();
+        QVERIFY(!r->IsAnchored());
+        QCOMPARE(r->CurrentPlacement(), Receiver::Center);
+        r->hide();
+
+        open();
+        field->hide();
+        QVERIFY(!r->isVisible());
+        field->show();
+        open();
+        window.move(window.pos() + QPoint(30, 0));
+        QTRY_VERIFY(!r->isVisible());
+        QVERIFY(!r->IsAnchored());
+
+        field->move(100, window.height() - 40);
+        open();
+        {
+            const QRect bottomLine(r->m_LineEdit->mapToGlobal(QPoint(0, 0)), r->m_LineEdit->size());
+            const QRect bottomAt(field->mapToGlobal(QPoint(0, 0)), field->size());
+            QCOMPARE(bottomLine.topLeft(), bottomAt.topLeft());
+            QCOMPARE(bottomLine.height(), bottomAt.height());
+            QVERIFY(!r->m_Rows.isEmpty());
+            QVERIFY(r->SuggestRect(0).bottom() < r->m_LineEdit->y());
+            QVERIFY(r->SourceBarRect(0).bottom() < r->m_LineEdit->y());
+            QVERIFY(r->SuggestRect(0).bottom() < r->SourceBarRect(0).top());
+            const int tabs = r->mapToGlobal(r->SourceBarRect(0).topLeft()).y();
+            r->m_LineEdit->setText(QStringLiteral("zzq"));
+            QCOMPARE(r->mapToGlobal(r->SourceBarRect(0).topLeft()).y(), tabs);
+            r->m_LineEdit->setText(r->CurrentAddress().toString());
+            QVERIFY(r->geometry().top() >= bank->mapToGlobal(QPoint(0, 0)).y());
+        }
+        r->m_LineEdit->setText(QStringLiteral("zzq qqz"));
+        QCOMPARE(r->m_CurrentSuggestIndex, -1);
+        r->SuitableAction();
+        QCOMPARE(queries.count(), 0);
+        QCOMPARE(urls.count(), 2);
+        field->move(100, 40);
+
+        window.move(0, 300);
+        QCoreApplication::processEvents();
+        open();
+        r->m_LineEdit->setText(QStringLiteral("zzq"));
+        r->m_WebSuggests.clear();
+        for(int i = 0; i < 40; i++) r->m_WebSuggests << QStringLiteral("zzq %1").arg(i);
+        r->RefillKeepingChoice();
+        QVERIFY(r->geometry().bottom() <= window.screen()->availableGeometry().bottom());
+        r->hide();
+        window.move(0, 0);
+        QCoreApplication::processEvents();
+
+        r->OpenAtField(nullptr);
+        QVERIFY(!r->IsAnchored());
+        QCOMPARE(r->CurrentPlacement(), Receiver::Center);
+        QCOMPARE(r->m_ActiveTab, int(Receiver::SuggestRow::Web) + 1);
+        QVERIFY(r->m_LineEdit->IsPill());
+        r->hide();
     }
 
     void theTabOfTheWebAsksAndOffersWhatIsAnswered(){
@@ -446,7 +640,8 @@ private slots:
         Receiver *r = tb->GetReceiver();
         r->OpenCommand();
         const QRect with = r->geometry();
-        tb->ToggleNotifier();
+        tb->GetNotifier()->SetStatus(QStringLiteral("status"));
+        QVERIFY(tb->GetNotifier()->isVisible());
         r->ResizeNotify(tb->size());
         QCOMPARE(r->geometry(), with);
     }
@@ -464,6 +659,66 @@ private slots:
         QInputMethodEvent off;
         QCoreApplication::sendEvent(r->m_LineEdit, &off);
         QCOMPARE(r->m_LineString, QStringLiteral("ab"));
+    }
+
+    void committingACompositionDoesNotSeekAgain(){
+        MainWindow window(958, QPoint(100, 100));
+        window.show();
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        const QString word = QStringLiteral("11月");
+        for(int pass = 0; pass < 2; pass++){
+            const QString prefix = pass ? QStringLiteral("search ") : QString();
+            if(pass) r->OpenCommand(); else r->OpenTextSeeker();
+            r->m_LineEdit->setText(prefix);
+            QSignalSpy seeks(r, &Receiver::SeekText);
+            QInputMethodEvent composing(word, {});
+            QCoreApplication::sendEvent(r->m_LineEdit, &composing);
+            QCOMPARE(seeks.count(), 1);
+            QCOMPARE(seeks.last().first().toString(), word);
+            QInputMethodEvent commit;
+            commit.setCommitString(word);
+            QCoreApplication::sendEvent(r->m_LineEdit, &commit);
+            QCOMPARE(r->m_LineEdit->text(), prefix + word);
+            QCOMPARE(seeks.count(), 1);
+            r->OnAborted();
+        }
+    }
+
+    void aMiniMapPutUpTakesTheWordsBeingLookedFor(){
+        MainWindow window(961, QPoint(100, 100));
+        window.show();
+        TreeBank *tb = window.GetTreeBank();
+        if(tb->GetMiniMap()) tb->ToggleMiniMap();
+        Receiver *r = tb->GetReceiver();
+        r->OpenTextSeeker();
+        r->m_LineEdit->setText(QStringLiteral("abc"));
+        QCOMPARE(r->SoughtWords(), QStringLiteral("abc"));
+        tb->ToggleMiniMap();
+        QVERIFY(tb->GetMiniMap());
+        QCOMPARE(tb->GetMiniMap()->m_SeekTerm, QStringLiteral("abc"));
+        tb->ToggleMiniMap();
+        r->OnAborted();
+        Application::GlobalSettings().remove(QStringLiteral("mainwindow/minimap961"));
+    }
+
+    void theCountShowsWhileSeekingAndGoesWithTheWords(){
+        MainWindow window(960, QPoint(100, 100));
+        window.show();
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        r->OpenCommand();
+        r->m_LineEdit->setText(QStringLiteral("reload"));
+        r->SetFindCount(1, 9);
+        QVERIFY(r->m_LineEdit->Count().isEmpty());
+        r->m_LineEdit->setText(QStringLiteral("search abc"));
+        r->SetFindCount(1, 190);
+        QCOMPARE(r->m_LineEdit->Count(), QStringLiteral("1 / 190"));
+        r->m_LineEdit->setText(QStringLiteral("search"));
+        QVERIFY(r->m_LineEdit->Count().isEmpty());
+        r->m_LineEdit->setText(QStringLiteral("search abc"));
+        r->SetFindCount(0, 0);
+        QCOMPARE(r->m_LineEdit->Count(), QStringLiteral("0 / 0"));
+        r->OnAborted();
+        QVERIFY(r->m_LineEdit->Count().isEmpty());
     }
 
     void onlyTheMiddleCardGoesWhenTheKeyboardGoesElsewhere(){
@@ -514,10 +769,22 @@ private slots:
         QVERIFY(sources.contains(Receiver::SuggestRow::Settings));
         QVERIFY(sources.contains(Receiver::SuggestRow::Web));
         QCOMPARE(r->m_CurrentSuggestIndex, -1);
-        foreach(const QString &name, CommandMap::FirstCommands()){
+        foreach(const QString &name, CommandMap::FirstCommands(false)){
             QVERIFY(r->m_SuggestStrings.contains(name));
             QCOMPARE(CommandMap::Resolve(name), CommandMap::Signal);
         }
+
+        const QStringList history = std::exchange(Receiver::m_History, QStringList());
+        QStringList first;
+        for(const Receiver::SuggestRow &row : r->CommandRows(QString(), 3)) first << row.text;
+        Receiver::m_History = history;
+        QCOMPARE(first, QStringList() << QStringLiteral("OpenSettings")
+                                      << QStringLiteral("NewViewNode") << QStringLiteral("DisplayViewTree"));
+        const QStringList overList = CommandMap::FirstCommands(true);
+        QCOMPARE(overList.last(), QStringLiteral("Deactivate"));
+        QVERIFY(!overList.contains(QStringLiteral("DisplayViewTree")));
+        foreach(const QString &name, overList)
+            QVERIFY(Receiver::AnswersHere(name, true, true));
     }
 
     void whatIsTypedCanBeSearchedForAndAnAddressOpened(){
@@ -646,8 +913,8 @@ private slots:
             return false;
         };
 
-        const QString engine = QStringLiteral("zqengine");
-        const QString bookmarklet = QStringLiteral("zqbookmarklet");
+        const QString engine = QStringLiteral("zqEngine");
+        const QString bookmarklet = QStringLiteral("zqBookmarklet");
         Page::RegisterSearchEngine(engine, SearchEngine() << QStringLiteral("https://www.zqhost.example/?q=%1"));
         Page::RegisterBookmarklet(bookmarklet, Bookmarklet() << QStringLiteral("javascript:void(0)"));
         const QString longer = engine + QStringLiteral("2");
@@ -690,6 +957,7 @@ private slots:
         r->m_LineEdit->setText(QStringLiteral("zqbook"));
         QVERIFY(find(bookmarklet, &row));
         QCOMPARE(row.kind, Row::RunCommand);
+        QCOMPARE(row.title, bookmarklet);
         QVERIFY(!row.hint.isEmpty());
 
         r->m_LineEdit->setText(QStringLiteral("reload"));
@@ -721,7 +989,7 @@ private slots:
 
         r->m_LineEdit->setText(QStringLiteral("Open "));
         QCOMPARE(r->m_Rows.first().source, Row::Commands);
-        QCOMPARE(r->m_Rows.first().title, QStringLiteral("open "));
+        QCOMPARE(r->m_Rows.first().title, QStringLiteral("Open "));
         QCOMPARE(r->m_Rows.first().kind, Row::FillField);
         QCOMPARE(r->m_CurrentSuggestIndex, -1);
 
@@ -731,7 +999,7 @@ private slots:
 
         const QString line = QStringLiteral("open https://example.invalid/");
         r->m_LineEdit->setText(line);
-        QCOMPARE(r->m_Rows.first().title, QStringLiteral("open "));
+        QCOMPARE(r->m_Rows.first().title, QStringLiteral("Open "));
         QCOMPARE(r->m_Rows.first().text, line);
         QCOMPARE(r->m_CurrentSuggestIndex, -1);
         r->TakeRow(r->m_Rows.first());
@@ -744,12 +1012,12 @@ private slots:
         window.show();
         Receiver *r = window.GetTreeBank()->GetReceiver();
         Settings &s = Application::GlobalSettings();
-        const QString key = QStringLiteral("tst_receiver/value");
+        const QString key = QStringLiteral("webview/bookmarklet/tst_receiver");
 
         s.setValue(key, QStringLiteral("0"));
         foreach(const QString &word, QStringList() << QStringLiteral("set") << QStringLiteral("settings")){
             r->OpenCommand();
-            r->m_LineEdit->setText(word + QStringLiteral(" tst_receiver/"));
+            r->m_LineEdit->setText(word + QStringLiteral(" webview/bookmarklet/tst_"));
             QCOMPARE(r->m_Rows.first().source, Receiver::SuggestRow::Settings);
             QCOMPARE(r->m_Rows.first().title, key);
             QCOMPARE(r->m_Rows.first().text, QStringLiteral("set %1 0").arg(key));
@@ -773,7 +1041,7 @@ private slots:
 
         s.setValue(key, QStringLiteral("0"));
         r->OpenCommand();
-        r->m_LineEdit->setText(QStringLiteral("set tst_receiver/"));
+        r->m_LineEdit->setText(QStringLiteral("set webview/bookmarklet/tst_"));
         r->SuitableAction();
         QCOMPARE(r->m_LineEdit->text(), QStringLiteral("set %1 0").arg(key));
         QVERIFY(r->isVisible());
@@ -1073,16 +1341,16 @@ private slots:
         window.show();
         Receiver *r = window.GetTreeBank()->GetReceiver();
         Settings &s = Application::GlobalSettings();
-        s.setValue(QStringLiteral("zqreset/foo bar"), 1);
-        s.setValue(QStringLiteral("zqreset/foo"), 2);
-        auto gone = qScopeGuard([&s](){ s.remove(QStringLiteral("zqreset/foo")); });
+        s.setValue(QStringLiteral("webview/bookmarklet/zqreset foo bar"), 1);
+        s.setValue(QStringLiteral("webview/bookmarklet/zqreset foo"), 2);
+        auto gone = qScopeGuard([&s](){ s.remove(QStringLiteral("webview/bookmarklet/zqreset foo")); });
         Receiver::SuggestRow row;
-        for(const Receiver::SuggestRow &one : r->SettingRows(QStringLiteral("zqreset/")))
-            if(one.key == QStringLiteral("zqreset/foo bar")) row = one;
-        QCOMPARE(row.key, QStringLiteral("zqreset/foo bar"));
+        for(const Receiver::SuggestRow &one : r->SettingRows(QStringLiteral("webview/bookmarklet/zqreset ")))
+            if(one.key == QStringLiteral("webview/bookmarklet/zqreset foo bar")) row = one;
+        QCOMPARE(row.key, QStringLiteral("webview/bookmarklet/zqreset foo bar"));
         r->RunRowAction(row, Receiver::RowAction::ResetSetting);
-        QVERIFY(!s.contains(QStringLiteral("zqreset/foo bar")));
-        QVERIFY(s.contains(QStringLiteral("zqreset/foo")));
+        QVERIFY(!s.contains(QStringLiteral("webview/bookmarklet/zqreset foo bar")));
+        QVERIFY(s.contains(QStringLiteral("webview/bookmarklet/zqreset foo")));
     }
 
     void theSettingsPageIsOpenedOnATurnOfItsOwn(){
@@ -1217,7 +1485,7 @@ private slots:
         r->m_LineEdit->setText(other);
         int commands = 0;
         for(const Receiver::SuggestRow &row : r->m_Rows)
-            if(row.source == Receiver::SuggestRow::Commands && row.title == other) commands++;
+            if(row.source == Receiver::SuggestRow::Commands && row.text == other) commands++;
         QCOMPARE(commands, 1);
 
         const QList<InputMapSchema::Binding> real = r->m_Bindings;
@@ -1264,6 +1532,14 @@ private slots:
         };
 
         const int count = Receiver::SuggestRow::SourceCount + 1;
+        for(int tab = count - 1; tab >= 0; tab--){
+            r->SelectTab(tab);
+            const QString expected = tab == 0 ? Receiver::tr("All")
+                : Receiver::SourceName(static_cast<Receiver::SuggestRow::Source>(tab - 1));
+            QCOMPARE(r->m_LineEdit->placeholderText(), expected);
+        }
+        r->OpenCommand();
+        QCOMPARE(r->m_LineEdit->placeholderText(), Receiver::tr("All"));
         QCOMPARE(r->m_ActiveTab, 0);
         QVERIFY(press(Qt::Key_Tab, Qt::ControlModifier));
         QCOMPARE(r->m_ActiveTab, 1);
@@ -1352,6 +1628,49 @@ private slots:
         QCOMPARE(r->m_Rows.first().source, Receiver::SuggestRow::Commands);
         QCOMPARE(r->m_SuggestStrings.first(), QStringLiteral("ToggleTreeBar"));
         QCOMPARE(r->m_CurrentSuggestIndex, 0);
+    }
+
+    void theChosenTabRowIsPreviewed(){
+        MainWindow window(982, QPoint(100, 100));
+        window.resize(1000, 700);
+        window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        NodePreview *preview = NodePreview::Instance();
+        r->OpenCommand();
+        preview->HoldUntilPointerMoves(QPoint(0, 0));
+
+        typedef Receiver::SuggestRow Row;
+        r->m_Rows = Receiver::SuggestRows()
+            << Row{ Row::Commands, Row::RunCommand, QStringLiteral("a command"), QString(), QString(), 0, QIcon() }
+            << Row{ Row::Tabs, Row::OpenTab, QStringLiteral("a tab"), QStringLiteral("example.com"), QString(), 0, QIcon() }
+            << Row{ Row::Trash, Row::OpenTab, QStringLiteral("a closed tab"), QStringLiteral("example.org"), QString(), 0, QIcon() };
+        r->m_SuggestStrings.clear();
+        for(const Row &row : std::as_const(r->m_Rows)) r->m_SuggestStrings << row.title;
+        r->m_CurrentSuggestIndex = -1;
+        r->ResizeNotify(window.GetTreeBank()->size());
+        QVERIFY(r->VisibleSuggestCount() >= 3);
+        const auto rowRect = [r](int index){
+            const QRect local = r->SuggestRect(index);
+            return QRect(r->mapToGlobal(local.topLeft()), local.size());
+        };
+
+        r->SelectNextSuggest();
+        QVERIFY(!preview->IsAbout(QStringLiteral("a command"), rowRect(0)));
+        r->SelectNextSuggest();
+        QVERIFY(preview->IsAbout(QStringLiteral("a tab"), rowRect(1)));
+        r->SelectNextSuggest();
+        QVERIFY(preview->IsAbout(QStringLiteral("a closed tab"), rowRect(2)));
+
+        r->SelectNextSuggest();
+        QCOMPARE(r->m_CurrentSuggestIndex, 0);
+        QVERIFY(!preview->IsAbout(QStringLiteral("a closed tab"), rowRect(2)));
+
+        r->SelectPrevSuggest();
+        QVERIFY(preview->IsAbout(QStringLiteral("a closed tab"), rowRect(2)));
+        r->hide();
+        QVERIFY(!preview->IsAbout(QStringLiteral("a closed tab"), rowRect(2)));
     }
 
     void aTabChosenScrollsWhenThereIsMoreThanFits(){
@@ -1512,7 +1831,7 @@ private slots:
         QVERIFY(!window.GetTreeBank()->IsDisplayingTableView());
         const auto names = [r](const QString &typed){
             QStringList list;
-            for(const Receiver::SuggestRow &row : r->CommandRows(typed, 10000)) list << row.title;
+            for(const Receiver::SuggestRow &row : r->CommandRows(typed, 10000)) list << row.text;
             return list;
         };
         QVERIFY(!names(QStringLiteral("MoveToLeftItem")).contains(QStringLiteral("MoveToLeftItem")));
@@ -1543,7 +1862,7 @@ private slots:
         Receiver *r = window.GetTreeBank()->GetReceiver();
         r->OpenCommand();
         r->m_LineEdit->setText(QStringLiteral("sear"));
-        QCOMPARE(r->m_SuggestStrings.first(), QStringLiteral("search "));
+        QCOMPARE(r->m_SuggestStrings.first(), QStringLiteral("Search "));
         QVERIFY(r->m_SuggestStrings.length() > 1);
 
         const QPoint first = r->SuggestRect(0).center();
@@ -1709,9 +2028,8 @@ private slots:
         Receiver *r = window.GetTreeBank()->GetReceiver();
         r->OpenCommand();
         QVERIFY(r->InputsOf(QStringLiteral("NewViewNode")).contains(QStringLiteral("Ctrl+T")));
-        const QStringList reload = r->InputsOf(QStringLiteral("Reload")).split(QStringLiteral(", "));
+        const QStringList reload = r->InputsOf(QStringLiteral("Reload"));
         QVERIFY(reload.length() >= 2);
-        QVERIFY(reload.length() <= 3);
         QVERIFY(r->InputsOf(QStringLiteral("zzzzqqqq")).isEmpty());
 
         QVERIFY(!r->m_Bindings.isEmpty());
@@ -1722,17 +2040,23 @@ private slots:
         }
         QVERIFY(gadgets);
         const QList<InputMapSchema::Binding> real = r->m_Bindings;
-        for(int i = 0; i < 5; i++){
+        for(int i = 0; i < 7; i++){
             r->m_Bindings << InputMapSchema::Binding{ QString::number(i), QString::number(i), QStringLiteral("zzzz"),
                                                       QString(), QString(), InputMapSchema::PageActions };
         }
-        QCOMPARE(r->InputsOf(QStringLiteral("zzzz")).split(QStringLiteral(", ")).length(), 3);
+        QCOMPARE(r->InputsOf(QStringLiteral("zzzz")).length(), 7);
+        r->m_Bindings << InputMapSchema::Binding{ QStringLiteral(","), QStringLiteral(","), QStringLiteral("zzzy"),
+                                                  QString(), QString(), InputMapSchema::PageActions }
+                      << InputMapSchema::Binding{ QStringLiteral("Alt+Right"), QStringLiteral("Alt+Right"), QStringLiteral("zzzy"),
+                                                  QString(), QString(), InputMapSchema::PageActions };
+        QCOMPARE(r->InputsOf(QStringLiteral("zzzy")), QStringList({ QStringLiteral(","), QStringLiteral("Alt+Right") }));
         r->m_Bindings = real;
 
         r->m_LineEdit->setText(QStringLiteral("newviewnode"));
         bool hinted = false;
         for(const Receiver::SuggestRow &row : r->m_Rows)
-            if(row.source == Receiver::SuggestRow::Commands && row.hint.contains(QStringLiteral("Ctrl+T"))) hinted = true;
+            if(row.source == Receiver::SuggestRow::Commands && row.inputs.contains(QStringLiteral("Ctrl+T")) &&
+               !row.hint.contains(QStringLiteral("Ctrl+T"))) hinted = true;
         QVERIFY(hinted);
     }
 
@@ -1752,7 +2076,7 @@ private slots:
         Receiver *r = window.GetTreeBank()->GetReceiver();
         r->OpenCommand();
         r->m_LineEdit->setText(QStringLiteral("sear"));
-        QCOMPARE(r->m_SuggestStrings.first(), QStringLiteral("search "));
+        QCOMPARE(r->m_SuggestStrings.first(), QStringLiteral("Search "));
         r->SuitableAction();
         QVERIFY(r->isVisible());
         QCOMPARE(r->m_LineEdit->text(), QStringLiteral("search "));
@@ -1765,13 +2089,13 @@ private slots:
         window.show();
         TreeBank *tb = window.GetTreeBank();
         Receiver *r = tb->GetReceiver();
-        const QPointer<Notifier> notifier = tb->GetNotifier();
+        const bool had = tb->GetMiniMap();
         r->OpenCommand();
-        r->m_LineEdit->setText(QStringLiteral("togglenoti"));
-        QCOMPARE(r->m_SuggestStrings.first(), QStringLiteral("ToggleNotifier"));
+        r->m_LineEdit->setText(QStringLiteral("toggleminim"));
+        QCOMPARE(r->m_SuggestStrings.first(), QStringLiteral("ToggleMiniMap"));
         r->SuitableAction();
         QVERIFY(!r->isVisible());
-        QVERIFY(!tb->GetNotifier());
+        QCOMPARE(static_cast<bool>(tb->GetMiniMap()), !had);
     }
 
     void serverIsReleasedWithTheLastReceiverAndMadeAgain(){
@@ -1849,21 +2173,24 @@ private slots:
     void aReceiverDeletedByItsOwnCommandStopsTakingConnections(){
         Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
         std::unique_ptr<MainWindow> window(Application::NewWindow(942));
+        std::unique_ptr<MainWindow> other(Application::NewWindow(943));
         const auto unregister = qScopeGuard([&]{
             Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
             Application::RemoveWindow(942);
+            Application::RemoveWindow(943);
         });
         Application::SetCurrentWindow(942);
-        TreeBank *treeBank = window->GetTreeBank();
-        Receiver *receiver = treeBank->GetReceiver();
+        Receiver *receiver = window->GetTreeBank()->GetReceiver();
         QVERIFY(receiver);
         const QPointer<QLocalServer> server = Receiver::m_LocalServer;
         QVERIFY(server);
-        QObject::disconnect(server, &QLocalServer::newConnection, receiver, nullptr);
+        QObject::disconnect(server, &QLocalServer::newConnection, nullptr, nullptr);
         QSignalSpy accepted(server, &QLocalServer::newConnection);
         const QPointer<Receiver> alive(receiver);
         connect(receiver, &Receiver::KeyEvent, receiver, [&](){
-            treeBank->ToggleReceiver();
+            Application::SetCurrentWindow(943);
+            Application::RemoveWindow(942);
+            window.reset();
             QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         });
         QLocalSocket first, second;
@@ -1881,11 +2208,10 @@ private slots:
         QTest::qWait(100);
         receiver->ForeignCommandReceived();
         QVERIFY(alive.isNull());
-        QVERIFY(!treeBank->GetReceiver());
+        QVERIFY(server && server->isListening());
         QVERIFY(server->hasPendingConnections());
         delete server->nextPendingConnection();
         QVERIFY(!server->hasPendingConnections());
-        new Receiver(treeBank, false);
     }
 
     void registeredWindowsKeepTheServerUntilTheLastOneGoes(){

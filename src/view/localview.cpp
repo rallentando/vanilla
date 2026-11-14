@@ -23,7 +23,6 @@
 #include <QGraphicsVideoItem>
 #include <QtConcurrent/QtConcurrent>
 #include <QStyle>
-#include <QDir>
 #include <QFileInfo>
 #include <QClipboard>
 #include <QMimeData>
@@ -644,42 +643,9 @@ QAction *LocalView::Action(QString str, QVariant data){
 }
 
 QAction *LocalView::Action(Gadgets::GadgetsAction a){
-    static const QList<Gadgets::GadgetsAction> exclude = QList<Gadgets::GadgetsAction>()
-        << Gadgets::_NoAction << Gadgets::_End
-        << Gadgets::_Up       << Gadgets::_PageUp
-        << Gadgets::_Down     << Gadgets::_PageDown << Gadgets::_SelectAll
-        << Gadgets::_Right                          << Gadgets::_SwitchWindow
-        << Gadgets::_Left                           << Gadgets::_NextWindow
-        << Gadgets::_Home                           << Gadgets::_PrevWindow
-        << Gadgets::_ScrollUp          << Gadgets::_SelectToNextPage
-        << Gadgets::_ScrollDown        << Gadgets::_SelectToFirstItem
-        << Gadgets::_NextPage          << Gadgets::_SelectToLastItem
-        << Gadgets::_PrevPage          << Gadgets::_SelectItem
-        << Gadgets::_MoveToUpperItem   << Gadgets::_SelectRange
-        << Gadgets::_MoveToLowerItem   << Gadgets::_SelectAll
-        << Gadgets::_MoveToRightItem   << Gadgets::_ClearSelection
-        << Gadgets::_MoveToLeftItem    << Gadgets::_TransferToUpper
-        << Gadgets::_MoveToPrevPage    << Gadgets::_TransferToLower
-        << Gadgets::_MoveToNextPage    << Gadgets::_TransferToRight
-        << Gadgets::_MoveToFirstItem   << Gadgets::_TransferToLeft
-        << Gadgets::_MoveToLastItem    << Gadgets::_TransferToPrevPage
-        << Gadgets::_SelectToUpperItem << Gadgets::_TransferToNextPage
-        << Gadgets::_SelectToLowerItem << Gadgets::_TransferToFirst
-        << Gadgets::_SelectToRightItem << Gadgets::_TransferToLast
-        << Gadgets::_SelectToLeftItem  << Gadgets::_SwitchNodeCollectionType
-        << Gadgets::_SelectToPrevPage  << Gadgets::_SwitchNodeCollectionTypeReverse;
     static Gadgets::GadgetsAction previousAction = Gadgets::_NoAction;
     static int sameActionCount = 0;
-    if(exclude.contains(a)){
-        sameActionCount = 0;
-        previousAction = Gadgets::_NoAction;
-    } else if(a == previousAction){
-        if(++sameActionCount > MAX_SAME_ACTION_COUNT)
-            a = Gadgets::_NoAction;
-    } else {
-        sameActionCount = 0;
-        previousAction = a;
-    }
+    a = Gadgets::WithoutRepeat(a, previousAction, sameActionCount);
 
     QAction *action = m_ActionTable[a];
 
@@ -737,12 +703,8 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
             m_ActionTable[a] = action = new QAction(this);
             action->setObjectName(Gadgets::ActionToString(a));
             break;
-        case Gadgets::_ToggleNotifier: action->setChecked(GetTreeBank()->GetNotifier()); return action;
-        case Gadgets::_ToggleReceiver: action->setChecked(GetTreeBank()->GetReceiver()); return action;
-        case Gadgets::_ToggleMenuBar:  action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty()); return action;
-        case Gadgets::_ToggleTreeBar:  action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible()); return action;
-        case Gadgets::_ToggleToolBar:  action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible()); return action;
         default:
+            Gadgets::SyncToggle(action, a, GetTreeBank());
             return action;
         }
     } else {
@@ -759,218 +721,19 @@ QAction *LocalView::Action(Gadgets::GadgetsAction a){
     }
 
     switch(a){
-    case Gadgets::_NoAction: break;
-
-#define DEFINE_ACTION(name, text)                                       \
-        case Gadgets::_##name:                                          \
-            action->setText(text);                                      \
-            action->setToolTip(text);                                   \
-            connect(action, SIGNAL(triggered()),                        \
-                    this,   SLOT(name##Key()));                         \
-            break;
-
-        DEFINE_ACTION(Up,       tr("UpKey"));
-        DEFINE_ACTION(Down,     tr("DownKey"));
-        DEFINE_ACTION(Right,    tr("RightKey"));
-        DEFINE_ACTION(Left,     tr("LeftKey"));
-        DEFINE_ACTION(Home,     tr("HomeKey"));
-        DEFINE_ACTION(End,      tr("EndKey"));
-        DEFINE_ACTION(PageUp,   tr("PageUpKey"));
-        DEFINE_ACTION(PageDown, tr("PageDownKey"));
-
-#undef  DEFINE_ACTION
-#define DEFINE_ACTION(name, text)                                       \
-        case Gadgets::_##name:                                          \
-            action->setText(text);                                      \
-            action->setToolTip(text);                                   \
-            connect(action,        SIGNAL(triggered()),                 \
-                    GetTreeBank(), SLOT(name()));                       \
-            break;
-
-        DEFINE_ACTION(Import,       tr("Import"));
-        DEFINE_ACTION(Export,       tr("Export"));
-        DEFINE_ACTION(AboutVanilla, tr("AboutVanilla"));
-        DEFINE_ACTION(AboutQt,      tr("AboutQt"));
-        DEFINE_ACTION(OpenSettings, tr("Settings"));
-        DEFINE_ACTION(OpenDirectorySettings, tr("DirectorySettings"));
-        DEFINE_ACTION(Quit,         tr("Quit"));
-
-        DEFINE_ACTION(ClearCookies,      tr("ClearCookies"));
-        DEFINE_ACTION(ClearHttpCache,    tr("ClearHttpCache"));
-        DEFINE_ACTION(ClearVisitedLinks, tr("ClearVisitedLinks"));
-        DEFINE_ACTION(ClearPasswords,    tr("ClearPasswords"));
-        DEFINE_ACTION(OpenPasswords,     tr("OpenPasswords"));
-        DEFINE_ACTION(OpenDownloads,     tr("OpenDownloads"));
-        DEFINE_ACTION(ShowDownloads,     tr("ShowDownloads"));
-
-        DEFINE_ACTION(ToggleNotifier,   tr("ToggleNotifier"));
-        DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));
-        DEFINE_ACTION(ToggleMenuBar,    tr("ToggleMenuBar"));
-        DEFINE_ACTION(ToggleTreeBar,    tr("ToggleTreeBar"));
-        DEFINE_ACTION(ToggleToolBar,    tr("ToggleToolBar"));
-        DEFINE_ACTION(ToggleFullScreen, tr("ToggleFullScreen"));
-        DEFINE_ACTION(ToggleMaximized,  tr("ToggleMaximized"));
-        DEFINE_ACTION(ToggleMinimized,  tr("ToggleMinimized"));
-        DEFINE_ACTION(ToggleShaded,     tr("ToggleShaded"));
-        DEFINE_ACTION(ShadeWindow,      tr("ShadeWindow"));
-        DEFINE_ACTION(UnshadeWindow,    tr("UnshadeWindow"));
-        DEFINE_ACTION(NewWindow,        tr("NewWindow"));
-        DEFINE_ACTION(CloseWindow,      tr("CloseWindow"));
-        DEFINE_ACTION(SwitchWindow,     tr("SwitchWindow"));
-        DEFINE_ACTION(NextWindow,       tr("NextWindow"));
-        DEFINE_ACTION(PrevWindow,       tr("PrevWindow"));
-
-        DEFINE_ACTION(Close,              tr("Close"));
-        DEFINE_ACTION(Restore,            tr("Restore"));
-        DEFINE_ACTION(Recreate,           tr("Recreate"));
-        DEFINE_ACTION(NextView,           tr("NextView"));
-        DEFINE_ACTION(PrevView,           tr("PrevView"));
-        DEFINE_ACTION(BuryView,           tr("BuryView"));
-        DEFINE_ACTION(DigView,            tr("DigView"));
-        DEFINE_ACTION(FirstView,          tr("FirstView"));
-        DEFINE_ACTION(SecondView,         tr("SecondView"));
-        DEFINE_ACTION(ThirdView,          tr("ThirdView"));
-        DEFINE_ACTION(FourthView,         tr("FourthView"));
-        DEFINE_ACTION(FifthView,          tr("FifthView"));
-        DEFINE_ACTION(SixthView,          tr("SixthView"));
-        DEFINE_ACTION(SeventhView,        tr("SeventhView"));
-        DEFINE_ACTION(EighthView,         tr("EighthView"));
-        DEFINE_ACTION(NinthView,          tr("NinthView"));
-        DEFINE_ACTION(TenthView,          tr("TenthView"));
-        DEFINE_ACTION(LastView,           tr("LastView"));
-        DEFINE_ACTION(DisplayAccessKey,   tr("DisplayAccessKey"));
-        DEFINE_ACTION(DisplayViewTree,    tr("DisplayViewTree"));
-        DEFINE_ACTION(DisplayTrashTree,   tr("DisplayTrashTree"));
-        DEFINE_ACTION(OpenTextSeeker,     tr("OpenTextSeeker"));
-        DEFINE_ACTION(OpenQueryEditor,    tr("OpenQueryEditor"));
-        DEFINE_ACTION(OpenUrlEditor,      tr("OpenUrlEditor"));
-        DEFINE_ACTION(OpenCommand,        tr("OpenCommand"));
-        DEFINE_ACTION(ReleaseHiddenView,  tr("ReleaseHiddenView"));
-
-#undef  DEFINE_ACTION
-#define DEFINE_ACTION(name, text)                                       \
-        case Gadgets::_##name:                                          \
-            action->setText(text);                                      \
-            action->setToolTip(text);                                   \
-            connect(action, SIGNAL(triggered()),                        \
-                    this,   SLOT(name()));                              \
-            break;
-
-        DEFINE_ACTION(Deactivate, tr("Deactivate"));
-
-#undef  DEFINE_ACTION
-#define DEFINE_ACTION(name, text)                                       \
-        case Gadgets::_##name:                                          \
-            action->setText(text);                                      \
-            action->setToolTip(text);                                   \
-            connect(action, SIGNAL(triggered()),                        \
-                    this,   SLOT(ThumbList_##name()));                  \
-            break;
-
-        DEFINE_ACTION(Refresh,                         tr("Refresh"));
-        DEFINE_ACTION(RefreshNoScroll,                 tr("RefreshNoScroll"));
-        DEFINE_ACTION(OpenNode,                        tr("OpenNode"));
-        DEFINE_ACTION(OpenNodeOnNewWindow,             tr("OpenNodeOnNewWindow"));
-        DEFINE_ACTION(DeleteNode,                      tr("DeleteNode"));
-        DEFINE_ACTION(DeleteRightNode,                 tr("DeleteRightNode"));
-        DEFINE_ACTION(DeleteLeftNode,                  tr("DeleteLeftNode"));
-        DEFINE_ACTION(DeleteOtherNode,                 tr("DeleteOtherNode"));
-        DEFINE_ACTION(CutNode,                         tr("CutNode"));
-        DEFINE_ACTION(CopyNode,                        tr("CopyNode"));
-        DEFINE_ACTION(PasteNode,                       tr("PasteNode"));
-        DEFINE_ACTION(NewNode,                         tr("NewNode"));
-        DEFINE_ACTION(CloneNode,                       tr("CloneNode"));
-        DEFINE_ACTION(UpDirectory,                     tr("UpDirectory"));
-        DEFINE_ACTION(DownDirectory,                   tr("DownDirectory"));
-        DEFINE_ACTION(MakeLocalNode,                   tr("MakeLocalNode"));
-        DEFINE_ACTION(MakeDirectory,                   tr("MakeDirectory"));
-        DEFINE_ACTION(MakeDirectoryWithSelectedNode,   tr("MakeDirectoryWithSelectedNode"));
-        DEFINE_ACTION(MakeDirectoryWithSameDomainNode, tr("MakeDirectoryWithSameDomainNode"));
-        DEFINE_ACTION(RenameNode,                      tr("RenameNode"));
-        DEFINE_ACTION(CopyNodeUrl,                     tr("CopyNodeUrl"));
-        DEFINE_ACTION(CopyNodeTitle,                   tr("CopyNodeTitle"));
-        DEFINE_ACTION(CopyNodeAsLink,                  tr("CopyNodeAsLink"));
-        DEFINE_ACTION(OpenNodeWithDefault,             tr("OpenNodeWithDefault"));
-        DEFINE_ACTION(ToggleTrash,                     tr("ToggleTrash"));
-        DEFINE_ACTION(ScrollUp,                        tr("ScrollUp"));
-        DEFINE_ACTION(ScrollDown,                      tr("ScrollDown"));
-        DEFINE_ACTION(NextPage,                        tr("NextPage"));
-        DEFINE_ACTION(PrevPage,                        tr("PrevPage"));
-        DEFINE_ACTION(ZoomIn,                          tr("ZoomIn"));
-        DEFINE_ACTION(ZoomOut,                         tr("ZoomOut"));
-        DEFINE_ACTION(MoveToUpperItem,                 tr("MoveToUpperItem"));
-        DEFINE_ACTION(MoveToLowerItem,                 tr("MoveToLowerItem"));
-        DEFINE_ACTION(MoveToRightItem,                 tr("MoveToRightItem"));
-        DEFINE_ACTION(MoveToLeftItem,                  tr("MoveToLeftItem"));
-        DEFINE_ACTION(MoveToPrevPage,                  tr("MoveToPrevPage"));
-        DEFINE_ACTION(MoveToNextPage,                  tr("MoveToNextPage"));
-        DEFINE_ACTION(MoveToFirstItem,                 tr("MoveToFirstItem"));
-        DEFINE_ACTION(MoveToLastItem,                  tr("MoveToLastItem"));
-        DEFINE_ACTION(SelectToUpperItem,               tr("SelectToUpperItem"));
-        DEFINE_ACTION(SelectToLowerItem,               tr("SelectToLowerItem"));
-        DEFINE_ACTION(SelectToRightItem,               tr("SelectToRightItem"));
-        DEFINE_ACTION(SelectToLeftItem,                tr("SelectToLeftItem"));
-        DEFINE_ACTION(SelectToPrevPage,                tr("SelectToPrevPage"));
-        DEFINE_ACTION(SelectToNextPage,                tr("SelectToNextPage"));
-        DEFINE_ACTION(SelectToFirstItem,               tr("SelectToFirstItem"));
-        DEFINE_ACTION(SelectToLastItem,                tr("SelectToLastItem"));
-        DEFINE_ACTION(SelectItem,                      tr("SelectItem"));
-        DEFINE_ACTION(SelectRange,                     tr("SelectRange"));
-        DEFINE_ACTION(SelectAll,                       tr("SelectAll"));
-        DEFINE_ACTION(ClearSelection,                  tr("ClearSelection"));
-        DEFINE_ACTION(TransferToUpper,                 tr("TransferToUpper"));
-        DEFINE_ACTION(TransferToLower,                 tr("TransferToLower"));
-        DEFINE_ACTION(TransferToRight,                 tr("TransferToRight"));
-        DEFINE_ACTION(TransferToLeft,                  tr("TransferToLeft"));
-        DEFINE_ACTION(TransferToPrevPage,              tr("TransferToPrevPage"));
-        DEFINE_ACTION(TransferToNextPage,              tr("TransferToNextPage"));
-        DEFINE_ACTION(TransferToFirst,                 tr("TransferToFirst"));
-        DEFINE_ACTION(TransferToLast,                  tr("TransferToLast"));
-        DEFINE_ACTION(TransferToUpDirectory,           tr("TransferToUpDirectory"));
-        DEFINE_ACTION(TransferToDownDirectory,         tr("TransferToDownDirectory"));
-        DEFINE_ACTION(SwitchNodeCollectionType,        tr("SwitchNodeCollectionType"));
-        DEFINE_ACTION(SwitchNodeCollectionTypeReverse, tr("SwitchNodeCollectionTypeReverse"));
-
-#undef  DEFINE_ACTION
-
-    case Gadgets::_RestoreNode: break;
-
+    case Gadgets::_RestoreNode:
+    case Gadgets::_NewViewNode:
+    case Gadgets::_CloneViewNode:
+        return action;
     default: break;
     }
-    switch(a){
 
-    case Gadgets::_ToggleNotifier:
-        action->setCheckable(true);
-        action->setChecked(GetTreeBank()->GetNotifier());
-        action->setText(tr("Notifier"));
-        action->setToolTip(tr("Notifier"));
-        break;
-    case Gadgets::_ToggleReceiver:
-        action->setCheckable(true);
-        action->setChecked(GetTreeBank()->GetReceiver());
-        action->setText(tr("Receiver"));
-        action->setToolTip(tr("Receiver"));
-        break;
-    case Gadgets::_ToggleMenuBar:
-        action->setCheckable(true);
-        action->setChecked(!GetTreeBank()->GetMainWindow()->IsMenuBarEmpty());
-        action->setText(tr("MenuBar"));
-        action->setToolTip(tr("MenuBar"));
-        break;
-    case Gadgets::_ToggleTreeBar:
-        action->setCheckable(true);
-        action->setChecked(GetTreeBank()->GetMainWindow()->GetTreeBar()->isVisible());
-        action->setText(tr("TreeBar"));
-        action->setToolTip(tr("TreeBar"));
-        break;
-    case Gadgets::_ToggleToolBar:
-        action->setCheckable(true);
-        action->setChecked(GetTreeBank()->GetMainWindow()->GetToolBar()->isVisible());
-        action->setText(tr("ToolBar"));
-        action->setToolTip(tr("ToolBar"));
-        break;
+    Gadgets::InstallAction(action, a, this, GetTreeBank());
 
-    default: break;
+    if(a == Gadgets::_NewNode || a == Gadgets::_CloneNode){
+        const QString label = a == Gadgets::_NewNode ? tr("NewNode") : tr("CloneNode");
+        action->setText(label);
+        action->setToolTip(label);
     }
     return action;
 }

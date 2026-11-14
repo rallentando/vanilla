@@ -235,6 +235,7 @@ void GraphicsTableView::Activate(DisplayType type){
 }
 
 void GraphicsTableView::Deactivate(){
+    SetHoveredItem(-1);
     FinishFoldAnimation();
     if(m_EnableFrameRate){
         StopFrameRateTimer();
@@ -996,6 +997,7 @@ void GraphicsTableView::SetHoveredItem(int index){
         }
         setCursor(Qt::PointingHandCursor);
     } else {
+        emit ItemHovered(QString(), QString(), QString());
         setCursor(Qt::ArrowCursor);
     }
 }

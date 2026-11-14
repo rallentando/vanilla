@@ -68,26 +68,48 @@ private slots:
             names << QString::fromLatin1(entry.name);
 
         QCOMPARE(names, QStringList()
-                 << QStringLiteral("IE")        << QStringLiteral("Edge")
-                 << QStringLiteral("Firefox")   << QStringLiteral("Opera")
+                 << QStringLiteral("Edge")      << QStringLiteral("Firefox")
                  << QStringLiteral("OPR")       << QStringLiteral("Safari")
                  << QStringLiteral("Chrome")    << QStringLiteral("Sleipnir")
-                 << QStringLiteral("Vivaldi")   << QStringLiteral("NetScape")
-                 << QStringLiteral("SeaMonkey") << QStringLiteral("iCab")
-                 << QStringLiteral("Camino")    << QStringLiteral("Gecko")
+                 << QStringLiteral("Vivaldi")   << QStringLiteral("Gecko")
                  << QStringLiteral("Custom"));
+    }
+
+    void onlyAValueWithAProductIsAUserAgent(){
+        const QStringList words = QStringList()
+            << QString() << QStringLiteral("IE") << QStringLiteral("opera")
+            << QStringLiteral("iCab") << QStringLiteral("chorme")
+            << QStringLiteral("Mozilla") << QStringLiteral("/5.0")
+            << QStringLiteral("Mozilla/") << QStringLiteral("Mozilla 5.0");
+        for(const QString &word : words){
+            QVERIFY2(UserAgent::NameOf(word).isEmpty(), qPrintable(word));
+            QVERIFY2(!UserAgent::LooksLikeUserAgent(word), qPrintable(word));
+        }
+
+        const QStringList agents = QStringList()
+            << QStringLiteral("Mozilla/5.0")
+            << QStringLiteral("Mozilla/5.0%20(compatible;%20iCab%203.0.3)")
+            << QStringLiteral("My%20Browser/1.0")
+            << QStringLiteral("Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101");
+        for(const QString &agent : agents)
+            QVERIFY2(UserAgent::LooksLikeUserAgent(agent), qPrintable(agent));
+
+        foreach(UserAgent::Entry entry, UserAgent::Entries()){
+            const QString tmpl = QString::fromLatin1(entry.fallback);
+            if(tmpl.isEmpty()) continue;
+            QVERIFY2(UserAgent::LooksLikeUserAgent(tmpl), entry.name);
+            QVERIFY2(UserAgent::LooksLikeUserAgent(
+                         UserAgent::Expand(tmpl, QStringLiteral("X11; Linux x86_64"),
+                                           QStringLiteral("140.0.0.0"))), entry.name);
+        }
     }
 
     void thenamesEachSpellingAccepts(){
         QCOMPARE(UserAgent::NameOf(QStringLiteral("ff")),       QStringLiteral("Firefox"));
         QCOMPARE(UserAgent::NameOf(QStringLiteral("firefox")),  QStringLiteral("Firefox"));
         QCOMPARE(UserAgent::NameOf(QStringLiteral("FireFox")),  QStringLiteral("Firefox"));
-        QCOMPARE(UserAgent::NameOf(QStringLiteral("ie")),       QStringLiteral("IE"));
-        QCOMPARE(UserAgent::NameOf(QStringLiteral("InternetExplorer")), QStringLiteral("IE"));
         QCOMPARE(UserAgent::NameOf(QStringLiteral("chrome")),   QStringLiteral("Chrome"));
         QCOMPARE(UserAgent::NameOf(QStringLiteral("opr")),      QStringLiteral("OPR"));
-        QCOMPARE(UserAgent::NameOf(QStringLiteral("opera")),    QStringLiteral("Opera"));
-        QCOMPARE(UserAgent::NameOf(QStringLiteral("iCab")),     QStringLiteral("iCab"));
     }
 
     void nospellingReachesAnotherBrowsersRow(){
@@ -102,7 +124,7 @@ private slots:
                                     .arg(name).arg(UserAgent::NameOf(name)).arg(expected)));
             }
         }
-        QCOMPARE(names, 70);
+        QCOMPARE(names, 38);
     }
 
     void avalueWhichNamesNoBrowserIsLeftAlone(){
@@ -122,18 +144,17 @@ private slots:
     }
 
     void expandFillsThePlaceholdersThenDecodes(){
-        QCOMPARE(UserAgent::Expand(QStringLiteral("A/%SYSTEM% B/%LOCATION% C/%CHROMIUM%"),
+        QCOMPARE(UserAgent::Expand(QStringLiteral("A/%SYSTEM% C/%CHROMIUM%"),
                                    QStringLiteral("Windows NT 10.0; Win64; x64"),
-                                   QStringLiteral("ja-JP"),
                                    QStringLiteral("140.0.0.0")),
-                 QStringLiteral("A/Windows NT 10.0; Win64; x64 B/ja-JP C/140.0.0.0"));
+                 QStringLiteral("A/Windows NT 10.0; Win64; x64 C/140.0.0.0"));
 
         QCOMPARE(UserAgent::Expand(QStringLiteral("My%20Browser/1.0"),
-                                   QString(), QString(), QString()),
+                                   QString(), QString()),
                  QStringLiteral("My Browser/1.0"));
 
         QCOMPARE(UserAgent::Expand(QStringLiteral("Mozilla/5.0 (compatible; iCab 3.0.3)"),
-                                   QStringLiteral("x"), QStringLiteral("y"), QStringLiteral("z")),
+                                   QStringLiteral("x"), QStringLiteral("z")),
                  QStringLiteral("Mozilla/5.0 (compatible; iCab 3.0.3)"));
     }
 
@@ -145,8 +166,7 @@ private slots:
                 continue;
             }
             QVERIFY2(!UserAgent::Fallback(name).isEmpty(), qPrintable(name));
-            QVERIFY2(UserAgent::Fallback(name).startsWith(QStringLiteral("Mozilla/5.0")) ||
-                     UserAgent::Fallback(name).startsWith(QStringLiteral("Opera/")),
+            QVERIFY2(UserAgent::Fallback(name).startsWith(QStringLiteral("Mozilla/5.0")),
                      qPrintable(UserAgent::Fallback(name)));
         }
         QVERIFY(UserAgent::Fallback(QStringLiteral("NoSuchBrowser")).isEmpty());

@@ -38,7 +38,6 @@
     m_MouseMap[QStringLiteral("Shift+WheelDown")] = QStringLiteral("SwitchNodeCollectionType");
 
 #define WEBVIEW_RIGHTGESTURE                                            \
- \
     m_RightGestureMap[QStringLiteral("U")]   = QStringLiteral("UpDirectory"); \
     m_RightGestureMap[QStringLiteral("D")]   = QStringLiteral("NewViewNode"); \
     m_RightGestureMap[QStringLiteral("R")]   = QStringLiteral("Forward"); \
@@ -55,7 +54,6 @@
     m_RightGestureMap[QStringLiteral("R,L")] = QStringLiteral("OpenCommand");
 
 #define WEBVIEW_DRAGGESTURE                                             \
- \
     m_DragGestureMap[QStringLiteral("U")]   = QStringLiteral("OpenOnRootForeground"); \
     m_DragGestureMap[QStringLiteral("D")]   = QStringLiteral("OpenInNewDirectoryForeground"); \
     m_DragGestureMap[QStringLiteral("L")]   = QStringLiteral("OpenInNewViewNodeForeground"); \

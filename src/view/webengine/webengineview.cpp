@@ -1,10 +1,12 @@
 #include "switch.hpp"
 #include "const.hpp"
 #include "theme.hpp"
+#include "blurbehind.hpp"
 
 #ifdef WEBENGINEVIEW
 
 #include "webengineview.hpp"
+#include "webenginesitedatalink.hpp"
 
 #include <QQuickWidget>
 
@@ -57,6 +59,8 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
 
     if(TreeBank::PurgeView()){
         setWindowFlags(Qt::FramelessWindowHint);
+        if(Application::EnableTransparentWindow())
+            setAttribute(Qt::WA_TranslucentBackground);
     } else {
         if(parent) setParent(parent);
     }
@@ -185,6 +189,10 @@ void WebEngineView::TriggerNativeLoadAction(const QUrl &url) {
 
 void WebEngineView::LoadAfterExtensions(const QWebEngineHttpRequest &request) {
     ExtensionNavigation::Of(this)->Request(Extensions(), [this, request] { load(request); });
+}
+
+void WebEngineView::BlurPurgedWindow(){
+    if(internalWinId() && windowHandle()) BlurBehind::Blur(this);
 }
 
 void WebEngineView::setParent(TreeBank* tb){
@@ -519,7 +527,10 @@ bool WebEngineView::SeekText(const QString &str, View::FindFlags opt){
     if(opt & CaseSensitively) flags |= QWebEnginePage::FindCaseSensitively;
 
     bool ret = true;
-    QWebEngineView::findText(str, flags, [](const QWebEngineFindTextResult &){});
+    QPointer<WebEngineView> self = this;
+    QWebEngineView::findText(str, flags, [self](const QWebEngineFindTextResult &result){
+        if(self) emit self->FindCount(result.activeMatch(), result.numberOfMatches());
+    });
     return ret;
 }
 
@@ -706,6 +717,10 @@ void WebEngineView::InspectElement(){
         win->SetInspectorPane(nullptr);
     m_Inspector->show();
     m_Inspector->raise();
+}
+
+SiteDataLink *WebEngineView::OpenSiteDataLink(){
+    return page() ? new WebEngineSiteDataLink(page()) : nullptr;
 }
 
 void WebEngineView::CloseInspector(){

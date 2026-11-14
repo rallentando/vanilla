@@ -24,7 +24,6 @@
 
 #include "directorypage.hpp"
 #include "page.hpp"
-#include "treebank.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "networkcontroller.hpp"
@@ -743,6 +742,7 @@ void EdgeWebView::Stop(){
 void EdgeWebView::resizeEvent(QResizeEvent *ev){
     QWidget::resizeEvent(ev);
     ApplyBounds();
+    PaintHostWindow();
 }
 
 void EdgeWebView::showEvent(QShowEvent *ev){

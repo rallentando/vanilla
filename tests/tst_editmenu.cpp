@@ -35,7 +35,7 @@ private slots:
         QCOMPARE(Names(menu.get()), QStringList()
                  << QStringLiteral("Undo") << QStringLiteral("Redo") << QStringLiteral("Separator")
                  << QStringLiteral("SelectAll") << QStringLiteral("Paste") << QStringLiteral("Cut"));
-        QCOMPARE(Find(menu.get(), "SelectAll")->text(), QCoreApplication::translate("Page", "SelectAll"));
+        QCOMPARE(Find(menu.get(), "SelectAll")->text(), QCoreApplication::translate("ActionText", "SelectAll"));
         std::unique_ptr<QMenu> leading(EditMenu::Build(&edit, QStringList()
             << QStringLiteral("Separator") << QStringLiteral("Copy")));
         QCOMPARE(Names(leading.get()), QStringList() << QStringLiteral("Copy"));

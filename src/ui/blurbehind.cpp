@@ -95,12 +95,14 @@ void Apply(QWidget *window){
 #endif
 }
 
-void RoundCorners(QWidget *window){
+void RoundCorners(QWidget *window, bool round){
     if(!window) return;
 #if defined(Q_OS_WIN)
-    const DWORD round = 2;
+    const DWORD preference = round ? 2  : 1 ;
     ::DwmSetWindowAttribute(reinterpret_cast<HWND>(window->window()->winId()),
-                            33 , &round, sizeof(round));
+                            33 , &preference, sizeof(preference));
+#else
+    Q_UNUSED(round);
 #endif
 }
 

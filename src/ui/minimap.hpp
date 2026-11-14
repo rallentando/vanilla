@@ -18,6 +18,7 @@ class MiniMap : public QWidget {
     Q_OBJECT
 
     friend class tst_minimap;
+    friend class tst_receiver;
 
 public:
     explicit MiniMap(TreeBank *parent);
@@ -32,10 +33,11 @@ public:
     bool IsActive() const;
     int MapWidth() const;
     void ResizeNotify(QSize size);
+    void SetSeekTerm(const QString &term);
 
     enum BlockKind {
         TextBlock, MediaBlock, ControlBlock, FrameBlock,
-        PositionedBackgroundBlock
+        PositionedBackgroundBlock, MatchBlock
     };
     struct Block {
         QRectF rect;
@@ -75,7 +77,7 @@ private slots:
     void OnViewDestroyed(QObject *base);
 
 private:
-    static QString CollectBlocksJsCode();
+    static QString CollectBlocksJsCode(const QString &term = QString());
     static QString ScrollerJsPrelude();
     static QString PollScrollerJsCode();
     static QString SetScrollerJsCode(qint64 id, qreal ratio);
@@ -125,6 +127,7 @@ private:
     quint64 m_Request;
 
     QList<Block> m_Blocks;
+    QString m_SeekTerm;
     QSizeF m_PageSize;
     bool m_Shelved;
     bool m_Overflowed;

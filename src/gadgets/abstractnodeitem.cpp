@@ -19,7 +19,6 @@
 #include "graphicstableview.hpp"
 
 #include "lightnode.hpp"
-#include "const.hpp"
 
 AbstractNodeItem::AbstractNodeItem(Node *nd, int nest, QGraphicsItem *parent)
     : QGraphicsItem(parent)

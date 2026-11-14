@@ -18,8 +18,8 @@ main.cpp
   └─ Application                アプリ全体。設定・永続化・グローバル状態
        └─ MainWindow            ウィンドウ。メニューと周辺ウィジェット
             ├─ TreeBar          ツリー型タブのバー
-            ├─ ToolBar          ツールバー（アドレスバーと拡張のボタン）
-            ·  （NodePreview     タブに乗せたとき出るサムネイル。アプリで1つの独立ウィンドウ）
+            ├─ ToolBar          ツールバー（アドレスの表示と拡張のボタン）
+            ·  （NodePreview     タブに乗せたとき・コマンドバーでタブの行を選んだとき出るサムネイル。アプリで1つの独立ウィンドウ）
             └─ TreeBank         ★中枢。ツリー状態を保持し、View を作る
                  ├─ Node ツリー （ViewNode / LocalNode）
                  ├─ View        表示中のページ（エンジン別の実装）
@@ -120,6 +120,9 @@ main.cpp
 - **型名を間違えても落ちず、その設定が黙って既定値に戻る。** [tests/tst_settingsio.cpp](../tests/tst_settingsio.cpp) が型名を固定している
 - 読み書きは [settingsio.cpp](../src/core/settingsio.cpp)（`Application` に依存しない。外の処理は `SettingsIO::Hooks`）
 - 読むときは「本体 → `.prev` → バックアップ（新しい順）」の順に試す。書くときは `~name` に書いてから差し替える（`FileExchange`）
+- ファイルにあるキーは読み手が無くても保存のたびに書き戻るので、起動時の `Application::LoadGlobalSettings` が
+  **アプリの知らないキーを落とす**（`SettingsSchema::IsKnownKey`: 表の行・`UnlistedKeys`・`UnlistedPrefixes`・窓ごとのキー）。
+  **表に無いキーを読むコードを足すときは、その 2 つの一覧へ足す。** 足し忘れは `tst_settingsschema` がソースを読んで落とす（D-686）
 
 ### セッション（`main_tree.json` / `trash_tree.json`）
 
@@ -175,6 +178,8 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 - 保存先ディレクトリの決定、翻訳、ブックマークの入出力、証明書の判断、アイコンのデータベース
 - `BootApplication()` が起動時の初期化をまとめて行う
 - 主窓は最初のフレームを描いてから見せる（`MainWindow::ShowWithFirstFrame`。`show()` の間 DWM の cloak で隠す）。PurgeView とユーザー操作の窓は作った時点で見せる。詳細: D-513
+- アプリが描くタイトルバー（`application/@EnableCustomTitleBar`、D-664 までの名前はフレームレス窓）は、Windows ではシステムの枠から上（キャプション）だけを外し（`WM_NCCALCSIZE`）、タイトルバーは窓の中の子 `TitleBar`（`src/ui/titlebar.cpp`）にする。影・角丸・スナップ・リサイズの縁はシステムのもので、バーはキャプションとして当たり判定に答える（`MainWindow::FramelessNativeEvent`、規則は `WindowFrameHit`）。最大化中の右上の帯とシェード中の帯は別窓の `TitleBar` で、最大化中の帯は窓の高さを伸び縮みさせて上から滑って出入りする（D-665）。Windows 以外は窓の外のタイトルバーと縁の別窓 8 枚。全画面の縁の 1px は `application/@WindowEdgeColor` の色で塗り（`PaintFullScreenBorder`）、最大化中にクライアントの上に残す 1px はその色を DWM のキャプションの色にする（`ApplyEdgeCaption`）。空ならシステムに任せる。詳細: D-658、D-666
+- 窓の中のタイトルバーは、題名の文字をクリックするとその場でアドレスの列になる。URL を見せる欄と、その左右に並べるツールバーのボタン・拡張のバーは `TitleEditRow`（`src/ui/titlebar.cpp`）が持ち、欄の上にはツールバーと同じくコマンドバーが重なって開く。編集はコマンドバーが欄の上にある間だけ続き（`Receiver::AnchorReleased` で終わる）、タイトルバーが隠れると欄ごとコマンドバーも閉じる。詳細: D-659・D-667。最大化中は帯の左の「<」で帯を窓の幅に広げ、題名とアドレス欄を使える。詳細: D-662
 - 前の回の窓（設定の `mainwindow/<名前><id>`）は、最初の WebEngine プロファイルと木の読みより前に空の殻として作って見せる。木の読みは同じ id の殻に current を付け、木に無い id の殻は読みのあと消す。殻の間（`Application::IsRestoringWindows()`）は主窓への入力と閉じる操作を受けない。詳細: D-514
 - 殻が出るまでの床（Windows）は「DirectWrite の全ファミリーの一覧構築（殻の文字の fallback 照会が要る）→ 殻の生成」で、構築を別スレッドへ出しても、WebEngine の全体設定を殻の後へ回しても縮まない（測って採らず）。詳細: D-516・D-530・D-531
 
@@ -248,7 +253,8 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 | セッション履歴の保存復元 | ○ | △※ | △※ | ○※ |
 | 戻る / 進む / 巻き戻し | ○ | ○ | ○ | ○ |
 | スクロール・ズームの保存復元 | ○ | ○ | ○ | ○ |
-| ページ内検索 | ○ | ○ | ○ JS | ○ JS |
+| ページ内検索 | ○ | ○ | ○ JS | ○ |
+| ページ内検索の件数（n / m） | ○ | ○ | × | ○ |
 | 編集（コピー・貼り付けなど） | ○ | ○ | ○ JS | ○ JS※ |
 | 書式の編集（15本） | ○ | ○ | △ JS | ○ JS |
 | 証明書エラーの続行 | ○ | ○ | ― | ○ |
@@ -354,10 +360,11 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 | ファイル | 役割 |
 |---|---|
 | [actionmapper.hpp](../src/input/actionmapper.hpp) | アクション名の一覧。編集アクションには QML 側の関数名（先頭小文字）も並べる |
+| [actiontext.hpp](../src/core/actiontext.hpp) | アクションの表示名（訳の文脈 `ActionText` の 1 表）。メニュー・キーの設定・コマンドバー・入力欄のメニューが引く。4 つのクラスの `Action()` は一覧のマクロで接続だけを書く（D-678） |
 | [keymap.hpp](../src/input/keymap.hpp) | キー → アクション名の既定。修飾キーの無い単独キーは設定 `webview/@EnableSingleKeyShortcut`（既定オフ）のときだけ効く |
 | [mousemap.hpp](../src/input/mousemap.hpp) | マウスジェスチャ → アクション名の既定 |
 | [commandmap.hpp](../src/core/commandmap.hpp) | コマンドの綴り → アクション名。綴りの揺れはここにだけある |
-| [receiver.hpp](../src/app/receiver.hpp) | 入力欄のカード。Command / Query / UrlEdit / Search の4モード。中央に浮かび、ページ内検索（`search <語>` を含む）は右上。コマンドバーの候補はコマンド（検索エンジンとブックマークレットの名前を含む）・タブ・ゴミ箱・設定・Web のソース別で、行の操作は Tab か右クリックの一覧（D-622、D-625、D-633） |
+| [receiver.hpp](../src/app/receiver.hpp) | 入力欄のカード。Command / Query / UrlEdit / Search の4モード。中央に浮かび、ページ内検索（`search <語>` を含む）は右上。コマンドバーの候補はコマンド（検索エンジンとブックマークレットの名前を含む）・タブ・ゴミ箱・設定・Web のソース別で、行の操作は Tab か右クリックの一覧（D-622、D-625、D-633）。タブとゴミ箱の行を選ぶとカードの脇にタブのプレビュー（D-692） |
 | [searchsuggest.hpp](../src/core/searchsuggest.hpp) | 検索の候補を問い合わせる URL と答えの読み取り（Google / Bing / DuckDuckGo。D-622） |
 
 アクション名と入力の綴りの2系統は互換性のために残る。綴りの表の全体は `tst_commandmap` が固定する。ページから叩く JavaScript の API は無い。
@@ -380,7 +387,7 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 | `Dialog` — [dialog.hpp](../src/ui/dialog.hpp) | 自前で描くダイアログ。モードレスは窓の右に積む別窓 |
 | `EditMenu` — [editmenu.hpp](../src/ui/editmenu.hpp) | 入力欄（アドレス欄・コマンドバー・ダイアログ）のコンテキストメニュー。ページの文字メニューと同じ項目と言葉（D-522） |
 | `MenuKeys` — [menukeys.hpp](../src/ui/menukeys.hpp) | メニューの右に出すキー。開いた場所で押せば効くものを項目ごとに 1 つ（D-548） |
-| `MiniMap` — [minimap.hpp](../src/ui/minimap.hpp) | ページの脇の帯。注入した JS が集めた要素の矩形を図にする。文書が動かず中の要素がスクロールするページはその要素を描く（D-485）。設定 `application/@EnableMiniMap`（既定オフ） |
+| `MiniMap` — [minimap.hpp](../src/ui/minimap.hpp) | ページの脇の帯。注入した JS が集めた要素の矩形を図にする。文書が動かず中の要素がスクロールするページはその要素を描く（D-485）。ページ内検索の語の一致を橙で重ねる（D-676）。窓ごとに `ToggleMiniMap`（「表示」メニュー）で作り・消し、`mainwindow/minimap<n>` に残す（既定オフ。D-689） |
 
 `Receiver` のローカルサーバ（パイプのコマンドの受け口）は同じユーザーだけが接続でき、1フレームは 1 MiB まで。
 
@@ -417,19 +424,21 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
   前の3つは `TreeBank::OpenSettings(category)` で同じ1つのタブを使う。タブのビューは、ディレクトリが指す種類
   （`ViewKindFor`）と同じなら作り直さず前面に出すだけ（D-537）
 - 表示中のカテゴリは URL のフラグメント（`vanilla://settings/#network`）で持つ
+- **隠し設定**: 普段は誰でも押せる箱にしない設定（ページが普段止められていることの抜け道・具合の悪いときに切るエンジンの切り替え・総称フォント・名乗る UA のテンプレート）は、分類 `hidden` の行にする。ページは題を 3 回クリックするまでその分類を一覧・検索・フラグメントから外す。開いた状態は保存しない。エンジンの属性とフォントは WebEngine のビューだけが読む（詳細: D-685）
 - 別の設定しだいで使われない行は、表の `appliesWhen`（`"key=value|…"`、どれか 1 つが成り立てば使われる）で宣言する。
   ページがその行を灰色にして入力を拒み、どの設定のせいかを下に書く。条件は hint に重ねて書かない（D-571）
 - `needsRestart` の行の値が変わると、`ModelessDialog` のカードが「再起動」を勧める（自動では閉じない）。
   再起動は `Application::Restart` → 終了の段を通ったあと `_main` が同じ exe を `--restart-after=<pid>` 付きで起動し、
   新しいプロセスは旧プロセスの終了を待ってから既存インスタンスを探す（D-571）
 - `vanilla://` のページは、ディレクトリが QuickNative を指していても `WebEngineView` が描く
+- 型は Bool・Int・Text・Choice・Directory・TextList・Color。Color は `#rrggbb` か空（システムの色）で、ページは見本と「色の選択…」（`/api/pick-color` がアプリの `QColorDialog` を開く）を出す（D-666）
 - 検索中は、描き終えたページの文字のうち検索語に当たる所を `<mark>`（アクセント色の太字）で囲む（`markFound`。選択肢と入力欄の中は除く。D-582）
 
 **画面の文字列**: ページは `QTranslator` に触れないので、文字列は全部訳された状態で C++ から届ける
 （ラベルは表の `QT_TRANSLATE_NOOP("SettingsSchema", ...)`、ページ自身の言葉は `SettingsSchema::PageStrings()`）。
 **`QT_TRANSLATE_NOOP` をマクロで短くしないこと。** lupdate はマクロを展開せず、拾われなかった文字列は黙って英語のままになる。
 
-詳細: D-020、D-218、D-431、D-455、D-462、D-475、D-537、D-549、D-561、D-571、D-575、D-582
+詳細: D-020、D-218、D-431、D-455、D-462、D-475、D-537、D-549、D-561、D-571、D-575、D-582、D-666
 
 ### スタートページ（`vanilla://start`）
 
@@ -538,7 +547,14 @@ B が登録済みなら、移動先の競合判定を通らず、併合へ進む
 `tst_inputmapping` の `tellsAUrlFromSomethingToSearchFor` が、どちらに転ぶべきかを固定している。
 
 アドレスバーの候補は今のタブと周辺（上の階層の URL・同じ階層のタブ・打った URL の履歴・ページへの動作）だけで、
-アプリ全体と窓の動作はコマンドバーの候補に任せる（D-624）。
+アプリ全体と窓の動作はコマンドバーの候補に任せる（D-624）。コマンドバーの Web のタブも、今のタブの上の階層を
+「アドレスを開く」か「Web を検索」の下に出す（D-667）。
+
+ツールバーとタイトルバーの欄は URL を見せるだけで、押すとコマンドバー（`Receiver::OpenAtField`）がその欄に重なって開く。
+Web のタブ・今の URL を全選択・行は選ばない。行を選ばない Enter と「アドレスを開く」の行は今のタブで開く。
+欄に重なっている間の Receiver は主窓に所有された窓で、閉じたあと木の子へ戻す。入力行は欄と同じ高さ・同じ見た目で欄に重なり、欄が下にあるとき（下のツールバー）は入力行がカードの下端、ソースのタブがそのすぐ上に来て、候補はさらに上へ伸びる。タイトルバーの列のボタンや拡張を押すとコマンドバーは閉じ、列は URL を見せる欄とともに残る（欄を押せばまた開く）。
+欄の左にはサイト情報のボタン（`SiteButton`）があり、吹き出し（`SiteInfoPanel`、`Qt::Popup`）にホスト・接続（URL と保存した証明書の例外から言えることだけ）・保存した許可（`SitePermissions`、選択で書き換え）・Cookie の件数とサイトデータの削除・サイトの設定を出す。Cookie とサイトデータは、ビューが出す DevTools プロトコルの口（`View::OpenSiteDataLink` が返す `SiteDataLink`。Edge は `CallDevToolsProtocolMethod`、WebEngine は利用者のインスペクターか、吹き出しの間だけつなぐ隠れた devtools ページ。Quick は同じ形で、隠れた QML のビューを `devToolsView` に渡す。ネイティブのビューは出さない）を通し、`SiteCookies` が数えて 2 回押すと消す。詳細: D-668、D-674
+詳細: D-667
 
 ---
 
@@ -546,12 +562,14 @@ B が登録済みなら、移動先の競合判定を通らず、併合へ進む
 
 既定は**エンジン自身の UA**。別のブラウザを名乗るのは、ディレクトリに `;useragent chrome` のように書いたときだけ。
 
-- 文字列は [const.hpp](../src/core/const.hpp)。`NetworkAccessManager::SetUserAgent` が `%SYSTEM%` / `%LOCATION%` /
+- 名乗れるのは Edge・Firefox・OPR・Safari・Chrome・Sleipnir・Vivaldi・Gecko と自分で書く Custom。表は [useragent.cpp](../src/core/useragent.cpp)。
+  名前でない値は、`product/version` を含む（UA らしい）ときだけそのまま送る。外した IE などの名前や打ち間違いはエンジン自身の UA のまま（D-683、D-684）
+- `NetworkAccessManager::SetUserAgent` が `%SYSTEM%`（Chrome が固定した `Windows NT 10.0; Win64; x64` / `X11; Linux x86_64`）と
   `%CHROMIUM%`（積んでいる Chromium のメジャー版）を埋める
 - **Chromium の版を直書きしないこと。** 版は `qWebEngineChromiumVersion()` から取る
 - Google は「Chrome を名乗る Chrome でないブラウザ」のログインを拒むので、偽装は常用しない
 
-詳細: D-058、D-101、D-102
+詳細: D-058、D-101、D-102、D-683、D-684
 
 ---
 
@@ -619,6 +637,11 @@ painter->setPen(Theme::Pen(Theme::GlassText));
 - メニュー・パネル（拡張の一覧、ダウンロード）・ダイアログの面は `BlurBehind::Surface()` で引く。
   `application/@EnableTranslucentPanels` が on なら `PreviewBackgroundTranslucent` で描き、`showEvent` から
   `BlurBehind::Apply` で OS に背後のぼかし（Windows は acrylic）を頼む。カードの角は自分で描く（[blurbehind.hpp](../src/ui/blurbehind.hpp)）
+- パネルの部品（区切り線 `PanelRule`、閉じるアイコン、補足の文字の `MakePanelQuiet`）は [panelwindow.hpp](../src/ui/panelwindow.hpp)。
+  アクセントの青は `VanillaPageAccent` 1 つ。ツールバーから開くパネルはスタイルシートの下にあり、パレットが子へ伝わらないので、
+  部品ができたら `SpreadPanelAccent` で配る。ポインタの下のものと選んだものは地から浮かせる（ダークは明るく、ライトは濃く）。
+  バーのボタンは平らなチップ（ツールバーの分は `MenuStyle` が描く）、ページは `--raised`。長い作業中は `BusyDialog`。
+  サムネイルのカードの上のボタン（新規タブ・タブ一覧の `DrawCardButton`）だけは、地の 80% のチップでホバーはアクセント。詳細: D-669
 - `application/@EnableTransparentWindow`（「ウィンドウを半透明にする」）は主窓に `WA_TranslucentBackground` を立てて背後のぼかしを頼み（方式は窓の種類で `BlurBehind::MechanismFor` が選ぶ。下の表）、バーは `BarBackgroundTranslucent`（α128）、ミニマップは `MiniMapBackgroundTranslucent`（α128）で描く。効くかは起動時に `Application::EnableTransparentWindow()` へ固定（RHI の主窓は OpenGL のときだけ）、作り直し後は `surfaceType()` で判定し、載せられなければ不透明へ戻る。詳細: D-542
 
 半透明になる条件（主窓のバー・ミニマップ。Windows）。RHI は「描画とエンジン」の「メインウィンドウも描画 API で描く」
@@ -676,7 +699,11 @@ painter->setPen(Theme::Pen(Theme::GlassText));
 `RestackChildWidgets` に1行足す。**そこ以外に `raise()` を書かない。**
 窓どうしの順序（タイトルバー、ダイアログ、切り離した Inspector）はこの序列とは別の話。
 
-詳細: D-092、D-306、D-307
+主窓に所有された窓（Edge が current のときの Notifier・Receiver、ダウンロードの欄、ダイアログの枠）を上げても、
+主窓は前に出ない。上げた窓は所有者の組の上端までで止まる（[ownedraise.cpp](../src/ui/ownedraise.cpp) のネイティブイベントフィルタ）。
+主窓そのものを上げるのは `MainWindow::raise` だけで、`QWidget*` 越しに `raise()` を呼ばない。
+
+詳細: D-092、D-306、D-307、D-687
 
 ---
 

@@ -16,9 +16,12 @@
 #include <QScrollArea>
 #include <QAuthenticator>
 #include <QScreen>
+#include <QColorDialog>
 #include <QCoreApplication>
 #include <QParallelAnimationGroup>
 #include <QPropertyAnimation>
+#include <QProgressBar>
+#include <QGuiApplication>
 
 #include "application.hpp"
 #include "mainwindow.hpp"
@@ -173,29 +176,34 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     head->setContentsMargins(0, 0, 0, padding / 2);
     head->setSpacing(padding / 2);
     DialogLabel *titleLabel = new DialogLabel(m_Title, DialogTitleFont(), this);
+    int indent = 0;
     if(!m_Icon.isEmpty()){
         m_IconLabel = new QLabel(this);
         const int side = titleLabel->fontMetrics().height();
         m_IconLabel->setFixedSize(side, side);
         head->addWidget(m_IconLabel, 0, Qt::AlignVCenter);
+        indent = side + head->spacing();
     }
     head->addWidget(titleLabel, 1);
     vlayout->addLayout(head);
 
     if(!m_Caption.isEmpty()){
         DialogLabel *captionLabel = new DialogLabel(m_Caption, DialogTextFont(), this);
-        captionLabel->setContentsMargins(ScaleByDevice(5), 0, 0, 0);
+        captionLabel->setContentsMargins(indent, 0, 0, 0);
         vlayout->addWidget(captionLabel);
     }
 
     if(!m_InformativeText.isEmpty()){
         DialogLabel *informationLabel = new DialogLabel(m_InformativeText, DialogTextFont(), this);
-        informationLabel->setContentsMargins(ScaleByDevice(5), 0, 0, 0);
+        informationLabel->setContentsMargins(indent, 0, 0, 0);
         vlayout->addWidget(informationLabel);
     }
 
     if(m_InputWidget){
-        vlayout->addWidget(m_InputWidget);
+        QHBoxLayout *input = new QHBoxLayout();
+        input->setContentsMargins(indent, 0, 0, 0);
+        input->addWidget(m_InputWidget);
+        vlayout->addLayout(input);
     }
 
     QHBoxLayout *hlayout = new QHBoxLayout();
@@ -269,6 +277,8 @@ bool ModalDialog::Execute(QWidget *focusWidget){
     }
     if(screen) setScreen(screen);
     RefreshIcon();
+
+    MainWindow::SetOwner(this, MainWindow::DialogOwner());
 
     setWindowOpacity(0.0);
     show();
@@ -398,6 +408,11 @@ QString ModalDialog::GetExistingDirectory(const QString &caption, const QString 
     return QFileDialog::getExistingDirectory(Application::CurrentWidget(), caption, dir, options);
 }
 
+QColor ModalDialog::GetColor(const QColor &initial, const QString &caption){
+    FileDialogScope shown;
+    return QColorDialog::getColor(initial, Application::CurrentWidget(), caption);
+}
+
 QString ModalDialog::GetSaveFileName_(const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter, QFileDialog::Options options){
     FileDialogScope shown;
     return QFileDialog::getSaveFileName(Application::CurrentWidget(), caption, dir, filter, selectedFilter, options);
@@ -482,8 +497,7 @@ void ModalDialog::Authentication(QAuthenticator *authenticator, const QString &c
     ModalDialog *dialog = new ModalDialog();
     QWidget *widget = new QWidget();
     QGridLayout *layout = new QGridLayout();
-    layout->setContentsMargins(dialog->ScaleByDevice(5), dialog->ScaleByDevice(3),
-                               dialog->ScaleByDevice(5), dialog->ScaleByDevice(3));
+    layout->setContentsMargins(0, dialog->ScaleByDevice(3), 0, dialog->ScaleByDevice(3));
     layout->addWidget(AuthenticationLabel(caption, dialog), 0, 0, 1, 2);
     DialogLabel *userNameLabel = new DialogLabel(tr("User name:"), DialogTextFont(), dialog);
     layout->addWidget(userNameLabel, 1, 0);
@@ -550,6 +564,60 @@ void ModalDialog::showEvent(QShowEvent *ev){
     BlurBehind::Apply(this);
 }
 
+BusyDialog::BusyDialog(const QString &text)
+    : QWidget(nullptr, Qt::FramelessWindowHint)
+{
+    setWindowModality(Qt::ApplicationModal);
+    setAttribute(Qt::WA_TranslucentBackground);
+    setPalette(Theme::PanelPalette(palette()));
+
+    const int padding = ScaleByDevice(DIALOG_PADDING);
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(padding, padding, padding, padding);
+    layout->setSpacing(padding);
+    DialogLabel *label = new DialogLabel(text, DialogTextFont(), this);
+    label->setWordWrap(true);
+    layout->addWidget(label);
+    QProgressBar *bar = new QProgressBar(this);
+    bar->setRange(0, 0);
+    bar->setTextVisible(false);
+    bar->setFixedHeight(ScaleByDevice(DOWNLOAD_PANEL_PROGRESS_HEIGHT));
+    layout->addWidget(bar);
+}
+
+void BusyDialog::Open(){
+    QRect room;
+    if(QWidget *w = Application::CurrentWidget()){
+        room = QRect(w->mapToGlobal(QPoint(0, 0)), w->size());
+        setScreen(w->screen());
+    } else if(QScreen *screen = QGuiApplication::primaryScreen()){
+        room = screen->availableGeometry();
+    }
+    const int width = qMin(room.width(), ScaleByDevice(MINIMUL_DIALOG_WIDTH));
+    const int height = layout()->hasHeightForWidth() ? layout()->totalHeightForWidth(width)
+                                                     : sizeHint().height();
+    setGeometry(ModalDialog::Placement(room, QSize(width, height), ScaleByDevice(DIALOG_TOP_MARGIN)));
+    MainWindow::SetOwner(this, MainWindow::DialogOwner());
+    show();
+    raise();
+}
+
+void BusyDialog::paintEvent(QPaintEvent *ev){
+    Q_UNUSED(ev)
+    QPainter painter(this);
+    const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setPen(Theme::Pen(Theme::PreviewBorder));
+    painter.setBrush(Theme::Brush(BlurBehind::Surface()));
+    painter.drawRoundedRect(card, ScaleByDevice(DIALOG_CORNER_RADIUS),
+                            ScaleByDevice(DIALOG_CORNER_RADIUS));
+}
+
+void BusyDialog::showEvent(QShowEvent *ev){
+    QWidget::showEvent(ev);
+    BlurBehind::Apply(this);
+}
+
 void ModalDialog::mousePressEvent(QMouseEvent *ev){
     if(ev->button() == Qt::LeftButton){
         if(m_Appear){
@@ -577,7 +645,7 @@ ModelessDialogFrame::ModelessDialogFrame()
     : QWidget(nullptr)
     , m_Dialogs(QList<ModelessDialog*>())
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
+    setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
     setAttribute(Qt::WA_TranslucentBackground);
 }
 
@@ -616,6 +684,7 @@ void ModelessDialogFrame::RegisterDialog(ModelessDialog *dialog){
     dialog->m_Frame = frame;
     frame->m_Dialogs.append(dialog);
     frame->Adjust();
+    frame->raise();
 }
 
 void ModelessDialogFrame::DeregisterDialog(ModelessDialog *dialog){
@@ -701,7 +770,6 @@ void ModelessDialog::Execute(){
 
     if(!m_Caption.isEmpty()){
         DialogLabel *captionLabel = new DialogLabel(m_Caption, DialogTextFont(), this);
-        captionLabel->setContentsMargins(ScaleByDevice(5), 0, 0, 0);
         vlayout->addWidget(captionLabel);
     }
 

@@ -3,11 +3,14 @@
 #include <QMetaEnum>
 #include <QSet>
 #include <QAccessible>
+#include <QProgressBar>
+#include <QAbstractButton>
 
 #include <type_traits>
 
 #include "application.hpp"
 #include "dialog.hpp"
+#include "const.hpp"
 #include "plaintooltip.hpp"
 
 #include <memory>
@@ -36,6 +39,7 @@ private slots:
     void aFrameGoingFirstTakesItsDialogsWithoutReachingBack();
     void anEmptyFrameDrawsNothingUntilTheNextDialog();
     void aRenewedDialogStaysUpAndADiscardedOneDoesNotComeBack();
+    void aLongPieceOfWorkIsTheDialogsCard();
 
 private:
     static ModelessDialogFrame *TakeTemporaryFrame(){
@@ -520,6 +524,32 @@ void tst_dialogbuttons::aModelessDialogGoesWithItsDestroyedSignalIntact(){
 
     QTRY_VERIFY(alive.isNull());
     QVERIFY(!QAccessible::accessibleInterface(id));
+}
+
+void tst_dialogbuttons::aLongPieceOfWorkIsTheDialogsCard(){
+    QPointer<BusyDialog> busy = new BusyDialog(QStringLiteral("Moving the data..."));
+    busy->Open();
+    QVERIFY(busy->isVisible());
+    QVERIFY(busy->windowFlags().testFlag(Qt::FramelessWindowHint));
+    QCOMPARE(busy->windowModality(), Qt::ApplicationModal);
+    QCOMPARE(busy->palette().color(QPalette::WindowText), Theme::Color(Theme::PreviewText));
+
+    QProgressBar *bar = busy->findChild<QProgressBar*>();
+    QVERIFY(bar);
+    QCOMPARE(bar->minimum(), 0);
+    QCOMPARE(bar->maximum(), 0);
+    QVERIFY(busy->findChildren<QAbstractButton*>().isEmpty());
+    QLabel *words = busy->findChild<QLabel*>();
+    QVERIFY(words);
+    QCOMPARE(words->text(), QStringLiteral("Moving the data..."));
+
+    const QRect screen = QGuiApplication::primaryScreen()->availableGeometry();
+    QCOMPARE(busy->width(), qMin(screen.width(), busy->ScaleByDevice(MINIMUL_DIALOG_WIDTH)));
+    QCOMPARE(busy->y(), screen.top() + busy->ScaleByDevice(DIALOG_TOP_MARGIN));
+
+    busy->hide();
+    busy->deleteLater();
+    QTRY_VERIFY(!busy);
 }
 
 QTEST_MAIN(tst_dialogbuttons)

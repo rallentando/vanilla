@@ -114,6 +114,7 @@ private slots:
     void theScrollArrowLinesUpWithThePlusIconAcrossTheBar();
     void theMinimumTabHeightKeepsCompactBreathingRoom();
     void anIconIsCentredInAnEvenHeightThumbnailTitleBand();
+    void aButtonsIconSitsInTheMiddleOfItsChip();
     void aThumbnailTooThinToShowKeepsEveryControlOnTheTitleBand();
 
 private:
@@ -1546,6 +1547,30 @@ void tst_treebaritem::anIconIsCentredInAnEvenHeightThumbnailTitleBand(){
 
     QCOMPARE(icon, QRect(6, 24, 16, 16));
     QCOMPARE(icon.top() - titleBand.top(), titleBand.bottom() - icon.bottom());
+}
+
+void tst_treebaritem::aButtonsIconSitsInTheMiddleOfItsChip(){
+    const QRectF chip(177, 10, 20, 20);
+    const QRect icon = NodeItem::IconInChip(chip, QSize(12, 12));
+    QCOMPARE(icon, QRect(181, 14, 12, 12));
+    QCOMPARE(icon.left() - int(chip.left()), int(chip.right()) - (icon.right() + 1));
+    QCOMPARE(icon.top() - int(chip.top()), int(chip.bottom()) - (icon.bottom() + 1));
+    QCOMPARE(NodeItem::IconInChip(QRectF(0, 0, 16, 16), QSize(9, 9)), QRect(3, 3, 9, 9));
+
+    Build();
+    NodeItem *item = AddItem(m_Root->MakeChild());
+    item->SetRect(QRectF(0, 0, 220, 40));
+    const bool closeWasEnabled = TreeBar::m_EnableCloseButton;
+    const bool cloneWasEnabled = TreeBar::m_EnableCloneButton;
+    TreeBar::m_EnableCloseButton = true;
+    TreeBar::m_EnableCloneButton = true;
+    const QSize size(m_Bar->ScaleByDevice(10), m_Bar->ScaleByDevice(10));
+    QCOMPARE(item->CloseIconRect(), NodeItem::IconInChip(item->CloseButtonRect(), size));
+    QCOMPARE(item->CloneIconRect(), NodeItem::IconInChip(item->CloneButtonRect(), size));
+    QCOMPARE(item->SoundIconRect(), NodeItem::IconInChip(item->SoundChipRect(), size));
+    TreeBar::m_EnableCloseButton = closeWasEnabled;
+    TreeBar::m_EnableCloneButton = cloneWasEnabled;
+    TearDown();
 }
 
 void tst_treebaritem::aThumbnailTooThinToShowKeepsEveryControlOnTheTitleBand(){

@@ -2,6 +2,7 @@
 #include "const.hpp"
 #include "theme.hpp"
 #include "blurbehind.hpp"
+#include "panelwindow.hpp"
 
 #include "downloadbar.hpp"
 
@@ -44,14 +45,6 @@ namespace {
     QHash<MainWindow*, QPointer<DownloadPanel>> &Panels(){
         static QHash<MainWindow*, QPointer<DownloadPanel>> panels;
         return panels;
-    }
-
-    void MakeQuiet(QLabel *label){
-        QPalette palette = label->palette();
-        QColor quiet = Theme::Color(Theme::PreviewText);
-        quiet.setAlphaF(DOWNLOAD_PANEL_QUIET_ALPHA);
-        palette.setColor(QPalette::WindowText, quiet);
-        label->setPalette(palette);
     }
 
     QToolButton *IconButton(QWidget *parent, const QString &path, const QString &text){
@@ -416,7 +409,7 @@ void DownloadPanel::Rebuild(){
         lines->addWidget(name);
 
         QLabel *state = new QLabel(tr("Sending"), row);
-        MakeQuiet(state);
+        MakePanelQuiet(state);
         lines->addWidget(state);
 
         QProgressBar *bar = new QProgressBar(row);
@@ -476,7 +469,7 @@ void DownloadPanel::Rebuild(){
         QLabel *state = new QLabel(row);
         state->setTextFormat(Qt::PlainText);
         state->setText(Describe(entry, info.isFile()));
-        MakeQuiet(state);
+        MakePanelQuiet(state);
         lines->addWidget(state);
 
         if(entry.state == DownloadHistory::Running){

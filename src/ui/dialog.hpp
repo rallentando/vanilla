@@ -113,6 +113,7 @@ public:
     static QString GetText  (QString title, QString caption, QString text = QString(), bool *ok = nullptr, const QString &icon = QString());
     static QString GetPass  (QString title, QString caption, QString text = QString(), bool *ok = nullptr);
     static QString GetExistingDirectory(const QString &caption = QString(), const QString &dir = QString(), QFileDialog::Options options = QFileDialog::ShowDirsOnly);
+    static QColor GetColor(const QColor &initial, const QString &caption);
     static QString GetSaveFileName_(const QString &caption = QString(), const QString &dir = QString(), const QString &filter = QString(), QString *selectedFilter = nullptr, QFileDialog::Options options = QFileDialog::Options());
     static QString GetOpenFileName_(const QString &caption = QString(), const QString &dir = QString(), const QString &filter = QString(), QString *selectedFilter = nullptr, QFileDialog::Options options = QFileDialog::Options());
     static QStringList GetOpenFileNames(const QString &caption = QString(), const QString &dir = QString(), const QString &filter = QString(), QString *selectedFilter = nullptr, QFileDialog::Options options = QFileDialog::Options());
@@ -420,6 +421,22 @@ signals:
     void Aborted();
     void FocusIn();
     void FocusOut();
+};
+
+class BusyDialog : public QWidget {
+public:
+    explicit BusyDialog(const QString &text);
+    ~BusyDialog() override {}
+
+    void Open();
+
+    template <class T> T ScaleByDevice(T t) const {
+        return DeviceScale::FromDpi(t, static_cast<int>(logicalDpiY()));
+    }
+
+protected:
+    void paintEvent(QPaintEvent *ev) override;
+    void showEvent(QShowEvent *ev) override;
 };
 
 #endif

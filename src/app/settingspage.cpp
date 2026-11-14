@@ -254,37 +254,12 @@ namespace {
         strings[QStringLiteral("badSite")]    =
             QCoreApplication::translate("SettingsPage", "Enter the address of a site, such as https://example.com.");
 
-        static const char *const words[] = {
-            QT_TRANSLATE_NOOP("SettingsPage", "Notifications"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Location"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Microphone"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Camera"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Fonts on this device"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Clipboard (read and write)"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Mouse lock"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Screen"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Screen and audio"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Clipboard (read)"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Motion and other sensors"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Automatic downloads"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Files and folders"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Autoplay"),
-            QT_TRANSLATE_NOOP("SettingsPage", "MIDI devices"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Window management"),
-            QT_TRANSLATE_NOOP("SettingsPage", "Persistent storage"),
-        };
-        static const char *const scope[] = {
-            "", "", "", "", "",
-            "engine", "engine", "engine", "engine",
-            "edge", "edge", "edge", "edge", "edge", "edge", "edge", "edge",
-        };
         const QStringList kinds = PermissionTable::Kinds();
-        Q_ASSERT(kinds.length() == int(sizeof(words) / sizeof(words[0])));
         QJsonObject labels;
         QJsonObject scopes;
-        for(int i = 0; i < kinds.length(); i++){
-            labels[kinds[i]] = QCoreApplication::translate("SettingsPage", words[i]);
-            scopes[kinds[i]] = QLatin1String(scope[i]);
+        for(const QString &kind : kinds){
+            labels[kind] = VanillaPage::PermissionKindLabel(kind);
+            scopes[kind] = VanillaPage::PermissionKindScope(kind);
         }
 
         QJsonArray entries;
@@ -312,7 +287,7 @@ namespace {
 #endif
         for(const QString &wanted : order)
             for(int i = 0; i < kinds.length(); i++)
-                if(QLatin1String(scope[i]) == wanted) offered << kinds[i];
+                if(VanillaPage::PermissionKindScope(kinds[i]) == wanted) offered << kinds[i];
         reply[QStringLiteral("kinds")]   = QJsonArray::fromStringList(offered);
         reply[QStringLiteral("entries")] = entries;
         return reply;
@@ -544,7 +519,8 @@ namespace {
         const bool set   = endpoint == QStringLiteral("set");
         const bool reset = endpoint == QStringLiteral("reset");
         const bool pick  = endpoint == QStringLiteral("pick-directory");
-        if(!set && !reset && !pick) return Failure(404);
+        const bool pickColor = endpoint == QStringLiteral("pick-color");
+        if(!set && !reset && !pick && !pickColor) return Failure(404);
         if(method != QByteArrayLiteral("POST")) return Failure(403);
 
         const QJsonObject request = QJsonDocument::fromJson(body).object();
@@ -553,6 +529,24 @@ namespace {
         const SettingsSchema::Item *item = SettingsSchema::Find(key);
         if(!item){
             return Json(Error(QStringLiteral("unknown key: \"%1\"").arg(key)));
+        }
+
+        if(pickColor){
+            if(item->type != SettingsSchema::Color)
+                return Json(Error(QStringLiteral("no colour picker for: \"%1\"").arg(key)));
+            const QString title =
+                QCoreApplication::translate("SettingsSchema", item->label);
+            const QColor start(Application::GlobalSettings()
+                                   .value(key, SettingsSchema::Fallback(*item)).toString());
+            VanillaPageResponse response = Json(QByteArrayLiteral("{}"));
+            response.m_UserInteraction = VanillaPageResponse::UserInteraction::Deferred;
+            response.m_Deferred = [title, start](){
+                const QColor color = ModalDialog::GetColor(start.isValid() ? start : QColor(Qt::black), title);
+                QJsonObject reply;
+                reply[QStringLiteral("color")] = color.isValid() ? color.name() : QString();
+                return Compact(reply);
+            };
+            return response;
         }
 
         if(pick){
@@ -1158,6 +1152,46 @@ QUrl VanillaPage::StartUrl(){
 bool VanillaPage::IsStartUrl(const QUrl &url){
     return url.scheme() == QLatin1String(SCHEME) &&
            url.host()   == QLatin1String(START_HOST);
+}
+
+namespace {
+    const char *const PermissionWords[] = {
+        QT_TRANSLATE_NOOP("SettingsPage", "Notifications"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Location"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Microphone"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Camera"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Fonts on this device"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Clipboard (read and write)"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Mouse lock"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Screen"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Screen and audio"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Clipboard (read)"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Motion and other sensors"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Automatic downloads"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Files and folders"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Autoplay"),
+        QT_TRANSLATE_NOOP("SettingsPage", "MIDI devices"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Window management"),
+        QT_TRANSLATE_NOOP("SettingsPage", "Persistent storage"),
+    };
+    const char *const PermissionScopes[] = {
+        "", "", "", "", "",
+        "engine", "engine", "engine", "engine",
+        "edge", "edge", "edge", "edge", "edge", "edge", "edge", "edge",
+    };
+    static_assert(sizeof(PermissionWords) == sizeof(PermissionScopes), "a scope for every kind");
+}
+
+QString VanillaPage::PermissionKindLabel(const QString &kind){
+    const int index = PermissionTable::Kinds().indexOf(kind);
+    Q_ASSERT(PermissionTable::Kinds().length() == int(sizeof(PermissionWords) / sizeof(PermissionWords[0])));
+    if(index < 0) return QString();
+    return QCoreApplication::translate("SettingsPage", PermissionWords[index]);
+}
+
+QString VanillaPage::PermissionKindScope(const QString &kind){
+    const int index = PermissionTable::Kinds().indexOf(kind);
+    return index < 0 ? QString() : QLatin1String(PermissionScopes[index]);
 }
 
 QUrl VanillaPage::SettingsUrl(){

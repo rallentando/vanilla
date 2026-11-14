@@ -562,8 +562,7 @@ void QuickNativeWebView::HandleJavascriptConsoleMessage(int level, const QString
         } else {
             KeyReleaseEvent(&ke);
         }
-    }
-    else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventToken()), msg)){
+    } else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventToken()), msg)){
         m_PreventScrollRestoration = true;
     }
 }

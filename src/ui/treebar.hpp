@@ -396,6 +396,8 @@ private:
     static int CloneSlot();
     QRectF RightChipRect(int slot) const;
     QRect RightIconRect(int slot) const;
+    QRectF SoundChipRect() const;
+    static QRect IconInChip(const QRectF &chip, const QSize &size);
 
     static QRect CenteredIconRect(const QRect &area, const QSize &size);
     friend class tst_treebaritem;

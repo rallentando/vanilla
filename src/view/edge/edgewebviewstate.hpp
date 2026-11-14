@@ -19,7 +19,6 @@
 #include <deque>
 #include <functional>
 #include "edgemenuitem.hpp"
-#include <QString>
 #include <QStringList>
 #include <QUrl>
 #include <QVariant>
@@ -30,8 +29,6 @@
 #include <QJsonValue>
 
 #include "loadending.hpp"
-
-#include <functional>
 
 struct EdgePendingLoad {
     QUrl url;

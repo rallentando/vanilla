@@ -75,6 +75,7 @@ public:
     static inline void AppendToAllViews(SharedView view){ m_AllViews.append(view);}
     static inline void PrependToAllViews(SharedView view){ m_AllViews.prepend(view);}
     static inline void RemoveFromAllViews(SharedView view){ m_AllViews.removeOne(view);}
+    static inline SharedViewList AllViews(){ return m_AllViews;}
 
     inline MainWindow *GetMainWindow() const { return static_cast<MainWindow*>(parentWidget());}
     inline Notifier *GetNotifier() const { return m_Notifier;}
@@ -82,6 +83,8 @@ public:
     QSize ViewSize() const;
     int MiniMapStripWidth() const;
     void SetMiniMapShelved(bool shelved);
+    inline MiniMap *GetMiniMap() const { return m_MiniMap;}
+    static bool CanHaveMiniMap(){ return !m_PurgeView;}
     inline Gadgets  *GetGadgets()  const { return m_Gadgets;}
     inline QGraphicsScene *GetScene() const { return m_Scene;}
     inline GraphicsView *GetView() const { return m_View;}
@@ -215,6 +218,7 @@ public:
 
     static void LoadSettings();
     static void SaveSettings();
+    static bool DrawsOnOpenGL();
 
     static void RebuildViewForOffTheRecord(ViewNode *vn);
 
@@ -378,11 +382,10 @@ public slots:
     void OpenDownloads();
     void ShowDownloads();
 
-    void ToggleNotifier();
-    void ToggleReceiver();
     void ToggleMenuBar();
     void ToggleTreeBar();
     void ToggleToolBar();
+    void ToggleMiniMap();
     void ToggleFullScreen();
     void ToggleMaximized();
     void ToggleMinimized();
@@ -439,6 +442,8 @@ public slots:
     void OpenQueryEditor      (SharedView view = nullptr);
     void OpenUrlEditor        (SharedView view = nullptr);
     void OpenCommand          (SharedView view = nullptr);
+    void OpenCommandAtField(QWidget *field);
+    bool WantsReceiverJoined() const;
     void ReleaseHiddenView    (SharedView view = nullptr);
     void Load                 (SharedView view = nullptr);
 
@@ -535,12 +540,11 @@ private:
     static bool m_PurgeNotifier;
     static bool m_PurgeReceiver;
     static bool m_PurgeView;
-    static bool m_EnableMiniMap;
     static bool m_EnableNotifierScrollArea;
     static int  m_MaxViewCount;
     static int  m_MaxTrashEntryCount;
     static enum Viewport {
-        Widget, GLWidget, OpenGLWidget
+        Widget, OpenGLWidget
     } m_Viewport;
 
     static QMap<QKeySequence, QString> m_KeyMap;

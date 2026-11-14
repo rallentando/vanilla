@@ -5,6 +5,7 @@
 #include "devicescale.hpp"
 
 #include "extensionbar.hpp"
+#include "panelwindow.hpp"
 
 #include <functional>
 
@@ -40,60 +41,18 @@
 #  include <QQuickWidget>
 #endif
 
-class ExtensionWindow : public QWidget {
-public:
-    ExtensionWindow(QWidget *parent, Qt::WindowFlags flags, bool translucent = false)
-        : QWidget(parent, flags)
-        , m_Translucent(translucent)
-    {
-        setAttribute(Qt::WA_DeleteOnClose);
-        if(m_Translucent) setAttribute(Qt::WA_TranslucentBackground);
-        ApplyTheme();
-    }
-    ~ExtensionWindow() override {}
-
-    void ApplyTheme(){
-        setPalette(Theme::PanelPalette(palette()));
-        update();
-    }
-
-protected:
-    void paintEvent(QPaintEvent *ev) override {
-        Q_UNUSED(ev)
-        QPainter painter(this);
-        painter.setPen(Theme::Pen(Theme::PreviewBorder));
-        if(m_Translucent){
-            painter.setRenderHint(QPainter::Antialiasing, true);
-            painter.setBrush(Theme::Brush(Theme::PreviewBackgroundTranslucent));
-            const int radius = DeviceScale::FromDpi(DIALOG_CORNER_RADIUS, static_cast<int>(logicalDpiY()));
-            const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
-            painter.drawRoundedRect(card, radius, radius);
-            return;
-        }
-        painter.setBrush(Theme::Brush(Theme::PreviewBackground));
-        painter.drawRect(rect().adjusted(0, 0, -1, -1));
-    }
-    void showEvent(QShowEvent *ev) override {
-        QWidget::showEvent(ev);
-        if(m_Translucent) BlurBehind::Apply(this);
-    }
-
-private:
-    bool m_Translucent;
-};
-
 namespace {
 
     QPoint Place(const QSize &size, const QWidget *anchor);
 
-    class ExtensionPopup : public ExtensionWindow {
+    class ExtensionPopup : public PanelWindow {
     public:
         QPointer<QWidget> m_Anchor;
         QPointer<QLabel> m_Title;
         QString m_Name;
 
         ExtensionPopup(QWidget *parent, bool toolWindow)
-            : ExtensionWindow(parent, toolWindow
+            : PanelWindow(parent, toolWindow
                               ? Qt::Tool | Qt::FramelessWindowHint
                               : Qt::Popup)
         {
@@ -103,7 +62,7 @@ namespace {
 
     protected:
         void resizeEvent(QResizeEvent *ev) override {
-            ExtensionWindow::resizeEvent(ev);
+            PanelWindow::resizeEvent(ev);
             if(m_Title)
                 m_Title->setText(m_Title->fontMetrics().elidedText(m_Name, Qt::ElideRight, qMax(0, m_Title->width())));
             if(m_Anchor && isVisible()) move(Place(size(), m_Anchor));
@@ -114,7 +73,7 @@ namespace {
                 close();
                 return true;
             }
-            return ExtensionWindow::event(ev);
+            return PanelWindow::event(ev);
         }
     };
 
@@ -152,10 +111,6 @@ namespace {
         QIcon icon(pin);
         icon.addPixmap(Theme::Fill(pin, Theme::PreviewBackground), QIcon::Normal, QIcon::On);
         return icon;
-    }
-    QIcon CloseIcon(){
-        return QIcon(Theme::Pixmap(QStringLiteral(":/resources/treebar/close.png"),
-                                   Theme::PreviewText));
     }
 
     bool CanOpen(const ExtensionRow &row){
@@ -234,10 +189,18 @@ ExtensionBar::ExtensionBar(QWidget *parent)
     m_Button->setIcon(PuzzleIcon());
     m_Layout->addWidget(m_Button);
     connect(m_Button, &QToolButton::clicked, this, &ExtensionBar::ShowList);
+    installEventFilter(this);
 }
 
 ExtensionBar::~ExtensionBar(){
     ClosePopup();
+}
+
+bool ExtensionBar::eventFilter(QObject *watched, QEvent *ev){
+    if((ev->type() == QEvent::Move || ev->type() == QEvent::Resize) &&
+       m_List && m_List->isVisible())
+        m_List->move(Place(m_List->size(), this));
+    return QWidget::eventFilter(watched, ev);
 }
 
 QToolButton *ExtensionBar::BarButton(const QString &text){
@@ -327,16 +290,18 @@ void ExtensionBar::Refresh(){
         RefreshList();
         return;
     }
-    foreach(QToolButton *pin, m_Pins){
-        m_Layout->removeWidget(pin);
-        pin->deleteLater();
-    }
+    QHash<QString, QToolButton*> kept;
+    for(int i = 0; i < m_Pins.size(); i++) kept.insert(m_PinKeys.at(i), m_Pins.at(i));
     m_Pins.clear();
     m_PinKeys = keys;
-    if(m_Controller){
-        foreach(const ExtensionRow &row, m_Controller->Rows()){
-            if(!row.registered || !row.pinned) continue;
-            QToolButton *button = BarButton(row.manifest.name);
+    for(int i = 0; i < pinned.size(); i++){
+        const ExtensionRow &row = pinned.at(i);
+        QToolButton *button = kept.take(keys.at(i));
+        if(button){
+            Decorate(button, row);
+            m_Layout->removeWidget(button);
+        } else {
+            button = BarButton(row.manifest.name);
             button->setObjectName(QStringLiteral("PinnedExtension_") + row.manifest.id);
             Decorate(button, row);
             connect(button, &QToolButton::clicked, this,
@@ -344,10 +309,22 @@ void ExtensionBar::Refresh(){
             button->setContextMenuPolicy(Qt::CustomContextMenu);
             connect(button, &QToolButton::customContextMenuRequested, this,
                     [this, button, path = row.manifest.path](const QPoint &pos){ More(path, button, button->mapToGlobal(pos));});
-            m_Layout->insertWidget(m_Layout->count() - 1, button);
-            m_Pins.append(button);
         }
+        m_Layout->insertWidget(i, button);
+        button->show();
+        m_Pins.append(button);
     }
+    for(QToolButton *gone : std::as_const(kept)){
+        m_Layout->removeWidget(gone);
+        gone->hide();
+        gone->deleteLater();
+    }
+    updateGeometry();
+    if(QWidget *owner = parentWidget()){
+        QEvent request(QEvent::LayoutRequest);
+        QCoreApplication::sendEvent(owner, &request);
+    }
+    m_Layout->activate();
     RefreshList();
 }
 
@@ -453,7 +430,7 @@ void ExtensionBar::ShowList(){
         return;
     }
     ClosePopup();
-    ExtensionWindow *panel = new ExtensionWindow(this, Qt::Popup, BlurBehind::Enabled());
+    PanelWindow *panel = new PanelWindow(this, Qt::Popup, BlurBehind::Enabled());
     m_List = panel;
     panel->setObjectName(QStringLiteral("ExtensionsPanel"));
     panel->setFixedWidth(ScaleByDevice(EXTENSION_LIST_WIDTH));
@@ -462,14 +439,20 @@ void ExtensionBar::ShowList(){
     QVBoxLayout *layout = new QVBoxLayout(panel);
     layout->setContentsMargins(padding, padding, padding, padding);
 
+    const int indent = padding / 2 + 2
+        + panel->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, panel);
+
     QLabel *title = new QLabel(tr("Extensions"), panel);
     title->setFont(ExtensionListTitleFont());
+    title->setContentsMargins(indent, 0, 0, 0);
     layout->addWidget(title);
 
     QLabel *note = new QLabel(tr("Registration, enabled state and pins are shared by normal profiles.\n"
                                  "Reload the page after a change."),
                               panel);
     note->setWordWrap(true);
+    note->setContentsMargins(indent, 0, 0, 0);
+    MakePanelQuiet(note);
     layout->addWidget(note);
 
     layout->addSpacing(padding / 2);
@@ -491,7 +474,7 @@ void ExtensionBar::ShowList(){
     layout->addLayout(buttons);
 
     RefreshList();
-    Show(panel, m_Button);
+    Show(panel, this);
 }
 
 void ExtensionBar::ManageExtensions(){
@@ -510,7 +493,6 @@ void ExtensionBar::RefreshList(){
     if(old) old->deleteLater();
 
     QWidget *body = new QWidget;
-    body->setAutoFillBackground(false);
     QVBoxLayout *layout = new QVBoxLayout(body);
     const int inset = ScaleByDevice(EXTENSION_PANEL_PADDING / 2);
     layout->setContentsMargins(inset, inset, inset, inset);
@@ -588,6 +570,7 @@ void ExtensionBar::RefreshList(){
         }
     }
     m_Rows->setWidget(body);
+    body->setAutoFillBackground(false);
 
     const QMargins margins = m_List->layout()->contentsMargins();
     const int width = m_List->width() - margins.left() - margins.right();
@@ -595,7 +578,8 @@ void ExtensionBar::RefreshList(){
                                                  : body->sizeHint().height();
     const int height = qMin(ScaleByDevice(EXTENSION_LIST_ROWS_MAX_HEIGHT), wanted);
     m_Rows->setFixedHeight(qMax(m_Rows->fontMetrics().height(), height));
-    if(m_List->isVisible()) Show(m_List, m_Button);
+    SpreadPanelAccent(m_List);
+    if(m_List->isVisible()) Show(m_List, this);
 }
 
 void ExtensionBar::ClosePopup(){
@@ -646,7 +630,7 @@ void ExtensionBar::Open(const QString &path, bool options){
         panel->m_Name = row.manifest.name;
         header->addWidget(title, 1);
         QToolButton *closeButton = Button(panel, tr("Close"));
-        closeButton->setIcon(CloseIcon());
+        closeButton->setIcon(PanelCloseIcon());
         connect(closeButton, &QToolButton::clicked, panel, &QWidget::close);
         header->addWidget(closeButton);
         layout->addLayout(header);
@@ -668,8 +652,8 @@ void ExtensionBar::Open(const QString &path, bool options){
                                 ScaleByDevice(EXTENSION_POPUP_SIZE.height()));
         layout->addWidget(content);
 
-        panel->m_Anchor = m_Button;
-        Show(panel, m_Button);
+        panel->m_Anchor = this;
+        Show(panel, this);
         if(toolWindow) panel->activateWindow();
         content->setFocus();
         return;

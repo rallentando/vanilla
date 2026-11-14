@@ -13,14 +13,15 @@
     F(Up) F(Down) F(Right) F(Left) \
     F(Home) F(End) F(PageUp) F(PageDown) \
     F(Import) F(Export) F(AboutVanilla) F(AboutQt) \
-    F(OpenDirectorySettings) F(OpenSettings) F(Quit) F(ToggleNotifier) \
+    F(OpenDirectorySettings) F(OpenSettings) F(Quit) \
     F(ClearCookies) F(ClearHttpCache) F(ClearVisitedLinks) F(ClearPasswords) \
     F(OpenPasswords) F(OpenDownloads) F(ShowDownloads) \
     F(PasteAndMatchStyle) F(ToggleBold) F(ToggleItalic) F(ToggleUnderline) \
     F(ToggleStrikethrough) F(AlignLeft) F(AlignCenter) F(AlignRight) \
     F(AlignJustified) F(Indent) F(Outdent) F(InsertOrderedList) \
     F(InsertUnorderedList) F(ChangeTextDirectionLTR) F(ChangeTextDirectionRTL) \
-    F(ToggleReceiver) F(ToggleMenuBar) F(ToggleTreeBar) F(ToggleToolBar) \
+    F(ToggleMenuBar) F(ToggleTreeBar) F(ToggleToolBar) \
+    F(ToggleMiniMap) \
     F(ToggleFullScreen) F(ToggleMaximized) F(ToggleMinimized) F(ToggleShaded) \
     F(ShadeWindow) F(UnshadeWindow) F(NewWindow) F(CloseWindow) \
     F(SwitchWindow) F(NextWindow) F(PrevWindow) F(Back) \
@@ -91,7 +92,7 @@ bool IsSignalAction(const QString &action);
 
 QStringList ArgumentCommands();
 
-QStringList FirstCommands();
+QStringList FirstCommands(bool tabList);
 QStringList AllCommands();
 
 QStringList Suggestions(const QString &typed, int limit,

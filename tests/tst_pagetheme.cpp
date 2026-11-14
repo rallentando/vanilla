@@ -245,6 +245,7 @@ void tst_pagetheme::theGeneratedValuesComeFromThePalette_data(){
     ROW("--accent",     VanillaPageAccent);
     ROW("--accent-fg",  VanillaPageAccentText);
     ROW("--field-bg",   VanillaPageFieldBackground);
+    ROW("--raised",     VanillaPageRaised);
     ROW("--invalid",    VanillaPageInvalidBorder);
     ROW("--toast-bg",   VanillaPageToastBackground);
     ROW("--toast-fg",   VanillaPageToastText);

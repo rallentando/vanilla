@@ -7,6 +7,7 @@
 #include "mousemap.hpp"
 
 #include "treebank.hpp"
+#include "actiontext.hpp"
 
 #include <QApplication>
 
@@ -29,7 +30,6 @@
 #include <QStyle>
 #include <QTimer>
 #include <QElapsedTimer>
-#include <QProgressDialog>
 #ifdef WEBENGINEVIEW
 #  include <QWebEngineProfile>
 #endif
@@ -83,7 +83,6 @@ bool TreeBank::m_PurgeView = false;
 bool TreeBank::m_MovingSpace = false;
 QString TreeBank::m_MovingFrom = QString();
 QString TreeBank::m_MovingTo = QString();
-bool TreeBank::m_EnableMiniMap = false;
 bool TreeBank::m_EnableNotifierScrollArea = false;
 int  TreeBank::m_MaxViewCount = 0;
 int  TreeBank::m_MaxTrashEntryCount = 0;
@@ -120,15 +119,12 @@ TreeBank::TreeBank(QWidget *parent)
     , m_Notifier(new Notifier(this, m_PurgeNotifier || m_PurgeView))
     , m_Receiver(new Receiver(this, m_PurgeReceiver || m_PurgeView))
 {
-    m_MiniMap = (m_EnableMiniMap && !m_PurgeView) ? new MiniMap(this) : nullptr;
+    m_MiniMap = nullptr;
     m_Gadgets_ = SharedView(new Gadgets(this), &DeleteView);
     m_Gadgets_->SetThis(WeakView(m_Gadgets_));
     m_Gadgets = static_cast<Gadgets*>(m_Gadgets_.get());
 
-    if(m_Viewport == GLWidget){
-        m_View->setViewport(new QOpenGLWidget());
-
-    } else if(m_Viewport == OpenGLWidget){
+    if(DrawsOnOpenGL()){
         m_View->setViewport(new QOpenGLWidget());
     }
 
@@ -317,6 +313,8 @@ void TreeBank::ConnectToReceiver(){
                 this, QOverload<QString>::of(&TreeBank::OpenInNewIfNeed));
         connect(m_Receiver, &Receiver::SearchWith,
                 this, QOverload<QString, QString>::of(&TreeBank::OpenInNewIfNeed));
+        if(m_MiniMap)
+            connect(m_Receiver, &Receiver::SeekText, m_MiniMap, &MiniMap::SetSeekTerm);
     }
 }
 
@@ -644,16 +642,10 @@ bool TreeBank::RenameSpace(ViewNode *vn, const QString &before, const QString &a
     m_MovingFrom = from;
     m_MovingTo = to;
 
-    QProgressDialog *progress = new QProgressDialog
+    BusyDialog *progress = new BusyDialog
         (removing ? tr("Closing the data of \"%1\"...").arg(from)
-                  : tr("Moving the data of \"%1\" to \"%2\"...").arg(from, to), QString(), 0, 0,
-         Application::GetCurrentWindow());
-    progress->setWindowModality(Qt::ApplicationModal);
-    progress->setCancelButton(nullptr);
-    progress->setMinimumDuration(0);
-    progress->setAutoClose(false);
-    progress->setAutoReset(false);
-    progress->show();
+                  : tr("Moving the data of \"%1\" to \"%2\"...").arg(from, to));
+    progress->Open();
 
     const QSet<QObject*> ours(profiles.begin(), profiles.end());
     const QString edgeName = NetworkController::ProfileStorageName(from);
@@ -750,15 +742,8 @@ bool TreeBank::MergeSpace(ViewNode *vn, const QString &before, const QString &af
     m_MovingSpace = true;
     m_MovingFrom = from;
     m_MovingTo = to;
-    QProgressDialog *progress = new QProgressDialog
-        (tr("Joining \"%1\" to \"%2\"...").arg(from, to), QString(), 0, 0,
-         Application::GetCurrentWindow());
-    progress->setWindowModality(Qt::ApplicationModal);
-    progress->setCancelButton(nullptr);
-    progress->setMinimumDuration(0);
-    progress->setAutoClose(false);
-    progress->setAutoReset(false);
-    progress->show();
+    BusyDialog *progress = new BusyDialog(tr("Joining \"%1\" to \"%2\"...").arg(from, to));
+    progress->Open();
 
     const QString edgeFrom = NetworkController::ProfileStorageName(from);
     const QString edgeTo = NetworkController::ProfileStorageName(to);
@@ -1413,12 +1398,11 @@ void TreeBank::LoadSettings(){
     m_PurgeNotifier        = s.value(QStringLiteral("application/@PurgeNotifier")        , false).value<bool>();
     m_PurgeReceiver        = s.value(QStringLiteral("application/@PurgeReceiver")        , false).value<bool>();
     m_PurgeView            = s.value(QStringLiteral("application/@PurgeView")            , false).value<bool>();
-    m_EnableMiniMap        = s.value(QStringLiteral("application/@EnableMiniMap")        , false).value<bool>();
     m_EnableNotifierScrollArea = s.value(QStringLiteral("application/@EnableNotifierScrollArea"), false).value<bool>();
 
     QString viewport = s.value(QStringLiteral("application/@Viewport"), QStringLiteral("Widget")).value<QString>();
     if(viewport == QStringLiteral("Widget"))       m_Viewport = Widget;
-    if(viewport == QStringLiteral("GLWidget"))     m_Viewport = GLWidget;
+    if(viewport == QStringLiteral("GLWidget"))     m_Viewport = OpenGLWidget;
     if(viewport == QStringLiteral("OpenGLWidget")) m_Viewport = OpenGLWidget;
 
     if(m_MaxViewCount == -1)       m_MaxViewCount       = s.value(QStringLiteral("application/@MaxView")  , -1).value<int>();
@@ -1457,11 +1441,9 @@ void TreeBank::SaveSettings(){
     s.setValue(QStringLiteral("application/@PurgeNotifier"),        m_PurgeNotifier);
     s.setValue(QStringLiteral("application/@PurgeReceiver"),        m_PurgeReceiver);
     s.setValue(QStringLiteral("application/@PurgeView"),            m_PurgeView);
-    s.setValue(QStringLiteral("application/@EnableMiniMap"),        m_EnableMiniMap);
     s.setValue(QStringLiteral("application/@EnableNotifierScrollArea"), m_EnableNotifierScrollArea);
 
     if(m_Viewport == Widget)       s.setValue(QStringLiteral("application/@Viewport"), QStringLiteral("Widget"));
-    if(m_Viewport == GLWidget)     s.setValue(QStringLiteral("application/@Viewport"), QStringLiteral("GLWidget"));
     if(m_Viewport == OpenGLWidget) s.setValue(QStringLiteral("application/@Viewport"), QStringLiteral("OpenGLWidget"));
 
     InputMap::SaveKeyMap(s, QStringLiteral("application/keymap"), m_KeyMap);
@@ -1470,6 +1452,10 @@ void TreeBank::SaveSettings(){
     Node::SaveSettings();
     View::SaveSettings();
     Gadgets::SaveSettings();
+}
+
+bool TreeBank::DrawsOnOpenGL(){
+    return m_Viewport == OpenGLWidget && !Application::EnableTransparentWindow();
 }
 
 void TreeBank::QuarantineViewNode(ViewNode *vn){
@@ -2061,6 +2047,7 @@ bool TreeBank::SetCurrent(Node *nd){
     Q_ASSERT(m_CurrentView);
 
     if(prev != m_CurrentView){
+        GetMainWindow()->CurrentViewChanged();
         ToolBar *bar = GetMainWindow()->GetToolBar();
         if(prev){
             prev->UpdateThumbnail();
@@ -2153,7 +2140,7 @@ bool TreeBank::SetCurrent(Node *nd){
     }
 
     if(PurgeView()){
-        parentWidget()->raise();
+        GetMainWindow()->raise();
         m_CurrentView->raise();
     }
     GetMainWindow()->SetInspectorPane(m_CurrentView->InspectorPane());
@@ -2551,8 +2538,6 @@ QMenu *TreeBank::DisplayMenu(){
     menu->setToolTipsVisible(true);
     connect(menu, &QMenu::aboutToShow, this, [this, menu](){ ShowKeys(menu);});
 
-    menu->addAction(Action(_ToggleNotifier));
-    menu->addAction(Action(_ToggleReceiver));
     GetMainWindow()->AddDisplayMenuActions(menu);
     UpdateAction();
 
@@ -2567,7 +2552,7 @@ QMenu *TreeBank::WindowMenu(){
     menu->addAction(Action(_ToggleFullScreen));
     menu->addAction(Action(_ToggleMaximized));
     menu->addAction(Action(_ToggleMinimized));
-    if(Application::EnableFramelessWindow())
+    if(Application::EnableCustomTitleBar())
         menu->addAction(Action(_ToggleShaded));
     menu->addAction(Action(_NewWindow));
     menu->addAction(Action(_CloseWindow));
@@ -3061,54 +3046,30 @@ void TreeBank::ClearPasswords(){
     NetworkController::ClearPasswords();
 }
 
-void TreeBank::ToggleNotifier(){
-    if(m_Notifier){
-        m_Notifier->deleteLater();
-        m_Notifier = nullptr;
+void TreeBank::ToggleMiniMap(){
+    if(!m_MiniMap && !CanHaveMiniMap()) return;
+    if(m_MiniMap){
+        m_MiniMap->hide();
+        m_MiniMap->deleteLater();
+        m_MiniMap = nullptr;
     } else {
-        bool purge = m_PurgeNotifier || m_PurgeView || m_CurrentView->ForbidToOverlap();
-
-        if(m_Gadgets && m_Gadgets->IsActive())
-            m_Gadgets->Disconnect(this);
-        else if(m_CurrentView)
-            m_CurrentView->Disconnect(this);
-
-        m_Notifier = new Notifier(this, purge);
-
-        if(m_Gadgets && m_Gadgets->IsActive())
-            m_Gadgets->Connect(this);
-        else if(m_CurrentView)
-            m_CurrentView->Connect(this);
-
-        ConnectToNotifier();
-
-        if(m_Notifier->IsPurged())
-            GetMainWindow()->SetFocus();
+        m_MiniMap = new MiniMap(this);
+        if(m_Receiver)
+            connect(m_Receiver, &Receiver::SeekText, m_MiniMap, &MiniMap::SetSeekTerm);
+        m_MiniMap->SetShelved(GetMainWindow()->IsContentFullScreen());
+        m_MiniMap->ResizeNotify(size());
+        if(m_CurrentView) m_MiniMap->SetView(m_CurrentView.get());
+        if(m_Receiver && m_Receiver->isVisible()){
+            const QString words = m_Receiver->SoughtWords();
+            if(!words.isEmpty()) m_MiniMap->SetSeekTerm(words);
+        }
+        RestackChildWidgets();
     }
-    UpdateAction();
-}
-
-void TreeBank::ToggleReceiver(){
-    if(m_Receiver){
-        m_Receiver->deleteLater();
-        m_Receiver = nullptr;
-    } else {
-        bool purge = m_PurgeReceiver || m_PurgeView || m_CurrentView->ForbidToOverlap();
-
-        if(m_Gadgets && m_Gadgets->IsActive())
-            m_Gadgets->Disconnect(this);
-        else if(m_CurrentView)
-            m_CurrentView->Disconnect(this);
-
-        m_Receiver = new Receiver(this, purge);
-
-        if(m_Gadgets && m_Gadgets->IsActive())
-            m_Gadgets->Connect(this);
-        else if(m_CurrentView)
-            m_CurrentView->Connect(this);
-
-        ConnectToReceiver();
-    }
+    const QSize viewSize = ViewSize();
+    ResizeViewArea(viewSize);
+    if(m_CurrentView) m_CurrentView->resize(viewSize);
+    if(m_Notifier) m_Notifier->ResizeNotify(size());
+    if(m_Receiver) m_Receiver->ResizeNotify(size());
     UpdateAction();
 }
 
@@ -3724,8 +3685,15 @@ void TreeBank::OpenUrlEditor(SharedView view){
 
 void TreeBank::OpenCommand(SharedView view){
     if(!view) view = m_CurrentView;
-    if(!m_Receiver) ToggleReceiver();
     m_Receiver->OpenCommand(view.get());
+}
+
+void TreeBank::OpenCommandAtField(QWidget *field){
+    m_Receiver->OpenAtField(field);
+}
+
+bool TreeBank::WantsReceiverJoined() const {
+    return !m_PurgeReceiver && !m_PurgeView && !(m_CurrentView && m_CurrentView->ForbidToOverlap());
 }
 
 void TreeBank::ReleaseHiddenView(SharedView){
@@ -3877,11 +3845,10 @@ void TreeBank::OpenWithCommand(QString name, SharedView view){
 }
 
 void TreeBank::UpdateAction(){
-    Action(_ToggleNotifier)->setChecked(m_Notifier);
-    Action(_ToggleReceiver)->setChecked(m_Receiver);
     Action(_ToggleMenuBar)->setChecked(!GetMainWindow()->IsMenuBarEmpty());
     Action(_ToggleTreeBar)->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
     Action(_ToggleToolBar)->setChecked(GetMainWindow()->GetToolBar()->isVisible());
+    Action(_ToggleMiniMap)->setChecked(m_MiniMap);
 }
 
 bool TreeBank::TriggerAction(QString str){
@@ -3950,11 +3917,10 @@ QAction *TreeBank::Action(TreeBankAction a){
     QAction *action = m_ActionTable[a];
     if(action){
         switch(a){
-        case _ToggleNotifier: action->setChecked(m_Notifier); break;
-        case _ToggleReceiver: action->setChecked(m_Receiver); break;
         case _ToggleMenuBar:  action->setChecked(!GetMainWindow()->IsMenuBarEmpty()); break;
         case _ToggleTreeBar:  action->setChecked(GetMainWindow()->GetTreeBar()->isVisible()); break;
         case _ToggleToolBar:  action->setChecked(GetMainWindow()->GetToolBar()->isVisible()); break;
+        case _ToggleMiniMap:  action->setChecked(m_MiniMap); break;
         default: break;
         }
         return action;
@@ -3965,182 +3931,55 @@ QAction *TreeBank::Action(TreeBankAction a){
     SetActionIcon(action, a);
     action->setObjectName(ActionToString(a));
 
+    if(a != _NoAction){
+        const QString label = ActionText::MenuLabel(ActionToString(a));
+        action->setText(label);
+        action->setToolTip(label);
+    }
+
     switch(a){
     case _NoAction: break;
 
-#define DEFINE_ACTION(name, text)                                       \
+#define CONNECT_ACTION(name)                                            \
         case _##name:                                                   \
-            action->setText(text);                                      \
-            action->setToolTip(text);                                   \
             connect(action, SIGNAL(triggered()),                        \
                     this,   SLOT(name##Key()));                         \
-            break
+            break;
 
-        DEFINE_ACTION(Up,       tr("UpKey"));
-        DEFINE_ACTION(Down,     tr("DownKey"));
-        DEFINE_ACTION(Right,    tr("RightKey"));
-        DEFINE_ACTION(Left,     tr("LeftKey"));
-        DEFINE_ACTION(Home,     tr("HomeKey"));
-        DEFINE_ACTION(End,      tr("EndKey"));
-        DEFINE_ACTION(PageUp,   tr("PageUpKey"));
-        DEFINE_ACTION(PageDown, tr("PageDownKey"));
+        FOR_EACH_KEYBOARD_EVENTS(CONNECT_ACTION)
 
-#undef  DEFINE_ACTION
-#define DEFINE_ACTION(name, text)                                       \
+#undef  CONNECT_ACTION
+#define CONNECT_ACTION(name)                                            \
         case _##name:                                                   \
-            action->setText(text);                                      \
-            action->setToolTip(text);                                   \
             connect(action, SIGNAL(triggered()),                        \
                     this,   SLOT(name()));                              \
-            break
+            break;
 
-        DEFINE_ACTION(Import,       tr("Import"));
-        DEFINE_ACTION(Export,       tr("Export"));
-        DEFINE_ACTION(AboutVanilla, tr("AboutVanilla"));
-        DEFINE_ACTION(AboutQt,      tr("AboutQt"));
-        DEFINE_ACTION(OpenSettings, tr("Settings"));
-        DEFINE_ACTION(OpenDirectorySettings, tr("DirectorySettings"));
-        DEFINE_ACTION(Quit,         tr("Quit"));
+        FOR_EACH_APPLICATION_EVENTS(CONNECT_ACTION)
+        FOR_EACH_NAVIGATION_EVENTS(CONNECT_ACTION)
+        FOR_EACH_VIEW_EVENTS(CONNECT_ACTION)
+        FOR_EACH_WEB_EVENTS1(CONNECT_ACTION)
 
-        DEFINE_ACTION(ClearCookies,      tr("ClearCookies"));
-        DEFINE_ACTION(ClearHttpCache,    tr("ClearHttpCache"));
-        DEFINE_ACTION(ClearVisitedLinks, tr("ClearVisitedLinks"));
-        DEFINE_ACTION(ClearPasswords,    tr("ClearPasswords"));
-        DEFINE_ACTION(OpenPasswords,     tr("OpenPasswords"));
-        DEFINE_ACTION(OpenDownloads,     tr("OpenDownloads"));
-        DEFINE_ACTION(ShowDownloads,     tr("ShowDownloads"));
-
-        DEFINE_ACTION(ToggleNotifier,   tr("ToggleNotifier"));
-        DEFINE_ACTION(ToggleReceiver,   tr("ToggleReceiver"));
-        DEFINE_ACTION(ToggleMenuBar,    tr("ToggleMenuBar"));
-        DEFINE_ACTION(ToggleTreeBar,    tr("ToggleTreeBar"));
-        DEFINE_ACTION(ToggleToolBar,    tr("ToggleToolBar"));
-        DEFINE_ACTION(ToggleFullScreen, tr("ToggleFullScreen"));
-        DEFINE_ACTION(ToggleMaximized,  tr("ToggleMaximized"));
-        DEFINE_ACTION(ToggleMinimized,  tr("ToggleMinimized"));
-        DEFINE_ACTION(ToggleShaded,     tr("ToggleShaded"));
-        DEFINE_ACTION(ShadeWindow,      tr("ShadeWindow"));
-        DEFINE_ACTION(UnshadeWindow,    tr("UnshadeWindow"));
-        DEFINE_ACTION(NewWindow,        tr("NewWindow"));
-        DEFINE_ACTION(CloseWindow,      tr("CloseWindow"));
-        DEFINE_ACTION(SwitchWindow,     tr("SwitchWindow"));
-        DEFINE_ACTION(NextWindow,       tr("NextWindow"));
-        DEFINE_ACTION(PrevWindow,       tr("PrevWindow"));
-
-        DEFINE_ACTION(Back,             tr("Back"));
-        DEFINE_ACTION(Forward,          tr("Forward"));
-        DEFINE_ACTION(Rewind,           tr("Rewind"));
-        DEFINE_ACTION(FastForward,      tr("FastForward"));
-        DEFINE_ACTION(UpDirectory,      tr("UpDirectory"));
-        DEFINE_ACTION(Close,            tr("Close"));
-        DEFINE_ACTION(Restore,          tr("Restore"));
-        DEFINE_ACTION(Recreate,         tr("Recreate"));
-        DEFINE_ACTION(NextView,         tr("NextView"));
-        DEFINE_ACTION(PrevView,         tr("PrevView"));
-        DEFINE_ACTION(BuryView,         tr("BuryView"));
-        DEFINE_ACTION(DigView,          tr("DigView"));
-        DEFINE_ACTION(FirstView,        tr("FirstView"));
-        DEFINE_ACTION(SecondView,       tr("SecondView"));
-        DEFINE_ACTION(ThirdView,        tr("ThirdView"));
-        DEFINE_ACTION(FourthView,       tr("FourthView"));
-        DEFINE_ACTION(FifthView,        tr("FifthView"));
-        DEFINE_ACTION(SixthView,        tr("SixthView"));
-        DEFINE_ACTION(SeventhView,      tr("SeventhView"));
-        DEFINE_ACTION(EighthView,       tr("EighthView"));
-        DEFINE_ACTION(NinthView,        tr("NinthView"));
-        DEFINE_ACTION(TenthView,        tr("TenthView"));
-        DEFINE_ACTION(LastView,         tr("LastView"));
-        DEFINE_ACTION(NewViewNode,      tr("NewViewNode"));
-        DEFINE_ACTION(CloneViewNode,    tr("CloneViewNode"));
-
-        DEFINE_ACTION(DisplayAccessKey, tr("DisplayAccessKey"));
-        DEFINE_ACTION(DisplayViewTree,  tr("DisplayViewTree"));
-        DEFINE_ACTION(DisplayTrashTree, tr("DisplayTrashTree"));
-
-        DEFINE_ACTION(OpenTextSeeker,   tr("OpenTextSeeker"));
-        DEFINE_ACTION(OpenQueryEditor,  tr("OpenQueryEditor"));
-        DEFINE_ACTION(OpenUrlEditor,    tr("OpenUrlEditor"));
-        DEFINE_ACTION(OpenCommand,      tr("OpenCommand"));
-        DEFINE_ACTION(ReleaseHiddenView,tr("ReleaseHiddenView"));
-        DEFINE_ACTION(Load,             tr("Load"));
-
-        DEFINE_ACTION(Copy,                 tr("Copy"));
-        DEFINE_ACTION(Cut,                  tr("Cut"));
-        DEFINE_ACTION(Paste,                tr("Paste"));
-
-        DEFINE_ACTION(PasteAndMatchStyle,     tr("PasteAndMatchStyle"));
-        DEFINE_ACTION(ToggleBold,             tr("ToggleBold"));
-        DEFINE_ACTION(ToggleItalic,           tr("ToggleItalic"));
-        DEFINE_ACTION(ToggleUnderline,        tr("ToggleUnderline"));
-        DEFINE_ACTION(ToggleStrikethrough,    tr("ToggleStrikethrough"));
-        DEFINE_ACTION(AlignLeft,              tr("AlignLeft"));
-        DEFINE_ACTION(AlignCenter,            tr("AlignCenter"));
-        DEFINE_ACTION(AlignRight,             tr("AlignRight"));
-        DEFINE_ACTION(AlignJustified,         tr("AlignJustified"));
-        DEFINE_ACTION(Indent,                 tr("Indent"));
-        DEFINE_ACTION(Outdent,                tr("Outdent"));
-        DEFINE_ACTION(InsertOrderedList,      tr("InsertOrderedList"));
-        DEFINE_ACTION(InsertUnorderedList,    tr("InsertUnorderedList"));
-        DEFINE_ACTION(ChangeTextDirectionLTR, tr("ChangeTextDirectionLTR"));
-        DEFINE_ACTION(ChangeTextDirectionRTL, tr("ChangeTextDirectionRTL"));
-
-        DEFINE_ACTION(Undo,                 tr("Undo"));
-        DEFINE_ACTION(Redo,                 tr("Redo"));
-        DEFINE_ACTION(SelectAll,            tr("SelectAll"));
-        DEFINE_ACTION(Unselect,             tr("Unselect"));
-        DEFINE_ACTION(Reload,               tr("Reload"));
-        DEFINE_ACTION(ReloadAndBypassCache, tr("ReloadAndBypassCache"));
-        DEFINE_ACTION(Stop,                 tr("Stop"));
-        DEFINE_ACTION(StopAndUnselect,      tr("StopAndUnselect"));
-
-        DEFINE_ACTION(Print,                tr("Print"));
-        DEFINE_ACTION(Save,                 tr("Save"));
-        DEFINE_ACTION(ZoomIn,               tr("ZoomIn"));
-        DEFINE_ACTION(ZoomOut,              tr("ZoomOut"));
-        DEFINE_ACTION(ViewSource,           tr("ViewSource"));
-        DEFINE_ACTION(ApplySource,          tr("ApplySource"));
-
-        DEFINE_ACTION(InspectElement,       tr("InspectElement"));
-
-        DEFINE_ACTION(CopyUrl,              tr("CopyUrl"));
-        DEFINE_ACTION(CopyTitle,            tr("CopyTitle"));
-        DEFINE_ACTION(CopyPageAsLink,       tr("CopyPageAsLink"));
-        DEFINE_ACTION(CopySelectedHtml,     tr("CopySelectedHtml"));
-        DEFINE_ACTION(OpenWithDefault,  tr("OpenWithDefault"));
-
-#undef  DEFINE_ACTION
+#undef  CONNECT_ACTION
     }
     switch(a){
 
-    case _ToggleNotifier:
-        action->setCheckable(true);
-        action->setChecked(m_Notifier);
-        action->setText(tr("Notifier"));
-        action->setToolTip(tr("Notifier"));
-        break;
-    case _ToggleReceiver:
-        action->setCheckable(true);
-        action->setChecked(m_Receiver);
-        action->setText(tr("Receiver"));
-        action->setToolTip(tr("Receiver"));
-        break;
     case _ToggleMenuBar:
         action->setCheckable(true);
         action->setChecked(!GetMainWindow()->IsMenuBarEmpty());
-        action->setText(tr("MenuBar"));
-        action->setToolTip(tr("MenuBar"));
         break;
     case _ToggleTreeBar:
         action->setCheckable(true);
         action->setChecked(GetMainWindow()->GetTreeBar()->isVisible());
-        action->setText(tr("TreeBar"));
-        action->setToolTip(tr("TreeBar"));
         break;
     case _ToggleToolBar:
         action->setCheckable(true);
         action->setChecked(GetMainWindow()->GetToolBar()->isVisible());
-        action->setText(tr("ToolBar"));
-        action->setToolTip(tr("ToolBar"));
+        break;
+    case _ToggleMiniMap:
+        action->setCheckable(true);
+        action->setChecked(m_MiniMap);
+        action->setEnabled(CanHaveMiniMap());
         break;
 
     default: break;

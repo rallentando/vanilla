@@ -106,7 +106,7 @@ body.wide #main { max-width: none; }
     cursor: pointer;
 }
 
-#nav button:hover { background: var(--bg-sunken); }
+#nav button:hover { background: var(--raised); }
 
 .nav-divider {
     margin: 8px 14px;
@@ -373,6 +373,53 @@ input[type="checkbox"] {
 .browse:hover { background: var(--bg-sunken); }
 .browse:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .browse:disabled { cursor: default; }
+
+.swatches {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.swatch {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.swatch.system {
+    width: auto;
+    padding: 0 8px;
+    background: var(--field-bg);
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+}
+
+.swatch[aria-pressed="true"],
+.pick.chosen {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pick .chip {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-small);
+}
 
 .row.invalid input, .row.invalid select, .row.invalid textarea {
     border-color: var(--invalid);

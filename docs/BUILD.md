@@ -1,6 +1,6 @@
 # ビルド手順
 
-最終更新: 2026-11-03
+最終更新: 2026-11-10
 
 この文書のパスは例で、版は vanilla の開発者が確かめたもの。パスは自分の環境に置き換えて読む。
 
@@ -181,9 +181,11 @@ cmake --preset release
 cmake --build --preset release
 ```
 
-> **`VSLANG=1033` を入れておくこと**（`set VSLANG=1033`）。ninja がヘッダ依存を拾うのは
-> `cl.exe` の `Note: including file:` を読めたときだけで、**日本語の `cl.exe` は別の行を出す**。
-> 読めないと **ヘッダだけを直したときに何も作り直されない**。
+> **configure と build の両方で `VSLANG=1033` を入れておくこと**（`set VSLANG=1033`）。ninja は
+> CMake が記録した接頭辞で `cl.exe` のヘッダ依存を読む。英語では `Note: including file:` となる。
+> 既存 tree の `CMakeFiles/rules.ninja` の `msvc_deps_prefix` が日本語のままだと、build で英語にするだけでは
+> **ヘッダだけの変更が再コンパイルされない**。使う CMake を明示して再 configure し、接頭辞が一致したことを確認する。
+> 依存が失われたオブジェクトがあるときは、`cmake --build --preset release --clean-first` で全体を作り直してから ctest を回す。
 
 プリセットが置き場・ジェネレータ・ビルド種別を持っているので、
 **`-B` も `-G` も `-DCMAKE_BUILD_TYPE=` も `-DCMAKE_PREFIX_PATH=` も要らない**
@@ -210,6 +212,11 @@ ctest --preset release
 ```
 
 `--output-on-failure` はテストプリセットに入っているので付けなくてよい。
+
+環境の用意（`vcvars64.bat`、`VSLANG=1033`、PATH）からビルド、成功したときだけ ctest までを 1 回で行う
+tools/winbuild/build.bat がある。ログは build tree に書く。場所の既定は上の例と同じで、
+`VANILLA_VCVARS` / `QTDIR` / `VANILLA_CMAKE_PATH` で変えられる。使いかたはファイルの先頭にある。
+
 プリセットを使わないなら従来どおり:
 
 ```bat

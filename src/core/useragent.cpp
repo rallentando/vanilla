@@ -10,17 +10,11 @@
 namespace UserAgent {
 
 static const Entry TheEntries[] = {
-    { "[iI](?:nternet)?[eE](?:xplorer)?", "IE",
-      "Mozilla/5.0 (%SYSTEM%; Trident/7.0; rv:11.0) like Gecko" },
-
     { "[eE]dge", "Edge",
       "Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%CHROMIUM% Safari/537.36 Edg/%CHROMIUM%" },
 
     { "[fF](?:ire)?[fF](?:ox)?", "Firefox",
       "Mozilla/5.0 (%SYSTEM%; rv:140.0) Gecko/20100101 Firefox/140.0" },
-
-    { "[oO]pera", "Opera",
-      "Opera/9.80 (%SYSTEM%) Presto/2.12.388 Version/12.18" },
 
     { "[oO][pP][rR]", "OPR",
       "Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%CHROMIUM% Safari/537.36 OPR/126.0.0.0" },
@@ -40,18 +34,6 @@ static const Entry TheEntries[] = {
 
     { "[vV]ivaldi", "Vivaldi",
       "Mozilla/5.0 (%SYSTEM%) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%CHROMIUM% Safari/537.36 Vivaldi/7.5" },
-
-    { "[nN]et[sS]cape", "NetScape",
-      "Mozilla/5.0 (Windows; U; %SYSTEM%; en-US; rv:1.7.2) Gecko/20040804 Netscape/7.2 (ax)" },
-
-    { "[sS]ea[mM]onkey", "SeaMonkey",
-      "Mozilla/5.0 (%SYSTEM%; rv:60.0) Gecko/20100101 Firefox/60.0 SeaMonkey/2.53.21" },
-
-    { "[iI][cC]ab", "iCab",
-      "Mozilla/5.0 (compatible; iCab 3.0.3; Macintosh; U; PPC Mac OS X)" },
-
-    { "[cC]amino", "Camino",
-      "Mozilla/5.0 (Macintosh; U; PPC Mac OS X 10.4; en; rv:1.9.2.24) Gecko/20111114 Camino/2.1 (like Firefox/3.6.24)" },
 
     { "[gG]ecko", "Gecko",
       "Mozilla/5.0 (%SYSTEM%; rv:140.0) Gecko/20100101" },
@@ -88,6 +70,12 @@ QString NameOf(const QString &value){
     return QString();
 }
 
+bool LooksLikeUserAgent(const QString &value){
+    static const QRegularExpression product(QStringLiteral(
+        "(?:\\A|\\s)[!#$%&'*+.^_`|~0-9A-Za-z-]+/[!#$%&'*+.^_`|~0-9A-Za-z-]+"));
+    return product.match(QUrl::fromPercentEncoding(value.toLatin1())).hasMatch();
+}
+
 const Entry *Find(const QString &name){
     for(const Entry &entry : Entries()){
         if(name == QString::fromLatin1(entry.name)) return &entry;
@@ -104,10 +92,8 @@ QString SettingsKey(const QString &name){
     return QStringLiteral("application/UserAgent_") + name;
 }
 
-QString Expand(QString tmpl, const QString &system,
-               const QString &location, const QString &chromium){
+QString Expand(QString tmpl, const QString &system, const QString &chromium){
     tmpl = tmpl.replace(QStringLiteral("%SYSTEM%"),   system)
-               .replace(QStringLiteral("%LOCATION%"), location)
                .replace(QStringLiteral("%CHROMIUM%"), chromium);
 
     return QUrl::fromPercentEncoding(tmpl.toLatin1());

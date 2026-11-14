@@ -39,6 +39,9 @@ namespace VanillaPage {
 
     bool IsPageUrl(const QUrl &url);
 
+    QString PermissionKindLabel(const QString &kind);
+    QString PermissionKindScope(const QString &kind);
+
     QByteArray WithInlinePalette(const QByteArray &html);
 
     QByteArray WithEmbeddedSchema(const QByteArray &html, const QByteArray &schemaJson);

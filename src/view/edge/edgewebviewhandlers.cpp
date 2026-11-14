@@ -294,6 +294,7 @@ void EdgeWebView::RegisterNavigationHandlers(){
              m_Impl->m_PageScroll = QPointF();
              m_Impl->m_PageContents = QSizeF();
              m_Impl->m_PageViewport = QSizeF();
+             m_Impl->m_FindTerm.clear();
              m_Impl->m_Document.NavigationStarted();
              emit loadStarted();
              emit loadProgress(0);

@@ -27,8 +27,6 @@
 
 #include <math.h>
 
-#define LAYER_ITEM_LAYER 0.0
-
 #define DELETED_NODE_LAYER 5.0
 #define UNFOLDING_NODE_LAYER 7.0
 #define NORMAL_NODE_LAYER 10.0
@@ -3106,25 +3104,29 @@ QRectF NodeItem::CloneButtonRect() const {
 QRectF NodeItem::SoundButtonRect() const {
     View *view = m_Node->GetView();
     if(!view || (!view->IsAudioMuted() && !view->RecentlyAudible())) return QRectF();
+    return SoundChipRect();
+}
+
+QRectF NodeItem::SoundChipRect() const {
     const QRectF bound = boundingRect();
     const int size = m_TreeBar->ScaleByDevice(16);
     const QRect centred = CenteredIconRect(TitleBandRect(bound), QSize(size, size));
-    QRectF rect = QRectF(QPointF(bound.left() + m_TreeBar->ScaleByDevice(4),
-                                centred.top()),
-                         QSizeF(size, size));
+    return QRectF(QPointF(bound.left() + m_TreeBar->ScaleByDevice(4),
+                          centred.top()),
+                  QSizeF(size, size));
+}
 
-    return rect;
+QRect NodeItem::IconInChip(const QRectF &chip, const QSize &size){
+    const QRect area = chip.toRect();
+    return QRect(QPoint(area.left() + (area.width() - size.width()) / 2,
+                        area.top() + (area.height() - size.height()) / 2),
+                 size);
 }
 
 QRect NodeItem::RightIconRect(int slot) const {
-    const QRectF bound = boundingRect();
     const QSize size(m_TreeBar->ScaleByDevice(10),
                      m_TreeBar->ScaleByDevice(10));
-    QRect rect = CenteredIconRect(TitleBandRect(bound), size);
-    rect.moveLeft(bound.bottomRight().toPoint().x()
-                  - m_TreeBar->ScaleByDevice(16)
-                  - slot * m_TreeBar->ScaleByDevice(18));
-    return rect;
+    return IconInChip(RightChipRect(slot), size);
 }
 
 QRect NodeItem::CloseIconRect() const {
@@ -3136,13 +3138,9 @@ QRect NodeItem::CloneIconRect() const {
 }
 
 QRect NodeItem::SoundIconRect() const {
-    const QRectF bound = boundingRect();
     const QSize size(m_TreeBar->ScaleByDevice(10),
                      m_TreeBar->ScaleByDevice(10));
-    QRect rect = CenteredIconRect(TitleBandRect(bound), size);
-    rect.moveLeft(bound.bottomLeft().toPoint().x()
-                  + m_TreeBar->ScaleByDevice(7));
-    return rect;
+    return IconInChip(SoundChipRect(), size);
 }
 
 int NodeItem::GetNest() const {

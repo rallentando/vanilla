@@ -2,6 +2,7 @@
 #include "const.hpp"
 #include "theme.hpp"
 #include "blurbehind.hpp"
+#include "ownedraise.hpp"
 #include "devicescale.hpp"
 #include "settingsschema.hpp"
 
@@ -10,6 +11,7 @@
 #include "extensioncontroller.hpp"
 #include "extensionbar.hpp"
 #include "downloadbar.hpp"
+#include "siteinfo.hpp"
 #include <VERSION>
 
 #include <algorithm>
@@ -44,6 +46,7 @@
 #include <QOperatingSystemVersion>
 #include <QStyleHints>
 #include <QProxyStyle>
+#include <QToolBar>
 #include <QMenu>
 #include <QEvent>
 #include <QPainter>
@@ -136,7 +139,8 @@ Settings    Application::m_IconTable         = Settings();
 
 bool        Application::m_EnableGoogleSuggest = false;
 QString     Application::m_SuggestEngine = QStringLiteral("Google");
-bool        Application::m_EnableFramelessWindow = false;
+bool        Application::m_EnableCustomTitleBar = false;
+QString     Application::m_WindowEdgeColor = QStringLiteral("#000000");
 bool        Application::m_EnableTransparentWindow = false;
 bool        Application::m_TransparentWindowEffective = false;
 bool        Application::m_EnableTranslucentPanels = false;
@@ -270,8 +274,33 @@ namespace {
                 painter->restore();
                 return;
             }
+            if(element == PE_PanelButtonTool && OnABar(widget) &&
+               (option->state & State_AutoRaise) && !(option->state & State_On)){
+                const bool pressed = option->state & State_Sunken;
+                if((option->state & State_Enabled) && (pressed || (option->state & State_MouseOver))){
+                    painter->save();
+                    painter->setRenderHint(QPainter::Antialiasing, true);
+                    painter->setPen(Qt::NoPen);
+                    const bool onField = widget->property(LineEdit::AddressHoverProperty).toBool();
+                    painter->setBrush(Theme::Brush(pressed ? Theme::BarButtonPressed
+                                                   : onField ? Theme::FieldButtonHovered
+                                                             : Theme::BarButtonHovered));
+                    const int radius = DeviceScale::FromDpi(CHIP_CORNER_RADIUS, static_cast<int>(widget->logicalDpiY()));
+                    painter->drawRoundedRect(option->rect, radius, radius);
+                    painter->restore();
+                }
+                return;
+            }
             QProxyStyle::drawPrimitive(element, option, painter, widget);
             if(element == PE_FrameMenu) DrawSeparatorsAcross(widget, painter);
+        }
+
+        static bool OnABar(const QWidget *widget){
+            for(const QWidget *w = widget ? widget->parentWidget() : nullptr; w; w = w->parentWidget()){
+                if(qobject_cast<const QToolBar*>(w) || w->inherits("TitleBar")) return true;
+                if(w->isWindow()) return false;
+            }
+            return false;
         }
 
         void polish(QWidget *widget) override {
@@ -326,6 +355,7 @@ Application::Application(int &argc, char **argv)
     static PopupCloser popupCloser;
     installNativeEventFilter(&popupCloser);
 #endif
+    OwnedRaise::Install();
 }
 
 void Application::CloseAllPopups(){
@@ -850,7 +880,8 @@ void Application::SaveGlobalSettings(){
 
     s.setValue(QStringLiteral("application/@EnableGoogleSuggest"),      m_EnableGoogleSuggest);
     s.setValue(QStringLiteral("application/@SuggestEngine"),            m_SuggestEngine);
-    s.setValue(QStringLiteral("application/@EnableFramelessWindow"),    m_EnableFramelessWindow);
+    s.setValue(QStringLiteral("application/@EnableCustomTitleBar"),     m_EnableCustomTitleBar);
+    s.setValue(QStringLiteral("application/@WindowEdgeColor"),          m_WindowEdgeColor);
     s.setValue(QStringLiteral("application/@EnableTransparentWindow"),     m_EnableTransparentWindow);
     s.setValue(QStringLiteral("application/@EnableTranslucentPanels"),  m_EnableTranslucentPanels);
     s.setValue(QStringLiteral("application/@ColorScheme"),              m_ColorScheme);
@@ -888,9 +919,14 @@ void Application::SaveGlobalSettings(){
 void Application::LoadGlobalSettings(){
     Settings &s = GlobalSettings();
 
+    const QStringList dropped = SettingsSchema::DropUnknownKeys(s);
+    if(!dropped.isEmpty())
+        qWarning() << "settings: dropped keys nothing reads:" << dropped;
+
     m_EnableGoogleSuggest      = s.value(QStringLiteral("application/@EnableGoogleSuggest"), false).value<bool>();
     m_SuggestEngine            = s.value(QStringLiteral("application/@SuggestEngine"), QStringLiteral("Google")).toString();
-    m_EnableFramelessWindow    = s.value(QStringLiteral("application/@EnableFramelessWindow"), false).value<bool>();
+    m_EnableCustomTitleBar     = s.value(QStringLiteral("application/@EnableCustomTitleBar"), false).value<bool>();
+    m_WindowEdgeColor          = s.value(QStringLiteral("application/@WindowEdgeColor"), QStringLiteral("#000000")).value<QString>();
     m_EnableTransparentWindow     = s.value(QStringLiteral("application/@EnableTransparentWindow"), false).value<bool>();
     m_EnableTranslucentPanels  = s.value(QStringLiteral("application/@EnableTranslucentPanels"), false).value<bool>();
     m_ColorScheme              = s.value(QStringLiteral("application/@ColorScheme"), QStringLiteral("Auto")).value<QString>();
@@ -1188,7 +1224,12 @@ QIcon Application::GetIcon(const QUrl &url, bool loaded){
 void Application::Reconfigure(){
     const bool wasAutoSave = m_EnableAutoSave;
     const int  wasInterval = m_AutoSaveInterval;
+    const QString wasEdgeColor = m_WindowEdgeColor;
     LoadGlobalSettings();
+    if(m_WindowEdgeColor != wasEdgeColor){
+        for(MainWindow *win : Windows().All().values())
+            win->RepaintWindowEdge();
+    }
     if(m_AutoSaveMayStart && !IsQuitting() &&
        (m_EnableAutoSave != wasAutoSave || m_AutoSaveInterval != wasInterval))
         RestartAutoSaveTimer();
@@ -1227,8 +1268,12 @@ QString Application::SuggestEngine(){
     return m_SuggestEngine;
 }
 
-bool Application::EnableFramelessWindow(){
-    return m_EnableFramelessWindow;
+bool Application::EnableCustomTitleBar(){
+    return m_EnableCustomTitleBar;
+}
+
+QString Application::WindowEdgeColor(){
+    return m_WindowEdgeColor;
 }
 
 bool Application::EnableTransparentWindow(){
@@ -1282,6 +1327,7 @@ void Application::UpdateAllWidgets(){
         if(ModelessDialog *dialog = qobject_cast<ModelessDialog*>(widget)) dialog->ApplyTheme();
         if(ExtensionBar *bar = qobject_cast<ExtensionBar*>(widget)) bar->ApplyTheme();
         if(DownloadBar *bar = qobject_cast<DownloadBar*>(widget)) bar->ApplyTheme();
+        if(SiteButton *button = qobject_cast<SiteButton*>(widget)) button->ApplyTheme();
         if(DownloadPanel *panel = qobject_cast<DownloadPanel*>(widget)) panel->ApplyTheme();
         widget->update();
     }
@@ -1542,12 +1588,6 @@ QString Application::SharedMemoryKey(){
         QString::fromLatin1(QCryptographicHash::hash(applicationDirPath().toUtf8(), QCryptographicHash::Md5).toHex());
 }
 
-int Application::EventKey(){
-    static int key = 0;
-    while(!key) key = rand() + 1;
-    return key;
-}
-
 namespace {
     QString RandomToken(){
         QString token;
@@ -1675,12 +1715,13 @@ void Application::SweepWindowSettings(Settings &s, const QList<int> &ids){
     foreach(int id, ids){
         keys.removeOne(QStringLiteral("mainwindow/tableview%1").arg(id));
         keys.removeOne(QStringLiteral("mainwindow/geometry%1").arg(id));
-        keys.removeOne(QStringLiteral("mainwindow/notifier%1").arg(id));
-        keys.removeOne(QStringLiteral("mainwindow/receiver%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/minimap%1").arg(id));
         keys.removeOne(QStringLiteral("mainwindow/menubar%1").arg(id));
         keys.removeOne(QStringLiteral("mainwindow/toolbar%1").arg(id));
         keys.removeOne(QStringLiteral("mainwindow/treebar%1").arg(id));
         keys.removeOne(QStringLiteral("mainwindow/status%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/titlebartoolbar%1").arg(id));
+        keys.removeOne(QStringLiteral("mainwindow/stripexpanded%1").arg(id));
     }
     foreach(QString key, keys){
         s.remove(key);

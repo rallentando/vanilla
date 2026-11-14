@@ -9,6 +9,7 @@
 #include <QRegularExpression>
 
 #include "settingsschema.hpp"
+#include "useragent.hpp"
 #include "graphicstableview.hpp"
 #include "application.hpp"
 
@@ -42,14 +43,19 @@ private slots:
     void chromiumSwitchesKeepQuotedSpaces();
 
     void findOnlyKnowsTheKeysInTheTable();
+    void theUserAgentRowsAreTheTemplates();
+    void theHiddenCategoryIsMarkedAndComesLast();
     void everySettingReachesTheProfilesItIsMeantFor();
     void everyPreferenceRowIsAppliedByTheView();
     void everyAttributeTheViewAppliesReachesThePage();
     void aTabListItemMadeWithTheWindowAsksForARestart();
+    void unknownKeysAreDroppedAndKnownOnesKept();
+    void everyKeyTheSourcesSpellIsKnown();
 
     void fromJsonRefusesTheWrongShape();
     void fromJsonRefusesAChoiceThatIsNotOffered();
     void fromJsonAcceptsWhatTheTypeWants();
+    void theGestureChoiceIsTheNumberTheViewReads();
     void toJsonSettlesTheSpellingOfAnOlderChoice();
     void toJsonSettlesAChoiceThatWasRenamed();
     void roundTripThroughJson();
@@ -486,6 +492,9 @@ void tst_settingsschema::noKeyIsShadowedByAnotherOneTheCodeReadsFirst(){
 
     foreach(const SettingsSchema::Item &item, SettingsSchema::Items()){
         const QString key = QString::fromLatin1(item.key);
+        if(UserAgent::Find(key.mid(UserAgent::SettingsKey(QString()).length())) &&
+           key.startsWith(UserAgent::SettingsKey(QString())))
+            continue;
 
         const QRegularExpression read(
             QStringLiteral("value\\(QStringLiteral\\(\"%1\"\\)")
@@ -513,6 +522,35 @@ void tst_settingsschema::noKeyIsShadowedByAnotherOneTheCodeReadsFirst(){
                  qPrintable(QStringLiteral("the page offers %1, which is only read where "
                                            "another key came back empty; offer that one instead")
                             .arg(key)));
+    }
+}
+
+void tst_settingsschema::theUserAgentRowsAreTheTemplates(){
+    const QString prefix = UserAgent::SettingsKey(QString());
+    QStringList rows;
+    foreach(const SettingsSchema::Item &item, SettingsSchema::Items()){
+        const QString key = QString::fromLatin1(item.key);
+        if(!key.startsWith(prefix)) continue;
+        rows << key;
+        QCOMPARE(QString::fromLatin1(item.category), QStringLiteral("hidden"));
+        QCOMPARE(item.type, SettingsSchema::Text);
+        QVERIFY2(!item.fallback[0], item.key);
+    }
+    QStringList templates;
+    foreach(UserAgent::Entry entry, UserAgent::Entries())
+        templates << UserAgent::SettingsKey(QString::fromLatin1(entry.name));
+    QCOMPARE(rows, templates);
+}
+
+void tst_settingsschema::theHiddenCategoryIsMarkedAndComesLast(){
+    const QJsonArray categories =
+        SettingsSchema::Describe()[QStringLiteral("categories")].toArray();
+    QVERIFY(!categories.isEmpty());
+    for(int i = 0; i < categories.size(); i++){
+        const QJsonObject category = categories[i].toObject();
+        const bool last = i == categories.size() - 1;
+        QCOMPARE(category[QStringLiteral("hidden")].toBool(), last);
+        if(last) QCOMPARE(category[QStringLiteral("name")].toString(), QStringLiteral("hidden"));
     }
 }
 
@@ -597,6 +635,122 @@ void tst_settingsschema::everyAttributeTheViewAppliesReachesThePage(){
     }
 }
 
+void tst_settingsschema::unknownKeysAreDroppedAndKnownOnesKept(){
+    const QStringList alive = QStringList()
+        << QStringLiteral("application/@EnableTransparentWindow")
+        << QStringLiteral("application/UserAgent_Chrome")
+        << QStringLiteral("webview/preferences/HyperlinkAuditingEnabled")
+        << QStringLiteral("webview/@EnableScrollGesture")
+        << QStringLiteral("webview/@SmartScreen")
+        << QStringLiteral("webview/menu/LinkMenu")
+        << QStringLiteral("receiver/keymap/Ctrl+Tab")
+        << QStringLiteral("gadgets/thumblist/keymap/,")
+        << QStringLiteral("webview/rightgesture/D,L")
+        << QStringLiteral("webview/searchengine/brave")
+        << QStringLiteral("webview/bookmarklet/x")
+        << QStringLiteral("mainwindow/geometry4293");
+    const QStringList dead = QStringList()
+        << QStringLiteral("application/BrowserPath_Chrome")
+        << QStringLiteral("application/@EnableTransparentBar")
+        << QStringLiteral("application/@EnableFramelessWindow")
+        << QStringLiteral("mainwindow/framelesstoolbar1")
+        << QStringLiteral("application/UserAgent_IE")
+        << QStringLiteral("webview/@EnableDragHack")
+        << QStringLiteral("webview/preferences/XSSAuditingEnabled")
+        << QStringLiteral("webview/searchengine")
+        << QStringLiteral("webview/keymapx/A")
+        << QStringLiteral("mainwindow/geometry")
+        << QStringLiteral("mainwindow/geometry1x")
+        << QStringLiteral("mainwindow/nothing1")
+        << QStringLiteral("nothing/@At");
+
+    QMap<QString, QVariant> map;
+    for(const QString &key : alive + dead) map.insert(key, true);
+    QStringList dropped = SettingsSchema::DropUnknownKeys(map);
+
+    QStringList expected = alive;
+    expected.sort();
+    QCOMPARE(QStringList(map.keys()), expected);
+    expected = dead;
+    expected.sort();
+    dropped.sort();
+    QCOMPARE(dropped, expected);
+}
+
+void tst_settingsschema::everyKeyTheSourcesSpellIsKnown(){
+    const QString root = QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR));
+    QDirIterator it(root, QStringList() << QStringLiteral("*.cpp") << QStringLiteral("*.hpp")
+                    << QStringLiteral("*.mm") << QStringLiteral("*.qml") << QStringLiteral("*.js"),
+                    QDir::Files, QDirIterator::Subdirectories);
+
+    const QRegularExpression literal(QStringLiteral(
+        "\"((?:application|webview|gadgets|mainwindow|network|treebar|toolbar|localview|receiver)"
+        "/[^\"\\s\\\\]*)\""));
+    const QStringList mime = QStringList()
+        << QStringLiteral("application/javascript") << QStringLiteral("application/json")
+        << QStringLiteral("application/mxf") << QStringLiteral("application/ogg")
+        << QStringLiteral("application/vnd.ms-asf") << QStringLiteral("application/vnd.rn-realmedia")
+        << QStringLiteral("application/x-executable") << QStringLiteral("application/x-matroska")
+        << QStringLiteral("application/x-ms-dos-executable") << QStringLiteral("application/x-msdownload")
+        << QStringLiteral("application/x-msi") << QStringLiteral("application/x-ogg")
+        << QStringLiteral("application/x-php") << QStringLiteral("application/x-ruby")
+        << QStringLiteral("application/x-sharedlib") << QStringLiteral("application/x-shellscript")
+        << QStringLiteral("application/signed-exchange;v=b3;q=0.7");
+
+    QStringList beginnings = SettingsSchema::UnlistedPrefixes();
+    for(const SettingsSchema::Item &item : SettingsSchema::Items()){
+        const QString key = QString::fromLatin1(item.key);
+        const int cut = key.indexOf(QLatin1Char('_'));
+        if(cut > 0) beginnings << key.left(cut + 1);
+    }
+    const auto accepted = [&](const QString &key){
+        if(SettingsSchema::IsKnownKey(key)) return true;
+        if(key.contains(QLatin1Char('%')))
+            return SettingsSchema::IsKnownKey(key.section(QLatin1Char('%'), 0, 0) + QLatin1Char('1'));
+        for(const QString &beginning : beginnings)
+            if(beginning == key || beginning == key + QLatin1Char('/')) return true;
+        return false;
+    };
+
+    QVERIFY(!accepted(QStringLiteral("mainwindow/geometry")));
+    QVERIFY(accepted(QStringLiteral("mainwindow/geometry%1")));
+    QVERIFY(!accepted(QStringLiteral("mainwindow/nothing%1")));
+    QVERIFY(!accepted(QStringLiteral("application/foo")));
+    QVERIFY(!accepted(QStringLiteral("webview/menu")));
+    QVERIFY(accepted(QStringLiteral("application/keymap")));
+    QVERIFY(accepted(QStringLiteral("webview/searchengine")));
+    QVERIFY(accepted(QStringLiteral("application/UserAgent_")));
+    QVERIFY(!mime.contains(QStringLiteral("application/keymap")));
+
+    int files = 0, checked = 0;
+    while(it.hasNext()){
+        const QString path = it.next();
+        if(path.contains(QStringLiteral("/settingsschema."))) continue;
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        files++;
+        for(const QString &line : QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'))){
+            const QString trimmed = line.trimmed();
+            if(trimmed.startsWith(QStringLiteral("//")) || trimmed.startsWith(QLatin1Char('*')) ||
+               trimmed.startsWith(QStringLiteral("/*")))
+                continue;
+            QRegularExpressionMatchIterator found = literal.globalMatch(line);
+            while(found.hasNext()){
+                const QString key = found.next().captured(1);
+                if(mime.contains(key)) continue;
+                checked++;
+                QVERIFY2(accepted(key),
+                         qPrintable(QStringLiteral("%1 spells '%2', which 'IsKnownKey' does not know: "
+                                                   "the next launch would drop it")
+                                    .arg(path, key)));
+            }
+        }
+    }
+    QVERIFY2(files > 100, qPrintable(QStringLiteral("%1 sources read; check VANILLA_SOURCE_DIR").arg(files)));
+    QVERIFY2(checked > 150, qPrintable(QStringLiteral("only %1 keys checked; the pattern no longer matches")
+                                       .arg(checked)));
+}
+
 void tst_settingsschema::aTabListItemMadeWithTheWindowAsksForARestart(){
     QFile file(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR)) +
                QStringLiteral("/gadgets/graphicstableview.cpp"));
@@ -639,6 +793,16 @@ void tst_settingsschema::fromJsonRefusesTheWrongShape(){
     mixed.append(QStringLiteral("ok"));
     mixed.append(7);
     QVERIFY(!SettingsSchema::FromJson(*list, QJsonValue(mixed)).isValid());
+
+    const SettingsSchema::Item *colour =
+        SettingsSchema::Find(QStringLiteral("application/@WindowEdgeColor"));
+    QVERIFY(colour);
+    QCOMPARE(colour->type, SettingsSchema::Color);
+    for(const QString &bad : { QStringLiteral("black"), QStringLiteral("#000"),
+                               QStringLiteral("#ff000000"), QStringLiteral("000000"),
+                               QStringLiteral("#gg0000") })
+        QVERIFY2(!SettingsSchema::FromJson(*colour, QJsonValue(bad)).isValid(), qPrintable(bad));
+    QVERIFY(!SettingsSchema::FromJson(*colour, QJsonValue(0)).isValid());
 }
 
 void tst_settingsschema::fromJsonRefusesAChoiceThatIsNotOffered(){
@@ -682,6 +846,20 @@ void tst_settingsschema::toJsonSettlesAChoiceThatWasRenamed(){
     QVERIFY(!SettingsSchema::FromJson(*item, QJsonValue(QStringLiteral("Off"))).isValid());
 }
 
+void tst_settingsschema::theGestureChoiceIsTheNumberTheViewReads(){
+    const SettingsSchema::Item *item = SettingsSchema::Find(QStringLiteral("webview/@GestureMode"));
+    QVERIFY(item);
+    QCOMPARE(QString::fromLatin1(item->choices), QStringLiteral("4|8"));
+    for(int count : { 4, 8 }){
+        const QString text = QString::number(count);
+        QCOMPARE(SettingsSchema::ToJson(*item, QVariant(count)).toString(), text);
+        const QVariant written = SettingsSchema::FromJson(*item, QJsonValue(text));
+        QVERIFY(written.isValid());
+        QCOMPARE(written.value<int>(), count);
+    }
+    QVERIFY(!SettingsSchema::FromJson(*item, QJsonValue(QStringLiteral("6"))).isValid());
+}
+
 void tst_settingsschema::fromJsonAcceptsWhatTheTypeWants(){
     const SettingsSchema::Item *flag =
         SettingsSchema::Find(QStringLiteral("application/@EnableAutoSave"));
@@ -701,6 +879,14 @@ void tst_settingsschema::fromJsonAcceptsWhatTheTypeWants(){
         SettingsSchema::FromJson(*list, QJsonValue(hosts)).value<QStringList>();
     QCOMPARE(got, QStringList() << QStringLiteral("example.com")
                                 << QStringLiteral("spaced.test"));
+
+    const SettingsSchema::Item *colour =
+        SettingsSchema::Find(QStringLiteral("application/@WindowEdgeColor"));
+    QCOMPARE(SettingsSchema::FromJson(*colour, QJsonValue(QStringLiteral("#3A5F8c"))).toString(),
+             QStringLiteral("#3a5f8c"));
+    const QVariant system = SettingsSchema::FromJson(*colour, QJsonValue(QString()));
+    QVERIFY(system.isValid());
+    QCOMPARE(system.toString(), QString());
 }
 
 void tst_settingsschema::roundTripThroughJson(){

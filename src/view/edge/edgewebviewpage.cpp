@@ -274,6 +274,68 @@ void EdgeWebView::AddBookmarklet(QPoint pos){
 }
 
 bool EdgeWebView::SeekText(const QString &str, View::FindFlags opt){
+    if(!m_Impl->m_Find && m_Impl->m_WebView && !m_Impl->m_State.IsRetired()){
+        ComPtr<ICoreWebView2_28> webview28;
+        if(SUCCEEDED(m_Impl->m_WebView->QueryInterface(IID_PPV_ARGS(&webview28))) && webview28)
+            webview28->get_Find(&m_Impl->m_Find);
+        if(ICoreWebView2Find *find = m_Impl->m_Find.Get()){
+            auto report = [this](ICoreWebView2Find *sender) -> HRESULT {
+                if(m_Impl->m_State.IsRetired() || !sender) return S_OK;
+                INT32 active = 0, total = 0;
+                sender->get_ActiveMatchIndex(&active);
+                sender->get_MatchCount(&total);
+                emit FindCount(active, total);
+                return S_OK;
+            };
+            EventRegistrationToken token = {};
+            if(SUCCEEDED(find->add_MatchCountChanged
+                         (Callback<ICoreWebView2FindMatchCountChangedEventHandler>
+                          ([report](ICoreWebView2Find *sender, IUnknown*){ return report(sender);}).Get(),
+                          &token)))
+                KeepEventToken(m_Impl->m_WebViewEvents, find,
+                               &ICoreWebView2Find::remove_MatchCountChanged, token);
+            if(SUCCEEDED(find->add_ActiveMatchIndexChanged
+                         (Callback<ICoreWebView2FindActiveMatchIndexChangedEventHandler>
+                          ([report](ICoreWebView2Find *sender, IUnknown*){ return report(sender);}).Get(),
+                          &token)))
+                KeepEventToken(m_Impl->m_WebViewEvents, find,
+                               &ICoreWebView2Find::remove_ActiveMatchIndexChanged, token);
+        }
+    }
+    ICoreWebView2Environment *environment =
+        EdgeEnvironment::Instance()->GetEnvironment();
+    ComPtr<ICoreWebView2Environment15> environment15;
+    if(m_Impl->m_Find && environment && !m_Impl->m_State.IsRetired())
+        environment->QueryInterface(IID_PPV_ARGS(&environment15));
+    if(environment15){
+        ICoreWebView2Find *find = m_Impl->m_Find.Get();
+        const bool caseSensitive = opt & CaseSensitively;
+        if(str.isEmpty()){
+            find->Stop();
+            m_Impl->m_FindTerm.clear();
+            return true;
+        }
+        if(!(opt & HighlightAllOccurrences) && str == m_Impl->m_FindTerm &&
+           caseSensitive == m_Impl->m_FindCaseSensitive){
+            if(opt & FindBackward) find->FindPrevious();
+            else find->FindNext();
+            return true;
+        }
+        ComPtr<ICoreWebView2FindOptions> options;
+        if(SUCCEEDED(environment15->CreateFindOptions(&options)) && options){
+            options->put_FindTerm(reinterpret_cast<PCWSTR>(str.utf16()));
+            options->put_IsCaseSensitive(caseSensitive);
+            options->put_ShouldHighlightAllMatches(TRUE);
+            options->put_SuppressDefaultFindDialog(TRUE);
+            m_Impl->m_FindTerm = str;
+            m_Impl->m_FindCaseSensitive = caseSensitive;
+            find->Start(options.Get(),
+                        Callback<ICoreWebView2FindStartCompletedHandler>
+                        ([](HRESULT) -> HRESULT { return S_OK;}).Get());
+            return true;
+        }
+    }
+
     if(str.isEmpty()){
         RunScript(QStringLiteral("getSelection().removeAllRanges();"));
         return true;

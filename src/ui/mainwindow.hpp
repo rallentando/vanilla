@@ -6,6 +6,8 @@
 #include "theme.hpp"
 #include "devicescale.hpp"
 #include "windowframereveal.hpp"
+#include "windowframehit.hpp"
+#include "titlebar.hpp"
 
 #include <QMainWindow>
 #include <QPointer>
@@ -76,11 +78,16 @@ public:
     void HideAllEdgeWidgets();
     void RaiseAllEdgeWidgets();
     void AdjustAllEdgeWidgets();
+    void CurrentViewChanged();
+    bool IsStripExpanded() const;
+    void SetStripExpanded(bool on);
+    bool IsStripPinned() const { return m_StripPinned;}
+    void PinStrip();
+    void UnpinStrip();
+    void HoldStripReveal();
 public slots:
     void UpdateAllEdgeWidgets();
     void SetWindowTitle(const QString&);
-    void ToggleNotifier();
-    void ToggleReceiver();
     void ToggleMenuBar();
     void ToggleTreeBar();
     void ToggleToolBar();
@@ -91,15 +98,21 @@ public slots:
     void SetMenuBar(bool on);
     void SetFullScreen(bool on);
     void SetFocus();
+    void raise();
 
 public:
     void ActivateIfNeeded();
     void ShowWithFirstFrame();
     static void ActivateWindowIfNeeded(QWidget *window);
     static void ActivateWindowIfNeeded(QWidget *window, WId front);
+    bool IsContentFullScreen() const { return m_ContentFullScreen;}
+
+    static void SetOwner(QWidget *window, MainWindow *owner);
+    static MainWindow *DialogOwner();
 
     bool IsFrameActive() const;
     void ApplyTheme();
+    void RepaintWindowEdge();
 
 protected:
     void changeEvent(QEvent *ev) override;
@@ -121,6 +134,18 @@ private:
     void HideWindowFrameWidgets();
     void UpdateTitleBarVisibility();
     void ApplyTitleBarVisibility(const QPoint &cursor, bool active, bool buttonsDown);
+    QList<QWidget*> EdgeWidgets() const;
+    bool ApplyInnerMargin();
+    friend class InnerMarginWatch;
+#if defined(Q_OS_WIN)
+    bool FramelessNativeEvent(void *message, qintptr *result);
+    void ApplyFramelessFrame();
+    void ApplyEdgeCaption();
+    WindowFrameHit::Layout FrameHitLayout() const;
+    void ReleaseMaximizeButton();
+    void DropFullScreenCover();
+#endif
+    void CloakWhileSwitchingFullScreen();
 
     void UpdateInspectorDock();
 
@@ -130,6 +155,11 @@ private:
     bool m_MenuBarVisibleBeforeFullScreen;
     bool m_TreeBarVisibleBeforeFullScreen;
     bool m_ToolBarVisibleBeforeFullScreen;
+#if defined(Q_OS_WIN)
+    quintptr m_FullScreenCover = 0;
+    bool m_FullScreenCloaked = false;
+    int m_FullScreenSwitch = 0;
+#endif
     TreeBank *m_TreeBank;
     TreeBar *m_TreeBar;
     ToolBar *m_ToolBar;
@@ -140,6 +170,21 @@ private:
     bool m_InspectorDockPlaced;
     ModelessDialogFrame *m_DialogFrame;
     TitleBar *m_TitleBar;
+    TitleBar *m_TitleStrip;
+    bool m_StripExpanded = false;
+    bool m_StripPinned = false;
+    bool m_StripWasShaded = false;
+    bool WantsInnerBar() const;
+    bool HasInnerBar() const;
+    TitleBar *SeparateStrip() const { return m_TitleStrip != m_TitleBar ? m_TitleStrip : nullptr;}
+    bool IsFrameShown() const {
+        return isVisible() && !isMinimized() && !isFullScreen() && !m_ContentFullScreen;
+    }
+    bool IsSimplyMaximized() const {
+        return isMaximized() && !isMinimized() && !isFullScreen() && !m_ContentFullScreen;
+    }
+    QObject *m_StripPressWatch = nullptr;
+    void SetStripPinned(bool on);
     QTimer *m_TitleBarTimer;
     WindowFrameReveal m_TitleBarReveal;
     MainWindowNorthWidget *m_NorthWidget;
@@ -152,74 +197,6 @@ private:
     MainWindowSouthEastWidget *m_SouthEastWidget;
     QPointer<QMenu> m_SystemMenu;
     QList<QPointer<QAction>> m_SystemMenuActions;
-};
-
-class TitleBar : public QWidget {
-    Q_OBJECT
-public:
-    TitleBar(MainWindow *mainwindow);
-    int CompactWidth() const {
-        return ScaleByDevice(32) + ScaleByDevice(28)*4 + ScaleByDevice(6);
-    }
-
-    template <class T> T ScaleByDevice(T v) const {
-        return DeviceScale::FromDpi(v, static_cast<int>(logicalDpiY()));
-    }
-
-protected:
-    void paintEvent(QPaintEvent *ev) override;
-    void mousePressEvent(QMouseEvent *ev) override;
-    void mouseMoveEvent(QMouseEvent *ev) override;
-    void mouseReleaseEvent(QMouseEvent *ev) override;
-    void mouseDoubleClickEvent(QMouseEvent *ev) override;
-    void enterEvent(QEnterEvent *ev) override;
-    void leaveEvent(QEvent *ev) override;
-
-private:
-    enum HoveredButton {
-        NoButton,
-        MenuButton,
-        ViewTreeButton,
-        ShadeButton,
-        MinimizeButton,
-        MaximizeButton,
-        CloseButton
-    } m_HoveredButton;
-
-    void LoadIcons();
-
-    QRect MenuAreaRect() const;
-    QRect ViewTreeAreaRect() const;
-    QRect ShadeAreaRect() const;
-    QRect MinimizeAreaRect() const;
-    QRect MaximizeAreaRect() const;
-    QRect CloseAreaRect() const;
-    QRect MenuAreaRect1()     const { if(m_MainWindow->isMaximized()) return QRect(); QRect r = MenuAreaRect(); return QRect(r.x()-ScaleByDevice(4), 0, r.width()+ScaleByDevice(9), height());}
-    QRect ViewTreeAreaRect1() const { QRect r = ViewTreeAreaRect(); return QRect(r.x()-ScaleByDevice(8), 0, r.width()+ScaleByDevice(17),height());}
-    QRect ShadeAreaRect1()    const { QRect r = ShadeAreaRect();    return QRect(r.x()-ScaleByDevice(9), 0, r.width()+ScaleByDevice(17),height());}
-    QRect MinimizeAreaRect1() const { QRect r = MinimizeAreaRect(); return QRect(r.x()-ScaleByDevice(9), 0, r.width()+ScaleByDevice(17),height());}
-    QRect MaximizeAreaRect1() const { QRect r = MaximizeAreaRect(); return QRect(r.x()-ScaleByDevice(9), 0, r.width()+ScaleByDevice(17),height());}
-    QRect CloseAreaRect1()    const { QRect r = CloseAreaRect();    return QRect(r.x()-ScaleByDevice(10),0, r.width()+ScaleByDevice(26),height());}
-
-    int ButtonAreaWidth(int count) const {
-        return ScaleByDevice(19) + ScaleByDevice(32)
-             + ScaleByDevice(28) * count + ScaleByDevice(5);
-    }
-
-    const int e = ScaleByDevice(EDGE_WIDGET_SIZE);
-    const int t = ScaleByDevice(TITLE_BAR_HEIGHT);
-    const int et = e+t;
-    MainWindow *m_MainWindow;
-    QPoint m_Pos;
-    bool m_Moved;
-
-    QPixmap m_Shade;
-    QPixmap m_Unshade;
-    QPixmap m_Minimize;
-    QPixmap m_Maximize;
-    QPixmap m_Normal;
-    QPixmap m_Close;
-    Theme::Scheme m_IconScheme;
 };
 
 class MainWindowEdgeWidget : public QWidget {

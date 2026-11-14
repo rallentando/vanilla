@@ -96,6 +96,7 @@ static const int MARKER_CORNER_RADIUS = 1;
 static const int FIELD_CORNER_RADIUS = 4;
 static const int FIELD_PADDING = 3;
 static const int FIELD_PADDING_X = 8;
+static const int FIELD_PADDING_BESIDE_SITE = 2;
 static const int PAGE_FIELD_CORNER_RADIUS = 6;
 static const int DIALOG_CORNER_RADIUS = 8;
 static const int DIALOG_PADDING = 12;
@@ -113,6 +114,8 @@ static const int DOCK_TITLE_BAR_HEIGHT = 28;
 static const int DOCK_TITLE_BUTTON_SIZE = 20;
 static const int DOCK_TITLE_ICON_SIZE = 12;
 static const int TOOL_BAR_ICON_SIZE = 19;
+static const int SITE_BUTTON_SIDE = 4;
+static const int SITE_BUTTON_APART = 4;
 inline const QFont &ToolBarFieldFont(){
     static const QFont font = ScaledFont(1.0, 2);
     return font;
@@ -161,8 +164,6 @@ static const int TITLE_BAR_HEIGHT = 32;
 
 inline const QFont &TitleBarTitleFont(){ return DefaultFont();}
 
-static const int STATUS_TEXT_PADDING = 5;
-
 inline const QFont &NotifierFont(){ return DefaultFont();}
 
 static const int NOTIFIER_WIDTH_PERCENTAGE = 30;
@@ -186,6 +187,7 @@ static const int RECEIVER_LIST_GAP = 4;
 static const int SUGGEST_HEIGHT = 28;
 static const int RECEIVER_HEADING_HEIGHT = 24;
 static const int RECEIVER_HEADING_OUTDENT = 5;
+static const int RECEIVER_MAX_INPUTS = 5;
 static const int RECEIVER_SOURCE_BAR_HEIGHT = 30;
 static const int RECEIVER_SCROLL_ROWS = 1000;
 static const int RECEIVER_WHEEL_ROWS = 3;
@@ -239,7 +241,6 @@ static const int GADGETS_SCROLL_CONTROLER_HEIGHT = 30;
 static const bool GADGETS_SCROLL_BAR_DRAW_BORDER = true;
 
 static const qreal HIDDEN_CONTENTS_LAYER = -10.0;
-static const qreal VIEW_CONTENTS_LAYER = 0.0;
 static const qreal COVERING_VIEW_CONTENTS_LAYER = 5.0;
 static const qreal MAIN_CONTENTS_LAYER = 10.0;
 static const qreal BUTTON_LAYER = 15.0;

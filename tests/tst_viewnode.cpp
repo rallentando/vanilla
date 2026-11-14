@@ -1483,7 +1483,7 @@ void tst_viewnode::showingAnAlreadyVisibleEngineViewDoesNotJiggleItsSize(){
         const QString body = BodyOf(source, QStringLiteral("void show() override"));
         QVERIFY2(!body.isEmpty(), qPrintable(file + QStringLiteral(" has no show body")));
 
-        const int visible = body.indexOf(QStringLiteral("const bool wasVisible = base()->isVisible()"));
+        const int visible = body.indexOf(QStringLiteral("bool wasVisible = base()->isVisible()"));
         const int guard = body.indexOf(QStringLiteral("if(!wasVisible)"));
         const int jiggle = body.indexOf(QStringLiteral("s.height()+1"));
         QVERIFY2(visible != -1, qPrintable(file + QStringLiteral(" does not remember visibility")));

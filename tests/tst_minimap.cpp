@@ -456,6 +456,83 @@ private slots:
                      {MiniMap::TextBlock, 300}}));
     }
 
+    void collectionMarksEachOccurrenceOfTheTerm(){
+        const QString fixture = QStringLiteral(R"JS(
+(function(){
+    var document = {};
+    document.documentElement = { scrollWidth: 1000, scrollHeight: 1000 };
+    var window = document.defaultView = {
+        pageXOffset: 0, pageYOffset: 0,
+        getComputedStyle: function(el){ return el.style; }
+    };
+    document.createRange = function(){
+        var node, start = 0, end = 0;
+        return {
+            selectNodeContents: function(n){ node = n; start = 0; end = n.data.length; },
+            setStart: function(n, at){ node = n; start = at; },
+            setEnd: function(n, at){ end = at; },
+            getClientRects: function(){
+                return [{ left: start * 10, top: node.top,
+                          width: (end - start) * 10, height: 10 }];
+            }
+        };
+    };
+    function text(value, top){
+        return { nodeType: 3, ownerDocument: document, data: value, top: top };
+    }
+    var body = document.body = {
+        nodeType: 1, ownerDocument: document, tagName: 'BODY',
+        style: { display: 'block', visibility: 'visible', position: 'static' },
+        getBoundingClientRect: function(){
+            return { left: 0, top: 0, width: 1000, height: 1000 };
+        }
+    };
+    var first = text('ab Nov 11月 x 11月', 100);
+    var second = text('nothing here', 200);
+    var third = text('11月10日', 300);
+    body.firstChild = first;
+    first.nextSibling = second;
+    second.nextSibling = third;
+    return %1;
+})()
+)JS");
+        for(const QString &term : {QStringLiteral("11月"), QString()}){
+            QJSEngine engine;
+            const QJSValue result =
+                engine.evaluate(fixture.arg(MiniMap::CollectBlocksJsCode(term)));
+            QVERIFY2(!result.isError(), qPrintable(result.toString()));
+            QSizeF size;
+            bool over = true;
+            const auto blocks = MiniMap::ParseBlocks(result.toVariant(), &size, &over);
+            QList<QRectF> matches;
+            int texts = 0;
+            for(const MiniMap::Block &block : blocks){
+                if(block.kind == MiniMap::MatchBlock) matches << block.rect;
+                if(block.kind == MiniMap::TextBlock) ++texts;
+            }
+            QCOMPARE(texts, 3);
+            if(term.isEmpty()){
+                QVERIFY(matches.isEmpty());
+                continue;
+            }
+            QCOMPARE(matches, (QList<QRectF>{
+                         QRectF(70, 100, 30, 10), QRectF(130, 100, 30, 10),
+                         QRectF(0, 300, 30, 10)}));
+        }
+        QJSEngine engine;
+        const QJSValue upper = engine.evaluate
+            (fixture.arg(MiniMap::CollectBlocksJsCode(QStringLiteral("NOV"))));
+        QSizeF size;
+        bool over = true;
+        int found = 0;
+        for(const MiniMap::Block &block : MiniMap::ParseBlocks(upper.toVariant(), &size, &over))
+            if(block.kind == MiniMap::MatchBlock){ ++found; QCOMPARE(block.rect, QRectF(30, 100, 30, 10));}
+        QCOMPARE(found, 1);
+        const QJSValue quoted = engine.evaluate
+            (fixture.arg(MiniMap::CollectBlocksJsCode(QStringLiteral("\"');x"))));
+        QVERIFY2(!quoted.isError(), qPrintable(quoted.toString()));
+    }
+
     void collectionBoundsDiscoveryWithoutCollectingRectangles_data(){
         QTest::addColumn<int>("nodeType");
         QTest::addColumn<bool>("shadow");
@@ -601,6 +678,22 @@ private slots:
         map.SetShelved(false);
         QVERIFY(!map.IsActive());
         QVERIFY(map.isHidden());
+    }
+
+    void otherWordsTakeTheOldMarksAndTheAnswerInFlight(){
+        MiniMap map(nullptr);
+        map.m_Blocks = {
+            { QRectF(0, 0, 50, 10), MiniMap::TextBlock, false },
+            { QRectF(0, 0, 20, 10), MiniMap::MatchBlock, false }};
+        map.SetSeekTerm(QStringLiteral("a"));
+        QCOMPARE(map.m_Blocks.size(), 1);
+        QCOMPARE(map.m_Blocks.first().kind, int(MiniMap::TextBlock));
+        const quint64 request = map.m_Request;
+        map.SetSeekTerm(QStringLiteral("a"));
+        QCOMPARE(map.m_Request, request);
+        map.SetSeekTerm(QString());
+        QVERIFY(map.m_Request != request);
+        QVERIFY(!map.m_RecollectTimer.isActive());
     }
 
     void aBrokenEnvelopeLeavesTheStripBlank(){

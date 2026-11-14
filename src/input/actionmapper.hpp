@@ -19,11 +19,10 @@
     F(OpenPasswords)                            \
     F(OpenDownloads)                            \
     F(ShowDownloads)                            \
-    F(ToggleNotifier)                           \
-    F(ToggleReceiver)                           \
     F(ToggleMenuBar)                            \
     F(ToggleTreeBar)                            \
     F(ToggleToolBar)                            \
+    F(ToggleMiniMap)                            \
     F(ToggleFullScreen)                         \
     F(ToggleMaximized)                          \
     F(ToggleMinimized)                          \
@@ -212,8 +211,7 @@
     F(SaveAllImage)                             \
     F(SaveTextAsUrl)
 
-#define FOR_EACH_GADGETS_EVENTS(F)              \
-    F(Deactivate)                               \
+#define FOR_EACH_THUMBLIST_EVENTS(F)            \
     F(Refresh)                                  \
     F(RefreshNoScroll)                          \
     F(OpenNode)                                 \
@@ -278,6 +276,10 @@
     F(TransferToDownDirectory)                  \
     F(SwitchNodeCollectionType)                 \
     F(SwitchNodeCollectionTypeReverse)
+
+#define FOR_EACH_GADGETS_EVENTS(F)              \
+    F(Deactivate)                               \
+    FOR_EACH_THUMBLIST_EVENTS(F)
 
 #define PAGE_FOR_EACH_ACTION(F)     \
     F(NoAction)                     \

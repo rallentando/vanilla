@@ -3,10 +3,10 @@
 #include "editmenu.hpp"
 
 #include "view.hpp"
+#include "actiontext.hpp"
 
 #include <QAction>
 #include <QClipboard>
-#include <QCoreApplication>
 #include <QGuiApplication>
 #include <QKeySequence>
 #include <QLineEdit>
@@ -72,7 +72,7 @@ QMenu *Build(QLineEdit *edit, const QStringList &names){
         }
         const Edit *edit_ = Find(name);
         if(!edit_) continue;
-        QAction *action = menu->addAction(QCoreApplication::translate("Page", edit_->name));
+        QAction *action = menu->addAction(ActionText::Label(QLatin1String(edit_->name)));
         action->setObjectName(QLatin1String(edit_->name));
         action->setEnabled(edit_->enabled(edit));
         if(edit_->key != QKeySequence::UnknownKey){

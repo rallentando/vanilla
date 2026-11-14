@@ -7,6 +7,7 @@ if(window.top !== window.self){
 
 const state = {
     categories: [],
+    revealed: false,
     items: [],
     strings: null,
     current: null,
@@ -107,7 +108,75 @@ const controls = {
         event: 'change',
         wide: true,
     },
+    color: {
+        make: (item) => {
+            const node = document.createElement('div');
+            node.className = 'swatches';
+            node.setAttribute('role', 'group');
+            const swatch = (value, title) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'swatch' + (value ? '' : ' system');
+                button.dataset.value = value;
+                button.title = title;
+                button.setAttribute('aria-label', title);
+                if (value) button.style.backgroundColor = value;
+                else button.textContent = state.strings.colorSystem;
+                button.addEventListener('click', () => {
+                    node.dataset.value = value;
+                    node.dispatchEvent(new Event('change'));
+                });
+                return button;
+            };
+            node.appendChild(swatch('', state.strings.colorSystem));
+            for (const value of COLOR_SWATCHES) node.appendChild(swatch(value, value));
+            const pick = document.createElement('button');
+            pick.type = 'button';
+            pick.className = 'browse pick';
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            pick.appendChild(chip);
+            pick.appendChild(document.createTextNode(state.strings.colorPick));
+            pick.addEventListener('click', async () => {
+                pick.dataset.busy = 'true';
+                pick.disabled = true;
+                try {
+                    const reply = await api('pick-color', {key: item.key});
+                    if (reply.error) throw new Error(reply.error);
+                    if (!reply.color) return;
+                    node.dataset.value = reply.color;
+                    node.dispatchEvent(new Event('change'));
+                } catch (e) {
+                    toast(state.strings.failed);
+                } finally {
+                    delete pick.dataset.busy;
+                    pick.disabled = false;
+                    refreshApplicability();
+                }
+            });
+            node.appendChild(pick);
+            return node;
+        },
+        read: (node) => node.dataset.value || '',
+        write: (node, value) => {
+            node.dataset.value = value || '';
+            let preset = false;
+            for (const button of node.querySelectorAll('.swatch')) {
+                const on = button.dataset.value === (value || '');
+                button.setAttribute('aria-pressed', on ? 'true' : 'false');
+                if (on) preset = true;
+            }
+            const pick = node.querySelector('.pick');
+            pick.classList.toggle('chosen', !preset);
+            pick.title = value || '';
+            const chip = pick.querySelector('.chip');
+            chip.style.backgroundColor = value || '';
+        },
+        event: 'change',
+    },
 };
+
+const COLOR_SWATCHES = ['#000000', '#1f1f1f', '#3a3a3a', '#808080', '#c8c8c8', '#ffffff'];
 
 function noticeLine(text) {
     const line = document.createElement('p');
@@ -808,7 +877,8 @@ function inputSection(table, query) {
         const legend = document.createElement('p');
         legend.className = 'hint';
         legend.textContent = words.dimmed.replace('%1', why) + ' ';
-        const key = table.kind === 'keys' ? 'webview/@EnableSingleKeyShortcut' : null;
+        const key = table.kind === 'keys' ? 'webview/@EnableSingleKeyShortcut'
+                  : table.kind === 'gesture' ? 'webview/@GestureMode' : null;
         if (key && state.items.some(i => i.key === key)) {
             const link = document.createElement('a');
             link.className = 'link';
@@ -2166,7 +2236,7 @@ function render() {
         !searching && !!state.inputs && state.current === state.inputs.category);
 
     let shown = 0;
-    for (const category of state.categories) {
+    for (const category of shownCategories()) {
         if (!searching && category.name !== state.current) continue;
 
         if (state.inputs && category.name === state.inputs.category) {
@@ -2246,8 +2316,13 @@ function showCategory(name) {
     if (name === 'directory') refreshDirectory(state.directoryId);
 }
 
+function shownCategories() {
+    return state.categories.filter(category => !category.hidden || state.revealed);
+}
+
 function buildNav() {
-    for (const category of state.categories) {
+    el.nav.replaceChildren();
+    for (const category of shownCategories()) {
         if (category.divider && el.nav.children.length) {
             const line = document.createElement('hr');
             line.className = 'nav-divider';
@@ -2271,8 +2346,9 @@ function buildNav() {
 
 function categoryOfFragment() {
     const name = window.location.hash.slice(1).split('?')[0];
-    if (state.categories.some(category => category.name === name)) return name;
-    return state.categories.length ? state.categories[0].name : null;
+    const categories = state.categories.filter(category => !category.hidden || state.revealed);
+    if (categories.some(category => category.name === name)) return name;
+    return categories.length ? categories[0].name : null;
 }
 
 function findOfFragment() {
@@ -2320,7 +2396,18 @@ async function main() {
     state.current = categoryOfFragment();
 
     document.title = state.strings.title;
-    document.getElementById('title').textContent = state.strings.title;
+    const title = document.getElementById('title');
+    title.textContent = state.strings.title;
+    title.addEventListener('click', event => {
+        if (event.detail !== 3 || state.revealed) return;
+        if (!state.categories.some(category => category.hidden)) return;
+        state.revealed = true;
+        window.getSelection().removeAllRanges();
+        buildNav();
+        const name = state.categories.find(category => category.hidden).name;
+        if (window.location.hash.slice(1).split('?')[0] === name) showCategory(name);
+        else window.location.hash = name;
+    });
     el.search.placeholder = state.strings.search;
 
     buildNav();

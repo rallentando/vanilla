@@ -164,11 +164,10 @@ public slots:
     void OpenDownloads();
     void ShowDownloads();
 
-    void ToggleNotifier();
-    void ToggleReceiver();
     void ToggleMenuBar();
     void ToggleTreeBar();
     void ToggleToolBar();
+    void ToggleMiniMap();
     void ToggleFullScreen();
     void ToggleMaximized();
     void ToggleMinimized();

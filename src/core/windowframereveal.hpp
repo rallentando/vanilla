@@ -17,6 +17,7 @@ public:
     }
 
     void Reset(){ m_Revealed = false; }
+    void Hold(){ m_Revealed = true; }
 
 private:
     bool m_Revealed = false;

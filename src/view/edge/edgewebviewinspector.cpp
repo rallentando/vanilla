@@ -18,8 +18,12 @@
 #include <cstdarg>
 #include <QTime>
 
+#include <QJsonDocument>
+#include <QPointer>
+
 #include "treebank.hpp"
 #include "mainwindow.hpp"
+#include "sitedatalink.hpp"
 
 bool EdgeInspectorTraceOn(){
     static const bool on = qEnvironmentVariableIsSet("VANILLA_EDGE_INSPECTOR_TRACE");
@@ -449,6 +453,47 @@ QWidget *EdgeWebView::InspectorPane(){
     if(!m_Impl->m_InspectorPane || TreeBank::PurgeView() || !InspectorInMainWindow())
         return nullptr;
     return m_Impl->m_InspectorPane;
+}
+
+bool EdgeWebView::CallDevToolsProtocol(const QString &method, const QString &params,
+                                       std::function<void(bool, const QString&)> done){
+    if(!m_Impl->m_WebView || m_Impl->m_State.IsRetired()) return false;
+    const ComPtr<ICoreWebView2> webview = m_Impl->m_WebView;
+    const HRESULT hr = webview->CallDevToolsProtocolMethod(
+        reinterpret_cast<LPCWSTR>(method.utf16()), reinterpret_cast<LPCWSTR>(params.utf16()),
+        Callback<ICoreWebView2CallDevToolsProtocolMethodCompletedHandler>(
+            [done](HRESULT hr, LPCWSTR json) -> HRESULT {
+                done(SUCCEEDED(hr), json ? QString::fromWCharArray(json) : QString());
+                return S_OK;
+            }).Get());
+    return SUCCEEDED(hr);
+}
+
+namespace {
+    class EdgeSiteDataLink : public SiteDataLink {
+    public:
+        explicit EdgeSiteDataLink(EdgeWebView *view) : m_View(view){}
+        void Call(const QString &method, const QJsonObject &params, Answer done) override {
+            QPointer<EdgeSiteDataLink> self(this);
+            const auto answer = [self, done](bool ok, const QString &json){
+                if(!self) return;
+                QJsonParseError error;
+                const QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8(), &error);
+                done(ok && error.error == QJsonParseError::NoError && doc.isObject(), doc.object());
+            };
+            const QString text = QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact));
+            if(!m_View || !m_View->CallDevToolsProtocol(method, text, answer)){
+                if(!self) return;
+                QTimer::singleShot(0, this, [done](){ done(false, QJsonObject());});
+            }
+        }
+    private:
+        QPointer<EdgeWebView> m_View;
+    };
+}
+
+SiteDataLink *EdgeWebView::OpenSiteDataLink(){
+    return new EdgeSiteDataLink(this);
 }
 
 void EdgeWebView::ProbeInspectorWindow(){

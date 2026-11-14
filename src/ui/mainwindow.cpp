@@ -2,11 +2,11 @@
 #include "const.hpp"
 #include "theme.hpp"
 #include "blurbehind.hpp"
+#include "ownedraise.hpp"
 
 #include "mainwindow.hpp"
 
 #include <QIcon>
-#include <QStyle>
 #include <QDockWidget>
 #include "docktitlebar.hpp"
 #include <QLabel>
@@ -18,9 +18,11 @@
 #include <QMenuBar>
 #include <QPainter>
 #include <QScreen>
+#include <QLayout>
 #include <QTimer>
 #include <QElapsedTimer>
 #include <QCursor>
+#include <climits>
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
@@ -36,14 +38,23 @@
 #include "receiver.hpp"
 #include "gadgets.hpp"
 #include "graphicstableview.hpp"
-#include "webengineview.hpp"
-#include "quickwebengineview.hpp"
-#include "quicknativewebview.hpp"
-#include "edgewebview.hpp"
 #include "dialog.hpp"
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "systemmenu.hpp"
+
+#if defined(Q_OS_WIN)
+class InnerMarginWatch : public QObject {
+public:
+    explicit InnerMarginWatch(MainWindow *window) : QObject(window), m_Window(window){}
+    bool eventFilter(QObject *watched, QEvent *ev) override {
+        if(ev->type() == QEvent::Resize && watched == m_Window) m_Window->ApplyInnerMargin();
+        return false;
+    }
+private:
+    MainWindow *m_Window;
+};
+#endif
 
 MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
     :
@@ -61,6 +72,7 @@ MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
     , m_InspectorDockSuspended(false)
     , m_InspectorDockPlaced(false)
     , m_TitleBar(nullptr)
+    , m_TitleStrip(nullptr)
     , m_TitleBarTimer(nullptr)
     , m_NorthWidget(nullptr)
     , m_SouthWidget(nullptr)
@@ -127,9 +139,17 @@ MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
         menuBar()->installEventFilter(this);
     }
 
-    if(Application::EnableFramelessWindow()){
+    if(Application::EnableCustomTitleBar()){
+#if defined(Q_OS_WIN)
+        m_TitleBar        = new TitleBar(this, TitleBar::Inner);
+        m_TitleStrip      = new TitleBar(this, TitleBar::Strip);
+        installEventFilter(this);
+        if(internalWinId()) ApplyFramelessFrame();
+        qApp->installEventFilter(new InnerMarginWatch(this));
+#else
         setWindowFlags(Qt::FramelessWindowHint);
-        m_TitleBar        = new TitleBar                  (this);
+        m_TitleBar        = new TitleBar(this, TitleBar::Outer);
+        m_TitleStrip      = m_TitleBar;
         m_NorthWidget     = new MainWindowNorthWidget     (this);
         m_SouthWidget     = new MainWindowSouthWidget     (this);
         m_WestWidget      = new MainWindowWestWidget      (this);
@@ -138,6 +158,7 @@ MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
         m_NorthEastWidget = new MainWindowNorthEastWidget (this);
         m_SouthWestWidget = new MainWindowSouthWestWidget (this);
         m_SouthEastWidget = new MainWindowSouthEastWidget (this);
+#endif
         m_TitleBarTimer = new QTimer(this);
         m_TitleBarTimer->setObjectName(QStringLiteral("TitleBarRevealTimer"));
         m_TitleBarTimer->setInterval(100);
@@ -149,6 +170,17 @@ MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
 
     move(pos);
     LoadSettings();
+
+    {
+        Settings &s = Application::GlobalSettings();
+        const QString once = QStringLiteral("mainwindow/titlebartoolbar%1").arg(m_Index);
+        if(!Application::EnableCustomTitleBar() || !HasInnerBar()){
+            s.remove(once);
+        } else if(!s.value(once, false).toBool()){
+            m_ToolBar->hide();
+            s.setValue(once, true);
+        }
+    }
 
     m_InspectorDock->hide();
     for(QDockWidget *dock : m_SidePanels->Docks()) dock->hide();
@@ -170,20 +202,14 @@ MainWindow::MainWindow(int id, QPoint pos, bool showNow, QWidget *parent)
 }
 
 MainWindow::~MainWindow(){
+#if defined(Q_OS_WIN)
+    DropFullScreenCover();
+#endif
     if(m_TitleBarTimer) m_TitleBarTimer->stop();
     SetInspectorPane(nullptr);
     m_DialogFrame->deleteLater();
-    if(m_TitleBar){
-        m_TitleBar        ->deleteLater();
-        m_NorthWidget     ->deleteLater();
-        m_SouthWidget     ->deleteLater();
-        m_WestWidget      ->deleteLater();
-        m_EastWidget      ->deleteLater();
-        m_NorthWestWidget ->deleteLater();
-        m_NorthEastWidget ->deleteLater();
-        m_SouthWestWidget ->deleteLater();
-        m_SouthEastWidget ->deleteLater();
-    }
+    if(m_TitleStrip) m_TitleStrip->deleteLater();
+    for(QWidget *edge : EdgeWidgets()) edge->deleteLater();
 }
 
 int MainWindow::GetIndex(){
@@ -194,14 +220,15 @@ void MainWindow::SaveSettings(){
     Settings &s = Application::GlobalSettings();
 
     s.setValue(QStringLiteral("mainwindow/tableview%1").arg(m_Index), m_TreeBank->GetGadgets()->GetStat());
-    s.setValue(QStringLiteral("mainwindow/notifier%1").arg(m_Index), m_TreeBank->GetNotifier() ? true : false);
-    s.setValue(QStringLiteral("mainwindow/receiver%1").arg(m_Index), m_TreeBank->GetReceiver() ? true : false);
+    if(TreeBank::CanHaveMiniMap())
+        s.setValue(QStringLiteral("mainwindow/minimap%1").arg(m_Index), m_TreeBank->GetMiniMap() ? true : false);
     s.setValue(QStringLiteral("mainwindow/menubar%1").arg(m_Index), !IsMenuBarEmpty());
     s.setValue(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), saveState());
     s.setValue(QStringLiteral("mainwindow/inspectordock%1").arg(m_Index), m_InspectorDockPlaced);
     s.setValue(QStringLiteral("mainwindow/sidepaneldock%1").arg(m_Index), m_SidePanels->Placed());
     s.setValue(QStringLiteral("mainwindow/treebar%1").arg(m_Index), m_TreeBar->GetStat());
     s.setValue(QStringLiteral("mainwindow/status%1").arg(m_Index), static_cast<int>(windowState()));
+    s.setValue(QStringLiteral("mainwindow/stripexpanded%1").arg(m_Index), m_StripExpanded);
     if(!isFullScreen() && !isMaximized() && !isMinimized() && width() && height())
         s.setValue(QStringLiteral("mainwindow/geometry%1").arg(m_Index), geometry());
 }
@@ -212,14 +239,14 @@ void MainWindow::LoadSettings(){
     MainWindow *current = Application::GetCurrentWindow();
     QVariant tableview_data = s.value(QStringLiteral("mainwindow/tableview%1").arg(m_Index), QVariant());
     QVariant geometry_data  = s.value(QStringLiteral("mainwindow/geometry%1").arg(m_Index), QVariant());
-    QVariant notifier_data  = s.value(QStringLiteral("mainwindow/notifier%1").arg(m_Index), QVariant());
-    QVariant receiver_data  = s.value(QStringLiteral("mainwindow/receiver%1").arg(m_Index), QVariant());
+    QVariant minimap_data   = s.value(QStringLiteral("mainwindow/minimap%1").arg(m_Index), QVariant());
     QVariant menubar_data   = s.value(QStringLiteral("mainwindow/menubar%1").arg(m_Index), QVariant());
     QVariant toolbar_data   = s.value(QStringLiteral("mainwindow/toolbar%1").arg(m_Index), QVariant());
     QVariant treebar_data   = s.value(QStringLiteral("mainwindow/treebar%1").arg(m_Index), QVariant());
 
     m_InspectorDockPlaced = s.value(QStringLiteral("mainwindow/inspectordock%1").arg(m_Index), false).toBool();
     m_SidePanels->SetPlaced(s.value(QStringLiteral("mainwindow/sidepaneldock%1").arg(m_Index), 0).toInt());
+    m_StripExpanded = s.value(QStringLiteral("mainwindow/stripexpanded%1").arg(m_Index), false).toBool();
 
     if(tableview_data.isNull()){
 
@@ -267,32 +294,12 @@ void MainWindow::LoadSettings(){
         setGeometry(geometry_data.toRect());
     }
 
-    if(notifier_data.isNull()){
-
-        bool notifierEnabled = current
-            ? static_cast<bool>(current->GetTreeBank()->GetNotifier())
-            : true;
-
-        if(notifierEnabled != static_cast<bool>(GetTreeBank()->GetNotifier()))
-            GetTreeBank()->ToggleNotifier();
-
-    } else if(notifier_data.canConvert<bool>()){
-        if(notifier_data.toBool() != static_cast<bool>(GetTreeBank()->GetNotifier()))
-            GetTreeBank()->ToggleNotifier();
-    }
-
-    if(receiver_data.isNull()){
-
-        bool receiverEnabled = current
-            ? static_cast<bool>(current->GetTreeBank()->GetReceiver())
-            : true;
-
-        if(receiverEnabled != static_cast<bool>(GetTreeBank()->GetReceiver()))
-            GetTreeBank()->ToggleReceiver();
-
-    } else if(receiver_data.canConvert<bool>()){
-        if(receiver_data.toBool() != static_cast<bool>(GetTreeBank()->GetReceiver()))
-            GetTreeBank()->ToggleReceiver();
+    if(TreeBank::CanHaveMiniMap()){
+        const bool minimapEnabled = minimap_data.isNull()
+            ? (current ? static_cast<bool>(current->GetTreeBank()->GetMiniMap()) : false)
+            : minimap_data.toBool();
+        if(minimapEnabled != static_cast<bool>(GetTreeBank()->GetMiniMap()))
+            GetTreeBank()->ToggleMiniMap();
     }
 
     if(toolbar_data.isNull()){
@@ -369,14 +376,15 @@ void MainWindow::RemoveSettings(){
 
     s.remove(QStringLiteral("mainwindow/tableview%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/geometry%1").arg(m_Index));
-    s.remove(QStringLiteral("mainwindow/notifier%1").arg(m_Index));
-    s.remove(QStringLiteral("mainwindow/receiver%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/minimap%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/menubar%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/toolbar%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/treebar%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/status%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/inspectordock%1").arg(m_Index));
     s.remove(QStringLiteral("mainwindow/sidepaneldock%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/titlebartoolbar%1").arg(m_Index));
+    s.remove(QStringLiteral("mainwindow/stripexpanded%1").arg(m_Index));
 }
 
 TreeBank *MainWindow::GetTreeBank() const {
@@ -464,6 +472,8 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *ev){
                                                    : Theme::BarBackground));
     }
 #if defined(Q_OS_WIN)
+    if(watched == this && ev->type() == QEvent::WinIdChange && internalWinId() && HasInnerBar())
+        ApplyFramelessFrame();
     if(watched == this && ev->type() == QEvent::WinIdChange &&
        Application::EnableTransparentWindow() && internalWinId() && windowHandle()){
         if(BlurBehind::SurfaceMayBeTranslucent(windowHandle()->surfaceType())){
@@ -531,6 +541,8 @@ void MainWindow::AddDisplayMenuActions(QMenu *menu){
         if(!m_InspectorDock->isVisible()) m_TreeBank->InspectElement();
         else CloseInspectorPane();
     });
+    if(TreeBank::CanHaveMiniMap())
+        menu->addAction(m_TreeBank->Action(TreeBank::_ToggleMiniMap));
 }
 
 void MainWindow::CreateMenuBar(){
@@ -542,32 +554,25 @@ void MainWindow::CreateMenuBar(){
     menuBar()->show();
 }
 
+namespace {
+    QWidget *PurgedPageWidget(const SharedView &view){
+        if(!TreeBank::PurgeView() || !view) return nullptr;
+        return qobject_cast<QWidget*>(view->base());
+    }
+}
+
 bool MainWindow::IsShaded() const {
     return windowOpacity() == 0.0;
 }
 
 void MainWindow::Shade(){
     if(!m_TitleBar) return;
+    UnpinStrip();
+    if(TitleBar *strip = SeparateStrip()) strip->EndEdit();
     setWindowOpacity(0.0);
-    if(TreeBank::PurgeView()){
-        if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(0);
-#ifdef WEBENGINEVIEW
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
-                w->hide();
-            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
-                w->hide();
-#endif
-#ifdef NATIVEWEBVIEW
-            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
-                w->hide();
-#endif
-#ifdef EDGEWEBVIEW
-            else if(EdgeWebView *w = qobject_cast<EdgeWebView*>(view->base()))
-                w->hide();
-#endif
-            else;
-        }
+    {
+        SharedView view = m_TreeBank->GetCurrentView();
+        if(PurgedPageWidget(view)) view->hide();
     }
     AdjustAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
@@ -579,25 +584,9 @@ void MainWindow::Shade(){
 void MainWindow::Unshade(){
     if(!m_TitleBar) return;
     setWindowOpacity(1.0);
-    if(TreeBank::PurgeView()){
-        if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(0);
-#ifdef WEBENGINEVIEW
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
-                w->show();
-            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
-                w->show();
-#endif
-#ifdef NATIVEWEBVIEW
-            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
-                w->show();
-#endif
-#ifdef EDGEWEBVIEW
-            else if(EdgeWebView *w = qobject_cast<EdgeWebView*>(view->base()))
-                w->show();
-#endif
-            else;
-        }
+    {
+        SharedView view = m_TreeBank->GetCurrentView();
+        if(PurgedPageWidget(view)) view->show();
     }
     AdjustAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
@@ -611,17 +600,116 @@ void MainWindow::ShowWindowFrameWidgets(){
 
 void MainWindow::HideWindowFrameWidgets(){
     if(!m_TitleBar) return;
+    SetStripPinned(false);
     m_TitleBarTimer->stop();
     m_TitleBarReveal.Reset();
-    m_TitleBar        ->hide();
-    m_NorthWidget     ->hide();
-    m_SouthWidget     ->hide();
-    m_WestWidget      ->hide();
-    m_EastWidget      ->hide();
-    m_NorthWestWidget ->hide();
-    m_NorthEastWidget ->hide();
-    m_SouthWestWidget ->hide();
-    m_SouthEastWidget ->hide();
+    m_TitleStrip->Reveal(false, false);
+    for(QWidget *edge : EdgeWidgets()) edge->hide();
+}
+
+void MainWindow::CurrentViewChanged(){
+    if(m_TitleBar) m_TitleBar->EndEdit();
+    if(TitleBar *strip = SeparateStrip()) strip->EndEdit();
+}
+
+bool MainWindow::IsStripExpanded() const {
+    return m_StripExpanded && IsSimplyMaximized();
+}
+
+void MainWindow::SetStripExpanded(bool on){
+    if(on && !IsSimplyMaximized()) return;
+    if(on == m_StripExpanded) return;
+    m_StripExpanded = on;
+    SetStripPinned(on);
+    if(!on && m_TitleStrip) m_TitleStrip->EndEdit();
+    UpdateTitleBarVisibility();
+    if(m_TitleStrip) m_TitleStrip->update();
+}
+
+namespace {
+class StripPressWatch : public QObject {
+public:
+    StripPressWatch(MainWindow *window, QWidget *strip)
+        : QObject(window), m_Window(window), m_Strip(strip){}
+    bool eventFilter(QObject *watched, QEvent *ev) override {
+        if(ev->type() == QEvent::MouseButtonPress && watched->isWidgetType()){
+            QWidget *top = static_cast<QWidget*>(watched)->window();
+            Receiver *receiver = m_Window->GetTreeBank() ? m_Window->GetTreeBank()->GetReceiver() : nullptr;
+            const bool line = receiver && top == receiver && receiver->IsAnchored();
+            if(top != m_Strip && top->windowType() != Qt::Popup && !line)
+                m_Window->UnpinStrip();
+        }
+        return false;
+    }
+private:
+    MainWindow *m_Window;
+    QWidget *m_Strip;
+};
+}
+
+void MainWindow::SetStripPinned(bool on){
+    m_StripPinned = on;
+    if(on && !m_StripPressWatch){
+        m_StripPressWatch = new StripPressWatch(this, m_TitleStrip);
+        qApp->installEventFilter(m_StripPressWatch);
+    } else if(!on && m_StripPressWatch){
+        qApp->removeEventFilter(m_StripPressWatch);
+        m_StripPressWatch->deleteLater();
+        m_StripPressWatch = nullptr;
+    }
+}
+
+void MainWindow::PinStrip(){
+    if(m_StripPinned || !IsStripExpanded()) return;
+    SetStripPinned(true);
+    UpdateTitleBarVisibility();
+}
+
+void MainWindow::UnpinStrip(){
+    if(!m_StripPinned) return;
+    SetStripPinned(false);
+    UpdateTitleBarVisibility();
+}
+
+void MainWindow::HoldStripReveal(){
+    m_TitleBarReveal.Hold();
+}
+
+bool MainWindow::WantsInnerBar() const {
+    WindowFrameMargin::State state;
+    state.qtMaximized = isMaximized();
+    state.fullScreen = isFullScreen() || m_ContentFullScreen;
+    state.current = contentsMargins().top() > 0;
+#if defined(Q_OS_WIN)
+    const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
+    state.nativeKnown = hwnd && ::IsWindowVisible(hwnd);
+    if(state.nativeKnown){
+        state.nativeZoomed = ::IsZoomed(hwnd);
+        state.nativeIconic = ::IsIconic(hwnd);
+    }
+#endif
+    return WindowFrameMargin::Inner(state);
+}
+
+bool MainWindow::HasInnerBar() const {
+    return m_TitleBar && m_TitleBar->GetMode() == TitleBar::Inner;
+}
+
+bool MainWindow::ApplyInnerMargin(){
+    if(!HasInnerBar()) return false;
+    const int t = ScaleByDevice(TITLE_BAR_HEIGHT);
+    const bool inner = WantsInnerBar();
+    const QMargins margins(0, inner ? t : 0, 0, 0);
+    if(contentsMargins() == margins) return false;
+    setContentsMargins(margins);
+    return true;
+}
+
+QList<QWidget*> MainWindow::EdgeWidgets() const {
+    if(!m_NorthWidget) return QList<QWidget*>();
+    return QList<QWidget*>{m_NorthWidget, m_SouthWidget, m_WestWidget, m_EastWidget,
+                           m_NorthWestWidget, m_NorthEastWidget,
+                           m_SouthWestWidget, m_SouthEastWidget};
 }
 
 void MainWindow::ShowAllEdgeWidgets(){
@@ -636,18 +724,11 @@ void MainWindow::HideAllEdgeWidgets(){
 
 void MainWindow::RaiseAllEdgeWidgets(){
     m_DialogFrame->raise();
-    if(!m_TitleBar || !m_TitleBar->isVisible()) return;
-    m_NorthWidget     ->raise();
-    m_SouthWidget     ->raise();
-    m_WestWidget      ->raise();
-    m_EastWidget      ->raise();
-
-    m_TitleBar        ->raise();
-
-    m_NorthWestWidget ->raise();
-    m_NorthEastWidget ->raise();
-    m_SouthWestWidget ->raise();
-    m_SouthEastWidget ->raise();
+    if(!m_TitleStrip || !m_TitleStrip->isVisible()) return;
+    const QList<QWidget*> edges = EdgeWidgets();
+    for(int i = 0; i < edges.size() && i < 4; i++) edges[i]->raise();
+    m_TitleStrip->raise();
+    for(int i = 4; i < edges.size(); i++) edges[i]->raise();
 }
 
 void MainWindow::AdjustAllEdgeWidgets(){
@@ -657,27 +738,44 @@ void MainWindow::AdjustAllEdgeWidgets(){
                                dialogWidth, m_DialogFrame->height());
     m_DialogFrame->Adjust();
     if(!m_TitleBar) return;
-    const bool frameVisible = isVisible() && !isMinimized() &&
-                              !isFullScreen() && !m_ContentFullScreen;
-    const bool edgesVisible = frameVisible && !isMaximized();
-    for(QWidget *edge : QList<QWidget*>{m_NorthWidget, m_SouthWidget, m_WestWidget, m_EastWidget,
-                         m_NorthWestWidget, m_NorthEastWidget,
-                         m_SouthWestWidget, m_SouthEastWidget})
-        edge->setVisible(edgesVisible);
-    if(IsShaded()) rect.setHeight(0);
-    const int e = ScaleByDevice(EDGE_WIDGET_SIZE);
+    const bool frameVisible = IsFrameShown();
     const int t = ScaleByDevice(TITLE_BAR_HEIGHT);
-    const int et = e+t;
-    m_NorthWidget     ->setGeometry(QRect(rect.left()-1, rect.top()-et, rect.width()+2, e));
-    m_SouthWidget     ->setGeometry(QRect(rect.left()-1, rect.bottom()+1, rect.width()+2, e));
-    m_WestWidget      ->setGeometry(QRect(rect.left()-e, rect.top()-t-1, e, rect.height()+t+2));
-    m_EastWidget      ->setGeometry(QRect(rect.right()+1, rect.top()-t-1, e, rect.height()+t+2));
+    if(HasInnerBar()){
+        if(ApplyInnerMargin()){
+            QTimer::singleShot(0, this, [this](){
+                QLayout *l = layout();
+                if(!l) return;
+                int top = INT_MAX;
+                for(QWidget *w : {menuWidget(), static_cast<QWidget*>(m_TreeBar),
+                                  static_cast<QWidget*>(m_ToolBar), centralWidget()})
+                    if(w && w->isVisible() && !w->isWindow()) top = qMin(top, w->geometry().top());
+                if(top == INT_MAX || top == contentsMargins().top()) return;
+                l->invalidate();
+                l->activate();
+            });
+        }
+        const bool inner = WantsInnerBar();
+        m_TitleBar->setGeometry(0, 0, width(), t);
+        m_TitleBar->setVisible(inner);
+        if(inner) m_TitleBar->raise();
+    }
+    if(m_NorthWidget){
+        for(QWidget *edge : EdgeWidgets())
+            edge->setVisible(frameVisible && !isMaximized());
+        if(IsShaded()) rect.setHeight(0);
+        const int e = ScaleByDevice(EDGE_WIDGET_SIZE);
+        const int et = e+t;
+        m_NorthWidget     ->setGeometry(QRect(rect.left()-1, rect.top()-et, rect.width()+2, e));
+        m_SouthWidget     ->setGeometry(QRect(rect.left()-1, rect.bottom()+1, rect.width()+2, e));
+        m_WestWidget      ->setGeometry(QRect(rect.left()-e, rect.top()-t-1, e, rect.height()+t+2));
+        m_EastWidget      ->setGeometry(QRect(rect.right()+1, rect.top()-t-1, e, rect.height()+t+2));
 
-    const int c = ScaleByDevice(3);
-    m_NorthWestWidget ->setGeometry(QRect(rect.left()-e, rect.top()-et, e+c, e+c));
-    m_NorthEastWidget ->setGeometry(QRect(rect.right()+1-c, rect.top()-et, e+c, e+c));
-    m_SouthWestWidget ->setGeometry(QRect(rect.left()-e, rect.bottom()+1-c, e+c, e+c));
-    m_SouthEastWidget ->setGeometry(QRect(rect.right()+1-c, rect.bottom()+1-c, e+c, e+c));
+        const int c = ScaleByDevice(3);
+        m_NorthWestWidget ->setGeometry(QRect(rect.left()-e, rect.top()-et, e+c, e+c));
+        m_NorthEastWidget ->setGeometry(QRect(rect.right()+1-c, rect.top()-et, e+c, e+c));
+        m_SouthWestWidget ->setGeometry(QRect(rect.left()-e, rect.bottom()+1-c, e+c, e+c));
+        m_SouthEastWidget ->setGeometry(QRect(rect.right()+1-c, rect.bottom()+1-c, e+c, e+c));
+    }
     if(frameVisible && isMaximized()){
         if(!m_TitleBarTimer->isActive()) m_TitleBarTimer->start();
     } else {
@@ -699,7 +797,7 @@ bool MainWindow::IsFrameActive() const {
     if(!foreground) return false;
     const HWND root = GetAncestor(foreground, GA_ROOTOWNER);
     for(const QWidget *widget : {static_cast<const QWidget*>(this),
-                                 static_cast<const QWidget*>(m_TitleBar),
+                                 static_cast<const QWidget*>(m_TitleStrip),
                                  static_cast<const QWidget*>(purged)}){
         if(widget && widget->internalWinId() &&
            root == reinterpret_cast<HWND>(widget->window()->internalWinId()))
@@ -707,7 +805,7 @@ bool MainWindow::IsFrameActive() const {
     }
     return false;
 #else
-    return isActiveWindow() || (m_TitleBar && m_TitleBar->isActiveWindow()) ||
+    return isActiveWindow() || (m_TitleStrip && m_TitleStrip->isActiveWindow()) ||
            (purged && purged->isActiveWindow());
 #endif
 }
@@ -719,41 +817,36 @@ void MainWindow::UpdateTitleBarVisibility(){
 }
 
 void MainWindow::ApplyTitleBarVisibility(const QPoint &cursor, bool active, bool buttonsDown){
-    if(!m_TitleBar) return;
+    if(!m_TitleStrip) return;
     const QRect rect = geometry();
-    const int t = m_TitleBar->ScaleByDevice(TITLE_BAR_HEIGHT);
-    const int titleWidth = isMaximized() ? qMin(rect.width(), m_TitleBar->CompactWidth()) : rect.width();
-    const int titleTop = isMaximized() ? rect.top() : rect.top()-t;
-    m_TitleBar->setGeometry(rect.right()+1-titleWidth, titleTop, titleWidth, t);
-    const bool frameVisible = isVisible() && !isMinimized() &&
-                              !isFullScreen() && !m_ContentFullScreen;
+    const bool outer = m_TitleStrip->GetMode() == TitleBar::Outer;
+    const int t = m_TitleStrip->ScaleByDevice(TITLE_BAR_HEIGHT);
+    const int titleWidth = isMaximized() && !IsStripExpanded()
+        ? qMin(rect.width(), m_TitleStrip->CompactWidth()) : rect.width();
+    const int titleTop = isMaximized() || !outer ? rect.top() : rect.top()-t;
+    m_TitleStrip->SetStripGeometry(QRect(rect.right()+1-titleWidth, titleTop, titleWidth, t));
+    const bool frameVisible = IsFrameShown();
     const bool enabled = frameVisible && isMaximized();
     const QRect monitor = screen() ? screen()->geometry() : QRect();
     const QRect strip = QRect(QPoint(geometry().left(), monitor.top()),
-                               QPoint(geometry().right(), m_TitleBar->geometry().bottom()))
+                               QPoint(geometry().right(), titleTop + t - 1))
                             .intersected(monitor);
     const bool revealed = m_TitleBarReveal.Update(enabled, active, strip, cursor, buttonsDown);
-    const bool visible = frameVisible && (!isMaximized() || revealed);
-    if(visible != m_TitleBar->isVisible()){
-        m_TitleBar->setVisible(visible);
-        if(visible){
-            RaiseAllEdgeWidgets();
-            m_TitleBar->update();
-        }
+    const bool visible = frameVisible &&
+        (IsShaded() || (isMaximized() ? revealed || (IsStripExpanded() && m_StripPinned && active) : outer));
+    const bool animate = frameVisible && isMaximized() && !IsShaded() && !m_StripWasShaded;
+    m_StripWasShaded = IsShaded();
+    if(m_TitleStrip->Reveal(visible, animate)){
+        RaiseAllEdgeWidgets();
+        m_TitleStrip->update();
     }
 }
 
 void MainWindow::UpdateAllEdgeWidgets(){
     if(!m_TitleBar) return;
-    m_TitleBar        ->update();
-    m_NorthWidget     ->update();
-    m_SouthWidget     ->update();
-    m_WestWidget      ->update();
-    m_EastWidget      ->update();
-    m_NorthWestWidget ->update();
-    m_NorthEastWidget ->update();
-    m_SouthWestWidget ->update();
-    m_SouthEastWidget ->update();
+    m_TitleBar->update();
+    if(TitleBar *strip = SeparateStrip()) strip->update();
+    for(QWidget *edge : EdgeWidgets()) edge->update();
 }
 
 void MainWindow::SetWindowTitle(const QString &title){
@@ -764,15 +857,8 @@ void MainWindow::SetWindowTitle(const QString &title){
     else
         setWindowTitle(QStringLiteral("vanilla - ") + title);
 
-    if(m_TitleBar) m_TitleBar->repaint();
-}
-
-void MainWindow::ToggleNotifier(){
-    m_TreeBank->ToggleNotifier();
-}
-
-void MainWindow::ToggleReceiver(){
-    m_TreeBank->ToggleReceiver();
+    if(m_TitleBar) m_TitleBar->update();
+    if(TitleBar *strip = SeparateStrip()) strip->update();
 }
 
 void MainWindow::ToggleMenuBar(){
@@ -799,6 +885,100 @@ void MainWindow::ToggleToolBar(){
     }
 }
 
+#if defined(Q_OS_WIN)
+
+static HWND CoverWithLastLook(HWND hwnd){
+    if(!::IsWindow(hwnd) || !::IsWindowVisible(hwnd) || ::IsIconic(hwnd)) return nullptr;
+    RECT r;
+    if(FAILED(::DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, &r, sizeof(r)))) return nullptr;
+    const int w = r.right - r.left, h = r.bottom - r.top;
+    if(w <= 0 || h <= 0) return nullptr;
+
+    static const wchar_t *className = L"VanillaFullScreenCover";
+    static const bool registered = [](){
+        WNDCLASSW wc = {};
+        wc.lpfnWndProc = ::DefWindowProcW;
+        wc.hInstance = ::GetModuleHandleW(nullptr);
+        wc.lpszClassName = className;
+        return ::RegisterClassW(&wc) != 0;
+    }();
+    if(!registered) return nullptr;
+    HWND cover = ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_NOACTIVATE |
+                                   WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT,
+                                   className, L"", WS_POPUP, r.left, r.top, w, h,
+                                   nullptr, nullptr, ::GetModuleHandleW(nullptr), nullptr);
+    if(!cover) return nullptr;
+
+    bool shown = false;
+    HDC screen = ::GetDC(nullptr);
+    HDC mem = ::CreateCompatibleDC(screen);
+    BITMAPINFO bi = {};
+    bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
+    bi.bmiHeader.biWidth = w;
+    bi.bmiHeader.biHeight = -h;
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    void *bits = nullptr;
+    HBITMAP bitmap = ::CreateDIBSection(screen, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    if(mem && bitmap){
+        HGDIOBJ old = ::SelectObject(mem, bitmap);
+        if(::BitBlt(mem, 0, 0, w, h, screen, r.left, r.top, SRCCOPY)){
+            ::GdiFlush();
+            quint32 *pixel = static_cast<quint32*>(bits);
+            for(qint64 i = 0, n = qint64(w) * h; i < n; ++i) pixel[i] |= 0xff000000u;
+            POINT to = { r.left, r.top };
+            SIZE size = { w, h };
+            POINT from = { 0, 0 };
+            BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+            shown = ::UpdateLayeredWindow(cover, screen, &to, &size, mem, &from, 0, &blend, ULW_ALPHA)
+                && ::SetWindowPos(cover, HWND_TOPMOST, 0, 0, 0, 0,
+                                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        }
+        ::SelectObject(mem, old);
+    }
+    if(bitmap) ::DeleteObject(bitmap);
+    if(mem) ::DeleteDC(mem);
+    ::ReleaseDC(nullptr, screen);
+    if(!shown){
+        ::DestroyWindow(cover);
+        return nullptr;
+    }
+    return cover;
+}
+
+void MainWindow::DropFullScreenCover(){
+    if(!m_FullScreenCover) return;
+    ::DestroyWindow(reinterpret_cast<HWND>(m_FullScreenCover));
+    m_FullScreenCover = 0;
+}
+#endif
+
+void MainWindow::CloakWhileSwitchingFullScreen(){
+#if defined(Q_OS_WIN)
+    const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
+    if(!hwnd) return;
+    if(!m_FullScreenCloaked){
+        m_FullScreenCover = reinterpret_cast<quintptr>(CoverWithLastLook(hwnd));
+        m_FullScreenCloaked = true;
+    }
+    BOOL on = TRUE;
+    ::DwmSetWindowAttribute(hwnd, DWMWA_CLOAK, &on, sizeof(on));
+    const int generation = ++m_FullScreenSwitch;
+    QTimer::singleShot(34, this, [this, generation](){
+        if(generation != m_FullScreenSwitch) return;
+        if(const HWND hwnd = reinterpret_cast<HWND>(internalWinId())){
+            BOOL off = FALSE;
+            ::DwmSetWindowAttribute(hwnd, DWMWA_CLOAK, &off, sizeof(off));
+        }
+        m_FullScreenCloaked = false;
+        if(m_FullScreenCover){
+            ::DwmFlush();
+            DropFullScreenCover();
+        }
+    });
+#endif
+}
+
 void MainWindow::ToggleFullScreen(){
     if(m_ContentFullScreen){
         if(SharedView view = m_TreeBank->GetCurrentView()){
@@ -808,6 +988,7 @@ void MainWindow::ToggleFullScreen(){
         SetFullScreen(false);
         return;
     }
+    CloakWhileSwitchingFullScreen();
     if(isFullScreen()){
         showNormal();
     } else {
@@ -861,16 +1042,22 @@ void MainWindow::SetFullScreen(bool on){
         m_ToolBarVisibleBeforeFullScreen = !m_ToolBar->isHidden();
         m_ContentFullScreen = true;
 
+        const bool switching = !isFullScreen();
+        if(switching) CloakWhileSwitchingFullScreen();
+
         menuBar()->hide();
         m_TreeBar->hide();
         m_ToolBar->hide();
         HideWindowFrameWidgets();
         m_TreeBank->SetMiniMapShelved(true);
 
-        if(!isFullScreen()) showFullScreen();
+        if(switching) showFullScreen();
 
     } else {
         m_ContentFullScreen = false;
+
+        const bool switching = !(m_StateBeforeFullScreen & Qt::WindowFullScreen);
+        if(switching) CloakWhileSwitchingFullScreen();
 
         if(m_MenuBarVisibleBeforeFullScreen) menuBar()->show();
         if(m_TreeBarVisibleBeforeFullScreen) m_TreeBar->show();
@@ -878,7 +1065,7 @@ void MainWindow::SetFullScreen(bool on){
         ShowWindowFrameWidgets();
         m_TreeBank->SetMiniMapShelved(false);
 
-        if(!(m_StateBeforeFullScreen & Qt::WindowFullScreen)){
+        if(switching){
             if(m_StateBeforeFullScreen & Qt::WindowMaximized)
                 showMaximized();
             else
@@ -888,6 +1075,11 @@ void MainWindow::SetFullScreen(bool on){
     AdjustAllEdgeWidgets();
     RaiseAllEdgeWidgets();
     SetFocus();
+}
+
+void MainWindow::raise(){
+    OwnedRaise::OwnerRaise owner(internalWinId());
+    QMainWindow::raise();
 }
 
 void MainWindow::SetFocus(){
@@ -904,6 +1096,25 @@ void MainWindow::SetFocus(){
     }
     RaiseAllEdgeWidgets();
     UpdateAllEdgeWidgets();
+}
+
+void MainWindow::SetOwner(QWidget *window, MainWindow *owner){
+    if(!window || !window->isWindow()) return;
+    window->winId();
+    QWindow *handle = window->windowHandle();
+    if(!handle) return;
+    QWindow *to = nullptr;
+    if(owner){
+        owner->winId();
+        to = owner->windowHandle();
+    }
+    if(handle->transientParent() != to) handle->setTransientParent(to);
+}
+
+MainWindow *MainWindow::DialogOwner(){
+    MainWindow *win = Application::GetCurrentWindow();
+    if(!win || !win->isVisible() || win->isMinimized()) return nullptr;
+    return win;
 }
 
 void MainWindow::ActivateWindowIfNeeded(QWidget *window){
@@ -950,6 +1161,11 @@ void MainWindow::ShowWithFirstFrame(){
 void MainWindow::changeEvent(QEvent *ev){
     QMainWindow::changeEvent(ev);
     if(ev->type() == QEvent::WindowStateChange){
+        if(IsShaded() && (isMaximized() || isFullScreen())) Unshade();
+        if(!IsSimplyMaximized()){
+            SetStripPinned(false);
+            if(TitleBar *strip = SeparateStrip()) strip->EndEdit();
+        }
         AdjustAllEdgeWidgets();
         RaiseAllEdgeWidgets();
     } else if(ev->type() == QEvent::ActivationChange){
@@ -965,6 +1181,27 @@ void MainWindow::paintEvent(QPaintEvent *ev){
     QMainWindow::paintEvent(ev);
 }
 
+void MainWindow::RepaintWindowEdge(){
+#if defined(Q_OS_WIN)
+    if(!internalWinId()) return;
+    ApplyEdgeCaption();
+    ::RedrawWindow(reinterpret_cast<HWND>(internalWinId()), nullptr, nullptr,
+                   RDW_FRAME | RDW_INVALIDATE);
+#endif
+}
+
+#if defined(Q_OS_WIN)
+void MainWindow::ApplyEdgeCaption(){
+    if(!HasInnerBar() || !internalWinId()) return;
+    const QColor color(Application::WindowEdgeColor());
+    const DWORD caption = color.isValid()
+        ? static_cast<DWORD>(color.red() | (color.green() << 8) | (color.blue() << 16))
+        : 0xFFFFFFFF;
+    ::DwmSetWindowAttribute(reinterpret_cast<HWND>(internalWinId()),
+                            35 , &caption, sizeof(caption));
+}
+#endif
+
 void MainWindow::ApplyTheme(){
     ApplyTranslucentFrame();
     if(testAttribute(Qt::WA_TranslucentBackground)) menuBar()->update();
@@ -972,7 +1209,7 @@ void MainWindow::ApplyTheme(){
 
 void MainWindow::ApplyTranslucentFrame(){
 #if defined(Q_OS_WIN)
-    if(!Application::EnableTransparentWindow() || Application::EnableFramelessWindow() || !internalWinId()) return;
+    if(!Application::EnableTransparentWindow() || Application::EnableCustomTitleBar() || !internalWinId()) return;
     const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
     const auto colorref = [](const QColor &c){ return static_cast<DWORD>(c.red() | (c.green() << 8) | (c.blue() << 16)); };
     DWORD caption = colorref(Theme::Color(Theme::BarBackground));
@@ -984,10 +1221,53 @@ void MainWindow::ApplyTranslucentFrame(){
 
 #if defined(Q_OS_WIN)
 
+static bool PaintFullScreenBorder(HWND hwnd, const MSG *msg, qintptr *result){
+    if(!hwnd || msg->hwnd != hwnd ||
+       (msg->message != WM_NCPAINT && msg->message != WM_NCACTIVATE)) return false;
+    const LONG_PTR style = ::GetWindowLongPtrW(hwnd, GWL_STYLE);
+    if((style & WS_CAPTION) != WS_BORDER || (style & WS_THICKFRAME)) return false;
+    const QColor color(Application::WindowEdgeColor());
+    if(!color.isValid()) return false;
+    if(HDC dc = ::GetWindowDC(hwnd)){
+        RECT window, client;
+        ::GetWindowRect(hwnd, &window);
+        ::GetClientRect(hwnd, &client);
+        POINT origin = { 0, 0 };
+        ::ClientToScreen(hwnd, &origin);
+        ::OffsetRect(&client, origin.x - window.left, origin.y - window.top);
+        ::OffsetRect(&window, -window.left, -window.top);
+        ::ExcludeClipRect(dc, client.left, client.top, client.right, client.bottom);
+        BITMAPINFO info = {};
+        info.bmiHeader.biSize = sizeof(info.bmiHeader);
+        info.bmiHeader.biWidth = 1;
+        info.bmiHeader.biHeight = 1;
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        const DWORD pixel = 0xFF000000 | static_cast<DWORD>(color.rgb() & 0xFFFFFF);
+        ::StretchDIBits(dc, 0, 0, window.right, window.bottom, 0, 0, 1, 1,
+                        &pixel, &info, DIB_RGB_COLORS, SRCCOPY);
+        ::ReleaseDC(hwnd, dc);
+    }
+    *result = msg->message == WM_NCACTIVATE ? TRUE : 0;
+    return true;
+}
+
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result){
+    if(eventType == "windows_generic_MSG" && message && HasInnerBar() &&
+       FramelessNativeEvent(message, result))
+        return true;
     if(eventType == "windows_generic_MSG" && message){
         const MSG *msg = static_cast<const MSG*>(message);
         const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
+        if(PaintFullScreenBorder(hwnd, msg, result)) return true;
+        if(m_StripPinned && hwnd && msg->hwnd == hwnd){
+            UINT button = msg->message;
+            if(button == WM_PARENTNOTIFY) button = LOWORD(msg->wParam);
+            if(button == WM_LBUTTONDOWN || button == WM_RBUTTONDOWN ||
+               button == WM_MBUTTONDOWN || button == WM_XBUTTONDOWN)
+                UnpinStrip();
+        }
         if(msg->message == WM_INITMENUPOPUP && HIWORD(msg->lParam) && hwnd && msg->hwnd == hwnd &&
            reinterpret_cast<HMENU>(msg->wParam) == ::GetSystemMenu(hwnd, FALSE)){
             delete m_SystemMenu;
@@ -1054,6 +1334,16 @@ void MainWindow::closeEvent(QCloseEvent *ev){
                 view->hide();
             }
         }
+        foreach(SharedView view, TreeBank::AllViews()){
+            if(!view || view->GetTreeBank() != m_TreeBank) continue;
+            QWidget *widget = qobject_cast<QWidget*>(view->base());
+            if(!widget || !widget->isWindow()) continue;
+            MainWindow *to = Application::GetCurrentWindow();
+            view->setParent(to->GetTreeBank());
+            view->SetTreeBank(to->GetTreeBank());
+            view->hide();
+            SetOwner(widget, to);
+        }
 
         QMainWindow::closeEvent(ev);
         RemoveSettings();
@@ -1070,27 +1360,9 @@ void MainWindow::resizeEvent(QResizeEvent *ev){
 
 void MainWindow::moveEvent(QMoveEvent *ev){
     QMainWindow::moveEvent(ev);
-    if(TreeBank::PurgeView()){
-        if(SharedView view = m_TreeBank->GetCurrentView()){
-            QRect rect = QRect(m_TreeBank->mapToGlobal(QPoint()), m_TreeBank->size());
-            if(0);
-#ifdef WEBENGINEVIEW
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
-                w->setGeometry(rect);
-            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
-                w->setGeometry(rect);
-#endif
-#ifdef NATIVEWEBVIEW
-            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
-                w->setGeometry(rect);
-#endif
-#ifdef EDGEWEBVIEW
-            else if(EdgeWebView *w = qobject_cast<EdgeWebView*>(view->base()))
-                w->setGeometry(rect);
-#endif
-            else;
-        }
-    }
+    QWidget *widget = PurgedPageWidget(m_TreeBank->GetCurrentView());
+    if(widget && widget->isWindow())
+        widget->setGeometry(QRect(m_TreeBank->mapToGlobal(QPoint()), m_TreeBank->size()));
     AdjustAllEdgeWidgets();
     RaiseAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
@@ -1108,25 +1380,14 @@ void MainWindow::showEvent(QShowEvent *ev){
         BlurBehind::Blur(this);
         ApplyTranslucentFrame();
     }
-    if(TreeBank::PurgeView()){
-        if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(0);
-#ifdef WEBENGINEVIEW
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
-                w->show();
-            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
-                w->show();
-#endif
-#ifdef NATIVEWEBVIEW
-            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
-                w->show();
-#endif
-#ifdef EDGEWEBVIEW
-            else if(EdgeWebView *w = qobject_cast<EdgeWebView*>(view->base()))
-                w->show();
-#endif
-            else;
-        }
+    {
+        SharedView view = m_TreeBank->GetCurrentView();
+        if(PurgedPageWidget(view)) view->show();
+    }
+    if(m_DialogFrame->windowHandle() == nullptr ||
+       m_DialogFrame->windowHandle()->transientParent() != windowHandle()){
+        m_DialogFrame->hide();
+        SetOwner(m_DialogFrame, this);
     }
     ShowAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
@@ -1134,25 +1395,9 @@ void MainWindow::showEvent(QShowEvent *ev){
 }
 
 void MainWindow::hideEvent(QHideEvent *ev){
-    if(TreeBank::PurgeView()){
-        if(SharedView view = m_TreeBank->GetCurrentView()){
-            if(0);
-#ifdef WEBENGINEVIEW
-            else if(WebEngineView *w = qobject_cast<WebEngineView*>(view->base()))
-                w->show();
-            else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(view->base()))
-                w->show();
-#endif
-#ifdef NATIVEWEBVIEW
-            else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(view->base()))
-                w->show();
-#endif
-#ifdef EDGEWEBVIEW
-            else if(EdgeWebView *w = qobject_cast<EdgeWebView*>(view->base()))
-                w->show();
-#endif
-            else;
-        }
+    {
+        SharedView view = m_TreeBank->GetCurrentView();
+        if(PurgedPageWidget(view) && view->GetTreeBank() == m_TreeBank) view->show();
     }
     HideAllEdgeWidgets();
     Notifier *notifier = m_TreeBank->GetNotifier();
@@ -1173,217 +1418,150 @@ namespace {
     static const int disp = shadow;
 }
 
-TitleBar::TitleBar(MainWindow *mainwindow)
-    : QWidget(nullptr)
-    , m_MainWindow(mainwindow)
-{
-    setWindowFlags(Qt::FramelessWindowHint | Qt::SplashScreen);
-    setAttribute(Qt::WA_ShowWithoutActivating);
-    setAttribute(Qt::WA_TranslucentBackground);
-    setMouseTracking(true);
-
-    m_HoveredButton = NoButton;
-    LoadIcons();
+#if defined(Q_OS_WIN)
+void MainWindow::ApplyFramelessFrame(){
+    const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
+    if(!hwnd) return;
+    const QRect wanted = geometry();
+    ApplyEdgeCaption();
+    ::SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                   SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    if(!isMaximized() && !isFullScreen() && !isMinimized() && wanted.isValid() && windowHandle())
+        windowHandle()->setGeometry(wanted);
 }
 
-void TitleBar::LoadIcons(){
-    QStyle *style = Application::style();
-    const QSize minimize = MinimizeAreaRect().size();
-    const QSize maximize = MaximizeAreaRect().size();
-
-    m_Shade    = Theme::Ink(style->standardIcon(QStyle::SP_TitleBarShadeButton).pixmap(minimize), Theme::TitleBarIcon);
-    m_Unshade  = Theme::Ink(style->standardIcon(QStyle::SP_TitleBarUnshadeButton).pixmap(minimize), Theme::TitleBarIcon);
-    m_Minimize = Theme::Ink(style->standardIcon(QStyle::SP_TitleBarMinButton).pixmap(minimize), Theme::TitleBarIcon);
-    m_Maximize = Theme::Ink(style->standardIcon(QStyle::SP_TitleBarMaxButton).pixmap(maximize), Theme::TitleBarIcon);
-    m_Normal   = Theme::Ink(style->standardIcon(QStyle::SP_TitleBarNormalButton).pixmap(maximize), Theme::TitleBarIcon);
-    m_Close    = Theme::Ink(style->standardIcon(QStyle::SP_TitleBarCloseButton).pixmap(CloseAreaRect().size()), Theme::TitleBarIcon);
-
-    m_IconScheme = Theme::CurrentScheme();
+WindowFrameHit::Layout MainWindow::FrameHitLayout() const {
+    WindowFrameHit::Layout layout;
+    const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
+    RECT client;
+    ::GetClientRect(hwnd, &client);
+    const UINT dpi = ::GetDpiForWindow(hwnd);
+    layout.width = client.right;
+    layout.border = ::GetSystemMetricsForDpi(SM_CYSIZEFRAME, dpi) +
+                    ::GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+    layout.resizable = !isMaximized();
+    if(m_TitleBar->isHidden()) return layout;
+    const qreal ratio = windowHandle() ? windowHandle()->devicePixelRatio() : 1.0;
+    const QPoint origin = m_TitleBar->pos();
+    auto physical = [&](const QRect &r){
+        if(r.isEmpty()) return QRect();
+        const QRect moved = r.translated(origin);
+        return QRect(QPoint(qRound(moved.left()*ratio), qRound(moved.top()*ratio)),
+                     QPoint(qRound((moved.right()+1)*ratio)-1, qRound((moved.bottom()+1)*ratio)-1));
+    };
+    layout.bar = physical(QRect(QPoint(), m_TitleBar->size()));
+    layout.maximize = physical(m_TitleBar->ButtonRect(TitleBar::MaximizeButton));
+    for(TitleBar::Button each : TitleBar::AllButtons){
+        if(each == TitleBar::MaximizeButton) continue;
+        const QRect r = physical(m_TitleBar->ButtonRect(each));
+        if(!r.isEmpty()) layout.buttons << r;
+    }
+    const QRect title = physical(m_TitleBar->IsEditing() ? m_TitleBar->TitleRect()
+                                                         : m_TitleBar->EditRect());
+    if(!title.isEmpty()) layout.buttons << title;
+    return layout;
 }
 
-void TitleBar::paintEvent(QPaintEvent *ev){
-    if(m_IconScheme != Theme::CurrentScheme()) LoadIcons();
-
-    QPainter painter(this);
-
-    bool isCurrent = m_MainWindow == Application::GetCurrentWindow();
-
-    painter.setPen(Theme::Pen(Theme::TitleBarBorder));
-    painter.setBrush(Theme::Brush(Theme::TitleBarBackground, isCurrent ? 200 : 128));
-    painter.drawRect(QRect(QPoint(), size()-QSize(1,1)));
-
-    if(!m_MainWindow->isMaximized()){
-        painter.setPen(Theme::Pen(Theme::TitleBarButton));
-        painter.setBrush(Theme::Brush(Theme::TitleBarButton));
-        painter.drawRect(MenuAreaRect());
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(Theme::Brush(Theme::TitleBarButtonHovered));
-        if(m_HoveredButton == MenuButton) painter.drawRect(MenuAreaRect1());
-    }
-
-    if(m_MainWindow->isMaximized() || width() > ButtonAreaWidth(4)){
-        painter.setPen(Theme::Pen(Theme::TitleBarButton));
-        painter.setBrush(Theme::Brush(Theme::TitleBarButton));
-        painter.drawRect(ViewTreeAreaRect());
-
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(Theme::Brush(Theme::TitleBarButtonHovered));
-        if(m_HoveredButton == ViewTreeButton) painter.drawRect(ViewTreeAreaRect1());
-    }
-
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(Theme::Brush(Theme::TitleBarButtonHovered));
-
-    if(m_MainWindow->isMaximized() || width() > ButtonAreaWidth(3)){
-        if(m_MainWindow->IsShaded())
-            painter.drawPixmap(ShadeAreaRect(), m_Unshade, QRect(QPoint(), m_Unshade.size()));
-        else painter.drawPixmap(ShadeAreaRect(), m_Shade, QRect(QPoint(), m_Shade.size()));
-        if(m_HoveredButton == ShadeButton) painter.drawRect(ShadeAreaRect1());
-    }
-    if(m_MainWindow->isMaximized() || width() > ButtonAreaWidth(2)){
-        if(m_MainWindow->isMinimized())
-            painter.drawPixmap(MinimizeAreaRect(), m_Normal, QRect(QPoint(), m_Normal.size()));
-        else painter.drawPixmap(MinimizeAreaRect(), m_Minimize, QRect(QPoint(), m_Minimize.size()));
-        if(m_HoveredButton == MinimizeButton) painter.drawRect(MinimizeAreaRect1());
-    }
-    if(m_MainWindow->isMaximized() || width() > ButtonAreaWidth(1)){
-        if(m_MainWindow->isMaximized())
-            painter.drawPixmap(MaximizeAreaRect(), m_Normal, QRect(QPoint(), m_Normal.size()));
-        else painter.drawPixmap(MaximizeAreaRect(), m_Maximize, QRect(QPoint(), m_Maximize.size()));
-        if(m_HoveredButton == MaximizeButton) painter.drawRect(MaximizeAreaRect1());
-    }
-
-    painter.drawPixmap(CloseAreaRect(), m_Close, QRect(QPoint(), m_Close.size()));
-    if(m_HoveredButton == CloseButton) painter.drawRect(CloseAreaRect1());
-
-    if(!m_MainWindow->isMaximized()){
-        painter.setFont(TitleBarTitleFont());
-        painter.setPen(Theme::Pen(Theme::TitleBarText));
-        painter.setBrush(Qt::NoBrush);
-        painter.drawText(QRect(ScaleByDevice(22), 0,
-                               qMax(0, ViewTreeAreaRect1().left()-ScaleByDevice(26)), height()),
-                         Qt::TextSingleLine | Qt::AlignVCenter,
-                         m_MainWindow->windowTitle());
-    }
-    ev->setAccepted(true);
+void MainWindow::ReleaseMaximizeButton(){
+    m_TitleBar->SetNativePressed(false);
 }
 
-void TitleBar::mousePressEvent(QMouseEvent *ev){
-    m_MainWindow->raise();
-    m_Moved = false;
-    if(ev->button() == Qt::LeftButton){
-        m_Pos = ev->globalPosition().toPoint() - geometry().topLeft() - QPoint(0,t);
-    }
-}
-
-void TitleBar::mouseMoveEvent(QMouseEvent *ev){
-    if(ev->buttons() & Qt::LeftButton){
-        m_Moved = true;
-        if(m_HoveredButton == NoButton)
-            m_MainWindow->move(ev->globalPosition().toPoint() - m_Pos);
-        return;
-    }
-    HoveredButton before = m_HoveredButton;
-    if(MenuAreaRect1().contains(ev->pos())){
-        m_HoveredButton = MenuButton;
-    } else if(ViewTreeAreaRect1().contains(ev->pos())){
-        m_HoveredButton = ViewTreeButton;
-    } else if(ShadeAreaRect1().contains(ev->pos())){
-        m_HoveredButton = ShadeButton;
-    } else if(MinimizeAreaRect1().contains(ev->pos())){
-        m_HoveredButton = MinimizeButton;
-    } else if(MaximizeAreaRect1().contains(ev->pos())){
-        m_HoveredButton = MaximizeButton;
-    } else if(CloseAreaRect1().contains(ev->pos())){
-        m_HoveredButton = CloseButton;
-    } else {
-        m_HoveredButton = NoButton;
-    }
-    if(before != m_HoveredButton) repaint();
-}
-
-void TitleBar::mouseReleaseEvent(QMouseEvent *ev){
-    if(m_Moved){
-        m_MainWindow->SetFocus();
-        m_Moved = false;
-        ev->setAccepted(true);
-    } else if(ev->button() == Qt::LeftButton){
-        if(MenuAreaRect1().contains(ev->pos())){
-            QMenu *menu = m_MainWindow->GetTreeBank()->GlobalContextMenu();
-            menu->exec(ev->globalPosition().toPoint());
-            delete menu;
-            m_MainWindow->SetFocus();
-        } else if(ViewTreeAreaRect1().contains(ev->pos())){
-            Gadgets *g = m_MainWindow->GetTreeBank()->GetGadgets();
-            if(g && g->IsActive()) g->Deactivate();
-            else m_MainWindow->GetTreeBank()->DisplayViewTree();
-            m_MainWindow->SetFocus();
-        } else if(ShadeAreaRect1().contains(ev->pos())){
-            m_MainWindow->ToggleShaded();
-        } else if(MinimizeAreaRect1().contains(ev->pos())){
-            m_MainWindow->ToggleMinimized();
-        } else if(MaximizeAreaRect1().contains(ev->pos())){
-            m_MainWindow->ToggleMaximized();
-        } else if(CloseAreaRect1().contains(ev->pos())){
-            m_MainWindow->close();
-        } else {
-            m_MainWindow->SetFocus();
+bool MainWindow::FramelessNativeEvent(void *message, qintptr *result){
+    const MSG *msg = static_cast<const MSG*>(message);
+    const HWND hwnd = reinterpret_cast<HWND>(internalWinId());
+    if(!hwnd || msg->hwnd != hwnd) return false;
+    switch(msg->message){
+    case WM_NCCALCSIZE: {
+        if(!msg->wParam || !(::GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_THICKFRAME)) return false;
+        const UINT dpi = ::GetDpiForWindow(hwnd);
+        const int padded = ::GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+        const int frameX = ::GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) + padded;
+        const int frameY = ::GetSystemMetricsForDpi(SM_CYSIZEFRAME, dpi) + padded;
+        RECT &client = reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam)->rgrc[0];
+        client.left   += frameX;
+        client.right  -= frameX;
+        client.bottom -= frameY;
+        if(::IsZoomed(hwnd)){
+            client.top += frameY;
+            MONITORINFO monitor = { sizeof(monitor) };
+            if(::GetMonitorInfoW(::MonitorFromRect(&client, MONITOR_DEFAULTTONEAREST), &monitor) &&
+               client.left <= monitor.rcMonitor.left && client.top <= monitor.rcMonitor.top &&
+               client.right >= monitor.rcMonitor.right && client.bottom >= monitor.rcMonitor.bottom)
+                client.top = monitor.rcMonitor.top + 1;
         }
-    } else if(ev->button() == Qt::RightButton){
-        m_MainWindow->ToggleShaded();
+        *result = 0;
+        return true;
     }
-    repaint();
-    ev->setAccepted(true);
-    m_Moved = false;
-}
-
-void TitleBar::mouseDoubleClickEvent(QMouseEvent *ev){
-    if(MenuAreaRect1().contains(ev->pos()) ||
-       ViewTreeAreaRect1().contains(ev->pos()) ||
-       ShadeAreaRect1().contains(ev->pos()) ||
-       MinimizeAreaRect1().contains(ev->pos()) ||
-       MaximizeAreaRect1().contains(ev->pos()) ||
-       CloseAreaRect1().contains(ev->pos())){
-    } else if(ev->button() == Qt::LeftButton){
-        m_MainWindow->ToggleMaximized();
+    case WM_NCHITTEST: {
+        if(Application::IsRestoringWindows()){
+            *result = HTCLIENT;
+            return true;
+        }
+        if(isFullScreen() || m_ContentFullScreen) return false;
+        const LRESULT frame = ::DefWindowProcW(hwnd, msg->message, msg->wParam, msg->lParam);
+        if(frame != HTCLIENT){
+            *result = frame;
+            return true;
+        }
+        POINT point = { static_cast<short>(LOWORD(msg->lParam)), static_cast<short>(HIWORD(msg->lParam)) };
+        ::ScreenToClient(hwnd, &point);
+        switch(WindowFrameHit::At(FrameHitLayout(), QPoint(point.x, point.y))){
+        case WindowFrameHit::Client:         *result = HTCLIENT;    break;
+        case WindowFrameHit::Caption:        *result = HTCAPTION;   break;
+        case WindowFrameHit::MaximizeButton: *result = HTMAXBUTTON; break;
+        case WindowFrameHit::Top:            *result = HTTOP;       break;
+        case WindowFrameHit::TopLeft:        *result = HTTOPLEFT;   break;
+        case WindowFrameHit::TopRight:       *result = HTTOPRIGHT;  break;
+        }
+        return true;
     }
-    ev->setAccepted(true);
+    case WM_NCMOUSEMOVE: {
+        const bool over = msg->wParam == HTMAXBUTTON;
+        if(over != m_TitleBar->IsNativeHovered()){
+            m_TitleBar->SetNativeHover(over);
+            if(over){
+                TRACKMOUSEEVENT track = { sizeof(track), TME_LEAVE | TME_NONCLIENT, hwnd, 0 };
+                ::TrackMouseEvent(&track);
+            }
+        }
+        if(!over) ReleaseMaximizeButton();
+        return false;
+    }
+    case WM_NCMOUSELEAVE:
+        m_TitleBar->SetNativeHover(false);
+        ReleaseMaximizeButton();
+        return false;
+    case WM_NCLBUTTONDOWN:
+    case WM_NCLBUTTONDBLCLK:
+        if(msg->wParam != HTMAXBUTTON) return false;
+        if(Application::IsRestoringWindows()) return false;
+        m_TitleBar->SetNativePressed(true);
+        *result = 0;
+        return true;
+    case WM_NCLBUTTONUP: {
+        const bool pressed = m_TitleBar->IsNativePressed();
+        ReleaseMaximizeButton();
+        if(msg->wParam != HTMAXBUTTON) return false;
+        if(pressed && !Application::IsRestoringWindows())
+            QTimer::singleShot(0, this, &MainWindow::ToggleMaximized);
+        *result = 0;
+        return true;
+    }
+    case WM_NCRBUTTONUP:
+        if(msg->wParam != HTCAPTION || Application::IsRestoringWindows()) return false;
+        QTimer::singleShot(0, this, &MainWindow::ToggleShaded);
+        *result = 0;
+        return true;
+    case WM_CAPTURECHANGED:
+        ReleaseMaximizeButton();
+        return false;
+    case WM_ACTIVATE:
+        if(LOWORD(msg->wParam) == WA_INACTIVE) ReleaseMaximizeButton();
+        return false;
+    }
+    return false;
 }
-
-void TitleBar::enterEvent(QEnterEvent *ev)
-{
-    Q_UNUSED(ev)
-}
-
-void TitleBar::leaveEvent(QEvent *ev){
-    Q_UNUSED(ev)
-    m_HoveredButton = NoButton;
-    repaint();
-}
-
-QRect TitleBar::MenuAreaRect() const {
-    return QRect(ScaleByDevice(5),(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
-}
-
-QRect TitleBar::ViewTreeAreaRect() const {
-    return QRect(width()-ScaleByDevice(29)-ScaleByDevice(28)*4,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
-}
-
-QRect TitleBar::ShadeAreaRect() const {
-    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*3,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
-}
-
-QRect TitleBar::MinimizeAreaRect() const {
-    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*2,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
-}
-
-QRect TitleBar::MaximizeAreaRect() const {
-    return QRect(width()-ScaleByDevice(28)-ScaleByDevice(28)*1,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
-}
-
-QRect TitleBar::CloseAreaRect() const {
-    return QRect(width()-ScaleByDevice(27)-ScaleByDevice(28)*0,(height()-ScaleByDevice(10))/2,ScaleByDevice(10),ScaleByDevice(10));
-}
+#endif
 
 MainWindowEdgeWidget::MainWindowEdgeWidget(MainWindow *mainwindow)
     : QWidget(nullptr)

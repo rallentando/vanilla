@@ -21,6 +21,7 @@
 #include <QWebEngineHistory>
 #include <QWebEngineHttpRequest>
 #include <QPointer>
+#include <QWindow>
 #include <QGuiApplication>
 #include <QInputMethod>
 #include <QTransform>
@@ -274,9 +275,23 @@ public slots:
         }
     }
     void show() override {
-        const bool wasVisible = base()->isVisible();
+        bool wasVisible = base()->isVisible();
         WakeUp();
+        if(TreeBank::PurgeView()){
+            MainWindow *owner = m_TreeBank ? m_TreeBank->GetMainWindow() : nullptr;
+            QWindow *want = owner ? owner->windowHandle() : nullptr;
+            QWindow *handle = base()->windowHandle();
+            if((!owner || want) && (!handle || handle->transientParent() != want)){
+                if(wasVisible){
+                    base()->hide();
+                    wasVisible = false;
+                }
+                MainWindow::SetOwner(this, owner);
+            }
+        }
         base()->show();
+        if(TreeBank::PurgeView() && Application::EnableTransparentWindow())
+            BlurPurgedWindow();
         if(ViewNode *vn = GetViewNode()) vn->SetLastAccessDateToCurrent();
 
         if(!wasVisible){
@@ -313,8 +328,13 @@ public slots:
     void Load(const QUrl &url)            override { View::Load(url);}
     void Load(const QNetworkRequest &req) override { View::Load(req);}
 
-    void OnBeforeStartingDisplayGadgets() override {}
+    void BlurPurgedWindow();
+
+    void OnBeforeStartingDisplayGadgets() override {
+        if(TreeBank::PurgeView()) base()->hide();
+    }
     void OnAfterFinishingDisplayGadgets() override {
+        if(TreeBank::PurgeView()) show();
     }
 
     void OnSetViewNode(ViewNode*) override;
@@ -386,6 +406,7 @@ public slots:
 
     void ExitFullScreen() override;
     void InspectElement() override;
+    SiteDataLink *OpenSiteDataLink() override;
     void CloseInspector();
     void AddSearchEngine(QPoint pos) override;
     void AddBookmarklet(QPoint pos)  override;
@@ -397,6 +418,7 @@ signals:
     void statusBarMessage2(const QString&, const QString&);
     void ViewChanged();
     void ScrollChanged(QPointF);
+    void FindCount(int active, int total);
 
 protected:
     void timerEvent(QTimerEvent *ev) override;

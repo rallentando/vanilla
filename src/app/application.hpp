@@ -119,7 +119,8 @@ public:
     static void Reconfigure();
     static bool EnableGoogleSuggest();
     static QString SuggestEngine();
-    static bool EnableFramelessWindow();
+    static bool EnableCustomTitleBar();
+    static QString WindowEdgeColor();
     static bool EnableTransparentWindow();
     static void TranslucentWindowUnsupported();
     static bool EnableTranslucentPanels();
@@ -136,7 +137,8 @@ private:
     static Settings m_IconTable;
     static bool m_EnableGoogleSuggest;
     static QString m_SuggestEngine;
-    static bool m_EnableFramelessWindow;
+    static bool m_EnableCustomTitleBar;
+    static QString m_WindowEdgeColor;
     static bool m_EnableTransparentWindow;
     static bool m_TransparentWindowEffective;
     static bool m_EnableTranslucentPanels;
@@ -191,7 +193,6 @@ public:
     static bool IsQuitting();
     static QString LocalServerName();
     static QString SharedMemoryKey();
-    static int EventKey();
     static QString EventToken();
     static QString EdgeEventToken();
     static QString ProductVersion();

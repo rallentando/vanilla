@@ -151,6 +151,9 @@ struct EdgeWebView::Private {
     QPointF m_PageScroll;
     QSizeF m_PageContents;
     QSizeF m_PageViewport;
+    ComPtr<ICoreWebView2Find> m_Find;
+    QString m_FindTerm;
+    bool m_FindCaseSensitive = false;
     bool m_HasFocus;
 
     EdgeDownloadCloseLedger m_Downloads;
@@ -199,6 +202,7 @@ struct EdgeWebView::Private {
     QIcon m_Icon;
     QColor m_BaseBackgroundColor;
     QString m_FailureText;
+    QSize m_HostPaintedSize;
     QImage m_GrabbedDisplayData;
     QPointF m_Scroll;
 

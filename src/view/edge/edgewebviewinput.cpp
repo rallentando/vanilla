@@ -401,6 +401,8 @@ bool EdgeWebView::eventFilter(QObject *watched, QEvent *ev){
                 reinterpret_cast<void*>(m_Impl->m_HostWindow->winId()));
         fflush(stderr);
     }
+    if(watched == m_Impl->m_HostWindow && ev && ev->type() == QEvent::PlatformSurface)
+        m_Impl->m_HostPaintedSize = QSize();
     if(watched == m_Impl->m_HostWindow && ev && ev->type() == QEvent::Expose)
         PaintHostWindow();
     if(watched == m_Impl->m_HostWindow && ev && ev->type() == QEvent::MouseButtonPress)
@@ -413,7 +415,10 @@ bool EdgeWebView::eventFilter(QObject *watched, QEvent *ev){
 void EdgeWebView::PaintHostWindow(bool leavingClear){
     const bool clear = m_Impl->m_BaseBackgroundColor.isValid() &&
         m_Impl->m_BaseBackgroundColor.alpha() < 255;
-    if(!m_Impl->m_HostWindow || (m_Impl->m_Controller && !clear && !leavingClear) ||
+    const bool layered = m_Impl->m_HostWindow &&
+        m_Impl->m_HostWindow->format().alphaBufferSize() > 0;
+    const bool resized = layered && m_Impl->m_HostWindow->size() != m_Impl->m_HostPaintedSize;
+    if(!m_Impl->m_HostWindow || (m_Impl->m_Controller && !clear && !leavingClear && !resized) ||
        !m_Impl->m_HostWindow->isExposed() || m_Impl->m_HostWindow->size().isEmpty()) return;
 
     const QRect rect(QPoint(), m_Impl->m_HostWindow->size());
@@ -439,6 +444,7 @@ void EdgeWebView::PaintHostWindow(bool leavingClear){
     }
     store.endPaint();
     store.flush(rect);
+    m_Impl->m_HostPaintedSize = rect.size();
 }
 
 static EdgeInputLedger::Button LedgerButtonOf(Qt::MouseButton button){

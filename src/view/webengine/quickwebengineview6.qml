@@ -29,6 +29,10 @@ WebEngineView {
 
     signal viewChanged()
     signal scrollChanged(point pos)
+    signal findCount(int active, int total)
+    onFindTextFinished: function(result){
+        findCount(result.activeMatch, result.numberOfMatches)
+    }
     signal callBackResult(int id, variant result)
 
     // since Qt6, 'WebEngineScript' is not creatable from QML.

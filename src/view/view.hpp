@@ -29,6 +29,7 @@ class QWidgetAction;
 
 class View;
 class ExtensionController;
+class SiteDataLink;
 
 typedef std::shared_ptr<View> SharedView;
 typedef std::weak_ptr<View>   WeakView;
@@ -345,6 +346,7 @@ public:
     virtual void ExitFullScreen(){}
     virtual void InspectElement(){}
     virtual QWidget *InspectorPane(){ return nullptr;}
+    virtual SiteDataLink *OpenSiteDataLink(){ return nullptr;}
     virtual void AddSearchEngine(QPoint){}
     virtual void AddBookmarklet(QPoint){}
 
@@ -1405,43 +1407,6 @@ public:
     static inline QString ToggleMediaPlayPauseJsCode(){
         return MediaElementJsCode
             (QStringLiteral("if(media.paused) media.play(); else media.pause();"));
-    }
-
-    static inline QString InstallSubmitEventJsCode(){
-        return QStringLiteral(
-            "(function(){\n"
-            "    var forms = document.querySelectorAll(\"form\");\n"
-            "    var allInputs = Array.from(document.querySelectorAll(\"input,textarea\"));\n"
-            "    for(var i = 0; i < forms.length; i++){\n"
-            "        var form = forms[i];\n"
-            "        var submit   = form.querySelector(\"*[type=\\\"submit\\\"]\")   || form.submit;\n"
-            "        var password = form.querySelector(\"*[type=\\\"password\\\"]\") || form.password;\n"
-            "        if(!submit || !password){\n"
-            "            var inputs = allInputs.filter(function(e){ return e.form == form;});\n"
-            "            if(!submit) submit = inputs.find(function(e){ return e.type == \"submit\";});\n"
-            "            if(!password) password = inputs.find(function(e){ return e.type == \"password\";});\n"
-            "        };\n"
-            "        if(!submit || !password) continue;\n"
-            "        form.addEventListener(\"submit\", function(e){\n"
-            "            var data = \"\";\n"
-            "            var inputs = Array.from(e.target.querySelectorAll(\"input,textarea\"));\n"
-            "            inputs = inputs.concat(allInputs.filter(function(el){ return el.form == e.target;}));\n"
-            "            inputs = inputs.filter(function(v, i, s){ return s.indexOf(v) == i;});\n"
-            "            for(var j = 0; j < inputs.length; j++){\n"
-            "                var field = inputs[j];\n"
-            "                var type = (field.type || \"hidden\").toLowerCase();\n"
-            "                var name = field.name;\n"
-            "                var val = field.value;\n"
-            "                if(!name || type == \"hidden\" || type == \"submit\"){\n"
-            "                    continue;\n"
-            "                }\n"
-            "                if(data) data = data + \"&\";\n"
-            "                data = data + encodeURIComponent(name) + \"=\" + encodeURIComponent(val);\n"
-            "            }\n"
-            "            console.info(\"submit%1,\" + data);\n"
-            "        }, false);\n"
-            "    }\n"
-            "})();").arg(Application::EventKey());
     }
 
     static inline QString JsKeyCodeSet(const QList<int> &codes){

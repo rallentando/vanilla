@@ -852,35 +852,13 @@ void NetworkAccessManager::SetUserAgent(QString ua){
 
     const QString browser = UserAgent::NameOf(ua);
 
+    if(!browser.isEmpty()) ua = Application::UserAgentFor(browser);
+    if(!UserAgent::LooksLikeUserAgent(ua)) return;
+
     QString system;
 
 #if defined(Q_OS_WIN)
-    QOperatingSystemVersion current = QOperatingSystemVersion::current();
-    if     (current >= QOperatingSystemVersion::Windows10)  system = QStringLiteral("Windows NT 10.0");
-    else if(current >= QOperatingSystemVersion::Windows8_1) system = QStringLiteral("Windows NT 6.3");
-    else if(current >= QOperatingSystemVersion::Windows8)   system = QStringLiteral("Windows NT 6.2");
-    else if(current >= QOperatingSystemVersion::Windows7)   system = QStringLiteral("Windows NT 6.1");
-    else                                                    system = QStringLiteral("Windows");
-#  if _WIN64
-    system = system + QStringLiteral("; Win64; x64");
-#  elif _WIN32
-    typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
-    BOOL isWow64 = FALSE;
-    LPFN_ISWOW64PROCESS fnIsWow64Process = (LPFN_ISWOW64PROCESS)
-        GetProcAddress(GetModuleHandle(TEXT("kernel32")),"IsWow64Process");
-
-    if(fnIsWow64Process){
-        if(fnIsWow64Process(GetCurrentProcess(), &isWow64)){
-            if(isWow64){
-                system = system + QStringLiteral("; WOW64");
-            } else {
-            }
-        } else {
-        }
-    } else {
-    }
-#  else
-#  endif
+    system = QStringLiteral("Windows NT 10.0; Win64; x64");
 #elif defined(Q_OS_MAC)
     const QString product = Application::ProductVersion();
     const QString sysInfo = QSysInfo::productVersion();
@@ -895,13 +873,8 @@ void NetworkAccessManager::SetUserAgent(QString ua){
 
     system = QStringLiteral("Macintosh; ") + system;
 #else
-    system = QStringLiteral("Linux/Unix");
+    system = QStringLiteral("X11; Linux x86_64");
 #endif
-
-    QString location = QLocale::system().name().replace(QStringLiteral("_"), QStringLiteral("-"));
-
-    if(ua.isEmpty()) return;
-    if(!browser.isEmpty()) ua = Application::UserAgentFor(browser);
 
     QString chromium = QStringLiteral("140.0.0.0");
     QString full     = chromium;
@@ -913,7 +886,7 @@ void NetworkAccessManager::SetUserAgent(QString ua){
     }
 #endif
 
-    ua = UserAgent::Expand(ua, system, location, chromium);
+    ua = UserAgent::Expand(ua, system, chromium);
 
     m_UserAgent = ua;
     m_UserAgentBrand = browser;

@@ -168,6 +168,27 @@ void tst_vanillapage::everyEndpointTakesOneMethodAndNoOther(){
     QVERIFY(!noPicker.NeedsUserInteraction());
     QVERIFY(noPicker.m_Body.contains("no directory picker"));
 
+    const VanillaPageResponse colour = Post
+        (Settings(QStringLiteral("/api/pick-color")),
+         QByteArrayLiteral("{\"key\":\"application/@WindowEdgeColor\"}"),
+         VanillaPage::SettingsUrl());
+    QCOMPARE(colour.m_Status, 200);
+    QVERIFY(colour.m_UserInteraction ==
+            VanillaPageResponse::UserInteraction::Deferred);
+    QVERIFY(colour.m_Deferred);
+    const VanillaPageResponse noColour = Post
+        (Settings(QStringLiteral("/api/pick-color")),
+         QByteArrayLiteral("{\"key\":\"application/@FileSaveDirectory\"}"),
+         VanillaPage::SettingsUrl());
+    QCOMPARE(noColour.m_Status, 200);
+    QVERIFY(!noColour.NeedsUserInteraction());
+    QVERIFY(noColour.m_Body.contains("no colour picker"));
+    QCOMPARE(Get(Settings(QStringLiteral("/api/pick-color")),
+                 VanillaPage::SettingsUrl()).m_Status, 403);
+    QCOMPARE(Post(Settings(QStringLiteral("/api/pick-color")),
+                  QByteArrayLiteral("{\"key\":\"application/@WindowEdgeColor\"}"),
+                  QUrl(QStringLiteral("https://example.com/"))).m_Status, 403);
+
     QCOMPARE(Post(Settings(QStringLiteral("/api/passwords")), QByteArray(),
                   VanillaPage::SettingsUrl()).m_Status, 403);
     QCOMPARE(Get(Settings(QStringLiteral("/api/passwords-remove")),

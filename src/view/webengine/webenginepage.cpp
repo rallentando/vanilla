@@ -44,7 +44,6 @@
 #include "sitepermissions.hpp"
 #include "mainwindow.hpp"
 #include "gadgets.hpp"
-#include "networkcontroller.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "dialog.hpp"

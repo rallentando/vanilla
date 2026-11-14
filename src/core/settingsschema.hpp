@@ -4,6 +4,7 @@
 #include "switch.hpp"
 
 #include <QString>
+#include <QMap>
 #include <QStringList>
 #include <QVariant>
 #include <QJsonObject>
@@ -18,6 +19,7 @@ enum Type {
     Choice,
     Directory,
     TextList,
+    Color,
 };
 
 struct Item {
@@ -68,6 +70,11 @@ QString EmptyDirectory(const Item &item);
 QJsonObject PageStrings();
 
 QJsonObject Describe();
+
+QStringList UnlistedKeys();
+QStringList UnlistedPrefixes();
+bool IsKnownKey(const QString &key);
+QStringList DropUnknownKeys(QMap<QString, QVariant> &map);
 
 }
 

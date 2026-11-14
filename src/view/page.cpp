@@ -3,6 +3,7 @@
 #include "theme.hpp"
 
 #include "page.hpp"
+#include "actiontext.hpp"
 
 #include <QClipboard>
 #include <QList>
@@ -693,14 +694,6 @@ void Page::ClearPasswords(){
     NetworkController::ClearPasswords();
 }
 
-void Page::ToggleNotifier(){
-    GetTB()->ToggleNotifier();
-}
-
-void Page::ToggleReceiver(){
-    GetTB()->ToggleReceiver();
-}
-
 void Page::ToggleMenuBar(){
     GetTB()->GetMainWindow()->ToggleMenuBar();
 }
@@ -711,6 +704,10 @@ void Page::ToggleTreeBar(){
 
 void Page::ToggleToolBar(){
     GetTB()->GetMainWindow()->ToggleToolBar();
+}
+
+void Page::ToggleMiniMap(){
+    GetTB()->ToggleMiniMap();
 }
 
 void Page::ToggleFullScreen(){
@@ -1828,282 +1825,65 @@ QAction *Page::Action(CustomAction a, QVariant data){
 
     if(!create){
         switch(a){
-        case _ToggleNotifier: webaction->setChecked(GetTB()->GetNotifier()); break;
-        case _ToggleReceiver: webaction->setChecked(GetTB()->GetReceiver()); break;
         case _ToggleMenuBar:  webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty()); break;
         case _ToggleTreeBar:  webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible()); break;
         case _ToggleToolBar:  webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible()); break;
+        case _ToggleMiniMap:  webaction->setChecked(GetTB()->GetMiniMap()); break;
         default: break;
         }
         return webaction;
     }
 
+    if(a != _NoAction){
+        const QString label = ActionText::MenuLabel(ActionToString(a));
+        webaction->setText(label);
+        webaction->setToolTip(label);
+    }
+
     switch(a){
     case _NoAction: break;
 
-#define DEFINE_ACTION(name, text)                                       \
+#define CONNECT_ACTION(name)                                            \
         case _##name:                                                   \
-            webaction->setText(text);                                   \
-            webaction->setToolTip(text);                                \
             connect(webaction, SIGNAL(triggered()),                     \
                     this,      SLOT(name##Key()));                      \
             break;
 
-        DEFINE_ACTION(Up,       tr("UpKey"));
-        DEFINE_ACTION(Down,     tr("DownKey"));
-        DEFINE_ACTION(Right,    tr("RightKey"));
-        DEFINE_ACTION(Left,     tr("LeftKey"));
-        DEFINE_ACTION(Home,     tr("HomeKey"));
-        DEFINE_ACTION(End,      tr("EndKey"));
-        DEFINE_ACTION(PageUp,   tr("PageUpKey"));
-        DEFINE_ACTION(PageDown, tr("PageDownKey"));
+        FOR_EACH_KEYBOARD_EVENTS(CONNECT_ACTION)
 
-#undef  DEFINE_ACTION
-#define DEFINE_ACTION(name, text)                                       \
+#undef  CONNECT_ACTION
+#define CONNECT_ACTION(name)                                            \
         case _##name:                                                   \
-            webaction->setText(text);                                   \
-            webaction->setToolTip(text);                                \
             connect(webaction, SIGNAL(triggered()),                     \
                     this,      SLOT(name()));                           \
             break;
 
-        DEFINE_ACTION(Import,       tr("Import"));
-        DEFINE_ACTION(Export,       tr("Export"));
-        DEFINE_ACTION(AboutVanilla, tr("AboutVanilla"));
-        DEFINE_ACTION(AboutQt,      tr("AboutQt"));
-        DEFINE_ACTION(OpenSettings, tr("Settings"));
-        DEFINE_ACTION(OpenDirectorySettings, tr("DirectorySettings"));
-        DEFINE_ACTION(Quit,         tr("Quit"));
+        FOR_EACH_APPLICATION_EVENTS(CONNECT_ACTION)
+        FOR_EACH_NAVIGATION_EVENTS(CONNECT_ACTION)
+        FOR_EACH_VIEW_EVENTS(CONNECT_ACTION)
+        FOR_EACH_WEB_EVENTS1(CONNECT_ACTION)
+        FOR_EACH_WEB_EVENTS2(CONNECT_ACTION)
 
-        DEFINE_ACTION(ClearCookies,      tr("ClearCookies"));
-        DEFINE_ACTION(ClearHttpCache,    tr("ClearHttpCache"));
-        DEFINE_ACTION(ClearVisitedLinks, tr("ClearVisitedLinks"));
-        DEFINE_ACTION(ClearPasswords,    tr("ClearPasswords"));
-        DEFINE_ACTION(OpenPasswords,     tr("OpenPasswords"));
-        DEFINE_ACTION(OpenDownloads,     tr("OpenDownloads"));
-        DEFINE_ACTION(ShowDownloads,     tr("ShowDownloads"));
-
-        DEFINE_ACTION(ToggleNotifier,        tr("ToggleNotifier"));
-        DEFINE_ACTION(ToggleReceiver,        tr("ToggleReceiver"));
-        DEFINE_ACTION(ToggleMenuBar,         tr("ToggleMenuBar"));
-        DEFINE_ACTION(ToggleTreeBar,         tr("ToggleTreeBar"));
-        DEFINE_ACTION(ToggleToolBar,         tr("ToggleToolBar"));
-        DEFINE_ACTION(ToggleFullScreen,      tr("ToggleFullScreen"));
-        DEFINE_ACTION(ToggleMaximized,       tr("ToggleMaximized"));
-        DEFINE_ACTION(ToggleMinimized,       tr("ToggleMinimized"));
-        DEFINE_ACTION(ToggleShaded,          tr("ToggleShaded"));
-        DEFINE_ACTION(ShadeWindow,           tr("ShadeWindow"));
-        DEFINE_ACTION(UnshadeWindow,         tr("UnshadeWindow"));
-        DEFINE_ACTION(NewWindow,             tr("NewWindow"));
-        DEFINE_ACTION(CloseWindow,           tr("CloseWindow"));
-        DEFINE_ACTION(SwitchWindow,          tr("SwitchWindow"));
-        DEFINE_ACTION(NextWindow,            tr("NextWindow"));
-        DEFINE_ACTION(PrevWindow,            tr("PrevWindow"));
-
-        DEFINE_ACTION(Back,                  tr("Back"));
-        DEFINE_ACTION(Forward,               tr("Forward"));
-        DEFINE_ACTION(Rewind,                tr("Rewind"));
-        DEFINE_ACTION(FastForward,           tr("FastForward"));
-        DEFINE_ACTION(UpDirectory,           tr("UpDirectory"));
-        DEFINE_ACTION(Close,                 tr("Close"));
-        DEFINE_ACTION(Restore,               tr("Restore"));
-        DEFINE_ACTION(Recreate,              tr("Recreate"));
-        DEFINE_ACTION(NextView,              tr("NextView"));
-        DEFINE_ACTION(PrevView,              tr("PrevView"));
-        DEFINE_ACTION(BuryView,              tr("BuryView"));
-        DEFINE_ACTION(DigView,               tr("DigView"));
-        DEFINE_ACTION(FirstView,             tr("FirstView"));
-        DEFINE_ACTION(SecondView,            tr("SecondView"));
-        DEFINE_ACTION(ThirdView,             tr("ThirdView"));
-        DEFINE_ACTION(FourthView,            tr("FourthView"));
-        DEFINE_ACTION(FifthView,             tr("FifthView"));
-        DEFINE_ACTION(SixthView,             tr("SixthView"));
-        DEFINE_ACTION(SeventhView,           tr("SeventhView"));
-        DEFINE_ACTION(EighthView,            tr("EighthView"));
-        DEFINE_ACTION(NinthView,             tr("NinthView"));
-        DEFINE_ACTION(TenthView,             tr("TenthView"));
-        DEFINE_ACTION(LastView,              tr("LastView"));
-        DEFINE_ACTION(NewViewNode,           tr("NewViewNode"));
-        DEFINE_ACTION(CloneViewNode,         tr("CloneViewNode"));
-
-        DEFINE_ACTION(DisplayAccessKey,      tr("DisplayAccessKey"));
-        DEFINE_ACTION(DisplayViewTree,       tr("DisplayViewTree"));
-        DEFINE_ACTION(DisplayTrashTree,      tr("DisplayTrashTree"));
-
-        DEFINE_ACTION(OpenTextSeeker,        tr("OpenTextSeeker"));
-        DEFINE_ACTION(OpenQueryEditor,       tr("OpenQueryEditor"));
-        DEFINE_ACTION(OpenUrlEditor,         tr("OpenUrlEditor"));
-        DEFINE_ACTION(OpenCommand,           tr("OpenCommand"));
-
-        DEFINE_ACTION(ReleaseHiddenView,     tr("ReleaseHiddenView"));
-
-        DEFINE_ACTION(Load,                  tr("Load"));
-
-        DEFINE_ACTION(Copy,                  tr("Copy"));
-        DEFINE_ACTION(Cut,                   tr("Cut"));
-        DEFINE_ACTION(Paste,                 tr("Paste"));
-
-        DEFINE_ACTION(PasteAndMatchStyle,     tr("PasteAndMatchStyle"));
-        DEFINE_ACTION(ToggleBold,             tr("ToggleBold"));
-        DEFINE_ACTION(ToggleItalic,           tr("ToggleItalic"));
-        DEFINE_ACTION(ToggleUnderline,        tr("ToggleUnderline"));
-        DEFINE_ACTION(ToggleStrikethrough,    tr("ToggleStrikethrough"));
-        DEFINE_ACTION(AlignLeft,              tr("AlignLeft"));
-        DEFINE_ACTION(AlignCenter,            tr("AlignCenter"));
-        DEFINE_ACTION(AlignRight,             tr("AlignRight"));
-        DEFINE_ACTION(AlignJustified,         tr("AlignJustified"));
-        DEFINE_ACTION(Indent,                 tr("Indent"));
-        DEFINE_ACTION(Outdent,                tr("Outdent"));
-        DEFINE_ACTION(InsertOrderedList,      tr("InsertOrderedList"));
-        DEFINE_ACTION(InsertUnorderedList,    tr("InsertUnorderedList"));
-        DEFINE_ACTION(ChangeTextDirectionLTR, tr("ChangeTextDirectionLTR"));
-        DEFINE_ACTION(ChangeTextDirectionRTL, tr("ChangeTextDirectionRTL"));
-        DEFINE_ACTION(Undo,                  tr("Undo"));
-        DEFINE_ACTION(Redo,                  tr("Redo"));
-        DEFINE_ACTION(SelectAll,             tr("SelectAll"));
-        DEFINE_ACTION(Unselect,              tr("Unselect"));
-        DEFINE_ACTION(Reload,                tr("Reload"));
-        DEFINE_ACTION(ReloadAndBypassCache,  tr("ReloadAndBypassCache"));
-        DEFINE_ACTION(Stop,                  tr("Stop"));
-        DEFINE_ACTION(StopAndUnselect,       tr("StopAndUnselect"));
-
-        DEFINE_ACTION(Print,                 tr("Print"));
-        DEFINE_ACTION(Save,                  tr("Save"));
-        DEFINE_ACTION(ZoomIn,                tr("ZoomIn"));
-        DEFINE_ACTION(ZoomOut,               tr("ZoomOut"));
-        DEFINE_ACTION(ViewSource,            tr("ViewSource"));
-        DEFINE_ACTION(ApplySource,           tr("ApplySource"));
-
-        DEFINE_ACTION(OpenBookmarklet,       tr("OpenBookmarklet"));
-        DEFINE_ACTION(SearchWith,            tr("SearchWith"));
-        DEFINE_ACTION(AddSearchEngine,       tr("AddSearchEngine"));
-        DEFINE_ACTION(AddBookmarklet,        tr("AddBookmarklet"));
-        DEFINE_ACTION(InspectElement,        tr("InspectElement"));
-
-        DEFINE_ACTION(CopyUrl,               tr("CopyUrl"));
-        DEFINE_ACTION(CopyTitle,             tr("CopyTitle"));
-        DEFINE_ACTION(CopyPageAsLink,        tr("CopyPageAsLink"));
-        DEFINE_ACTION(CopySelectedHtml,      tr("CopySelectedHtml"));
-        DEFINE_ACTION(OpenWithDefault,       tr("OpenWithDefault"));
-
-        DEFINE_ACTION(ClickElement,          tr("ClickElement"));
-        DEFINE_ACTION(FocusElement,          tr("FocusElement"));
-        DEFINE_ACTION(HoverElement,          tr("HoverElement"));
-
-        DEFINE_ACTION(LoadLink,              tr("LoadLink"));
-        DEFINE_ACTION(OpenLink,              tr("OpenLink"));
-        DEFINE_ACTION(DownloadLink,          tr("DownloadLink"));
-        DEFINE_ACTION(CopyLinkUrl,           tr("CopyLinkUrl"));
-        DEFINE_ACTION(CopyLinkHtml,          tr("CopyLinkHtml"));
-        DEFINE_ACTION(OpenLinkWithDefault,   tr("OpenLinkWithDefault"));
-
-        DEFINE_ACTION(LoadImage,             tr("LoadImage"));
-        DEFINE_ACTION(OpenImage,             tr("OpenImage"));
-        DEFINE_ACTION(DownloadImage,         tr("DownloadImage"));
-        DEFINE_ACTION(CopyImage,             tr("CopyImage"));
-        DEFINE_ACTION(CopyImageUrl,          tr("CopyImageUrl"));
-        DEFINE_ACTION(CopyImageHtml,         tr("CopyImageHtml"));
-        DEFINE_ACTION(OpenImageWithDefault,  tr("OpenImageWithDefault"));
-
-        DEFINE_ACTION(LoadMedia,             tr("LoadMedia"));
-        DEFINE_ACTION(OpenMedia,             tr("OpenMedia"));
-        DEFINE_ACTION(DownloadMedia,         tr("DownloadMedia"));
-        DEFINE_ACTION(ToggleMediaControls,   tr("ToggleMediaControls"));
-        DEFINE_ACTION(ToggleMediaLoop,       tr("ToggleMediaLoop"));
-        DEFINE_ACTION(ToggleMediaPlayPause,  tr("ToggleMediaPlayPause"));
-        DEFINE_ACTION(ToggleMediaMute,       tr("ToggleMediaMute"));
-        DEFINE_ACTION(CopyMediaUrl,          tr("CopyMediaUrl"));
-        DEFINE_ACTION(CopyMediaHtml,         tr("CopyMediaHtml"));
-        DEFINE_ACTION(OpenMediaWithDefault,  tr("OpenMediaWithDefault"));
-
-        DEFINE_ACTION(OpenInNewViewNode,                 tr("OpenInNewViewNode"));
-        DEFINE_ACTION(OpenInNewDirectory,                tr("OpenInNewDirectory"));
-        DEFINE_ACTION(OpenOnRoot,                        tr("OpenOnRoot"));
-        DEFINE_ACTION(OpenInNewViewNodeForeground,       tr("OpenInNewViewNodeForeground"));
-        DEFINE_ACTION(OpenInNewDirectoryForeground,      tr("OpenInNewDirectoryForeground"));
-        DEFINE_ACTION(OpenOnRootForeground,              tr("OpenOnRootForeground"));
-        DEFINE_ACTION(OpenInNewViewNodeBackground,       tr("OpenInNewViewNodeBackground"));
-        DEFINE_ACTION(OpenInNewDirectoryBackground,      tr("OpenInNewDirectoryBackground"));
-        DEFINE_ACTION(OpenOnRootBackground,              tr("OpenOnRootBackground"));
-        DEFINE_ACTION(OpenInNewViewNodeThisWindow,       tr("OpenInNewViewNodeThisWindow"));
-        DEFINE_ACTION(OpenInNewDirectoryThisWindow,      tr("OpenInNewDirectoryThisWindow"));
-        DEFINE_ACTION(OpenOnRootThisWindow,              tr("OpenOnRootThisWindow"));
-        DEFINE_ACTION(OpenInNewViewNodeNewWindow,        tr("OpenInNewViewNodeNewWindow"));
-        DEFINE_ACTION(OpenInNewDirectoryNewWindow,       tr("OpenInNewDirectoryNewWindow"));
-        DEFINE_ACTION(OpenOnRootNewWindow,               tr("OpenOnRootNewWindow"));
-
-        DEFINE_ACTION(OpenImageInNewViewNode,            tr("OpenImageInNewViewNode"));
-        DEFINE_ACTION(OpenImageInNewDirectory,           tr("OpenImageInNewDirectory"));
-        DEFINE_ACTION(OpenImageOnRoot,                   tr("OpenImageOnRoot"));
-        DEFINE_ACTION(OpenImageInNewViewNodeForeground,  tr("OpenImageInNewViewNodeForeground"));
-        DEFINE_ACTION(OpenImageInNewDirectoryForeground, tr("OpenImageInNewDirectoryForeground"));
-        DEFINE_ACTION(OpenImageOnRootForeground,         tr("OpenImageOnRootForeground"));
-        DEFINE_ACTION(OpenImageInNewViewNodeBackground,  tr("OpenImageInNewViewNodeBackground"));
-        DEFINE_ACTION(OpenImageInNewDirectoryBackground, tr("OpenImageInNewDirectoryBackground"));
-        DEFINE_ACTION(OpenImageOnRootBackground,         tr("OpenImageOnRootBackground"));
-        DEFINE_ACTION(OpenImageInNewViewNodeThisWindow,  tr("OpenImageInNewViewNodeThisWindow"));
-        DEFINE_ACTION(OpenImageInNewDirectoryThisWindow, tr("OpenImageInNewDirectoryThisWindow"));
-        DEFINE_ACTION(OpenImageOnRootThisWindow,         tr("OpenImageOnRootThisWindow"));
-        DEFINE_ACTION(OpenImageInNewViewNodeNewWindow,   tr("OpenImageInNewViewNodeNewWindow"));
-        DEFINE_ACTION(OpenImageInNewDirectoryNewWindow,  tr("OpenImageInNewDirectoryNewWindow"));
-        DEFINE_ACTION(OpenImageOnRootNewWindow,          tr("OpenImageOnRootNewWindow"));
-
-        DEFINE_ACTION(OpenMediaInNewViewNode,            tr("OpenMediaInNewViewNode"));
-        DEFINE_ACTION(OpenMediaInNewDirectory,           tr("OpenMediaInNewDirectory"));
-        DEFINE_ACTION(OpenMediaOnRoot,                   tr("OpenMediaOnRoot"));
-        DEFINE_ACTION(OpenMediaInNewViewNodeForeground,  tr("OpenMediaInNewViewNodeForeground"));
-        DEFINE_ACTION(OpenMediaInNewDirectoryForeground, tr("OpenMediaInNewDirectoryForeground"));
-        DEFINE_ACTION(OpenMediaOnRootForeground,         tr("OpenMediaOnRootForeground"));
-        DEFINE_ACTION(OpenMediaInNewViewNodeBackground,  tr("OpenMediaInNewViewNodeBackground"));
-        DEFINE_ACTION(OpenMediaInNewDirectoryBackground, tr("OpenMediaInNewDirectoryBackground"));
-        DEFINE_ACTION(OpenMediaOnRootBackground,         tr("OpenMediaOnRootBackground"));
-        DEFINE_ACTION(OpenMediaInNewViewNodeThisWindow,  tr("OpenMediaInNewViewNodeThisWindow"));
-        DEFINE_ACTION(OpenMediaInNewDirectoryThisWindow, tr("OpenMediaInNewDirectoryThisWindow"));
-        DEFINE_ACTION(OpenMediaOnRootThisWindow,         tr("OpenMediaOnRootThisWindow"));
-        DEFINE_ACTION(OpenMediaInNewViewNodeNewWindow,   tr("OpenMediaInNewViewNodeNewWindow"));
-        DEFINE_ACTION(OpenMediaInNewDirectoryNewWindow,  tr("OpenMediaInNewDirectoryNewWindow"));
-        DEFINE_ACTION(OpenMediaOnRootNewWindow,          tr("OpenMediaOnRootNewWindow"));
-
-        DEFINE_ACTION(OpenAllUrl,    tr("OpenAllUrl"));
-        DEFINE_ACTION(OpenAllImage,  tr("OpenAllImage"));
-        DEFINE_ACTION(OpenTextAsUrl, tr("OpenTextAsUrl"));
-        DEFINE_ACTION(SaveAllUrl,    tr("SaveAllUrl"));
-        DEFINE_ACTION(SaveAllImage,  tr("SaveAllImage"));
-        DEFINE_ACTION(SaveTextAsUrl, tr("SaveTextAsUrl"));
-
-#undef  DEFINE_ACTION
+#undef  CONNECT_ACTION
     }
     switch(a){
 
-    case _ToggleNotifier:
-        webaction->setCheckable(true);
-        webaction->setChecked(GetTB()->GetNotifier());
-        webaction->setText(tr("Notifier"));
-        webaction->setToolTip(tr("Notifier"));
-        break;
-    case _ToggleReceiver:
-        webaction->setCheckable(true);
-        webaction->setChecked(GetTB()->GetReceiver());
-        webaction->setText(tr("Receiver"));
-        webaction->setToolTip(tr("Receiver"));
-        break;
     case _ToggleMenuBar:
         webaction->setCheckable(true);
         webaction->setChecked(!GetTB()->GetMainWindow()->IsMenuBarEmpty());
-        webaction->setText(tr("MenuBar"));
-        webaction->setToolTip(tr("MenuBar"));
         break;
     case _ToggleTreeBar:
         webaction->setCheckable(true);
         webaction->setChecked(GetTB()->GetMainWindow()->GetTreeBar()->isVisible());
-        webaction->setText(tr("TreeBar"));
-        webaction->setToolTip(tr("TreeBar"));
         break;
     case _ToggleToolBar:
         webaction->setCheckable(true);
         webaction->setChecked(GetTB()->GetMainWindow()->GetToolBar()->isVisible());
-        webaction->setText(tr("ToolBar"));
-        webaction->setToolTip(tr("ToolBar"));
+        break;
+    case _ToggleMiniMap:
+        webaction->setCheckable(true);
+        webaction->setChecked(GetTB()->GetMiniMap());
+        webaction->setEnabled(TreeBank::CanHaveMiniMap());
         break;
 
     case _NewViewNode:

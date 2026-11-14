@@ -56,11 +56,14 @@
         width: min(640px, calc(100% - 32px));
         display: flex;
         align-items: center;
-        border: 1px solid var(--line);
+        /* Keep the field's size and padding, and paint the ring in one
+           rounded shape instead of the four sides of a thin CSS border. */
+        border: 1px solid transparent;
         border-radius: var(--radius-pill);
         background: var(--field-bg);
+        box-shadow: inset 0 0 0 1px var(--line);
       }
-      form:focus-within { border-color: var(--accent); }
+      form:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
       select {
         flex: none;
         margin-left: 8px;
@@ -104,7 +107,8 @@
         padding: 7px 16px;
         border: 1px solid var(--line);
         border-radius: var(--radius);
-        background: var(--bg-sunken);
+        /* standing off the page, not sunk into it (D-669). */
+        background: var(--raised);
         color: var(--fg);
         font: inherit;
         font-size: 15px;
@@ -245,8 +249,8 @@
         border-radius: var(--radius-small);
         cursor: pointer;
       }
-      #history .row:hover { background: var(--bg-sunken); }
-      #history .row.selected { background: var(--bg-sunken); outline: 1px solid var(--accent); }
+      #history .row:hover { background: var(--raised); }
+      #history .row.selected { background: var(--raised); outline: 1px solid var(--accent); }
       html.translucent #history .row:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
       #history .row.pending { opacity: 0.4; pointer-events: none; }
       #history .box { width: 16px; height: 16px; margin: 0; flex: none; accent-color: var(--accent); }
@@ -298,8 +302,8 @@
       #history .close:hover { background: var(--accent); color: var(--bg); }
       /* the words a search found, in the title and the address (D-582). */
       mark { background: none; color: var(--accent); font-weight: bold; }
-      #grid a:hover { background: var(--bg-sunken); }
-      #grid a.selected { border-color: var(--accent); background: var(--bg-sunken); }
+      #grid a:hover { background: var(--raised); }
+      #grid a.selected { border-color: var(--accent); background: var(--raised); }
       #grid .thumb {
         aspect-ratio: 4 / 3;
         border-radius: var(--radius-small);

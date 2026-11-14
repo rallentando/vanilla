@@ -12,6 +12,7 @@
 
 #include "commandmap.hpp"
 #include "actionmapper.hpp"
+#include "actiontext.hpp"
 
 #include "testsupport.hpp"
 
@@ -182,41 +183,113 @@ private slots:
                 elements++;
             }
         }
-        QCOMPARE(signals_,  177);
+        QCOMPARE(signals_,  176);
         QCOMPARE(elements,   71);
     }
 
     void everyActionIsAnsweredByTheTableBehindIt(){
-        const QStringList pageActions    = QStringList() PAGE_FOR_EACH_ACTION(COLLECT_ACTION);
-        const QStringList gadgetsActions = QStringList() GADGETS_FOR_EACH_ACTION(COLLECT_ACTION);
+        const QStringList pageActions     = QStringList() PAGE_FOR_EACH_ACTION(COLLECT_ACTION);
+        const QStringList gadgetsActions  = QStringList() GADGETS_FOR_EACH_ACTION(COLLECT_ACTION);
         const QStringList treebankActions = QStringList() TREEBANK_FOR_EACH_ACTION(COLLECT_ACTION);
-#undef COLLECT_ACTION
 
-        QList<QPair<QString, QStringList> > tables;
-        tables << QPair<QString, QStringList>(QStringLiteral("view/page.cpp"),      pageActions)
-               << QPair<QString, QStringList>(QStringLiteral("gadgets/gadgets.cpp"), gadgetsActions)
-               << QPair<QString, QStringList>(QStringLiteral("ui/treebank.cpp"),    treebankActions)
-               << QPair<QString, QStringList>(QStringLiteral("view/localview.cpp"), gadgetsActions);
+        typedef QPair<QString, QStringList> List;
+#define LIST(NAME) List(QStringLiteral(#NAME), QStringList() NAME(COLLECT_ACTION))
+        const List keyboard    = LIST(FOR_EACH_KEYBOARD_EVENTS);
+        const List application = LIST(FOR_EACH_APPLICATION_EVENTS);
+        const List navigation  = LIST(FOR_EACH_NAVIGATION_EVENTS);
+        const List view        = LIST(FOR_EACH_VIEW_EVENTS);
+        const List web1        = LIST(FOR_EACH_WEB_EVENTS1);
+        const List web2        = LIST(FOR_EACH_WEB_EVENTS2);
+        const List thumblist   = LIST(FOR_EACH_THUMBLIST_EVENTS);
+#undef LIST
 
-        for(int i = 0; i < tables.length(); i++){
-            QFile source(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR "/") + tables[i].first));
-            QVERIFY2(source.open(QIODevice::ReadOnly), qPrintable(tables[i].first));
+        struct Table {
+            QString file;
+            QStringList vocabulary;
+            QList<List> lists;
+            QStringList written;
+        };
+        const QList<Table> tables = QList<Table>()
+            << Table{ QStringLiteral("view/page.cpp"), pageActions,
+                      QList<List>() << keyboard << application << navigation << view << web1 << web2,
+                      QStringList() }
+            << Table{ QStringLiteral("ui/treebank.cpp"), treebankActions,
+                      QList<List>() << keyboard << application << navigation << view << web1,
+                      QStringList() }
+            << Table{ QStringLiteral("gadgets/gadgets.cpp"), gadgetsActions,
+                      QList<List>() << keyboard << application << view << thumblist,
+                      QStringList() << QStringLiteral("Deactivate") };
+
+        foreach(const Table &table, tables){
+            QStringList answered = QStringList() << QStringLiteral("NoAction") << table.written;
+            foreach(const List &list, table.lists) answered << list.second;
+            QStringList vocabulary = table.vocabulary;
+            answered.sort();
+            vocabulary.sort();
+            QVERIFY2(answered == vocabulary, qPrintable(table.file));
+
+            QFile source(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR "/") + table.file));
+            QVERIFY2(source.open(QIODevice::ReadOnly), qPrintable(table.file));
             const QString text = QString::fromUtf8(source.readAll());
 
-            foreach(QString action, tables[i].second){
-                if(action == QStringLiteral("NoAction")) continue;
-
-                const bool answered =
-                    text.contains(QRegularExpression
-                                  (QStringLiteral("DEFINE_ACTION\\(\\s*%1\\s*,").arg(action))) ||
-                    text.contains(QRegularExpression
-                                  (QStringLiteral("case\\s+(?:\\w+::)?_%1\\s*:").arg(action)));
-
-                QVERIFY2(answered,
+            foreach(const List &list, table.lists)
+                QVERIFY2(text.contains(QRegularExpression
+                                       (QStringLiteral("^\\s*%1\\(CONNECT_ACTION\\)\\s*$").arg(list.first),
+                                        QRegularExpression::MultilineOption)),
+                         qPrintable(QStringLiteral("%1 does not answer the words of %2")
+                                    .arg(table.file).arg(list.first)));
+            foreach(const QString &action, table.written)
+                QVERIFY2(text.contains(QRegularExpression
+                                       (QStringLiteral("^\\s*case\\s+_%1\\s*:").arg(action),
+                                        QRegularExpression::MultilineOption)),
                          qPrintable(QStringLiteral("%1 knows '%2' and does not answer it")
-                                    .arg(tables[i].first).arg(action)));
-            }
+                                    .arg(table.file).arg(action)));
         }
+
+        QFile source(QDir::cleanPath(QStringLiteral(VANILLA_SOURCE_DIR "/view/localview.cpp")));
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        const QString text = QString::fromUtf8(source.readAll());
+        QVERIFY(text.contains(QRegularExpression
+                              (QStringLiteral("^\\s*Gadgets::InstallAction\\(action, a, this, GetTreeBank\\(\\)\\);"),
+                               QRegularExpression::MultilineOption)));
+    }
+
+    void everyActionHasALabel(){
+        QStringList actions = QStringList() PAGE_FOR_EACH_ACTION(COLLECT_ACTION)
+                                            GADGETS_FOR_EACH_ACTION(COLLECT_ACTION);
+#undef COLLECT_ACTION
+        actions.removeAll(QStringLiteral("NoAction"));
+        actions.removeDuplicates();
+
+        QStringList names = ActionText::Names();
+        QCOMPARE(QSet<QString>(names.begin(), names.end()).size(), names.size());
+        actions.sort();
+        names.sort();
+        QCOMPARE(names, actions);
+
+        QStringList renamed;
+        foreach(const QString &name, names){
+            QCOMPARE(ActionText::Label(name), ActionText::Source(name));
+            if(ActionText::Source(name) != name) renamed << name;
+        }
+        QCOMPARE(renamed, QStringList()
+                 << QStringLiteral("Down") << QStringLiteral("End") << QStringLiteral("Home")
+                 << QStringLiteral("Left") << QStringLiteral("OpenDirectorySettings")
+                 << QStringLiteral("OpenSettings") << QStringLiteral("PageDown")
+                 << QStringLiteral("PageUp") << QStringLiteral("Right") << QStringLiteral("Up"));
+        QCOMPARE(ActionText::Source(QStringLiteral("Up")), QStringLiteral("UpKey"));
+        QCOMPARE(ActionText::Source(QStringLiteral("OpenSettings")), QStringLiteral("Settings"));
+
+        QStringList ticks;
+        foreach(const QString &name, names)
+            if(ActionText::MenuLabel(name) != ActionText::Label(name)) ticks << name;
+        QCOMPARE(ticks, QStringList()
+                 << QStringLiteral("ToggleMenuBar") << QStringLiteral("ToggleMiniMap")
+                 << QStringLiteral("ToggleToolBar") << QStringLiteral("ToggleTreeBar"));
+        QCOMPARE(ActionText::MenuLabel(QStringLiteral("ToggleMiniMap")), QStringLiteral("MiniMap"));
+
+        QCOMPARE(ActionText::Label(QStringLiteral("NoSuchAction")), QStringLiteral("NoSuchAction"));
+        QCOMPARE(ActionText::MenuLabel(QStringLiteral("NoSuchAction")), QStringLiteral("NoSuchAction"));
     }
 
     void theListingFallbackNamesTheBaseVersionOfTheSameFunction(){
@@ -330,7 +403,7 @@ private slots:
 
         const QStringList re = CommandMap::Suggestions(QStringLiteral("RE"), 100, label);
         QVERIFY(re.contains(QStringLiteral("Reload")));
-        QVERIFY(re.indexOf(QStringLiteral("Reload")) < re.indexOf(QStringLiteral("ToggleReceiver")));
+        QVERIFY(re.indexOf(QStringLiteral("Reload")) < re.indexOf(QStringLiteral("ToggleTreeBar")));
 
         QCOMPARE(CommandMap::Suggestions(QStringLiteral("re"), 3, label).length(), 3);
         QVERIFY(CommandMap::Suggestions(QString(), 100, label).isEmpty());

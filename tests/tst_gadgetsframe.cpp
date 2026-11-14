@@ -114,6 +114,7 @@ private slots:
     void aLocalViewOfItsOwnStaysOnDeactivate();
     void theBarClosesTheTabListButNotALocalFolder();
     void intoADirectoryFromWhereTheChosenTabsAre();
+    void theTabListIsNotDrawnOnOpenGLThroughATranslucentWindow();
     void initTestCase();
     void theTableLetsGoOfEverythingAboutALeavingNode();
     void anInactiveTableLetsGoAsWell();
@@ -1110,6 +1111,25 @@ void tst_gadgetsframe::closeButtonKeepsTheCardItHangsOn(){
     hover(buttonRect.center());
     QCOMPARE(button->GetState(), GraphicsButton::Hovered);
     QCOMPARE(table->hoveredNode(), node);
+
+    auto painted = [&](){
+        const QRectF rect = button->boundingRect();
+        QImage image(rect.size().toSize() + QSize(2, 2), QImage::Format_ARGB32);
+        image.fill(Qt::transparent);
+        QPainter painter(&image);
+        painter.translate(QPointF(1, 1) - rect.topLeft());
+        button->paint(&painter, nullptr, nullptr);
+        painter.end();
+        return image.pixelColor(3, image.height() / 2);
+    };
+    QCOMPARE(painted().rgb(), Theme::Color(Theme::VanillaPageAccent).rgb());
+    hover(thumb->mapToScene(cell.center()));
+    QCOMPARE(button->GetState(), GraphicsButton::NotHovered);
+    const QColor quiet = painted();
+    const QColor ground = Theme::Color(Theme::VanillaPageBackground);
+    QCOMPARE(quiet.alpha(), 204);
+    QVERIFY(qAbs(quiet.red() - ground.red()) <= 1 && qAbs(quiet.green() - ground.green()) <= 1
+            && qAbs(quiet.blue() - ground.blue()) <= 1);
     delete table;
     delete root;
 }
@@ -1165,6 +1185,27 @@ void tst_gadgetsframe::initTestCase(){
     TestSupport::SilenceDebugOutput();
     GraphicsTableView::LoadSettings();
     TreeBank::Initialize();
+}
+
+void tst_gadgetsframe::theTabListIsNotDrawnOnOpenGLThroughATranslucentWindow(){
+    Settings &s = Application::GlobalSettings();
+    const QString key = QStringLiteral("application/@Viewport");
+    const QVariant before = s.value(key);
+    const struct { const char *value; bool translucent; bool expected; } rows[] = {
+        { "Widget",       false, false },
+        { "OpenGLWidget", false, true  },
+        { "GLWidget",     false, true  },
+        { "OpenGLWidget", true,  false },
+        { "GLWidget",     true,  false },
+    };
+    for(const auto &row : rows){
+        s[key] = QString::fromLatin1(row.value);
+        TreeBank::LoadSettings();
+        TranslucentWindow window(row.translucent);
+        QVERIFY2(TreeBank::DrawsOnOpenGL() == row.expected, row.value);
+    }
+    if(before.isValid()) s[key] = before; else s.remove(key);
+    TreeBank::LoadSettings();
 }
 
 void tst_gadgetsframe::applyCollectionSetting(){

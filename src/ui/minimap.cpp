@@ -6,6 +6,8 @@
 #include <QPainter>
 #include <QMouseEvent>
 #include <QtMath>
+#include <QJsonArray>
+#include <QJsonDocument>
 
 #include "treebank.hpp"
 #include "view.hpp"
@@ -62,10 +64,13 @@ QString MiniMap::ScrollerJsPrelude(){
             "    }\n");
 }
 
-QString MiniMap::CollectBlocksJsCode(){
+QString MiniMap::CollectBlocksJsCode(const QString &term){
+    const QString literal = QString::fromUtf8
+        (QJsonDocument(QJsonArray{term}).toJson(QJsonDocument::Compact));
     return QStringLiteral(
             "(function(){\n")
         + ScrollerJsPrelude()
+        + QStringLiteral("    var TERM = %1[0].toLowerCase();\n").arg(literal)
         + QStringLiteral(
             "    var MAX = 100000, VISITS = 100000;\n"
             "    var doc = document, de = doc.documentElement, body = doc.body;\n"
@@ -149,6 +154,17 @@ QString MiniMap::CollectBlocksJsCode(){
             "                    var rects = range.getClientRects();\n"
             "                    for(var i = 0; i < rects.length && !over; i++)\n"
             "                        push(0, rects[i], item);\n"
+            "                    if(TERM){\n"
+            "                        var low = n.data.toLowerCase();\n"
+            "                        for(var at = low.indexOf(TERM); at >= 0 && !over;\n"
+            "                            at = low.indexOf(TERM, at + TERM.length)){\n"
+            "                            range.setStart(n, Math.min(at, n.data.length));\n"
+            "                            range.setEnd(n, Math.min(at + TERM.length, n.data.length));\n"
+            "                            var hits = range.getClientRects();\n"
+            "                            for(var j = 0; j < hits.length && !over; j++)\n"
+            "                                push(5, hits[j], item);\n"
+            "                        }\n"
+            "                    }\n"
             "                } else if(n.nodeType === 1){\n"
             "                    queue.push({ el: n, x: item.x, y: item.y,\n"
             "                                 clip: item.clip,\n"
@@ -303,6 +319,7 @@ void MiniMap::SetView(View *view){
     m_View = view;
     m_ViewGuard = base;
     m_WiredBase = base;
+    m_SeekTerm.clear();
     ClearStrip();
 
     if(!view){
@@ -315,6 +332,7 @@ void MiniMap::SetView(View *view){
     const auto it = m_Cache.constFind(base);
     if(it != m_Cache.constEnd() && it->url == view->url()){
         m_Blocks = it->blocks;
+        m_Blocks.removeIf([](const Block &block){ return block.kind == MatchBlock;});
         m_PageSize = it->pageSize;
         m_Overflowed = it->overflowed;
         m_Scroller = it->scroller;
@@ -409,6 +427,15 @@ void MiniMap::ResizeNotify(QSize size){
     EndDrag();
     setGeometry(size.width() - MapWidth(), 0, MapWidth(), size.height());
     update();
+}
+
+void MiniMap::SetSeekTerm(const QString &term){
+    if(term == m_SeekTerm) return;
+    m_SeekTerm = term;
+    ++m_Request;
+    m_Blocks.removeIf([](const Block &block){ return block.kind == MatchBlock;});
+    update();
+    if(m_ViewGuard) m_RecollectTimer.start();
 }
 
 void MiniMap::ClearStrip(){
@@ -521,7 +548,7 @@ void MiniMap::RequestBlocks(){
     const quint64 request = ++m_Request;
     QPointer<MiniMap> self = this;
     m_View->CallWithEvaluatedJavaScriptResult
-        (CollectBlocksJsCode(), [self, generation, request](QVariant answer){
+        (CollectBlocksJsCode(m_SeekTerm), [self, generation, request](QVariant answer){
             if(!self || self->m_Generation != generation ||
                self->m_Request != request) return;
             QSizeF pageSize;
@@ -566,7 +593,7 @@ QList<MiniMap::Block> MiniMap::ParseBlocks(const QVariant &answer,
     for(int row = 0; row + 5 < list.size(); row += 6){
         bool ok = false;
         const int kind = list.at(row).toInt(&ok);
-        if(!ok || kind < TextBlock || kind > PositionedBackgroundBlock)
+        if(!ok || kind < TextBlock || kind > MatchBlock)
             continue;
         if(!list.at(row + 1).canConvert<bool>()) continue;
         const bool followsViewport = list.at(row + 1).toBool();
@@ -786,7 +813,7 @@ void MiniMap::paintEvent(QPaintEvent *ev){
                    block.kind == ControlBlock ? control : text;
         };
         foreach(const Block &block, m_Blocks){
-            if(block.followsViewport) continue;
+            if(block.followsViewport || block.kind == MatchBlock) continue;
             const QRectF r = PaintedBlockRect(block, k, scale, offset,
                                                window.top());
             if(r.bottom() < 0 || r.top() > height()) continue;
@@ -797,7 +824,7 @@ void MiniMap::paintEvent(QPaintEvent *ev){
         painter.save();
         painter.setClipRect(window);
         foreach(const Block &block, m_Blocks){
-            if(!block.followsViewport) continue;
+            if(!block.followsViewport || block.kind == MatchBlock) continue;
             const QRectF r = PaintedBlockRect(block, k, scale, offset,
                                                window.top());
             painter.fillRect(r, brushFor(block));
@@ -810,6 +837,22 @@ void MiniMap::paintEvent(QPaintEvent *ev){
     painter.setPen(Theme::Pen(Theme::MiniMapViewportBorder));
     painter.setBrush(Qt::NoBrush);
     painter.drawRect(window.adjusted(0, 0, -1, -1));
+
+    if(m_PageSize.width() > 0){
+        const qreal k = contents.width() / m_PageSize.width();
+        const QBrush match = Theme::Brush(Theme::MiniMapMatch);
+        const qreal least = ScaleByDevice(3);
+        foreach(const Block &block, m_Blocks){
+            if(block.kind != MatchBlock) continue;
+            QRectF r = PaintedBlockRect(block, k, scale, offset, window.top());
+            if(r.width() < least)
+                r.adjust(-(least - r.width()) / 2, 0, (least - r.width()) / 2, 0);
+            if(r.height() < least)
+                r.adjust(0, -(least - r.height()) / 2, 0, (least - r.height()) / 2);
+            if(r.bottom() < 0 || r.top() > height()) continue;
+            painter.fillRect(r, match);
+        }
+    }
 }
 
 void MiniMap::ApplyRatio(qreal ratio, const QRectF &viewport,

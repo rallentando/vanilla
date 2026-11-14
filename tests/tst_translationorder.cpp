@@ -44,7 +44,7 @@ void tst_translationorder::thePreferredLanguageAnswersWithTheRealFiles(){
         QVERIFY(QCoreApplication::installTranslator(translator));
         installed << translator;
     }
-    const QString text = QCoreApplication::translate("Page", "NewViewNode");
+    const QString text = QCoreApplication::translate("ActionText", "NewViewNode");
     for(QTranslator *translator : installed){
         QCoreApplication::removeTranslator(translator);
         delete translator;

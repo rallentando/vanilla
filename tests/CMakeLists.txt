@@ -39,12 +39,16 @@ vanilla_add_test(tst_gadgetsframe)
 target_sources(tst_gadgetsframe PRIVATE ../qrc/vanilla.qrc)
 vanilla_add_test(tst_theme)
 vanilla_add_test(tst_blurbehind)
+vanilla_add_test(tst_ownedraise)
 vanilla_add_test(tst_pagetheme)
 vanilla_add_test(tst_uimetrics)
 vanilla_add_test(tst_windowframe)
 vanilla_add_test(tst_docktitlebar)
 vanilla_add_test(tst_systemmenu)
 vanilla_add_test(tst_receiver)
+# 'vanilla.qrc' for the toolbar's bitmaps: without them its buttons are words,
+# wide enough to put the address into the bar's overflow.
+target_sources(tst_receiver PRIVATE ../qrc/vanilla.qrc)
 vanilla_add_test(tst_notifier)
 vanilla_add_test(tst_startupwindows)
 vanilla_add_test(tst_settingsschema)
@@ -119,6 +123,11 @@ vanilla_add_test(tst_passwordpolicy)
 target_compile_definitions(tst_passwordpolicy PRIVATE
     VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
 vanilla_add_test(tst_permissiontable)
+vanilla_add_test(tst_siteinfo)
+vanilla_add_test(tst_webenginesitedatalink)
+# reads the quick inspector's QML, which the panel reaches the page through (D-674).
+target_compile_definitions(tst_webenginesitedatalink PRIVATE
+    VANILLA_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src")
 vanilla_add_test(tst_passwordstore)
 vanilla_add_test(tst_spacerename)
 vanilla_add_test(tst_profilelist)

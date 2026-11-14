@@ -10,14 +10,15 @@
 #include "receiver.hpp"
 
 #include <QToolBar>
+#include <QPointer>
 
 class TreeBank;
 class QLineEdit;
-class QCompleter;
-class QStandardItemModel;
 class QPaintEvent;
 class QResizeEvent;
 class ExtensionBar;
+class SiteButton;
+class SiteInfoPanel;
 class DownloadBar;
 
 class ToolBar : public QToolBar {
@@ -42,10 +43,16 @@ public:
     void Connect(SharedView view);
     void Disconnect(SharedView view);
 
+    static QList<QAction*> NavigationActions(TreeBank *tb);
+    static void SyncNavigation(TreeBank *tb, View *view, bool loading);
+
     DownloadBar *GetDownloadBar() const { return m_DownloadBar;}
+    SiteButton *GetSiteButton() const { return m_SiteButton;}
+    LineEdit *Field() const;
 
 public slots:
     void SetUrl(const QUrl&);
+    void SetStarted();
     void SetFinished(bool);
 
 protected:
@@ -68,31 +75,11 @@ private:
     SharedView m_View;
     TreeBank *m_TreeBank;
     LineEdit *m_LineEdit;
+    SiteButton *m_SiteButton;
+    QPointer<SiteInfoPanel> m_SitePanel;
     ExtensionBar *m_ExtensionBar;
     DownloadBar *m_DownloadBar;
-    QCompleter *m_Completer;
-    QStandardItemModel *m_Model;
-    QAction *m_BackAction;
-    QAction *m_ForwardAction;
-    QAction *m_RewindAction;
-    QAction *m_FastForwardAction;
-    QAction *m_ReloadAction;
-    QAction *m_StopAction;
 
-    void FillCandidates(const QString &text);
-
-    static QStringList m_CommandCandidates;
-    static QStringList m_InputUrlHistory;
-
-public:
-    static QStringList CommandCandidates();
-    static QStringList UrlAncestors(const QString &text, const QUrl &current);
-    static QStringList UrlCandidates(const QString &text, const QUrl &current, const QStringList &nearby);
-
-public slots:
-    void DisplaySuggest(const QByteArray&);
-signals:
-    void SuggestRequest(const QUrl&);
 };
 
 #endif

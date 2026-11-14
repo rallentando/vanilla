@@ -53,10 +53,44 @@ namespace {
         return rect.adjusted(inset, inset, -inset, -inset);
     }
 
-    void DrawButtonIcon(GraphicsButton *button, QPainter *painter, const QRectF &rect, const QIcon &icon){
+    void DrawCardButton(GraphicsButton *button, QPainter *painter, const QIcon &icon){
+        painter->save();
+        const QRectF rect = button->boundingRect();
+        const bool hovered = button->GetState() != GraphicsButton::NotHovered;
+        painter->setRenderHint(QPainter::Antialiasing, true);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(hovered ? Theme::Brush(Theme::VanillaPageAccent)
+                                  : Theme::Brush(Theme::VanillaPageBackground, 204));
+        const int radius = button->GetTableView()->ScaleByDevice(CHIP_CORNER_RADIUS);
+        painter->drawRoundedRect(rect, radius, radius);
+        painter->setRenderHint(QPainter::Antialiasing, false);
         const QRectF inner = ButtonIconRect(button, rect);
-        const QPixmap pixmap = icon.pixmap(inner.size().toSize());
+        const QPixmap pixmap = Theme::Fill(icon.pixmap(inner.size().toSize()),
+                                           hovered ? Theme::VanillaPageBackground
+                                                   : Theme::VanillaPageText);
         painter->drawPixmap(inner, pixmap, QRect(QPoint(), pixmap.size()));
+        painter->restore();
+    }
+
+    void DrawCardCloseButton(CloseButton *button, QPainter *painter){
+        static const QIcon icon = Theme::Icon(QStringLiteral(":/resources/tableview/close.png"));
+        DrawCardButton(button, painter, icon);
+    }
+    void DrawCardCloneButton(CloneButton *button, QPainter *painter){
+        static const QIcon clone = Theme::Icon(QStringLiteral(":/resources/tableview/clone.png"));
+        static const QIcon restore = Theme::Icon(QStringLiteral(":/resources/tableview/restore.png"));
+        DrawCardButton(button, painter,
+                       button->GetTableView()->IsDisplayingTrashTree() ? restore : clone);
+    }
+    void DrawCardSoundButton(SoundButton *button, QPainter *painter){
+        if(!button->GetNode()) return;
+        View *view = button->GetNode()->GetView();
+        const bool muted = view && view->IsAudioMuted();
+        const bool audible = view && view->RecentlyAudible();
+        if(!muted && !audible) return;
+        static const QIcon muted_ = Theme::Icon(QStringLiteral(":/resources/tableview/muted.png"));
+        static const QIcon audible_ = Theme::Icon(QStringLiteral(":/resources/tableview/audible.png"));
+        DrawCardButton(button, painter, muted ? muted_ : audible_);
     }
 
     struct HeaderColors {
@@ -514,21 +548,6 @@ namespace {
                 : (!isDir ? (view ? page  : blank)  : !foldable ? folder  : isFolded ? folded  : unfolded);
         }
         return icon.pixmap(size, (view || isDir) ? QIcon::Normal : QIcon::Disabled);
-    }
-
-    void DrawPlainCardButton(GraphicsButton *button, QPainter *painter, const QIcon &icon){
-        painter->save();
-        const QRectF rect = button->boundingRect();
-        if(button->GetState() == GraphicsButton::NotHovered)
-            painter->setOpacity(0.75);
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(Theme::Brush(Theme::PlainButton));
-        const int radius = button->GetTableView()->ScaleByDevice(CHIP_CORNER_RADIUS);
-        painter->drawRoundedRect(rect, radius, radius);
-        painter->setRenderHint(QPainter::Antialiasing, false);
-        DrawButtonIcon(button, painter, rect, icon);
-        painter->restore();
     }
 
     QRect FrameRateRect(GraphicsTableView *gtv){
@@ -1002,75 +1021,15 @@ void GlassStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
 }
 
 void GlassStyle::Render(CloseButton *button, QPainter *painter) const {
-    painter->save();
-    QRectF rect = button->boundingRect();
-
-    if(button->GetState() == GraphicsButton::NotHovered)
-        painter->setOpacity(0.5);
-
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(Theme::Brush(Theme::GlassButtonBackground));
-    painter->drawRect(rect);
-
-    if(button->GetState() != GraphicsButton::Pressed){
-        static QIcon icon = Theme::Icon(QStringLiteral(":/resources/tableview/close.png"));
-        DrawButtonIcon(button, painter, rect, icon);
-    }
-
-    painter->restore();
+    DrawCardCloseButton(button, painter);
 }
 
 void GlassStyle::Render(CloneButton *button, QPainter *painter) const {
-    painter->save();
-    QRectF rect = button->boundingRect();
-
-    if(button->GetState() == GraphicsButton::NotHovered)
-        painter->setOpacity(0.5);
-
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(Theme::Brush(Theme::GlassButtonBackground));
-    painter->drawRect(rect);
-
-    if(button->GetState() != GraphicsButton::Pressed){
-        static QIcon clone = Theme::Icon(QStringLiteral(":/resources/tableview/clone.png"));
-        static QIcon restore = Theme::Icon(QStringLiteral(":/resources/tableview/restore.png"));
-        DrawButtonIcon(button, painter, rect,
-                       button->GetTableView()->IsDisplayingTrashTree() ? restore : clone);
-    }
-
-    painter->restore();
+    DrawCardCloneButton(button, painter);
 }
 
 void GlassStyle::Render(SoundButton *button, QPainter *painter) const {
-    if(!button->GetNode()) return;
-
-    bool muted = false;
-    bool audible = false;
-
-    if(View *view = button->GetNode()->GetView()){
-        muted = view->IsAudioMuted();
-        audible = view->RecentlyAudible();
-    }
-
-    if(!muted && !audible) return;
-
-    painter->save();
-    QRectF rect = button->boundingRect();
-
-    if(button->GetState() == GraphicsButton::NotHovered)
-        painter->setOpacity(0.5);
-
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(Theme::Brush(Theme::GlassButtonBackground));
-    painter->drawRect(rect);
-
-    if(button->GetState() != GraphicsButton::Pressed){
-        static QIcon muted_ = Theme::Icon(QStringLiteral(":/resources/tableview/muted.png"));
-        static QIcon audible_ = Theme::Icon(QStringLiteral(":/resources/tableview/audible.png"));
-        DrawButtonIcon(button, painter, rect, muted ? muted_ : audible_);
-    }
-
-    painter->restore();
+    DrawCardSoundButton(button, painter);
 }
 
 void GlassStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
@@ -1478,62 +1437,15 @@ void FlatStyle::Render(InPlaceNotifier *notifier, QPainter *painter) const {
 }
 
 void FlatStyle::Render(CloseButton *button, QPainter *painter) const {
-    painter->save();
-    QRectF rect = button->boundingRect();
-
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(Theme::Brush(Theme::FlatButtonBackground));
-    painter->drawRect(rect);
-
-    static QIcon icon = Theme::Icon(QStringLiteral(":/resources/tableview/close.png"));
-    DrawButtonIcon(button, painter, rect, icon);
-
-    painter->restore();
+    DrawCardCloseButton(button, painter);
 }
 
 void FlatStyle::Render(CloneButton *button, QPainter *painter) const {
-    painter->save();
-    QRectF rect = button->boundingRect();
-
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(Theme::Brush(Theme::FlatButtonBackground));
-    painter->drawRect(rect);
-
-    static QIcon clone = Theme::Icon(QStringLiteral(":/resources/tableview/clone.png"));
-    static QIcon restore = Theme::Icon(QStringLiteral(":/resources/tableview/restore.png"));
-    DrawButtonIcon(button, painter, rect,
-                   button->GetTableView()->IsDisplayingTrashTree() ? restore : clone);
-
-    painter->restore();
+    DrawCardCloneButton(button, painter);
 }
 
 void FlatStyle::Render(SoundButton *button, QPainter *painter) const {
-    if(!button->GetNode()) return;
-
-    bool muted = false;
-    bool audible = false;
-
-    if(View *view = button->GetNode()->GetView()){
-        muted = view->IsAudioMuted();
-        audible = view->RecentlyAudible();
-    }
-
-    if(!muted && !audible) return;
-
-    painter->save();
-    QRectF rect = button->boundingRect();
-
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(Theme::Brush(Theme::FlatButtonBackground));
-    painter->drawRect(rect);
-
-    if(button->GetState() != GraphicsButton::Pressed){
-        static QIcon muted_ = Theme::Icon(QStringLiteral(":/resources/tableview/muted.png"));
-        static QIcon audible_ = Theme::Icon(QStringLiteral(":/resources/tableview/audible.png"));
-        DrawButtonIcon(button, painter, rect, muted ? muted_ : audible_);
-    }
-
-    painter->restore();
+    DrawCardSoundButton(button, painter);
 }
 
 void FlatStyle::Render(UpDirectoryButton *button, QPainter *painter) const {
@@ -1916,26 +1828,15 @@ void PlainStyle::Render(Thumbnail *thumb, QPainter *painter) const {
 }
 
 void PlainStyle::Render(CloseButton *button, QPainter *painter) const {
-    static QIcon icon = Theme::Icon(QStringLiteral(":/resources/tableview/close.png"));
-    DrawPlainCardButton(button, painter, icon);
+    DrawCardCloseButton(button, painter);
 }
 
 void PlainStyle::Render(CloneButton *button, QPainter *painter) const {
-    static QIcon clone = Theme::Icon(QStringLiteral(":/resources/tableview/clone.png"));
-    static QIcon restore = Theme::Icon(QStringLiteral(":/resources/tableview/restore.png"));
-    DrawPlainCardButton(button, painter,
-                        button->GetTableView()->IsDisplayingTrashTree() ? restore : clone);
+    DrawCardCloneButton(button, painter);
 }
 
 void PlainStyle::Render(SoundButton *button, QPainter *painter) const {
-    if(!button->GetNode()) return;
-    View *view = button->GetNode()->GetView();
-    const bool muted = view && view->IsAudioMuted();
-    const bool audible = view && view->RecentlyAudible();
-    if(!muted && !audible) return;
-    static QIcon muted_ = Theme::Icon(QStringLiteral(":/resources/tableview/muted.png"));
-    static QIcon audible_ = Theme::Icon(QStringLiteral(":/resources/tableview/audible.png"));
-    DrawPlainCardButton(button, painter, muted ? muted_ : audible_);
+    DrawCardSoundButton(button, painter);
 }
 
 void PlainStyle::Render(UpDirectoryButton *button, QPainter *painter) const {

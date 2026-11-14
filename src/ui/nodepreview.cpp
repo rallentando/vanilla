@@ -127,7 +127,7 @@ void NodePreview::Request(const QImage &image, const QString &title,
                           const QString &host,
                           const QRect &itemRect, const QRect &barRect, Qt::Edge side,
                           const QPoint &pointer){
-    if(m_Held){
+    if(m_Held && !pointer.isNull()){
         if(pointer == m_HeldAt) return;
         m_Held = false;
     }

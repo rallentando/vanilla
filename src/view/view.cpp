@@ -951,8 +951,7 @@ void View::LoadSettings(){
 
     m_GestureMode               = s.value(QStringLiteral("webview/@GestureMode"),           4).value<int>();
     m_EnableDestinationInferrer = s.value(QStringLiteral("webview/@EnableDestinationInferrer"), false).value<bool>();
-    m_EnableDragGesture         = s.value(QStringLiteral("webview/@EnableDragHack"),    false).value<bool>()
-        ||                        s.value(QStringLiteral("webview/@EnableDragGesture"), false).value<bool>();
+    m_EnableDragGesture         = s.value(QStringLiteral("webview/@EnableDragGesture"), false).value<bool>();
     m_EnableMouseGesture        = s.value(QStringLiteral("webview/@EnableMouseGesture"), true).value<bool>();
     m_EnableScrollGesture       = s.value(QStringLiteral("webview/@EnableScrollGesture"), false).value<bool>();
     m_ActivateNewViewDefault    = s.value(QStringLiteral("webview/@ActivateNewViewDefault"), true).value<bool>();
@@ -990,7 +989,6 @@ void View::LoadSettings(){
     gwes->setAttribute(QWebEngineSettings::LocalStorageEnabled,               s.value(QStringLiteral("webview/preferences/LocalStorageEnabled"),               EngineDefault(gwes, QWebEngineSettings::LocalStorageEnabled)              ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::PluginsEnabled,                    s.value(QStringLiteral("webview/preferences/PluginsEnabled"),                              true ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::SpatialNavigationEnabled,          s.value(QStringLiteral("webview/preferences/SpatialNavigationEnabled"),          EngineDefault(gwes, QWebEngineSettings::SpatialNavigationEnabled)         ).value<bool>());
-    gwes->setAttribute(QWebEngineSettings::XSSAuditingEnabled,                s.value(QStringLiteral("webview/preferences/XSSAuditingEnabled"),                EngineDefault(gwes, QWebEngineSettings::XSSAuditingEnabled)               ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled,          s.value(QStringLiteral("webview/preferences/HyperlinkAuditingEnabled"),          EngineDefault(gwes, QWebEngineSettings::HyperlinkAuditingEnabled)         ).value<bool>());
     gwes->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled,             s.value(QStringLiteral("webview/preferences/ScrollAnimatorEnabled"),             true).value<bool>());
     gwes->setAttribute(QWebEngineSettings::ScreenCaptureEnabled,              s.value(QStringLiteral("webview/preferences/ScreenCaptureEnabled"),              EngineDefault(gwes, QWebEngineSettings::ScreenCaptureEnabled)             ).value<bool>());
@@ -1035,14 +1033,9 @@ void View::LoadSettings(){
 #endif
 
 #ifdef WEBENGINEVIEW
-
     gwes->setDefaultTextEncoding
         (s.value(QStringLiteral("webview/detail/DefaultTextEncoding"),
                   gwes->defaultTextEncoding()).value<QString>());
-
-#endif
-
-#ifdef WEBENGINEVIEW
 #endif
 
 #if defined(WEBENGINEVIEW)
@@ -1209,9 +1202,6 @@ void View::SaveSettings(){
     s.setValue(QStringLiteral("webview/detail/DefaultTextEncoding"),             gwes->defaultTextEncoding());
 #endif
 
-#ifdef WEBENGINEVIEW
-#endif
-
 #if defined(WEBENGINEVIEW)
     QWebEngineSettings::UnknownUrlSchemePolicy schemePolicy = gwes->unknownUrlSchemePolicy();
     if(schemePolicy == QWebEngineSettings::DisallowUnknownUrlSchemes)
@@ -1311,7 +1301,6 @@ void View::ApplySpecificSettings(QStringList set){
         s->setAttribute(QWebEngineSettings::LocalStorageEnabled, g->testAttribute(QWebEngineSettings::LocalStorageEnabled));
         s->setAttribute(QWebEngineSettings::PluginsEnabled, g->testAttribute(QWebEngineSettings::PluginsEnabled));
         s->setAttribute(QWebEngineSettings::SpatialNavigationEnabled, g->testAttribute(QWebEngineSettings::SpatialNavigationEnabled));
-        s->setAttribute(QWebEngineSettings::XSSAuditingEnabled, g->testAttribute(QWebEngineSettings::XSSAuditingEnabled));
         s->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled, g->testAttribute(QWebEngineSettings::HyperlinkAuditingEnabled));
         s->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, g->testAttribute(QWebEngineSettings::ScrollAnimatorEnabled));
         s->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, g->testAttribute(QWebEngineSettings::ScreenCaptureEnabled));
@@ -1443,6 +1432,8 @@ void View::WireWebView(QObject *view, QObject *linkSource, TreeBank *tb, bool on
              view, SLOT(Load(const QString&)));
         Wire(on, receiver, SIGNAL(SeekText(const QString&, View::FindFlags)),
              view, SLOT(SeekText(const QString&, View::FindFlags)));
+        Wire(on, view, SIGNAL(FindCount(int, int)),
+             receiver, SLOT(SetFindCount(int, int)));
         Wire(on, receiver, SIGNAL(KeyEvent(QString)),
              view, SLOT(KeyEvent(QString)));
 

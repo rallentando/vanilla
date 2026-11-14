@@ -74,7 +74,6 @@ private:
         ADD(ToggleMediaControlsJsCode());
         ADD(ToggleMediaLoopJsCode());
         ADD(ToggleMediaPlayPauseJsCode());
-        ADD(InstallSubmitEventJsCode());
         ADD(InstallEventFilterJsCode(types));
 #ifdef EDGEWEBVIEW
         ADD(EdgeInputBridgeJsCode(QList<int>() << 81 << 87, QList<int>() << 81));
@@ -106,7 +105,7 @@ private slots:
     void everyHelperIsJavascript(){
         QJSEngine engine;
         const QList<NamedScript> helpers = Helpers();
-        int expected = 41;
+        int expected = 40;
 #ifdef MEDIATIME
         expected += 2;
 #endif
@@ -1179,15 +1178,20 @@ private slots:
         const QString resolver = source.mid(begin, end + 2 - begin);
         QJSEngine engine;
         const QJSValue harness = engine.evaluate(
-            QStringLiteral("(function(){ var state = { categories: [{name:'general'},{name:'network'}] };"
+            QStringLiteral("(function(){ var state = { categories: [{name:'general'},{name:'network'},"
+                           "{name:'hidden', hidden:true}], revealed: false };"
                            " var window = { location: { hash: '' } };\n")
             + resolver +
-            QStringLiteral("\n return function(hash){ window.location.hash = hash; return categoryOfFragment(); }; })()"));
+            QStringLiteral("\n return function(hash, revealed){ window.location.hash = hash;"
+                           " state.revealed = !!revealed; return categoryOfFragment(); }; })()"));
         QVERIFY2(!harness.isError(), qPrintable(harness.toString()));
         QCOMPARE(harness.call({QJSValue(QStringLiteral("#network"))}).toString(), QStringLiteral("network"));
         QCOMPARE(harness.call({QJSValue(QStringLiteral("#general"))}).toString(), QStringLiteral("general"));
         QCOMPARE(harness.call({QJSValue(QStringLiteral(""))}).toString(), QStringLiteral("general"));
         QCOMPARE(harness.call({QJSValue(QStringLiteral("#nowhere"))}).toString(), QStringLiteral("general"));
+        QCOMPARE(harness.call({QJSValue(QStringLiteral("#hidden"))}).toString(), QStringLiteral("general"));
+        QCOMPARE(harness.call({QJSValue(QStringLiteral("#hidden")), QJSValue(true)}).toString(),
+                 QStringLiteral("hidden"));
     }
 
     void settingsNotUsedSentenceReadsInAnyOrder(){

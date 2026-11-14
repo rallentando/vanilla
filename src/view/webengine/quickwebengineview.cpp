@@ -17,6 +17,7 @@
 
 #include "view.hpp"
 #include "webenginepage.hpp"
+#include "webenginesitedatalink.hpp"
 #include "treebank.hpp"
 #include "treebar.hpp"
 #include "notifier.hpp"
@@ -133,6 +134,8 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
 
     connect(this, &QuickWebEngineView::recentlyAudibleChanged,
             this, [](bool){ TreeBank::TabsLookChanged();});
+    connect(m_QmlWebEngineView, SIGNAL(findCount(int, int)),
+            this, SIGNAL(FindCount(int, int)));
     connect(m_QmlWebEngineView, SIGNAL(scrollChanged(QPointF)),
             this,               SIGNAL(ScrollChanged(QPointF)));
 
@@ -218,13 +221,13 @@ void QuickWebEngineView::applicationWorldResult(int id, const QVariant &result){
 }
 
 QuickWebEngineView::~QuickWebEngineView(){
+    if(m_QmlWebEngineView)
+        m_QmlWebEngineView->setProperty("devToolsView", QVariant());
     if(m_Inspector){
         if(m_TreeBank)
             if(MainWindow *win = m_TreeBank->GetMainWindow())
                 if(win->DockedInspectorPane() == m_Inspector)
                     win->SetInspectorPane(nullptr);
-        m_QmlWebEngineView->setProperty("devToolsView",
-                                        QVariant::fromValue<QObject*>(nullptr));
         m_Inspector->deleteLater();
     }
 
@@ -717,8 +720,7 @@ void QuickWebEngineView::HandleJavascriptConsoleMessage(int level, const QString
             Application::InputScope key(true);
             if(!Application::IsOnlyModifier(&ke)) TriggerKeyEvent(&ke);
         }
-    }
-    else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventToken()), msg)){
+    } else if(Application::ExactMatch(QStringLiteral("preventScrollRestoration%1").arg(Application::EventToken()), msg)){
         m_PreventScrollRestoration = true;
     }
 }
@@ -1047,6 +1049,10 @@ void QuickWebEngineView::ToggleMediaPlayPause(){
 
 void QuickWebEngineView::ToggleMediaMute(){
     QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaMute");
+}
+
+SiteDataLink *QuickWebEngineView::OpenSiteDataLink(){
+    return m_QmlWebEngineView ? new QuickWebEngineSiteDataLink(m_QmlWebEngineView) : nullptr;
 }
 
 void QuickWebEngineView::ExitFullScreen(){

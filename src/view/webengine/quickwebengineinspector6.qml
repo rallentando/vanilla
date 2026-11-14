@@ -9,6 +9,17 @@ import QtWebEngine
 // C++, where the D-064 pair of them already lives. (D-086)
 WebEngineView {
 
+    // a script run for the site information panel, its answer numbered
+    // (D-674): the panel reaches this view's page through the frontend the
+    // user has open, as the widgets view's does.
+    signal callBackResult(int id, variant result)
+
+    function evaluateJavaScript(id, code){
+        runJavaScript(code, WebEngineScript.MainWorld, function(result){
+            callBackResult(id, result)
+        })
+    }
+
     // the frontend reads its stored theme at boot but does not apply it
     // (the language is applied; watched on Qt 6.11 / the theme picker then
     // shows 'dark' over a light window). setting the value back onto itself

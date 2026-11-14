@@ -176,7 +176,8 @@ public slots:
     void resize(QSize size) override {
         m_QmlNativeWebView->setProperty("width", size.width());
         m_QmlNativeWebView->setProperty("height", size.height());
-        if(TreeBank::PurgeView() && m_TreeBank){
+        if(TreeBank::PurgeView() && m_TreeBank && base()->isWidgetType() &&
+           static_cast<QWidget*>(base())->isWindow()){
             base()->setGeometry(QRect(m_TreeBank->mapToGlobal(QPoint()), size));
         } else {
             base()->setGeometry(QRect(QPoint(), size));
@@ -351,6 +352,7 @@ signals:
     void CallBackResult(int, QVariant);
     void ViewChanged();
     void ScrollChanged(QPointF);
+    void FindCount(int active, int total);
 
     void titleChanged(const QString&);
     void urlChanged(const QUrl&);

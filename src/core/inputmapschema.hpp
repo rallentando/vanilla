@@ -42,7 +42,6 @@ const Table *Find(const QString &group);
 QStringList Actions(Vocabulary vocabulary);
 bool IsAction(Vocabulary vocabulary, const QString &action);
 QString ActionLabel(Vocabulary vocabulary, const QString &action);
-QString LabelSource(const QString &action);
 
 bool TypesIntoTheField(const QKeySequence &seq);
 

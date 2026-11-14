@@ -6,8 +6,10 @@
 #include <QJsonArray>
 #include <QDir>
 #include <QStandardPaths>
+#include <QRegularExpression>
 
 #include "application.hpp"
+#include "inputmapschema.hpp"
 
 namespace {
 
@@ -20,12 +22,6 @@ namespace {
         { "gadgets/@Style", SettingsSchema::Choice, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Tab list style"),
           "", "PlainStyle|FlatStyle|GlassStyle", "PlainStyle", false },
-
-        { "application/@EnableMiniMap", SettingsSchema::Bool, "appearance",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Show the minimap"),
-          QT_TRANSLATE_NOOP("SettingsSchema",
-                            "A scroll on it acts at the middle of the page."),
-          "", "false", true },
 
         { "application/@EnableTranslucentPanels", SettingsSchema::Bool, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Translucent menus, panels and dialogs"),
@@ -40,9 +36,16 @@ namespace {
           "", "false", true,
           "application/@EnableMainWindowRhi=false|application/@GraphicsApi=OpenGL" },
 
-        { "application/@EnableFramelessWindow", SettingsSchema::Bool, "appearance",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Draw the window frame in the application"),
+        { "application/@EnableCustomTitleBar", SettingsSchema::Bool, "appearance",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Draw the title bar in the application"),
           "", "", "false", true },
+
+        { "application/@WindowEdgeColor", SettingsSchema::Color, "appearance",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Colour of the window's edge"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "The line round a full screen window, and the line at the top of a maximized window "
+              "whose title bar the application draws (Windows)."),
+          "", "#000000", false },
 
         { "application/@PurgeView", SettingsSchema::Bool, "appearance",
           QT_TRANSLATE_NOOP("SettingsSchema", "Give the page its own window"),
@@ -390,6 +393,11 @@ namespace {
         { "webview/@EnableMouseGesture", SettingsSchema::Bool, "input",
           QT_TRANSLATE_NOOP("SettingsSchema", "Mouse gestures"), "", "", "true", false },
 
+        { "webview/@GestureMode", SettingsSchema::Choice, "input",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Gesture directions"),
+          QT_TRANSLATE_NOOP("SettingsSchema", "For mouse gestures and super drag."),
+          "4|8", "4", false },
+
         { "webview/@EnableDragGesture", SettingsSchema::Bool, "input",
           QT_TRANSLATE_NOOP("SettingsSchema", "Super drag"), "", "", "false", false },
 
@@ -653,9 +661,9 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Tab list drawing surface"),
           QT_TRANSLATE_NOOP("SettingsSchema",
               "What the tab list and the access key labels are drawn on; the "
-              "page is not. 'GLWidget' and 'OpenGLWidget' are the same.\n"
-              "Change it only if they are drawn wrongly."),
-          "Widget|GLWidget|OpenGLWidget", "Widget", true },
+              "page is not. While the window is translucent, they are drawn "
+              "on 'Widget' whatever is chosen here."),
+          "Widget|OpenGLWidget", "Widget", true },
 
         { "application/@ChromiumFlags", SettingsSchema::TextList, "engine",
           QT_TRANSLATE_NOOP("SettingsSchema", "Chromium switches"),
@@ -667,6 +675,132 @@ namespace {
               "A switch it does not accept can stop it from starting; to "
               "recover, edit 'data/config.json'."),
           "", "", true },
+
+        { "webview/preferences/AllowRunningInsecureContent", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Run HTTP content in an HTTPS page"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "Only the WebEngine views read the settings in this section and the next."),
+          "", "false", false },
+        { "webview/preferences/AllowGeolocationOnInsecureOrigins", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Let an HTTP page ask for the location"),
+          "",
+          "", "false", false },
+        { "webview/preferences/LocalContentCanAccessFileUrls", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Let a local file read other local files"),
+          "",
+          "", "true", false },
+        { "webview/preferences/LocalContentCanAccessRemoteUrls", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Let a local file read from the network"),
+          "",
+          "", "false", false },
+        { "webview/preferences/JavascriptCanAccessClipboard", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Let scripts use the clipboard without asking"),
+          "",
+          "", "false", false },
+        { "webview/preferences/JavascriptCanPaste", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Let scripts paste"),
+          "",
+          "", "false", false },
+        { "webview/preferences/AllowWindowActivationFromJavaScript", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Let a page bring its window to the front"),
+          "",
+          "", "false", false },
+        { "webview/preferences/JavascriptCanOpenWindows", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Let scripts open windows"),
+          "",
+          "", "true", false },
+        { "webview/preferences/HyperlinkAuditingEnabled", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Send the pings of links (<a ping>)"),
+          "",
+          "", "false", false },
+        { "webview/preferences/WebRTCPublicInterfacesOnly", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "WebRTC uses the public network interface only"),
+          "",
+          "", "false", false },
+        { "webview/preferences/DnsPrefetchEnabled", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Look up host names ahead of a click"),
+          "",
+          "", "false", false },
+        { "webview/preferences/Accelerated2dCanvasEnabled", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Draw 2D canvases on the GPU"),
+          "",
+          "", "true", false },
+        { "webview/preferences/ErrorPageEnabled", SettingsSchema::Bool, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Show the engine's own error pages"),
+          "",
+          "", "true", false },
+        { "webview/detail/DefaultTextEncoding", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Text encoding of a page which names none"),
+          "",
+          "", "ISO-8859-1", false },
+        { "webview/detail/UnknownUrlSchemePolicy", SettingsSchema::Choice, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Addresses of a scheme the engine does not know"),
+          "",
+          "DisallowUnknownUrlSchemes|AllowUnknownUrlSchemesFromUserInteraction|AllowAllUnknownUrlSchemes", "AllowUnknownUrlSchemesFromUserInteraction", false },
+        { "webview/font/SerifFont", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Serif font"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "What CSS asks for by these names. Empty, the system's own."),
+          "", "", false },
+        { "webview/font/SansSerifFont", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Sans serif font"),
+          "",
+          "", "", false },
+        { "webview/font/CursiveFont", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Cursive font"),
+          "",
+          "", "", false },
+        { "webview/font/FantasyFont", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Fantasy font"),
+          "",
+          "", "", false },
+        { "webview/font/PictographFont", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Pictograph font"),
+          "",
+          "", "", false },
+        { "webview/font/MinimumLogicalFontSize", SettingsSchema::Int, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Minimum logical font size"),
+          "",
+          "", "6", false },
+
+        { "application/UserAgent_Edge", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Edge"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "What a directory which names the browser (';useragent firefox' and the like) sends, in the tabs opened after the change. Empty, the built in one; %SYSTEM% and %CHROMIUM% are filled in."),
+          "", "", false },
+        { "application/UserAgent_Firefox", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Firefox"),
+          "",
+          "", "", false },
+        { "application/UserAgent_OPR", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "OPR"),
+          "",
+          "", "", false },
+        { "application/UserAgent_Safari", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Safari"),
+          "",
+          "", "", false },
+        { "application/UserAgent_Chrome", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Chrome"),
+          "",
+          "", "", false },
+        { "application/UserAgent_Sleipnir", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Sleipnir"),
+          "",
+          "", "", false },
+        { "application/UserAgent_Vivaldi", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Vivaldi"),
+          "",
+          "", "", false },
+        { "application/UserAgent_Gecko", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Gecko"),
+          "",
+          "", "", false },
+        { "application/UserAgent_Custom", SettingsSchema::Text, "hidden",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Custom"),
+          QT_TRANSLATE_NOOP("SettingsSchema",
+              "What ';useragent custom' sends. Empty, the engine's own."),
+          "", "", false },
     };
 
     const SettingsSchema::Group GROUPS[] = {
@@ -703,6 +837,15 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Certificates") },
         { "network/@SecureDnsMode",
           QT_TRANSLATE_NOOP("SettingsSchema", "DNS") },
+
+        { "webview/preferences/AllowRunningInsecureContent",
+          QT_TRANSLATE_NOOP("SettingsSchema", "What a page is normally kept from") },
+        { "webview/preferences/JavascriptCanOpenWindows",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Engine switches") },
+        { "webview/font/SerifFont",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Generic fonts") },
+        { "application/UserAgent_Edge",
+          QT_TRANSLATE_NOOP("SettingsSchema", "User agents") },
     };
 
     QList<SettingsSchema::Item> BuildItems(){
@@ -778,6 +921,8 @@ QList<QPair<QString, QString> > Categories(){
                       QCoreApplication::translate("SettingsSchema", "Saving and backups"));
     list << qMakePair(QStringLiteral("engine"),
                       QCoreApplication::translate("SettingsSchema", "Rendering and engine"));
+    list << qMakePair(QStringLiteral("hidden"),
+                      QCoreApplication::translate("SettingsSchema", "Hidden settings"));
     return list;
 }
 
@@ -795,6 +940,9 @@ const QList<ChoiceLabel> &ChoiceLabels(){
         { "application/@ColorScheme", "Light", QT_TRANSLATE_NOOP("SettingsSchema", "Light") },
         { "application/@ColorScheme", "Dark",  QT_TRANSLATE_NOOP("SettingsSchema", "Dark") },
 
+        { "webview/@GestureMode", "4", QT_TRANSLATE_NOOP("SettingsSchema", "Four (up, down, left, right)") },
+        { "webview/@GestureMode", "8", QT_TRANSLATE_NOOP("SettingsSchema", "Eight (diagonals too)") },
+
         { "application/@SuggestEngine", "Google", QT_TRANSLATE_NOOP("SettingsSchema", "Google") },
         { "application/@SuggestEngine", "Bing", QT_TRANSLATE_NOOP("SettingsSchema", "Bing") },
         { "application/@SuggestEngine", "DuckDuckGo", QT_TRANSLATE_NOOP("SettingsSchema", "DuckDuckGo") },
@@ -808,8 +956,14 @@ const QList<ChoiceLabel> &ChoiceLabels(){
         { "gadgets/@Style", "GlassStyle", QT_TRANSLATE_NOOP("SettingsSchema", "Glass") },
 
         { "application/@Viewport", "Widget",       QT_TRANSLATE_NOOP("SettingsSchema", "Widget") },
-        { "application/@Viewport", "GLWidget",     QT_TRANSLATE_NOOP("SettingsSchema", "GLWidget") },
         { "application/@Viewport", "OpenGLWidget", QT_TRANSLATE_NOOP("SettingsSchema", "OpenGLWidget") },
+
+        { "webview/detail/UnknownUrlSchemePolicy", "DisallowUnknownUrlSchemes",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Never open") },
+        { "webview/detail/UnknownUrlSchemePolicy", "AllowUnknownUrlSchemesFromUserInteraction",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Open when clicked") },
+        { "webview/detail/UnknownUrlSchemePolicy", "AllowAllUnknownUrlSchemes",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Always open") },
 
         { "application/@AddChildViewNodePosition", "RightEnd",
           QT_TRANSLATE_NOOP("SettingsSchema", "At the right end") },
@@ -1020,7 +1174,8 @@ QVariant Fallback(const Item &item){
     case TextList:  return QVariant(text.isEmpty() ? QStringList() : QStringList(text));
     case Text:
     case Choice:
-    case Directory: return QVariant(text);
+    case Directory:
+    case Color:     return QVariant(text);
     }
     return QVariant();
 }
@@ -1046,6 +1201,14 @@ QVariant FromJson(const Item &item, const QJsonValue &value){
     case Directory:
         if(!value.isString()) return QVariant();
         return QVariant(QDir::fromNativeSeparators(value.toString()));
+    case Color: {
+        if(!value.isString()) return QVariant();
+        const QString text = value.toString().trimmed();
+        if(text.isEmpty()) return QVariant(QString());
+        static const QRegularExpression hex(QStringLiteral("^#[0-9A-Fa-f]{6}$"));
+        if(!hex.match(text).hasMatch()) return QVariant();
+        return QVariant(text.toLower());
+    }
     case TextList: {
         if(!value.isArray()) return QVariant();
         QStringList list;
@@ -1073,7 +1236,8 @@ QJsonValue ToJson(const Item &item, const QVariant &value){
             return QJsonValue(QString::fromLatin1(item.fallback));
         return QJsonValue(canonical);
     }
-    case Text:      return QJsonValue(value.value<QString>());
+    case Text:
+    case Color:     return QJsonValue(value.value<QString>());
     case Directory: return QJsonValue(QDir::toNativeSeparators(value.value<QString>()));
     }
     return QJsonValue();
@@ -1090,6 +1254,55 @@ QString EmptyDirectory(const Item &item){
     return QDir::toNativeSeparators(QStandardPaths::writableLocation(where));
 }
 
+QStringList UnlistedKeys(){
+    return QStringList()
+        << QStringLiteral("webview/menu/LinkMenu")
+        << QStringLiteral("webview/menu/ImageMenu")
+        << QStringLiteral("webview/menu/MediaMenu")
+        << QStringLiteral("webview/menu/RegularMenu")
+        << QStringLiteral("webview/menu/SelectionMenu")
+        << QStringLiteral("webview/menu/TextMenu")
+        << QStringLiteral("application/@RootName")
+        << QStringLiteral("network/@DisabledExtensions")
+        << QStringLiteral("network/@PinnedExtensions")
+        << QStringLiteral("application/@MaxView")
+        << QStringLiteral("application/@MaxTrash")
+        << QStringLiteral("webview/@EnableScrollGesture")
+        << QStringLiteral("webview/@SavePasswords")
+        << QStringLiteral("webview/@TrackingPrevention")
+        << QStringLiteral("webview/@SmartScreen");
+}
+
+QStringList UnlistedPrefixes(){
+    QStringList prefixes;
+    for(const InputMapSchema::Table &table : InputMapSchema::Tables())
+        prefixes << QString::fromLatin1(table.group) + QLatin1Char('/');
+    prefixes << QStringLiteral("webview/searchengine/")
+             << QStringLiteral("webview/bookmarklet/");
+    return prefixes;
+}
+
+bool IsKnownKey(const QString &key){
+    if(Find(key) || UnlistedKeys().contains(key)) return true;
+    for(const QString &prefix : UnlistedPrefixes())
+        if(key.startsWith(prefix)) return true;
+    static const QRegularExpression window(QStringLiteral(
+        "\\Amainwindow/(?:geometry|tableview|notifier|receiver|menubar|toolbar"
+        "|inspectordock|sidepaneldock|treebar|status|titlebartoolbar"
+        "|stripexpanded|minimap)\\d+\\z"));
+    return window.match(key).hasMatch();
+}
+
+QStringList DropUnknownKeys(QMap<QString, QVariant> &map){
+    QStringList dropped;
+    for(auto it = map.begin(); it != map.end();){
+        if(IsKnownKey(it.key())){ ++it; continue; }
+        dropped << it.key();
+        it = map.erase(it);
+    }
+    return dropped;
+}
+
 QJsonObject Describe(){
     Settings &s = Application::GlobalSettings();
 
@@ -1102,6 +1315,8 @@ QJsonObject Describe(){
         category[QStringLiteral("label")] = names[i].second;
         if(runs.contains(names[i].first))
             category[QStringLiteral("divider")] = true;
+        if(names[i].first == QStringLiteral("hidden"))
+            category[QStringLiteral("hidden")] = true;
         categories.append(category);
     }
 
@@ -1167,6 +1382,7 @@ QJsonObject Describe(){
         case Choice:    object[QStringLiteral("type")] = QStringLiteral("choice");    break;
         case Directory: object[QStringLiteral("type")] = QStringLiteral("directory"); break;
         case TextList:  object[QStringLiteral("type")] = QStringLiteral("textlist");  break;
+        case Color:     object[QStringLiteral("type")] = QStringLiteral("color");     break;
         }
 
         if(item.type == Choice){
@@ -1205,6 +1421,10 @@ QJsonObject PageStrings(){
         QCoreApplication::translate("SettingsPage", "Back to the default");
     strings[QStringLiteral("browse")] =
         QCoreApplication::translate("SettingsPage", "Browse...");
+    strings[QStringLiteral("colorSystem")] =
+        QCoreApplication::translate("SettingsPage", "System");
+    strings[QStringLiteral("colorPick")] =
+        QCoreApplication::translate("SettingsPage", "Choose...");
     strings[QStringLiteral("saved")] =
         QCoreApplication::translate("SettingsPage", "Saved");
     strings[QStringLiteral("savedRestart")] =

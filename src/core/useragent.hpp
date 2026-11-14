@@ -21,14 +21,15 @@ const QVector<Entry> &Entries();
 
 QString NameOf(const QString &value);
 
+bool LooksLikeUserAgent(const QString &value);
+
 const Entry *Find(const QString &name);
 
 QString Fallback(const QString &name);
 
 QString SettingsKey(const QString &name);
 
-QString Expand(QString tmpl, const QString &system,
-               const QString &location, const QString &chromium);
+QString Expand(QString tmpl, const QString &system, const QString &chromium);
 
 QString DefaultAcceptLanguage(const QStringList &uiLanguages);
 

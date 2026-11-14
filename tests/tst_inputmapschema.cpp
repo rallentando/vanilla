@@ -10,6 +10,7 @@
 #include "inputmap.hpp"
 #include "inputmapschema.hpp"
 #include "actionmapper.hpp"
+#include "actiontext.hpp"
 
 #include "testsupport.hpp"
 
@@ -95,38 +96,25 @@ private slots:
     }
 
     void anActionIsCalledWhatTheMenusCallIt(){
-        const QRegularExpression define(QStringLiteral(
-            "^\\s*DEFINE_ACTION\\((\\w+),\\s*tr\\(\"([^\"]*)\"\\)\\)"),
-            QRegularExpression::MultilineOption);
-        const QList<QPair<QString, InputMapSchema::Vocabulary> > files = QList<QPair<QString, InputMapSchema::Vocabulary> >()
-            << qMakePair(QStringLiteral("view/page.cpp"),       InputMapSchema::PageActions)
-            << qMakePair(QStringLiteral("ui/treebank.cpp"),     InputMapSchema::TreeBankActions)
-            << qMakePair(QStringLiteral("gadgets/gadgets.cpp"), InputMapSchema::GadgetsActions);
-
-        QSet<QString> defined;
         int compared = 0;
-        typedef QPair<QString, InputMapSchema::Vocabulary> File;
-        for(const File &file : files){
-            QRegularExpressionMatchIterator it = define.globalMatch(Source(file.first));
-            while(it.hasNext()){
-                const QRegularExpressionMatch match = it.next();
-                const QString action = match.captured(1);
-                defined.insert(action);
-                if(!InputMapSchema::IsAction(file.second, action)) continue;
-                QCOMPARE(InputMapSchema::ActionLabel(file.second, action), match.captured(2));
-                compared++;
-            }
-        }
-        QVERIFY(compared > 300);
-
         foreach(InputMapSchema::Vocabulary vocabulary, QList<InputMapSchema::Vocabulary>()
                 << InputMapSchema::PageActions << InputMapSchema::TreeBankActions
                 << InputMapSchema::GadgetsActions){
             foreach(QString action, InputMapSchema::Actions(vocabulary)){
                 if(action == QStringLiteral("NoAction")) continue;
-                QVERIFY2(defined.contains(action), qPrintable(action));
+                QVERIFY2(ActionText::Names().contains(action), qPrintable(action));
+                QCOMPARE(InputMapSchema::ActionLabel(vocabulary, action), ActionText::Label(action));
+                QCOMPARE(InputMapSchema::ActionLabel(vocabulary, action), ActionText::Source(action));
+                compared++;
             }
         }
+        QVERIFY(compared > 300);
+        QCOMPARE(InputMapSchema::ActionLabel(InputMapSchema::PageActions, QStringLiteral("Up")),
+                 QStringLiteral("UpKey"));
+        QCOMPARE(InputMapSchema::ActionLabel(InputMapSchema::GadgetsActions, QStringLiteral("OpenSettings")),
+                 QStringLiteral("Settings"));
+        QCOMPARE(InputMapSchema::ActionLabel(InputMapSchema::TreeBankActions, QStringLiteral("ToggleMiniMap")),
+                 QStringLiteral("ToggleMiniMap"));
     }
 
     void aRightGestureThereAndBackOpensTheCommandBar(){

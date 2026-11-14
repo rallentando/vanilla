@@ -172,6 +172,7 @@ signals:
     void ExtensionContextChanged();
     void ViewChanged();
     void ScrollChanged(QPointF);
+    void FindCount(int active, int total);
     void PageGeometryChanged();
     void fullScreenRequested(bool);
 
@@ -237,6 +238,9 @@ public:
     void Print() override;
     void InspectElement() override;
     QWidget *InspectorPane() override;
+    SiteDataLink *OpenSiteDataLink() override;
+    bool CallDevToolsProtocol(const QString &method, const QString &params,
+                              std::function<void(bool, const QString&)> done);
     void AddSearchEngine(QPoint pos) override;
     void AddBookmarklet(QPoint pos) override;
     void ExitFullScreen() override;

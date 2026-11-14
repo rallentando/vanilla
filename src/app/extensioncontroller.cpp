@@ -107,12 +107,6 @@ namespace {
         return true;
     }
 
-    QJsonObject JsonFile(const QString &path){
-        QFile file(path);
-        if(!file.open(QIODevice::ReadOnly) || file.size() > MAX_MANIFEST_SIZE) return QJsonObject();
-        return QJsonDocument::fromJson(file.readAll()).object();
-    }
-
     void ChangeList(const QString &key, const QString &path, bool present){
         Settings &s = Application::GlobalSettings();
         QStringList list = s.value(key).toStringList();

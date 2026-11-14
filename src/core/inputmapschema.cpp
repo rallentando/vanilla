@@ -2,6 +2,7 @@
 #include "const.hpp"
 
 #include "inputmapschema.hpp"
+#include "actiontext.hpp"
 
 #include "inputmap.hpp"
 #include "actionmapper.hpp"
@@ -308,32 +309,11 @@ bool IsAction(Vocabulary vocabulary, const QString &action){
     return false;
 }
 
-QString LabelSource(const QString &action){
-    static const QMap<QString, QString> exceptions = {
-        { QStringLiteral("Up"),       QStringLiteral("UpKey") },
-        { QStringLiteral("Down"),     QStringLiteral("DownKey") },
-        { QStringLiteral("Right"),    QStringLiteral("RightKey") },
-        { QStringLiteral("Left"),     QStringLiteral("LeftKey") },
-        { QStringLiteral("Home"),     QStringLiteral("HomeKey") },
-        { QStringLiteral("End"),      QStringLiteral("EndKey") },
-        { QStringLiteral("PageUp"),   QStringLiteral("PageUpKey") },
-        { QStringLiteral("PageDown"), QStringLiteral("PageDownKey") },
-        { QStringLiteral("OpenSettings"),          QStringLiteral("Settings") },
-        { QStringLiteral("OpenDirectorySettings"), QStringLiteral("DirectorySettings") },
-    };
-    return exceptions.value(action, action);
-}
-
 QString ActionLabel(Vocabulary vocabulary, const QString &action){
     if(action == NO_ACTION)
         return QCoreApplication::translate("InputMapSchema", "Does nothing");
 
-    QList<const char *> contexts;
-    switch(vocabulary){
-    case PageActions:     contexts << "Page" << "TreeBank"; break;
-    case TreeBankActions: contexts << "TreeBank" << "Page"; break;
-    case GadgetsActions:  contexts << "Gadgets" << "Page" << "TreeBank"; break;
-    case ReceiverActions:
+    if(vocabulary == ReceiverActions){
         if(action == QStringLiteral("NextCommandLineTab"))
             return QCoreApplication::translate("InputMapSchema", "Next tab");
         if(action == QStringLiteral("PrevCommandLineTab"))
@@ -352,12 +332,7 @@ QString ActionLabel(Vocabulary vocabulary, const QString &action){
             return QCoreApplication::translate("InputMapSchema", "Close the command bar");
         return action;
     }
-    const QByteArray source = LabelSource(action).toUtf8();
-    foreach(const char *context, contexts){
-        const QString text = QCoreApplication::translate(context, source.constData());
-        if(text != QString::fromUtf8(source)) return text;
-    }
-    return QString::fromUtf8(source);
+    return ActionText::Label(action);
 }
 
 bool TypesIntoTheField(const QKeySequence &seq){

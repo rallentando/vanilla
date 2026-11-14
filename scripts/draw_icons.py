@@ -217,26 +217,6 @@ def icon_restore(size=10):
     return im
 
 
-def icon_command(size=16):
-    im = canvas(size)
-    d = ImageDraw.Draw(im)
-    chevron(d, apex=(7.5, 8), arm_x=3.5, arm_dy=3.5)
-    bar(d, 9, 12, 14, 13)
-    return im
-
-
-def icon_search(size=16):
-    im = canvas(size)
-    d = ImageDraw.Draw(im)
-    r = 4.0
-    cx = cy = 6.0
-    d.ellipse([(cx - r) * S, (cy - r) * S, (cx + r) * S, (cy + r) * S],
-              outline=(0, 0, 0, 255), width=round(1.0 * S))
-    k = 0.7071
-    stroke(d, [(cx + r * k, cy + r * k), (13.0, 13.0)], width=1.2)
-    return im
-
-
 def arc_points(cx, cy, r, a0, a1, n=12):
     # points along a circle, PIL's way round: 0 is 3 o'clock and the angle
     # grows clockwise, because y is down.
@@ -351,7 +331,6 @@ ICONS = {
     "menu/fastforward.png":     icon_fastforward,
     "menu/reload.png":          icon_reload,
     "menu/stop.png":            lambda: icon_cross(16, 3.5),
-    "notifier/close.png":       lambda: icon_cross(10, 1.5),
     "tableview/close.png":      lambda: icon_cross(10, 1.5),
     "treebar/close.png":        lambda: icon_cross(10, 1.5),
     "tableview/clone.png":      icon_clone,
@@ -367,8 +346,6 @@ ICONS = {
     "treebar/down.png":         icon_chevron_down,
     "treebar/left.png":         icon_chevron_left,
     "treebar/right.png":        icon_chevron_right,
-    "toolbar/command.png":      icon_command,
-    "toolbar/search.png":       icon_search,
     "toolbar/extension.png":    icon_extension,
     "toolbar/pin.png":          icon_pin,
     "toolbar/download.png":     icon_download,
