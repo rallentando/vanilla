@@ -137,6 +137,10 @@ struct EdgeWebView::Private {
     EdgeWebView::ContextTarget m_MenuRetry;
     bool m_MenuRetryArmed;
     int m_MenuSequence;
+    QPoint m_MenuPoint;
+    SharedWebElement m_MenuHit;
+    quint64 m_MenuHitPress = 0;
+    quint64 m_MenuHitLoad = 0;
     int m_MenuHandlerDepth;
     bool m_Retiring;
 
@@ -155,6 +159,7 @@ struct EdgeWebView::Private {
     QString m_FindTerm;
     bool m_FindCaseSensitive = false;
     bool m_HasFocus;
+    bool m_MenuHoldsKeyboard = false;
 
     EdgeDownloadCloseLedger m_Downloads;
 
@@ -208,9 +213,7 @@ struct EdgeWebView::Private {
 
     bool m_Audible;
     bool m_Muted;
-#ifdef MEDIATIME
     int m_MediaTimeSaveTimer;
-#endif
     bool m_Suspended;
 
     Private()
@@ -231,6 +234,7 @@ struct EdgeWebView::Private {
         , m_MenuRetry(EdgeWebView::ContextTarget())
         , m_MenuRetryArmed(false)
         , m_MenuSequence(0)
+        , m_MenuPoint(-1, -1)
         , m_MenuHandlerDepth(0)
         , m_Retiring(false)
         , m_HostNumber(0)
@@ -263,9 +267,7 @@ struct EdgeWebView::Private {
         , m_Scroll(QPointF(0.5, 0.5))
         , m_Audible(false)
         , m_Muted(false)
-#ifdef MEDIATIME
         , m_MediaTimeSaveTimer(0)
-#endif
         , m_Suspended(false)
     {
     }

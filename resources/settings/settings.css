@@ -168,6 +168,10 @@ body.wide section.rows .card {
     column-gap: 32px;
 }
 body.wide section.rows .card > .row { border-bottom: none; }
+body.wide section.rows .row { flex-wrap: wrap; }
+body.wide section.rows .row > .text { min-width: 10em; }
+body.wide section.rows select { width: auto; }
+body.wide section.rows .row:has(select) > .control { height: 1lh; }
 
 .row {
     display: flex;
@@ -542,14 +546,14 @@ mark {
 
 .input-table { scroll-margin-top: 124px; }
 
-.input-head { display: flex; align-items: center; gap: 12px; }
+.input-head { display: flex; align-items: center; gap: 12px; margin: 12px 0 2px; }
 
 .input-head h3 {
     font-size: 15px;
     font-weight: 600;
     display: flex;
     align-items: center;
-    margin: 12px 0 2px;
+    margin: 0;
 }
 
 .input-table > .hint {
@@ -675,6 +679,18 @@ kbd {
 
 .remove:hover, .arrow:hover, .recorder:hover { background: var(--bg-sunken); }
 .arrow.inactive { opacity: .45; }
+
+.menu-part { margin: 4px 0 0 12px; }
+.menu-part .input-head { margin-top: 8px; }
+.menu-part .input-head h4 { font-size: 14px; font-weight: 600; margin: 0; color: var(--fg-dim); }
+.menu-part > .hint { color: var(--fg-dim); font-size: 13px; margin: 0 0 6px; }
+.bindings.menu-items { columns: auto; max-width: 640px; }
+.binding.separator { min-height: 18px; }
+.binding.separator hr { border: 0; border-top: 1px solid var(--fg-dim); margin: 0; width: 100%; }
+.binding.separator .does { display: flex; align-items: center; }
+.binding .action.rule { display: flex; align-items: center; align-self: stretch; border-color: transparent; background: none; cursor: default; }
+.binding .action.rule::after { content: none; }
+.arrow:disabled { opacity: .45; cursor: default; }
 
 .recorder { min-width: 180px; font-family: var(--font-mono); font-size: 13px; }
 .recorder.recording { outline: 2px solid var(--accent); outline-offset: -1px; }

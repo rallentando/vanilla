@@ -352,10 +352,12 @@ void EdgeWebView::KeyEvent(QString key){
 }
 
 void EdgeWebView::Copy(){
+    if(!m_Impl->m_HasFocus) setFocus(Qt::OtherFocusReason);
     RunScript(ExecCommandJsCode(QStringLiteral("copy")));
 }
 
 void EdgeWebView::Cut(){
+    if(!m_Impl->m_HasFocus) setFocus(Qt::OtherFocusReason);
     RunScript(ExecCommandJsCode(QStringLiteral("cut")));
 }
 
@@ -416,20 +418,33 @@ void EdgeWebView::Save(){
     page()->Download(req);
 }
 
+QPoint EdgeWebView::MediaPoint() const {
+    const QPoint point = m_Impl->m_MenuPoint;
+    return point.x() < 0 ? point : PagePointOf(point);
+}
+
 void EdgeWebView::ToggleMediaControls(){
-    RunScript(ToggleMediaControlsJsCode());
+    RunScript(ToggleMediaControlsJsCode(MediaPoint()));
 }
 
 void EdgeWebView::ToggleMediaLoop(){
-    RunScript(ToggleMediaLoopJsCode());
+    RunScript(ToggleMediaLoopJsCode(MediaPoint()));
 }
 
 void EdgeWebView::ToggleMediaPlayPause(){
-    RunScript(ToggleMediaPlayPauseJsCode());
+    RunScript(ToggleMediaPlayPauseJsCode(MediaPoint()));
 }
 
 void EdgeWebView::ToggleMediaMute(){
-    SetAudioMuted(!m_Impl->m_Muted);
+    const QPoint point = MediaPoint();
+    if(point.x() < 0){
+        SetAudioMuted(!m_Impl->m_Muted);
+        return;
+    }
+    QPointer<EdgeWebView> alive(this);
+    CallWithScriptResult(ToggleMediaMuteAtJsCode(point), [alive](const QVariant &var){
+        if(alive && !var.toBool()) alive->SetAudioMuted(!alive->m_Impl->m_Muted);
+    });
 }
 
 bool EdgeWebView::RecentlyAudible(){
@@ -454,9 +469,7 @@ void EdgeWebView::SetAudioMuted(bool muted){
 void EdgeWebView::RestoreStateAfterLoad(){
     RestoreZoom();
     RestoreScroll();
-#ifdef MEDIATIME
     RestoreMediaTime();
-#endif
 }
 
 void EdgeWebView::HandleAudioStateChanged(bool playing){
@@ -465,7 +478,6 @@ void EdgeWebView::HandleAudioStateChanged(bool playing){
     emit ViewChanged();
     TreeBank::TabsLookChanged();
 
-#ifdef MEDIATIME
     if(m_Impl->m_Audible){
         if(!m_Impl->m_MediaTimeSaveTimer) m_Impl->m_MediaTimeSaveTimer = startTimer(5000);
         return;
@@ -475,10 +487,7 @@ void EdgeWebView::HandleAudioStateChanged(bool playing){
         m_Impl->m_MediaTimeSaveTimer = 0;
     }
     SaveMediaTime();
-#endif
 }
-
-#ifdef MEDIATIME
 
 bool EdgeWebView::SaveMediaTime(VoidCallBack settled){
     if(IsLoading()){
@@ -515,13 +524,10 @@ bool EdgeWebView::RestoreMediaTime(){
     RunScript(SetMediaTimeJsCode(time));
     return true;
 }
-#endif
 
 void EdgeWebView::timerEvent(QTimerEvent *ev){
     QWidget::timerEvent(ev);
-#ifdef MEDIATIME
     if(ev->timerId() == m_Impl->m_MediaTimeSaveTimer) SaveMediaTime();
-#endif
 }
 
 void EdgeWebView::ZoomIn(){

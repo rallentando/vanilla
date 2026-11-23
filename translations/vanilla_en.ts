@@ -1347,70 +1347,70 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2052"/>
-        <location filename="../src/app/application.cpp" line="2066"/>
+        <location filename="../src/app/application.cpp" line="2057"/>
+        <location filename="../src/app/application.cpp" line="2071"/>
         <source>BlockAccess</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2053"/>
-        <location filename="../src/app/application.cpp" line="2068"/>
+        <location filename="../src/app/application.cpp" line="2058"/>
+        <location filename="../src/app/application.cpp" line="2073"/>
         <source>IgnoreSslErrors</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2054"/>
-        <location filename="../src/app/application.cpp" line="2070"/>
+        <location filename="../src/app/application.cpp" line="2059"/>
+        <location filename="../src/app/application.cpp" line="2075"/>
         <source>AskForEachAccess</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2055"/>
-        <location filename="../src/app/application.cpp" line="2072"/>
+        <location filename="../src/app/application.cpp" line="2060"/>
+        <location filename="../src/app/application.cpp" line="2077"/>
         <source>AskForEachHost</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2056"/>
-        <location filename="../src/app/application.cpp" line="2074"/>
+        <location filename="../src/app/application.cpp" line="2061"/>
+        <location filename="../src/app/application.cpp" line="2079"/>
         <source>AskForEachCertificate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2060"/>
+        <location filename="../src/app/application.cpp" line="2065"/>
         <source>SSL error policy</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2061"/>
+        <location filename="../src/app/application.cpp" line="2066"/>
         <source>Select an SSL error policy.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2086"/>
-        <location filename="../src/app/application.cpp" line="2098"/>
+        <location filename="../src/app/application.cpp" line="2091"/>
+        <location filename="../src/app/application.cpp" line="2103"/>
         <source>FixedLocale</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2087"/>
-        <location filename="../src/app/application.cpp" line="2105"/>
+        <location filename="../src/app/application.cpp" line="2092"/>
+        <location filename="../src/app/application.cpp" line="2110"/>
         <source>DownloadFolder</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2088"/>
-        <location filename="../src/app/application.cpp" line="2108"/>
+        <location filename="../src/app/application.cpp" line="2093"/>
+        <location filename="../src/app/application.cpp" line="2113"/>
         <source>AskForEachDownload</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2092"/>
+        <location filename="../src/app/application.cpp" line="2097"/>
         <source>Download policy</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2093"/>
+        <location filename="../src/app/application.cpp" line="2098"/>
         <source>Select download policy.</source>
         <translation></translation>
     </message>
@@ -1815,7 +1815,7 @@ A name can be turned off by writing it with a &apos;!&apos; in front.</translati
 <context>
     <name>EdgeWebView</name>
     <message>
-        <location filename="../src/view/edge/edgewebview.cpp" line="396"/>
+        <location filename="../src/view/edge/edgewebview.cpp" line="398"/>
         <source>Another vanilla sharing this data folder is running with different arguments.
 1. If more than one vanilla is installed under Program Files: match their Chromium switches and autoplay settings, or move one of them out of Program Files.
 2. Otherwise: quit every vanilla and start again.</source>
@@ -1824,17 +1824,17 @@ A name can be turned off by writing it with a &apos;!&apos; in front.</translati
 2. Otherwise: quit every vanilla and start again.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebview.cpp" line="405"/>
+        <location filename="../src/view/edge/edgewebview.cpp" line="407"/>
         <source>The Edge WebView2 view could not be created (0x%1).</source>
         <translation>The Edge WebView2 view could not be created (0x%1).</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebview.cpp" line="407"/>
+        <location filename="../src/view/edge/edgewebview.cpp" line="409"/>
         <source>The Edge WebView2 view could not be created.</source>
         <translation>The Edge WebView2 view could not be created.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebview.cpp" line="424"/>
+        <location filename="../src/view/edge/edgewebview.cpp" line="426"/>
         <source>The Edge WebView2 runtime could not be started (0x%1).</source>
         <translation>The Edge WebView2 runtime could not be started (0x%1).</translation>
     </message>
@@ -1960,74 +1960,74 @@ A name can be turned off by writing it with a &apos;!&apos; in front.</translati
     </message>
     <message>
         <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="653"/>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2902"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2908"/>
         <source>Failed to load.</source>
         <translation>Failed to load.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewinput.cpp" line="183"/>
-        <location filename="../src/view/edge/edgewebviewinput.cpp" line="205"/>
+        <location filename="../src/view/edge/edgewebviewinput.cpp" line="184"/>
+        <location filename="../src/view/edge/edgewebviewinput.cpp" line="206"/>
         <source>The page cannot report keys to vanilla in this view.</source>
         <translation>The page cannot report keys to vanilla in this view.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="678"/>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="685"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="698"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="705"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>Zoom factor changed to %1 percent</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2654"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2660"/>
         <source>Url: %1
 Ssl error : %2</source>
         <translation>Url: %1
 Ssl error : %2</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2662"/>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2663"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2668"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2669"/>
         <source>SSL errors.</source>
         <translation>SSL errors.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2664"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2670"/>
         <source>Ignore errors in this access?</source>
         <translation>Ignore errors in this access?</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2679"/>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2709"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2685"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2715"/>
         <source>SSL errors on host: %1</source>
         <translation>SSL errors on host: %1</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2679"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2685"/>
         <source>Allow or Block this host?</source>
         <translation>Allow or Block this host?</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2709"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2715"/>
         <source>Allow or Block this certificate?</source>
         <translation>Allow or Block this certificate?</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2754"/>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2755"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2760"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2761"/>
         <source>Feature Permission Requested.</source>
         <translation>Feature Permission Requested.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2757"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2763"/>
         <source>Url: </source>
         <translation>Url: </translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2758"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2764"/>
         <source>Feature: </source>
         <translation>Feature: </translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2759"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2765"/>
         <source>Allow this feature?</source>
         <translation>Allow this feature?</translation>
     </message>
@@ -2037,19 +2037,19 @@ Ssl error : %2</translation>
         <translation>This private view cannot start empty and will not open a page.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="874"/>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="901"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="894"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="921"/>
         <source>Failed to save %1</source>
         <translation>Failed to save %1</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="877"/>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="899"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="897"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="919"/>
         <source>Saved %1</source>
         <translation>Saved %1</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="884"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="904"/>
         <source>This view cannot print to pdf.</source>
         <translation>This view cannot print to pdf.</translation>
     </message>
@@ -2059,17 +2059,17 @@ Ssl error : %2</translation>
         <translation>The developer tools could not be opened.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2872"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2878"/>
         <source>This page becomes full screen mode.</source>
         <translation>This page becomes full screen mode.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2873"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2879"/>
         <source>Press Esc to exit.</source>
         <translation>Press Esc to exit.</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewinput.cpp" line="989"/>
+        <location filename="../src/view/edge/edgewebviewinput.cpp" line="1042"/>
         <source>NoAction</source>
         <translation></translation>
     </message>
@@ -2082,7 +2082,7 @@ Ssl error : %2</translation>
 <context>
     <name>EventEater</name>
     <message>
-        <location filename="../src/view/webengine/webengineview.hpp" line="696"/>
+        <location filename="../src/view/webengine/webengineview.hpp" line="708"/>
         <source>NoAction</source>
         <translation></translation>
     </message>
@@ -2420,62 +2420,62 @@ Some extensions may not work fully.</translation>
 <context>
     <name>Gadgets</name>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1377"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1386"/>
         <source>DeleteNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1370"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1379"/>
         <source>RestoreNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1398"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1449"/>
         <source>OpenNodeWithOtherBrowser</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1371"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1380"/>
         <source>RestoreNodeFromTrash</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1372"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1381"/>
         <source>RestoreSelectedNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1378"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1387"/>
         <source>DeleteNodeForGood</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1379"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1388"/>
         <source>DeleteSelectedNodeForGood</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1385"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1394"/>
         <source>BackToViewTree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1385"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1394"/>
         <source>ShowTrash</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1454"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1506"/>
         <source>DeleteNodesTogether</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1501"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1401"/>
         <source>CloseViewTree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="2412"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="2496"/>
         <source>Current selection: %1</source>
         <translation></translation>
     </message>
@@ -2483,109 +2483,109 @@ Some extensions may not work fully.</translation>
 <context>
     <name>GraphicsTableView</name>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="688"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3806"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="690"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3818"/>
         <source>Displaying %1 nodes.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="789"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1768"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1819"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="791"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1770"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1821"/>
         <source>Trash</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="839"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="841"/>
         <source>Sort</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="843"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="845"/>
         <source>Reverse</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="850"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="852"/>
         <source>SortByUrl</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="857"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="859"/>
         <source>SortByTitle</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="864"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="866"/>
         <source>SortByCreateDate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="878"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="880"/>
         <source>SortByLastAccessDate</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1142"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1144"/>
         <source>Directory</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1766"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1768"/>
         <source>Up</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1768"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1819"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1770"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1821"/>
         <source>Tab list</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1850"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1852"/>
         <source>Filter</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3869"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3881"/>
         <source>DisplayType</source>
         <translation>Display type</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3813"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3873"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3825"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3885"/>
         <source>Normal</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3874"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3886"/>
         <source>The nodes beside this one, and nothing below them.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3814"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3875"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3826"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3887"/>
         <source>Recursive</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3876"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3888"/>
         <source>Everything below, however deep. A large tree puts a great many thumbnails on the screen at once.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3815"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3878"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3827"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3890"/>
         <source>Expandable</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3879"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3891"/>
         <source>As above, but a folded directory hides what is under it. Opening a directory folds and unfolds it instead of entering it.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="871"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="873"/>
         <source>SortByLastUpdateDate</source>
         <translation></translation>
     </message>
@@ -2595,34 +2595,34 @@ Some extensions may not work fully.</translation>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="436"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1143"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="438"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1145"/>
         <source>Dir - %1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="2841"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="2853"/>
         <source>Invalid directory contents.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="2842"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="2854"/>
         <source>This directory has no contents or all nodes have same domain.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3420"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3445"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3432"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3457"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="2529"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="2541"/>
         <source>Cut %1 nodes.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="2537"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="2549"/>
         <source>Copied %1 nodes.</source>
         <translation></translation>
     </message>
@@ -2771,144 +2771,144 @@ Some extensions may not work fully.</translation>
         <translation>Does nothing</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="581"/>
+        <location filename="../src/core/inputmapschema.cpp" line="584"/>
         <source>Edit</source>
         <translation>Edit</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="584"/>
+        <location filename="../src/core/inputmapschema.cpp" line="587"/>
         <source>Assignments</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="586"/>
+        <location filename="../src/core/inputmapschema.cpp" line="589"/>
         <source>Done</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="589"/>
+        <location filename="../src/core/inputmapschema.cpp" line="592"/>
         <source>Jump to</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="591"/>
+        <location filename="../src/core/inputmapschema.cpp" line="594"/>
         <source>Back to the defaults</source>
         <translation>Back to the defaults</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="593"/>
+        <location filename="../src/core/inputmapschema.cpp" line="596"/>
         <source>Changed</source>
         <translation>Changed</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="595"/>
+        <location filename="../src/core/inputmapschema.cpp" line="598"/>
         <source>Remove</source>
         <translation>Remove</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="597"/>
+        <location filename="../src/core/inputmapschema.cpp" line="600"/>
         <source>Add</source>
         <translation>Add</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="599"/>
+        <location filename="../src/core/inputmapschema.cpp" line="602"/>
         <source>Click, then press the keys</source>
         <translation>Click, then press the keys</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="601"/>
+        <location filename="../src/core/inputmapschema.cpp" line="604"/>
         <source>Press the keys...</source>
         <translation>Press the keys...</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="603"/>
+        <location filename="../src/core/inputmapschema.cpp" line="606"/>
         <source>Held</source>
         <translation>Held</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="605"/>
+        <location filename="../src/core/inputmapschema.cpp" line="608"/>
         <source>No button held</source>
         <translation>No button held</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="607"/>
+        <location filename="../src/core/inputmapschema.cpp" line="610"/>
         <source>Clear</source>
         <translation>Clear</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="609"/>
+        <location filename="../src/core/inputmapschema.cpp" line="612"/>
         <source>Nothing is assigned.</source>
         <translation>Nothing is assigned.</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="611"/>
+        <location filename="../src/core/inputmapschema.cpp" line="614"/>
         <source>Not an input or action this version knows. Kept as it is.</source>
         <translation>Not an input or action this version knows. Kept as it is.</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="615"/>
+        <location filename="../src/core/inputmapschema.cpp" line="618"/>
         <source>Not used while &apos;Shortcuts on a single key&apos; is off.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="617"/>
+        <location filename="../src/core/inputmapschema.cpp" line="620"/>
         <source>Not used while gestures are four way.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="621"/>
+        <location filename="../src/core/inputmapschema.cpp" line="624"/>
         <source>Dimmed rows do nothing at the moment: %1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="623"/>
+        <location filename="../src/core/inputmapschema.cpp" line="626"/>
         <source>Open that setting</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="443"/>
-        <location filename="../src/core/inputmapschema.cpp" line="625"/>
+        <location filename="../src/core/inputmapschema.cpp" line="628"/>
         <source>Left button</source>
         <translation>Left button</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="444"/>
-        <location filename="../src/core/inputmapschema.cpp" line="627"/>
+        <location filename="../src/core/inputmapschema.cpp" line="630"/>
         <source>Right button</source>
         <translation>Right button</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="445"/>
-        <location filename="../src/core/inputmapschema.cpp" line="629"/>
+        <location filename="../src/core/inputmapschema.cpp" line="632"/>
         <source>Middle button</source>
         <translation>Middle button</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="446"/>
-        <location filename="../src/core/inputmapschema.cpp" line="631"/>
+        <location filename="../src/core/inputmapschema.cpp" line="634"/>
         <source>Side button 1</source>
         <translation>Side button 1</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="447"/>
-        <location filename="../src/core/inputmapschema.cpp" line="633"/>
+        <location filename="../src/core/inputmapschema.cpp" line="636"/>
         <source>Side button 2</source>
         <translation>Side button 2</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="448"/>
-        <location filename="../src/core/inputmapschema.cpp" line="635"/>
+        <location filename="../src/core/inputmapschema.cpp" line="638"/>
         <source>Wheel up</source>
         <translation>Wheel up</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="449"/>
-        <location filename="../src/core/inputmapschema.cpp" line="637"/>
+        <location filename="../src/core/inputmapschema.cpp" line="640"/>
         <source>Wheel down</source>
         <translation>Wheel down</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="613"/>
+        <location filename="../src/core/inputmapschema.cpp" line="616"/>
         <source>Search actions</source>
         <translation></translation>
     </message>
@@ -2971,119 +2971,119 @@ Some extensions may not work fully.</translation>
 <context>
     <name>LocalView</name>
     <message>
-        <location filename="../src/view/localview.cpp" line="1556"/>
+        <location filename="../src/view/localview.cpp" line="1558"/>
         <source>Delete Files.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1630"/>
+        <location filename="../src/view/localview.cpp" line="1632"/>
         <source>...and %1 more.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1649"/>
-        <location filename="../src/view/localview.cpp" line="1671"/>
+        <location filename="../src/view/localview.cpp" line="1651"/>
+        <location filename="../src/view/localview.cpp" line="1673"/>
         <source>Input file name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1650"/>
+        <location filename="../src/view/localview.cpp" line="1652"/>
         <source>Input new file name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1657"/>
-        <location filename="../src/view/localview.cpp" line="1677"/>
+        <location filename="../src/view/localview.cpp" line="1659"/>
+        <location filename="../src/view/localview.cpp" line="1679"/>
         <source>Invalid file name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1658"/>
-        <location filename="../src/view/localview.cpp" line="1678"/>
+        <location filename="../src/view/localview.cpp" line="1660"/>
+        <location filename="../src/view/localview.cpp" line="1680"/>
         <source>Cannot make file with such name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1672"/>
+        <location filename="../src/view/localview.cpp" line="1674"/>
         <source>Input clone file name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1692"/>
+        <location filename="../src/view/localview.cpp" line="1694"/>
         <source>Input directory name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1693"/>
+        <location filename="../src/view/localview.cpp" line="1695"/>
         <source>Input new directory name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1697"/>
+        <location filename="../src/view/localview.cpp" line="1699"/>
         <source>Invalid directory name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1698"/>
+        <location filename="../src/view/localview.cpp" line="1700"/>
         <source>Cannot make directory with such name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1969"/>
+        <location filename="../src/view/localview.cpp" line="1971"/>
         <source>Cannot play this file.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2167"/>
+        <location filename="../src/view/localview.cpp" line="2169"/>
         <source>NoAction</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="831"/>
+        <location filename="../src/view/localview.cpp" line="833"/>
         <source>NewNode</source>
         <translation>New File</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="831"/>
+        <location filename="../src/view/localview.cpp" line="833"/>
         <source>CloneNode</source>
         <translation>Clone File</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="996"/>
-        <location filename="../src/view/localview.cpp" line="1497"/>
+        <location filename="../src/view/localview.cpp" line="998"/>
+        <location filename="../src/view/localview.cpp" line="1499"/>
         <source>Another file operation is still running.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1023"/>
+        <location filename="../src/view/localview.cpp" line="1025"/>
         <source>Pasting...</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1041"/>
+        <location filename="../src/view/localview.cpp" line="1043"/>
         <source>Could not paste.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1042"/>
+        <location filename="../src/view/localview.cpp" line="1044"/>
         <source>These could not be copied here:
 %1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1522"/>
+        <location filename="../src/view/localview.cpp" line="1524"/>
         <source>Looking at what would be deleted...</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1540"/>
+        <location filename="../src/view/localview.cpp" line="1542"/>
         <source>Are you sure you want to delete these?
 Files: %1
 In: %2</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1544"/>
+        <location filename="../src/view/localview.cpp" line="1546"/>
         <source>Are you sure you want to delete these?
 Directories: %1 (everything inside them is deleted as well)
 Files: %2
@@ -3091,27 +3091,27 @@ In: %3</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1585"/>
+        <location filename="../src/view/localview.cpp" line="1587"/>
         <source>Nothing was deleted.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1586"/>
+        <location filename="../src/view/localview.cpp" line="1588"/>
         <source>The listing moved to another directory while the question was open.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1593"/>
+        <location filename="../src/view/localview.cpp" line="1595"/>
         <source>Deleting...</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1600"/>
+        <location filename="../src/view/localview.cpp" line="1602"/>
         <source>Could not delete.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1601"/>
+        <location filename="../src/view/localview.cpp" line="1603"/>
         <source>These could not be deleted:
 %1</source>
         <translation></translation>
@@ -3121,8 +3121,287 @@ In: %3</source>
     <name>MainWindow</name>
     <message>
         <location filename="../src/ui/mainwindow.cpp" line="126"/>
-        <location filename="../src/ui/mainwindow.cpp" line="676"/>
+        <location filename="../src/ui/mainwindow.cpp" line="679"/>
         <source>Inspector</source>
+        <translation></translation>
+    </message>
+</context>
+<context>
+    <name>MenuSchema</name>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="25"/>
+        <location filename="../src/core/menuschema.cpp" line="518"/>
+        <source>Separator</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="26"/>
+        <source>Heading: the link&apos;s name</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="27"/>
+        <source>Heading: the image&apos;s name</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="28"/>
+        <source>Heading: the media&apos;s name</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="29"/>
+        <source>Open link with another browser (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="30"/>
+        <source>Open image with another browser (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="31"/>
+        <source>Open media with another browser (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="32"/>
+        <source>Open with another browser (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="33"/>
+        <source>Search the selection (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="34"/>
+        <source>Bookmarklets (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="35"/>
+        <source>View source, or apply it on a source page</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="37"/>
+        <source>Open the tab with another browser (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="38"/>
+        <source>The directory&apos;s settings (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="39"/>
+        <source>Close tabs together (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="40"/>
+        <source>Reload the tab</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="41"/>
+        <source>Recently closed tabs (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="42"/>
+        <source>The tab bar&apos;s menu (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="43"/>
+        <source>Sort (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="44"/>
+        <source>What the tab list collects (submenu)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="80"/>
+        <source>The line of icons at the top of the menu. What it holds is not repeated below it; the command bar comes last.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="88"/>
+        <source>Link</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="89"/>
+        <source>On a link.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="98"/>
+        <source>Image</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="99"/>
+        <source>On an image.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="109"/>
+        <source>Video and audio</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="110"/>
+        <source>On a video or an audio player.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="123"/>
+        <source>Text field</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="124"/>
+        <source>In a field on the page. The application&apos;s own fields (the address bar, the search) follow it too, with only the editing actions, and add Copy while something is selected.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="135"/>
+        <source>Selection</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="136"/>
+        <source>While text is selected.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="144"/>
+        <source>Page</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="145"/>
+        <source>At the end of every menu on the page.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="158"/>
+        <source>Tab bar</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="159"/>
+        <source>On a tab of the tab bar. What does not apply to the tab, or to the tab bar, is left out.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="183"/>
+        <source>Tab list</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="184"/>
+        <source>In the tab list and the trash, over a tab or not. What does not apply there is left out; in the trash, the way back comes first.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="222"/>
+        <source>Page: icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="227"/>
+        <source>Link: icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="232"/>
+        <source>Image: icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="237"/>
+        <source>Video and audio: icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="243"/>
+        <source>Text field: icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="247"/>
+        <source>Selection: icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="251"/>
+        <source>Tab bar: icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="256"/>
+        <source>Tab list: icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="445"/>
+        <source>Only in menus</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="459"/>
+        <source>With an icon</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="460"/>
+        <source>On tabs</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="512"/>
+        <source>Menus</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="514"/>
+        <source>Icons</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="516"/>
+        <source>Items</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="520"/>
+        <source>Add a separator</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="522"/>
+        <source>Move up</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="524"/>
+        <source>Move down</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="526"/>
+        <source>The menu has nothing of its own.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="528"/>
+        <source>Not an action this version knows. Kept as it is.</source>
         <translation></translation>
     </message>
 </context>
@@ -3223,12 +3502,13 @@ In: %3</source>
 <context>
     <name>NodeItem</name>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4217"/>
+        <location filename="../src/ui/treebar.cpp" line="4223"/>
         <source>OpenViewNodeWithOtherBrowser</source>
         <translation>Open Tab with Other Browser</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4220"/>
+        <location filename="../src/ui/treebar.cpp" line="4219"/>
+        <location filename="../src/ui/treebar.cpp" line="4224"/>
         <source>OpenViewNodeWithDefault</source>
         <translation>Open Tab with Default Browser</translation>
     </message>
@@ -3280,163 +3560,163 @@ In: %3</source>
 <context>
     <name>Page</name>
     <message>
-        <location filename="../src/view/page.cpp" line="2042"/>
+        <location filename="../src/view/page.cpp" line="2107"/>
         <source>
  Ctrl+Click: InForeground</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2277"/>
+        <location filename="../src/view/page.cpp" line="2365"/>
         <source>Too many links or images.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2277"/>
+        <location filename="../src/view/page.cpp" line="2365"/>
         <source>Open anyway?</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="728"/>
+        <location filename="../src/view/page.cpp" line="729"/>
         <source>Every saved password is deleted.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="380"/>
+        <location filename="../src/view/page.cpp" line="381"/>
         <source>https://www.google.com/search?c&amp;q=%1&amp;ie=UTF-8&amp;oe=UTF-8</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="382"/>
+        <location filename="../src/view/page.cpp" line="383"/>
         <source>https://search.yahoo.com/search?ei=UTF-8&amp;p=%1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="384"/>
+        <location filename="../src/view/page.cpp" line="385"/>
         <source>https://www.bing.com/search?q=%1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="386"/>
+        <location filename="../src/view/page.cpp" line="387"/>
         <source>https://www.amazon.com/s/?field-keywords=%1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="388"/>
+        <location filename="../src/view/page.cpp" line="389"/>
         <source>https://en.wikipedia.org/w/index.php?search=%1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="693"/>
+        <location filename="../src/view/page.cpp" line="694"/>
         <source>Clear cookies.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="694"/>
+        <location filename="../src/view/page.cpp" line="695"/>
         <source>Every cookie of every network space is deleted.
 Anything a site kept you signed in with goes with them.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="727"/>
+        <location filename="../src/view/page.cpp" line="728"/>
         <source>Clear saved passwords.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1277"/>
+        <location filename="../src/view/page.cpp" line="1274"/>
         <source>Search button</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1278"/>
+        <location filename="../src/view/page.cpp" line="1275"/>
         <source>Select search button.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1288"/>
+        <location filename="../src/view/page.cpp" line="1285"/>
         <source>Search tag</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1289"/>
+        <location filename="../src/view/page.cpp" line="1286"/>
         <source>Input search tag.(It will be used as command)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1319"/>
-        <location filename="../src/view/page.cpp" line="1335"/>
+        <location filename="../src/view/page.cpp" line="1316"/>
+        <location filename="../src/view/page.cpp" line="1332"/>
         <source>Link at Mouse Cursor</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1320"/>
-        <location filename="../src/view/page.cpp" line="1352"/>
+        <location filename="../src/view/page.cpp" line="1317"/>
+        <location filename="../src/view/page.cpp" line="1349"/>
         <source>Image at Mouse Cursor</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1321"/>
-        <location filename="../src/view/page.cpp" line="1356"/>
+        <location filename="../src/view/page.cpp" line="1318"/>
+        <location filename="../src/view/page.cpp" line="1353"/>
         <source>Selected Text</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1323"/>
-        <location filename="../src/view/page.cpp" line="1360"/>
+        <location filename="../src/view/page.cpp" line="1320"/>
+        <location filename="../src/view/page.cpp" line="1357"/>
         <source>Manual Input</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1328"/>
+        <location filename="../src/view/page.cpp" line="1325"/>
         <source>Input type</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1329"/>
+        <location filename="../src/view/page.cpp" line="1326"/>
         <source>Select input type of bookmarklet.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1362"/>
+        <location filename="../src/view/page.cpp" line="1359"/>
         <source>Bookmarklet body</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1363"/>
+        <location filename="../src/view/page.cpp" line="1360"/>
         <source>Input bookmarklet body.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1370"/>
+        <location filename="../src/view/page.cpp" line="1367"/>
         <source>Bookmarklet Name</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1371"/>
+        <location filename="../src/view/page.cpp" line="1368"/>
         <source>Input bookmarklet name.(It will be used as command)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2004"/>
+        <location filename="../src/view/page.cpp" line="2069"/>
         <source>
  Shift+Click: InNewWindow
  Ctrl+Click: InBackground</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2006"/>
+        <location filename="../src/view/page.cpp" line="2071"/>
         <source>
  Shift+Click: InNewWindow
  Ctrl+Click: InForeground</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2028"/>
+        <location filename="../src/view/page.cpp" line="2093"/>
         <source>
  Shift+Click: InNewWindow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2041"/>
+        <location filename="../src/view/page.cpp" line="2106"/>
         <source>
  Ctrl+Click: InBackground</source>
         <translation></translation>
@@ -3594,154 +3874,161 @@ Anything a site kept you signed in with goes with them.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="460"/>
+        <location filename="../src/view/view.cpp" line="463"/>
         <source>(?:&lt;&lt;.*|.*&lt;&lt;|&lt;|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*rear.*|.*behind.*|.*before.*)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="459"/>
+        <location filename="../src/view/view.cpp" line="462"/>
         <source>(?:&gt;&gt;.*|.*&gt;&gt;|&gt;|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="737"/>
+        <location filename="../src/view/view.cpp" line="740"/>
         <source>Bookmarklet</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="747"/>
+        <location filename="../src/view/view.cpp" line="750"/>
         <source>SearchWith</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="770"/>
+        <location filename="../src/view/view.cpp" line="773"/>
         <source>OpenWithOtherBrowser</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="777"/>
+        <location filename="../src/view/view.cpp" line="780"/>
         <source>OpenLinkWithOtherBrowser</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="784"/>
+        <location filename="../src/view/view.cpp" line="787"/>
         <source>OpenImageWithOtherBrowser</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="791"/>
+        <location filename="../src/view/view.cpp" line="794"/>
         <source>OpenMediaWithOtherBrowser</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="1784"/>
+        <location filename="../src/view/view.cpp" line="1818"/>
         <source>Extensions are unavailable in this view or private profile.</source>
         <translation>Extensions are unavailable in this view or private profile.</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="1790"/>
+        <location filename="../src/view/view.cpp" line="1824"/>
         <source>URL or JavaScript</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="1791"/>
+        <location filename="../src/view/view.cpp" line="1825"/>
         <source>Enter a URL or JavaScript</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="2724"/>
-        <location filename="../src/ui/treebar.cpp" line="4268"/>
+        <location filename="../src/ui/treebar.cpp" line="4193"/>
+        <location filename="../src/ui/treebar.cpp" line="4250"/>
         <source>NewViewNode</source>
         <translation>New Tab</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="2729"/>
-        <location filename="../src/ui/treebar.cpp" line="4260"/>
+        <location filename="../src/ui/treebar.cpp" line="4195"/>
+        <location filename="../src/ui/treebar.cpp" line="4248"/>
         <source>CloneViewNode</source>
         <translation>Clone (Tab/Directory)</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="2707"/>
+        <location filename="../src/ui/treebar.cpp" line="2717"/>
         <source>More</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="2713"/>
+        <location filename="../src/ui/treebar.cpp" line="2723"/>
         <source>DisplayTrashTree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4241"/>
+        <location filename="../src/ui/treebar.cpp" line="4234"/>
         <source>RenameViewNode</source>
         <translation>Rename Directory</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4253"/>
+        <location filename="../src/ui/treebar.cpp" line="4199"/>
+        <location filename="../src/ui/treebar.cpp" line="4243"/>
         <source>ReloadViewNode</source>
         <translation>Reload Tab</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4206"/>
+        <location filename="../src/ui/treebar.cpp" line="4214"/>
         <source>OpenViewNode</source>
         <translation>Open Tab</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4210"/>
+        <location filename="../src/ui/treebar.cpp" line="4217"/>
         <source>OpenViewNodeOnNewWindow</source>
         <translation>Open Tab in New Window</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4293"/>
+        <location filename="../src/ui/treebar.cpp" line="4197"/>
+        <location filename="../src/ui/treebar.cpp" line="4258"/>
         <source>DeleteViewNode</source>
         <translation>Delete (Tab/Directory)</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4298"/>
+        <location filename="../src/ui/treebar.cpp" line="4270"/>
         <source>DeleteViewNodesTogether</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4301"/>
+        <location filename="../src/ui/treebar.cpp" line="4261"/>
+        <location filename="../src/ui/treebar.cpp" line="4272"/>
         <source>DeleteRightViewNode</source>
         <translation>Delete Right Tabs/Directories</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4302"/>
+        <location filename="../src/ui/treebar.cpp" line="4261"/>
+        <location filename="../src/ui/treebar.cpp" line="4272"/>
         <source>DeleteLowerViewNode</source>
         <translation>Delete Lower Tabs/Directories</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4308"/>
+        <location filename="../src/ui/treebar.cpp" line="4265"/>
+        <location filename="../src/ui/treebar.cpp" line="4275"/>
         <source>DeleteLeftViewNode</source>
         <translation>Delete Left Tabs/Directories</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4309"/>
+        <location filename="../src/ui/treebar.cpp" line="4265"/>
+        <location filename="../src/ui/treebar.cpp" line="4275"/>
         <source>DeleteUpperViewNode</source>
         <translation>Delete Upper Tabs/Directories</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4314"/>
+        <location filename="../src/ui/treebar.cpp" line="4268"/>
+        <location filename="../src/ui/treebar.cpp" line="4277"/>
         <source>DeleteOtherViewNode</source>
         <translation>Delete Other Tabs/Directories</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4323"/>
+        <location filename="../src/ui/treebar.cpp" line="4283"/>
         <source>RecentlyClosedViewNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4274"/>
+        <location filename="../src/ui/treebar.cpp" line="4252"/>
         <source>MakeDirectory</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4278"/>
+        <location filename="../src/ui/treebar.cpp" line="4254"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4284"/>
+        <location filename="../src/ui/treebar.cpp" line="4256"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation></translation>
     </message>
@@ -3769,87 +4056,87 @@ Anything a site kept you signed in with goes with them.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="771"/>
-        <location filename="../src/view/quicknativewebview.cpp" line="772"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="768"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="769"/>
         <source>Feature Permission Requested.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="774"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="771"/>
         <source>Url: </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="775"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="772"/>
         <source>Feature: </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="776"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="773"/>
         <source>Allow this feature?</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="804"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="801"/>
         <source>A page is left as it is, because its process was terminated %1 times in a row.
 </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="806"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="803"/>
         <source>A page is reloaded, because its process was terminated.
 </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="809"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="806"/>
         <source>Normal termination. (code: %1)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="811"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="808"/>
         <source>Abnormal termination. (code: %1)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="813"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="810"/>
         <source>Crashed termination. (code: %1)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="815"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="812"/>
         <source>Killed termination. (code: %1)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="818"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="815"/>
         <source>Render process terminated repeatedly.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="819"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="816"/>
         <source>Render process terminated.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="836"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="833"/>
         <source>This page becomes full screen mode.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="837"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="834"/>
         <source>Press Esc to exit.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="1014"/>
-        <location filename="../src/view/quicknativewebview.cpp" line="1021"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="1011"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="1018"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="1179"/>
-        <location filename="../src/view/quicknativewebview.cpp" line="1286"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="1176"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="1283"/>
         <source>NoAction</source>
         <translation></translation>
     </message>
@@ -3857,8 +4144,8 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>QuickWebEngineView</name>
     <message>
-        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1235"/>
-        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1241"/>
+        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1243"/>
+        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1249"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation></translation>
     </message>
@@ -3956,8 +4243,8 @@ Anything a site kept you signed in with goes with them.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1429"/>
-        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1474"/>
+        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1447"/>
+        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1492"/>
         <source>NoAction</source>
         <translation></translation>
     </message>
@@ -3965,165 +4252,258 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>Receiver</name>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1434"/>
+        <location filename="../src/app/receiver.cpp" line="1682"/>
         <source>Input Query.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1435"/>
+        <location filename="../src/app/receiver.cpp" line="1683"/>
         <source>Enter a URL.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1436"/>
+        <location filename="../src/app/receiver.cpp" line="1684"/>
         <source>Incremental Search</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1459"/>
-        <location filename="../src/app/receiver.cpp" line="1687"/>
-        <location filename="../src/app/receiver.cpp" line="1864"/>
+        <location filename="../src/app/receiver.cpp" line="1708"/>
+        <location filename="../src/app/receiver.cpp" line="2478"/>
+        <location filename="../src/app/receiver.cpp" line="2665"/>
         <source>Open addresses</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1865"/>
+        <location filename="../src/app/receiver.cpp" line="2666"/>
         <source>Load an address here</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1448"/>
-        <location filename="../src/app/receiver.cpp" line="1462"/>
-        <location filename="../src/app/receiver.cpp" line="1687"/>
-        <location filename="../src/app/receiver.cpp" line="1866"/>
+        <location filename="../src/app/receiver.cpp" line="1697"/>
+        <location filename="../src/app/receiver.cpp" line="1711"/>
+        <location filename="../src/app/receiver.cpp" line="2478"/>
+        <location filename="../src/app/receiver.cpp" line="2667"/>
         <source>Search the web</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1867"/>
+        <location filename="../src/app/receiver.cpp" line="2668"/>
         <source>Download to a file</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1868"/>
+        <location filename="../src/app/receiver.cpp" line="2669"/>
         <source>Search in the page</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1869"/>
+        <location filename="../src/app/receiver.cpp" line="2670"/>
         <source>Change a setting</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1696"/>
-        <location filename="../src/app/receiver.cpp" line="1870"/>
+        <location filename="../src/app/receiver.cpp" line="2487"/>
+        <location filename="../src/app/receiver.cpp" line="2671"/>
         <source>Reset a setting</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1871"/>
+        <location filename="../src/app/receiver.cpp" line="2672"/>
         <source>Send a key</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1872"/>
+        <location filename="../src/app/receiver.cpp" line="2673"/>
         <source>Open a blank page</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1313"/>
+        <location filename="../src/app/receiver.cpp" line="1534"/>
         <source>Commands</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1314"/>
+        <location filename="../src/app/receiver.cpp" line="1535"/>
         <source>Tabs</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1316"/>
+        <location filename="../src/app/receiver.cpp" line="1537"/>
         <source>Settings</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1317"/>
+        <location filename="../src/app/receiver.cpp" line="1538"/>
         <source>Web</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1315"/>
+        <location filename="../src/app/receiver.cpp" line="1536"/>
         <source>Trash</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1431"/>
-        <location filename="../src/app/receiver.cpp" line="2210"/>
+        <location filename="../src/app/receiver.cpp" line="1679"/>
+        <location filename="../src/app/receiver.cpp" line="3030"/>
         <source>All</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1873"/>
+        <location filename="../src/app/receiver.cpp" line="2674"/>
         <source>Read the settings again</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1884"/>
+        <location filename="../src/app/receiver.cpp" line="2685"/>
         <source>Search %1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1886"/>
+        <location filename="../src/app/receiver.cpp" line="2687"/>
         <source>Run the bookmarklet</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1681"/>
+        <location filename="../src/app/receiver.cpp" line="2472"/>
         <source>Switch to the tab</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1682"/>
+        <location filename="../src/app/receiver.cpp" line="2891"/>
+        <source>Cannot change this setting.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1505"/>
+        <source>There is no setting &quot;%1&quot;.</source>
+        <translation></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../src/app/receiver.cpp" line="937"/>
+        <source>%n tab(s)</source>
+        <translation>
+            <numerusform>%n tab</numerusform>
+            <numerusform>%n tabs</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1498"/>
+        <source>No such setting</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1500"/>
+        <source>Not a value it takes</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1506"/>
+        <source>&quot;%1&quot; cannot be set to &quot;%2&quot;.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1515"/>
+        <source>It takes one of: %1</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1518"/>
+        <source>It takes a whole number.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1519"/>
+        <source>It takes a colour as #rrggbb, or nothing.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1520"/>
+        <source>It is a list: change it on the settings page.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1685"/>
+        <source>What to do with it</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2060"/>
+        <source>Link</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2061"/>
+        <source>Image</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2062"/>
+        <source>Video and audio</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2063"/>
+        <source>Selection</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2064"/>
+        <source>Element</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2065"/>
+        <source>Tab</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2066"/>
+        <source>Text field</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2473"/>
         <source>Restore the tab</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1683"/>
+        <location filename="../src/app/receiver.cpp" line="2474"/>
         <source>Run</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1685"/>
-        <location filename="../src/app/receiver.cpp" line="1694"/>
+        <location filename="../src/app/receiver.cpp" line="2476"/>
+        <location filename="../src/app/receiver.cpp" line="2485"/>
         <source>Change the assignment</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1685"/>
+        <location filename="../src/app/receiver.cpp" line="2476"/>
         <source>Edit the value</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1690"/>
+        <location filename="../src/app/receiver.cpp" line="2481"/>
         <source>Close the tab</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1691"/>
+        <location filename="../src/app/receiver.cpp" line="2482"/>
         <source>Delete for good</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1692"/>
+        <location filename="../src/app/receiver.cpp" line="2483"/>
         <source>Copy the address</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1693"/>
+        <location filename="../src/app/receiver.cpp" line="2484"/>
         <source>Copy the words</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1695"/>
+        <location filename="../src/app/receiver.cpp" line="2486"/>
         <source>Open in the settings</source>
         <translation></translation>
     </message>
@@ -4144,416 +4524,416 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>SettingsPage</name>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1752"/>
+        <location filename="../src/core/settingsschema.cpp" line="1876"/>
         <source>Settings</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1754"/>
+        <location filename="../src/core/settingsschema.cpp" line="1878"/>
         <source>Search settings</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1756"/>
+        <location filename="../src/core/settingsschema.cpp" line="1880"/>
         <source>Reset</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1758"/>
+        <location filename="../src/core/settingsschema.cpp" line="1882"/>
         <source>Back to the default</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1760"/>
+        <location filename="../src/core/settingsschema.cpp" line="1884"/>
         <source>Browse...</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1764"/>
+        <location filename="../src/core/settingsschema.cpp" line="1888"/>
         <source>System</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1766"/>
+        <location filename="../src/core/settingsschema.cpp" line="1890"/>
         <source>Choose...</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1768"/>
+        <location filename="../src/core/settingsschema.cpp" line="1892"/>
         <source>Saved</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1770"/>
+        <location filename="../src/core/settingsschema.cpp" line="1894"/>
         <source>Saved. Takes effect on the next launch.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1772"/>
+        <location filename="../src/core/settingsschema.cpp" line="1896"/>
         <source>Not saved</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1774"/>
+        <location filename="../src/core/settingsschema.cpp" line="1898"/>
         <source>restart</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1779"/>
+        <location filename="../src/core/settingsschema.cpp" line="1903"/>
         <source>Not used while %1.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1781"/>
+        <location filename="../src/core/settingsschema.cpp" line="1905"/>
         <source>&apos;%1&apos; is on</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1783"/>
+        <location filename="../src/core/settingsschema.cpp" line="1907"/>
         <source>&apos;%1&apos; is off</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1785"/>
+        <location filename="../src/core/settingsschema.cpp" line="1909"/>
         <source>&apos;%1&apos; is not &apos;%2&apos;</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1787"/>
+        <location filename="../src/core/settingsschema.cpp" line="1911"/>
         <source> and </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1789"/>
+        <location filename="../src/core/settingsschema.cpp" line="1913"/>
         <source>Nothing matches.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1791"/>
+        <location filename="../src/core/settingsschema.cpp" line="1915"/>
         <source>Could not load the settings: </source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1794"/>
+        <location filename="../src/core/settingsschema.cpp" line="1918"/>
         <source>See the saved passwords</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1797"/>
+        <location filename="../src/core/settingsschema.cpp" line="1921"/>
         <source>See the site permissions</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1800"/>
+        <location filename="../src/core/settingsschema.cpp" line="1924"/>
         <source>Changes are saved as they are made. Text is saved when its box is left.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="176"/>
+        <location filename="../src/app/settingspage.cpp" line="213"/>
         <source>Site</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="177"/>
+        <location filename="../src/app/settingspage.cpp" line="214"/>
         <source>Username</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="178"/>
+        <location filename="../src/app/settingspage.cpp" line="215"/>
         <source>Profile</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="179"/>
+        <location filename="../src/app/settingspage.cpp" line="216"/>
         <source>(no username)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="180"/>
-        <location filename="../src/app/settingspage.cpp" line="292"/>
+        <location filename="../src/app/settingspage.cpp" line="217"/>
+        <location filename="../src/app/settingspage.cpp" line="329"/>
         <source>Remove</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="181"/>
-        <location filename="../src/app/settingspage.cpp" line="293"/>
+        <location filename="../src/app/settingspage.cpp" line="218"/>
+        <location filename="../src/app/settingspage.cpp" line="330"/>
         <source>Remove all</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="182"/>
+        <location filename="../src/app/settingspage.cpp" line="219"/>
         <source>Remove every saved password?</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="183"/>
+        <location filename="../src/app/settingspage.cpp" line="220"/>
         <source>Removing...</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="184"/>
+        <location filename="../src/app/settingspage.cpp" line="221"/>
         <source>The password could not be removed.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="185"/>
+        <location filename="../src/app/settingspage.cpp" line="222"/>
         <source>No passwords are saved.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="186"/>
+        <location filename="../src/app/settingspage.cpp" line="223"/>
         <source>Never saved for these sites</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="188"/>
+        <location filename="../src/app/settingspage.cpp" line="225"/>
         <source>A removed site is asked about again.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="190"/>
+        <location filename="../src/app/settingspage.cpp" line="227"/>
         <source>Passwords an Edge view saved are not listed here. &quot;Remove all&quot; removes them too.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="193"/>
+        <location filename="../src/app/settingspage.cpp" line="230"/>
         <source>This build does not save passwords in a WebEngine view.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="290"/>
+        <location filename="../src/app/settingspage.cpp" line="327"/>
         <source>Allow</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="291"/>
+        <location filename="../src/app/settingspage.cpp" line="328"/>
         <source>Block</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="294"/>
+        <location filename="../src/app/settingspage.cpp" line="331"/>
         <source>Remove all for this site</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="295"/>
+        <location filename="../src/app/settingspage.cpp" line="332"/>
         <source>Remove every site permission?</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="296"/>
+        <location filename="../src/app/settingspage.cpp" line="333"/>
         <source>The permission could not be changed.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="298"/>
+        <location filename="../src/app/settingspage.cpp" line="335"/>
         <source>No site has been allowed or blocked.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="300"/>
+        <location filename="../src/app/settingspage.cpp" line="337"/>
         <source>Shared by every view. A removed one is asked again.</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/ui/siteinfo.cpp" line="378"/>
-        <location filename="../src/app/settingspage.cpp" line="301"/>
+        <location filename="../src/app/settingspage.cpp" line="338"/>
         <source>Enabled in Edge</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/ui/siteinfo.cpp" line="380"/>
-        <location filename="../src/app/settingspage.cpp" line="302"/>
+        <location filename="../src/app/settingspage.cpp" line="339"/>
         <source>Enabled in WebEngine</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="304"/>
+        <location filename="../src/app/settingspage.cpp" line="341"/>
         <source>Add a site</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="305"/>
+        <location filename="../src/app/settingspage.cpp" line="342"/>
         <source>Site (example.com)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="306"/>
+        <location filename="../src/app/settingspage.cpp" line="343"/>
         <source>Add</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="308"/>
+        <location filename="../src/app/settingspage.cpp" line="345"/>
         <source>Enter the address of a site, such as https://example.com.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1485"/>
+        <location filename="../src/app/settingspage.cpp" line="1529"/>
         <source>Notifications</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1486"/>
+        <location filename="../src/app/settingspage.cpp" line="1530"/>
         <source>Location</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1487"/>
+        <location filename="../src/app/settingspage.cpp" line="1531"/>
         <source>Microphone</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1488"/>
+        <location filename="../src/app/settingspage.cpp" line="1532"/>
         <source>Camera</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1489"/>
+        <location filename="../src/app/settingspage.cpp" line="1533"/>
         <source>Fonts on this device</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1490"/>
+        <location filename="../src/app/settingspage.cpp" line="1534"/>
         <source>Clipboard (read and write)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1491"/>
+        <location filename="../src/app/settingspage.cpp" line="1535"/>
         <source>Mouse lock</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1492"/>
+        <location filename="../src/app/settingspage.cpp" line="1536"/>
         <source>Screen</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1493"/>
+        <location filename="../src/app/settingspage.cpp" line="1537"/>
         <source>Screen and audio</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1494"/>
+        <location filename="../src/app/settingspage.cpp" line="1538"/>
         <source>Clipboard (read)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1495"/>
+        <location filename="../src/app/settingspage.cpp" line="1539"/>
         <source>Motion and other sensors</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1496"/>
+        <location filename="../src/app/settingspage.cpp" line="1540"/>
         <source>Automatic downloads</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1497"/>
+        <location filename="../src/app/settingspage.cpp" line="1541"/>
         <source>Files and folders</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1498"/>
+        <location filename="../src/app/settingspage.cpp" line="1542"/>
         <source>Autoplay</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1499"/>
+        <location filename="../src/app/settingspage.cpp" line="1543"/>
         <source>MIDI devices</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1500"/>
+        <location filename="../src/app/settingspage.cpp" line="1544"/>
         <source>Window management</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1501"/>
+        <location filename="../src/app/settingspage.cpp" line="1545"/>
         <source>Persistent storage</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="442"/>
+        <location filename="../src/app/settingspage.cpp" line="479"/>
         <source>Downloading</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="443"/>
+        <location filename="../src/app/settingspage.cpp" line="480"/>
         <source>Completed</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="444"/>
+        <location filename="../src/app/settingspage.cpp" line="481"/>
         <source>Cancelled</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="445"/>
+        <location filename="../src/app/settingspage.cpp" line="482"/>
         <source>Failed</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="446"/>
+        <location filename="../src/app/settingspage.cpp" line="483"/>
         <source>Interrupted</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="447"/>
+        <location filename="../src/app/settingspage.cpp" line="484"/>
         <source>Open</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="448"/>
+        <location filename="../src/app/settingspage.cpp" line="485"/>
         <source>Show in folder</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="449"/>
+        <location filename="../src/app/settingspage.cpp" line="486"/>
         <source>Cancel</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="450"/>
+        <location filename="../src/app/settingspage.cpp" line="487"/>
         <source>Remove from list</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="451"/>
+        <location filename="../src/app/settingspage.cpp" line="488"/>
         <source>Clear list</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="452"/>
+        <location filename="../src/app/settingspage.cpp" line="489"/>
         <source>Nothing has been downloaded.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="455"/>
+        <location filename="../src/app/settingspage.cpp" line="492"/>
         <source>History</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="456"/>
+        <location filename="../src/app/settingspage.cpp" line="493"/>
         <source>The file is not there any more.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="457"/>
+        <location filename="../src/app/settingspage.cpp" line="494"/>
         <source>Open the page it came from</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="567"/>
+        <location filename="../src/app/settingspage.cpp" line="606"/>
         <source>A setting takes effect on the next launch.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="569"/>
+        <location filename="../src/app/settingspage.cpp" line="608"/>
         <source>Restart now?</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1690"/>
+        <location filename="../src/app/settingspage.cpp" line="1734"/>
         <source>Select a Chrome extension folder</source>
         <translation></translation>
     </message>
@@ -4681,12 +5061,12 @@ Anything a site kept you signed in with goes with them.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="899"/>
+        <location filename="../src/core/settingsschema.cpp" line="900"/>
         <source>Tab list drawing surface</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="900"/>
+        <location filename="../src/core/settingsschema.cpp" line="901"/>
         <source>What the tab list and the access key labels are drawn on; the page is not. While the window is translucent, they are drawn on &apos;Widget&apos; whatever is chosen here.</source>
         <translation></translation>
     </message>
@@ -4757,787 +5137,842 @@ An Edge view treats &apos;Discard&apos; as &apos;Freeze&apos;.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="285"/>
+        <location filename="../src/core/settingsschema.cpp" line="286"/>
         <source>Back and forward guess the page when there is no history</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="287"/>
+        <location filename="../src/core/settingsschema.cpp" line="288"/>
         <source>From a &apos;previous&apos; or &apos;next&apos; link in the page, or a number in the address. On, the rewind and fast forward buttons are hidden.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="523"/>
+        <location filename="../src/core/settingsschema.cpp" line="525"/>
         <source>Shortcuts on a single key</source>
         <translation>Shortcuts on a single key</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="656"/>
+        <location filename="../src/core/settingsschema.cpp" line="657"/>
         <source>Offer to save passwords</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="616"/>
+        <location filename="../src/core/settingsschema.cpp" line="617"/>
         <source>Tabs shown to extensions</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="617"/>
+        <location filename="../src/core/settingsschema.cpp" line="618"/>
         <source>Which tabs an extension&apos;s tab list, tab events and tab actions cover. Bookmarks and history still cover the whole tree.
 Content scripts still run on every page they match, so this does not hide pages from an extension.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="729"/>
+        <location filename="../src/core/settingsschema.cpp" line="730"/>
         <source>Tracking prevention</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="735"/>
+        <location filename="../src/core/settingsschema.cpp" line="736"/>
         <source>Microsoft Defender SmartScreen</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1022"/>
+        <location filename="../src/core/settingsschema.cpp" line="1023"/>
         <source>What a directory which names the browser (&apos;;useragent firefox&apos; and the like) sends, in the tabs opened after the change. Empty, the built in one; %SYSTEM% and %CHROMIUM% are filled in.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1069"/>
+        <location filename="../src/core/settingsschema.cpp" line="1070"/>
         <source>Tab bar</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1071"/>
+        <location filename="../src/core/settingsschema.cpp" line="1072"/>
         <source>Tree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1073"/>
+        <location filename="../src/core/settingsschema.cpp" line="1074"/>
         <source>Loading and limits</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1076"/>
+        <location filename="../src/core/settingsschema.cpp" line="1077"/>
         <source>Links and new tabs</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1078"/>
+        <location filename="../src/core/settingsschema.cpp" line="1079"/>
         <source>Keys and typing</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1080"/>
+        <location filename="../src/core/settingsschema.cpp" line="1081"/>
         <source>Display</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1082"/>
+        <location filename="../src/core/settingsschema.cpp" line="1083"/>
         <source>Fonts</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1084"/>
+        <location filename="../src/core/settingsschema.cpp" line="1085"/>
         <source>What a page may do</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1086"/>
+        <location filename="../src/core/settingsschema.cpp" line="1087"/>
         <source>Saving and printing</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1088"/>
+        <location filename="../src/core/settingsschema.cpp" line="1089"/>
         <source>Local view</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1094"/>
+        <location filename="../src/core/settingsschema.cpp" line="1095"/>
         <source>Gestures and single keys</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1096"/>
+        <location filename="../src/core/settingsschema.cpp" line="1097"/>
         <source>Where files go</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1099"/>
+        <location filename="../src/core/settingsschema.cpp" line="1100"/>
         <source>Requests</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1101"/>
+        <location filename="../src/core/settingsschema.cpp" line="1102"/>
         <source>Certificates</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1103"/>
+        <location filename="../src/core/settingsschema.cpp" line="1104"/>
         <source>DNS</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1164"/>
+        <location filename="../src/core/settingsschema.cpp" line="1165"/>
         <source>Directory</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1173"/>
+        <location filename="../src/core/settingsschema.cpp" line="1179"/>
         <source>Downloads</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1181"/>
+        <location filename="../src/core/settingsschema.cpp" line="1187"/>
         <source>Saved passwords</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1185"/>
+        <location filename="../src/core/settingsschema.cpp" line="1191"/>
         <source>Site permissions</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1194"/>
+        <location filename="../src/core/settingsschema.cpp" line="1200"/>
         <source>Saving and backups</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1196"/>
+        <location filename="../src/core/settingsschema.cpp" line="1202"/>
         <source>Rendering and engine</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1219"/>
-        <location filename="../src/core/settingsschema.cpp" line="1392"/>
-        <source>Auto</source>
+        <location filename="../src/core/settingsschema.cpp" line="1176"/>
+        <source>Context menus</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1220"/>
-        <source>Light</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1221"/>
-        <source>Dark</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1230"/>
-        <source>All tabs</source>
+        <location filename="../src/core/settingsschema.cpp" line="1207"/>
+        <source>Other settings</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1231"/>
-        <source>Tabs in the current tab&apos;s directory</source>
+        <location filename="../src/core/settingsschema.cpp" line="1420"/>
+        <source>Auto</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1232"/>
-        <source>Loaded tabs</source>
+        <source>Light</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1235"/>
-        <source>Flat</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1236"/>
-        <source>Glass</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1234"/>
-        <source>Plain</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1238"/>
-        <source>Widget</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1239"/>
-        <source>OpenGLWidget</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1249"/>
-        <location filename="../src/core/settingsschema.cpp" line="1262"/>
-        <source>At the right end</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1251"/>
-        <location filename="../src/core/settingsschema.cpp" line="1264"/>
-        <source>At the left end</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1253"/>
-        <location filename="../src/core/settingsschema.cpp" line="1266"/>
-        <source>Right of the current tab</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1255"/>
-        <location filename="../src/core/settingsschema.cpp" line="1268"/>
-        <source>Left of the current tab</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1257"/>
-        <location filename="../src/core/settingsschema.cpp" line="1270"/>
-        <source>After the unread tabs to the right of the current one</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1259"/>
-        <location filename="../src/core/settingsschema.cpp" line="1272"/>
-        <source>Before the unread tabs to the left of the current one</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1274"/>
-        <source>Keep running</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1275"/>
-        <source>Freeze</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1276"/>
-        <source>Discard</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1279"/>
-        <source>Normal</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1281"/>
-        <source>Recursive</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1283"/>
-        <source>Expandable</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1293"/>
-        <source>In a new tab</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1295"/>
-        <source>In a new directory</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1297"/>
-        <source>At the top level</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1299"/>
-        <source>In a new tab, in the background</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1301"/>
-        <source>In a new directory, in the background</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1303"/>
-        <source>At the top level, in the background</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1306"/>
-        <source>One .mhtml file</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1308"/>
-        <source>.html and a folder of its files</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1310"/>
-        <source>.html only</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1312"/>
-        <source>Both hands</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1313"/>
-        <source>Left hand</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1314"/>
-        <source>Right hand</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1054"/>
-        <location filename="../src/core/settingsschema.cpp" line="1315"/>
-        <source>Custom</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="931"/>
-        <source>Run HTTP content in an HTTPS page</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="932"/>
-        <source>Only the WebEngine views read the settings in this section and the next.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="936"/>
-        <source>Let an HTTP page ask for the location</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="940"/>
-        <source>Let a local file read other local files</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="944"/>
-        <source>Let a local file read from the network</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="948"/>
-        <source>Let scripts use the clipboard without asking</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="952"/>
-        <source>Let scripts paste</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="956"/>
-        <source>Let a page bring its window to the front</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="960"/>
-        <source>Let scripts open windows</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="964"/>
-        <source>Send the pings of links (&lt;a ping&gt;)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="968"/>
-        <source>WebRTC uses the public network interface only</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="972"/>
-        <source>Look up host names ahead of a click</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="976"/>
-        <source>Draw 2D canvases on the GPU</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="980"/>
-        <source>Show the engine&apos;s own error pages</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="984"/>
-        <source>Text encoding of a page which names none</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="988"/>
-        <source>Addresses of a scheme the engine does not know</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="992"/>
-        <source>Serif font</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="993"/>
-        <source>What CSS asks for by these names. Empty, the system&apos;s own.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="997"/>
-        <source>Sans serif font</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1001"/>
-        <source>Cursive font</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1005"/>
-        <source>Fantasy font</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1009"/>
-        <source>Pictograph font</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1013"/>
-        <source>Minimum logical font size</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1021"/>
-        <source>Edge</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1026"/>
-        <source>Firefox</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1030"/>
-        <source>OPR</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1034"/>
-        <source>Safari</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1038"/>
-        <source>Chrome</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1042"/>
-        <source>Sleipnir</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1046"/>
-        <source>Vivaldi</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1050"/>
-        <source>Gecko</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1055"/>
-        <source>What &apos;;useragent custom&apos; sends. Empty, the engine&apos;s own.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1106"/>
-        <source>What a page is normally kept from</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1108"/>
-        <source>Engine switches</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1110"/>
-        <source>Generic fonts</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1112"/>
-        <source>User agents</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1199"/>
-        <source>Hidden settings</source>
+        <location filename="../src/core/settingsschema.cpp" line="1233"/>
+        <source>Dark</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1242"/>
-        <source>Never open</source>
+        <source>All tabs</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1243"/>
+        <source>Tabs in the current tab&apos;s directory</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1244"/>
-        <source>Open when clicked</source>
+        <source>Loaded tabs</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1247"/>
+        <source>Flat</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1248"/>
+        <source>Glass</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1246"/>
-        <source>Always open</source>
+        <source>Plain</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1318"/>
-        <source>Open a menu</source>
+        <location filename="../src/core/settingsschema.cpp" line="1250"/>
+        <source>Widget</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1320"/>
-        <source>Click it</source>
+        <location filename="../src/core/settingsschema.cpp" line="1251"/>
+        <source>OpenGLWidget</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1322"/>
-        <source>Focus it</source>
+        <location filename="../src/core/settingsschema.cpp" line="1261"/>
+        <location filename="../src/core/settingsschema.cpp" line="1274"/>
+        <source>At the right end</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1263"/>
+        <location filename="../src/core/settingsschema.cpp" line="1276"/>
+        <source>At the left end</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1265"/>
+        <location filename="../src/core/settingsschema.cpp" line="1278"/>
+        <source>Right of the current tab</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1267"/>
+        <location filename="../src/core/settingsschema.cpp" line="1280"/>
+        <source>Left of the current tab</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1269"/>
+        <location filename="../src/core/settingsschema.cpp" line="1282"/>
+        <source>After the unread tabs to the right of the current one</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1271"/>
+        <location filename="../src/core/settingsschema.cpp" line="1284"/>
+        <source>Before the unread tabs to the left of the current one</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1286"/>
+        <source>Keep running</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1287"/>
+        <source>Freeze</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1288"/>
+        <source>Discard</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1291"/>
+        <source>Normal</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1293"/>
+        <source>Recursive</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1295"/>
+        <source>Expandable</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1305"/>
+        <source>In a new tab</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1307"/>
+        <source>In a new directory</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1309"/>
+        <source>At the top level</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1311"/>
+        <source>In a new tab, in the background</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1313"/>
+        <source>In a new directory, in the background</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1315"/>
+        <source>At the top level, in the background</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1324"/>
-        <source>Hover over it</source>
+        <source>One .mhtml file</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1326"/>
-        <source>Open in a new tab</source>
+        <source>.html and a folder of its files</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1328"/>
-        <source>Open in a new directory</source>
+        <source>.html only</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1330"/>
-        <source>Open at the top level</source>
+        <source>Both hands</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1331"/>
+        <source>Left hand</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1332"/>
-        <source>Open in a new tab, in the background</source>
+        <source>Right hand</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1334"/>
-        <source>Open in a new directory, in the background</source>
+        <location filename="../src/core/settingsschema.cpp" line="1055"/>
+        <location filename="../src/core/settingsschema.cpp" line="1333"/>
+        <source>Custom</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1337"/>
-        <source>A number</source>
+        <location filename="../src/core/settingsschema.cpp" line="932"/>
+        <source>Run HTTP content in an HTTPS page</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1339"/>
-        <source>Shift and a letter</source>
+        <location filename="../src/core/settingsschema.cpp" line="933"/>
+        <source>Only the WebEngine views read the settings in this section and the next.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1341"/>
-        <source>Ctrl and a letter</source>
+        <location filename="../src/core/settingsschema.cpp" line="937"/>
+        <source>Let an HTTP page ask for the location</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1343"/>
-        <source>Alt and a letter</source>
+        <location filename="../src/core/settingsschema.cpp" line="941"/>
+        <source>Let a local file read other local files</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1345"/>
-        <source>Meta and a letter</source>
+        <location filename="../src/core/settingsschema.cpp" line="945"/>
+        <source>Let a local file read from the network</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="949"/>
+        <source>Let scripts use the clipboard without asking</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="953"/>
+        <source>Let scripts paste</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="957"/>
+        <source>Let a page bring its window to the front</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="961"/>
+        <source>Let scripts open windows</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="965"/>
+        <source>Send the pings of links (&lt;a ping&gt;)</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="969"/>
+        <source>WebRTC uses the public network interface only</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="973"/>
+        <source>Look up host names ahead of a click</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="977"/>
+        <source>Draw 2D canvases on the GPU</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="981"/>
+        <source>Show the engine&apos;s own error pages</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="985"/>
+        <source>Text encoding of a page which names none</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="989"/>
+        <source>Addresses of a scheme the engine does not know</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="993"/>
+        <source>Serif font</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="994"/>
+        <source>What CSS asks for by these names. Empty, the system&apos;s own.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="998"/>
+        <source>Sans serif font</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1002"/>
+        <source>Cursive font</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1006"/>
+        <source>Fantasy font</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1010"/>
+        <source>Pictograph font</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1014"/>
+        <source>Minimum logical font size</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1022"/>
+        <source>Edge</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1027"/>
+        <source>Firefox</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1031"/>
+        <source>OPR</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1035"/>
+        <source>Safari</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1039"/>
+        <source>Chrome</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1043"/>
+        <source>Sleipnir</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1047"/>
+        <source>Vivaldi</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1051"/>
+        <source>Gecko</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1056"/>
+        <source>What &apos;;useragent custom&apos; sends. Empty, the engine&apos;s own.</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1107"/>
+        <source>What a page is normally kept from</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1109"/>
+        <source>Engine switches</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1111"/>
+        <source>Generic fonts</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1113"/>
+        <source>User agents</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1235"/>
+        <source>Four</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1236"/>
+        <source>Eight</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1254"/>
+        <source>Never open</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1256"/>
+        <source>Open when clicked</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1258"/>
+        <source>Always open</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1317"/>
+        <source>In a new tab, in a new window</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1319"/>
+        <source>In a new directory, in a new window</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1321"/>
+        <source>At the top level, in a new window</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1336"/>
+        <source>Open a menu</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1338"/>
+        <source>Click it</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1340"/>
+        <source>Focus it</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1342"/>
+        <source>Hover over it</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1344"/>
+        <source>Open in a new tab</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1346"/>
+        <source>Open in a new directory</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1348"/>
-        <source>Top to bottom</source>
+        <source>Open at the top level</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1350"/>
-        <source>Left to right</source>
+        <source>Open in a new tab, in the background</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1352"/>
-        <source>On disk</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1353"/>
-        <source>In memory</source>
+        <source>Open in a new directory, in the background</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1354"/>
-        <source>No cache</source>
+        <source>Open at the top level, in the background</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1357"/>
-        <source>Not decided yet (asks at the next download)</source>
+        <location filename="../src/core/settingsschema.cpp" line="1356"/>
+        <source>Open in a new tab, in a new window</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1359"/>
-        <source>The folder below</source>
+        <location filename="../src/core/settingsschema.cpp" line="1358"/>
+        <source>Open in a new directory, in a new window</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1361"/>
-        <source>The system&apos;s Downloads folder</source>
+        <location filename="../src/core/settingsschema.cpp" line="1360"/>
+        <source>Open at the top level, in a new window</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1363"/>
-        <source>Ask for each download</source>
+        <location filename="../src/core/settingsschema.cpp" line="1362"/>
+        <source>Open the command bar for it</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1366"/>
-        <source>Not decided yet (asks at the next error)</source>
+        <location filename="../src/core/settingsschema.cpp" line="1365"/>
+        <source>A number</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1368"/>
-        <source>Block the page</source>
+        <location filename="../src/core/settingsschema.cpp" line="1367"/>
+        <source>Shift and a letter</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1370"/>
-        <source>Ignore the error</source>
+        <location filename="../src/core/settingsschema.cpp" line="1369"/>
+        <source>Ctrl and a letter</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1372"/>
-        <source>Ask every time</source>
+        <location filename="../src/core/settingsschema.cpp" line="1371"/>
+        <source>Alt and a letter</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1374"/>
-        <source>Ask once per host</source>
+        <location filename="../src/core/settingsschema.cpp" line="1373"/>
+        <source>Meta and a letter</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1376"/>
-        <source>Ask once per certificate</source>
+        <source>Top to bottom</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1379"/>
-        <source>Off</source>
+        <location filename="../src/core/settingsschema.cpp" line="1378"/>
+        <source>Left to right</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1380"/>
-        <source>Basic</source>
+        <source>On disk</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1381"/>
-        <source>Balanced</source>
+        <source>In memory</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1382"/>
-        <source>Strict</source>
+        <source>No cache</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1386"/>
-        <source>The system&apos;s resolver</source>
+        <location filename="../src/core/settingsschema.cpp" line="1385"/>
+        <source>Not decided yet (asks at the next download)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1388"/>
-        <source>Secure, falling back to the system</source>
+        <location filename="../src/core/settingsschema.cpp" line="1387"/>
+        <source>The folder below</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1390"/>
-        <source>Secure only</source>
+        <location filename="../src/core/settingsschema.cpp" line="1389"/>
+        <source>The system&apos;s Downloads folder</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1393"/>
-        <source>Software</source>
+        <location filename="../src/core/settingsschema.cpp" line="1391"/>
+        <source>Ask for each download</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1394"/>
-        <source>OpenGL</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1395"/>
-        <source>Direct3D 11</source>
+        <source>Not decided yet (asks at the next error)</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1396"/>
-        <source>Direct3D 12</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1397"/>
-        <source>Vulkan</source>
+        <source>Block the page</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="1398"/>
+        <source>Ignore the error</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1400"/>
+        <source>Ask every time</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1402"/>
+        <source>Ask once per host</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1404"/>
+        <source>Ask once per certificate</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1407"/>
+        <source>Off</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1408"/>
+        <source>Basic</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1409"/>
+        <source>Balanced</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1410"/>
+        <source>Strict</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1414"/>
+        <source>The system&apos;s resolver</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1416"/>
+        <source>Secure, falling back to the system</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1418"/>
+        <source>Secure only</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1421"/>
+        <source>Software</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1422"/>
+        <source>OpenGL</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1423"/>
+        <source>Direct3D 11</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1424"/>
+        <source>Direct3D 12</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1425"/>
+        <source>Vulkan</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1426"/>
         <source>Metal</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="423"/>
+        <location filename="../src/core/settingsschema.cpp" line="424"/>
         <source>Reading a canvas back is one of the ways a site fingerprints the machine. Off, pages which use a canvas do not work.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="434"/>
+        <location filename="../src/core/settingsschema.cpp" line="435"/>
         <source>Until this is changed, the engine answers based on whether a touch screen was found.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="306"/>
+        <location filename="../src/core/settingsschema.cpp" line="307"/>
         <source>Programs to open a page with</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="307"/>
+        <location filename="../src/core/settingsschema.cpp" line="308"/>
         <source>Each line adds an item to the right-click menu &apos;Open with other browser&apos;, as &apos;name = command line&apos;. The page&apos;s address goes where &apos;%u&apos; is, or at the end when there is none.
 For example: Firefox = &quot;C:\Program Files\Mozilla Firefox\firefox.exe&quot; %u</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="714"/>
+        <location filename="../src/core/settingsschema.cpp" line="715"/>
         <source>Empty means the languages of this machine followed by English, as &apos;ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7&apos;.</source>
         <translation>Empty means the languages of this machine followed by English, as &apos;ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7&apos;.</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="848"/>
+        <location filename="../src/core/settingsschema.cpp" line="849"/>
         <source>Graphics API (WebEngineView)</source>
         <translation>Graphics API (WebEngineView)</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="859"/>
+        <location filename="../src/core/settingsschema.cpp" line="860"/>
         <source>&apos;Auto&apos;: Metal.
 &apos;OpenGL&apos;: choose this if the screen flickers.
 
@@ -5548,7 +5983,7 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 A choice this OS cannot run is treated as &apos;Auto&apos;. The environment variable QSG_RHI_BACKEND wins when it is set.</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="866"/>
+        <location filename="../src/core/settingsschema.cpp" line="867"/>
         <source>&apos;Auto&apos;: OpenGL.
 
 A choice this OS cannot run is treated as &apos;Auto&apos;. The environment variable QSG_RHI_BACKEND wins when it is set.</source>
@@ -5557,47 +5992,47 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 A choice this OS cannot run is treated as &apos;Auto&apos;. The environment variable QSG_RHI_BACKEND wins when it is set.</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="606"/>
+        <location filename="../src/core/settingsschema.cpp" line="607"/>
         <source>Extension compatibility layer (WebEngineView / Edge)</source>
         <translation>Extension compatibility layer (WebEngineView / Edge)</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1170"/>
+        <location filename="../src/core/settingsschema.cpp" line="1171"/>
         <source>Keys and mouse</source>
         <translation>Keys and mouse</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="483"/>
+        <location filename="../src/core/settingsschema.cpp" line="484"/>
         <source>Every link gets a label of its own, typed one key at a time, instead of blocks of one key each.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="489"/>
+        <location filename="../src/core/settingsschema.cpp" line="490"/>
         <source>Which keys label the links</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="493"/>
+        <location filename="../src/core/settingsschema.cpp" line="494"/>
         <source>Custom key sequence</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="497"/>
+        <location filename="../src/core/settingsschema.cpp" line="498"/>
         <source>What choosing a link does</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="505"/>
+        <location filename="../src/core/settingsschema.cpp" line="507"/>
         <source>How a block of links is chosen</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="510"/>
+        <location filename="../src/core/settingsschema.cpp" line="512"/>
         <source>Order the links are labelled in</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="482"/>
+        <location filename="../src/core/settingsschema.cpp" line="483"/>
         <source>Allow multi-stroke labels</source>
         <translation></translation>
     </message>
@@ -5607,12 +6042,12 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="465"/>
+        <location filename="../src/core/settingsschema.cpp" line="466"/>
         <source>Volume</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="469"/>
+        <location filename="../src/core/settingsschema.cpp" line="470"/>
         <source>Start playing when a file is opened</source>
         <translation></translation>
     </message>
@@ -5622,27 +6057,27 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="298"/>
+        <location filename="../src/core/settingsschema.cpp" line="299"/>
         <source>Switch to a newly opened tab</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="538"/>
+        <location filename="../src/core/settingsschema.cpp" line="539"/>
         <source>Super drag</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="319"/>
+        <location filename="../src/core/settingsschema.cpp" line="320"/>
         <source>Dragging a link out downloads it</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="384"/>
+        <location filename="../src/core/settingsschema.cpp" line="385"/>
         <source>Open the inspector beside the page</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="446"/>
+        <location filename="../src/core/settingsschema.cpp" line="447"/>
         <source>How a page is saved</source>
         <translation></translation>
     </message>
@@ -5652,102 +6087,102 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="410"/>
+        <location filename="../src/core/settingsschema.cpp" line="411"/>
         <source>JavaScript</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="370"/>
+        <location filename="../src/core/settingsschema.cpp" line="371"/>
         <source>Load images</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="413"/>
+        <location filename="../src/core/settingsschema.cpp" line="414"/>
         <source>Local storage</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="416"/>
+        <location filename="../src/core/settingsschema.cpp" line="417"/>
         <source>Plugins</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="379"/>
+        <location filename="../src/core/settingsschema.cpp" line="380"/>
         <source>Show PDFs in the page</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="358"/>
+        <location filename="../src/core/settingsschema.cpp" line="359"/>
         <source>Allow a page to go full screen</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="351"/>
+        <location filename="../src/core/settingsschema.cpp" line="352"/>
         <source>Smooth scrolling</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="325"/>
+        <location filename="../src/core/settingsschema.cpp" line="326"/>
         <source>Arrow keys move between links</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="419"/>
+        <location filename="../src/core/settingsschema.cpp" line="420"/>
         <source>WebGL</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="429"/>
+        <location filename="../src/core/settingsschema.cpp" line="430"/>
         <source>Allow a page to capture the screen</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="366"/>
+        <location filename="../src/core/settingsschema.cpp" line="367"/>
         <source>Media needs a click before it plays</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="451"/>
+        <location filename="../src/core/settingsschema.cpp" line="452"/>
         <source>Print backgrounds</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="346"/>
+        <location filename="../src/core/settingsschema.cpp" line="347"/>
         <source>Show scroll bars</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="332"/>
+        <location filename="../src/core/settingsschema.cpp" line="333"/>
         <source>Focus the page when it navigates</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="329"/>
+        <location filename="../src/core/settingsschema.cpp" line="330"/>
         <source>Tab key stops on links</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="373"/>
+        <location filename="../src/core/settingsschema.cpp" line="374"/>
         <source>Load favicons</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="376"/>
+        <location filename="../src/core/settingsschema.cpp" line="377"/>
         <source>Load touch icons</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="315"/>
+        <location filename="../src/core/settingsschema.cpp" line="316"/>
         <source>Dropping a link on a page opens it there</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="422"/>
+        <location filename="../src/core/settingsschema.cpp" line="423"/>
         <source>Let a page read back its own canvas</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="911"/>
+        <location filename="../src/core/settingsschema.cpp" line="912"/>
         <source>Passed to the rendering engine at startup. Separated by spaces or line breaks, each beginning with &apos;--&apos;.
 Put double quotes around a value which has spaces in it: --switch=&quot;a b&quot;.
 A switch it does not accept can stop it from starting; to recover, edit &apos;data/config.json&apos;.</source>
@@ -5756,244 +6191,239 @@ Put double quotes around a value which has spaces in it: --switch=&quot;a b&quot
 A switch it does not accept can stop it from starting; to recover, edit &apos;data/config.json&apos;.</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="337"/>
+        <location filename="../src/core/settingsschema.cpp" line="338"/>
         <source>One name per line, as the &apos;.bdic&apos; file next to the executable is called without its extension (&apos;en-US&apos;). Empty turns spell checking off.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="627"/>
+        <location filename="../src/core/settingsschema.cpp" line="628"/>
         <source>The engine ships an extension which only Google&apos;s own sites can use. Off, it is kept, which Google Meet may want for sharing a screen.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="597"/>
+        <location filename="../src/core/settingsschema.cpp" line="598"/>
         <source>Chrome extensions</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="354"/>
+        <location filename="../src/core/settingsschema.cpp" line="355"/>
         <source>Darken pages which have no dark theme</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="527"/>
+        <location filename="../src/core/settingsschema.cpp" line="529"/>
         <source>Mouse gestures</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="533"/>
+        <location filename="../src/core/settingsschema.cpp" line="535"/>
         <source>Gesture directions</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="534"/>
-        <source>For mouse gestures and super drag.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="294"/>
+        <location filename="../src/core/settingsschema.cpp" line="295"/>
         <source>Keep the previous page in memory</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="433"/>
+        <location filename="../src/core/settingsschema.cpp" line="434"/>
         <source>Tell pages this machine has a touch screen</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="440"/>
+        <location filename="../src/core/settingsschema.cpp" line="441"/>
         <source>Leave element IDs out of the accessibility tree</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="454"/>
+        <location filename="../src/core/settingsschema.cpp" line="455"/>
         <source>Print the page title and address in the margin</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="458"/>
+        <location filename="../src/core/settingsschema.cpp" line="459"/>
         <source>Let the page choose the printed margins</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="392"/>
+        <location filename="../src/core/settingsschema.cpp" line="393"/>
         <source>Standard font</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="395"/>
+        <location filename="../src/core/settingsschema.cpp" line="396"/>
         <source>Fixed width font</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="398"/>
+        <location filename="../src/core/settingsschema.cpp" line="399"/>
         <source>Default font size</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="401"/>
+        <location filename="../src/core/settingsschema.cpp" line="402"/>
         <source>Default fixed width font size</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="405"/>
+        <location filename="../src/core/settingsschema.cpp" line="406"/>
         <source>Minimum font size</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="910"/>
+        <location filename="../src/core/settingsschema.cpp" line="911"/>
         <source>Chromium switches</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="571"/>
+        <location filename="../src/core/settingsschema.cpp" line="572"/>
         <source>Where downloads go</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="580"/>
+        <location filename="../src/core/settingsschema.cpp" line="581"/>
         <source>Download folder</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="754"/>
+        <location filename="../src/core/settingsschema.cpp" line="755"/>
         <source>On a certificate error</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="639"/>
+        <location filename="../src/core/settingsschema.cpp" line="640"/>
         <source>Keep session cookies between launches</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="713"/>
+        <location filename="../src/core/settingsschema.cpp" line="714"/>
         <source>Accept-Language</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="778"/>
+        <location filename="../src/core/settingsschema.cpp" line="779"/>
         <source>Certificates always allowed</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="784"/>
+        <location filename="../src/core/settingsschema.cpp" line="785"/>
         <source>Certificates always blocked</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="688"/>
+        <location filename="../src/core/settingsschema.cpp" line="689"/>
         <source>Where the page cache is kept</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="689"/>
+        <location filename="../src/core/settingsschema.cpp" line="690"/>
         <source>A private tab always uses memory.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="693"/>
+        <location filename="../src/core/settingsschema.cpp" line="694"/>
         <source>Cache size limit (MB)</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="694"/>
+        <location filename="../src/core/settingsschema.cpp" line="695"/>
         <source>Zero lets the engine decide.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="646"/>
+        <location filename="../src/core/settingsschema.cpp" line="647"/>
         <source>Remember what a site was allowed</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="336"/>
+        <location filename="../src/core/settingsschema.cpp" line="337"/>
         <source>Spell checking dictionaries</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="682"/>
+        <location filename="../src/core/settingsschema.cpp" line="683"/>
         <source>Let a site send push messages</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="626"/>
+        <location filename="../src/core/settingsschema.cpp" line="627"/>
         <source>Remove the built-in Google Hangouts extension</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="702"/>
+        <location filename="../src/core/settingsschema.cpp" line="703"/>
         <source>Requests never made</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="720"/>
+        <location filename="../src/core/settingsschema.cpp" line="721"/>
         <source>Ask not to be tracked</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="792"/>
+        <location filename="../src/core/settingsschema.cpp" line="793"/>
         <source>DNS over HTTPS</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="798"/>
+        <location filename="../src/core/settingsschema.cpp" line="799"/>
         <source>DNS over HTTPS servers</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="799"/>
+        <location filename="../src/core/settingsschema.cpp" line="800"/>
         <source>One URI template per line, for example &apos;https://dns.google/dns-query{?dns}&apos;.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="581"/>
+        <location filename="../src/core/settingsschema.cpp" line="582"/>
         <source>Replaced by the folder a file was last saved to.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="586"/>
+        <location filename="../src/core/settingsschema.cpp" line="587"/>
         <source>Folder a file picker opens in</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="587"/>
+        <location filename="../src/core/settingsschema.cpp" line="588"/>
         <source>Replaced by the folder a file was last chosen from.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="703"/>
+        <location filename="../src/core/settingsschema.cpp" line="704"/>
         <source>One wildcard per line, matched against the whole address (&apos;*doubleclick.net*&apos;). A line starting with &apos;#&apos; is ignored. A page itself is never blocked, only what it loads.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="766"/>
+        <location filename="../src/core/settingsschema.cpp" line="767"/>
         <source>Hosts whose certificate errors are accepted</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="772"/>
+        <location filename="../src/core/settingsschema.cpp" line="773"/>
         <source>Hosts whose certificate errors are refused</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="813"/>
+        <location filename="../src/core/settingsschema.cpp" line="814"/>
         <source>Save while running</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="884"/>
+        <location filename="../src/core/settingsschema.cpp" line="885"/>
         <source>Draw the main window with the graphics API too</source>
         <translation>Draw the main window with the graphics API too</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="885"/>
+        <location filename="../src/core/settingsschema.cpp" line="886"/>
         <source>For using Edge and WebEngineView tabs side by side: keeps the main window from flickering once the first time a WebEngineView tab is switched to.
 While on, tools which take GPU-drawn windows for games (such as the GeForce Experience overlay) may react to this application. Not needed when the graphics API is &apos;Software&apos;.</source>
         <translation>For using Edge and WebEngineView tabs side by side: keeps the main window from flickering once the first time a WebEngineView tab is switched to.
 While on, tools which take GPU-drawn windows for games (such as the GeForce Experience overlay) may react to this application. Not needed when the graphics API is &apos;Software&apos;.</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="819"/>
+        <location filename="../src/core/settingsschema.cpp" line="820"/>
         <source>Save every (ms)</source>
         <translation></translation>
     </message>
@@ -6018,103 +6448,103 @@ While on, tools which take GPU-drawn windows for games (such as the GeForce Expe
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="385"/>
+        <location filename="../src/core/settingsschema.cpp" line="386"/>
         <source>Takes effect the next time the inspector is opened.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="598"/>
+        <location filename="../src/core/settingsschema.cpp" line="599"/>
         <source>One unpacked extension per line: the folder its &apos;manifest.json&apos; sits in. A line starting with &apos;#&apos; is ignored. Manifest version 3 only.
 Not in private profiles. Reload open pages after a change.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="607"/>
+        <location filename="../src/core/settingsschema.cpp" line="608"/>
         <source>WebEngine views leave out parts of the extension platform. On, each extension is loaded as a copy with a script added that fills them in; the folder you registered is not changed.
 An extension the layer cannot help is loaded as it is, and its row says why.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="640"/>
+        <location filename="../src/core/settingsschema.cpp" line="641"/>
         <source>Cookies meant to last only until the browser closes, such as a login, are kept too.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="658"/>
+        <location filename="../src/core/settingsschema.cpp" line="659"/>
         <source>An Edge view fills it in the next time. In a WebEngine view (Quick too), click the field and choose the account.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="662"/>
+        <location filename="../src/core/settingsschema.cpp" line="663"/>
         <source>An Edge view fills it in the next time. In a WebEngine view, click the field and choose the account.
 Quick views do not save passwords.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="667"/>
+        <location filename="../src/core/settingsschema.cpp" line="668"/>
         <source>An Edge view fills it in the next time. Other views do not save passwords.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="671"/>
+        <location filename="../src/core/settingsschema.cpp" line="672"/>
         <source>Click the field and choose the account to fill it in.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="674"/>
+        <location filename="../src/core/settingsschema.cpp" line="675"/>
         <source>Click the field and choose the account to fill it in.
 Quick views do not save passwords.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="721"/>
+        <location filename="../src/core/settingsschema.cpp" line="722"/>
         <source>Adds the &apos;DNT&apos; and &apos;Sec-GPC&apos; headers.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="730"/>
+        <location filename="../src/core/settingsschema.cpp" line="731"/>
         <source>Enabled in Edge. Strict may break parts of some sites.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="736"/>
+        <location filename="../src/core/settingsschema.cpp" line="737"/>
         <source>Enabled in Edge. Sites and downloads are checked against Microsoft&apos;s list of unsafe ones.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="767"/>
-        <location filename="../src/core/settingsschema.cpp" line="773"/>
+        <location filename="../src/core/settingsschema.cpp" line="768"/>
+        <location filename="../src/core/settingsschema.cpp" line="774"/>
         <source>One per line. Answering its question adds a line.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="779"/>
-        <location filename="../src/core/settingsschema.cpp" line="785"/>
+        <location filename="../src/core/settingsschema.cpp" line="780"/>
+        <location filename="../src/core/settingsschema.cpp" line="786"/>
         <source>One host:SHA-256 identity per line. Remove one to ask again.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="793"/>
+        <location filename="../src/core/settingsschema.cpp" line="794"/>
         <source>The two secure modes use the servers below.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="814"/>
+        <location filename="../src/core/settingsschema.cpp" line="815"/>
         <source>Everything is saved on quitting either way.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="823"/>
+        <location filename="../src/core/settingsschema.cpp" line="824"/>
         <source>Backups kept</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="824"/>
+        <location filename="../src/core/settingsschema.cpp" line="825"/>
         <source>Made at each launch, next to the saved files in the data folder. Older copies than this many are deleted.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="850"/>
+        <location filename="../src/core/settingsschema.cpp" line="851"/>
         <source>&apos;OpenGL&apos;: keeps the translucent window after a WebEngineView tab opens.
 &apos;Auto&apos;: Direct3D 11. Choose this if the screen stays blank or is slow with OpenGL.
 
@@ -6122,87 +6552,77 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1154"/>
+        <location filename="../src/core/settingsschema.cpp" line="1155"/>
         <source>Appearance</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1156"/>
+        <location filename="../src/core/settingsschema.cpp" line="1157"/>
         <source>Tabs</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1158"/>
+        <location filename="../src/core/settingsschema.cpp" line="1159"/>
         <source>Tab list</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1160"/>
+        <location filename="../src/core/settingsschema.cpp" line="1161"/>
         <source>Pages</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1167"/>
+        <location filename="../src/core/settingsschema.cpp" line="1168"/>
         <source>Access keys</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1175"/>
+        <location filename="../src/core/settingsschema.cpp" line="1181"/>
         <source>Extensions</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1177"/>
+        <location filename="../src/core/settingsschema.cpp" line="1183"/>
         <source>Site data</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1190"/>
+        <location filename="../src/core/settingsschema.cpp" line="1196"/>
         <source>Network</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1188"/>
+        <location filename="../src/core/settingsschema.cpp" line="1194"/>
         <source>Profiles</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1223"/>
-        <source>Four (up, down, left, right)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1224"/>
-        <source>Eight (diagonals too)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1226"/>
+        <location filename="../src/core/settingsschema.cpp" line="1238"/>
         <source>Google</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1227"/>
+        <location filename="../src/core/settingsschema.cpp" line="1239"/>
         <source>Bing</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1228"/>
+        <location filename="../src/core/settingsschema.cpp" line="1240"/>
         <source>DuckDuckGo</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="743"/>
+        <location filename="../src/core/settingsschema.cpp" line="744"/>
         <source>Search suggestions while typing</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="744"/>
+        <location filename="../src/core/settingsschema.cpp" line="745"/>
         <source>What is typed is sent to the service below.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="748"/>
+        <location filename="../src/core/settingsschema.cpp" line="749"/>
         <source>Service for search suggestions</source>
         <translation></translation>
     </message>
@@ -6217,17 +6637,17 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1286"/>
+        <location filename="../src/core/settingsschema.cpp" line="1298"/>
         <source>Do nothing</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1288"/>
+        <location filename="../src/core/settingsschema.cpp" line="1300"/>
         <source>Copy</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1290"/>
+        <location filename="../src/core/settingsschema.cpp" line="1302"/>
         <source>Cut</source>
         <translation></translation>
     </message>
@@ -6367,104 +6787,104 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 <context>
     <name>StartPage</name>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="829"/>
+        <location filename="../src/app/settingspage.cpp" line="873"/>
         <source>Tab list</source>
         <translation>Tab list</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="831"/>
+        <location filename="../src/app/settingspage.cpp" line="875"/>
         <source>Trash</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="833"/>
+        <location filename="../src/app/settingspage.cpp" line="877"/>
         <source>Settings</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="835"/>
+        <location filename="../src/app/settingspage.cpp" line="879"/>
         <source>Download panel</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="837"/>
+        <location filename="../src/app/settingspage.cpp" line="881"/>
         <source>New window</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1207"/>
-        <location filename="../src/app/settingspage.cpp" line="1457"/>
+        <location filename="../src/app/settingspage.cpp" line="1251"/>
+        <location filename="../src/app/settingspage.cpp" line="1501"/>
         <source>New tab</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1209"/>
+        <location filename="../src/app/settingspage.cpp" line="1253"/>
         <source>Search or type a web address</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1235"/>
+        <location filename="../src/app/settingspage.cpp" line="1279"/>
         <source>Recent tabs</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1237"/>
+        <location filename="../src/app/settingspage.cpp" line="1281"/>
         <source>Tabs found</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1239"/>
+        <location filename="../src/app/settingspage.cpp" line="1283"/>
         <source>Move to trash</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1241"/>
+        <location filename="../src/app/settingspage.cpp" line="1285"/>
         <source>Show more</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1243"/>
+        <location filename="../src/app/settingspage.cpp" line="1287"/>
         <source>In the trash</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1245"/>
+        <location filename="../src/app/settingspage.cpp" line="1289"/>
         <source>Restore</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1247"/>
-        <location filename="../src/app/settingspage.cpp" line="1338"/>
+        <location filename="../src/app/settingspage.cpp" line="1291"/>
+        <location filename="../src/app/settingspage.cpp" line="1382"/>
         <source>Tab history</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1249"/>
+        <location filename="../src/app/settingspage.cpp" line="1293"/>
         <source>Today</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1251"/>
+        <location filename="../src/app/settingspage.cpp" line="1295"/>
         <source>Yesterday</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1253"/>
+        <location filename="../src/app/settingspage.cpp" line="1297"/>
         <source>Delete</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1255"/>
+        <location filename="../src/app/settingspage.cpp" line="1299"/>
         <source>Open</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1257"/>
+        <location filename="../src/app/settingspage.cpp" line="1301"/>
         <source>Back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1259"/>
+        <location filename="../src/app/settingspage.cpp" line="1303"/>
         <source>Click to restore</source>
         <translation></translation>
     </message>
@@ -6493,238 +6913,238 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 <context>
     <name>TreeBank</name>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="1600"/>
-        <location filename="../src/ui/treebank.cpp" line="1620"/>
+        <location filename="../src/ui/treebank.cpp" line="1607"/>
+        <location filename="../src/ui/treebank.cpp" line="1627"/>
         <source>Restored from a backup file</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="459"/>
+        <location filename="../src/ui/treebank.cpp" line="458"/>
         <source>Input new node name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="460"/>
+        <location filename="../src/ui/treebank.cpp" line="459"/>
         <source>Node name:</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="484"/>
+        <location filename="../src/ui/treebank.cpp" line="483"/>
         <source>Invalid node name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="488"/>
+        <location filename="../src/ui/treebank.cpp" line="487"/>
         <source>Cannot change to an empty title or use the following characters.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="503"/>
+        <location filename="../src/ui/treebank.cpp" line="502"/>
         <source>Invalid directory name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="504"/>
+        <location filename="../src/ui/treebank.cpp" line="503"/>
         <source>A directory name cannot contain &apos;;&apos;. What comes after it is this directory&apos;s settings, which are edited in the DirectorySettings menu.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="2051"/>
+        <location filename="../src/ui/treebank.cpp" line="2058"/>
         <source>Delete %1 closed tabs from the wastebasket for good?
 This cannot be undone.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="1601"/>
-        <location filename="../src/ui/treebank.cpp" line="1621"/>
+        <location filename="../src/ui/treebank.cpp" line="1608"/>
+        <location filename="../src/ui/treebank.cpp" line="1628"/>
         <source>Because of a failure to read the latest file, it was restored from a backup file.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="2471"/>
+        <location filename="../src/ui/treebank.cpp" line="2478"/>
         <source>Moved %1 nodes to the trash.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="2473"/>
+        <location filename="../src/ui/treebank.cpp" line="2480"/>
         <source>They can be restored from the trash.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="2474"/>
+        <location filename="../src/ui/treebank.cpp" line="2481"/>
         <source>The trash keeps a limited number of items, so the oldest of these are gone.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3249"/>
+        <location filename="../src/ui/treebank.cpp" line="3262"/>
         <source>TabList</source>
         <translation>Tab List</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3271"/>
+        <location filename="../src/ui/treebank.cpp" line="3284"/>
         <source>Display</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3282"/>
+        <location filename="../src/ui/treebank.cpp" line="3295"/>
         <source>Window</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3301"/>
+        <location filename="../src/ui/treebank.cpp" line="3314"/>
         <source>Page</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3324"/>
+        <location filename="../src/ui/treebank.cpp" line="3337"/>
         <source>Application</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3917"/>
+        <location filename="../src/ui/treebank.cpp" line="3930"/>
         <source>Clear cookies.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3918"/>
+        <location filename="../src/ui/treebank.cpp" line="3931"/>
         <source>Every cookie of every network space is deleted.
 Anything a site kept you signed in with goes with them.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3948"/>
+        <location filename="../src/ui/treebank.cpp" line="3961"/>
         <source>Clear saved passwords.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3949"/>
+        <location filename="../src/ui/treebank.cpp" line="3962"/>
         <source>Every saved password is deleted.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="703"/>
+        <location filename="../src/ui/treebank.cpp" line="702"/>
         <source>WebEngineView site data</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="704"/>
+        <location filename="../src/ui/treebank.cpp" line="703"/>
         <source>WebEngineView cache</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="705"/>
+        <location filename="../src/ui/treebank.cpp" line="704"/>
         <source>QuickWebEngineView site data</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="706"/>
+        <location filename="../src/ui/treebank.cpp" line="705"/>
         <source>QuickWebEngineView cache</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="707"/>
+        <location filename="../src/ui/treebank.cpp" line="706"/>
         <source>EdgeWebView site data</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="708"/>
+        <location filename="../src/ui/treebank.cpp" line="707"/>
         <source>Extension settings</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="740"/>
+        <location filename="../src/ui/treebank.cpp" line="739"/>
         <source>Some data was not moved.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="741"/>
+        <location filename="../src/ui/treebank.cpp" line="740"/>
         <source>The directory was renamed to &quot;%1&quot;, but the following could not be moved to the new name and was left where it was. Under the new name, it starts empty.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="813"/>
-        <location filename="../src/ui/treebank.cpp" line="961"/>
+        <location filename="../src/ui/treebank.cpp" line="812"/>
+        <location filename="../src/ui/treebank.cpp" line="960"/>
         <source>Another directory is still being renamed.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="816"/>
-        <location filename="../src/ui/treebank.cpp" line="963"/>
+        <location filename="../src/ui/treebank.cpp" line="815"/>
+        <location filename="../src/ui/treebank.cpp" line="962"/>
         <source>A download is in progress. Rename this directory after it has finished.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="818"/>
+        <location filename="../src/ui/treebank.cpp" line="817"/>
         <source>Another directory (or one in the trash) is the same network space &quot;%1&quot;. Renaming this one would leave the other without its data.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="826"/>
+        <location filename="../src/ui/treebank.cpp" line="825"/>
         <source>Data of a network space named &quot;%1&quot; is already on disk. Choose another name.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="832"/>
-        <location filename="../src/ui/treebank.cpp" line="967"/>
+        <location filename="../src/ui/treebank.cpp" line="831"/>
+        <location filename="../src/ui/treebank.cpp" line="966"/>
         <location filename="../src/app/directorypage.cpp" line="953"/>
         <source>Cannot rename this directory.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="849"/>
+        <location filename="../src/ui/treebank.cpp" line="848"/>
         <source>Moving the data of &quot;%1&quot; to &quot;%2&quot;...</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="738"/>
-        <location filename="../src/ui/treebank.cpp" line="760"/>
+        <location filename="../src/ui/treebank.cpp" line="737"/>
+        <location filename="../src/ui/treebank.cpp" line="759"/>
         <source>Password data: %1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="592"/>
-        <location filename="../src/ui/treebank.cpp" line="831"/>
+        <location filename="../src/ui/treebank.cpp" line="591"/>
+        <location filename="../src/ui/treebank.cpp" line="830"/>
         <source>Cannot change this directory.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="593"/>
-        <location filename="../src/ui/treebank.cpp" line="823"/>
+        <location filename="../src/ui/treebank.cpp" line="592"/>
+        <location filename="../src/ui/treebank.cpp" line="822"/>
         <source>The data of the network space &quot;%1&quot; is still being closed. Wait a moment and try again.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="815"/>
+        <location filename="../src/ui/treebank.cpp" line="814"/>
         <source>A download is in progress. Change this directory after it has finished.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="848"/>
+        <location filename="../src/ui/treebank.cpp" line="847"/>
         <source>Closing the data of &quot;%1&quot;...</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="755"/>
+        <location filename="../src/ui/treebank.cpp" line="754"/>
         <source>WebEngineView and QuickWebEngineView site data (sign-ins included): it cannot be carried over.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="758"/>
+        <location filename="../src/ui/treebank.cpp" line="757"/>
         <source>EdgeWebView cookies: they could not be copied.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="763"/>
+        <location filename="../src/ui/treebank.cpp" line="762"/>
         <source>Some data was not carried over.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="764"/>
+        <location filename="../src/ui/treebank.cpp" line="763"/>
         <source>&quot;%1&quot; was joined to &quot;%2&quot;, but the following of &quot;%1&quot; was not carried over. It is kept where it was.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="974"/>
+        <location filename="../src/ui/treebank.cpp" line="973"/>
         <source>Joining &quot;%1&quot; to &quot;%2&quot;...</source>
         <translation></translation>
     </message>
@@ -6732,37 +7152,37 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>TreeBar</name>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="775"/>
+        <location filename="../src/ui/treebar.cpp" line="785"/>
         <source>TreeBar</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1133"/>
+        <location filename="../src/ui/treebar.cpp" line="1143"/>
         <source>TreeBarSettings</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1143"/>
+        <location filename="../src/ui/treebar.cpp" line="1153"/>
         <source>Width</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1154"/>
+        <location filename="../src/ui/treebar.cpp" line="1164"/>
         <source>Height</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1173"/>
+        <location filename="../src/ui/treebar.cpp" line="1183"/>
         <source>EnableAnimation</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1180"/>
+        <location filename="../src/ui/treebar.cpp" line="1190"/>
         <source>EnableCloseButton</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1187"/>
+        <location filename="../src/ui/treebar.cpp" line="1197"/>
         <source>EnableCloneButton</source>
         <translation></translation>
     </message>
@@ -6770,67 +7190,67 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>VideoItem</name>
     <message>
-        <location filename="../src/view/localview.cpp" line="2433"/>
+        <location filename="../src/view/localview.cpp" line="2435"/>
         <source>play</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2438"/>
+        <location filename="../src/view/localview.cpp" line="2440"/>
         <source>pause</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2443"/>
+        <location filename="../src/view/localview.cpp" line="2445"/>
         <source>stop</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2448"/>
+        <location filename="../src/view/localview.cpp" line="2450"/>
         <source>volume up</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2453"/>
+        <location filename="../src/view/localview.cpp" line="2455"/>
         <source>volume down</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2480"/>
+        <location filename="../src/view/localview.cpp" line="2482"/>
         <source>10 minutes back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2487"/>
+        <location filename="../src/view/localview.cpp" line="2489"/>
         <source>10 minutes forward</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2493"/>
+        <location filename="../src/view/localview.cpp" line="2495"/>
         <source>5 minutes back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2499"/>
+        <location filename="../src/view/localview.cpp" line="2501"/>
         <source>5 minutes forward</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2505"/>
+        <location filename="../src/view/localview.cpp" line="2507"/>
         <source>1 minute back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2511"/>
+        <location filename="../src/view/localview.cpp" line="2513"/>
         <source>1 minute forward</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2516"/>
+        <location filename="../src/view/localview.cpp" line="2518"/>
         <source>10 seconds back</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2521"/>
+        <location filename="../src/view/localview.cpp" line="2523"/>
         <source>10 seconds forward</source>
         <translation></translation>
     </message>
@@ -7266,8 +7686,8 @@ Ssl error : %2</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/view/webengine/webengineview.cpp" line="1021"/>
-        <location filename="../src/view/webengine/webengineview.cpp" line="1062"/>
+        <location filename="../src/view/webengine/webengineview.cpp" line="1039"/>
+        <location filename="../src/view/webengine/webengineview.cpp" line="1080"/>
         <source>NoAction</source>
         <translation></translation>
     </message>

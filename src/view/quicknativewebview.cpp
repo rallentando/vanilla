@@ -66,9 +66,7 @@ QuickNativeWebView::QuickNativeWebView(TreeBank *parent, QString id, QStringList
     m_EverShown = false;
     m_LoadedWhileHidden = false;
     m_ScrollSignalTimer = 0;
-#ifdef MEDIATIME
     m_MediaTimePollTimer = startTimer(5000);
-#endif
 
     m_ActionTable = QMap<Page::CustomAction, QAction*>();
     m_RequestId = 0;
@@ -310,9 +308,7 @@ void QuickNativeWebView::OnLoadFinished(bool ok){
     }
 
     RestoreScroll();
-#ifdef MEDIATIME
     RestoreMediaTime();
-#endif
     emit ViewChanged();
     emit statusBarMessage(tr("Finished loading."));
 
@@ -331,10 +327,8 @@ void QuickNativeWebView::OnUrlChanged(const QUrl &url){
     SaveHistory();
 
     if(!GetViewNode()) return;
-#ifdef MEDIATIME
     if(url != GetViewNode()->GetUrl())
         GetViewNode()->SetMediaTime(0);
-#endif
     ChangeNodeUrl(url);
 }
 
@@ -456,7 +450,6 @@ void QuickNativeWebView::TriggerNativeFastForwardAction(){
     PerformHistoryMove(m_History.RequestFastForward(NativeIsLoading()));
 }
 
-#ifdef MEDIATIME
 bool QuickNativeWebView::SaveMediaTime(VoidCallBack settled){
     if(IsLoading()){
         if(settled) settled();
@@ -484,7 +477,6 @@ bool QuickNativeWebView::RestoreMediaTime(){
     CallWithEvaluatedJavaScriptResult(SetMediaTimeJsCode(time), [](QVariant){});
     return true;
 }
-#endif
 
 void QuickNativeWebView::KeyEvent(QString key){
     TriggerKeyEvent(key);
@@ -836,11 +828,9 @@ void QuickNativeWebView::timerEvent(QTimerEvent *ev){
         killTimer(m_ScrollSignalTimer);
         m_ScrollSignalTimer = 0;
     }
-#ifdef MEDIATIME
     if(ev->timerId() == m_MediaTimePollTimer){
         SaveMediaTime();
     }
-#endif
 }
 
 void QuickNativeWebView::hideEvent(QHideEvent *ev){
@@ -1024,56 +1014,10 @@ void QuickNativeWebView::dragMoveEvent(QDragMoveEvent *ev){
 }
 
 void QuickNativeWebView::dropEvent(QDropEvent *ev){
-    emit statusBarMessage(QString());
-    bool isLocal = false;
-    QPoint pos = ev->position().toPoint();
-    QObject *source = ev->source();
-    QString text = ev->mimeData()->text();
-    QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
-
-    for(QUrl u : std::as_const(urls)){ if(u.isLocalFile()) isLocal = true;}
-
-    if(text.isEmpty() && !urls.isEmpty()){
-        foreach(QUrl u, urls){
-            if(text.isEmpty()) text = u.toString();
-            else text += QStringLiteral("\n") + u.toString();
-        }
-    }
-
-    const bool own = IsOwnDragSource(source);
-
-    CallWithHitElement(pos, [this, pos, own, text, urls](SharedWebElement elem){
-
-    if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
-
-        GestureAborted();
-        elem->SetText(text);
-        return;
-    }
-
-    if(!m_Gesture.isEmpty() && own){
-        GestureFinished(pos, Qt::LeftButton);
-        return;
-    }
-
-    GestureAborted();
-
-    if(!urls.isEmpty() && !own){
-        m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
-    }
-
-    });
-
-    const bool consumed = (!m_Gesture.isEmpty() && own) || (!urls.isEmpty() && !own);
-
-    if(isLocal || consumed ||
-       (DragToStartDownload() && !urls.isEmpty() && own))
-        ;
-    else {
-        if(own && !urls.isEmpty()) MarkOwnDrop();
-        QWidget::dropEvent(ev);
-    }
-    ev->setAccepted(true);
+    DropHooks hooks;
+    hooks.toEngine = [this](QDropEvent *ev){ QWidget::dropEvent(ev);};
+    hooks.clearStatus = [this](){ emit statusBarMessage(QString());};
+    DropWithGestures(ev, hooks);
 }
 
 void QuickNativeWebView::dragLeaveEvent(QDragLeaveEvent *ev){

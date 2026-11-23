@@ -4,10 +4,15 @@
 #include "receiver.hpp"
 #include "notifier.hpp"
 #include "minimap.hpp"
+#include "gadgets.hpp"
 #include "commandmap.hpp"
+#include "menuschema.hpp"
+#include "inputmapschema.hpp"
+#include "webelement.hpp"
 #include "searchsuggest.hpp"
 #include "toolbar.hpp"
 #include "nodepreview.hpp"
+#include "dialog.hpp"
 #include <QClipboard>
 #include <QToolButton>
 #include <QCompleter>
@@ -25,6 +30,19 @@
 #include <QLocalSocket>
 #include <QPointer>
 #include <memory>
+
+struct PathElement : public JsWebElement {
+    PathElement(const QString &path, const QUrl &link = QUrl(), bool editable = false){
+        m_XPath = path;
+        m_TagName = QStringLiteral("BUTTON");
+        m_IsEditable = editable;
+        m_LinkUrl = link;
+        m_Rectangle = QRect(1, 1, 10, 10);
+    }
+};
+struct FocusedElement : public PathElement {
+    FocusedElement(const QString &path) : PathElement(path, QUrl(), true){ m_IsFocusedField = true; }
+};
 
 class tst_receiver : public QObject {
     Q_OBJECT
@@ -78,6 +96,463 @@ private slots:
         QString found;
         QCOMPARE(Receiver::SeekWords(line, &found), seeking);
         QCOMPARE(found, words);
+    }
+
+    static Receiver::TargetArgs TargetOf(const QUrl &link, const QUrl &image, const QString &selection){
+        Receiver::TargetArgs target;
+        if(!link.isEmpty() || !image.isEmpty())
+            target.element = std::make_shared<JsWebElement>(nullptr, QPoint(5, 5), link, image, false);
+        target.selection = selection;
+        return target;
+    }
+    static Receiver::TargetTables DefaultTables(){
+        Receiver::TargetTables tables;
+        tables.field = MenuSchema::Default(QStringLiteral("TextMenu"));
+        tables.link = MenuSchema::Default(QStringLiteral("LinkMenu"));
+        tables.image = MenuSchema::Default(QStringLiteral("ImageMenu"));
+        tables.selection = MenuSchema::Default(QStringLiteral("SelectionMenu"));
+        tables.engines = QStringList() << QStringLiteral("g");
+        tables.commands = QStringList() << QStringLiteral("Other");
+        return tables;
+    }
+    static QStringList Described(const Receiver::SuggestRows &rows){
+        QStringList list;
+        for(const Receiver::SuggestRow &row : rows){
+            const QString kind = row.kind == Receiver::SuggestRow::TargetSearch ? QStringLiteral("search")
+                : row.kind == Receiver::SuggestRow::TargetCommand ? QStringLiteral("command")
+                : QStringLiteral("action");
+            list << QStringLiteral("%1:%2:%3").arg(row.serial).arg(kind, row.text);
+            if(row.section != Receiver::TargetPartName(static_cast<Receiver::TargetPart>(row.serial))) list << QStringLiteral("bad heading");
+        }
+        return list;
+    }
+
+    void theCardForAnElementOffersWhatItsTablesRunFromWhatIsHeld(){
+        const QUrl link(QStringLiteral("https://example.com/a/index.html"));
+        const QUrl image(QStringLiteral("https://example.com/b/foo.png?x=1"));
+        const Receiver::SuggestRows rows =
+            Receiver::TargetRows(TargetOf(link, image, QStringLiteral("some words")), DefaultTables(), QString());
+        const QStringList all = Described(rows);
+        QVERIFY(!all.contains(QStringLiteral("bad heading")));
+        QCOMPARE(all.mid(0, 5), QStringList()
+                 << QStringLiteral("0:action:OpenLink") << QStringLiteral("0:action:DownloadLink")
+                 << QStringLiteral("0:action:CopyLinkUrl")
+                 << QStringLiteral("0:action:OpenLinkWithDefault") << QStringLiteral("0:command:Other"));
+        const int imageAt = all.indexOf(QStringLiteral("1:action:OpenImage"));
+        QVERIFY(imageAt > 5);
+        QCOMPARE(all.mid(imageAt, 6), QStringList()
+                 << QStringLiteral("1:action:OpenImage") << QStringLiteral("1:action:DownloadImage")
+                 << QStringLiteral("1:action:CopyImage") << QStringLiteral("1:action:CopyImageUrl")
+                 << QStringLiteral("1:action:OpenImageWithDefault")
+                 << QStringLiteral("1:command:Other"));
+        QVERIFY(all.indexOf(QStringLiteral("0:action:CopyLinkHtml")) > 5);
+        QVERIFY(all.indexOf(QStringLiteral("0:action:CopyLinkHtml")) < imageAt);
+        QVERIFY(all.indexOf(QStringLiteral("1:action:CopyImageHtml")) > imageAt + 5);
+        QVERIFY(all.indexOf(QStringLiteral("0:action:LoadLink")) > 4);
+        QVERIFY(all.indexOf(QStringLiteral("0:action:LoadLink")) < imageAt);
+        QVERIFY2(all.contains(QStringLiteral("0:action:OpenOnRootNewWindow")), qPrintable(all.join(QLatin1Char(' '))));
+        QVERIFY(all.contains(QStringLiteral("1:action:OpenImageInNewDirectoryBackground")));
+        QCOMPARE(all.count(QStringLiteral("0:command:Other")), 1);
+        QCOMPARE(all.count(QStringLiteral("0:action:OpenLink")), 1);
+        QVERIFY(all.contains(QStringLiteral("2:action:Copy")));
+        QVERIFY(all.contains(QStringLiteral("2:search:g")));
+        QVERIFY(all.contains(QStringLiteral("2:action:OpenTextAsUrl")));
+        QCOMPARE(all.filter(QRegularExpression(QStringLiteral("^2:"))).length(), 10);
+        QVERIFY(all.contains(QStringLiteral("2:action:CopySelectedHtml")));
+        QVERIFY(all.contains(QStringLiteral("2:action:SaveAllImage")));
+        QCOMPARE(all.filter(QRegularExpression(QStringLiteral("^4:"))), QStringList()
+                 << QStringLiteral("4:action:ClickElement") << QStringLiteral("4:action:FocusElement")
+                 << QStringLiteral("4:action:HoverElement") << QStringLiteral("4:action:InspectElement"));
+        QVERIFY(all.filter(QRegularExpression(QStringLiteral("^6:"))).isEmpty());
+        for(const Receiver::SuggestRow &row : rows){
+            if(row.kind == Receiver::SuggestRow::TargetAction)
+                QVERIFY2(Page::IsValidAction(row.text), qPrintable(row.text));
+            QVERIFY(!row.text.startsWith(QStringLiteral("ToggleMedia")));
+        }
+        for(const Receiver::SuggestRow &row : rows){
+            if(row.kind != Receiver::SuggestRow::TargetCommand) continue;
+            QCOMPARE(row.key, (row.serial == quint64(Receiver::TargetLink) ? link : image).toString());
+        }
+
+        Receiver::TargetTables tables = DefaultTables();
+        tables.link = QStringLiteral("Reload,CopySelectedHtml,OpenLink,Separator");
+        const QStringList odd = Described(Receiver::TargetRows(TargetOf(link, QUrl(), QString()), tables, QString()));
+        QCOMPARE(odd.first(), QStringLiteral("0:action:OpenLink"));
+        QVERIFY(!odd.join(QLatin1Char(' ')).contains(QStringLiteral("Reload")));
+        QVERIFY(!odd.join(QLatin1Char(' ')).contains(QStringLiteral("CopySelectedHtml")));
+
+        QVERIFY(Described(Receiver::TargetRows(TargetOf(link, QUrl(), QString()), DefaultTables(), QString()))
+                .filter(QRegularExpression(QStringLiteral("^[123]:"))).isEmpty());
+        QCOMPARE(Described(Receiver::TargetRows(TargetOf(QUrl(), QUrl(), QStringLiteral("w")), DefaultTables(), QString())),
+                 QStringList() << QStringLiteral("2:action:Copy") << QStringLiteral("2:action:CopySelectedHtml")
+                               << QStringLiteral("2:search:g") << QStringLiteral("2:action:OpenTextSeeker")
+                               << QStringLiteral("2:action:OpenAllUrl")
+                               << QStringLiteral("2:action:SaveAllUrl") << QStringLiteral("2:action:OpenAllImage")
+                               << QStringLiteral("2:action:SaveAllImage") << QStringLiteral("2:action:OpenTextAsUrl")
+                               << QStringLiteral("2:action:SaveTextAsUrl"));
+        Receiver::TargetArgs player = TargetOf(QUrl(), image, QString());
+        player.playable = true;
+        Receiver::TargetTables media = DefaultTables();
+        media.media = MenuSchema::Default(QStringLiteral("MediaMenu"));
+        const QStringList played = Described(Receiver::TargetRows(player, media, QString()));
+        QVERIFY(played.filter(QRegularExpression(QStringLiteral("^1:"))).isEmpty());
+        QCOMPARE(played.mid(0, 4), QStringList()
+                 << QStringLiteral("3:action:ToggleMediaPlayPause") << QStringLiteral("3:action:ToggleMediaMute")
+                 << QStringLiteral("3:action:ToggleMediaLoop") << QStringLiteral("3:action:OpenMedia"));
+        QVERIFY(played.contains(QStringLiteral("3:action:OpenMediaOnRootBackground")));
+        QVERIFY(played.contains(QStringLiteral("3:action:ToggleMediaMute")));
+        QVERIFY(played.contains(QStringLiteral("3:action:ToggleMediaControls")));
+
+        Receiver::TargetArgs button;
+        button.element = std::make_shared<PathElement>(QStringLiteral("//button[1]"));
+        QCOMPARE(Described(Receiver::TargetRows(button, DefaultTables(), QString())), QStringList()
+                 << QStringLiteral("4:action:ClickElement") << QStringLiteral("4:action:FocusElement")
+                 << QStringLiteral("4:action:HoverElement") << QStringLiteral("4:action:InspectElement"));
+        QCOMPARE(Receiver::TargetTag(button), Receiver::TargetPartName(Receiver::TargetElement) + QStringLiteral(" button"));
+
+        Receiver::TargetArgs field;
+        field.element = std::make_shared<JsWebElement>(nullptr, QPoint(5, 5), QUrl(), QUrl(), true);
+        QCOMPARE(Receiver::TargetTag(field), Receiver::TargetPartName(Receiver::TargetField));
+        Receiver::TargetTables fieldTables = DefaultTables();
+        fieldTables.field = QStringLiteral("Paste,Separator,Reload,Undo");
+        QCOMPARE(Described(Receiver::TargetRows(field, fieldTables, QString())), QStringList()
+                 << QStringLiteral("6:action:Paste") << QStringLiteral("6:action:Undo")
+                 << QStringLiteral("6:action:Redo") << QStringLiteral("6:action:Cut")
+                 << QStringLiteral("6:action:SelectAll"));
+        field.selection = QStringLiteral("w");
+        const QStringList inField = Described(Receiver::TargetRows(field, DefaultTables(), QString()));
+        QCOMPARE(inField.first(), QStringLiteral("6:action:Undo"));
+        QVERIFY(inField.contains(QStringLiteral("2:action:Copy")));
+        Receiver::TargetArgs found;
+        found.element = std::make_shared<PathElement>(QStringLiteral("//input[1]"), QUrl(), true);
+        const QStringList foundRows = Described(Receiver::TargetRows(found, DefaultTables(), QString()));
+        QCOMPARE(foundRows.first(), QStringLiteral("6:action:Undo"));
+        QVERIFY(foundRows.contains(QStringLiteral("4:action:InspectElement")));
+
+        QCOMPARE(Described(Receiver::TargetRows(TargetOf(link, image, QString()), DefaultTables(), QStringLiteral("imageurl"))),
+                 QStringList() << QStringLiteral("1:action:CopyImageUrl"));
+    }
+
+    void theCardForTabsOffersTheTabsMenuAndTheRest(){
+        Receiver::TargetArgs tabs;
+        tabs.nodes << 1 << 2;
+        Receiver::TargetTables tables = DefaultTables();
+        tables.node = MenuSchema::Default(QStringLiteral("TreeBarNodeMenu"));
+        const QStringList all = Described(Receiver::TargetRows(tabs, tables, QString()));
+        QVERIFY(!all.contains(QStringLiteral("bad heading")));
+        QCOMPARE(all.mid(0, 6), QStringList()
+                 << QStringLiteral("5:action:OpenNode") << QStringLiteral("5:action:OpenNodeOnNewWindow")
+                 << QStringLiteral("5:action:OpenNodeWithDefault") << QStringLiteral("5:command:Other")
+                 << QStringLiteral("5:action:RenameNode") << QStringLiteral("5:action:ReloadNode"));
+        QVERIFY(all.contains(QStringLiteral("5:action:DeleteRightNode")));
+        QVERIFY(all.indexOf(QStringLiteral("5:action:DeleteNode")) > all.indexOf(QStringLiteral("5:action:DeleteRightNode")));
+        QVERIFY(all.contains(QStringLiteral("5:action:CopyNodeUrl")));
+        QStringList named;
+        for(const QString &row : all) named << row.section(QLatin1Char(':'), 2);
+        for(const QString &name : { QStringLiteral("TreeBarMenu"), QStringLiteral("RecentlyClosed"),
+                                    QStringLiteral("OpenCommand"), QStringLiteral("ToggleTrash"),
+                                    QStringLiteral("RestoreNode"), QStringLiteral("SortMenu") })
+            QVERIFY2(!named.contains(name), qPrintable(name));
+        QCOMPARE(all.count(QStringLiteral("5:command:Other")), 1);
+
+        tabs.trash = true;
+        tables.node = MenuSchema::Default(QStringLiteral("TableNodeMenu"));
+        QStringList trash = Described(Receiver::TargetRows(tabs, tables, QString()));
+        trash.sort();
+        QCOMPARE(trash, QStringList()
+                 << QStringLiteral("5:action:CopyNodeAsLink") << QStringLiteral("5:action:CopyNodeTitle")
+                 << QStringLiteral("5:action:CopyNodeUrl") << QStringLiteral("5:action:DeleteNode")
+                 << QStringLiteral("5:action:OpenNode") << QStringLiteral("5:action:OpenNodeWithDefault")
+                 << QStringLiteral("5:action:RestoreNode") << QStringLiteral("5:command:Other"));
+
+        const MenuSchema::Table *bar = MenuSchema::Find(QStringLiteral("TreeBarNodeMenu"));
+        QVERIFY(MenuSchema::IsKnown(*bar, QStringLiteral("CloneNode")));
+        QVERIFY(MenuSchema::IsKnown(*bar, QStringLiteral("TreeBarMenu")));
+        QVERIFY(!MenuSchema::IsKnown(*bar, QStringLiteral("Reload")));
+        QVERIFY(!MenuSchema::IsKnown(*MenuSchema::Find(QStringLiteral("TableNodeMenu")), QStringLiteral("TreeBarMenu")));
+        QVERIFY(!MenuSchema::IsKnown(*MenuSchema::Find(QStringLiteral("LinkMenu")), QStringLiteral("CloneNode")));
+        for(const QString &name : bar->defaults.split(QLatin1Char(',')))
+            QVERIFY2(MenuSchema::IsKnown(*bar, name), qPrintable(name));
+    }
+
+    void anElementFoundAgainHasToBeTheSameOne(){
+        const QUrl link(QStringLiteral("https://example.com/a"));
+        const QUrl image(QStringLiteral("https://example.com/b.png"));
+        QVERIFY(Receiver::TargetHits(QStringLiteral("CopyImage")));
+        QVERIFY(Receiver::TargetHits(QStringLiteral("ClickElement")));
+        QVERIFY(Receiver::TargetHits(QStringLiteral("FocusElement")));
+        QVERIFY(Receiver::TargetHits(QStringLiteral("HoverElement")));
+        QVERIFY(!Receiver::TargetHits(QStringLiteral("CopyImageUrl")));
+        QVERIFY(!Receiver::TargetHits(QStringLiteral("OpenLink")));
+
+        const PathElement held(QStringLiteral("//a[2]"), link);
+        QVERIFY(Receiver::IsSameTarget(held, PathElement(QStringLiteral("//a[2]"))));
+        QVERIFY(!Receiver::IsSameTarget(held, PathElement(QStringLiteral("//a[3]"), link)));
+        const JsWebElement point(nullptr, QPoint(5, 5), link, image, false);
+        QVERIFY(Receiver::IsSameTarget(point, JsWebElement(nullptr, QPoint(9, 9), link, image, false)));
+        QVERIFY(!Receiver::IsSameTarget(point, JsWebElement(nullptr, QPoint(9, 9), link, QUrl(), false)));
+        QVERIFY(!Receiver::IsSameTarget(point, JsWebElement(nullptr, QPoint(9, 9), QUrl(), image, false)));
+        const JsWebElement bare(nullptr, QPoint(5, 5), QUrl(), QUrl(), false);
+        QVERIFY(!Receiver::IsSameTarget(bare, bare));
+        QVERIFY(!Receiver::IsSameTarget(point, JsWebElement()));
+
+        const PathElement field(QStringLiteral("//input[1]"), QUrl(), true);
+        QVERIFY(Receiver::IsSameField(field, PathElement(QStringLiteral("//input[1]"), QUrl(), true)));
+        QVERIFY(!Receiver::IsSameField(field, PathElement(QStringLiteral("//input[2]"), QUrl(), true)));
+        const JsWebElement menu(nullptr, QPoint(5, 5), QUrl(), QUrl(), true);
+        QVERIFY(Receiver::IsSameField(menu, FocusedElement(QStringLiteral("//x-field[1]"))));
+        QVERIFY(!Receiver::IsSameField(menu, PathElement(QStringLiteral("//textarea[1]"), QUrl(), true)));
+        QVERIFY(!Receiver::IsSameField(menu, PathElement(QStringLiteral("//div[1]"))));
+        QVERIFY(!Receiver::IsSameField(menu, JsWebElement()));
+    }
+
+    void theCardForTabsRunsOnWhatIsStillWhereItWas(){
+        Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
+        std::unique_ptr<MainWindow> window(Application::NewWindow(974));
+        Application::SetCurrentWindow(window.get());
+        auto forget = qScopeGuard([](){
+            Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
+            Application::RemoveWindow(974);
+        });
+        window->show();
+        Receiver *r = window->GetTreeBank()->GetReceiver();
+        using Row = Receiver::SuggestRow;
+        const NodeList tree = TreeBank::GetViewRoot()->GetChildren();
+        const NodeList trashed = TreeBank::GetTrashRoot()->GetChildren();
+        auto drop = qScopeGuard([tree, trashed](){
+            TreeBank::SetClipboardNodes(NodeList(), false);
+            for(ViewNode *root : { TreeBank::GetViewRoot(), TreeBank::GetTrashRoot() }){
+                const NodeList kept = root == TreeBank::GetViewRoot() ? tree : trashed;
+                foreach(Node *nd, root->GetChildren()){
+                    if(kept.contains(nd)) continue;
+                    root->RemoveChild(nd);
+                    nd->Delete();
+                }
+            }
+        });
+        const auto tab = [](ViewNode *parent, const QString &url){
+            ViewNode *vn = parent->MakeChild();
+            vn->SetHoldView(true);
+            vn->SetUrl(QUrl(url));
+            return vn;
+        };
+        ViewNode *a = tab(TreeBank::GetViewRoot(), QStringLiteral("https://example.invalid/zqa"));
+        ViewNode *b = tab(TreeBank::GetViewRoot(), QStringLiteral("https://example.invalid/zqb"));
+        ViewNode *closed = tab(TreeBank::GetTrashRoot(), QStringLiteral("https://example.invalid/zqclosed"));
+        ViewNode *folder = TreeBank::GetViewRoot()->MakeChild();
+        folder->SetTitle(QStringLiteral("zqFolder"));
+        const quint64 folderSerial = folder->GetSerial();
+        const auto run = [r](const Receiver::TargetArgs &target, const QString &name){
+            r->OpenTarget(target);
+            for(const Row &row : r->m_Rows){
+                if(row.kind == Row::TargetAction && row.text == name){
+                    r->RunTargetRow(row);
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        Receiver::TargetArgs held;
+        held.nodes << a->GetSerial() << closed->GetSerial() << b->GetSerial() << folderSerial;
+        QApplication::clipboard()->setText(QStringLiteral("before"));
+        QVERIFY(run(held, QStringLiteral("CopyNodeUrl")));
+        QVERIFY(!r->isVisible());
+        QTRY_COMPARE(QApplication::clipboard()->text(),
+                     QStringLiteral("https://example.invalid/zqa\nhttps://example.invalid/zqb"));
+
+        Receiver::TargetArgs one;
+        one.nodes << b->GetSerial();
+        QApplication::clipboard()->setText(QStringLiteral("before"));
+        QVERIFY(run(one, QStringLiteral("CopyNodeUrl")));
+        r->OpenTarget(one);
+        QTest::qWait(100);
+        QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("before"));
+        r->Dismiss();
+
+        a->SetTitle(QStringLiteral("zqA"));
+        b->SetTitle(QStringLiteral("zqB"));
+        Receiver::TargetArgs two;
+        two.nodes << a->GetSerial() << b->GetSerial() << folderSerial;
+        QVERIFY(run(two, QStringLiteral("CopyNodeTitle")));
+        QTRY_COMPARE(QApplication::clipboard()->text(), QStringLiteral("zqA\nzqB\nzqFolder"));
+        QVERIFY(run(two, QStringLiteral("CopyNodeAsLink")));
+        QTRY_COMPARE(QApplication::clipboard()->text(),
+                     QStringLiteral("<a href=\"https://example.invalid/zqa\">zqA</a>\n"
+                                    "<a href=\"https://example.invalid/zqb\">zqB</a>\n"));
+        Receiver::TargetArgs onlyA;
+        onlyA.nodes << a->GetSerial();
+        const int before = TreeBank::GetViewRoot()->GetChildren().length();
+        TreeBank::SetClipboardNodes(NodeList(), false);
+        QVERIFY(run(onlyA, QStringLiteral("CopyNode")));
+        QTRY_VERIFY(TreeBank::HasClipboardNodes());
+        QVERIFY(TreeBank::ClipboardHolds(NodeList() << a));
+        Receiver::TargetArgs onlyB;
+        onlyB.nodes << b->GetSerial();
+        QVERIFY(run(onlyB, QStringLiteral("PasteNode")));
+        QTRY_COMPARE(TreeBank::GetViewRoot()->GetChildren().length(), before + 1);
+        const NodeList after = TreeBank::GetViewRoot()->GetChildren();
+        QCOMPARE(after[after.indexOf(b) + 1]->GetUrl(), QUrl(QStringLiteral("https://example.invalid/zqa")));
+        QVERIFY(after[after.indexOf(b) + 1] != a);
+        Receiver::TargetArgs folderOnly;
+        folderOnly.nodes << folderSerial;
+        TreeBank::SetClipboardNodes(NodeList(), false);
+        QVERIFY(run(onlyA, QStringLiteral("CutNode")));
+        QTRY_VERIFY(TreeBank::ClipboardHolds(NodeList() << a));
+        QVERIFY(run(folderOnly, QStringLiteral("PasteNode")));
+        QTRY_COMPARE(TreeBank::GetViewRoot()->GetChildren().indexOf(a),
+                     TreeBank::GetViewRoot()->GetChildren().indexOf(folder) + 1);
+        QCOMPARE(TreeBank::GetViewRoot()->GetChildren().length(), before + 1);
+
+        Receiver::TargetArgs directory;
+        directory.nodes << folderSerial;
+        QCOMPARE(Receiver::HeldNode(folderSerial), folder);
+        QVERIFY(r->NodeTag(directory).contains(QStringLiteral("zqFolder")));
+        const int children = TreeBank::GetViewRoot()->GetChildren().length();
+        QVERIFY(run(directory, QStringLiteral("MakeDirectory")));
+        QTRY_COMPARE(TreeBank::GetViewRoot()->GetChildren().length(), children + 1);
+
+        r->OpenCommand();
+        r->RunRowAction(Row{ Row::Trash, Row::OpenTab, QString(), QString(), QString(), closed->GetSerial() },
+                        Receiver::RowAction::OpenCard);
+        QCOMPARE(r->m_Mode, Receiver::Target);
+        QVERIFY(r->m_Target.trash);
+        QCOMPARE(r->m_Target.nodes, QList<quint64>() << closed->GetSerial());
+        r->Dismiss();
+    }
+
+    void theSelectionsHtmlIsTakenForItsOwnCard(){
+        MainWindow window(975, QPoint(100, 100));
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        r->OpenTarget(TargetOf(QUrl(), QUrl(), QStringLiteral("w")));
+        const quint64 request = r->m_TargetRequest;
+        r->TakeSelectionHtml(request + 1, QStringLiteral("<b>other</b>"));
+        QVERIFY(r->m_Target.selectionHtml.isEmpty());
+        r->TakeSelectionHtml(request, QStringLiteral("<b>w</b>"));
+        QCOMPARE(r->m_Target.selectionHtml, QStringLiteral("<b>w</b>"));
+        r->Dismiss();
+    }
+
+    void nothingHeldIsThePlainBarAndTheAccessKeysOpenTheCard(){
+        MainWindow window(976, QPoint(100, 100));
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        r->OpenTarget(Receiver::TargetArgs());
+        QCOMPARE(r->m_Mode, Receiver::Command);
+        r->Dismiss();
+        const InputMap::KeyMap m_AccessKeyKeyMap =
+            InputMapSchema::DefaultKeyMap(QStringLiteral("gadgets/accesskey/keymap"));
+        QCOMPARE(m_AccessKeyKeyMap.value(QKeySequence(Qt::Key_G)), QStringLiteral("OpenCommand"));
+        QCOMPARE(m_AccessKeyKeyMap.value(QKeySequence(Qt::Key_H)), QStringLiteral("OpenCommand"));
+    }
+
+    void theTagSaysWhatIsHeld(){
+        const QUrl link(QStringLiteral("https://example.com/a/index.html"));
+        const QUrl image(QStringLiteral("https://example.com/b/foo.png?x=1"));
+        QCOMPARE(Receiver::TargetTag(TargetOf(link, QUrl(), QString())),
+                 Receiver::TargetPartName(Receiver::TargetLink) + QStringLiteral(" index.html"));
+        QCOMPARE(Receiver::TargetTag(TargetOf(link, image, QString())),
+                 Receiver::TargetPartName(Receiver::TargetImage) + QStringLiteral(" foo.png"));
+        const QString tag = Receiver::TargetTag(TargetOf(QUrl(), QUrl(), QString(40, QLatin1Char('a'))));
+        QVERIFY(tag.contains(QString(25, QLatin1Char('a')) + QStringLiteral("...")));
+        QVERIFY(!tag.contains(QString(26, QLatin1Char('a'))));
+    }
+
+    void aTargetIsRunOnlyInItsTabAsTheCurrentAndInItsLoad(){
+        int a = 0, b = 0;
+        const View *held = reinterpret_cast<const View*>(&a);
+        const View *other = reinterpret_cast<const View*>(&b);
+        QVERIFY(Receiver::IsLiveTarget(held, held, held, 7, 7));
+        QVERIFY(!Receiver::IsLiveTarget(held, other, held, 7, 7));
+        QVERIFY(!Receiver::IsLiveTarget(held, nullptr, held, 7, 7));
+        QVERIFY(!Receiver::IsLiveTarget(held, held, other, 7, 7));
+        QVERIFY(!Receiver::IsLiveTarget(held, held, held, 7, 8));
+        QVERIFY(!Receiver::IsLiveTarget(nullptr, nullptr, nullptr, 7, 7));
+    }
+
+    void theCardForAnElementRunsNothingOnceItsViewHasGone(){
+        MainWindow window(958, QPoint(100, 100));
+        window.show();
+        TreeBank *tb = window.GetTreeBank();
+        Receiver *r = tb->GetReceiver();
+        Receiver::TargetArgs target = TargetOf(QUrl(QStringLiteral("https://example.com/x")), QUrl(), QStringLiteral("held words"));
+        r->OpenTarget(target);
+        QVERIFY(r->isVisible());
+        QCOMPARE(r->m_Mode, Receiver::Target);
+        QVERIFY(!r->m_LineEdit->Tag().isEmpty());
+        QVERIFY(!r->ShowsSourceBar());
+        QVERIFY(!r->m_Rows.isEmpty());
+        QCOMPARE(r->m_CurrentSuggestIndex, 0);
+
+        r->m_LineEdit->setText(QStringLiteral("search abc"));
+        QVERIFY(r->m_Rows.isEmpty());
+        QVERIFY(!r->IsSeeking());
+        r->SuitableAction();
+        QVERIFY(r->isVisible());
+        r->m_LineEdit->setText(QString());
+        QVERIFY(!r->m_LineEdit->Tag().isEmpty());
+        QCOMPARE(r->m_Mode, Receiver::Target);
+
+        QApplication::clipboard()->setText(QStringLiteral("before"));
+        r->m_LineEdit->setText(QStringLiteral("copy"));
+        r->m_CurrentSuggestIndex = -1;
+        for(int i = 0; i < r->m_Rows.length(); i++){
+            if(r->m_Rows[i].serial == quint64(Receiver::TargetSelection) && r->m_Rows[i].text == QStringLiteral("Copy"))
+                r->m_CurrentSuggestIndex = i;
+        }
+        QVERIFY(r->m_CurrentSuggestIndex != -1);
+        const quint64 request = r->m_TargetRequest;
+        r->SuitableAction();
+        QVERIFY(!r->isVisible());
+        QCOMPARE(QApplication::clipboard()->text(), QStringLiteral("before"));
+        QVERIFY(r->m_TargetRequest != request);
+        QTRY_VERIFY(!r->m_Target.element);
+
+        r->OpenCommand();
+        r->OpenTargetWhenFocused(target, nullptr);
+        QTest::qWait(700);
+        QCOMPARE(r->m_Mode, Receiver::Command);
+        QVERIFY(r->isVisible());
+        r->Dismiss();
+
+        r->OpenTarget(target);
+        r->OpenCommand();
+        QVERIFY(!r->m_Target.element);
+        QVERIFY(r->m_LineEdit->Tag().isEmpty());
+        QVERIFY(r->ShowsSourceBar());
+        r->Dismiss();
+    }
+
+    void theMenusOfAnElementOpenTheCardAndTheOthersDoNot(){
+        for(const MenuSchema::Table &table : MenuSchema::Tables()){
+            const QString name = QString::fromLatin1(table.name);
+            QVERIFY2(!table.defaults.split(QLatin1Char(',')).contains(QStringLiteral("OpenCommand")),
+                     qPrintable(name));
+            QVERIFY2(!MenuSchema::IsKnown(table, QStringLiteral("OpenCommand")), qPrintable(name));
+            const QJsonArray groups = MenuSchema::DescribeTable(SettingsIO::Map(), table)[QStringLiteral("groups")].toArray();
+            for(const QJsonValue &group : groups)
+                for(const QJsonValue &action : group.toObject()[QStringLiteral("actions")].toArray())
+                    QVERIFY2(action.toObject()[QStringLiteral("name")].toString() != QStringLiteral("OpenCommand"),
+                             qPrintable(name));
+        }
+        QCOMPARE(CommandMap::Resolve(QStringLiteral("opentargetcommand")), CommandMap::NotACommand);
+
+        for(const char *name : { "TreeBarNodeMenu", "TableNodeMenu" })
+            for(const QString &icon : { QStringLiteral("NewNode"), QStringLiteral("CloneNode"),
+                                        QStringLiteral("DeleteNode"), QStringLiteral("RestoreNode") })
+                QVERIFY(!MenuSchema::Default(QString::fromLatin1(name)).split(QLatin1Char(',')).contains(icon));
+        for(const char *name : { "LinkMenu", "ImageMenu", "MediaMenu" })
+            QVERIFY2(!MenuSchema::Default(QString::fromLatin1(name)).contains(QStringLiteral("Html")), name);
+        const QString before = QStringLiteral("LinkUrl,OpenLink,DownloadLink,CopyLinkUrl,CopyLinkHtml,OpenLinkWithOtherBrowser,"
+                                              "OpenTargetCommand");
+        const MenuSchema::Table *link = MenuSchema::Find(QStringLiteral("LinkMenu"));
+        const QString kept = QString(before).replace(QStringLiteral("OpenTargetCommand"), QStringLiteral("OpenCommand"));
+        QJsonArray names;
+        for(const QString &name : kept.split(QLatin1Char(','))) names << name;
+        SettingsIO::Map settings;
+        QVERIFY(!MenuSchema::Write(settings, *link, names).isEmpty());
+        settings.insert(QStringLiteral("webview/menu/LinkMenu"), kept);
+        QVERIFY(MenuSchema::Write(settings, *link, names).isEmpty());
+        QCOMPARE(MenuSchema::Current(settings, *link), kept.split(QLatin1Char(',')));
     }
 
     void theSpaceMovesTheCardAndTakingItAwayMovesItBack(){
@@ -629,7 +1104,9 @@ private slots:
         for(int h = window.GetTreeBank()->height(); h > 0 && r->VisibleSuggestCount() == 3; h--)
             r->ResizeNotify(QSize(1000, h));
         QVERIFY(r->VisibleSuggestCount() < 3);
-        QCOMPARE(r->m_CurrentSuggestIndex, -1);
+        QCOMPARE(r->m_CurrentSuggestIndex, 2);
+        QVERIFY(r->m_SuggestScroll > 0);
+        QVERIFY(r->m_CurrentSuggestIndex < r->m_SuggestScroll + r->VisibleSuggestCount());
     }
 
     void theCardDoesNotHangOnTheNotifier(){
@@ -696,6 +1173,16 @@ private slots:
         tb->ToggleMiniMap();
         QVERIFY(tb->GetMiniMap());
         QCOMPARE(tb->GetMiniMap()->m_SeekTerm, QStringLiteral("abc"));
+        r->OnAborted();
+        QVERIFY(tb->GetMiniMap()->m_SeekTerm.isEmpty());
+        tb->DisplayViewTree();
+        QVERIFY(tb->IsDisplayingTableView());
+        r->OpenTextSeeker();
+        r->m_LineEdit->setText(QStringLiteral("abc"));
+        QVERIFY(tb->GetMiniMap()->m_SeekTerm.isEmpty());
+        r->SuitableAction();
+        QVERIFY(tb->GetMiniMap()->m_SeekTerm.isEmpty());
+        tb->GetGadgets()->Deactivate();
         tb->ToggleMiniMap();
         r->OnAborted();
         Application::GlobalSettings().remove(QStringLiteral("mainwindow/minimap961"));
@@ -719,6 +1206,123 @@ private slots:
         QCOMPARE(r->m_LineEdit->Count(), QStringLiteral("0 / 0"));
         r->OnAborted();
         QVERIFY(r->m_LineEdit->Count().isEmpty());
+    }
+
+    void theCloseButtonClosesTheCard(){
+        MainWindow window(960, QPoint(100, 100));
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        LineEdit *field = r->m_LineEdit;
+
+        r->OpenCommand();
+        QVERIFY(r->isVisible());
+        QVERIFY(!field->CloseRect().isEmpty());
+        QVERIFY(field->rect().contains(field->CloseRect()));
+        field->setText(QStringLiteral("abc"));
+        QTest::mousePress(field, Qt::LeftButton, Qt::NoModifier, QPoint(5, field->height() / 2));
+        QTest::mouseRelease(field, Qt::LeftButton, Qt::NoModifier, field->CloseRect().center());
+        QVERIFY(r->isVisible());
+        QCOMPARE(field->text(), QStringLiteral("abc"));
+        QTest::mouseClick(field, Qt::LeftButton, Qt::NoModifier, field->CloseRect().center());
+        QVERIFY(!r->isVisible());
+
+        r->OpenTextSeeker();
+        field->setText(QStringLiteral("abc"));
+        r->SetFindCount(1, 9);
+        QCOMPARE(field->Count(), QStringLiteral("1 / 9"));
+        QVERIFY(field->textMargins().right() >= field->width() - field->CloseRect().left());
+        QSignalSpy seek(r, &Receiver::SeekText);
+        QTest::mouseClick(field, Qt::LeftButton, Qt::NoModifier, field->CloseRect().center());
+        QVERIFY(!r->isVisible());
+        QCOMPARE(seek.count(), 1);
+        QVERIFY(seek.at(0).at(0).toString().isEmpty());
+
+        QWidget *bar = new QWidget(&window);
+        bar->setGeometry(0, 0, 760, 560);
+        bar->show();
+        QLineEdit *address = new QLineEdit(bar);
+        address->setGeometry(100, 40, 300, 26);
+        address->show();
+        r->OpenAtField(address);
+        QCOMPARE(r->CurrentPlacement(), Receiver::Anchored);
+        QVERIFY(field->rect().contains(field->CloseRect()));
+        QTest::mouseClick(field, Qt::LeftButton, Qt::NoModifier, field->CloseRect().center());
+        QVERIFY(!r->isVisible());
+        QVERIFY(!r->IsAnchored());
+
+        LineEdit plain;
+        plain.resize(200, 30);
+        QVERIFY(plain.CloseRect().isEmpty());
+        QCOMPARE(plain.textMargins().right(), 0);
+    }
+
+    void aSearchOverTheAddressBarStaysAndCounts(){
+        MainWindow window(991, QPoint(0, 0));
+        window.resize(760, 560);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        TreeBank *bank = window.GetTreeBank();
+        Receiver *r = bank->GetReceiver();
+        QObject::disconnect(r, nullptr, bank, nullptr);
+        QSignalSpy urls(r, QOverload<QList<QUrl>>::of(&Receiver::OpenUrl));
+        QSignalSpy seeks(r, &Receiver::SeekText);
+        QWidget *bar = new QWidget(&window);
+        bar->setGeometry(0, 0, 760, 560);
+        bar->show();
+        QLineEdit *field = new QLineEdit(bar);
+        field->setGeometry(100, 40, 300, 26);
+        field->show();
+
+        r->OpenAtField(field);
+        r->m_LineEdit->setText(QStringLiteral("search abc"));
+        QVERIFY(r->IsSeeking());
+        QCOMPARE(r->CurrentPlacement(), Receiver::Anchored);
+        QVERIFY(r->m_Rows.isEmpty());
+        QVERIFY(r->m_WebSuggests.isEmpty());
+        QCOMPARE(seeks.last().first().toString(), QStringLiteral("abc"));
+        QCOMPARE(seeks.last().at(1).value<View::FindFlags>(), View::FindFlags(View::HighlightAllOccurrences));
+
+        r->SuitableAction();
+        QVERIFY(r->isVisible());
+        QVERIFY(r->IsAnchored());
+        QCOMPARE(urls.count(), 0);
+        QCOMPARE(seeks.last().first().toString(), QStringLiteral("abc"));
+        QCOMPARE(seeks.last().at(1).value<View::FindFlags>(), View::FindFlags(View::WrapsAroundDocument));
+        r->SetFindCount(2, 7);
+        QCOMPARE(r->m_LineEdit->Count(), QStringLiteral("2 / 7"));
+
+        r->DismissFocusLeft();
+        QVERIFY(!r->isVisible());
+        QVERIFY(seeks.last().first().toString().isEmpty());
+        QVERIFY(r->m_LineEdit->Count().isEmpty());
+
+        r->OpenAtField(field);
+        r->m_LineEdit->setText(QStringLiteral("zzq qqz"));
+        QVERIFY(!r->IsSeeking());
+        r->SuitableAction();
+        QVERIFY(!r->isVisible());
+        QCOMPARE(urls.count(), 1);
+
+        r->OpenCommand();
+        r->SelectTab(int(Receiver::SuggestRow::Commands) + 1);
+        r->m_LineEdit->setText(QStringLiteral("search abc"));
+        QVERIFY(r->IsSeeking());
+        QCOMPARE(r->CurrentPlacement(), Receiver::TopRight);
+        QVERIFY(r->m_Rows.isEmpty());
+        QCOMPARE(seeks.last().first().toString(), QStringLiteral("abc"));
+        r->SuitableAction();
+        QVERIFY(r->isVisible());
+        QCOMPARE(seeks.last().at(1).value<View::FindFlags>(), View::FindFlags(View::WrapsAroundDocument));
+        r->SetFindCount(1, 3);
+        QCOMPARE(r->m_LineEdit->Count(), QStringLiteral("1 / 3"));
+        r->OnAborted();
+        QVERIFY(seeks.last().first().toString().isEmpty());
+        r->OpenCommand();
+        r->SelectTab(int(Receiver::SuggestRow::Web) + 1);
+        r->m_LineEdit->setText(QStringLiteral("search abc"));
+        QVERIFY(!r->IsSeeking());
+        r->hide();
     }
 
     void onlyTheMiddleCardGoesWhenTheKeyboardGoesElsewhere(){
@@ -748,12 +1352,8 @@ private slots:
         QVERIFY(r->m_SuggestStrings.isEmpty());
         QVERIFY(r->m_Rows.isEmpty());
 
-        Application::GlobalSettings().setValue(QStringLiteral("tst_receiver/key"), 1);
         r->m_LineEdit->setText(QStringLiteral("unset "));
-        QVERIFY(r->m_Rows.isEmpty());
-        QVERIFY(!r->m_SuggestStrings.isEmpty());
-        QVERIFY(!r->ShowsSourceBar());
-        Application::GlobalSettings().remove(QStringLiteral("tst_receiver/key"));
+        QVERIFY(r->ShowsSourceBar());
     }
 
     void withNothingTypedEverySourceHasSomethingToSay(){
@@ -882,7 +1482,13 @@ private slots:
     void aSourceWordIsTheBeginningOfAName(){
         QVERIFY(Receiver::SourceWord(QStringLiteral("tab"), nullptr, nullptr));
         QVERIFY(!Receiver::SourceWord(QStringLiteral("tabx y"), nullptr, nullptr));
-        QVERIFY(!Receiver::SourceWord(QStringLiteral("unset x"), nullptr, nullptr));
+        bool unset = false;
+        Receiver::SuggestRow::Source found = Receiver::SuggestRow::SourceCount;
+        QVERIFY(Receiver::SourceWord(QStringLiteral("unset x"), &found, nullptr, &unset));
+        QCOMPARE(found, Receiver::SuggestRow::Settings);
+        QVERIFY(unset);
+        QVERIFY(Receiver::SourceWord(QStringLiteral("set x"), nullptr, nullptr, &unset));
+        QVERIFY(!unset);
         QVERIFY(!Receiver::SourceWord(QStringLiteral("we are"), nullptr, nullptr));
         QVERIFY(!Receiver::SourceWord(QStringLiteral("hi there"), nullptr, nullptr));
     }
@@ -1028,7 +1634,9 @@ private slots:
         foreach(const QString &word, QStringList() << QStringLiteral("set") << QStringLiteral("settings")){
             r->OpenCommand();
             r->m_LineEdit->setText(word + QStringLiteral(" %1 a b").arg(key));
-            QVERIFY(r->m_Rows.isEmpty());
+            QCOMPARE(r->m_Rows.length(), 1);
+            QCOMPARE(r->m_Rows.first().text, QStringLiteral("set %1 a b").arg(key));
+            QCOMPARE(r->m_CurrentSuggestIndex, 0);
             QVERIFY(r->ShowsSourceBar());
             r->SuitableAction();
             QVERIFY(!r->isVisible());
@@ -1048,6 +1656,68 @@ private slots:
         s.remove(key);
 
         QCOMPARE(CommandMap::Resolve(QStringLiteral("settings")), CommandMap::Signal);
+    }
+
+    void unsetIsSetsOtherHalf(){
+        MainWindow window(992, QPoint(100, 100));
+        window.resize(1000, 700);
+        window.show();
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        Settings &s = Application::GlobalSettings();
+        const QString scheme = QStringLiteral("application/@ColorScheme");
+        const QString panels = QStringLiteral("application/@EnableTranslucentPanels");
+        const QVariant had = s.value(scheme);
+        const bool hadPanels = s.contains(panels);
+        const QVariant panelsWere = s.value(panels);
+        auto back = qScopeGuard([&](){
+            if(had.isValid()) s.setValue(scheme, had); else s.remove(scheme);
+            if(hadPanels) s.setValue(panels, panelsWere); else s.remove(panels);
+            Receiver::m_History.clear();
+        });
+        s.setValue(scheme, QStringLiteral("Dark"));
+        s.remove(panels);
+
+        r->OpenCommand();
+        r->m_LineEdit->setText(QStringLiteral("unset "));
+        QCOMPARE(r->m_Rows.first().source, Receiver::SuggestRow::Settings);
+        QStringList keys;
+        for(const Receiver::SuggestRow &row : r->m_Rows){
+            if(row.source != Receiver::SuggestRow::Settings) continue;
+            QVERIFY(row.kind != Receiver::SuggestRow::EditBinding);
+            QVERIFY(s.contains(row.key));
+            QCOMPARE(row.text, QStringLiteral("unset %1").arg(row.key));
+            keys << row.key;
+        }
+        QVERIFY(keys.contains(scheme));
+        QVERIFY(!keys.contains(panels));
+        r->m_LineEdit->setText(QStringLiteral("set "));
+        QCOMPARE(r->m_Rows.first().text.left(4), QStringLiteral("set "));
+
+        r->m_LineEdit->setText(QStringLiteral("unset colorscheme"));
+        QCOMPARE(r->m_Rows.first().key, scheme);
+        QCOMPARE(r->m_CurrentSuggestIndex, 0);
+        r->SuitableAction();
+        QCOMPARE(r->m_LineEdit->text(), QStringLiteral("unset %1").arg(scheme));
+        QVERIFY(r->m_Rows.isEmpty());
+        r->SuitableAction();
+        QVERIFY(!r->isVisible());
+        QVERIFY(!s.contains(scheme));
+        QCOMPARE(Receiver::m_History, QStringList() << QStringLiteral("Unset"));
+
+        s.setValue(scheme, QStringLiteral("Dark"));
+        r->OpenCommand();
+        r->SelectTab(Receiver::SuggestRow::Commands + 1);
+        r->m_LineEdit->setText(QStringLiteral("unset colorscheme"));
+        QVERIFY(!r->m_Rows.isEmpty());
+        QCOMPARE(r->m_Rows.first().text, QStringLiteral("unset %1").arg(scheme));
+        r->m_LineEdit->setText(QStringLiteral("set colorscheme"));
+        QCOMPARE(r->m_Rows.first().text, QStringLiteral("set %1 Dark").arg(scheme));
+        r->m_LineEdit->setText(QStringLiteral("set %1 Light").arg(scheme));
+        QCOMPARE(r->m_Rows.first().text, QStringLiteral("set %1 Light").arg(scheme));
+        QCOMPARE(r->m_CurrentSuggestIndex, 0);
+        r->m_LineEdit->setText(QStringLiteral("unset"));
+        QCOMPARE(r->m_Rows.first().source, Receiver::SuggestRow::Commands);
+        r->SelectTab(0);
     }
 
     void aWordBringsItsSectionFirstAndLeavesTheRest(){
@@ -1098,8 +1768,8 @@ private slots:
         QCOMPARE(r->m_ActiveTab, Receiver::SuggestRow::Commands + 1);
 
         r->m_LineEdit->setText(QStringLiteral("search abc"));
-        QCOMPARE(r->CurrentPlacement(), Receiver::Center);
-        QVERIFY(r->ShowsSourceBar());
+        QCOMPARE(r->CurrentPlacement(), Receiver::TopRight);
+        QCOMPARE(r->m_ActiveTab, Receiver::SuggestRow::Commands + 1);
 
         QSignalSpy urls(r, QOverload<QList<QUrl>>::of(&Receiver::OpenUrl));
         r->m_LineEdit->setText(QStringLiteral("zzzzqqqq"));
@@ -1276,8 +1946,8 @@ private slots:
             return Receiver::RowActions(Row{ source, kind, QString(), QString(), text, 0 });
         };
         const auto list = [](std::initializer_list<Action> actions){ return QVector<Action>(actions); };
-        QCOMPARE(of(Row::Tabs, Row::OpenTab, QString()), list({ Action::Take, Action::CloseTab, Action::CopyAddress }));
-        QCOMPARE(of(Row::Trash, Row::OpenTab, QString()), list({ Action::Take, Action::DiscardTab, Action::CopyAddress }));
+        QCOMPARE(of(Row::Tabs, Row::OpenTab, QString()), list({ Action::Take, Action::CloseTab, Action::CopyAddress, Action::OpenCard }));
+        QCOMPARE(of(Row::Trash, Row::OpenTab, QString()), list({ Action::Take, Action::DiscardTab, Action::CopyAddress, Action::OpenCard }));
         QCOMPARE(of(Row::Commands, Row::RunCommand, QStringLiteral("Reload")), list({ Action::Take, Action::ChangeAssignment }));
         QCOMPARE(of(Row::Commands, Row::FillField, QStringLiteral("open ")), list({ Action::Take }));
         const auto ofSetting = [](const QString &key){
@@ -1499,6 +2169,15 @@ private slots:
         QCOMPARE(r->CommandRows(QString(), 1).first().text, all.last());
         QCOMPARE(r->CommandRows(all.last().left(1), 1).first().text, all.last());
 
+        Receiver::Remember(QStringLiteral("NextWindow"));
+        QCOMPARE(r->CommandRows(QStringLiteral("next"), 1).first().text, QStringLiteral("NextView"));
+        QCOMPARE(r->CommandRows(QStringLiteral("1st"), 1).first().text, QStringLiteral("FirstView"));
+        QCOMPARE(r->CommandRows(QStringLiteral("2nd"), 1).first().text, QStringLiteral("SecondView"));
+        r->SelectTab(Receiver::SuggestRow::Commands + 1);
+        QCOMPARE(firstOf(QStringLiteral("1st")), QStringLiteral("FirstView"));
+        QCOMPARE(r->m_CurrentSuggestIndex, 0);
+        r->SelectTab(0);
+
         Receiver::m_History.clear();
         r->m_LineEdit->setText(QStringLiteral("key a"));
         r->m_CurrentSuggestIndex = -1;
@@ -1604,6 +2283,125 @@ private slots:
             QVERIFY(r->m_SuggestStrings.isEmpty());
             QVERIFY(!r->HandleMappedKey(&key));
         }
+    }
+
+    void aSettingTakesOnlyWhatItCanBe(){
+        MainWindow window(968, QPoint(100, 100));
+        window.resize(1000, 700);
+        window.show();
+        Receiver *r = window.GetTreeBank()->GetReceiver();
+        Settings &s = Application::GlobalSettings();
+        const QString style = QStringLiteral("gadgets/@Style");
+        const QString panels = QStringLiteral("application/@EnableTranslucentPanels");
+        const QString saves = QStringLiteral("application/@AutoSaveInterval");
+        const QStringList keys{ style, panels, saves, QStringLiteral("nothing/@At") };
+        QMap<QString, QVariant> had;
+        for(const QString &key : keys) if(s.contains(key)) had[key] = s.value(key);
+        auto back = qScopeGuard([&](){
+            for(const QString &key : keys){
+                if(had.contains(key)) s.setValue(key, had[key]); else s.remove(key);
+            }
+            window.GetTreeBank()->Reconfigure();
+            Receiver::m_History.clear();
+        });
+        s.remove(style);
+        const auto dialogs = [](){
+            QCoreApplication::processEvents();
+            int count = 0;
+            for(QWidget *widget : QApplication::allWidgets()){
+                ModelessDialog *dialog = qobject_cast<ModelessDialog*>(widget);
+                if(!dialog || !dialog->isVisible()) continue;
+                dialog->Discard();
+                count++;
+            }
+            QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+            QCoreApplication::processEvents();
+            return count;
+        };
+
+        r->OpenCommand();
+        r->m_LineEdit->setText(QStringLiteral("set %1 ").arg(style));
+        QCOMPARE(r->m_Rows.length(), 3);
+        QCOMPARE(r->m_Rows.first().text, QStringLiteral("set %1 PlainStyle").arg(style));
+        QCOMPARE(r->m_CurrentSuggestIndex, -1);
+        r->SelectTab(Receiver::SuggestRow::Commands + 1);
+        r->m_LineEdit->setText(QStringLiteral("set %1 ").arg(style));
+        QCOMPARE(r->m_Rows.length(), 3);
+        QCOMPARE(r->m_CurrentSuggestIndex, -1);
+        r->SelectTab(0);
+
+        r->m_LineEdit->setText(QStringLiteral("set %1 Flat").arg(style));
+        QCOMPARE(r->m_Rows.length(), 1);
+        QCOMPARE(r->m_Rows.first().text, QStringLiteral("set %1 FlatStyle").arg(style));
+        QCOMPARE(r->m_Rows.first().kind, Receiver::SuggestRow::RunCommand);
+        QCOMPARE(r->m_CurrentSuggestIndex, 0);
+        r->SuitableAction();
+        QVERIFY(!r->isVisible());
+        QCOMPARE(s.value(style).toString(), QStringLiteral("FlatStyle"));
+
+        const QString notAValue = Receiver::tr("Not a value it takes");
+        r->OpenCommand();
+        r->m_LineEdit->setText(QStringLiteral("set %1 Square").arg(style));
+        QVERIFY(r->m_Rows.isEmpty());
+        QCOMPARE(r->m_LineEdit->Count(), notAValue);
+        r->SuitableAction();
+        QVERIFY(r->isVisible());
+        QCOMPARE(s.value(style).toString(), QStringLiteral("FlatStyle"));
+        QCOMPARE(dialogs(), 0);
+        r->m_LineEdit->setText(QStringLiteral("set %1 Gl").arg(style));
+        QCOMPARE(r->m_LineEdit->Count(), QString());
+        r->SelectTab(Receiver::SuggestRow::Commands + 1);
+        r->m_LineEdit->setText(QStringLiteral("set %1 Square").arg(style));
+        QVERIFY(r->m_Rows.isEmpty());
+        QCOMPARE(r->m_LineEdit->Count(), notAValue);
+        r->SuitableAction();
+        QVERIFY(r->isVisible());
+        QCOMPARE(s.value(style).toString(), QStringLiteral("FlatStyle"));
+        QCOMPARE(dialogs(), 0);
+        r->SelectTab(0);
+
+        r->m_LineEdit->setText(QStringLiteral("set %1 tr").arg(panels));
+        QCOMPARE(r->m_Rows.length(), 1);
+        QCOMPARE(r->m_Rows.first().text, QStringLiteral("set %1 true").arg(panels));
+
+        r->m_LineEdit->setText(QStringLiteral("set %1 60000").arg(saves));
+        QCOMPARE(r->m_Rows.length(), 1);
+        QCOMPARE(r->m_CurrentSuggestIndex, 0);
+        r->m_LineEdit->setText(QStringLiteral("set %1 often").arg(saves));
+        QVERIFY(r->m_Rows.isEmpty());
+        QCOMPARE(r->m_LineEdit->Count(), notAValue);
+        r->SuitableAction();
+        QVERIFY(r->isVisible());
+        QCOMPARE(s.value(saves), had.value(saves));
+        QCOMPARE(dialogs(), 0);
+
+        r->OpenCommand();
+        r->m_LineEdit->setText(QStringLiteral("set nothing/@At 1"));
+        QVERIFY(r->m_Rows.isEmpty());
+        QCOMPARE(r->m_LineEdit->Count(), Receiver::tr("No such setting"));
+        r->SuitableAction();
+        QVERIFY(r->isVisible());
+        QVERIFY(!s.contains(QStringLiteral("nothing/@At")));
+        QCOMPARE(dialogs(), 0);
+        r->hide();
+
+        QVERIFY(Receiver::SettingRefusal(style, QStringLiteral("FlatStyle")).isEmpty());
+        QVERIFY(Receiver::SettingRefusal(style, QStringLiteral("Square")).contains(QStringLiteral("GlassStyle")));
+        QVERIFY(Receiver::SettingRefusal(QStringLiteral("nothing/@At"), QStringLiteral("1")).contains(QStringLiteral("nothing/@At")));
+
+        r->ReceiveCommand(QStringLiteral("set %1 Flat").arg(style));
+        QCOMPARE(s.value(style).toString(), QStringLiteral("FlatStyle"));
+        r->ReceiveCommand(QStringLiteral("set nothing/@At 1"));
+        QVERIFY(!s.contains(QStringLiteral("nothing/@At")));
+        QCOMPARE(dialogs(), 2);
+        r->ReceiveCommand(QStringLiteral("set %1 glassstyle").arg(style));
+        QCOMPARE(s.value(style).toString(), QStringLiteral("GlassStyle"));
+        r->ReceiveCommand(QStringLiteral("set %1 TRUE").arg(panels));
+        QCOMPARE(s.value(panels), QVariant(true));
+        QCOMPARE(dialogs(), 0);
+
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
     }
 
     void aSettingOfferedKeepsItsValueAndAListIsNotOffered(){
@@ -1743,9 +2541,29 @@ private slots:
         QStringList many;
         for(int i = 0; i < 200; i++) many << QString::number(i);
         r->SetSuggest(many);
+        QVERIFY(r->VisibleSuggestCount() < many.length());
+        QCoreApplication::sendEvent(r, &wheel);
+        QCOMPARE(r->m_SuggestScroll, int(RECEIVER_WHEEL_ROWS));
+        r->SelectPrevSuggest();
+        QCOMPARE(r->m_CurrentSuggestIndex, many.length() - 1);
+        QVERIFY(chosenIsShown());
+        const int strip = r->width() - ScaleByDevice(RECEIVER_PADDING) / 2;
+        const int first = r->SuggestRect(r->m_SuggestScroll).top();
+        r->m_SuggestScroll = 0;
+        QTest::mousePress(r, Qt::LeftButton, Qt::NoModifier,
+                          QPoint(strip, r->SuggestRect(r->VisibleSuggestCount() - 1).bottom()));
+        QCOMPARE(r->m_SuggestScroll, r->LastSuggestScroll());
+        QMouseEvent drag(QEvent::MouseMove, QPointF(strip, first), r->mapToGlobal(QPointF(strip, first)),
+                         Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(r, &drag);
+        QCOMPARE(r->m_SuggestScroll, 0);
+        QTest::mouseRelease(r, Qt::LeftButton, Qt::NoModifier, QPoint(strip, first));
+        QVERIFY(!r->m_DraggingScroll);
+
+        r->m_LineEdit->setText(QString());
+        QVERIFY(!r->m_Rows.isEmpty());
         QCoreApplication::sendEvent(r, &wheel);
         QCOMPARE(r->m_SuggestScroll, 0);
-        r->m_LineEdit->setText(QString());
         QKeyEvent other(QEvent::KeyPress, Qt::Key_PageDown, Qt::NoModifier);
         QVERIFY(!r->HandleMappedKey(&other));
     }

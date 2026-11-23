@@ -631,10 +631,18 @@ void GlassStyle::ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &li
 }
 
 void GlassStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) const {
-    painter->setBrush(Theme::Brush(Theme::GlassOverlayBackground,
-                                   gtv->IsDisplayingNode() ? 170 : 100));
+    painter->setBrush(BackgroundVeil(gtv));
     painter->setPen(Qt::NoPen);
     painter->drawRect(gtv->boundingRect());
+    RenderBackgroundOverVeil(gtv, painter);
+}
+
+QColor GlassStyle::BackgroundVeil(GraphicsTableView *gtv) const {
+    return Theme::Color(Theme::GlassOverlayBackground,
+                        gtv->IsDisplayingNode() ? 170 : 100);
+}
+
+void GlassStyle::RenderBackgroundOverVeil(GraphicsTableView *gtv, QPainter *painter) const {
     if(gtv->EnableFrameRate()){
         painter->setPen(Theme::Pen(Theme::GlassText));
         painter->drawText(FrameRateRect(gtv),
@@ -1302,10 +1310,18 @@ void FlatStyle::ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &lin
 }
 
 void FlatStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) const {
-    painter->setBrush(Theme::Brush(Theme::FlatOverlayBackground,
-                                   gtv->IsDisplayingNode() ? 170 : 100));
+    painter->setBrush(BackgroundVeil(gtv));
     painter->setPen(Qt::NoPen);
     painter->drawRect(gtv->boundingRect());
+    RenderBackgroundOverVeil(gtv, painter);
+}
+
+QColor FlatStyle::BackgroundVeil(GraphicsTableView *gtv) const {
+    return Theme::Color(Theme::FlatOverlayBackground,
+                        gtv->IsDisplayingNode() ? 170 : 100);
+}
+
+void FlatStyle::RenderBackgroundOverVeil(GraphicsTableView *gtv, QPainter *painter) const {
     if(gtv->EnableFrameRate()){
         painter->setPen(Theme::Pen(Theme::FlatTextStrong));
         painter->drawText(FrameRateRect(gtv),
@@ -1698,10 +1714,22 @@ void PlainStyle::RenderBackground(GraphicsTableView *gtv, QPainter *painter) con
         FlatStyle::RenderBackground(gtv, painter);
         return;
     }
-    painter->fillRect(gtv->boundingRect(),
-                      Application::EnableTransparentWindow()
-                      ? Theme::Color(Theme::PlainSurface, PLAIN_TRANSLUCENT_ALPHA)
-                      : Theme::Color(Theme::PlainSurface));
+    painter->fillRect(gtv->boundingRect(), BackgroundVeil(gtv));
+    RenderBackgroundOverVeil(gtv, painter);
+}
+
+QColor PlainStyle::BackgroundVeil(GraphicsTableView *gtv) const {
+    if(!gtv->IsDisplayingNode()) return FlatStyle::BackgroundVeil(gtv);
+    return Application::EnableTransparentWindow()
+        ? Theme::Color(Theme::PlainSurface, PLAIN_TRANSLUCENT_ALPHA)
+        : Theme::Color(Theme::PlainSurface);
+}
+
+void PlainStyle::RenderBackgroundOverVeil(GraphicsTableView *gtv, QPainter *painter) const {
+    if(!gtv->IsDisplayingNode()){
+        FlatStyle::RenderBackgroundOverVeil(gtv, painter);
+        return;
+    }
     if(gtv->EnableFrameRate()){
         painter->setPen(Theme::Pen(Theme::PlainTextStrong));
         painter->drawText(FrameRateRect(gtv),

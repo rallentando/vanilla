@@ -148,31 +148,6 @@ public:
     void TriggerNativeRewindAction() override { QMetaObject::invokeMethod(m_QmlWebEngineView, "rewind");}
     void TriggerNativeFastForwardAction() override { QMetaObject::invokeMethod(m_QmlWebEngineView, "fastForward");}
 
-    void UpKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(UpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void DownKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(DownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void RightKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(RightKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void LeftKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(LeftKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void PageDownKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(PageDownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void PageUpKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(PageUpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void HomeKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(HomeKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void EndKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(EndKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-
     void KeyPressEvent(QKeyEvent *ev) override { keyPressEvent(ev);}
     void KeyReleaseEvent(QKeyEvent *ev) override { keyReleaseEvent(ev);}
     void MousePressEvent(QMouseEvent *ev) override { mousePressEvent(ev);}
@@ -291,10 +266,8 @@ public slots:
     float MaximumZoom() const override { return ChromiumMaximumZoom / DeviceZoomScale();}
     bool SaveHistory() override;
     bool RestoreHistory() override;
-#ifdef MEDIATIME
     bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) override;
     bool RestoreMediaTime() override;
-#endif
 
     void KeyEvent(QString);
     bool SeekText(const QString&, View::FindFlags);
@@ -497,6 +470,11 @@ protected:
     bool focusNextPrevChild(bool next) override;
 
 private:
+    QPoint m_ScriptMediaPoint = QPoint(-1, -1);
+    quint64 m_ScriptMediaLoad = 0;
+    QPoint ScriptMediaPoint() const {
+        return m_ScriptMediaLoad == LoadSerial() ? m_ScriptMediaPoint : QPoint(-1, -1);
+    }
     virtual void ForwardMouseReleaseToEngine(QMouseEvent *ev);
 
     QQuickItem *m_QmlWebEngineView;
@@ -505,9 +483,7 @@ private:
     QColor m_BaseBackgroundColor;
     QQuickWidget *m_Inspector;
     int m_ScrollSignalTimer;
-#ifdef MEDIATIME
     int m_MediaTimeSaveTimer;
-#endif
     bool m_PreventScrollRestoration;
     bool m_SuspendedSpecificSettings;
 

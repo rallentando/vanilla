@@ -125,31 +125,6 @@ public:
     void TriggerNativeRewindAction() override;
     void TriggerNativeFastForwardAction() override;
 
-    void UpKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(UpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void DownKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(DownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void RightKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(RightKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void LeftKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(LeftKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void PageDownKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(PageDownKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void PageUpKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(PageUpKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void HomeKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(HomeKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-    void EndKeyEvent() override {
-        CallWithEvaluatedJavaScriptResult(EndKeyEventJsCode(), [this](QVariant){ EmitScrollChanged();});
-    }
-
     void KeyPressEvent(QKeyEvent *ev) override { keyPressEvent(ev);}
     void KeyReleaseEvent(QKeyEvent *ev) override { keyReleaseEvent(ev);}
     void MousePressEvent(QMouseEvent *ev) override { mousePressEvent(ev);}
@@ -263,10 +238,8 @@ public slots:
     bool RestoreZoom() override;
     bool SaveHistory() override;
     bool RestoreHistory() override;
-#ifdef MEDIATIME
     bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) override;
     bool RestoreMediaTime() override;
-#endif
 
     void KeyEvent(QString);
     bool SeekText(const QString&, View::FindFlags);
@@ -402,9 +375,7 @@ private:
     QImage m_GrabedDisplayData;
     QStringList m_SpecificSet;
     int m_ScrollSignalTimer;
-#ifdef MEDIATIME
     int m_MediaTimePollTimer;
-#endif
     bool m_PreventScrollRestoration;
     bool m_EverShown;
     bool m_LoadedWhileHidden;

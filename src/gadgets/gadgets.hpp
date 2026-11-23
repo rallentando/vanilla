@@ -57,6 +57,8 @@ public:
         OpenInNewViewNodeNewWindow,
         OpenInNewDirectoryNewWindow,
         OpenOnRootNewWindow,
+
+        OpenCommandBar,
     };
 
     enum AccessKeySortOrientation {
@@ -115,6 +117,7 @@ public slots:
 
 private slots:
     void DisableAccessKey();
+    void OpenNodeTargetCommand();
 
     void OpenInNew(QUrl);
     void OpenInNew(QList<QUrl>);
@@ -326,6 +329,7 @@ private:
     QSize m_BackdropViewport;
     qreal m_BackdropRatio;
     bool m_BackdropBlurred;
+    QRgb m_BackdropVeil;
 
     int m_AccessKeyCount;
     int m_AccessKeyLastBlockIndex;

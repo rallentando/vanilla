@@ -25,6 +25,7 @@
 #include "directorypage.hpp"
 #include "settingsschema.hpp"
 #include "inputmapschema.hpp"
+#include "menuschema.hpp"
 #include "mainwindow.hpp"
 #include "treebank.hpp"
 #include "view.hpp"
@@ -121,6 +122,36 @@ namespace {
 
         Application::Reconfigure();
         return Json(Compact(InputMapSchema::DescribeTable(settings, *table)));
+    }
+
+    VanillaPageResponse MenuApi(const QString &endpoint,
+                                const QByteArray &method,
+                                const QByteArray &body){
+        if(endpoint == QStringLiteral("menus")){
+            if(method != QByteArrayLiteral("GET")) return Failure(403);
+            return Json(Compact(MenuSchema::Describe(Application::GlobalSettings())));
+        }
+
+        if(method != QByteArrayLiteral("POST")) return Failure(403);
+
+        const QJsonObject request = QJsonDocument::fromJson(body).object();
+        const QString name = request[QStringLiteral("group")].toString();
+        const MenuSchema::Table *table = MenuSchema::Find(name);
+        if(!table) return Json(Error(QStringLiteral("unknown menu: \"%1\"").arg(name)));
+
+        Settings &settings = Application::GlobalSettings();
+        if(endpoint == QStringLiteral("menu-set")){
+            if(!request[QStringLiteral("names")].isArray())
+                return Json(Error(QStringLiteral("names is not a list")));
+            const QString error = MenuSchema::Write
+                (settings, *table, request[QStringLiteral("names")].toArray());
+            if(!error.isEmpty()) return Json(Error(error));
+        } else {
+            MenuSchema::Reset(settings, *table);
+        }
+
+        Application::Reconfigure();
+        return Json(Compact(MenuSchema::DescribeTable(settings, *table)));
     }
 
     VanillaPageResponse Deferred(std::function<QByteArray()> work){
@@ -438,6 +469,8 @@ namespace {
         QJsonObject schema = SettingsSchema::Describe();
         schema[QStringLiteral("inputs")] =
             InputMapSchema::Describe(Application::GlobalSettings());
+        schema[QStringLiteral("menus")] =
+            MenuSchema::Describe(Application::GlobalSettings());
         schema[QStringLiteral("translucent")] = Application::EnableTransparentWindow();
         return Compact(schema);
     }
@@ -489,6 +522,11 @@ namespace {
            endpoint == QStringLiteral("input-set") ||
            endpoint == QStringLiteral("input-reset"))
             return InputApi(endpoint, method, body);
+
+        if(endpoint == QStringLiteral("menus") ||
+           endpoint == QStringLiteral("menu-set") ||
+           endpoint == QStringLiteral("menu-reset"))
+            return MenuApi(endpoint, method, body);
 
         if(endpoint == QStringLiteral("passwords") ||
            endpoint == QStringLiteral("passwords-remove") ||

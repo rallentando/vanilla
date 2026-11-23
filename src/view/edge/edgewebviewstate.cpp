@@ -3,6 +3,7 @@
 #ifdef EDGEWEBVIEW
 
 #include "edgewebviewstate.hpp"
+#include "menuiconrow.hpp"
 
 #include <QDateTime>
 #include <QMenu>
@@ -677,7 +678,10 @@ void AddEdgeMenuItems(QMenu *menu, const QList<EdgeMenuItem> &items,
 
 bool ReplaceEdgePasteAction(QMenu *menu, QAction *paste, int commandId,
                             const std::function<void(int)> &chosen){
-    if(!menu || !paste || commandId < 0 || !menu->actions().contains(paste)) return false;
+    if(!menu || !paste || commandId < 0) return false;
+    MenuIconRow *row = MenuIconRow::Of(menu);
+    const bool line = menu->actions().contains(paste);
+    if(!line && !(row && row->Runs(paste))) return false;
     QAction *own = new QAction(paste->text(), menu);
     own->setObjectName(paste->objectName());
     own->setToolTip(paste->toolTip());
@@ -685,8 +689,11 @@ bool ReplaceEdgePasteAction(QMenu *menu, QAction *paste, int commandId,
     own->setEnabled(paste->isEnabled());
     own->setData(commandId);
     QObject::connect(own, &QAction::triggered, menu, [chosen, commandId](){ chosen(commandId);});
-    menu->insertAction(paste, own);
-    menu->removeAction(paste);
+    if(line){
+        menu->insertAction(paste, own);
+        menu->removeAction(paste);
+    }
+    if(row) row->Replace(paste, own);
     return true;
 }
 

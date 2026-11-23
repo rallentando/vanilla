@@ -1,12 +1,11 @@
 #include "switch.hpp"
 #include "const.hpp"
 #include "theme.hpp"
-#include "keymap.hpp"
-#include "mousemap.hpp"
 
 #include "gadgets.hpp"
 #include "actiontext.hpp"
 #include "inputmap.hpp"
+#include "inputmapschema.hpp"
 
 #include <QtCore>
 #include <QGraphicsObject>
@@ -29,16 +28,14 @@
 #include "treebank.hpp"
 #include "menukeys.hpp"
 #include "directorypage.hpp"
+#include "menuschema.hpp"
 #include "notifier.hpp"
 #include "receiver.hpp"
 #include "thumbnail.hpp"
 #include "nodetitle.hpp"
 #include "accessiblewebelement.hpp"
 #include "view.hpp"
-#include "webengineview.hpp"
-#include "quickwebengineview.hpp"
-#include "quicknativewebview.hpp"
-#include "edgewebview.hpp"
+#include "menuiconrow.hpp"
 
 #include "lightnode.hpp"
 
@@ -67,6 +64,7 @@ Gadgets::Gadgets(TreeBank *parent)
     m_BackdropOwner = nullptr;
     m_BackdropRatio = 0.0;
     m_BackdropBlurred = false;
+    m_BackdropVeil = 0;
 
     m_AccessKeyCount = 0;
     m_AccessKeyLastBlockIndex = 0;
@@ -103,14 +101,14 @@ void Gadgets::LoadSettings(){
     Settings &s = Application::GlobalSettings();
 
     {
-        THUMBLIST_KEYMAP
+        m_ThumbListKeyMap = InputMapSchema::DefaultKeyMap(QStringLiteral("gadgets/thumblist/keymap"));
         InputMap::LoadKeyMap(s, QStringLiteral("gadgets/thumblist/keymap"), m_ThumbListKeyMap, InputMap::Hooks(IsValidAction));
         InputMap::AddKeyIfUnassigned(m_ThumbListKeyMap, QKeySequence(Qt::CTRL | Qt::Key_X), QStringLiteral("CutNode"),
                                      QStringLiteral("TransferToDownDirectory"));
         InputMap::AddKeyIfUnassigned(m_ThumbListKeyMap, QKeySequence(Qt::CTRL | Qt::Key_C), QStringLiteral("CopyNode"));
     }
     {
-        THUMBLIST_MOUSEMAP
+        m_MouseMap = InputMapSchema::DefaultGestureMap(QStringLiteral("gadgets/thumblist/mouse"));
         InputMap::LoadGestureMap(s, QStringLiteral("gadgets/thumblist/mouse"), m_MouseMap, InputMap::Hooks(IsValidAction));
     }
 
@@ -142,6 +140,7 @@ void Gadgets::LoadSettings(){
     else if(action == QStringLiteral("OpenInNewViewNodeNewWindow"))   m_AccessKeyAction = OpenInNewViewNodeNewWindow;
     else if(action == QStringLiteral("OpenInNewDirectoryNewWindow"))  m_AccessKeyAction = OpenInNewDirectoryNewWindow;
     else if(action == QStringLiteral("OpenOnRootNewWindow"))          m_AccessKeyAction = OpenOnRootNewWindow;
+    else if(action == QStringLiteral("OpenCommand"))                  m_AccessKeyAction = OpenCommandBar;
 
     QString orientation = s.value(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Vertical")).value<QString>();
     if     (orientation == QStringLiteral("Vertical"))   m_AccessKeySortOrientation = Vertical;
@@ -155,7 +154,7 @@ void Gadgets::LoadSettings(){
     else if(method == QStringLiteral("MetaChar"))    m_AccessKeySelectBlockMethod = MetaChar;
 
     {
-        ACCESSKEY_KEYMAP
+        m_AccessKeyKeyMap = InputMapSchema::DefaultKeyMap(QStringLiteral("gadgets/accesskey/keymap"));
         InputMap::LoadKeyMap(s, QStringLiteral("gadgets/accesskey/keymap"), m_AccessKeyKeyMap, InputMap::Hooks(Page::IsValidAction));
     }
 }
@@ -192,6 +191,7 @@ void Gadgets::SaveSettings(){
     else if(m_AccessKeyAction == OpenInNewViewNodeNewWindow)   s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewViewNodeNewWindow"));
     else if(m_AccessKeyAction == OpenInNewDirectoryNewWindow)  s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenInNewDirectoryNewWindow"));
     else if(m_AccessKeyAction == OpenOnRootNewWindow)          s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenOnRootNewWindow"));
+    else if(m_AccessKeyAction == OpenCommandBar)               s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenCommand"));
 
     if     (m_AccessKeySortOrientation == Vertical)   s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Vertical"));
     else if(m_AccessKeySortOrientation == Horizontal) s.setValue(QStringLiteral("gadgets/accesskey/@AccessKeySortOrientation"), QStringLiteral("Horizontal"));
@@ -1260,33 +1260,67 @@ QMenu *Gadgets::CreateNodeMenu(){
     toggleTrash->setText(trash ? tr("BackToViewTree") : tr("ShowTrash"));
     toggleTrash->setToolTip(toggleTrash->text());
 
-    if(trash && (hovered || selected)){
+    QAction *deactivate = Action(_Deactivate);
+    deactivate->setText(tr("CloseViewTree"));
+    deactivate->setToolTip(deactivate->text());
+
+    const MenuSchema::Table *table = MenuSchema::Find(QStringLiteral("TableNodeMenu"));
+    const QStringList names = MenuSchema::Current(Application::GlobalSettings(), *table);
+
+    const MenuSchema::Table *iconTable = MenuSchema::IconsOf(QStringLiteral("TableNodeMenu"));
+    const QStringList icons = MenuSchema::Current(Application::GlobalSettings(), *iconTable);
+    MenuIconRow *row = new MenuIconRow(menu);
+    for(const QString &name : icons){
+        if(name == QStringLiteral("RestoreNode")){
+            row->AddCell(name, restore, MenuIconRow::IconOf(name),
+                         trash ? hovered || selected : !TreeBank::GetTrashRoot()->HasNoChildren());
+        } else if(name == QStringLiteral("DeleteNode")){
+            row->AddCell(name, deleting, trash ? QStringLiteral("Trash") : MenuIconRow::IconOf(name),
+                         hovered || selected);
+        } else if(trash){
+            continue;
+        } else if(name == QStringLiteral("NewNode")){
+            row->AddCell(name, Action(_NewNode), MenuIconRow::IconOf(name));
+        } else if(name == QStringLiteral("CloneNode")){
+            row->AddCell(name, Action(_CloneNode), MenuIconRow::IconOf(name), hovered);
+        }
+    }
+    row->Install();
+
+    if(trash && (hovered || selected) && names.contains(QStringLiteral("RestoreNode")) && !row->Holds(QStringLiteral("RestoreNode"))){
         menu->addAction(restore);
         menu->addSeparator();
     }
 
-    if(hovered){
-        menu->addAction(Action(_OpenNode));
-        menu->addAction(Action(_OpenNodeOnNewWindow));
-
-        QMenu *m = new QMenu(tr("OpenNodeWithOtherBrowser"), menu);
-        m->addAction(Action(_OpenNodeWithDefault));
-        const QList<QPair<QString, QString> > commands = Application::ExternalCommands();
-        for(int i = 0; i < commands.length(); i++){
-            QAction *action = m->addAction(commands[i].first, this,
-                                           SLOT(ThumbList_OpenNodeWithCommand()));
-            action->setProperty(EXTERNAL_COMMAND_PROPERTY, commands[i].first);
-        }
-        menu->addMenu(m);
-    }
-    menu->addSeparator();
-
-    if(hovered){
-        menu->addAction(Action(_RenameNode));
-        menu->addAction(Action(_CopyNodeUrl));
-        if(!trash) menu->addAction(Action(_CloneNode));
-
-        if(directory && !trash){
+    for(const QString &name : names){
+        if(name != QStringLiteral("Separator") && row->Holds(name)) continue;
+        if(name == QStringLiteral("Separator")){
+            menu->addSeparator();
+        } else if(name == QStringLiteral("OpenNode")){
+            if(hovered) menu->addAction(Action(_OpenNode));
+        } else if(name == QStringLiteral("OpenNodeOnNewWindow")){
+            if(hovered) menu->addAction(Action(_OpenNodeOnNewWindow));
+        } else if(name == QStringLiteral("OpenNodeWithDefault")){
+            if(hovered) menu->addAction(Action(_OpenNodeWithDefault));
+        } else if(name == QStringLiteral("OpenNodeWithOtherBrowser")){
+            if(!hovered) continue;
+            QMenu *m = new QMenu(tr("OpenNodeWithOtherBrowser"), menu);
+            m->addAction(Action(_OpenNodeWithDefault));
+            const QList<QPair<QString, QString> > commands = Application::ExternalCommands();
+            for(int i = 0; i < commands.length(); i++){
+                QAction *action = m->addAction(commands[i].first, this,
+                                               SLOT(ThumbList_OpenNodeWithCommand()));
+                action->setProperty(EXTERNAL_COMMAND_PROPERTY, commands[i].first);
+            }
+            menu->addMenu(m);
+        } else if(name == QStringLiteral("RenameNode")){
+            if(hovered) menu->addAction(Action(_RenameNode));
+        } else if(name == QStringLiteral("CopyNodeUrl")){
+            if(hovered) menu->addAction(Action(_CopyNodeUrl));
+        } else if(name == QStringLiteral("CloneNode")){
+            if(hovered && !trash) menu->addAction(Action(_CloneNode));
+        } else if(name == QStringLiteral("DirectorySettings")){
+            if(!directory || trash) continue;
             TreeBank *tb = GetTreeBank();
             ViewNode *vn = nd->ToViewNode();
             menu->addMenu(DirectoryPage::CreateSettingsMenu
@@ -1296,65 +1330,83 @@ QMenu *Gadgets::CreateNodeMenu(){
                                tb->OpenDirectorySettings(vn);
                            },
                            menu));
-        }
-    }
-    menu->addSeparator();
-
-    if(!trash){
-        menu->addAction(Action(_NewNode));
-        menu->addAction(Action(_MakeDirectory));
-        if(hovered || selected){
-            menu->addAction(Action(_CutNode));
-            menu->addAction(Action(_CopyNode));
-        }
-        if(TreeBank::HasClipboardNodes() || PasteTakesSelection())
-            menu->addAction(Action(_PasteNode));
-        if(selected)
-            menu->addAction(Action(_MakeDirectoryWithSelectedNode));
-        menu->addAction(Action(_MakeDirectoryWithSameDomainNode));
-        menu->addSeparator();
-
-        if(hovered || selected)
-            menu->addAction(deleting);
-        if(hovered){
+        } else if(name == QStringLiteral("NewNode")){
+            if(!trash) menu->addAction(Action(_NewNode));
+        } else if(name == QStringLiteral("MakeDirectory")){
+            if(!trash) menu->addAction(Action(_MakeDirectory));
+        } else if(name == QStringLiteral("CutNode")){
+            if(!trash && (hovered || selected)) menu->addAction(Action(_CutNode));
+        } else if(name == QStringLiteral("CopyNode")){
+            if(!trash && (hovered || selected)) menu->addAction(Action(_CopyNode));
+        } else if(name == QStringLiteral("PasteNode")){
+            if(!trash && (TreeBank::HasClipboardNodes() || PasteTakesSelection()))
+                menu->addAction(Action(_PasteNode));
+        } else if(name == QStringLiteral("MakeDirectoryWithSelectedNode")){
+            if(!trash && selected) menu->addAction(Action(_MakeDirectoryWithSelectedNode));
+        } else if(name == QStringLiteral("MakeDirectoryWithSameDomainNode")){
+            if(!trash) menu->addAction(Action(_MakeDirectoryWithSameDomainNode));
+        } else if(name == QStringLiteral("DeleteNode")){
+            if(hovered || selected) menu->addAction(deleting);
+        } else if(name == QStringLiteral("DeleteRightNode")){
+            if(!trash && hovered) menu->addAction(Action(_DeleteRightNode));
+        } else if(name == QStringLiteral("DeleteLeftNode")){
+            if(!trash && hovered) menu->addAction(Action(_DeleteLeftNode));
+        } else if(name == QStringLiteral("DeleteOtherNode")){
+            if(!trash && hovered) menu->addAction(Action(_DeleteOtherNode));
+        } else if(name == QStringLiteral("DeleteNodesTogether")){
+            if(trash || !hovered) continue;
             QMenu *m = new QMenu(tr("DeleteNodesTogether"), menu);
             m->addAction(Action(_DeleteRightNode));
             m->addAction(Action(_DeleteLeftNode));
             m->addAction(Action(_DeleteOtherNode));
             menu->addMenu(m);
+        } else if(name == QStringLiteral("RestoreNode")){
+            if(!trash && !TreeBank::GetTrashRoot()->HasNoChildren()) menu->addAction(restore);
+        } else if(name == QStringLiteral("UpDirectory")){
+            if(m_CurrentNode && m_CurrentNode->GetParent() && m_CurrentNode->GetParent()->GetParent())
+                menu->addAction(Action(_UpDirectory));
+        } else if(name == QStringLiteral("DownDirectory")){
+            if(directory) menu->addAction(Action(_DownDirectory));
+        } else if(name == QStringLiteral("ToggleTrash")){
+            menu->addAction(toggleTrash);
+        } else if(name == QStringLiteral("SortMenu")){
+            menu->addMenu(CreateSortMenu(menu));
+        } else if(name == QStringLiteral("NodeCollectionTypeMenu")){
+            if(IsDisplayingViewNode()) menu->addMenu(CreateNodeCollectionTypeMenu(menu));
+        } else if(name == QStringLiteral("Refresh")){
+            menu->addAction(Action(_Refresh));
+        } else if(name == QStringLiteral("Deactivate")){
+            menu->addAction(deactivate);
         }
-        if(!TreeBank::GetTrashRoot()->HasNoChildren())
-            menu->addAction(restore);
-        menu->addSeparator();
-    } else if(hovered || selected){
-        menu->addAction(deleting);
-        menu->addSeparator();
     }
-
-    if(m_CurrentNode &&
-       m_CurrentNode->GetParent() &&
-       m_CurrentNode->GetParent()->GetParent()){
-
-        menu->addAction(Action(_UpDirectory));
-    }
-    if(directory) menu->addAction(Action(_DownDirectory));
-    menu->addAction(toggleTrash);
-
-    menu->addMenu(CreateSortMenu(menu));
-
-    if(IsDisplayingViewNode())
-        menu->addMenu(CreateNodeCollectionTypeMenu(menu));
-    menu->addSeparator();
-
-    menu->addAction(Action(_Refresh));
-    QAction *deactivate = Action(_Deactivate);
-    deactivate->setText(tr("CloseViewTree"));
-    deactivate->setToolTip(deactivate->text());
-    menu->addAction(deactivate);
 
     MenuKeys::Show(menu, InputMap::ShownKeys(KeyLayers()));
 
+    QAction *card = new QAction(ActionText::MenuLabel(QStringLiteral("OpenCommand")), menu);
+    connect(card, &QAction::triggered, this, &Gadgets::OpenNodeTargetCommand);
+    View::AddMenuCommandCell(menu, card);
+
     return menu;
+}
+
+void Gadgets::OpenNodeTargetCommand(){
+    TreeBank *tb = GetTreeBank();
+    if(!tb || !tb->GetReceiver()) return;
+    Receiver::TargetArgs target;
+    if(!m_NodesRegister.isEmpty()){
+        for(Node *nd : std::as_const(m_NodesRegister))
+            if(nd && nd->IsViewNode()) target.nodes << nd->GetSerial();
+    } else if(Node *nd = GetHoveredNode()){
+        if(nd->IsViewNode()) target.nodes << nd->GetSerial();
+    }
+    target.nodeTable = QStringLiteral("TableNodeMenu");
+    target.trash = m_DisplayType == TrashTree;
+    const QPointer<Receiver> receiver = tb->GetReceiver();
+    QTimer::singleShot(0, receiver, [receiver, target](){
+        if(!receiver) return;
+        if(target.nodes.isEmpty()) receiver->OpenCommand();
+        else receiver->OpenTarget(target);
+    });
 }
 
 bool Gadgets::DrawsBackdrop(bool viewToDraw, bool behind, bool blurring){
@@ -1417,17 +1469,8 @@ void Gadgets::RenderBackground(QPainter *painter){
         return;
     }
 
-    bool nativeViewBehind = false;
-#ifdef NATIVEWEBVIEW
-    if(GetTreeBank()->GetCurrentView())
-        nativeViewBehind = qobject_cast<QuickNativeWebView*>
-            (GetTreeBank()->GetCurrentView()->base()) != nullptr;
-#endif
-#ifdef EDGEWEBVIEW
-    if(!nativeViewBehind && GetTreeBank()->GetCurrentView())
-        nativeViewBehind = qobject_cast<EdgeWebView*>
-            (GetTreeBank()->GetCurrentView()->base()) != nullptr;
-#endif
+    const bool nativeViewBehind =
+        TreeBank::HasWindowOfItsOwn(GetTreeBank()->GetCurrentView().get());
 
     View *view = nullptr;
 
@@ -1447,22 +1490,8 @@ void Gadgets::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
-        if(0);
-#ifdef WEBENGINEVIEW
-        else if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-        else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-#endif
-#ifdef NATIVEWEBVIEW
-        else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-#endif
-#ifdef EDGEWEBVIEW
-        else if(EdgeWebView *w = qobject_cast<EdgeWebView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-#endif
-        else;
+        if(TreeBank::IsWebView(GetTreeBank()->GetCurrentView().get()))
+            view = GetTreeBank()->GetCurrentView().get();
     }
 
     const bool behind = !nativeViewBehind &&
@@ -1483,9 +1512,12 @@ void Gadgets::RenderBackground(QPainter *painter){
         const qreal ratio = painter->device()
             ? painter->device()->devicePixelRatioF() : 1.0;
 
+        const QRgb veil = GetStyle()->BackgroundVeil(this).rgba();
+
         if(m_Backdrop.isNull() || m_BackdropOwner != view ||
            m_BackdropSize != size || m_BackdropViewport != viewport ||
-           m_BackdropRatio != ratio || m_BackdropBlurred != blurred){
+           m_BackdropRatio != ratio || m_BackdropBlurred != blurred ||
+           m_BackdropVeil != veil){
 
             QImage page(QSize(static_cast<int>(size.width()  * ratio),
                               static_cast<int>(size.height() * ratio)),
@@ -1502,18 +1534,26 @@ void Gadgets::RenderBackground(QPainter *painter){
             view->Render(&into);
             into.end();
 
-            m_Backdrop = QPixmap::fromImage(
+            QImage backdrop =
                 blurred ? BlurBackdrop(page, qRound(ScaleByDevice(BACKDROP_BLUR_RADIUS) * ratio))
-                        : page);
+                        : page;
+            {
+                QPainter over(&backdrop);
+                over.fillRect(QRect(QPoint(), size), QColor::fromRgba(veil));
+            }
+            m_Backdrop = QPixmap::fromImage(backdrop);
 
             m_BackdropOwner = view;
             m_BackdropSize = size;
             m_BackdropViewport = viewport;
             m_BackdropRatio = ratio;
             m_BackdropBlurred = blurred;
+            m_BackdropVeil = veil;
         }
 
         painter->drawPixmap(QPointF(), m_Backdrop);
+        GetStyle()->RenderBackgroundOverVeil(this, painter);
+        return;
     }
 
     GraphicsTableView::RenderBackground(painter);
@@ -1985,6 +2025,14 @@ void Gadgets::AccessKey_OpenElement(int index){
 
     if(!elem) return;
 
+    if(m_AccessKeyAction == OpenCommandBar){
+        SharedView master = GetMaster().lock();
+        if(!master) return;
+        Deactivate();
+        master->TriggerAction(Page::_OpenCommand, QVariant::fromValue(elem));
+        return;
+    }
+
     if(elem->GetAction() == WebElement::Focus){
 
         SharedView master = GetMaster().lock();
@@ -2091,9 +2139,9 @@ void Gadgets::AccessKey_TriggerAction(AccessibleWebElement *awe, QKeySequence se
         Q_ASSERT(master);
 
         Deactivate();
-        elem->SetFocus();
-        master->TriggerAction(Page::StringToAction(m_AccessKeyKeyMap[seq]),
-                              QVariant::fromValue(elem));
+        const Page::CustomAction action = Page::StringToAction(m_AccessKeyKeyMap[seq]);
+        if(action != Page::_OpenCommand) elem->SetFocus();
+        master->TriggerAction(action, QVariant::fromValue(elem));
     }
 }
 

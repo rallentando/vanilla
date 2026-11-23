@@ -27,6 +27,7 @@ JsWebElement::JsWebElement()
     m_IsLooped     = false;
     m_IsPaused     = false;
     m_IsMuted      = false;
+    m_IsMedia      = false;
     m_XPath        = QString();
     m_Action       = QStringLiteral("None");
 }
@@ -47,11 +48,13 @@ JsWebElement::JsWebElement(View *provider, QVariant var)
                         map[QStringLiteral("width")].toInt(), map[QStringLiteral("height")].toInt());
     m_IsEditable   = map[QStringLiteral("isEditable")].toBool();
     m_IsTextInput  = map[QStringLiteral("isTextInput")].toBool();
+    m_IsFocusedField = map[QStringLiteral("isFocusedField")].toBool();
     m_IsQueryInput = map[QStringLiteral("isQueryInput")].toBool();
     m_IsFrame      = map[QStringLiteral("isFrame")].toBool();
     m_IsLooped     = map[QStringLiteral("isLooped")].toBool();
     m_IsPaused     = map[QStringLiteral("isPaused")].toBool();
     m_IsMuted      = map[QStringLiteral("isMuted")].toBool();
+    m_IsMedia      = map[QStringLiteral("isMedia")].toBool();
     m_XPath        = map[QStringLiteral("xPath")].toString();
     m_Action       = map[QStringLiteral("action")].toString();
     m_Region = QRegion();

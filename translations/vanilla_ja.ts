@@ -1347,70 +1347,70 @@
         <translation>データフォルダ：%1</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2052"/>
-        <location filename="../src/app/application.cpp" line="2066"/>
+        <location filename="../src/app/application.cpp" line="2057"/>
+        <location filename="../src/app/application.cpp" line="2071"/>
         <source>BlockAccess</source>
         <translation>アクセスしない</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2053"/>
-        <location filename="../src/app/application.cpp" line="2068"/>
+        <location filename="../src/app/application.cpp" line="2058"/>
+        <location filename="../src/app/application.cpp" line="2073"/>
         <source>IgnoreSslErrors</source>
         <translation>SSL エラーを無視</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2054"/>
-        <location filename="../src/app/application.cpp" line="2070"/>
+        <location filename="../src/app/application.cpp" line="2059"/>
+        <location filename="../src/app/application.cpp" line="2075"/>
         <source>AskForEachAccess</source>
         <translation>アクセスごとに確認</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2055"/>
-        <location filename="../src/app/application.cpp" line="2072"/>
+        <location filename="../src/app/application.cpp" line="2060"/>
+        <location filename="../src/app/application.cpp" line="2077"/>
         <source>AskForEachHost</source>
         <translation>ホストごとに確認</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2056"/>
-        <location filename="../src/app/application.cpp" line="2074"/>
+        <location filename="../src/app/application.cpp" line="2061"/>
+        <location filename="../src/app/application.cpp" line="2079"/>
         <source>AskForEachCertificate</source>
         <translation>証明書ごとに確認</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2060"/>
+        <location filename="../src/app/application.cpp" line="2065"/>
         <source>SSL error policy</source>
         <translation>SSL エラーポリシー</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2061"/>
+        <location filename="../src/app/application.cpp" line="2066"/>
         <source>Select an SSL error policy.</source>
         <translation>SSL エラーポリシーを選択してください。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2086"/>
-        <location filename="../src/app/application.cpp" line="2098"/>
+        <location filename="../src/app/application.cpp" line="2091"/>
+        <location filename="../src/app/application.cpp" line="2103"/>
         <source>FixedLocale</source>
         <translation>固定フォルダ</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2087"/>
-        <location filename="../src/app/application.cpp" line="2105"/>
+        <location filename="../src/app/application.cpp" line="2092"/>
+        <location filename="../src/app/application.cpp" line="2110"/>
         <source>DownloadFolder</source>
         <translation>ダウンロードフォルダ</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2088"/>
-        <location filename="../src/app/application.cpp" line="2108"/>
+        <location filename="../src/app/application.cpp" line="2093"/>
+        <location filename="../src/app/application.cpp" line="2113"/>
         <source>AskForEachDownload</source>
         <translation>ダウンロードごとに確認</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2092"/>
+        <location filename="../src/app/application.cpp" line="2097"/>
         <source>Download policy</source>
         <translation>ダウンロードポリシー</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="2093"/>
+        <location filename="../src/app/application.cpp" line="2098"/>
         <source>Select download policy.</source>
         <translation>ダウンロードポリシーを選択してください。</translation>
     </message>
@@ -1815,7 +1815,7 @@ Ssl &lt;プロトコル&gt;：利用する SSL プロトコル（TLSv1.2 / Any /
 <context>
     <name>EdgeWebView</name>
     <message>
-        <location filename="../src/view/edge/edgewebview.cpp" line="396"/>
+        <location filename="../src/view/edge/edgewebview.cpp" line="398"/>
         <source>Another vanilla sharing this data folder is running with different arguments.
 1. If more than one vanilla is installed under Program Files: match their Chromium switches and autoplay settings, or move one of them out of Program Files.
 2. Otherwise: quit every vanilla and start again.</source>
@@ -1824,17 +1824,17 @@ Ssl &lt;プロトコル&gt;：利用する SSL プロトコル（TLSv1.2 / Any /
 2. それ以外の場合：vanilla をすべて終了してから起動し直してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebview.cpp" line="405"/>
+        <location filename="../src/view/edge/edgewebview.cpp" line="407"/>
         <source>The Edge WebView2 view could not be created (0x%1).</source>
         <translation>Edge WebView2 のビューを作れませんでした (0x%1)。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebview.cpp" line="407"/>
+        <location filename="../src/view/edge/edgewebview.cpp" line="409"/>
         <source>The Edge WebView2 view could not be created.</source>
         <translation>Edge WebView2 のビューを作れませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebview.cpp" line="424"/>
+        <location filename="../src/view/edge/edgewebview.cpp" line="426"/>
         <source>The Edge WebView2 runtime could not be started (0x%1).</source>
         <translation>Edge WebView2 ランタイムを開始できませんでした (0x%1)。</translation>
     </message>
@@ -1960,74 +1960,74 @@ Ssl &lt;プロトコル&gt;：利用する SSL プロトコル（TLSv1.2 / Any /
     </message>
     <message>
         <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="653"/>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2902"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2908"/>
         <source>Failed to load.</source>
         <translation>失敗。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewinput.cpp" line="183"/>
-        <location filename="../src/view/edge/edgewebviewinput.cpp" line="205"/>
+        <location filename="../src/view/edge/edgewebviewinput.cpp" line="184"/>
+        <location filename="../src/view/edge/edgewebviewinput.cpp" line="206"/>
         <source>The page cannot report keys to vanilla in this view.</source>
         <translation>このビューではページからキーを受け取れません。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="678"/>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="685"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="698"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="705"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>ズーム %1 %</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2654"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2660"/>
         <source>Url: %1
 Ssl error : %2</source>
         <translation>Url：%1
 SSL エラー：%2</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2662"/>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2663"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2668"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2669"/>
         <source>SSL errors.</source>
         <translation>SSL エラー。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2664"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2670"/>
         <source>Ignore errors in this access?</source>
         <translation>このアクセスでは無視しますか?</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2679"/>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2709"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2685"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2715"/>
         <source>SSL errors on host: %1</source>
         <translation>ホスト：%1 で SSL エラー</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2679"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2685"/>
         <source>Allow or Block this host?</source>
         <translation>このホストを許可しますか?</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2709"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2715"/>
         <source>Allow or Block this certificate?</source>
         <translation>この証明書を許可しますか?</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2754"/>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2755"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2760"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2761"/>
         <source>Feature Permission Requested.</source>
         <translation>機能の許可がリクエストされました。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2757"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2763"/>
         <source>Url: </source>
         <translation>URL：</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2758"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2764"/>
         <source>Feature: </source>
         <translation>機能：</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2759"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2765"/>
         <source>Allow this feature?</source>
         <translation>この機能を有効にしますか?</translation>
     </message>
@@ -2037,19 +2037,19 @@ SSL エラー：%2</translation>
         <translation>このプライベートビューは空の状態で開始できなかったため、ページを開きません。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="874"/>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="901"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="894"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="921"/>
         <source>Failed to save %1</source>
         <translation>%1 を保存できませんでした</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="877"/>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="899"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="897"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="919"/>
         <source>Saved %1</source>
         <translation>%1 を保存しました</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewpage.cpp" line="884"/>
+        <location filename="../src/view/edge/edgewebviewpage.cpp" line="904"/>
         <source>This view cannot print to pdf.</source>
         <translation>このビューは PDF に印刷できません。</translation>
     </message>
@@ -2059,17 +2059,17 @@ SSL エラー：%2</translation>
         <translation>開発者ツールを開けませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2872"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2878"/>
         <source>This page becomes full screen mode.</source>
         <translation>フルスクリーンモードに移行しました。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2873"/>
+        <location filename="../src/view/edge/edgewebviewhandlers.cpp" line="2879"/>
         <source>Press Esc to exit.</source>
         <translation>終了するには Esc キーを押してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/edge/edgewebviewinput.cpp" line="989"/>
+        <location filename="../src/view/edge/edgewebviewinput.cpp" line="1042"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
@@ -2082,7 +2082,7 @@ SSL エラー：%2</translation>
 <context>
     <name>EventEater</name>
     <message>
-        <location filename="../src/view/webengine/webengineview.hpp" line="696"/>
+        <location filename="../src/view/webengine/webengineview.hpp" line="708"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
@@ -2421,62 +2421,62 @@ Some extensions may not work fully.</source>
 <context>
     <name>Gadgets</name>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1377"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1386"/>
         <source>DeleteNode</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1370"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1379"/>
         <source>RestoreNode</source>
         <translation>ここに復元</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1398"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1449"/>
         <source>OpenNodeWithOtherBrowser</source>
         <translation>ノードを別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1371"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1380"/>
         <source>RestoreNodeFromTrash</source>
         <translation>復元</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1372"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1381"/>
         <source>RestoreSelectedNode</source>
         <translation>選択ノードを復元</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1378"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1387"/>
         <source>DeleteNodeForGood</source>
         <translation>完全に削除</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1379"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1388"/>
         <source>DeleteSelectedNodeForGood</source>
         <translation>選択ノードを完全に削除</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1385"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1394"/>
         <source>BackToViewTree</source>
         <translation>通常のタブ一覧に戻る</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1385"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1394"/>
         <source>ShowTrash</source>
         <translation>ゴミ箱を表示</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1454"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1506"/>
         <source>DeleteNodesTogether</source>
         <translation>まとめて削除</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="1501"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="1401"/>
         <source>CloseViewTree</source>
         <translation>タブ一覧を閉じる</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/gadgets.cpp" line="2412"/>
+        <location filename="../src/gadgets/gadgets.cpp" line="2496"/>
         <source>Current selection: %1</source>
         <translation>現在の選択：%1</translation>
     </message>
@@ -2484,109 +2484,109 @@ Some extensions may not work fully.</source>
 <context>
     <name>GraphicsTableView</name>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="688"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3806"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="690"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3818"/>
         <source>Displaying %1 nodes.</source>
         <translation>表示：%1 ノード。</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="789"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1768"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1819"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="791"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1770"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1821"/>
         <source>Trash</source>
         <translation>ゴミ箱</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="839"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="841"/>
         <source>Sort</source>
         <translation>ソート</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="843"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="845"/>
         <source>Reverse</source>
         <translation>逆順</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="850"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="852"/>
         <source>SortByUrl</source>
         <translation>URL でソート</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="857"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="859"/>
         <source>SortByTitle</source>
         <translation>タイトルでソート</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="864"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="866"/>
         <source>SortByCreateDate</source>
         <translation>作成日時でソート</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="878"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="880"/>
         <source>SortByLastAccessDate</source>
         <translation>アクセス日時でソート</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1142"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1144"/>
         <source>Directory</source>
         <translation>ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1766"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1768"/>
         <source>Up</source>
         <translation>上へ</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1768"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1819"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1770"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1821"/>
         <source>Tab list</source>
         <translation>タブ一覧</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1850"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1852"/>
         <source>Filter</source>
         <translation>絞り込み</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3869"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3881"/>
         <source>DisplayType</source>
         <translation>表示タイプ</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3813"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3873"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3825"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3885"/>
         <source>Normal</source>
         <translation>現在のディレクトリ</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3874"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3886"/>
         <source>The nodes beside this one, and nothing below them.</source>
         <translation>同じ階層に並んでいるノードだけを表示します。その下は表示しません。</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3814"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3875"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3826"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3887"/>
         <source>Recursive</source>
         <translation>配下すべて（全展開）</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3876"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3888"/>
         <source>Everything below, however deep. A large tree puts a great many thumbnails on the screen at once.</source>
         <translation>下にあるものを深さに関係なくすべて表示します。大きなツリーだとサムネイルが一度に大量に並びます。</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3815"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3878"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3827"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3890"/>
         <source>Expandable</source>
         <translation>配下すべて（展開可）</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3879"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3891"/>
         <source>As above, but a folded directory hides what is under it. Opening a directory folds and unfolds it instead of entering it.</source>
         <translation>上と同じですが、畳んだディレクトリの中は隠れます。このときディレクトリを「開く」と、中に入る代わりに折りたたみ・展開になります。</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="871"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="873"/>
         <source>SortByLastUpdateDate</source>
         <translation>更新日時でソート</translation>
     </message>
@@ -2596,34 +2596,34 @@ Some extensions may not work fully.</source>
         <translation>タブ一覧を閉じる</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="436"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="1143"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="438"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="1145"/>
         <source>Dir - %1</source>
         <translation>ディレクトリ - %1</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="2841"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="2853"/>
         <source>Invalid directory contents.</source>
         <translation>無効なディレクトリ。</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="2842"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="2854"/>
         <source>This directory has no contents or all nodes have same domain.</source>
         <translation>このディレクトリは空であるかすべてのノードが同じドメインを持っています。</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3420"/>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="3445"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3432"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="3457"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>ズーム %1 %</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="2529"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="2541"/>
         <source>Cut %1 nodes.</source>
         <translation>%1 ノードを切り取りました。</translation>
     </message>
     <message>
-        <location filename="../src/gadgets/graphicstableview.cpp" line="2537"/>
+        <location filename="../src/gadgets/graphicstableview.cpp" line="2549"/>
         <source>Copied %1 nodes.</source>
         <translation>%1 ノードをコピーしました。</translation>
     </message>
@@ -2772,144 +2772,144 @@ Some extensions may not work fully.</source>
         <translation>何もしない</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="581"/>
+        <location filename="../src/core/inputmapschema.cpp" line="584"/>
         <source>Edit</source>
         <translation>編集</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="584"/>
+        <location filename="../src/core/inputmapschema.cpp" line="587"/>
         <source>Assignments</source>
         <translation>割り当て</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="586"/>
+        <location filename="../src/core/inputmapschema.cpp" line="589"/>
         <source>Done</source>
         <translation>完了</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="589"/>
+        <location filename="../src/core/inputmapschema.cpp" line="592"/>
         <source>Jump to</source>
         <translation>移動：</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="591"/>
+        <location filename="../src/core/inputmapschema.cpp" line="594"/>
         <source>Back to the defaults</source>
         <translation>既定値に戻す</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="593"/>
+        <location filename="../src/core/inputmapschema.cpp" line="596"/>
         <source>Changed</source>
         <translation>変更あり</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="595"/>
+        <location filename="../src/core/inputmapschema.cpp" line="598"/>
         <source>Remove</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="597"/>
+        <location filename="../src/core/inputmapschema.cpp" line="600"/>
         <source>Add</source>
         <translation>追加</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="599"/>
+        <location filename="../src/core/inputmapschema.cpp" line="602"/>
         <source>Click, then press the keys</source>
         <translation>クリックしてからキーを押してください</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="601"/>
+        <location filename="../src/core/inputmapschema.cpp" line="604"/>
         <source>Press the keys...</source>
         <translation>キーを押してください…</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="603"/>
+        <location filename="../src/core/inputmapschema.cpp" line="606"/>
         <source>Held</source>
         <translation>押したまま</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="605"/>
+        <location filename="../src/core/inputmapschema.cpp" line="608"/>
         <source>No button held</source>
         <translation>ボタンを押さない</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="607"/>
+        <location filename="../src/core/inputmapschema.cpp" line="610"/>
         <source>Clear</source>
         <translation>クリア</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="609"/>
+        <location filename="../src/core/inputmapschema.cpp" line="612"/>
         <source>Nothing is assigned.</source>
         <translation>割り当てはありません。</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="611"/>
+        <location filename="../src/core/inputmapschema.cpp" line="614"/>
         <source>Not an input or action this version knows. Kept as it is.</source>
         <translation>この版では認識できない入力か操作です。そのまま残します。</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="615"/>
+        <location filename="../src/core/inputmapschema.cpp" line="618"/>
         <source>Not used while &apos;Shortcuts on a single key&apos; is off.</source>
         <translation>「単独キーのショートカット」がオフの間は使われません。</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="617"/>
+        <location filename="../src/core/inputmapschema.cpp" line="620"/>
         <source>Not used while gestures are four way.</source>
         <translation>ジェスチャが 4 方向の間は使われません。</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="621"/>
+        <location filename="../src/core/inputmapschema.cpp" line="624"/>
         <source>Dimmed rows do nothing at the moment: %1</source>
         <translation>薄い行はいまは何もしません：%1</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="623"/>
+        <location filename="../src/core/inputmapschema.cpp" line="626"/>
         <source>Open that setting</source>
         <translation>その設定を開く</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="443"/>
-        <location filename="../src/core/inputmapschema.cpp" line="625"/>
+        <location filename="../src/core/inputmapschema.cpp" line="628"/>
         <source>Left button</source>
         <translation>左ボタン</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="444"/>
-        <location filename="../src/core/inputmapschema.cpp" line="627"/>
+        <location filename="../src/core/inputmapschema.cpp" line="630"/>
         <source>Right button</source>
         <translation>右ボタン</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="445"/>
-        <location filename="../src/core/inputmapschema.cpp" line="629"/>
+        <location filename="../src/core/inputmapschema.cpp" line="632"/>
         <source>Middle button</source>
         <translation>中ボタン</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="446"/>
-        <location filename="../src/core/inputmapschema.cpp" line="631"/>
+        <location filename="../src/core/inputmapschema.cpp" line="634"/>
         <source>Side button 1</source>
         <translation>サイドボタン 1</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="447"/>
-        <location filename="../src/core/inputmapschema.cpp" line="633"/>
+        <location filename="../src/core/inputmapschema.cpp" line="636"/>
         <source>Side button 2</source>
         <translation>サイドボタン 2</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="448"/>
-        <location filename="../src/core/inputmapschema.cpp" line="635"/>
+        <location filename="../src/core/inputmapschema.cpp" line="638"/>
         <source>Wheel up</source>
         <translation>ホイール上</translation>
     </message>
     <message>
         <location filename="../src/core/inputmapschema.cpp" line="449"/>
-        <location filename="../src/core/inputmapschema.cpp" line="637"/>
+        <location filename="../src/core/inputmapschema.cpp" line="640"/>
         <source>Wheel down</source>
         <translation>ホイール下</translation>
     </message>
     <message>
-        <location filename="../src/core/inputmapschema.cpp" line="613"/>
+        <location filename="../src/core/inputmapschema.cpp" line="616"/>
         <source>Search actions</source>
         <translation>動作を検索</translation>
     </message>
@@ -2972,113 +2972,113 @@ Some extensions may not work fully.</source>
 <context>
     <name>LocalView</name>
     <message>
-        <location filename="../src/view/localview.cpp" line="1556"/>
+        <location filename="../src/view/localview.cpp" line="1558"/>
         <source>Delete Files.</source>
         <translation>ファイルの削除</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1630"/>
+        <location filename="../src/view/localview.cpp" line="1632"/>
         <source>...and %1 more.</source>
         <translation>他 %1 件。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1649"/>
-        <location filename="../src/view/localview.cpp" line="1671"/>
+        <location filename="../src/view/localview.cpp" line="1651"/>
+        <location filename="../src/view/localview.cpp" line="1673"/>
         <source>Input file name.</source>
         <translation>ファイル名を入力してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1650"/>
+        <location filename="../src/view/localview.cpp" line="1652"/>
         <source>Input new file name.</source>
         <translation>作成するファイル名を入力してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1657"/>
-        <location filename="../src/view/localview.cpp" line="1677"/>
+        <location filename="../src/view/localview.cpp" line="1659"/>
+        <location filename="../src/view/localview.cpp" line="1679"/>
         <source>Invalid file name.</source>
         <translation>無効なファイル名</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1658"/>
-        <location filename="../src/view/localview.cpp" line="1678"/>
+        <location filename="../src/view/localview.cpp" line="1660"/>
+        <location filename="../src/view/localview.cpp" line="1680"/>
         <source>Cannot make file with such name.</source>
         <translation>その名前のファイルは作成できません。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1672"/>
+        <location filename="../src/view/localview.cpp" line="1674"/>
         <source>Input clone file name.</source>
         <translation>コピーするファイル名を入力してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1692"/>
+        <location filename="../src/view/localview.cpp" line="1694"/>
         <source>Input directory name.</source>
         <translation>ディレクトリ名を入力してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1693"/>
+        <location filename="../src/view/localview.cpp" line="1695"/>
         <source>Input new directory name.</source>
         <translation>作成するディレクトリ名を入力してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1697"/>
+        <location filename="../src/view/localview.cpp" line="1699"/>
         <source>Invalid directory name.</source>
         <translation>無効なディレクトリ名</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1698"/>
+        <location filename="../src/view/localview.cpp" line="1700"/>
         <source>Cannot make directory with such name.</source>
         <translation>その名前のディレクトリは作成できません。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1969"/>
+        <location filename="../src/view/localview.cpp" line="1971"/>
         <source>Cannot play this file.</source>
         <translation>このファイルは再生できません。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2167"/>
+        <location filename="../src/view/localview.cpp" line="2169"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="831"/>
+        <location filename="../src/view/localview.cpp" line="833"/>
         <source>NewNode</source>
         <translation>新規ファイル</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="831"/>
+        <location filename="../src/view/localview.cpp" line="833"/>
         <source>CloneNode</source>
         <translation>ファイルを複製</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="996"/>
-        <location filename="../src/view/localview.cpp" line="1497"/>
+        <location filename="../src/view/localview.cpp" line="998"/>
+        <location filename="../src/view/localview.cpp" line="1499"/>
         <source>Another file operation is still running.</source>
         <translation>別のファイル操作がまだ終わっていません。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1023"/>
+        <location filename="../src/view/localview.cpp" line="1025"/>
         <source>Pasting...</source>
         <translation>貼り付けています…</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1041"/>
+        <location filename="../src/view/localview.cpp" line="1043"/>
         <source>Could not paste.</source>
         <translation>貼り付けできませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1042"/>
+        <location filename="../src/view/localview.cpp" line="1044"/>
         <source>These could not be copied here:
 %1</source>
         <translation>次のものをここにコピーできませんでした：
 %1</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1522"/>
+        <location filename="../src/view/localview.cpp" line="1524"/>
         <source>Looking at what would be deleted...</source>
         <translation>削除する項目を確認しています…</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1540"/>
+        <location filename="../src/view/localview.cpp" line="1542"/>
         <source>Are you sure you want to delete these?
 Files: %1
 In: %2</source>
@@ -3087,7 +3087,7 @@ In: %2</source>
 場所：%2</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1544"/>
+        <location filename="../src/view/localview.cpp" line="1546"/>
         <source>Are you sure you want to delete these?
 Directories: %1 (everything inside them is deleted as well)
 Files: %2
@@ -3098,27 +3098,27 @@ In: %3</source>
 場所：%3</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1585"/>
+        <location filename="../src/view/localview.cpp" line="1587"/>
         <source>Nothing was deleted.</source>
         <translation>何も削除しませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1586"/>
+        <location filename="../src/view/localview.cpp" line="1588"/>
         <source>The listing moved to another directory while the question was open.</source>
         <translation>確認の間に別のディレクトリへ移動したため、削除を中止しました。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1593"/>
+        <location filename="../src/view/localview.cpp" line="1595"/>
         <source>Deleting...</source>
         <translation>削除しています…</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1600"/>
+        <location filename="../src/view/localview.cpp" line="1602"/>
         <source>Could not delete.</source>
         <translation>削除できませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="1601"/>
+        <location filename="../src/view/localview.cpp" line="1603"/>
         <source>These could not be deleted:
 %1</source>
         <translation>次のものを削除できませんでした：
@@ -3129,9 +3129,288 @@ In: %3</source>
     <name>MainWindow</name>
     <message>
         <location filename="../src/ui/mainwindow.cpp" line="126"/>
-        <location filename="../src/ui/mainwindow.cpp" line="676"/>
+        <location filename="../src/ui/mainwindow.cpp" line="679"/>
         <source>Inspector</source>
         <translation>インスペクタ</translation>
+    </message>
+</context>
+<context>
+    <name>MenuSchema</name>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="25"/>
+        <location filename="../src/core/menuschema.cpp" line="518"/>
+        <source>Separator</source>
+        <translation>区切り</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="26"/>
+        <source>Heading: the link&apos;s name</source>
+        <translation>見出し: リンクの名前</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="27"/>
+        <source>Heading: the image&apos;s name</source>
+        <translation>見出し: 画像の名前</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="28"/>
+        <source>Heading: the media&apos;s name</source>
+        <translation>見出し: メディアの名前</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="29"/>
+        <source>Open link with another browser (submenu)</source>
+        <translation>リンクを他のブラウザで開く（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="30"/>
+        <source>Open image with another browser (submenu)</source>
+        <translation>画像を他のブラウザで開く（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="31"/>
+        <source>Open media with another browser (submenu)</source>
+        <translation>メディアを他のブラウザで開く（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="32"/>
+        <source>Open with another browser (submenu)</source>
+        <translation>他のブラウザで開く（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="33"/>
+        <source>Search the selection (submenu)</source>
+        <translation>選択した文字を検索（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="34"/>
+        <source>Bookmarklets (submenu)</source>
+        <translation>ブックマークレット（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="35"/>
+        <source>View source, or apply it on a source page</source>
+        <translation>ソースを表示（ソースのページでは適用）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="37"/>
+        <source>Open the tab with another browser (submenu)</source>
+        <translation>タブを別のブラウザで開く（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="38"/>
+        <source>The directory&apos;s settings (submenu)</source>
+        <translation>ディレクトリの設定（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="39"/>
+        <source>Close tabs together (submenu)</source>
+        <translation>まとめて閉じる（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="40"/>
+        <source>Reload the tab</source>
+        <translation>タブを再読み込み</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="41"/>
+        <source>Recently closed tabs (submenu)</source>
+        <translation>最近閉じたタブ（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="42"/>
+        <source>The tab bar&apos;s menu (submenu)</source>
+        <translation>タブバーのメニュー（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="43"/>
+        <source>Sort (submenu)</source>
+        <translation>並べ替え（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="44"/>
+        <source>What the tab list collects (submenu)</source>
+        <translation>タブ一覧に集めるもの（サブメニュー）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="80"/>
+        <source>The line of icons at the top of the menu. What it holds is not repeated below it; the command bar comes last.</source>
+        <translation>メニューの先頭に並ぶアイコンの列です。ここにある項目は下の行には表示されません。右端はコマンドバーです。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="88"/>
+        <source>Link</source>
+        <translation>リンク</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="89"/>
+        <source>On a link.</source>
+        <translation>リンクの上で。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="98"/>
+        <source>Image</source>
+        <translation>画像</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="99"/>
+        <source>On an image.</source>
+        <translation>画像の上で。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="109"/>
+        <source>Video and audio</source>
+        <translation>動画と音声</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="110"/>
+        <source>On a video or an audio player.</source>
+        <translation>動画や音声のプレーヤーの上で。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="123"/>
+        <source>Text field</source>
+        <translation>入力欄</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="124"/>
+        <source>In a field on the page. The application&apos;s own fields (the address bar, the search) follow it too, with only the editing actions, and add Copy while something is selected.</source>
+        <translation>ページの入力欄で。アプリの入力欄（アドレスバーや検索欄）もこの並びに従います。そこでは編集の操作だけが出て、選択中はコピーが加わります。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="135"/>
+        <source>Selection</source>
+        <translation>選択</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="136"/>
+        <source>While text is selected.</source>
+        <translation>文字を選択しているとき。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="144"/>
+        <source>Page</source>
+        <translation>ページ</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="145"/>
+        <source>At the end of every menu on the page.</source>
+        <translation>ページのどのメニューでも末尾に。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="158"/>
+        <source>Tab bar</source>
+        <translation>タブバー</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="159"/>
+        <source>On a tab of the tab bar. What does not apply to the tab, or to the tab bar, is left out.</source>
+        <translation>タブバーのタブの上で。そのタブやタブバーに当てはまらない項目は出ません。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="183"/>
+        <source>Tab list</source>
+        <translation>タブ一覧</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="184"/>
+        <source>In the tab list and the trash, over a tab or not. What does not apply there is left out; in the trash, the way back comes first.</source>
+        <translation>タブ一覧とゴミ箱で、タブの上でもそれ以外でも。当てはまらない項目は出ません。ゴミ箱では「ここに復元」が先頭に来ます。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="222"/>
+        <source>Page: icons</source>
+        <translation>ページ: アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="227"/>
+        <source>Link: icons</source>
+        <translation>リンク: アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="232"/>
+        <source>Image: icons</source>
+        <translation>画像: アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="237"/>
+        <source>Video and audio: icons</source>
+        <translation>動画と音声: アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="243"/>
+        <source>Text field: icons</source>
+        <translation>入力欄: アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="247"/>
+        <source>Selection: icons</source>
+        <translation>選択: アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="251"/>
+        <source>Tab bar: icons</source>
+        <translation>タブバー: アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="256"/>
+        <source>Tab list: icons</source>
+        <translation>タブ一覧: アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="445"/>
+        <source>Only in menus</source>
+        <translation>メニューだけの項目</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="459"/>
+        <source>With an icon</source>
+        <translation>アイコン付き</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="460"/>
+        <source>On tabs</source>
+        <translation>タブに対する項目</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="512"/>
+        <source>Menus</source>
+        <translation>メニュー</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="514"/>
+        <source>Icons</source>
+        <translation>アイコン</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="516"/>
+        <source>Items</source>
+        <translation>項目</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="520"/>
+        <source>Add a separator</source>
+        <translation>区切りを追加</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="522"/>
+        <source>Move up</source>
+        <translation>上へ</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="524"/>
+        <source>Move down</source>
+        <translation>下へ</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="526"/>
+        <source>The menu has nothing of its own.</source>
+        <translation>このメニューには項目がありません。</translation>
+    </message>
+    <message>
+        <location filename="../src/core/menuschema.cpp" line="528"/>
+        <source>Not an action this version knows. Kept as it is.</source>
+        <translation>この版では認識できない操作です。そのまま残します。</translation>
     </message>
 </context>
 <context>
@@ -3231,12 +3510,13 @@ In: %3</source>
 <context>
     <name>NodeItem</name>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4217"/>
+        <location filename="../src/ui/treebar.cpp" line="4223"/>
         <source>OpenViewNodeWithOtherBrowser</source>
         <translation>別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4220"/>
+        <location filename="../src/ui/treebar.cpp" line="4219"/>
+        <location filename="../src/ui/treebar.cpp" line="4224"/>
         <source>OpenViewNodeWithDefault</source>
         <translation>既定のブラウザで開く</translation>
     </message>
@@ -3288,145 +3568,145 @@ In: %3</source>
 <context>
     <name>Page</name>
     <message>
-        <location filename="../src/view/page.cpp" line="728"/>
+        <location filename="../src/view/page.cpp" line="729"/>
         <source>Every saved password is deleted.</source>
         <translation>保存したパスワードをすべて削除します。</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2042"/>
+        <location filename="../src/view/page.cpp" line="2107"/>
         <source>
  Ctrl+Click: InForeground</source>
         <translation>
  Ctrl+クリック：フォアグラウンドで開く</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2277"/>
+        <location filename="../src/view/page.cpp" line="2365"/>
         <source>Too many links or images.</source>
         <translation>選択中の URL または画像が多すぎます。</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2277"/>
+        <location filename="../src/view/page.cpp" line="2365"/>
         <source>Open anyway?</source>
         <translation>それでも実行しますか?</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="380"/>
+        <location filename="../src/view/page.cpp" line="381"/>
         <source>https://www.google.com/search?c&amp;q=%1&amp;ie=UTF-8&amp;oe=UTF-8</source>
         <translation>https://www.google.co.jp/search?c&amp;q=%1&amp;ie=UTF-8&amp;oe=UTF-8</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="382"/>
+        <location filename="../src/view/page.cpp" line="383"/>
         <source>https://search.yahoo.com/search?ei=UTF-8&amp;p=%1</source>
         <translation>https://search.yahoo.co.jp/search?ei=UTF-8&amp;p=%1</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="384"/>
+        <location filename="../src/view/page.cpp" line="385"/>
         <source>https://www.bing.com/search?q=%1</source>
         <translation>https://www.bing.com/search?q=%1</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="386"/>
+        <location filename="../src/view/page.cpp" line="387"/>
         <source>https://www.amazon.com/s/?field-keywords=%1</source>
         <translation>https://www.amazon.co.jp/s/?field-keywords=%1</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="388"/>
+        <location filename="../src/view/page.cpp" line="389"/>
         <source>https://en.wikipedia.org/w/index.php?search=%1</source>
         <translation>https://ja.wikipedia.org/w/index.php?search=%1</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="693"/>
+        <location filename="../src/view/page.cpp" line="694"/>
         <source>Clear cookies.</source>
         <translation>Cookie を消去します。</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="694"/>
+        <location filename="../src/view/page.cpp" line="695"/>
         <source>Every cookie of every network space is deleted.
 Anything a site kept you signed in with goes with them.</source>
         <translation>すべてのネットワーク空間の Cookie を削除します。
 サイトがログイン状態を保つために置いたものも一緒に消えます。</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="727"/>
+        <location filename="../src/view/page.cpp" line="728"/>
         <source>Clear saved passwords.</source>
         <translation>保存したパスワードを消去します。</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1277"/>
+        <location filename="../src/view/page.cpp" line="1274"/>
         <source>Search button</source>
         <translation>検索ボタン</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1278"/>
+        <location filename="../src/view/page.cpp" line="1275"/>
         <source>Select search button.</source>
         <translation>検索ボタンを選んでください。</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1288"/>
+        <location filename="../src/view/page.cpp" line="1285"/>
         <source>Search tag</source>
         <translation>検索タグ</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1289"/>
+        <location filename="../src/view/page.cpp" line="1286"/>
         <source>Input search tag.(It will be used as command)</source>
         <translation>検索タグを入力してください（コマンドとして使います）</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1319"/>
-        <location filename="../src/view/page.cpp" line="1335"/>
+        <location filename="../src/view/page.cpp" line="1316"/>
+        <location filename="../src/view/page.cpp" line="1332"/>
         <source>Link at Mouse Cursor</source>
         <translation>カーソル上のリンク</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1320"/>
-        <location filename="../src/view/page.cpp" line="1352"/>
+        <location filename="../src/view/page.cpp" line="1317"/>
+        <location filename="../src/view/page.cpp" line="1349"/>
         <source>Image at Mouse Cursor</source>
         <translation>カーソル上の画像</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1321"/>
-        <location filename="../src/view/page.cpp" line="1356"/>
+        <location filename="../src/view/page.cpp" line="1318"/>
+        <location filename="../src/view/page.cpp" line="1353"/>
         <source>Selected Text</source>
         <translation>選択したテキスト</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1323"/>
-        <location filename="../src/view/page.cpp" line="1360"/>
+        <location filename="../src/view/page.cpp" line="1320"/>
+        <location filename="../src/view/page.cpp" line="1357"/>
         <source>Manual Input</source>
         <translation>手動入力</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1328"/>
+        <location filename="../src/view/page.cpp" line="1325"/>
         <source>Input type</source>
         <translation>入力方法</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1329"/>
+        <location filename="../src/view/page.cpp" line="1326"/>
         <source>Select input type of bookmarklet.</source>
         <translation>ブックマークレットの入力方法を選択してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1362"/>
+        <location filename="../src/view/page.cpp" line="1359"/>
         <source>Bookmarklet body</source>
         <translation>ブックマークレットの内容</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1363"/>
+        <location filename="../src/view/page.cpp" line="1360"/>
         <source>Input bookmarklet body.</source>
         <translation>ブックマークレットのソースを入力してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1370"/>
+        <location filename="../src/view/page.cpp" line="1367"/>
         <source>Bookmarklet Name</source>
         <translation>ブックマークレットの名前</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="1371"/>
+        <location filename="../src/view/page.cpp" line="1368"/>
         <source>Input bookmarklet name.(It will be used as command)</source>
         <translation>ブックマークレットの名前を入力してください（コマンドとして使います）</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2004"/>
+        <location filename="../src/view/page.cpp" line="2069"/>
         <source>
  Shift+Click: InNewWindow
  Ctrl+Click: InBackground</source>
@@ -3435,7 +3715,7 @@ Anything a site kept you signed in with goes with them.</source>
  Ctrl+クリック：バックグラウンドで開く</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2006"/>
+        <location filename="../src/view/page.cpp" line="2071"/>
         <source>
  Shift+Click: InNewWindow
  Ctrl+Click: InForeground</source>
@@ -3444,14 +3724,14 @@ Anything a site kept you signed in with goes with them.</source>
  Ctrl+クリック：フォアグラウンドで開く</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2028"/>
+        <location filename="../src/view/page.cpp" line="2093"/>
         <source>
  Shift+Click: InNewWindow</source>
         <translation>
  Shift+クリック：新しいウィンドウで開く</translation>
     </message>
     <message>
-        <location filename="../src/view/page.cpp" line="2041"/>
+        <location filename="../src/view/page.cpp" line="2106"/>
         <source>
  Ctrl+Click: InBackground</source>
         <translation>
@@ -3610,154 +3890,161 @@ Anything a site kept you signed in with goes with them.</source>
         <translation>更新日時：</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="460"/>
+        <location filename="../src/view/view.cpp" line="463"/>
         <source>(?:&lt;&lt;.*|.*&lt;&lt;|&lt;|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*rear.*|.*behind.*|.*before.*)</source>
         <translation>(?:&lt;&lt;.*|.*&lt;&lt;|&lt;|＜＜.*|.*＜＜|＜|.*back(?:ward)?.*|.*prev(?:ious)?.*|.*rear.*|.*behind.*|.*before.*|.*(?:戻|もど)る.*|.*(?:前|まえ).*)</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="459"/>
+        <location filename="../src/view/view.cpp" line="462"/>
         <source>(?:&gt;&gt;.*|.*&gt;&gt;|&gt;|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*)</source>
         <translation>(?:&gt;&gt;.*|.*&gt;&gt;|&gt;|＞＞.*|.*＞＞|＞|.*forward.*|.*next.*|.*front.*|.*beyond.*|.*after.*|.*more.*|.*(?:進|すす)む.*|.*(?:後|あと).*|.*(?:次|つぎ).*|.*(?:続|つづ)(?:く|き).*)</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="737"/>
+        <location filename="../src/view/view.cpp" line="740"/>
         <source>Bookmarklet</source>
         <translation>ブックマークレット</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="747"/>
+        <location filename="../src/view/view.cpp" line="750"/>
         <source>SearchWith</source>
         <translation>検索エンジン</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="770"/>
+        <location filename="../src/view/view.cpp" line="773"/>
         <source>OpenWithOtherBrowser</source>
         <translation>別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="777"/>
+        <location filename="../src/view/view.cpp" line="780"/>
         <source>OpenLinkWithOtherBrowser</source>
         <translation>リンクを別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="784"/>
+        <location filename="../src/view/view.cpp" line="787"/>
         <source>OpenImageWithOtherBrowser</source>
         <translation>画像を別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="791"/>
+        <location filename="../src/view/view.cpp" line="794"/>
         <source>OpenMediaWithOtherBrowser</source>
         <translation>メディアを別のブラウザで開く</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="1784"/>
+        <location filename="../src/view/view.cpp" line="1818"/>
         <source>Extensions are unavailable in this view or private profile.</source>
         <translation>このビューまたはプライベートプロファイルでは拡張機能を利用できません。</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="1790"/>
+        <location filename="../src/view/view.cpp" line="1824"/>
         <source>URL or JavaScript</source>
         <translation>URL もしくは JavaScript</translation>
     </message>
     <message>
-        <location filename="../src/view/view.cpp" line="1791"/>
+        <location filename="../src/view/view.cpp" line="1825"/>
         <source>Enter a URL or JavaScript</source>
         <translation>URL もしくは JavaScript を入力してください</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="2724"/>
-        <location filename="../src/ui/treebar.cpp" line="4268"/>
+        <location filename="../src/ui/treebar.cpp" line="4193"/>
+        <location filename="../src/ui/treebar.cpp" line="4250"/>
         <source>NewViewNode</source>
         <translation>新規タブ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="2729"/>
-        <location filename="../src/ui/treebar.cpp" line="4260"/>
+        <location filename="../src/ui/treebar.cpp" line="4195"/>
+        <location filename="../src/ui/treebar.cpp" line="4248"/>
         <source>CloneViewNode</source>
         <translation>複製（タブ/ディレクトリ）</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="2707"/>
+        <location filename="../src/ui/treebar.cpp" line="2717"/>
         <source>More</source>
         <translation>もっと見る</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="2713"/>
+        <location filename="../src/ui/treebar.cpp" line="2723"/>
         <source>DisplayTrashTree</source>
         <translation>ゴミ箱</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4241"/>
+        <location filename="../src/ui/treebar.cpp" line="4234"/>
         <source>RenameViewNode</source>
         <translation>ディレクトリ名を変更</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4253"/>
+        <location filename="../src/ui/treebar.cpp" line="4199"/>
+        <location filename="../src/ui/treebar.cpp" line="4243"/>
         <source>ReloadViewNode</source>
         <translation>タブを再読み込み</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4206"/>
+        <location filename="../src/ui/treebar.cpp" line="4214"/>
         <source>OpenViewNode</source>
         <translation>タブを開く</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4210"/>
+        <location filename="../src/ui/treebar.cpp" line="4217"/>
         <source>OpenViewNodeOnNewWindow</source>
         <translation>タブを新しいウィンドウで開く</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4293"/>
+        <location filename="../src/ui/treebar.cpp" line="4197"/>
+        <location filename="../src/ui/treebar.cpp" line="4258"/>
         <source>DeleteViewNode</source>
         <translation>削除（タブ/ディレクトリ）</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4298"/>
+        <location filename="../src/ui/treebar.cpp" line="4270"/>
         <source>DeleteViewNodesTogether</source>
         <translation>まとめて削除</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4301"/>
+        <location filename="../src/ui/treebar.cpp" line="4261"/>
+        <location filename="../src/ui/treebar.cpp" line="4272"/>
         <source>DeleteRightViewNode</source>
         <translation>右側のタブ/ディレクトリを削除</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4302"/>
+        <location filename="../src/ui/treebar.cpp" line="4261"/>
+        <location filename="../src/ui/treebar.cpp" line="4272"/>
         <source>DeleteLowerViewNode</source>
         <translation>下側のタブ/ディレクトリを削除</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4308"/>
+        <location filename="../src/ui/treebar.cpp" line="4265"/>
+        <location filename="../src/ui/treebar.cpp" line="4275"/>
         <source>DeleteLeftViewNode</source>
         <translation>左側のタブ/ディレクトリを削除</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4309"/>
+        <location filename="../src/ui/treebar.cpp" line="4265"/>
+        <location filename="../src/ui/treebar.cpp" line="4275"/>
         <source>DeleteUpperViewNode</source>
         <translation>上側のタブ/ディレクトリを削除</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4314"/>
+        <location filename="../src/ui/treebar.cpp" line="4268"/>
+        <location filename="../src/ui/treebar.cpp" line="4277"/>
         <source>DeleteOtherViewNode</source>
         <translation>他のタブ/ディレクトリを削除</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4323"/>
+        <location filename="../src/ui/treebar.cpp" line="4283"/>
         <source>RecentlyClosedViewNode</source>
         <translation>最近閉じたタブ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4274"/>
+        <location filename="../src/ui/treebar.cpp" line="4252"/>
         <source>MakeDirectory</source>
         <translation>新規ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4278"/>
+        <location filename="../src/ui/treebar.cpp" line="4254"/>
         <source>MakeDirectoryWithSelectedNode</source>
         <translation>このタブでディレクトリ作成</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="4284"/>
+        <location filename="../src/ui/treebar.cpp" line="4256"/>
         <source>MakeDirectoryWithSameDomainNode</source>
         <translation>ドメインごとにディレクトリ作成</translation>
     </message>
@@ -3785,89 +4072,89 @@ Anything a site kept you signed in with goes with them.</source>
         <translation>完了。</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="771"/>
-        <location filename="../src/view/quicknativewebview.cpp" line="772"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="768"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="769"/>
         <source>Feature Permission Requested.</source>
         <translation>機能の許可がリクエストされました。</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="774"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="771"/>
         <source>Url: </source>
         <translation>URL：</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="775"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="772"/>
         <source>Feature: </source>
         <translation>機能：</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="776"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="773"/>
         <source>Allow this feature?</source>
         <translation>この機能を有効にしますか?</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="804"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="801"/>
         <source>A page is left as it is, because its process was terminated %1 times in a row.
 </source>
         <translation>プロセスが %1 回続けて停止したため、そのページは再読み込みしません。
 </translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="806"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="803"/>
         <source>A page is reloaded, because its process was terminated.
 </source>
         <translation>プロセスが停止したため、そのページを再読み込みします。
 </translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="809"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="806"/>
         <source>Normal termination. (code: %1)</source>
         <translation>通常終了。（終了コード：%1）</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="811"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="808"/>
         <source>Abnormal termination. (code: %1)</source>
         <translation>異常終了。（終了コード：%1）</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="813"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="810"/>
         <source>Crashed termination. (code: %1)</source>
         <translation>クラッシュ。（終了コード：%1）</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="815"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="812"/>
         <source>Killed termination. (code: %1)</source>
         <translation>手動終了。（終了コード：%1）</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="818"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="815"/>
         <source>Render process terminated repeatedly.</source>
         <translation>描画プロセスが繰り返し停止しました。</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="819"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="816"/>
         <source>Render process terminated.</source>
         <translation>描画プロセスが停止しました。</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="836"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="833"/>
         <source>This page becomes full screen mode.</source>
         <translation>フルスクリーンモードに移行しました。</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="837"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="834"/>
         <source>Press Esc to exit.</source>
         <translation>終了するには Esc キーを押してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="1014"/>
-        <location filename="../src/view/quicknativewebview.cpp" line="1021"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="1011"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="1018"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>ズーム %1 %</translation>
     </message>
     <message>
-        <location filename="../src/view/quicknativewebview.cpp" line="1179"/>
-        <location filename="../src/view/quicknativewebview.cpp" line="1286"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="1176"/>
+        <location filename="../src/view/quicknativewebview.cpp" line="1283"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
@@ -3875,8 +4162,8 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>QuickWebEngineView</name>
     <message>
-        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1235"/>
-        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1241"/>
+        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1243"/>
+        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1249"/>
         <source>Zoom factor changed to %1 percent</source>
         <translation>ズーム %1 %</translation>
     </message>
@@ -3976,8 +4263,8 @@ Anything a site kept you signed in with goes with them.</source>
         <translation>終了するには Esc キーを押してください。</translation>
     </message>
     <message>
-        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1429"/>
-        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1474"/>
+        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1447"/>
+        <location filename="../src/view/webengine/quickwebengineview.cpp" line="1492"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>
@@ -3985,165 +4272,257 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>Receiver</name>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1434"/>
+        <location filename="../src/app/receiver.cpp" line="1682"/>
         <source>Input Query.</source>
         <translation>検索</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1435"/>
+        <location filename="../src/app/receiver.cpp" line="1683"/>
         <source>Enter a URL.</source>
         <translation>URL を入力</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1436"/>
+        <location filename="../src/app/receiver.cpp" line="1684"/>
         <source>Incremental Search</source>
         <translation>ページ内検索</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1459"/>
-        <location filename="../src/app/receiver.cpp" line="1687"/>
-        <location filename="../src/app/receiver.cpp" line="1864"/>
+        <location filename="../src/app/receiver.cpp" line="1708"/>
+        <location filename="../src/app/receiver.cpp" line="2478"/>
+        <location filename="../src/app/receiver.cpp" line="2665"/>
         <source>Open addresses</source>
         <translation>アドレスを開く</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1865"/>
+        <location filename="../src/app/receiver.cpp" line="2666"/>
         <source>Load an address here</source>
         <translation>このタブでアドレスを読み込む</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1448"/>
-        <location filename="../src/app/receiver.cpp" line="1462"/>
-        <location filename="../src/app/receiver.cpp" line="1687"/>
-        <location filename="../src/app/receiver.cpp" line="1866"/>
+        <location filename="../src/app/receiver.cpp" line="1697"/>
+        <location filename="../src/app/receiver.cpp" line="1711"/>
+        <location filename="../src/app/receiver.cpp" line="2478"/>
+        <location filename="../src/app/receiver.cpp" line="2667"/>
         <source>Search the web</source>
         <translation>Web を検索</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1867"/>
+        <location filename="../src/app/receiver.cpp" line="2668"/>
         <source>Download to a file</source>
         <translation>ファイルへダウンロード</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1868"/>
+        <location filename="../src/app/receiver.cpp" line="2669"/>
         <source>Search in the page</source>
         <translation>ページ内を検索</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1869"/>
+        <location filename="../src/app/receiver.cpp" line="2670"/>
         <source>Change a setting</source>
         <translation>設定を変更</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1696"/>
-        <location filename="../src/app/receiver.cpp" line="1870"/>
+        <location filename="../src/app/receiver.cpp" line="2487"/>
+        <location filename="../src/app/receiver.cpp" line="2671"/>
         <source>Reset a setting</source>
         <translation>設定を既定に戻す</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1871"/>
+        <location filename="../src/app/receiver.cpp" line="2672"/>
         <source>Send a key</source>
         <translation>キーを送る</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1872"/>
+        <location filename="../src/app/receiver.cpp" line="2673"/>
         <source>Open a blank page</source>
         <translation>空白のページを開く</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1313"/>
+        <location filename="../src/app/receiver.cpp" line="1534"/>
         <source>Commands</source>
         <translation>コマンド</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1314"/>
+        <location filename="../src/app/receiver.cpp" line="1535"/>
         <source>Tabs</source>
         <translation>タブ</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1316"/>
+        <location filename="../src/app/receiver.cpp" line="1537"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1317"/>
+        <location filename="../src/app/receiver.cpp" line="1538"/>
         <source>Web</source>
         <translation>Web</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1315"/>
+        <location filename="../src/app/receiver.cpp" line="1536"/>
         <source>Trash</source>
         <translation>ゴミ箱</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1431"/>
-        <location filename="../src/app/receiver.cpp" line="2210"/>
+        <location filename="../src/app/receiver.cpp" line="1679"/>
+        <location filename="../src/app/receiver.cpp" line="3030"/>
         <source>All</source>
         <translation>すべて</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1873"/>
+        <location filename="../src/app/receiver.cpp" line="2674"/>
         <source>Read the settings again</source>
         <translation>設定を読み直す</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1884"/>
+        <location filename="../src/app/receiver.cpp" line="2685"/>
         <source>Search %1</source>
         <translation>%1 で検索</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1886"/>
+        <location filename="../src/app/receiver.cpp" line="2687"/>
         <source>Run the bookmarklet</source>
         <translation>ブックマークレットを実行</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1681"/>
+        <location filename="../src/app/receiver.cpp" line="2472"/>
         <source>Switch to the tab</source>
         <translation>タブへ切り替える</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1682"/>
+        <location filename="../src/app/receiver.cpp" line="2891"/>
+        <source>Cannot change this setting.</source>
+        <translation>この設定は変更できません。</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1505"/>
+        <source>There is no setting &quot;%1&quot;.</source>
+        <translation>「%1」という設定はありません。</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../src/app/receiver.cpp" line="937"/>
+        <source>%n tab(s)</source>
+        <translation>
+            <numerusform>%n 個のタブ</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1498"/>
+        <source>No such setting</source>
+        <translation>存在しない設定です</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1500"/>
+        <source>Not a value it takes</source>
+        <translation>設定できない値です</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1506"/>
+        <source>&quot;%1&quot; cannot be set to &quot;%2&quot;.</source>
+        <translation>「%1」に「%2」は設定できません。</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1515"/>
+        <source>It takes one of: %1</source>
+        <translation>設定できる値：%1</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1518"/>
+        <source>It takes a whole number.</source>
+        <translation>整数を指定してください。</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1519"/>
+        <source>It takes a colour as #rrggbb, or nothing.</source>
+        <translation>色を #rrggbb の形で指定するか、空にしてください。</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1520"/>
+        <source>It is a list: change it on the settings page.</source>
+        <translation>一覧の設定です。設定ページで変更してください。</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="1685"/>
+        <source>What to do with it</source>
+        <translation>これに対するコマンド</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2060"/>
+        <source>Link</source>
+        <translation>リンク</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2061"/>
+        <source>Image</source>
+        <translation>画像</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2062"/>
+        <source>Video and audio</source>
+        <translation>動画・音声</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2063"/>
+        <source>Selection</source>
+        <translation>選択</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2064"/>
+        <source>Element</source>
+        <translation>要素</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2065"/>
+        <source>Tab</source>
+        <translation>タブ</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2066"/>
+        <source>Text field</source>
+        <translation>入力欄</translation>
+    </message>
+    <message>
+        <location filename="../src/app/receiver.cpp" line="2473"/>
         <source>Restore the tab</source>
         <translation>タブを復元</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1683"/>
+        <location filename="../src/app/receiver.cpp" line="2474"/>
         <source>Run</source>
         <translation>実行</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1685"/>
-        <location filename="../src/app/receiver.cpp" line="1694"/>
+        <location filename="../src/app/receiver.cpp" line="2476"/>
+        <location filename="../src/app/receiver.cpp" line="2485"/>
         <source>Change the assignment</source>
         <translation>割り当てを変更</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1685"/>
+        <location filename="../src/app/receiver.cpp" line="2476"/>
         <source>Edit the value</source>
         <translation>値を編集</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1690"/>
+        <location filename="../src/app/receiver.cpp" line="2481"/>
         <source>Close the tab</source>
         <translation>タブを閉じる</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1691"/>
+        <location filename="../src/app/receiver.cpp" line="2482"/>
         <source>Delete for good</source>
         <translation>完全に削除</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1692"/>
+        <location filename="../src/app/receiver.cpp" line="2483"/>
         <source>Copy the address</source>
         <translation>URL をコピー</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1693"/>
+        <location filename="../src/app/receiver.cpp" line="2484"/>
         <source>Copy the words</source>
         <translation>文字列をコピー</translation>
     </message>
     <message>
-        <location filename="../src/app/receiver.cpp" line="1695"/>
+        <location filename="../src/app/receiver.cpp" line="2486"/>
         <source>Open in the settings</source>
         <translation>設定画面で開く</translation>
     </message>
@@ -4164,416 +4543,416 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>SettingsPage</name>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1752"/>
+        <location filename="../src/core/settingsschema.cpp" line="1876"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1754"/>
+        <location filename="../src/core/settingsschema.cpp" line="1878"/>
         <source>Search settings</source>
         <translation>設定を検索</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1756"/>
+        <location filename="../src/core/settingsschema.cpp" line="1880"/>
         <source>Reset</source>
         <translation>既定値に戻す</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1758"/>
+        <location filename="../src/core/settingsschema.cpp" line="1882"/>
         <source>Back to the default</source>
         <translation>既定値に戻す</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1760"/>
+        <location filename="../src/core/settingsschema.cpp" line="1884"/>
         <source>Browse...</source>
         <translation>参照…</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1764"/>
+        <location filename="../src/core/settingsschema.cpp" line="1888"/>
         <source>System</source>
         <translation>システム</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1766"/>
+        <location filename="../src/core/settingsschema.cpp" line="1890"/>
         <source>Choose...</source>
         <translation>色の選択…</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1768"/>
+        <location filename="../src/core/settingsschema.cpp" line="1892"/>
         <source>Saved</source>
         <translation>保存しました</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1770"/>
+        <location filename="../src/core/settingsschema.cpp" line="1894"/>
         <source>Saved. Takes effect on the next launch.</source>
         <translation>保存しました。次回の起動から反映されます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1772"/>
+        <location filename="../src/core/settingsschema.cpp" line="1896"/>
         <source>Not saved</source>
         <translation>保存できませんでした</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1774"/>
+        <location filename="../src/core/settingsschema.cpp" line="1898"/>
         <source>restart</source>
         <translation>要再起動</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1779"/>
+        <location filename="../src/core/settingsschema.cpp" line="1903"/>
         <source>Not used while %1.</source>
         <translation>%1の間は使われません。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1781"/>
+        <location filename="../src/core/settingsschema.cpp" line="1905"/>
         <source>&apos;%1&apos; is on</source>
         <translation>「%1」がオン</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1783"/>
+        <location filename="../src/core/settingsschema.cpp" line="1907"/>
         <source>&apos;%1&apos; is off</source>
         <translation>「%1」がオフ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1785"/>
+        <location filename="../src/core/settingsschema.cpp" line="1909"/>
         <source>&apos;%1&apos; is not &apos;%2&apos;</source>
         <translation>「%1」が「%2」以外</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1787"/>
+        <location filename="../src/core/settingsschema.cpp" line="1911"/>
         <source> and </source>
         <translation>で、</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1789"/>
+        <location filename="../src/core/settingsschema.cpp" line="1913"/>
         <source>Nothing matches.</source>
         <translation>一致する項目がありません。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1791"/>
+        <location filename="../src/core/settingsschema.cpp" line="1915"/>
         <source>Could not load the settings: </source>
         <translation>設定を読み込めませんでした：</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1794"/>
+        <location filename="../src/core/settingsschema.cpp" line="1918"/>
         <source>See the saved passwords</source>
         <translation>保存したパスワードを表示</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1797"/>
+        <location filename="../src/core/settingsschema.cpp" line="1921"/>
         <source>See the site permissions</source>
         <translation>サイトのアクセス許可を表示</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1800"/>
+        <location filename="../src/core/settingsschema.cpp" line="1924"/>
         <source>Changes are saved as they are made. Text is saved when its box is left.</source>
         <translation>変更はその場で保存されます。入力した文字は入力欄から離れたときに保存されます。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="176"/>
+        <location filename="../src/app/settingspage.cpp" line="213"/>
         <source>Site</source>
         <translation>サイト</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="177"/>
+        <location filename="../src/app/settingspage.cpp" line="214"/>
         <source>Username</source>
         <translation>ユーザ名</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="178"/>
+        <location filename="../src/app/settingspage.cpp" line="215"/>
         <source>Profile</source>
         <translation>プロファイル</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="179"/>
+        <location filename="../src/app/settingspage.cpp" line="216"/>
         <source>(no username)</source>
         <translation>（ユーザ名なし）</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="180"/>
-        <location filename="../src/app/settingspage.cpp" line="292"/>
+        <location filename="../src/app/settingspage.cpp" line="217"/>
+        <location filename="../src/app/settingspage.cpp" line="329"/>
         <source>Remove</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="181"/>
-        <location filename="../src/app/settingspage.cpp" line="293"/>
+        <location filename="../src/app/settingspage.cpp" line="218"/>
+        <location filename="../src/app/settingspage.cpp" line="330"/>
         <source>Remove all</source>
         <translation>すべて削除</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="182"/>
+        <location filename="../src/app/settingspage.cpp" line="219"/>
         <source>Remove every saved password?</source>
         <translation>保存したパスワードをすべて削除しますか?</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="183"/>
+        <location filename="../src/app/settingspage.cpp" line="220"/>
         <source>Removing...</source>
         <translation>削除しています…</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="184"/>
+        <location filename="../src/app/settingspage.cpp" line="221"/>
         <source>The password could not be removed.</source>
         <translation>パスワードを削除できませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="185"/>
+        <location filename="../src/app/settingspage.cpp" line="222"/>
         <source>No passwords are saved.</source>
         <translation>保存したパスワードはありません。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="186"/>
+        <location filename="../src/app/settingspage.cpp" line="223"/>
         <source>Never saved for these sites</source>
         <translation>パスワードを保存しないサイト</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="188"/>
+        <location filename="../src/app/settingspage.cpp" line="225"/>
         <source>A removed site is asked about again.</source>
         <translation>削除したサイトでは、また保存するか確認します。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="190"/>
+        <location filename="../src/app/settingspage.cpp" line="227"/>
         <source>Passwords an Edge view saved are not listed here. &quot;Remove all&quot; removes them too.</source>
         <translation>Edge のビューが保存したパスワードはここには表示されません。「すべて削除」を実行すると、それらも削除されます。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="193"/>
+        <location filename="../src/app/settingspage.cpp" line="230"/>
         <source>This build does not save passwords in a WebEngine view.</source>
         <translation>このビルドでは WebEngine のビューでパスワードを保存しません。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="290"/>
+        <location filename="../src/app/settingspage.cpp" line="327"/>
         <source>Allow</source>
         <translation>許可</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="291"/>
+        <location filename="../src/app/settingspage.cpp" line="328"/>
         <source>Block</source>
         <translation>ブロック</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="294"/>
+        <location filename="../src/app/settingspage.cpp" line="331"/>
         <source>Remove all for this site</source>
         <translation>このサイトのアクセス許可をすべて削除</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="295"/>
+        <location filename="../src/app/settingspage.cpp" line="332"/>
         <source>Remove every site permission?</source>
         <translation>サイトのアクセス許可をすべて削除しますか？</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="296"/>
+        <location filename="../src/app/settingspage.cpp" line="333"/>
         <source>The permission could not be changed.</source>
         <translation>アクセス許可を変更できませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="298"/>
+        <location filename="../src/app/settingspage.cpp" line="335"/>
         <source>No site has been allowed or blocked.</source>
         <translation>許可またはブロックしたサイトはありません。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="300"/>
+        <location filename="../src/app/settingspage.cpp" line="337"/>
         <source>Shared by every view. A removed one is asked again.</source>
         <translation>すべてのビューで共通です。削除すると、次にまた確認します。</translation>
     </message>
     <message>
         <location filename="../src/ui/siteinfo.cpp" line="378"/>
-        <location filename="../src/app/settingspage.cpp" line="301"/>
+        <location filename="../src/app/settingspage.cpp" line="338"/>
         <source>Enabled in Edge</source>
         <translation>Edge で有効</translation>
     </message>
     <message>
         <location filename="../src/ui/siteinfo.cpp" line="380"/>
-        <location filename="../src/app/settingspage.cpp" line="302"/>
+        <location filename="../src/app/settingspage.cpp" line="339"/>
         <source>Enabled in WebEngine</source>
         <translation>WebEngine で有効</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="304"/>
+        <location filename="../src/app/settingspage.cpp" line="341"/>
         <source>Add a site</source>
         <translation>サイトを追加</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="305"/>
+        <location filename="../src/app/settingspage.cpp" line="342"/>
         <source>Site (example.com)</source>
         <translation>サイト（example.com）</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="306"/>
+        <location filename="../src/app/settingspage.cpp" line="343"/>
         <source>Add</source>
         <translation>追加</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="308"/>
+        <location filename="../src/app/settingspage.cpp" line="345"/>
         <source>Enter the address of a site, such as https://example.com.</source>
         <translation>https://example.com のようなサイトのアドレスを入力してください。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1485"/>
+        <location filename="../src/app/settingspage.cpp" line="1529"/>
         <source>Notifications</source>
         <translation>通知</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1486"/>
+        <location filename="../src/app/settingspage.cpp" line="1530"/>
         <source>Location</source>
         <translation>位置情報</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1487"/>
+        <location filename="../src/app/settingspage.cpp" line="1531"/>
         <source>Microphone</source>
         <translation>マイク</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1488"/>
+        <location filename="../src/app/settingspage.cpp" line="1532"/>
         <source>Camera</source>
         <translation>カメラ</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1489"/>
+        <location filename="../src/app/settingspage.cpp" line="1533"/>
         <source>Fonts on this device</source>
         <translation>このデバイスのフォント</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1490"/>
+        <location filename="../src/app/settingspage.cpp" line="1534"/>
         <source>Clipboard (read and write)</source>
         <translation>クリップボード（読み書き）</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1491"/>
+        <location filename="../src/app/settingspage.cpp" line="1535"/>
         <source>Mouse lock</source>
         <translation>マウスのロック</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1492"/>
+        <location filename="../src/app/settingspage.cpp" line="1536"/>
         <source>Screen</source>
         <translation>画面</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1493"/>
+        <location filename="../src/app/settingspage.cpp" line="1537"/>
         <source>Screen and audio</source>
         <translation>画面と音声</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1494"/>
+        <location filename="../src/app/settingspage.cpp" line="1538"/>
         <source>Clipboard (read)</source>
         <translation>クリップボード（読み取り）</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1495"/>
+        <location filename="../src/app/settingspage.cpp" line="1539"/>
         <source>Motion and other sensors</source>
         <translation>モーションとその他のセンサー</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1496"/>
+        <location filename="../src/app/settingspage.cpp" line="1540"/>
         <source>Automatic downloads</source>
         <translation>自動ダウンロード</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1497"/>
+        <location filename="../src/app/settingspage.cpp" line="1541"/>
         <source>Files and folders</source>
         <translation>ファイルとフォルダ</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1498"/>
+        <location filename="../src/app/settingspage.cpp" line="1542"/>
         <source>Autoplay</source>
         <translation>自動再生</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1499"/>
+        <location filename="../src/app/settingspage.cpp" line="1543"/>
         <source>MIDI devices</source>
         <translation>MIDI デバイス</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1500"/>
+        <location filename="../src/app/settingspage.cpp" line="1544"/>
         <source>Window management</source>
         <translation>ウィンドウの管理</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1501"/>
+        <location filename="../src/app/settingspage.cpp" line="1545"/>
         <source>Persistent storage</source>
         <translation>永続ストレージ</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="442"/>
+        <location filename="../src/app/settingspage.cpp" line="479"/>
         <source>Downloading</source>
         <translation>ダウンロード中</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="443"/>
+        <location filename="../src/app/settingspage.cpp" line="480"/>
         <source>Completed</source>
         <translation>完了</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="444"/>
+        <location filename="../src/app/settingspage.cpp" line="481"/>
         <source>Cancelled</source>
         <translation>キャンセル済み</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="445"/>
+        <location filename="../src/app/settingspage.cpp" line="482"/>
         <source>Failed</source>
         <translation>失敗</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="446"/>
+        <location filename="../src/app/settingspage.cpp" line="483"/>
         <source>Interrupted</source>
         <translation>中断</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="447"/>
+        <location filename="../src/app/settingspage.cpp" line="484"/>
         <source>Open</source>
         <translation>開く</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="448"/>
+        <location filename="../src/app/settingspage.cpp" line="485"/>
         <source>Show in folder</source>
         <translation>フォルダを開く</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="449"/>
+        <location filename="../src/app/settingspage.cpp" line="486"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="450"/>
+        <location filename="../src/app/settingspage.cpp" line="487"/>
         <source>Remove from list</source>
         <translation>一覧から削除</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="451"/>
+        <location filename="../src/app/settingspage.cpp" line="488"/>
         <source>Clear list</source>
         <translation>一覧を空にする</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="452"/>
+        <location filename="../src/app/settingspage.cpp" line="489"/>
         <source>Nothing has been downloaded.</source>
         <translation>ダウンロードの履歴はありません。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="455"/>
+        <location filename="../src/app/settingspage.cpp" line="492"/>
         <source>History</source>
         <translation>履歴</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="456"/>
+        <location filename="../src/app/settingspage.cpp" line="493"/>
         <source>The file is not there any more.</source>
         <translation>ファイルがありません</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="457"/>
+        <location filename="../src/app/settingspage.cpp" line="494"/>
         <source>Open the page it came from</source>
         <translation>元のページを開く</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="567"/>
+        <location filename="../src/app/settingspage.cpp" line="606"/>
         <source>A setting takes effect on the next launch.</source>
         <translation>次回の起動から反映される設定を変更しました。</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="569"/>
+        <location filename="../src/app/settingspage.cpp" line="608"/>
         <source>Restart now?</source>
         <translation>いま再起動しますか？</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1690"/>
+        <location filename="../src/app/settingspage.cpp" line="1734"/>
         <source>Select a Chrome extension folder</source>
         <translation>Chrome 拡張機能のフォルダを選択</translation>
     </message>
@@ -4701,14 +5080,14 @@ Anything a site kept you signed in with goes with them.</source>
         <translation>コマンドバーを独立したウィンドウにする</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="899"/>
+        <location filename="../src/core/settingsschema.cpp" line="900"/>
         <source>Tab list drawing surface</source>
         <translation>タブ一覧の描画方式</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="900"/>
+        <location filename="../src/core/settingsschema.cpp" line="901"/>
         <source>What the tab list and the access key labels are drawn on; the page is not. While the window is translucent, they are drawn on &apos;Widget&apos; whatever is chosen here.</source>
-        <translation>タブ一覧とアクセスキーのラベルを描く面です（ページには関係しません）。ウィンドウを半透明にしている間は、ここの選択によらず Widget で描きます。</translation>
+        <translation>タブ一覧とアクセスキーのラベルを描く面です（ページには関係しません）。ウィンドウを半透明にしている間は、ここの選択によらず「Widget」で描きます。</translation>
     </message>
     <message>
         <location filename="../src/core/settingsschema.cpp" line="232"/>
@@ -4778,789 +5157,844 @@ An Edge view treats &apos;Discard&apos; as &apos;Freeze&apos;.</source>
         <translation>タブ一覧にフレームレートを表示する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="285"/>
+        <location filename="../src/core/settingsschema.cpp" line="286"/>
         <source>Back and forward guess the page when there is no history</source>
         <translation>履歴が無いとき、戻る・進むで前後のページを推測する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="287"/>
+        <location filename="../src/core/settingsschema.cpp" line="288"/>
         <source>From a &apos;previous&apos; or &apos;next&apos; link in the page, or a number in the address. On, the rewind and fast forward buttons are hidden.</source>
         <translation>ページ内の「前へ」「次へ」のリンクや、アドレス中の番号から推測します。オンのときは巻き戻し・早送りのボタンを隠します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="523"/>
+        <location filename="../src/core/settingsschema.cpp" line="525"/>
         <source>Shortcuts on a single key</source>
         <translation>単独キーのショートカット</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="656"/>
+        <location filename="../src/core/settingsschema.cpp" line="657"/>
         <source>Offer to save passwords</source>
         <translation>パスワードの保存を確認する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="616"/>
+        <location filename="../src/core/settingsschema.cpp" line="617"/>
         <source>Tabs shown to extensions</source>
         <translation>拡張機能に見せるタブ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="617"/>
+        <location filename="../src/core/settingsschema.cpp" line="618"/>
         <source>Which tabs an extension&apos;s tab list, tab events and tab actions cover. Bookmarks and history still cover the whole tree.
 Content scripts still run on every page they match, so this does not hide pages from an extension.</source>
         <translation>拡張機能のタブ一覧・タブイベント・タブ操作が対象にするタブです。ブックマークと履歴は、引き続きツリー全体が対象です。
 コンテンツスクリプトは条件に合うすべてのページで動くので、この設定でページを拡張機能から隠すことはできません。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="729"/>
+        <location filename="../src/core/settingsschema.cpp" line="730"/>
         <source>Tracking prevention</source>
         <translation>トラッキング防止</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="735"/>
+        <location filename="../src/core/settingsschema.cpp" line="736"/>
         <source>Microsoft Defender SmartScreen</source>
         <translation>Microsoft Defender SmartScreen</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1022"/>
+        <location filename="../src/core/settingsschema.cpp" line="1023"/>
         <source>What a directory which names the browser (&apos;;useragent firefox&apos; and the like) sends, in the tabs opened after the change. Empty, the built in one; %SYSTEM% and %CHROMIUM% are filled in.</source>
         <translation>そのブラウザを名乗るディレクトリ（「;useragent firefox」など）が送るユーザーエージェントです。変更後に開いたタブから使います。空なら組み込みのものを使い、%SYSTEM% と %CHROMIUM% は自動で埋めます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1069"/>
+        <location filename="../src/core/settingsschema.cpp" line="1070"/>
         <source>Tab bar</source>
         <translation>タブバー</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1071"/>
+        <location filename="../src/core/settingsschema.cpp" line="1072"/>
         <source>Tree</source>
         <translation>ツリー</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1073"/>
+        <location filename="../src/core/settingsschema.cpp" line="1074"/>
         <source>Loading and limits</source>
         <translation>読み込みと上限</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1076"/>
+        <location filename="../src/core/settingsschema.cpp" line="1077"/>
         <source>Links and new tabs</source>
         <translation>リンクと新しいタブ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1078"/>
+        <location filename="../src/core/settingsschema.cpp" line="1079"/>
         <source>Keys and typing</source>
         <translation>キーと入力</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1080"/>
+        <location filename="../src/core/settingsschema.cpp" line="1081"/>
         <source>Display</source>
         <translation>表示</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1082"/>
+        <location filename="../src/core/settingsschema.cpp" line="1083"/>
         <source>Fonts</source>
         <translation>フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1084"/>
+        <location filename="../src/core/settingsschema.cpp" line="1085"/>
         <source>What a page may do</source>
         <translation>ページの動作許可</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1086"/>
+        <location filename="../src/core/settingsschema.cpp" line="1087"/>
         <source>Saving and printing</source>
         <translation>保存と印刷</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1088"/>
+        <location filename="../src/core/settingsschema.cpp" line="1089"/>
         <source>Local view</source>
         <translation>ローカルビュー</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1094"/>
+        <location filename="../src/core/settingsschema.cpp" line="1095"/>
         <source>Gestures and single keys</source>
         <translation>ジェスチャと単独キー</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1096"/>
+        <location filename="../src/core/settingsschema.cpp" line="1097"/>
         <source>Where files go</source>
         <translation>保存先</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1099"/>
+        <location filename="../src/core/settingsschema.cpp" line="1100"/>
         <source>Requests</source>
         <translation>リクエスト</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1101"/>
+        <location filename="../src/core/settingsschema.cpp" line="1102"/>
         <source>Certificates</source>
         <translation>証明書</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1103"/>
+        <location filename="../src/core/settingsschema.cpp" line="1104"/>
         <source>DNS</source>
         <translation>DNS</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1164"/>
+        <location filename="../src/core/settingsschema.cpp" line="1165"/>
         <source>Directory</source>
         <translation>ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1173"/>
+        <location filename="../src/core/settingsschema.cpp" line="1179"/>
         <source>Downloads</source>
         <translation>ダウンロード</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1181"/>
+        <location filename="../src/core/settingsschema.cpp" line="1187"/>
         <source>Saved passwords</source>
         <translation>保存したパスワード</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1185"/>
+        <location filename="../src/core/settingsschema.cpp" line="1191"/>
         <source>Site permissions</source>
         <translation>サイトのアクセス許可</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1194"/>
+        <location filename="../src/core/settingsschema.cpp" line="1200"/>
         <source>Saving and backups</source>
         <translation>保存とバックアップ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1196"/>
+        <location filename="../src/core/settingsschema.cpp" line="1202"/>
         <source>Rendering and engine</source>
         <translation>描画とエンジン</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1219"/>
-        <location filename="../src/core/settingsschema.cpp" line="1392"/>
+        <location filename="../src/core/settingsschema.cpp" line="1176"/>
+        <source>Context menus</source>
+        <translation>右クリックメニュー</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1207"/>
+        <source>Other settings</source>
+        <translation>その他の設定</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1231"/>
+        <location filename="../src/core/settingsschema.cpp" line="1420"/>
         <source>Auto</source>
         <translation>自動</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1220"/>
+        <location filename="../src/core/settingsschema.cpp" line="1232"/>
         <source>Light</source>
         <translation>ライト</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1221"/>
+        <location filename="../src/core/settingsschema.cpp" line="1233"/>
         <source>Dark</source>
         <translation>ダーク</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1230"/>
+        <location filename="../src/core/settingsschema.cpp" line="1242"/>
         <source>All tabs</source>
         <translation>すべてのタブ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1231"/>
+        <location filename="../src/core/settingsschema.cpp" line="1243"/>
         <source>Tabs in the current tab&apos;s directory</source>
         <translation>現在のタブと同じディレクトリのタブ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1232"/>
+        <location filename="../src/core/settingsschema.cpp" line="1244"/>
         <source>Loaded tabs</source>
         <translation>読み込み済みのタブ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1235"/>
+        <location filename="../src/core/settingsschema.cpp" line="1247"/>
         <source>Flat</source>
         <translation>Flat</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1236"/>
+        <location filename="../src/core/settingsschema.cpp" line="1248"/>
         <source>Glass</source>
         <translation>Glass</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1234"/>
+        <location filename="../src/core/settingsschema.cpp" line="1246"/>
         <source>Plain</source>
         <translation>Plain</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1238"/>
+        <location filename="../src/core/settingsschema.cpp" line="1250"/>
         <source>Widget</source>
         <translation>Widget</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1239"/>
+        <location filename="../src/core/settingsschema.cpp" line="1251"/>
         <source>OpenGLWidget</source>
         <translation>OpenGLWidget</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1249"/>
-        <location filename="../src/core/settingsschema.cpp" line="1262"/>
+        <location filename="../src/core/settingsschema.cpp" line="1261"/>
+        <location filename="../src/core/settingsschema.cpp" line="1274"/>
         <source>At the right end</source>
         <translation>右端</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1251"/>
-        <location filename="../src/core/settingsschema.cpp" line="1264"/>
+        <location filename="../src/core/settingsschema.cpp" line="1263"/>
+        <location filename="../src/core/settingsschema.cpp" line="1276"/>
         <source>At the left end</source>
         <translation>左端</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1253"/>
-        <location filename="../src/core/settingsschema.cpp" line="1266"/>
+        <location filename="../src/core/settingsschema.cpp" line="1265"/>
+        <location filename="../src/core/settingsschema.cpp" line="1278"/>
         <source>Right of the current tab</source>
         <translation>現在のタブの右</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1255"/>
-        <location filename="../src/core/settingsschema.cpp" line="1268"/>
+        <location filename="../src/core/settingsschema.cpp" line="1267"/>
+        <location filename="../src/core/settingsschema.cpp" line="1280"/>
         <source>Left of the current tab</source>
         <translation>現在のタブの左</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1257"/>
-        <location filename="../src/core/settingsschema.cpp" line="1270"/>
+        <location filename="../src/core/settingsschema.cpp" line="1269"/>
+        <location filename="../src/core/settingsschema.cpp" line="1282"/>
         <source>After the unread tabs to the right of the current one</source>
         <translation>現在のタブの右にある未読タブの後</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1259"/>
-        <location filename="../src/core/settingsschema.cpp" line="1272"/>
+        <location filename="../src/core/settingsschema.cpp" line="1271"/>
+        <location filename="../src/core/settingsschema.cpp" line="1284"/>
         <source>Before the unread tabs to the left of the current one</source>
         <translation>現在のタブの左にある未読タブの前</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1274"/>
+        <location filename="../src/core/settingsschema.cpp" line="1286"/>
         <source>Keep running</source>
         <translation>動作を続ける</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1275"/>
+        <location filename="../src/core/settingsschema.cpp" line="1287"/>
         <source>Freeze</source>
         <translation>凍結する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1276"/>
+        <location filename="../src/core/settingsschema.cpp" line="1288"/>
         <source>Discard</source>
         <translation>破棄する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1279"/>
+        <location filename="../src/core/settingsschema.cpp" line="1291"/>
         <source>Normal</source>
         <translation>現在のディレクトリ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1281"/>
+        <location filename="../src/core/settingsschema.cpp" line="1293"/>
         <source>Recursive</source>
         <translation>配下すべて（全展開）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1283"/>
+        <location filename="../src/core/settingsschema.cpp" line="1295"/>
         <source>Expandable</source>
         <translation>配下すべて（展開可）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1293"/>
+        <location filename="../src/core/settingsschema.cpp" line="1305"/>
         <source>In a new tab</source>
         <translation>新しいタブ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1295"/>
+        <location filename="../src/core/settingsschema.cpp" line="1307"/>
         <source>In a new directory</source>
         <translation>新しいディレクトリ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1297"/>
+        <location filename="../src/core/settingsschema.cpp" line="1309"/>
         <source>At the top level</source>
         <translation>最上層</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1299"/>
+        <location filename="../src/core/settingsschema.cpp" line="1311"/>
         <source>In a new tab, in the background</source>
         <translation>新しいタブ（バックグラウンド）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1301"/>
+        <location filename="../src/core/settingsschema.cpp" line="1313"/>
         <source>In a new directory, in the background</source>
         <translation>新しいディレクトリ（バックグラウンド）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1303"/>
+        <location filename="../src/core/settingsschema.cpp" line="1315"/>
         <source>At the top level, in the background</source>
         <translation>最上層（バックグラウンド）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1306"/>
+        <location filename="../src/core/settingsschema.cpp" line="1324"/>
         <source>One .mhtml file</source>
         <translation>1 つの .mhtml ファイル</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1308"/>
+        <location filename="../src/core/settingsschema.cpp" line="1326"/>
         <source>.html and a folder of its files</source>
         <translation>.html と参照先のフォルダ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1310"/>
+        <location filename="../src/core/settingsschema.cpp" line="1328"/>
         <source>.html only</source>
         <translation>.html だけ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1312"/>
+        <location filename="../src/core/settingsschema.cpp" line="1330"/>
         <source>Both hands</source>
         <translation>両手</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1313"/>
+        <location filename="../src/core/settingsschema.cpp" line="1331"/>
         <source>Left hand</source>
         <translation>左手</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1314"/>
+        <location filename="../src/core/settingsschema.cpp" line="1332"/>
         <source>Right hand</source>
         <translation>右手</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1054"/>
-        <location filename="../src/core/settingsschema.cpp" line="1315"/>
+        <location filename="../src/core/settingsschema.cpp" line="1055"/>
+        <location filename="../src/core/settingsschema.cpp" line="1333"/>
         <source>Custom</source>
         <translation>独自</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="931"/>
+        <location filename="../src/core/settingsschema.cpp" line="932"/>
         <source>Run HTTP content in an HTTPS page</source>
-        <translation>HTTPS のページで HTTP の内容を実行する</translation>
+        <translation>HTTPS のページで HTTP のコンテンツを実行する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="932"/>
+        <location filename="../src/core/settingsschema.cpp" line="933"/>
         <source>Only the WebEngine views read the settings in this section and the next.</source>
         <translation>この節と次の節の設定は WebEngine のビューだけが読みます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="936"/>
+        <location filename="../src/core/settingsschema.cpp" line="937"/>
         <source>Let an HTTP page ask for the location</source>
         <translation>HTTP のページにも位置情報の要求を許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="940"/>
+        <location filename="../src/core/settingsschema.cpp" line="941"/>
         <source>Let a local file read other local files</source>
         <translation>ローカルファイルからほかのローカルファイルの読み込みを許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="944"/>
+        <location filename="../src/core/settingsschema.cpp" line="945"/>
         <source>Let a local file read from the network</source>
-        <translation>ローカルファイルからネットワークの読み込みを許可する</translation>
+        <translation>ローカルファイルにネットワークからの読み込みを許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="948"/>
+        <location filename="../src/core/settingsschema.cpp" line="949"/>
         <source>Let scripts use the clipboard without asking</source>
-        <translation>スクリプトが確認なしでクリップボードを使えるようにする</translation>
+        <translation>確認なしのクリップボードの使用をスクリプトに許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="952"/>
+        <location filename="../src/core/settingsschema.cpp" line="953"/>
         <source>Let scripts paste</source>
         <translation>スクリプトによる貼り付けを許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="956"/>
+        <location filename="../src/core/settingsschema.cpp" line="957"/>
         <source>Let a page bring its window to the front</source>
         <translation>ページが自分のウィンドウを前面に出せるようにする</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="960"/>
+        <location filename="../src/core/settingsschema.cpp" line="961"/>
         <source>Let scripts open windows</source>
-        <translation>スクリプトによるウィンドウの表示を許可する</translation>
+        <translation>スクリプトがウィンドウを開くのを許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="964"/>
+        <location filename="../src/core/settingsschema.cpp" line="965"/>
         <source>Send the pings of links (&lt;a ping&gt;)</source>
-        <translation>リンクの ping（&lt;a ping&gt;）を送る</translation>
+        <translation>リンクの ping（&lt;a ping&gt;）を送信する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="968"/>
+        <location filename="../src/core/settingsschema.cpp" line="969"/>
         <source>WebRTC uses the public network interface only</source>
-        <translation>WebRTC は公開側のネットワークインターフェースだけを使う</translation>
+        <translation>WebRTC で公開ネットワークインターフェースだけを使用する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="972"/>
+        <location filename="../src/core/settingsschema.cpp" line="973"/>
         <source>Look up host names ahead of a click</source>
-        <translation>クリックの前にホスト名を引いておく（DNS プリフェッチ）</translation>
+        <translation>クリックの前にホスト名を名前解決しておく（DNS プリフェッチ）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="976"/>
+        <location filename="../src/core/settingsschema.cpp" line="977"/>
         <source>Draw 2D canvases on the GPU</source>
-        <translation>2D キャンバスを GPU で描く</translation>
+        <translation>2D キャンバスを GPU で描画する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="980"/>
+        <location filename="../src/core/settingsschema.cpp" line="981"/>
         <source>Show the engine&apos;s own error pages</source>
         <translation>エンジン自身のエラーページを表示する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="984"/>
+        <location filename="../src/core/settingsschema.cpp" line="985"/>
         <source>Text encoding of a page which names none</source>
         <translation>文字コードを指定しないページの文字コード</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="988"/>
+        <location filename="../src/core/settingsschema.cpp" line="989"/>
         <source>Addresses of a scheme the engine does not know</source>
-        <translation>エンジンが知らないスキームのアドレス</translation>
+        <translation>エンジンが認識できないスキームのアドレス</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="992"/>
+        <location filename="../src/core/settingsschema.cpp" line="993"/>
         <source>Serif font</source>
         <translation>Serif フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="993"/>
+        <location filename="../src/core/settingsschema.cpp" line="994"/>
         <source>What CSS asks for by these names. Empty, the system&apos;s own.</source>
-        <translation>CSS がこの名前で求めるフォントです。空ならシステムのフォントを使います。</translation>
+        <translation>CSS がこれらの名前で求めるフォントです。空ならシステムのフォントを使います。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="997"/>
+        <location filename="../src/core/settingsschema.cpp" line="998"/>
         <source>Sans serif font</source>
         <translation>Sans-serif フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1001"/>
+        <location filename="../src/core/settingsschema.cpp" line="1002"/>
         <source>Cursive font</source>
         <translation>Cursive フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1005"/>
+        <location filename="../src/core/settingsschema.cpp" line="1006"/>
         <source>Fantasy font</source>
         <translation>Fantasy フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1009"/>
+        <location filename="../src/core/settingsschema.cpp" line="1010"/>
         <source>Pictograph font</source>
         <translation>絵文字フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1013"/>
+        <location filename="../src/core/settingsschema.cpp" line="1014"/>
         <source>Minimum logical font size</source>
         <translation>最小論理フォントサイズ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1021"/>
+        <location filename="../src/core/settingsschema.cpp" line="1022"/>
         <source>Edge</source>
         <translation>Edge</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1026"/>
+        <location filename="../src/core/settingsschema.cpp" line="1027"/>
         <source>Firefox</source>
         <translation>Firefox</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1030"/>
+        <location filename="../src/core/settingsschema.cpp" line="1031"/>
         <source>OPR</source>
         <translation>OPR</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1034"/>
+        <location filename="../src/core/settingsschema.cpp" line="1035"/>
         <source>Safari</source>
         <translation>Safari</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1038"/>
+        <location filename="../src/core/settingsschema.cpp" line="1039"/>
         <source>Chrome</source>
         <translation>Chrome</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1042"/>
+        <location filename="../src/core/settingsschema.cpp" line="1043"/>
         <source>Sleipnir</source>
         <translation>Sleipnir</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1046"/>
+        <location filename="../src/core/settingsschema.cpp" line="1047"/>
         <source>Vivaldi</source>
         <translation>Vivaldi</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1050"/>
+        <location filename="../src/core/settingsschema.cpp" line="1051"/>
         <source>Gecko</source>
         <translation>Gecko</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1055"/>
+        <location filename="../src/core/settingsschema.cpp" line="1056"/>
         <source>What &apos;;useragent custom&apos; sends. Empty, the engine&apos;s own.</source>
         <translation>「;useragent custom」で送るユーザーエージェントです。空ならエンジン自身のものを使います。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1106"/>
+        <location filename="../src/core/settingsschema.cpp" line="1107"/>
         <source>What a page is normally kept from</source>
         <translation>通常はページに許可しないこと</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1108"/>
+        <location filename="../src/core/settingsschema.cpp" line="1109"/>
         <source>Engine switches</source>
-        <translation>エンジンの切り替え</translation>
+        <translation>エンジンの機能の切り替え</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1110"/>
+        <location filename="../src/core/settingsschema.cpp" line="1111"/>
         <source>Generic fonts</source>
         <translation>総称フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1112"/>
+        <location filename="../src/core/settingsschema.cpp" line="1113"/>
         <source>User agents</source>
         <translation>ユーザーエージェント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1199"/>
-        <source>Hidden settings</source>
-        <translation>隠し設定</translation>
+        <location filename="../src/core/settingsschema.cpp" line="1235"/>
+        <source>Four</source>
+        <translation>4 方向</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1242"/>
+        <location filename="../src/core/settingsschema.cpp" line="1236"/>
+        <source>Eight</source>
+        <translation>8 方向</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1254"/>
         <source>Never open</source>
         <translation>開かない</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1244"/>
+        <location filename="../src/core/settingsschema.cpp" line="1256"/>
         <source>Open when clicked</source>
         <translation>クリックしたときだけ開く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1246"/>
+        <location filename="../src/core/settingsschema.cpp" line="1258"/>
         <source>Always open</source>
         <translation>常に開く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1318"/>
+        <location filename="../src/core/settingsschema.cpp" line="1317"/>
+        <source>In a new tab, in a new window</source>
+        <translation>新しいタブ（新しいウィンドウ）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1319"/>
+        <source>In a new directory, in a new window</source>
+        <translation>新しいディレクトリ（新しいウィンドウ）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1321"/>
+        <source>At the top level, in a new window</source>
+        <translation>最上層（新しいウィンドウ）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1336"/>
         <source>Open a menu</source>
         <translation>メニューを開く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1320"/>
+        <location filename="../src/core/settingsschema.cpp" line="1338"/>
         <source>Click it</source>
         <translation>クリック</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1322"/>
+        <location filename="../src/core/settingsschema.cpp" line="1340"/>
         <source>Focus it</source>
         <translation>フォーカス</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1324"/>
+        <location filename="../src/core/settingsschema.cpp" line="1342"/>
         <source>Hover over it</source>
         <translation>ホバー</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1326"/>
+        <location filename="../src/core/settingsschema.cpp" line="1344"/>
         <source>Open in a new tab</source>
         <translation>新しいタブで開く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1328"/>
+        <location filename="../src/core/settingsschema.cpp" line="1346"/>
         <source>Open in a new directory</source>
         <translation>新しいディレクトリで開く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1330"/>
+        <location filename="../src/core/settingsschema.cpp" line="1348"/>
         <source>Open at the top level</source>
         <translation>最上層で開く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1332"/>
+        <location filename="../src/core/settingsschema.cpp" line="1350"/>
         <source>Open in a new tab, in the background</source>
         <translation>新しいタブで開く（バックグラウンド）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1334"/>
+        <location filename="../src/core/settingsschema.cpp" line="1352"/>
         <source>Open in a new directory, in the background</source>
         <translation>新しいディレクトリで開く（バックグラウンド）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1337"/>
+        <location filename="../src/core/settingsschema.cpp" line="1354"/>
+        <source>Open at the top level, in the background</source>
+        <translation>最上層で開く（バックグラウンド）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1356"/>
+        <source>Open in a new tab, in a new window</source>
+        <translation>新しいタブで開く（新しいウィンドウ）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1358"/>
+        <source>Open in a new directory, in a new window</source>
+        <translation>新しいディレクトリで開く（新しいウィンドウ）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1360"/>
+        <source>Open at the top level, in a new window</source>
+        <translation>最上層で開く（新しいウィンドウ）</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1362"/>
+        <source>Open the command bar for it</source>
+        <translation>対象のコマンドバーを開く</translation>
+    </message>
+    <message>
+        <location filename="../src/core/settingsschema.cpp" line="1365"/>
         <source>A number</source>
         <translation>数字</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1339"/>
+        <location filename="../src/core/settingsschema.cpp" line="1367"/>
         <source>Shift and a letter</source>
         <translation>Shift + 文字</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1341"/>
+        <location filename="../src/core/settingsschema.cpp" line="1369"/>
         <source>Ctrl and a letter</source>
         <translation>Ctrl + 文字</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1343"/>
+        <location filename="../src/core/settingsschema.cpp" line="1371"/>
         <source>Alt and a letter</source>
         <translation>Alt + 文字</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1345"/>
+        <location filename="../src/core/settingsschema.cpp" line="1373"/>
         <source>Meta and a letter</source>
         <translation>Meta + 文字</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1348"/>
+        <location filename="../src/core/settingsschema.cpp" line="1376"/>
         <source>Top to bottom</source>
         <translation>上から下</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1350"/>
+        <location filename="../src/core/settingsschema.cpp" line="1378"/>
         <source>Left to right</source>
         <translation>左から右</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1352"/>
+        <location filename="../src/core/settingsschema.cpp" line="1380"/>
         <source>On disk</source>
         <translation>ディスク</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1353"/>
+        <location filename="../src/core/settingsschema.cpp" line="1381"/>
         <source>In memory</source>
         <translation>メモリ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1354"/>
+        <location filename="../src/core/settingsschema.cpp" line="1382"/>
         <source>No cache</source>
         <translation>キャッシュなし</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1357"/>
+        <location filename="../src/core/settingsschema.cpp" line="1385"/>
         <source>Not decided yet (asks at the next download)</source>
         <translation>まだ決めていない（次のダウンロードで尋ねる）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1359"/>
+        <location filename="../src/core/settingsschema.cpp" line="1387"/>
         <source>The folder below</source>
         <translation>下のフォルダ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1361"/>
+        <location filename="../src/core/settingsschema.cpp" line="1389"/>
         <source>The system&apos;s Downloads folder</source>
         <translation>システムのダウンロードフォルダ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1363"/>
+        <location filename="../src/core/settingsschema.cpp" line="1391"/>
         <source>Ask for each download</source>
         <translation>ダウンロードごとに尋ねる</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1366"/>
+        <location filename="../src/core/settingsschema.cpp" line="1394"/>
         <source>Not decided yet (asks at the next error)</source>
         <translation>まだ決めていない（次のエラーで尋ねる）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1368"/>
+        <location filename="../src/core/settingsschema.cpp" line="1396"/>
         <source>Block the page</source>
         <translation>ページを遮断する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1370"/>
+        <location filename="../src/core/settingsschema.cpp" line="1398"/>
         <source>Ignore the error</source>
         <translation>エラーを無視する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1372"/>
+        <location filename="../src/core/settingsschema.cpp" line="1400"/>
         <source>Ask every time</source>
         <translation>毎回尋ねる</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1374"/>
+        <location filename="../src/core/settingsschema.cpp" line="1402"/>
         <source>Ask once per host</source>
         <translation>ホストごとに 1 回尋ねる</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1376"/>
+        <location filename="../src/core/settingsschema.cpp" line="1404"/>
         <source>Ask once per certificate</source>
         <translation>証明書ごとに 1 回尋ねる</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1379"/>
+        <location filename="../src/core/settingsschema.cpp" line="1407"/>
         <source>Off</source>
         <translation>オフ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1380"/>
+        <location filename="../src/core/settingsschema.cpp" line="1408"/>
         <source>Basic</source>
         <translation>基本</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1381"/>
+        <location filename="../src/core/settingsschema.cpp" line="1409"/>
         <source>Balanced</source>
         <translation>バランス</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1382"/>
+        <location filename="../src/core/settingsschema.cpp" line="1410"/>
         <source>Strict</source>
         <translation>厳重</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1386"/>
+        <location filename="../src/core/settingsschema.cpp" line="1414"/>
         <source>The system&apos;s resolver</source>
         <translation>システムのリゾルバ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1388"/>
+        <location filename="../src/core/settingsschema.cpp" line="1416"/>
         <source>Secure, falling back to the system</source>
         <translation>セキュア（失敗したらシステム）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1390"/>
+        <location filename="../src/core/settingsschema.cpp" line="1418"/>
         <source>Secure only</source>
         <translation>セキュアだけ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1393"/>
+        <location filename="../src/core/settingsschema.cpp" line="1421"/>
         <source>Software</source>
         <translation>Software</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1394"/>
+        <location filename="../src/core/settingsschema.cpp" line="1422"/>
         <source>OpenGL</source>
         <translation>OpenGL</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1395"/>
+        <location filename="../src/core/settingsschema.cpp" line="1423"/>
         <source>Direct3D 11</source>
         <translation>Direct3D 11</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1396"/>
+        <location filename="../src/core/settingsschema.cpp" line="1424"/>
         <source>Direct3D 12</source>
         <translation>Direct3D 12</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1397"/>
+        <location filename="../src/core/settingsschema.cpp" line="1425"/>
         <source>Vulkan</source>
         <translation>Vulkan</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1398"/>
+        <location filename="../src/core/settingsschema.cpp" line="1426"/>
         <source>Metal</source>
         <translation>Metal</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="423"/>
+        <location filename="../src/core/settingsschema.cpp" line="424"/>
         <source>Reading a canvas back is one of the ways a site fingerprints the machine. Off, pages which use a canvas do not work.</source>
         <translation>キャンバスの読み戻しはフィンガープリントに使われます。無効化するとキャンバスを使うページが動作しなくなります。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="434"/>
+        <location filename="../src/core/settingsschema.cpp" line="435"/>
         <source>Until this is changed, the engine answers based on whether a touch screen was found.</source>
         <translation>変更するまではタッチスクリーンの有無でエンジンが判断します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="306"/>
+        <location filename="../src/core/settingsschema.cpp" line="307"/>
         <source>Programs to open a page with</source>
         <translation>ページを開くプログラム</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="307"/>
+        <location filename="../src/core/settingsschema.cpp" line="308"/>
         <source>Each line adds an item to the right-click menu &apos;Open with other browser&apos;, as &apos;name = command line&apos;. The page&apos;s address goes where &apos;%u&apos; is, or at the end when there is none.
 For example: Firefox = &quot;C:\Program Files\Mozilla Firefox\firefox.exe&quot; %u</source>
         <translation>1 行に 1 つ「名前 = コマンド行」と書くと、右クリックメニューの「別のブラウザで開く」に項目が加わります。ページのアドレスは %u の位置に入り、%u が無ければ末尾に付きます。
 例：Firefox = &quot;C:\Program Files\Mozilla Firefox\firefox.exe&quot; %u</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="714"/>
+        <location filename="../src/core/settingsschema.cpp" line="715"/>
         <source>Empty means the languages of this machine followed by English, as &apos;ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7&apos;.</source>
         <translation>空の場合は、この PC の言語に英語を続けたものになります（&apos;ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7&apos; のように）。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="848"/>
+        <location filename="../src/core/settingsschema.cpp" line="849"/>
         <source>Graphics API (WebEngineView)</source>
         <translation>描画 API（WebEngineView）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="859"/>
+        <location filename="../src/core/settingsschema.cpp" line="860"/>
         <source>&apos;Auto&apos;: Metal.
 &apos;OpenGL&apos;: choose this if the screen flickers.
 
@@ -5571,7 +6005,7 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 この OS で動作しない選択は「自動」として扱います。環境変数 QSG_RHI_BACKEND が設定されていればそちらを優先します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="866"/>
+        <location filename="../src/core/settingsschema.cpp" line="867"/>
         <source>&apos;Auto&apos;: OpenGL.
 
 A choice this OS cannot run is treated as &apos;Auto&apos;. The environment variable QSG_RHI_BACKEND wins when it is set.</source>
@@ -5580,47 +6014,47 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 この OS で動作しない選択は「自動」として扱います。環境変数 QSG_RHI_BACKEND が設定されていればそちらを優先します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="606"/>
+        <location filename="../src/core/settingsschema.cpp" line="607"/>
         <source>Extension compatibility layer (WebEngineView / Edge)</source>
         <translation>拡張機能の互換レイヤー（WebEngine 系・Edge）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1170"/>
+        <location filename="../src/core/settingsschema.cpp" line="1171"/>
         <source>Keys and mouse</source>
         <translation>キーとマウス</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="483"/>
+        <location filename="../src/core/settingsschema.cpp" line="484"/>
         <source>Every link gets a label of its own, typed one key at a time, instead of blocks of one key each.</source>
         <translation>リンクごとに固有のラベルを付け、1 キーずつ入力します。無効化すると 1 キーのブロックに分割します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="489"/>
+        <location filename="../src/core/settingsschema.cpp" line="490"/>
         <source>Which keys label the links</source>
         <translation>リンクに割り当てるキー</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="493"/>
+        <location filename="../src/core/settingsschema.cpp" line="494"/>
         <source>Custom key sequence</source>
         <translation>独自のキー列</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="497"/>
+        <location filename="../src/core/settingsschema.cpp" line="498"/>
         <source>What choosing a link does</source>
         <translation>リンクを選んだときの動作</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="505"/>
+        <location filename="../src/core/settingsschema.cpp" line="507"/>
         <source>How a block of links is chosen</source>
         <translation>リンクのブロックを選ぶ方法</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="510"/>
+        <location filename="../src/core/settingsschema.cpp" line="512"/>
         <source>Order the links are labelled in</source>
         <translation>リンクにラベルを振る順序</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="482"/>
+        <location filename="../src/core/settingsschema.cpp" line="483"/>
         <source>Allow multi-stroke labels</source>
         <translation>複数ストロークのラベルを許可する</translation>
     </message>
@@ -5630,12 +6064,12 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation>表示タイプ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="465"/>
+        <location filename="../src/core/settingsschema.cpp" line="466"/>
         <source>Volume</source>
         <translation>音量</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="469"/>
+        <location filename="../src/core/settingsschema.cpp" line="470"/>
         <source>Start playing when a file is opened</source>
         <translation>ファイルを開いたら再生を始める</translation>
     </message>
@@ -5645,27 +6079,27 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation>リンクを開く場所</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="298"/>
+        <location filename="../src/core/settingsschema.cpp" line="299"/>
         <source>Switch to a newly opened tab</source>
         <translation>新しく開いたタブに切り替える</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="538"/>
+        <location filename="../src/core/settingsschema.cpp" line="539"/>
         <source>Super drag</source>
         <translation>スーパードラッグ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="319"/>
+        <location filename="../src/core/settingsschema.cpp" line="320"/>
         <source>Dragging a link out downloads it</source>
         <translation>リンクを外へドラッグするとダウンロードする</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="384"/>
+        <location filename="../src/core/settingsschema.cpp" line="385"/>
         <source>Open the inspector beside the page</source>
         <translation>インスペクタをページの横に開く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="446"/>
+        <location filename="../src/core/settingsschema.cpp" line="447"/>
         <source>How a page is saved</source>
         <translation>ページの保存形式</translation>
     </message>
@@ -5675,102 +6109,102 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation>非表示タブ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="410"/>
+        <location filename="../src/core/settingsschema.cpp" line="411"/>
         <source>JavaScript</source>
         <translation>JavaScript</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="370"/>
+        <location filename="../src/core/settingsschema.cpp" line="371"/>
         <source>Load images</source>
         <translation>画像を読み込む</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="413"/>
+        <location filename="../src/core/settingsschema.cpp" line="414"/>
         <source>Local storage</source>
         <translation>ローカルストレージ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="416"/>
+        <location filename="../src/core/settingsschema.cpp" line="417"/>
         <source>Plugins</source>
         <translation>プラグイン</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="379"/>
+        <location filename="../src/core/settingsschema.cpp" line="380"/>
         <source>Show PDFs in the page</source>
         <translation>PDF をページ内に表示する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="358"/>
+        <location filename="../src/core/settingsschema.cpp" line="359"/>
         <source>Allow a page to go full screen</source>
         <translation>ページの全画面表示を許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="351"/>
+        <location filename="../src/core/settingsschema.cpp" line="352"/>
         <source>Smooth scrolling</source>
         <translation>スムーススクロール</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="325"/>
+        <location filename="../src/core/settingsschema.cpp" line="326"/>
         <source>Arrow keys move between links</source>
         <translation>矢印キーでリンク間を移動する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="419"/>
+        <location filename="../src/core/settingsschema.cpp" line="420"/>
         <source>WebGL</source>
         <translation>WebGL</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="429"/>
+        <location filename="../src/core/settingsschema.cpp" line="430"/>
         <source>Allow a page to capture the screen</source>
         <translation>ページによる画面キャプチャを許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="366"/>
+        <location filename="../src/core/settingsschema.cpp" line="367"/>
         <source>Media needs a click before it plays</source>
         <translation>メディアの再生にクリックを必要とする</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="451"/>
+        <location filename="../src/core/settingsschema.cpp" line="452"/>
         <source>Print backgrounds</source>
         <translation>背景も印刷する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="346"/>
+        <location filename="../src/core/settingsschema.cpp" line="347"/>
         <source>Show scroll bars</source>
         <translation>スクロールバーを表示する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="332"/>
+        <location filename="../src/core/settingsschema.cpp" line="333"/>
         <source>Focus the page when it navigates</source>
         <translation>ページ遷移のときページへフォーカスする</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="329"/>
+        <location filename="../src/core/settingsschema.cpp" line="330"/>
         <source>Tab key stops on links</source>
         <translation>Tab キーでリンクにも移動する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="373"/>
+        <location filename="../src/core/settingsschema.cpp" line="374"/>
         <source>Load favicons</source>
         <translation>ファビコンを読み込む</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="376"/>
+        <location filename="../src/core/settingsschema.cpp" line="377"/>
         <source>Load touch icons</source>
         <translation>タッチアイコンを読み込む</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="315"/>
+        <location filename="../src/core/settingsschema.cpp" line="316"/>
         <source>Dropping a link on a page opens it there</source>
         <translation>リンクをページにドロップするとその場で開く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="422"/>
+        <location filename="../src/core/settingsschema.cpp" line="423"/>
         <source>Let a page read back its own canvas</source>
         <translation>ページが自分の canvas を読み返せるようにする</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="911"/>
+        <location filename="../src/core/settingsschema.cpp" line="912"/>
         <source>Passed to the rendering engine at startup. Separated by spaces or line breaks, each beginning with &apos;--&apos;.
 Put double quotes around a value which has spaces in it: --switch=&quot;a b&quot;.
 A switch it does not accept can stop it from starting; to recover, edit &apos;data/config.json&apos;.</source>
@@ -5779,244 +6213,239 @@ A switch it does not accept can stop it from starting; to recover, edit &apos;da
 受け付けない指定があると起動しなくなることがあり、その場合は data/config.json を直接編集して戻します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="337"/>
+        <location filename="../src/core/settingsschema.cpp" line="338"/>
         <source>One name per line, as the &apos;.bdic&apos; file next to the executable is called without its extension (&apos;en-US&apos;). Empty turns spell checking off.</source>
         <translation>1 行に 1 つ。実行ファイルの隣にある .bdic ファイルの拡張子を除いたファイル名（en-US など）。空にするとスペルチェックをしません。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="627"/>
+        <location filename="../src/core/settingsschema.cpp" line="628"/>
         <source>The engine ships an extension which only Google&apos;s own sites can use. Off, it is kept, which Google Meet may want for sharing a screen.</source>
         <translation>エンジンには Google のサイトだけが使える拡張機能が同梱されています。オフにするとその拡張機能を残します（Google Meet の画面共有で必要になる場合があります）。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="597"/>
+        <location filename="../src/core/settingsschema.cpp" line="598"/>
         <source>Chrome extensions</source>
         <translation>Chrome 拡張機能</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="354"/>
+        <location filename="../src/core/settingsschema.cpp" line="355"/>
         <source>Darken pages which have no dark theme</source>
         <translation>ダークテーマを持たないページを暗くする</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="527"/>
+        <location filename="../src/core/settingsschema.cpp" line="529"/>
         <source>Mouse gestures</source>
         <translation>マウスジェスチャ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="533"/>
+        <location filename="../src/core/settingsschema.cpp" line="535"/>
         <source>Gesture directions</source>
         <translation>ジェスチャの方向</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="534"/>
-        <source>For mouse gestures and super drag.</source>
-        <translation>マウスジェスチャとスーパードラッグに使います。</translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="294"/>
+        <location filename="../src/core/settingsschema.cpp" line="295"/>
         <source>Keep the previous page in memory</source>
         <translation>直前のページをメモリに残す</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="433"/>
+        <location filename="../src/core/settingsschema.cpp" line="434"/>
         <source>Tell pages this machine has a touch screen</source>
         <translation>タッチ画面があるとページに伝える</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="440"/>
+        <location filename="../src/core/settingsschema.cpp" line="441"/>
         <source>Leave element IDs out of the accessibility tree</source>
         <translation>アクセシビリティツリーに要素 ID を含めない</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="454"/>
+        <location filename="../src/core/settingsschema.cpp" line="455"/>
         <source>Print the page title and address in the margin</source>
         <translation>余白にページのタイトルとアドレスを印刷する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="458"/>
+        <location filename="../src/core/settingsschema.cpp" line="459"/>
         <source>Let the page choose the printed margins</source>
         <translation>印刷の余白をページに決めさせる</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="392"/>
+        <location filename="../src/core/settingsschema.cpp" line="393"/>
         <source>Standard font</source>
         <translation>標準フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="395"/>
+        <location filename="../src/core/settingsschema.cpp" line="396"/>
         <source>Fixed width font</source>
         <translation>等幅フォント</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="398"/>
+        <location filename="../src/core/settingsschema.cpp" line="399"/>
         <source>Default font size</source>
         <translation>既定のフォントサイズ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="401"/>
+        <location filename="../src/core/settingsschema.cpp" line="402"/>
         <source>Default fixed width font size</source>
         <translation>既定の等幅フォントサイズ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="405"/>
+        <location filename="../src/core/settingsschema.cpp" line="406"/>
         <source>Minimum font size</source>
         <translation>最小フォントサイズ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="910"/>
+        <location filename="../src/core/settingsschema.cpp" line="911"/>
         <source>Chromium switches</source>
         <translation>Chromium のスイッチ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="571"/>
+        <location filename="../src/core/settingsschema.cpp" line="572"/>
         <source>Where downloads go</source>
         <translation>ダウンロード先の決め方</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="580"/>
+        <location filename="../src/core/settingsschema.cpp" line="581"/>
         <source>Download folder</source>
         <translation>ダウンロードフォルダ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="754"/>
+        <location filename="../src/core/settingsschema.cpp" line="755"/>
         <source>On a certificate error</source>
         <translation>証明書エラー時の動作</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="639"/>
+        <location filename="../src/core/settingsschema.cpp" line="640"/>
         <source>Keep session cookies between launches</source>
         <translation>セッション Cookie を保持する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="713"/>
+        <location filename="../src/core/settingsschema.cpp" line="714"/>
         <source>Accept-Language</source>
         <translation>Accept-Language</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="778"/>
+        <location filename="../src/core/settingsschema.cpp" line="779"/>
         <source>Certificates always allowed</source>
         <translation>常に許可する証明書</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="784"/>
+        <location filename="../src/core/settingsschema.cpp" line="785"/>
         <source>Certificates always blocked</source>
         <translation>常に拒否する証明書</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="688"/>
+        <location filename="../src/core/settingsschema.cpp" line="689"/>
         <source>Where the page cache is kept</source>
         <translation>ページキャッシュの置き場</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="689"/>
+        <location filename="../src/core/settingsschema.cpp" line="690"/>
         <source>A private tab always uses memory.</source>
         <translation>プライベートタブは常にメモリを使います。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="693"/>
+        <location filename="../src/core/settingsschema.cpp" line="694"/>
         <source>Cache size limit (MB)</source>
         <translation>キャッシュの上限（MB）</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="694"/>
+        <location filename="../src/core/settingsschema.cpp" line="695"/>
         <source>Zero lets the engine decide.</source>
         <translation>0 でエンジンに任せます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="646"/>
+        <location filename="../src/core/settingsschema.cpp" line="647"/>
         <source>Remember what a site was allowed</source>
         <translation>サイトへの許可を記憶する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="336"/>
+        <location filename="../src/core/settingsschema.cpp" line="337"/>
         <source>Spell checking dictionaries</source>
         <translation>スペルチェックの辞書</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="682"/>
+        <location filename="../src/core/settingsschema.cpp" line="683"/>
         <source>Let a site send push messages</source>
         <translation>サイトからのプッシュ通知を許可する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="626"/>
+        <location filename="../src/core/settingsschema.cpp" line="627"/>
         <source>Remove the built-in Google Hangouts extension</source>
         <translation>同梱の Google Hangouts 拡張機能を外す</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="702"/>
+        <location filename="../src/core/settingsschema.cpp" line="703"/>
         <source>Requests never made</source>
         <translation>送らないリクエスト</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="720"/>
+        <location filename="../src/core/settingsschema.cpp" line="721"/>
         <source>Ask not to be tracked</source>
         <translation>追跡しないよう求める</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="792"/>
+        <location filename="../src/core/settingsschema.cpp" line="793"/>
         <source>DNS over HTTPS</source>
         <translation>DNS over HTTPS</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="798"/>
+        <location filename="../src/core/settingsschema.cpp" line="799"/>
         <source>DNS over HTTPS servers</source>
         <translation>DNS over HTTPS のサーバ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="799"/>
+        <location filename="../src/core/settingsschema.cpp" line="800"/>
         <source>One URI template per line, for example &apos;https://dns.google/dns-query{?dns}&apos;.</source>
         <translation>1 行に 1 つ、URI テンプレートを書きます（例：https://dns.google/dns-query{?dns}）。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="581"/>
+        <location filename="../src/core/settingsschema.cpp" line="582"/>
         <source>Replaced by the folder a file was last saved to.</source>
         <translation>ファイルを最後に保存したフォルダに置き換わります。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="586"/>
+        <location filename="../src/core/settingsschema.cpp" line="587"/>
         <source>Folder a file picker opens in</source>
         <translation>ファイル選択ダイアログを開くフォルダ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="587"/>
+        <location filename="../src/core/settingsschema.cpp" line="588"/>
         <source>Replaced by the folder a file was last chosen from.</source>
         <translation>ファイルを最後に選んだフォルダに置き換わります。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="703"/>
+        <location filename="../src/core/settingsschema.cpp" line="704"/>
         <source>One wildcard per line, matched against the whole address (&apos;*doubleclick.net*&apos;). A line starting with &apos;#&apos; is ignored. A page itself is never blocked, only what it loads.</source>
         <translation>1 行に 1 つ、アドレス全体に対するワイルドカード（*doubleclick.net* など）。「#」で始まる行は無視します。ページそのものは遮断せず、ページが読み込むものだけを遮断します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="766"/>
+        <location filename="../src/core/settingsschema.cpp" line="767"/>
         <source>Hosts whose certificate errors are accepted</source>
         <translation>証明書のエラーを許可するホスト</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="772"/>
+        <location filename="../src/core/settingsschema.cpp" line="773"/>
         <source>Hosts whose certificate errors are refused</source>
         <translation>証明書のエラーを拒否するホスト</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="813"/>
+        <location filename="../src/core/settingsschema.cpp" line="814"/>
         <source>Save while running</source>
         <translation>起動中も定期的に保存する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="884"/>
+        <location filename="../src/core/settingsschema.cpp" line="885"/>
         <source>Draw the main window with the graphics API too</source>
         <translation>メインウィンドウも描画 API で描く</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="885"/>
+        <location filename="../src/core/settingsschema.cpp" line="886"/>
         <source>For using Edge and WebEngineView tabs side by side: keeps the main window from flickering once the first time a WebEngineView tab is switched to.
 While on, tools which take GPU-drawn windows for games (such as the GeForce Experience overlay) may react to this application. Not needed when the graphics API is &apos;Software&apos;.</source>
         <translation>Edge と WebEngineView のタブを併用するときのための設定。最初に WebEngineView のタブに切り替えたときにメインウィンドウが一度ちらつくのを防ぎます。
 オンの場合、GPU 描画のウィンドウをゲームとみなすツール（GeForce Experience のオーバーレイなど）がこのアプリに反応することがあります。描画 API が「Software」のときは不要な設定です。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="819"/>
+        <location filename="../src/core/settingsschema.cpp" line="820"/>
         <source>Save every (ms)</source>
         <translation>保存の間隔 (ms)</translation>
     </message>
@@ -6041,107 +6470,107 @@ While on, tools which take GPU-drawn windows for games (such as the GeForce Expe
         <translation>1 枚を先読みする間隔 (ms)</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="385"/>
+        <location filename="../src/core/settingsschema.cpp" line="386"/>
         <source>Takes effect the next time the inspector is opened.</source>
         <translation>次に開くときから反映されます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="598"/>
+        <location filename="../src/core/settingsschema.cpp" line="599"/>
         <source>One unpacked extension per line: the folder its &apos;manifest.json&apos; sits in. A line starting with &apos;#&apos; is ignored. Manifest version 3 only.
 Not in private profiles. Reload open pages after a change.</source>
         <translation>展開済みの拡張機能を 1 行に 1 つ、manifest.json があるフォルダのパスで入力します。「#」で始まる行は無視します。Manifest V3 のみ対応します。
 プライベートプロファイルでは使えません。変更したら、開いているページを再読み込みしてください。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="607"/>
+        <location filename="../src/core/settingsschema.cpp" line="608"/>
         <source>WebEngine views leave out parts of the extension platform. On, each extension is loaded as a copy with a script added that fills them in; the folder you registered is not changed.
 An extension the layer cannot help is loaded as it is, and its row says why.</source>
         <translation>WebEngine 系のビューには拡張機能向けの機能が一部欠けています。オンにすると、欠けた機能を補うスクリプトを加えた拡張機能のコピーを読み込みます。登録したフォルダは変更されません。
 補えない拡張機能はそのまま読み込み、一覧にその理由を表示します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="640"/>
+        <location filename="../src/core/settingsschema.cpp" line="641"/>
         <source>Cookies meant to last only until the browser closes, such as a login, are kept too.</source>
         <translation>ブラウザを閉じるまでしか持たない Cookie（ログイン状態など）も保存します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="658"/>
+        <location filename="../src/core/settingsschema.cpp" line="659"/>
         <source>An Edge view fills it in the next time. In a WebEngine view (Quick too), click the field and choose the account.</source>
         <translation>Edge のビューは次回から自動で入力します。WebEngine のビュー（Quick も同様）では、欄をクリックしてアカウントを選ぶと入力されます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="662"/>
+        <location filename="../src/core/settingsschema.cpp" line="663"/>
         <source>An Edge view fills it in the next time. In a WebEngine view, click the field and choose the account.
 Quick views do not save passwords.</source>
         <translation>Edge のビューは次回から自動で入力します。WebEngine のビューでは、欄をクリックしてアカウントを選ぶと入力されます。
 Quick のビューはパスワードを保存しません。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="667"/>
+        <location filename="../src/core/settingsschema.cpp" line="668"/>
         <source>An Edge view fills it in the next time. Other views do not save passwords.</source>
         <translation>Edge のビューは次回から自動で入力します。ほかのビューはパスワードを保存しません。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="671"/>
+        <location filename="../src/core/settingsschema.cpp" line="672"/>
         <source>Click the field and choose the account to fill it in.</source>
         <translation>欄をクリックしてアカウントを選ぶと入力されます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="674"/>
+        <location filename="../src/core/settingsschema.cpp" line="675"/>
         <source>Click the field and choose the account to fill it in.
 Quick views do not save passwords.</source>
         <translation>欄をクリックしてアカウントを選ぶと入力されます。
 Quick のビューはパスワードを保存しません。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="721"/>
+        <location filename="../src/core/settingsschema.cpp" line="722"/>
         <source>Adds the &apos;DNT&apos; and &apos;Sec-GPC&apos; headers.</source>
         <translation>DNT ヘッダと Sec-GPC ヘッダを付けます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="730"/>
+        <location filename="../src/core/settingsschema.cpp" line="731"/>
         <source>Enabled in Edge. Strict may break parts of some sites.</source>
         <translation>Edge で有効です。「厳重」では一部のサイトが正しく動かないことがあります。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="736"/>
+        <location filename="../src/core/settingsschema.cpp" line="737"/>
         <source>Enabled in Edge. Sites and downloads are checked against Microsoft&apos;s list of unsafe ones.</source>
         <translation>Edge で有効です。サイトとダウンロードを Microsoft の危険なサイトとダウンロードの一覧と照らし合わせます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="767"/>
-        <location filename="../src/core/settingsschema.cpp" line="773"/>
+        <location filename="../src/core/settingsschema.cpp" line="768"/>
+        <location filename="../src/core/settingsschema.cpp" line="774"/>
         <source>One per line. Answering its question adds a line.</source>
         <translation>1 行に 1 つ。確認に答えると行が追加されます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="779"/>
-        <location filename="../src/core/settingsschema.cpp" line="785"/>
+        <location filename="../src/core/settingsschema.cpp" line="780"/>
+        <location filename="../src/core/settingsschema.cpp" line="786"/>
         <source>One host:SHA-256 identity per line. Remove one to ask again.</source>
         <translation>1 行に 1 つの host:SHA-256 識別子。再確認するには行を削除してください。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="793"/>
+        <location filename="../src/core/settingsschema.cpp" line="794"/>
         <source>The two secure modes use the servers below.</source>
         <translation>セキュアな 2 つは下のサーバを使います。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="814"/>
+        <location filename="../src/core/settingsschema.cpp" line="815"/>
         <source>Everything is saved on quitting either way.</source>
         <translation>終了時はこの設定にかかわらずすべて保存します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="823"/>
+        <location filename="../src/core/settingsschema.cpp" line="824"/>
         <source>Backups kept</source>
         <translation>残すバックアップの世代数</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="824"/>
+        <location filename="../src/core/settingsschema.cpp" line="825"/>
         <source>Made at each launch, next to the saved files in the data folder. Older copies than this many are deleted.</source>
         <translation>起動するたびに、データフォルダ内の保存したファイルの隣に作ります。この数より古いものは削除します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="850"/>
+        <location filename="../src/core/settingsschema.cpp" line="851"/>
         <source>&apos;OpenGL&apos;: keeps the translucent window after a WebEngineView tab opens.
 &apos;Auto&apos;: Direct3D 11. Choose this if the screen stays blank or is slow with OpenGL.
 
@@ -6152,87 +6581,77 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 この OS で動作しない選択は「自動」として扱います。環境変数 QSG_RHI_BACKEND が設定されていればそちらを優先します。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1154"/>
+        <location filename="../src/core/settingsschema.cpp" line="1155"/>
         <source>Appearance</source>
         <translation>外観</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1156"/>
+        <location filename="../src/core/settingsschema.cpp" line="1157"/>
         <source>Tabs</source>
         <translation>タブ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1158"/>
+        <location filename="../src/core/settingsschema.cpp" line="1159"/>
         <source>Tab list</source>
         <translation>タブ一覧</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1160"/>
+        <location filename="../src/core/settingsschema.cpp" line="1161"/>
         <source>Pages</source>
         <translation>ページ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1167"/>
+        <location filename="../src/core/settingsschema.cpp" line="1168"/>
         <source>Access keys</source>
         <translation>アクセスキー</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1175"/>
+        <location filename="../src/core/settingsschema.cpp" line="1181"/>
         <source>Extensions</source>
         <translation>拡張機能</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1177"/>
+        <location filename="../src/core/settingsschema.cpp" line="1183"/>
         <source>Site data</source>
         <translation>サイトのデータ</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1190"/>
+        <location filename="../src/core/settingsschema.cpp" line="1196"/>
         <source>Network</source>
         <translation>ネットワーク</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1188"/>
+        <location filename="../src/core/settingsschema.cpp" line="1194"/>
         <source>Profiles</source>
         <translation>プロファイル</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1223"/>
-        <source>Four (up, down, left, right)</source>
-        <translation>4 方向（上下左右）</translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1224"/>
-        <source>Eight (diagonals too)</source>
-        <translation>8 方向（上下左右と斜め）</translation>
-    </message>
-    <message>
-        <location filename="../src/core/settingsschema.cpp" line="1226"/>
+        <location filename="../src/core/settingsschema.cpp" line="1238"/>
         <source>Google</source>
         <translation>Google</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1227"/>
+        <location filename="../src/core/settingsschema.cpp" line="1239"/>
         <source>Bing</source>
         <translation>Bing</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1228"/>
+        <location filename="../src/core/settingsschema.cpp" line="1240"/>
         <source>DuckDuckGo</source>
         <translation>DuckDuckGo</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="743"/>
+        <location filename="../src/core/settingsschema.cpp" line="744"/>
         <source>Search suggestions while typing</source>
         <translation>入力中に検索の候補を表示する</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="744"/>
+        <location filename="../src/core/settingsschema.cpp" line="745"/>
         <source>What is typed is sent to the service below.</source>
         <translation>入力した内容は、下で選んだサービスへ送られます。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="748"/>
+        <location filename="../src/core/settingsschema.cpp" line="749"/>
         <source>Service for search suggestions</source>
         <translation>検索の候補を取得するサービス</translation>
     </message>
@@ -6247,17 +6666,17 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
         <translation>あらかじめ切り取りやコピーをしていないノードが選択されているときの、貼り付け動作を設定します（コピーは複製、切り取りは移動）。貼り付けた時点で選択されているノードが対象です。</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1286"/>
+        <location filename="../src/core/settingsschema.cpp" line="1298"/>
         <source>Do nothing</source>
         <translation>何もしない</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1288"/>
+        <location filename="../src/core/settingsschema.cpp" line="1300"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../src/core/settingsschema.cpp" line="1290"/>
+        <location filename="../src/core/settingsschema.cpp" line="1302"/>
         <source>Cut</source>
         <translation>切り取り</translation>
     </message>
@@ -6396,104 +6815,104 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 <context>
     <name>StartPage</name>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="829"/>
+        <location filename="../src/app/settingspage.cpp" line="873"/>
         <source>Tab list</source>
         <translation>タブ一覧</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="831"/>
+        <location filename="../src/app/settingspage.cpp" line="875"/>
         <source>Trash</source>
         <translation>ゴミ箱</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="833"/>
+        <location filename="../src/app/settingspage.cpp" line="877"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="835"/>
+        <location filename="../src/app/settingspage.cpp" line="879"/>
         <source>Download panel</source>
         <translation>ダウンロードパネル</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="837"/>
+        <location filename="../src/app/settingspage.cpp" line="881"/>
         <source>New window</source>
         <translation>新規ウィンドウ</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1207"/>
-        <location filename="../src/app/settingspage.cpp" line="1457"/>
+        <location filename="../src/app/settingspage.cpp" line="1251"/>
+        <location filename="../src/app/settingspage.cpp" line="1501"/>
         <source>New tab</source>
         <translation>新しいタブ</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1209"/>
+        <location filename="../src/app/settingspage.cpp" line="1253"/>
         <source>Search or type a web address</source>
         <translation>検索または Web アドレスを入力</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1235"/>
+        <location filename="../src/app/settingspage.cpp" line="1279"/>
         <source>Recent tabs</source>
         <translation>最近見たタブ</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1237"/>
+        <location filename="../src/app/settingspage.cpp" line="1281"/>
         <source>Tabs found</source>
         <translation>見つかったタブ</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1239"/>
+        <location filename="../src/app/settingspage.cpp" line="1283"/>
         <source>Move to trash</source>
         <translation>ゴミ箱へ</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1241"/>
+        <location filename="../src/app/settingspage.cpp" line="1285"/>
         <source>Show more</source>
         <translation>もっと見る</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1243"/>
+        <location filename="../src/app/settingspage.cpp" line="1287"/>
         <source>In the trash</source>
         <translation>ゴミ箱</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1245"/>
+        <location filename="../src/app/settingspage.cpp" line="1289"/>
         <source>Restore</source>
         <translation>復元</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1247"/>
-        <location filename="../src/app/settingspage.cpp" line="1338"/>
+        <location filename="../src/app/settingspage.cpp" line="1291"/>
+        <location filename="../src/app/settingspage.cpp" line="1382"/>
         <source>Tab history</source>
         <translation>タブ履歴</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1249"/>
+        <location filename="../src/app/settingspage.cpp" line="1293"/>
         <source>Today</source>
         <translation>今日</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1251"/>
+        <location filename="../src/app/settingspage.cpp" line="1295"/>
         <source>Yesterday</source>
         <translation>昨日</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1253"/>
+        <location filename="../src/app/settingspage.cpp" line="1297"/>
         <source>Delete</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1255"/>
+        <location filename="../src/app/settingspage.cpp" line="1299"/>
         <source>Open</source>
         <translation>開く</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1257"/>
+        <location filename="../src/app/settingspage.cpp" line="1301"/>
         <source>Back</source>
         <translation>戻る</translation>
     </message>
     <message>
-        <location filename="../src/app/settingspage.cpp" line="1259"/>
+        <location filename="../src/app/settingspage.cpp" line="1303"/>
         <source>Click to restore</source>
         <translation>クリックで復元</translation>
     </message>
@@ -6522,240 +6941,240 @@ A choice this OS cannot run is treated as &apos;Auto&apos;. The environment vari
 <context>
     <name>TreeBank</name>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="1600"/>
-        <location filename="../src/ui/treebank.cpp" line="1620"/>
+        <location filename="../src/ui/treebank.cpp" line="1607"/>
+        <location filename="../src/ui/treebank.cpp" line="1627"/>
         <source>Restored from a backup file</source>
         <translation>過去のデータを復元しました</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="488"/>
+        <location filename="../src/ui/treebank.cpp" line="487"/>
         <source>Cannot change to an empty title or use the following characters.</source>
         <translation>空のノード名は指定できません。また、以下の文字は使用できません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="1601"/>
-        <location filename="../src/ui/treebank.cpp" line="1621"/>
+        <location filename="../src/ui/treebank.cpp" line="1608"/>
+        <location filename="../src/ui/treebank.cpp" line="1628"/>
         <source>Because of a failure to read the latest file, it was restored from a backup file.</source>
         <translation>最新のデータの読み込みに失敗したため、過去のデータから復元しました。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="459"/>
+        <location filename="../src/ui/treebank.cpp" line="458"/>
         <source>Input new node name.</source>
         <translation>新しいノード名を入力してください。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="460"/>
+        <location filename="../src/ui/treebank.cpp" line="459"/>
         <source>Node name:</source>
         <translation>ノード名：</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="484"/>
+        <location filename="../src/ui/treebank.cpp" line="483"/>
         <source>Invalid node name.</source>
         <translation>無効なノード名。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="503"/>
+        <location filename="../src/ui/treebank.cpp" line="502"/>
         <source>Invalid directory name.</source>
         <translation>無効なディレクトリ名</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="504"/>
+        <location filename="../src/ui/treebank.cpp" line="503"/>
         <source>A directory name cannot contain &apos;;&apos;. What comes after it is this directory&apos;s settings, which are edited in the DirectorySettings menu.</source>
         <translation>ディレクトリ名に「;」は使えません。その後ろに来るのはこのディレクトリの設定で、「ディレクトリの設定」メニューで編集します。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="2051"/>
+        <location filename="../src/ui/treebank.cpp" line="2058"/>
         <source>Delete %1 closed tabs from the wastebasket for good?
 This cannot be undone.</source>
         <translation>閉じたタブ %1 件をゴミ箱から完全に削除しますか？
 この操作は取り消せません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="2471"/>
+        <location filename="../src/ui/treebank.cpp" line="2478"/>
         <source>Moved %1 nodes to the trash.</source>
         <translation>%1 個のノードをゴミ箱に移動しました</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="2473"/>
+        <location filename="../src/ui/treebank.cpp" line="2480"/>
         <source>They can be restored from the trash.</source>
         <translation>ゴミ箱から復元できます。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="2474"/>
+        <location filename="../src/ui/treebank.cpp" line="2481"/>
         <source>The trash keeps a limited number of items, so the oldest of these are gone.</source>
         <translation>ゴミ箱に残す項目数を超えたため、移動したノードのうち古いものは復元できません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3271"/>
+        <location filename="../src/ui/treebank.cpp" line="3284"/>
         <source>Display</source>
         <translation>表示</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3917"/>
+        <location filename="../src/ui/treebank.cpp" line="3930"/>
         <source>Clear cookies.</source>
         <translation>Cookie を消去します。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3918"/>
+        <location filename="../src/ui/treebank.cpp" line="3931"/>
         <source>Every cookie of every network space is deleted.
 Anything a site kept you signed in with goes with them.</source>
         <translation>すべてのネットワーク空間の Cookie を削除します。
 サイトがログイン状態を保つために置いたものも一緒に消えます。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3948"/>
+        <location filename="../src/ui/treebank.cpp" line="3961"/>
         <source>Clear saved passwords.</source>
         <translation>保存したパスワードを消去します。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3249"/>
+        <location filename="../src/ui/treebank.cpp" line="3262"/>
         <source>TabList</source>
         <translation>タブ一覧</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3282"/>
+        <location filename="../src/ui/treebank.cpp" line="3295"/>
         <source>Window</source>
         <translation>ウィンドウ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3301"/>
+        <location filename="../src/ui/treebank.cpp" line="3314"/>
         <source>Page</source>
         <translation>ページ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3324"/>
+        <location filename="../src/ui/treebank.cpp" line="3337"/>
         <source>Application</source>
         <translation>アプリケーション</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="3949"/>
+        <location filename="../src/ui/treebank.cpp" line="3962"/>
         <source>Every saved password is deleted.</source>
         <translation>保存したパスワードをすべて削除します。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="703"/>
+        <location filename="../src/ui/treebank.cpp" line="702"/>
         <source>WebEngineView site data</source>
         <translation>WebEngineView のサイトのデータ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="704"/>
+        <location filename="../src/ui/treebank.cpp" line="703"/>
         <source>WebEngineView cache</source>
         <translation>WebEngineView のキャッシュ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="705"/>
+        <location filename="../src/ui/treebank.cpp" line="704"/>
         <source>QuickWebEngineView site data</source>
         <translation>QuickWebEngineView のサイトのデータ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="706"/>
+        <location filename="../src/ui/treebank.cpp" line="705"/>
         <source>QuickWebEngineView cache</source>
         <translation>QuickWebEngineView のキャッシュ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="707"/>
+        <location filename="../src/ui/treebank.cpp" line="706"/>
         <source>EdgeWebView site data</source>
         <translation>EdgeWebView のサイトのデータ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="708"/>
+        <location filename="../src/ui/treebank.cpp" line="707"/>
         <source>Extension settings</source>
         <translation>拡張機能の設定</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="740"/>
+        <location filename="../src/ui/treebank.cpp" line="739"/>
         <source>Some data was not moved.</source>
         <translation>一部のデータを移せませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="741"/>
+        <location filename="../src/ui/treebank.cpp" line="740"/>
         <source>The directory was renamed to &quot;%1&quot;, but the following could not be moved to the new name and was left where it was. Under the new name, it starts empty.</source>
         <translation>ディレクトリの名前を「%1」に変えましたが、次のデータは新しい名前へ移せず、元の場所に残っています。新しい名前では空の状態から始まります。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="813"/>
-        <location filename="../src/ui/treebank.cpp" line="961"/>
+        <location filename="../src/ui/treebank.cpp" line="812"/>
+        <location filename="../src/ui/treebank.cpp" line="960"/>
         <source>Another directory is still being renamed.</source>
         <translation>別のディレクトリの名前の変更がまだ終わっていません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="816"/>
-        <location filename="../src/ui/treebank.cpp" line="963"/>
+        <location filename="../src/ui/treebank.cpp" line="815"/>
+        <location filename="../src/ui/treebank.cpp" line="962"/>
         <source>A download is in progress. Rename this directory after it has finished.</source>
         <translation>ダウンロード中です。終わってからこのディレクトリの名前を変えてください。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="818"/>
+        <location filename="../src/ui/treebank.cpp" line="817"/>
         <source>Another directory (or one in the trash) is the same network space &quot;%1&quot;. Renaming this one would leave the other without its data.</source>
         <translation>ほかのディレクトリ（ゴミ箱の中のものを含む）が同じネットワーク空間「%1」です。このディレクトリの名前を変えると、もう一方のデータが無くなります。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="826"/>
+        <location filename="../src/ui/treebank.cpp" line="825"/>
         <source>Data of a network space named &quot;%1&quot; is already on disk. Choose another name.</source>
         <translation>「%1」という名前のネットワーク空間のデータが、すでにディスクにあります。別の名前を選んでください。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="832"/>
-        <location filename="../src/ui/treebank.cpp" line="967"/>
+        <location filename="../src/ui/treebank.cpp" line="831"/>
+        <location filename="../src/ui/treebank.cpp" line="966"/>
         <location filename="../src/app/directorypage.cpp" line="953"/>
         <source>Cannot rename this directory.</source>
         <translation>このディレクトリの名前を変えられません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="849"/>
+        <location filename="../src/ui/treebank.cpp" line="848"/>
         <source>Moving the data of &quot;%1&quot; to &quot;%2&quot;...</source>
         <translation>「%1」のデータを「%2」へ移しています…</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="738"/>
-        <location filename="../src/ui/treebank.cpp" line="760"/>
+        <location filename="../src/ui/treebank.cpp" line="737"/>
+        <location filename="../src/ui/treebank.cpp" line="759"/>
         <source>Password data: %1</source>
         <translation>パスワード関連のデータ：%1 件</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="592"/>
-        <location filename="../src/ui/treebank.cpp" line="831"/>
+        <location filename="../src/ui/treebank.cpp" line="591"/>
+        <location filename="../src/ui/treebank.cpp" line="830"/>
         <source>Cannot change this directory.</source>
         <translation>このディレクトリを変更できません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="593"/>
-        <location filename="../src/ui/treebank.cpp" line="823"/>
+        <location filename="../src/ui/treebank.cpp" line="592"/>
+        <location filename="../src/ui/treebank.cpp" line="822"/>
         <source>The data of the network space &quot;%1&quot; is still being closed. Wait a moment and try again.</source>
         <translation>ネットワーク空間「%1」のデータをまだ閉じています。少し待ってからやり直してください。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="815"/>
+        <location filename="../src/ui/treebank.cpp" line="814"/>
         <source>A download is in progress. Change this directory after it has finished.</source>
         <translation>ダウンロード中です。終わってからこのディレクトリを変更してください。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="848"/>
+        <location filename="../src/ui/treebank.cpp" line="847"/>
         <source>Closing the data of &quot;%1&quot;...</source>
         <translation>「%1」のデータを閉じています…</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="755"/>
+        <location filename="../src/ui/treebank.cpp" line="754"/>
         <source>WebEngineView and QuickWebEngineView site data (sign-ins included): it cannot be carried over.</source>
         <translation>WebEngineView と QuickWebEngineView のサイトのデータ（ログインを含む）：引き継げません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="758"/>
+        <location filename="../src/ui/treebank.cpp" line="757"/>
         <source>EdgeWebView cookies: they could not be copied.</source>
         <translation>EdgeWebView の Cookie：コピーできませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="763"/>
+        <location filename="../src/ui/treebank.cpp" line="762"/>
         <source>Some data was not carried over.</source>
         <translation>一部のデータを引き継げませんでした。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="764"/>
+        <location filename="../src/ui/treebank.cpp" line="763"/>
         <source>&quot;%1&quot; was joined to &quot;%2&quot;, but the following of &quot;%1&quot; was not carried over. It is kept where it was.</source>
         <translation>「%1」を「%2」に併合しましたが、「%1」の次のデータは引き継げませんでした。元の場所に残してあります。</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebank.cpp" line="974"/>
+        <location filename="../src/ui/treebank.cpp" line="973"/>
         <source>Joining &quot;%1&quot; to &quot;%2&quot;...</source>
         <translation>「%1」を「%2」に併合しています…</translation>
     </message>
@@ -6763,37 +7182,37 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>TreeBar</name>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="775"/>
+        <location filename="../src/ui/treebar.cpp" line="785"/>
         <source>TreeBar</source>
         <translation>タブバー</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1133"/>
+        <location filename="../src/ui/treebar.cpp" line="1143"/>
         <source>TreeBarSettings</source>
         <translation>タブバーの設定</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1143"/>
+        <location filename="../src/ui/treebar.cpp" line="1153"/>
         <source>Width</source>
         <translation>幅</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1154"/>
+        <location filename="../src/ui/treebar.cpp" line="1164"/>
         <source>Height</source>
         <translation>高さ</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1173"/>
+        <location filename="../src/ui/treebar.cpp" line="1183"/>
         <source>EnableAnimation</source>
         <translation>アニメーション</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1180"/>
+        <location filename="../src/ui/treebar.cpp" line="1190"/>
         <source>EnableCloseButton</source>
         <translation>閉じるボタン</translation>
     </message>
     <message>
-        <location filename="../src/ui/treebar.cpp" line="1187"/>
+        <location filename="../src/ui/treebar.cpp" line="1197"/>
         <source>EnableCloneButton</source>
         <translation>複製ボタン</translation>
     </message>
@@ -6801,67 +7220,67 @@ Anything a site kept you signed in with goes with them.</source>
 <context>
     <name>VideoItem</name>
     <message>
-        <location filename="../src/view/localview.cpp" line="2433"/>
+        <location filename="../src/view/localview.cpp" line="2435"/>
         <source>play</source>
         <translation>再生</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2438"/>
+        <location filename="../src/view/localview.cpp" line="2440"/>
         <source>pause</source>
         <translation>一時停止</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2443"/>
+        <location filename="../src/view/localview.cpp" line="2445"/>
         <source>stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2448"/>
+        <location filename="../src/view/localview.cpp" line="2450"/>
         <source>volume up</source>
         <translation>音量を上げる</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2453"/>
+        <location filename="../src/view/localview.cpp" line="2455"/>
         <source>volume down</source>
         <translation>音量を下げる</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2480"/>
+        <location filename="../src/view/localview.cpp" line="2482"/>
         <source>10 minutes back</source>
         <translation>10 分戻る</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2487"/>
+        <location filename="../src/view/localview.cpp" line="2489"/>
         <source>10 minutes forward</source>
         <translation>10 分進む</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2493"/>
+        <location filename="../src/view/localview.cpp" line="2495"/>
         <source>5 minutes back</source>
         <translation>5 分戻る</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2499"/>
+        <location filename="../src/view/localview.cpp" line="2501"/>
         <source>5 minutes forward</source>
         <translation>5 分進む</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2505"/>
+        <location filename="../src/view/localview.cpp" line="2507"/>
         <source>1 minute back</source>
         <translation>1 分戻る</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2511"/>
+        <location filename="../src/view/localview.cpp" line="2513"/>
         <source>1 minute forward</source>
         <translation>1 分進む</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2516"/>
+        <location filename="../src/view/localview.cpp" line="2518"/>
         <source>10 seconds back</source>
         <translation>10 秒戻る</translation>
     </message>
     <message>
-        <location filename="../src/view/localview.cpp" line="2521"/>
+        <location filename="../src/view/localview.cpp" line="2523"/>
         <source>10 seconds forward</source>
         <translation>10 秒進む</translation>
     </message>
@@ -7307,8 +7726,8 @@ SSL エラー：%2</translation>
         <translation>失敗。</translation>
     </message>
     <message>
-        <location filename="../src/view/webengine/webengineview.cpp" line="1021"/>
-        <location filename="../src/view/webengine/webengineview.cpp" line="1062"/>
+        <location filename="../src/view/webengine/webengineview.cpp" line="1039"/>
+        <location filename="../src/view/webengine/webengineview.cpp" line="1080"/>
         <source>NoAction</source>
         <translation>未定義</translation>
     </message>

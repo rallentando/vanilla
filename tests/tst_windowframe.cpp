@@ -145,7 +145,7 @@ private slots:
         QCOMPARE(title->width(), title->CompactWidth());
         QVERIFY(poll->isActive());
         QTRY_COMPARE(title->geometry().right(), window.geometry().right());
-        QCOMPARE(title->geometry().top(), window.geometry().top());
+        QCOMPARE(title->geometry().top(), window.screen()->geometry().top());
         QVERIFY(!title->isVisible());
 
         IgnorePlatformActivation activation;
@@ -357,6 +357,10 @@ private slots:
         QCOMPARE(At(layout, QPoint(500, 20)), Client);
         layout.bar = QRect(0, 0, 1000, 40);
         QCOMPARE(At(layout, QPoint(900, 20)), Caption);
+        for(long button : {3L, 8L, 9L, 20L, 21L})
+            QCOMPARE(SystemAnswer(button), 2L);
+        for(long kept : {2L, 10L, 12L, 15L, 17L})
+            QCOMPARE(SystemAnswer(kept), kept);
     }
 
     void aNarrowBarDropsButtonsFromTheLeftOfTheRow(){
@@ -599,6 +603,28 @@ private slots:
         QCOMPARE(bar.grab().toImage().pixelColor(corner), lit);
         bar.SetNativeHover(false);
         QCOMPARE(bar.grab().toImage().pixelColor(corner), plain);
+    }
+
+    void aQuickSecondClickOnAButtonIsAClick(){
+        MainWindow &window = *m_Custom;
+        window.showNormal();
+        QCoreApplication::processEvents();
+        TitleBar *bar = window.findChild<TitleBar*>();
+        QVERIFY(bar);
+        QCOMPARE(bar->GetMode(), TitleBar::Inner);
+        const QPoint at = bar->ButtonRect(TitleBar::ShadeButton).center();
+        QVERIFY(bar->ButtonAt(at) == TitleBar::ShadeButton);
+        auto send = [&](QEvent::Type type, Qt::MouseButtons buttons){
+            QMouseEvent ev(type, at, bar->mapToGlobal(at), Qt::LeftButton, buttons, Qt::NoModifier);
+            QCoreApplication::sendEvent(bar, &ev);
+        };
+        QVERIFY(!window.IsShaded());
+        send(QEvent::MouseButtonPress, Qt::LeftButton);
+        send(QEvent::MouseButtonRelease, Qt::NoButton);
+        QVERIFY(window.IsShaded());
+        send(QEvent::MouseButtonDblClick, Qt::LeftButton);
+        send(QEvent::MouseButtonRelease, Qt::NoButton);
+        QVERIFY(!window.IsShaded());
     }
 
 #if defined(Q_OS_WIN)
@@ -1005,7 +1031,7 @@ private slots:
         const int t = strip->ScaleByDevice(TITLE_BAR_HEIGHT);
         const QPoint edge(window.geometry().center().x(), window.screen()->geometry().top());
         const QPoint away = window.geometry().center();
-        const int top = window.geometry().top();
+        const int top = window.screen()->geometry().top();
 
         window.ApplyTitleBarVisibility(edge, true, false);
         QVERIFY(strip->isVisible());

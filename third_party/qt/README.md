@@ -12,7 +12,7 @@ with the binaries). The texts are taken unmodified from the Qt sources:
 
 `NOTICE.txt` is ours: it names what ships, under which licence, where the
 source is, and that Qt is linked dynamically. **It carries version numbers
-(Qt 6.12.0, Qt WebEngine 6.140.0, Chromium 140.0.7339.225 -- chrome/VERSION of the shipped sources;
+(Qt 6.12.1, Qt WebEngine 6.140.0, Chromium 140.0.7339.264 -- chrome/VERSION of the shipped sources;
 Qt WebEngine is versioned apart from Qt since 6.12) -- when the Qt or the Qt WebEngine this is built against
 changes, both this table and `NOTICE.txt` have to be updated.**
 

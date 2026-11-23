@@ -79,7 +79,6 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
     m_ScrollSignalTimer = 0;
     m_PreventScrollRestoration = false;
     m_SuspendedSpecificSettings = false;
-#ifdef MEDIATIME
     m_MediaTimeSaveTimer = 0;
     connect(this, &QuickWebEngineView::recentlyAudibleChanged,
             this, [this](bool audible){
@@ -94,7 +93,6 @@ QuickWebEngineView::QuickWebEngineView(TreeBank *parent, QString id, QStringList
                     SaveMediaTime();
                 }
             });
-#endif
 
     m_ActionTable = QMap<Page::CustomAction, QAction*>();
     m_RequestId = 0;
@@ -490,9 +488,7 @@ void QuickWebEngineView::OnLoadFinished(bool ok){
     }
 
     RestoreScroll();
-#ifdef MEDIATIME
     RestoreMediaTime();
-#endif
     emit ViewChanged();
     emit statusBarMessage(tr("Finished loading."));
 
@@ -521,10 +517,8 @@ void QuickWebEngineView::OnTitleChanged(const QString &title){
 void QuickWebEngineView::OnUrlChanged(const QUrl &url){
     if(!GetViewNode()) return;
     SaveHistory();
-#ifdef MEDIATIME
     if(url != GetViewNode()->GetUrl())
         GetViewNode()->SetMediaTime(0);
-#endif
     ChangeNodeUrl(url);
 }
 
@@ -629,7 +623,6 @@ bool QuickWebEngineView::RestoreHistory(){
     return false;
 }
 
-#ifdef MEDIATIME
 bool QuickWebEngineView::SaveMediaTime(VoidCallBack settled){
     if(IsLoading()){
         if(settled) settled();
@@ -653,7 +646,6 @@ bool QuickWebEngineView::RestoreMediaTime(){
     CallWithEvaluatedJavaScriptResult(SetMediaTimeJsCode(time), [](QVariant){});
     return true;
 }
-#endif
 
 void QuickWebEngineView::KeyEvent(QString key){
     TriggerKeyEvent(key);
@@ -923,8 +915,14 @@ void QuickWebEngineView::HandleContextMenu(QObject *object, bool isMedia){
         elem = e;
     }
     m_SelectedText = object->property("selectedText").toString();
-    if(isMedia)
+    m_ScriptMediaPoint = QPoint(-1, -1);
+    if(isMedia || (elem && elem->IsMediaElement())){
         type = Page::MediaTypePlayable;
+        if(!isMedia){
+            m_ScriptMediaPoint = pos / engineZoomFactor();
+            m_ScriptMediaLoad = LoadSerial();
+        }
+    }
     else if(elem && !elem->ImageUrl().isEmpty())
         type = Page::MediaTypeImage;
     page()->DisplayContextMenu(m_TreeBank, elem, pos, mapToGlobal(pos), type);
@@ -1036,19 +1034,27 @@ void QuickWebEngineView::ZoomOut(){
 }
 
 void QuickWebEngineView::ToggleMediaControls(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaControls");
+    if(ScriptMediaPoint().x() >= 0)
+        CallWithEvaluatedJavaScriptResult(ToggleMediaControlsJsCode(ScriptMediaPoint()), [](QVariant){});
+    else QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaControls");
 }
 
 void QuickWebEngineView::ToggleMediaLoop(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaLoop");
+    if(ScriptMediaPoint().x() >= 0)
+        CallWithEvaluatedJavaScriptResult(ToggleMediaLoopJsCode(ScriptMediaPoint()), [](QVariant){});
+    else QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaLoop");
 }
 
 void QuickWebEngineView::ToggleMediaPlayPause(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaPlayPause");
+    if(ScriptMediaPoint().x() >= 0)
+        CallWithEvaluatedJavaScriptResult(ToggleMediaPlayPauseJsCode(ScriptMediaPoint()), [](QVariant){});
+    else QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaPlayPause");
 }
 
 void QuickWebEngineView::ToggleMediaMute(){
-    QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaMute");
+    if(ScriptMediaPoint().x() >= 0)
+        CallWithEvaluatedJavaScriptResult(ToggleMediaMuteAtJsCode(ScriptMediaPoint()), [](QVariant){});
+    else QMetaObject::invokeMethod(m_QmlWebEngineView, "toggleMediaMute");
 }
 
 SiteDataLink *QuickWebEngineView::OpenSiteDataLink(){
@@ -1108,7 +1114,7 @@ void QuickWebEngineView::CloseInspector(){
 }
 
 void QuickWebEngineView::AddSearchEngine(QPoint pos){
-    if(page()) page()->AddSearchEngine(pos);
+    if(page()) page()->AddSearchEngine(pos / engineZoomFactor());
 }
 
 void QuickWebEngineView::AddBookmarklet(QPoint pos){
@@ -1122,11 +1128,9 @@ void QuickWebEngineView::timerEvent(QTimerEvent *ev){
         killTimer(m_ScrollSignalTimer);
         m_ScrollSignalTimer = 0;
     }
-#ifdef MEDIATIME
     if(ev->timerId() == m_MediaTimeSaveTimer){
         SaveMediaTime();
     }
-#endif
 }
 
 void QuickWebEngineView::hideEvent(QHideEvent *ev){
@@ -1243,56 +1247,10 @@ void QuickWebEngineView::dragMoveEvent(QDragMoveEvent *ev){
 }
 
 void QuickWebEngineView::dropEvent(QDropEvent *ev){
-    emit statusBarMessage(QString());
-    bool isLocal = false;
-    QPoint pos = ev->position().toPoint();
-    QObject *source = ev->source();
-    QString text = ev->mimeData()->text();
-    QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
-
-    for(QUrl u : std::as_const(urls)){ if(u.isLocalFile()) isLocal = true;}
-
-    if(text.isEmpty() && !urls.isEmpty()){
-        foreach(QUrl u, urls){
-            if(text.isEmpty()) text = u.toString();
-            else text += QStringLiteral("\n") + u.toString();
-        }
-    }
-
-    const bool own = IsOwnDragSource(source);
-
-    CallWithHitElement(pos, [this, pos, own, text, urls](SharedWebElement elem){
-
-    if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
-
-        GestureAborted();
-        elem->SetText(text);
-        return;
-    }
-
-    if(!m_Gesture.isEmpty() && own){
-        GestureFinished(pos, Qt::LeftButton);
-        return;
-    }
-
-    GestureAborted();
-
-    if(!urls.isEmpty() && !own){
-        m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
-    }
-
-    });
-
-    const bool consumed = (!m_Gesture.isEmpty() && own) || (!urls.isEmpty() && !own);
-
-    if(isLocal || consumed ||
-       (DragToStartDownload() && !urls.isEmpty() && own))
-        ;
-    else {
-        if(own && !urls.isEmpty()) MarkOwnDrop();
-        QQuickWidget::dropEvent(ev);
-    }
-    ev->setAccepted(true);
+    DropHooks hooks;
+    hooks.toEngine = [this](QDropEvent *ev){ QQuickWidget::dropEvent(ev);};
+    hooks.clearStatus = [this](){ emit statusBarMessage(QString());};
+    DropWithGestures(ev, hooks);
 }
 
 void QuickWebEngineView::dragLeaveEvent(QDragLeaveEvent *ev){

@@ -121,6 +121,11 @@ private slots:
     void theTrashDeletesForGoodOnlyWhenTheUserSaysSo();
     void thePageIsDrawnBehindNodesButNotBehindAccessKeys();
     void theBackdropBlurSoftensAnEdgeAndNothingElse();
+    void theVeilAndTheRestAreTheWholeBackground_data();
+    void theVeilAndTheRestAreTheWholeBackground();
+    void aScrollIsSteppedByItsOwnClockToTheEnd();
+    void aFrameDrawnStepsTheScroll();
+    void takingTheScrollBarStopsTheScroll();
     void plainStyleIsTheDefault();
     void plainStyleShowsWhatIsBehindAThroughATranslucentWindow();
     void plainStyleHoldsAsManyCardsAsFlatStyle();
@@ -147,6 +152,19 @@ public:
         const bool before = Application::m_TransparentWindowEffective;
         Application::m_TransparentWindowEffective = on;
         return before;
+    }
+    static void StartScroll(GraphicsTableView *table, qreal to){
+        table->m_ScrollAnimation->setEasingCurve(QEasingCurve::OutCubic);
+        table->m_ScrollAnimation->setDuration(400);
+        table->m_ScrollAnimation->setStartValue(table->m_CurrentScroll);
+        table->m_ScrollAnimation->setEndValue(to);
+        table->m_TargetScroll = to;
+        table->m_ScrollAnimation->start();
+        table->m_ScrollAnimation->setCurrentTime(16);
+        table->PumpScrollAnimation();
+    }
+    static void StopScroll(GraphicsTableView *table){
+        table->m_ScrollAnimation->stop();
     }
 };
 
@@ -1592,6 +1610,174 @@ void tst_gadgetsframe::theBackdropBlurSoftensAnEdgeAndNothingElse(){
 
     QVERIFY(Gadgets::BlurBackdrop(QImage(), radius).isNull());
     QCOMPARE(Gadgets::BlurBackdrop(edge, 0), edge);
+}
+
+void tst_gadgetsframe::theVeilAndTheRestAreTheWholeBackground_data(){
+    QTest::addColumn<QString>("style");
+    QTest::addColumn<bool>("translucent");
+    for(const QString &style : {QStringLiteral("GlassStyle"), QStringLiteral("FlatStyle"),
+                                QStringLiteral("PlainStyle")}){
+        QTest::newRow(qPrintable(style)) << style << false;
+        QTest::newRow(qPrintable(style + QStringLiteral(" translucent"))) << style << true;
+    }
+}
+
+void tst_gadgetsframe::theVeilAndTheRestAreTheWholeBackground(){
+    QFETCH(QString, style);
+    QFETCH(bool, translucent);
+    UseStyle(style);
+    TranslucentWindow window(translucent);
+    QGraphicsScene scene;
+    scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+    auto *table = new GraphicsTableView(nullptr);
+    scene.addItem(table);
+    table->Resize(QSizeF(SCREEN));
+    const bool frameRate = GraphicsTableView::m_EnableFrameRate;
+    const auto restore = qScopeGuard([frameRate]{
+        GraphicsTableView::m_EnableFrameRate = frameRate;
+    });
+    GraphicsTableView::m_EnableFrameRate = true;
+    table->m_CurrentFrameRate = 59;
+    auto *root = MakeDirectory(1);
+    GadgetsStyle *skin = GraphicsTableView::GetStyle();
+
+    const auto expected = [&]() -> QColor {
+        const bool nodes = table->IsDisplayingNode();
+        if(style == QStringLiteral("GlassStyle"))
+            return Theme::Color(Theme::GlassOverlayBackground, nodes ? 170 : 100);
+        if(style == QStringLiteral("PlainStyle") && nodes)
+            return translucent ? Theme::Color(Theme::PlainSurface, 170)
+                               : Theme::Color(Theme::PlainSurface);
+        return Theme::Color(Theme::FlatOverlayBackground, nodes ? 170 : 100);
+    };
+    const auto compare = [&](){
+        QCOMPARE(skin->BackgroundVeil(table), expected());
+        QImage whole(SCREEN, QImage::Format_ARGB32_Premultiplied);
+        whole.fill(QColor(200, 40, 40, 180));
+        QImage split = whole;
+        QImage once = whole;
+        {
+            QPainter painter(&once);
+            painter.fillRect(QRect(QPoint(), SCREEN), expected());
+        }
+        {
+            QPainter painter(&whole);
+            skin->RenderBackground(table, &painter);
+        }
+        {
+            QPainter painter(&split);
+            painter.fillRect(QRect(QPoint(), SCREEN), skin->BackgroundVeil(table));
+            skin->RenderBackgroundOverVeil(table, &painter);
+        }
+        QVERIFY(skin->BackgroundVeil(table).alpha() > 0);
+        QCOMPARE(split, whole);
+        const QPoint middle(SCREEN.width() / 2, SCREEN.height() / 2);
+        QCOMPARE(whole.pixel(middle), once.pixel(middle));
+    };
+
+    QVERIFY(!table->IsDisplayingNode());
+    compare();
+    table->Activate(GraphicsTableView::ViewTree);
+    table->SetCurrent(root->GetChildAt(0)->ToViewNode()->GetChildAt(0));
+    QVERIFY(table->IsDisplayingNode());
+    compare();
+
+    table->Deactivate();
+    delete table;
+    delete root;
+}
+
+namespace {
+    struct ScrolledTable {
+        QGraphicsScene scene;
+        GraphicsTableView *table;
+        ViewNode *root;
+        ScrolledTable(){
+            UseStyle(QStringLiteral("PlainStyle"));
+            scene.setSceneRect(QRectF(QPointF(), QSizeF(SCREEN)));
+            table = new GraphicsTableView(nullptr);
+            scene.addItem(table);
+            table->Resize(QSizeF(SCREEN));
+            root = MakeDirectory(400);
+            table->Activate(GraphicsTableView::ViewTree);
+            table->SetCurrent(root->GetChildAt(0)->ToViewNode()->GetChildAt(0));
+            table->SetScroll(0.0);
+            table->ResetTargetScroll();
+        }
+        ~ScrolledTable(){
+            tst_gadgetsframe::StopScroll(table);
+            table->Deactivate();
+            delete table;
+            delete root;
+        }
+    };
+}
+
+void tst_gadgetsframe::aScrollIsSteppedByItsOwnClockToTheEnd(){
+    ScrolledTable t;
+    GraphicsTableView *table = t.table;
+    const qreal to = qMin<qreal>(table->MaxScroll(), 70.0);
+    QVERIFY(to > 0);
+
+    StartScroll(table, to);
+    QCOMPARE(table->m_ScrollAnimation->state(), QAbstractAnimation::Paused);
+    QVERIFY(table->m_ScrollPump.isActive());
+    QVERIFY(table->m_CurrentScroll > 0 && table->m_CurrentScroll < to);
+
+    QTRY_COMPARE_WITH_TIMEOUT(table->m_ScrollAnimation->state(),
+                              QAbstractAnimation::Stopped, 3000);
+    QCOMPARE(table->m_CurrentScroll, to);
+    QCOMPARE(table->m_TargetScroll, to);
+    QVERIFY(!table->m_ScrollPump.isActive());
+
+    StartScroll(table, 0.0);
+    const qreal first = table->m_CurrentScroll;
+    QVERIFY(first < to);
+    StartScroll(table, 30.0);
+    QCOMPARE(table->m_ScrollAnimation->state(), QAbstractAnimation::Paused);
+    QTRY_COMPARE_WITH_TIMEOUT(table->m_CurrentScroll, 30.0, 3000);
+}
+
+void tst_gadgetsframe::aFrameDrawnStepsTheScroll(){
+    ScrolledTable t;
+    GraphicsTableView *table = t.table;
+    const qreal to = qMin<qreal>(table->MaxScroll(), 70.0);
+    StartScroll(table, to);
+    table->m_ScrollPump.stop();
+    const qreal before = table->m_CurrentScroll;
+
+    QTest::qWait(30);
+    QCoreApplication::processEvents();
+    QCOMPARE(table->m_CurrentScroll, before);
+
+    QImage frame(SCREEN, QImage::Format_ARGB32_Premultiplied);
+    {
+        QPainter painter(&frame);
+        table->paint(&painter, nullptr, nullptr);
+    }
+    QCoreApplication::processEvents();
+    QVERIFY2(table->m_CurrentScroll > before,
+             qPrintable(QStringLiteral("%1 -> %2").arg(before).arg(table->m_CurrentScroll)));
+    QCOMPARE(table->m_ScrollAnimation->state(), QAbstractAnimation::Paused);
+}
+
+void tst_gadgetsframe::takingTheScrollBarStopsTheScroll(){
+    ScrolledTable t;
+    GraphicsTableView *table = t.table;
+    const qreal to = qMin<qreal>(table->MaxScroll(), 70.0);
+    StartScroll(table, to);
+    QCOMPARE(table->m_ScrollAnimation->state(), QAbstractAnimation::Paused);
+
+    QGraphicsSceneMouseEvent press(QEvent::GraphicsSceneMousePress);
+    press.setButton(Qt::LeftButton);
+    press.setButtons(Qt::LeftButton);
+    t.scene.sendEvent(table->m_ScrollIndicator, &press);
+
+    QCOMPARE(table->m_ScrollAnimation->state(), QAbstractAnimation::Stopped);
+    const qreal at = table->m_CurrentScroll;
+    QCOMPARE(table->m_TargetScroll, at);
+    QTest::qWait(60);
+    QCOMPARE(table->m_CurrentScroll, at);
 }
 
 void tst_gadgetsframe::zoomingOutDoesNotDivideByZero(){

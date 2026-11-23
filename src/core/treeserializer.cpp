@@ -228,9 +228,7 @@ bool JsonTreeReader::ParseNode(ViewNode *parent){
 
     Scalar primary, folded, title, create, lastUpdate, lastAccess,
            holdView, url, scrollX, scrollY, zoom, history, thumb, index;
-#ifdef MEDIATIME
     Scalar mediaTime;
-#endif
 
     const int restoreMark = m_Restores.length();
 
@@ -273,10 +271,8 @@ bool JsonTreeReader::ParseNode(ViewNode *parent){
                     ok = ParseScalar(&scrollY);
                 } else if(key == "zoom"){
                     ok = ParseScalar(&zoom);
-#ifdef MEDIATIME
                 } else if(key == "mediatime"){
                     ok = ParseScalar(&mediaTime);
-#endif
                 } else if(key == "history"){
                     ok = ParseScalar(&history);
                 } else if(key == "thumb"){
@@ -330,9 +326,7 @@ bool JsonTreeReader::ParseNode(ViewNode *parent){
         if(z > 10) vn->SetZoom(z/100);
         else       vn->SetZoom(z);
 
-#ifdef MEDIATIME
         vn->SetMediaTime(static_cast<float>(mediaTime.ToDouble(0)));
-#endif
 
         if(!history.ToString().isEmpty())
             vn->SetHistoryFileName(history.ToString());
@@ -688,9 +682,7 @@ void WriteNode(ViewNode *nd, QTextStream &out, int depth, const Hooks &hooks){
             <<        "\", \"scrollx\": " << nd->GetScrollX()
             <<        ", \"scrolly\": "   << nd->GetScrollY()
             <<        ", \"zoom\": "      << nd->GetZoom();
-#ifdef MEDIATIME
         out << ", \"mediatime\": " << nd->GetMediaTime();
-#endif
 
         if(hooks.KeepSideFiles(nd)){
             nd->SaveImageIfNeed();

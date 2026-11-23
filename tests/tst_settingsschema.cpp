@@ -25,6 +25,7 @@ private slots:
     void everyKeyAppearsOnce();
     void everyItemIsInAKnownCategory();
     void everyCategoryHasARowAndTheTableKeepsTheirOrder();
+    void theOnlyHiddenCategoryIsTheOtherSettings();
     void theRunsOfCategoriesBeginWhereTheListSays();
     void everyGroupStartsARowOnceAndInOrder();
     void everyChoiceDefaultIsOneOfTheChoices();
@@ -44,12 +45,13 @@ private slots:
 
     void findOnlyKnowsTheKeysInTheTable();
     void theUserAgentRowsAreTheTemplates();
-    void theHiddenCategoryIsMarkedAndComesLast();
     void everySettingReachesTheProfilesItIsMeantFor();
     void everyPreferenceRowIsAppliedByTheView();
     void everyAttributeTheViewAppliesReachesThePage();
     void aTabListItemMadeWithTheWindowAsksForARestart();
     void unknownKeysAreDroppedAndKnownOnesKept();
+    void aValueTheSettingDoesNotTakeIsDroppedOrPutRight();
+    void fromTextTakesOnlyWhatTheSettingCanBe();
     void everyKeyTheSourcesSpellIsKnown();
 
     void fromJsonRefusesTheWrongShape();
@@ -126,7 +128,23 @@ void tst_settingsschema::everyCategoryHasARowAndTheTableKeepsTheirOrder(){
     expected.removeOne(QStringLiteral("permissions"));
     expected.removeOne(QStringLiteral("profiles"));
     expected.removeOne(QStringLiteral("directory"));
+    expected.removeOne(QStringLiteral("menu"));
     QCOMPARE(seen, expected);
+}
+
+void tst_settingsschema::theOnlyHiddenCategoryIsTheOtherSettings(){
+    const QJsonArray categories =
+        SettingsSchema::Describe()[QStringLiteral("categories")].toArray();
+    QStringList hidden;
+    QStringList all;
+    for(const QJsonValue &value : categories){
+        const QJsonObject category = value.toObject();
+        all << category[QStringLiteral("name")].toString();
+        if(category[QStringLiteral("hidden")].toBool()) hidden << all.last();
+    }
+    QCOMPARE(hidden, QStringList() << QStringLiteral("hidden"));
+    QCOMPARE(all.indexOf(QStringLiteral("menu")), all.indexOf(QStringLiteral("input")) + 1);
+    QCOMPARE(all.last(), QStringLiteral("hidden"));
 }
 
 void tst_settingsschema::theRunsOfCategoriesBeginWhereTheListSays(){
@@ -542,18 +560,6 @@ void tst_settingsschema::theUserAgentRowsAreTheTemplates(){
     QCOMPARE(rows, templates);
 }
 
-void tst_settingsschema::theHiddenCategoryIsMarkedAndComesLast(){
-    const QJsonArray categories =
-        SettingsSchema::Describe()[QStringLiteral("categories")].toArray();
-    QVERIFY(!categories.isEmpty());
-    for(int i = 0; i < categories.size(); i++){
-        const QJsonObject category = categories[i].toObject();
-        const bool last = i == categories.size() - 1;
-        QCOMPARE(category[QStringLiteral("hidden")].toBool(), last);
-        if(last) QCOMPARE(category[QStringLiteral("name")].toString(), QStringLiteral("hidden"));
-    }
-}
-
 void tst_settingsschema::findOnlyKnowsTheKeysInTheTable(){
     QVERIFY(SettingsSchema::Find(QStringLiteral("application/@ColorScheme")));
 
@@ -633,6 +639,70 @@ void tst_settingsschema::everyAttributeTheViewAppliesReachesThePage(){
                                            "'View::ApplySpecificSettings' never copies it to a page")
                             .arg(attribute)));
     }
+}
+
+void tst_settingsschema::aValueTheSettingDoesNotTakeIsDroppedOrPutRight(){
+    QMap<QString, QVariant> map;
+    map.insert(QStringLiteral("gadgets/@Style"), QStringLiteral("Flat"));
+    map.insert(QStringLiteral("application/@ColorScheme"), QStringLiteral("dark"));
+    map.insert(QStringLiteral("application/@Viewport"), QStringLiteral("GLWidget"));
+    map.insert(QStringLiteral("webview/@GestureMode"), 8);
+    map.insert(QStringLiteral("application/@EnableAutoSave"), QStringLiteral("yes"));
+    map.insert(QStringLiteral("application/@EnableAutoLoad"), QStringLiteral("False"));
+    map.insert(QStringLiteral("application/@EnableTranslucentPanels"), true);
+    map.insert(QStringLiteral("application/@AutoSaveInterval"), QStringLiteral("often"));
+    map.insert(QStringLiteral("application/@AutoLoadInterval"), QStringLiteral("2000"));
+    map.insert(QStringLiteral("application/@MaxViewCount"), 20);
+    map.insert(QStringLiteral("application/@WindowEdgeColor"), QStringLiteral("black"));
+    map.insert(QStringLiteral("webview/bookmarklet/x"), QStringLiteral("anything"));
+    map.insert(QStringLiteral("application/@AcceptLanguage"), QStringLiteral("anything"));
+
+    QStringList dropped = SettingsSchema::DropInvalidValues(map);
+    dropped.sort();
+    QCOMPARE(dropped, QStringList()
+             << QStringLiteral("application/@AutoSaveInterval")
+             << QStringLiteral("application/@EnableAutoSave")
+             << QStringLiteral("application/@WindowEdgeColor")
+             << QStringLiteral("gadgets/@Style"));
+    QCOMPARE(map.value(QStringLiteral("application/@ColorScheme")).toString(), QStringLiteral("Dark"));
+    QCOMPARE(map.value(QStringLiteral("application/@Viewport")).toString(), QStringLiteral("OpenGLWidget"));
+    QCOMPARE(map.value(QStringLiteral("webview/@GestureMode")), QVariant(8));
+    QCOMPARE(map.value(QStringLiteral("application/@EnableAutoLoad")).toString(), QStringLiteral("False"));
+    QCOMPARE(map.value(QStringLiteral("application/@AutoLoadInterval")).toString(), QStringLiteral("2000"));
+    QCOMPARE(map.size(), 9);
+
+    QMap<QString, QVariant> kept;
+    kept.insert(QStringLiteral("webview/@OpenCommandOperation"), QStringLiteral("InNewViewNodeNewWindow"));
+    kept.insert(QStringLiteral("gadgets/accesskey/@AccessKeyAction"), QStringLiteral("OpenOnRootBackground"));
+    QVERIFY(SettingsSchema::DropInvalidValues(kept).isEmpty());
+    QCOMPARE(kept.size(), 2);
+}
+
+void tst_settingsschema::fromTextTakesOnlyWhatTheSettingCanBe(){
+    using SettingsSchema::FromText;
+    QCOMPARE(FromText(QStringLiteral("gadgets/@Style"), QStringLiteral("FlatStyle")),
+             QVariant(QStringLiteral("FlatStyle")));
+    QCOMPARE(FromText(QStringLiteral("gadgets/@Style"), QStringLiteral("flatstyle")),
+             QVariant(QStringLiteral("FlatStyle")));
+    QVERIFY(!FromText(QStringLiteral("gadgets/@Style"), QStringLiteral("Flat")).isValid());
+    QCOMPARE(FromText(QStringLiteral("application/@GraphicsApi"), QStringLiteral("d3d11")),
+             QVariant(QStringLiteral("Direct3D11")));
+    QCOMPARE(FromText(QStringLiteral("application/@EnableAutoSave"), QStringLiteral("False")), QVariant(false));
+    QVERIFY(!FromText(QStringLiteral("application/@EnableAutoSave"), QStringLiteral("no")).isValid());
+    QCOMPARE(FromText(QStringLiteral("application/@AutoSaveInterval"), QStringLiteral("60000")), QVariant(60000));
+    QVERIFY(!FromText(QStringLiteral("application/@AutoSaveInterval"), QStringLiteral("1m")).isValid());
+    QCOMPARE(FromText(QStringLiteral("application/@WindowEdgeColor"), QStringLiteral("#AABBCC")),
+             QVariant(QStringLiteral("#aabbcc")));
+    QVERIFY(!FromText(QStringLiteral("application/@WindowEdgeColor"), QStringLiteral("red")).isValid());
+    QVERIFY(!FromText(QStringLiteral("network/@SpellCheckLanguages"), QStringLiteral("en")).isValid());
+    QCOMPARE(FromText(QStringLiteral("webview/bookmarklet/x"), QStringLiteral("a b")),
+             QVariant(QStringLiteral("a b")));
+    QVERIFY(!FromText(QStringLiteral("nothing/@At"), QStringLiteral("1")).isValid());
+
+    const SettingsSchema::Item *style = SettingsSchema::Find(QStringLiteral("gadgets/@Style"));
+    QVERIFY(style);
+    QCOMPARE(SettingsSchema::Values(*style).length(), 3);
+    QCOMPARE(SettingsSchema::Values(*style).at(1).first, QStringLiteral("FlatStyle"));
 }
 
 void tst_settingsschema::unknownKeysAreDroppedAndKnownOnesKept(){

@@ -501,6 +501,8 @@ void TitleBar::Trigger(Button button){
 }
 
 void TitleBar::mouseDoubleClickEvent(QMouseEvent *ev){
+    if(ev->button() == Qt::LeftButton && ButtonAt(ev->pos()) != NoButton)
+        return mousePressEvent(ev);
     const bool onTitle = IsEditable() && EditRect().contains(ev->pos());
     if(ButtonAt(ev->pos()) == NoButton && ev->button() == Qt::LeftButton && !onTitle)
         m_MainWindow->ToggleMaximized();

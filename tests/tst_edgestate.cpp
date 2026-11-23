@@ -14,6 +14,7 @@
 #include "const.hpp"
 #include "application.hpp"
 #include "edgewebviewstate.hpp"
+#include "menuiconrow.hpp"
 #include "extensionhostwire.hpp"
 #include "edgeeventsubscriptions.hpp"
 #include "edgeunadoptedcontroller.hpp"
@@ -314,6 +315,9 @@ private slots:
     void theEnginesOwnEditKeysStayWithThePage();
 
     void theMenusPasteIsMadeTheBackends();
+    void thePasteInTheLineOfIconsIsMadeTheBackends();
+    void theMenuTakingTheKeyboardKeepsTheSelection();
+    void thePressesHitIsForOneMenuOnItsDocument();
     void aMenuWithADeferralRemembersItselfAndSwapsItsPasteBeforeItOpens();
 };
 
@@ -4906,6 +4910,73 @@ void tst_edgestate::theMenusPasteIsMadeTheBackends(){
     QVERIFY(!ReplaceEdgePasteAction(nullptr, own, 1, [](int){}));
 
     QVERIFY(menu.separatorsCollapsible());
+}
+
+void tst_edgestate::theMenuTakingTheKeyboardKeepsTheSelection(){
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    const int lost = handlers.indexOf(QStringLiteral("controller->add_LostFocus"));
+    const int kept = handlers.indexOf(QStringLiteral("if(!m_Impl->m_MenuHoldsKeyboard) OnFocusOut();"), lost);
+    const int token = handlers.indexOf(QStringLiteral("VANILLA_KEEP_CONTROLLER_EVENT(controller, LostFocus, token);"), lost);
+    QVERIFY(lost > 0 && kept > lost && token > kept);
+    QCOMPARE(handlers.count(QStringLiteral("OnFocusOut();")), 1);
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int held = input.indexOf(QStringLiteral("m_Impl->m_MenuHoldsKeyboard = true;"));
+    const int take = input.indexOf(QStringLiteral("if(keyboard) TakeKeyboardBack();"), held);
+    const int shown = input.indexOf(QStringLiteral("page()->DisplayContextMenu("), take);
+    const int freed = input.indexOf(QStringLiteral("m_Impl->m_MenuHoldsKeyboard = false;"), shown);
+    QVERIFY(held > 0 && take > held && shown > take && freed > shown);
+}
+
+void tst_edgestate::thePressesHitIsForOneMenuOnItsDocument(){
+    const QString input = EdgeSourceTextOf(QStringLiteral("edgewebviewinput.cpp"));
+    const int press = input.indexOf(QStringLiteral("const quint64 press = ++m_Impl->m_MenuHitPress;"));
+    const int load = input.indexOf(QStringLiteral("m_Impl->m_MenuHitLoad = LoadSerial();"), press);
+    QVERIFY(press > 0 && load > press);
+    const int function = input.indexOf(QStringLiteral("void EdgeWebView::DisplayContextMenuFor("));
+    const int same = input.indexOf(QStringLiteral("m_Impl->m_MenuHitLoad == LoadSerial()"), function);
+    const int taken = input.indexOf(QStringLiteral("std::exchange(m_Impl->m_MenuHit, SharedWebElement())"), same);
+    const int dropped = input.indexOf(QStringLiteral("m_Impl->m_MenuHit.reset();"), taken);
+    const int late = input.indexOf(QStringLiteral("++m_Impl->m_MenuHitPress;"), dropped);
+    const int used = input.indexOf(QStringLiteral("hit->IsMediaElement()"), late);
+    QVERIFY(function > 0 && same > function && taken > same && dropped > taken && late > dropped && used > late);
+
+    const QString handlers = EdgeSourceTextOf(QStringLiteral("edgewebviewhandlers.cpp"));
+    const int target = handlers.indexOf(QStringLiteral("ContextTarget target;"));
+    QVERIFY(target > 0 && handlers.indexOf(QStringLiteral("target.m_Load = LoadSerial();"), target) > target);
+    const int gone = input.indexOf(QStringLiteral("if(!page() || !m_TreeBank || target.m_Load != LoadSerial()){"), function);
+    const int over = input.indexOf(QStringLiteral("if(generation) CompleteContextMenu(generation, -1, false);"), gone);
+    QVERIFY(gone > function && over > gone && same > over);
+}
+
+void tst_edgestate::thePasteInTheLineOfIconsIsMadeTheBackends(){
+    QMenu menu;
+    QAction *paste = new QAction(QStringLiteral("Paste"), &menu);
+    QAction *cut = new QAction(QStringLiteral("Cut"), &menu);
+    MenuIconRow *row = new MenuIconRow(&menu);
+    row->AddCell(QStringLiteral("Cut"), cut, QStringLiteral("Cut"));
+    row->AddCell(QStringLiteral("Paste"), paste, QStringLiteral("Paste"));
+    row->Install();
+    menu.addAction(QStringLiteral("Undo"));
+    const int lines = menu.actions().size();
+    QList<int> chosen;
+    QVERIFY(ReplaceEdgePasteAction(&menu, paste, 50152, [&chosen](int id){ chosen.append(id);}));
+    QVERIFY(!row->Runs(paste));
+    QVERIFY(row->Runs(cut));
+    QVERIFY(!row->actions().contains(paste));
+    QAction *own = nullptr;
+    for(QAction *action : row->actions())
+        if(action->data().toInt() == 50152) own = action;
+    QVERIFY(own);
+    QVERIFY(row->Runs(own));
+    QCOMPARE(menu.actions().size(), lines);
+    own->trigger();
+    QCOMPARE(chosen, QList<int>() << 50152);
+
+    QMenu bare;
+    MenuIconRow *other = new MenuIconRow(&bare);
+    other->AddCell(QStringLiteral("Cut"), cut, QStringLiteral("Cut"));
+    other->Install();
+    QVERIFY(!ReplaceEdgePasteAction(&bare, paste, 1, [](int){}));
 }
 
 void tst_edgestate::aMenuWithADeferralRemembersItselfAndSwapsItsPasteBeforeItOpens(){

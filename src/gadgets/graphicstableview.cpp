@@ -137,6 +137,9 @@ GraphicsTableView::GraphicsTableView(TreeBank *parent)
             this, &GraphicsTableView::FinishFoldAnimation);
     connect(m_ScrollAnimation, &QPropertyAnimation::finished,
             this, &GraphicsTableView::ResetTargetScroll);
+    m_ScrollPump.setTimerType(Qt::PreciseTimer);
+    connect(&m_ScrollPump, &QTimer::timeout,
+            this, &GraphicsTableView::StepScrollAnimation);
     m_CurrentScroll = 0;
     m_TargetScroll = 0;
     m_SelectRect = nullptr;
@@ -168,9 +171,9 @@ void GraphicsTableView::LoadSettings(){
     QString style = s.value(QStringLiteral("gadgets/@Style"), QStringLiteral("PlainStyle")).value<QString>();
     GadgetsStyle *style_ = m_Style;
 
-    if(style == QStringLiteral("FlatStyle"))  m_Style = new FlatStyle;
-    if(style == QStringLiteral("GlassStyle")) m_Style = new GlassStyle;
-    if(style == QStringLiteral("PlainStyle")) m_Style = new PlainStyle;
+    if(style == QStringLiteral("FlatStyle"))       m_Style = new FlatStyle;
+    else if(style == QStringLiteral("GlassStyle")) m_Style = new GlassStyle;
+    else                                           m_Style = new PlainStyle;
     if(style_) delete style_;
 
     m_DefaultNodeCollectionType = NodeCollectionTypeFromName
@@ -1542,6 +1545,14 @@ void GraphicsTableView::paint(QPainter *painter,
                               const QStyleOptionGraphicsItem *option, QWidget *widget){
     Q_UNUSED(option) Q_UNUSED(widget)
 
+    if(m_ScrollAnimation->state() == QAbstractAnimation::Paused && !m_ScrollStepQueued){
+        m_ScrollStepQueued = true;
+        QMetaObject::invokeMethod(this, [this](){
+            m_ScrollStepQueued = false;
+            StepScrollAnimation();
+        }, Qt::QueuedConnection);
+    }
+
     painter->setRenderHint(QPainter::Antialiasing, false);
 
     RenderBackground(painter);
@@ -2185,6 +2196,9 @@ bool GraphicsTableView::ThumbList_OpenNode(){
            ScrollToChangeDirectory() ||
            !ThumbList_DownDirectory()){
 
+            if(TreeBank::IsTrash(nd))
+                TreeBank::RestoreBeside(nd->ToViewNode(), m_TreeBank->GetCurrentViewNode());
+
             if(m_TreeBank->SetCurrent(nd)){
                 Deactivate();
                 return true;
@@ -2199,6 +2213,8 @@ bool GraphicsTableView::ThumbList_OpenNodeOnNewWindow(){
 
     if(Node *nd = GetHoveredNode()){
         if(!nd->IsDirectory() && !m_TreeBank->IsCurrent(nd)){
+            if(TreeBank::IsTrash(nd))
+                TreeBank::RestoreBeside(nd->ToViewNode(), m_TreeBank->GetCurrentViewNode());
             MainWindow *win = m_TreeBank->NewWindow();
             return win->GetTreeBank()->SetCurrent(nd);
         }
@@ -2957,7 +2973,7 @@ void GraphicsTableView::Scroll(qreal delta){
         if(m_TargetScroll == m_CurrentScroll)
             return;
 
-        if(m_ScrollAnimation->state() == QAbstractAnimation::Running &&
+        if(m_ScrollAnimation->state() != QAbstractAnimation::Stopped &&
            m_ScrollAnimation->easingCurve() == QEasingCurve::OutCubic){
 
             if(m_TargetScroll == orig) return;
@@ -2970,6 +2986,7 @@ void GraphicsTableView::Scroll(qreal delta){
         m_ScrollAnimation->setEndValue(m_TargetScroll);
         m_ScrollAnimation->start();
         m_ScrollAnimation->setCurrentTime(16);
+        PumpScrollAnimation();
     } else {
         m_ScrollAnimation->stop();
         SetScroll(m_CurrentScroll + delta);
@@ -2977,7 +2994,38 @@ void GraphicsTableView::Scroll(qreal delta){
     }
 }
 
-void GraphicsTableView::ScrollToItem(qreal target){
+void GraphicsTableView::PumpScrollAnimation(){
+    if(m_ScrollAnimation->state() != QAbstractAnimation::Running){
+        m_ScrollPump.stop();
+        return;
+    }
+    m_ScrollAnimation->pause();
+    m_ScrollClock.start();
+    m_ScrollPump.start(ScrollPumpInterval());
+}
+
+void GraphicsTableView::StepScrollAnimation(){
+    if(m_ScrollAnimation->state() != QAbstractAnimation::Paused){
+        m_ScrollPump.stop();
+        return;
+    }
+    m_ScrollAnimation->setCurrentTime
+        (16 + static_cast<int>(qMin<qint64>(m_ScrollClock.elapsed(),
+                                            m_ScrollAnimation->duration())));
+    if(m_ScrollAnimation->state() != QAbstractAnimation::Paused)
+        m_ScrollPump.stop();
+}
+
+int GraphicsTableView::ScrollPumpInterval() const {
+    QScreen *screen = nullptr;
+    if(scene() && !scene()->views().isEmpty())
+        screen = scene()->views().first()->screen();
+    if(!screen) screen = QGuiApplication::primaryScreen();
+    const qreal rate = screen ? screen->refreshRate() : 60.0;
+    return qBound(1, qFloor(1000.0 / qMax<qreal>(rate, 1.0)), 16);
+}
+
+qreal GraphicsTableView::ScrollForItem(qreal target) const {
 
     target = static_cast<int>(target)
         / m_CurrentThumbnailColumnCount
@@ -3000,13 +3048,15 @@ void GraphicsTableView::ScrollToItem(qreal target){
             m_CurrentThumbnailColumnCount *
             m_CurrentThumbnailLineCount;
 
-        Scroll(qMax(static_cast<int>(m_CurrentScroll),
+        return qMax(static_cast<int>(m_CurrentScroll),
                     thumbnailcount  < nodetitlecount ?
-                    thumbnailscroll : nodetitlescroll)
-               - m_TargetScroll);
-    } else {
-        Scroll(target - m_TargetScroll);
+                    thumbnailscroll : nodetitlescroll);
     }
+    return target;
+}
+
+void GraphicsTableView::ScrollToItem(qreal target){
+    Scroll(ScrollForItem(target) - m_TargetScroll);
 }
 
 void GraphicsTableView::ResetTargetScroll(){
@@ -3060,34 +3110,7 @@ void GraphicsTableView::SetScrollToItem(QPointF pos){
 }
 
 void GraphicsTableView::SetScrollToItem(qreal target){
-
-    target = static_cast<int>(target)
-        / m_CurrentThumbnailColumnCount
-        * m_CurrentThumbnailColumnCount;
-
-    if(target > m_CurrentScroll){
-
-        int nodetitlecount = NodeTitleCountInScreen();
-
-        int thumbnailscroll = target -
-            m_CurrentThumbnailColumnCount *
-            (m_CurrentThumbnailLineCount - 1);
-        if(thumbnailscroll < 0) thumbnailscroll = 0;
-
-        int nodetitlescroll = target + m_CurrentThumbnailColumnCount -
-            nodetitlecount;
-        if(nodetitlescroll < 0) nodetitlescroll = 0;
-
-        int thumbnailcount =
-            m_CurrentThumbnailColumnCount *
-            m_CurrentThumbnailLineCount;
-
-        SetScroll(qMax(static_cast<int>(m_CurrentScroll),
-                       thumbnailcount  < nodetitlecount ?
-                       thumbnailscroll : nodetitlescroll));
-    } else {
-        SetScroll(target);
-    }
+    SetScroll(ScrollForItem(target));
 }
 
 bool GraphicsTableView::ThumbList_ScrollUp(){
@@ -3743,6 +3766,8 @@ void ScrollIndicator::dragLeaveEvent(QGraphicsSceneDragDropEvent *ev){
 }
 
 void ScrollIndicator::mousePressEvent(QGraphicsSceneMouseEvent *ev){
+    m_TableView->m_ScrollAnimation->stop();
+    m_TableView->ResetTargetScroll();
     m_TableView->ClearThumbnailSelection();
     m_TableView->ClearNodeTitleSelection();
     QGraphicsRectItem::mousePressEvent(ev);

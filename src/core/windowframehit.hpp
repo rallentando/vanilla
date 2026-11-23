@@ -30,6 +30,15 @@ inline Part At(const Layout &layout, const QPoint &pos){
     return Caption;
 }
 
+inline long SystemAnswer(long code){
+    switch(code){
+    case 3: case 8: case 9: case 20: case 21:
+        return 2;
+    default:
+        return code;
+    }
+}
+
 }
 
 namespace WindowFrameMargin {

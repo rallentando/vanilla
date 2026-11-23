@@ -316,9 +316,7 @@ private:
     std::atomic_int m_ScrollX;
     std::atomic_int m_ScrollY;
     std::atomic<float> m_Zoom;
-#ifdef MEDIATIME
     std::atomic<float> m_MediaTime;
-#endif
 
     QDateTime m_CreateDate;
     QDateTime m_LastUpdateDate;
@@ -354,9 +352,7 @@ public:
     int GetScrollX() override;
     int GetScrollY() override;
     float GetZoom() override;
-#ifdef MEDIATIME
     float GetMediaTime();
-#endif
     QDateTime GetCreateDate() override;
     QDateTime GetLastUpdateDate() override;
     QDateTime GetLastAccessDate() override;
@@ -373,9 +369,7 @@ public:
     void SetScrollX(int x);
     void SetScrollY(int y);
     void SetZoom(float z);
-#ifdef MEDIATIME
     void SetMediaTime(float t);
-#endif
 
     QString GetImageFileName();
     void SetImageFileName(const QString &path);

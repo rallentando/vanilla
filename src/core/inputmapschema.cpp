@@ -117,45 +117,28 @@ QString KindName(Kind kind){
     return QString();
 }
 
-InputMap::KeyMap DefaultKeyMap(const QString &group){
-    if(group == QStringLiteral("webview/keymap")){
-        InputMap::KeyMap m_KeyMap; WEBVIEW_KEYMAP return m_KeyMap;
-    }
-    if(group == QStringLiteral("application/keymap")){
-        InputMap::KeyMap m_KeyMap; TREEBANK_KEYMAP return m_KeyMap;
-    }
-    if(group == QStringLiteral("gadgets/thumblist/keymap")){
-        InputMap::KeyMap m_ThumbListKeyMap; THUMBLIST_KEYMAP return m_ThumbListKeyMap;
-    }
-    if(group == QStringLiteral("receiver/keymap")){
-        InputMap::KeyMap m_ReceiverKeyMap; RECEIVER_KEYMAP return m_ReceiverKeyMap;
-    }
-    if(group == QStringLiteral("gadgets/accesskey/keymap")){
-        InputMap::KeyMap m_AccessKeyKeyMap; ACCESSKEY_KEYMAP return m_AccessKeyKeyMap;
-    }
-    return InputMap::KeyMap();
+template <typename Row, size_t N>
+QList<Row> RowsOf(const Row (&rows)[N]){
+    return QList<Row>(rows, rows + N);
 }
 
-InputMap::GestureMap DefaultGestureMap(const QString &group){
-    if(group == QStringLiteral("webview/mouse")){
-        InputMap::GestureMap m_MouseMap; WEBVIEW_MOUSEMAP return m_MouseMap;
-    }
-    if(group == QStringLiteral("application/mouse")){
-        InputMap::GestureMap m_MouseMap; TREEBANK_MOUSEMAP return m_MouseMap;
-    }
-    if(group == QStringLiteral("gadgets/thumblist/mouse")){
-        InputMap::GestureMap m_MouseMap; THUMBLIST_MOUSEMAP return m_MouseMap;
-    }
-    if(group == QStringLiteral("webview/rightgesture")){
-        InputMap::GestureMap m_RightGestureMap; WEBVIEW_RIGHTGESTURE return m_RightGestureMap;
-    }
-    if(group == QStringLiteral("webview/leftgesture")){
-        InputMap::GestureMap m_DragGestureMap; WEBVIEW_DRAGGESTURE return m_DragGestureMap;
-    }
-    if(group == QStringLiteral("webview/scrollgesture")){
-        InputMap::GestureMap m_ScrollGestureMap; WEBVIEW_SCROLLGESTURE return m_ScrollGestureMap;
-    }
-    return InputMap::GestureMap();
+QList<DefaultKey> DefaultKeyRows(const QString &group){
+    if(group == QStringLiteral("webview/keymap") ||
+       group == QStringLiteral("application/keymap"))    return RowsOf(TREEBANK_KEYMAP);
+    if(group == QStringLiteral("gadgets/thumblist/keymap")) return RowsOf(THUMBLIST_KEYMAP);
+    if(group == QStringLiteral("receiver/keymap"))       return RowsOf(RECEIVER_KEYMAP);
+    if(group == QStringLiteral("gadgets/accesskey/keymap")) return RowsOf(ACCESSKEY_KEYMAP);
+    return QList<DefaultKey>();
+}
+
+QList<DefaultGesture> DefaultGestureRows(const QString &group){
+    if(group == QStringLiteral("webview/mouse") ||
+       group == QStringLiteral("application/mouse"))       return RowsOf(TREEBANK_MOUSEMAP);
+    if(group == QStringLiteral("gadgets/thumblist/mouse"))   return RowsOf(THUMBLIST_MOUSEMAP);
+    if(group == QStringLiteral("webview/rightgesture"))      return RowsOf(WEBVIEW_RIGHTGESTURE);
+    if(group == QStringLiteral("webview/leftgesture"))       return RowsOf(WEBVIEW_DRAGGESTURE);
+    if(group == QStringLiteral("webview/scrollgesture"))     return RowsOf(WEBVIEW_SCROLLGESTURE);
+    return QList<DefaultGesture>();
 }
 
 typedef QList<QPair<QString, QString> > Pairs;
@@ -239,6 +222,23 @@ QJsonArray KeyParts(const QKeySequence &shown){
     return strokes;
 }
 
+}
+
+InputMap::KeyMap DefaultKeyMap(const QString &group){
+    InputMap::KeyMap map;
+    for(const DefaultKey &row : DefaultKeyRows(group)){
+        const QKeySequence seq = row.standard != QKeySequence::UnknownKey
+            ? QKeySequence(row.standard) : QKeySequence(row.key);
+        map[seq] = QString::fromLatin1(row.action);
+    }
+    return map;
+}
+
+InputMap::GestureMap DefaultGestureMap(const QString &group){
+    InputMap::GestureMap map;
+    for(const DefaultGesture &row : DefaultGestureRows(group))
+        map[QString::fromLatin1(row.input)] = QString::fromLatin1(row.action);
+    return map;
 }
 
 const QList<Table> &Tables(){
@@ -513,28 +513,31 @@ QJsonObject DescribeTable(const SettingsIO::Map &settings, const Table &table){
     return object;
 }
 
+QJsonArray DescribeVocabulary(Vocabulary vocabulary){
+    QJsonArray groups;
+    foreach(const Group &group, Groups(vocabulary)){
+        QJsonArray actions;
+        foreach(QString action, group.actions){
+            QJsonObject object;
+            object[QStringLiteral("name")]  = action;
+            object[QStringLiteral("label")] = ActionLabel(vocabulary, action);
+            actions.append(object);
+        }
+        QJsonObject object;
+        object[QStringLiteral("label")] = QCoreApplication::translate("InputMapSchema", group.label);
+        object[QStringLiteral("actions")] = actions;
+        groups.append(object);
+    }
+    return groups;
+}
+
 QJsonObject Describe(const SettingsIO::Map &settings){
     QJsonArray tables;
     foreach(const Table &table, Tables()) tables.append(DescribeTable(settings, table));
 
     QJsonObject vocabularies;
-    foreach(Vocabulary vocabulary, QList<Vocabulary>() << PageActions << TreeBankActions << GadgetsActions << ReceiverActions){
-        QJsonArray groups;
-        foreach(const Group &group, Groups(vocabulary)){
-            QJsonArray actions;
-            foreach(QString action, group.actions){
-                QJsonObject object;
-                object[QStringLiteral("name")]  = action;
-                object[QStringLiteral("label")] = ActionLabel(vocabulary, action);
-                actions.append(object);
-            }
-            QJsonObject object;
-            object[QStringLiteral("label")] = QCoreApplication::translate("InputMapSchema", group.label);
-            object[QStringLiteral("actions")] = actions;
-            groups.append(object);
-        }
-        vocabularies[VocabularyName(vocabulary)] = groups;
-    }
+    foreach(Vocabulary vocabulary, QList<Vocabulary>() << PageActions << TreeBankActions << GadgetsActions << ReceiverActions)
+        vocabularies[VocabularyName(vocabulary)] = DescribeVocabulary(vocabulary);
 
     QJsonObject strings;
     strings[QStringLiteral("edit")] =

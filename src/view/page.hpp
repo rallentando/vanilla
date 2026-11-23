@@ -419,6 +419,10 @@ public:
     QAction *Action(CustomAction a, QVariant data = QVariant());
     void DisplayContextMenu(QWidget *parent, SharedWebElement elem, QPoint localPos, QPoint globalPos, MediaType type = MediaTypeNone,
                             const std::function<void(QMenu*)> &extra = std::function<void(QMenu*)>());
+    enum HeldUrls { AddressesOfText, LinksOfHtml, ImagesOfHtml };
+    void OpenHeldUrls(HeldUrls kind, const QString &held, const QUrl &base,
+                      const std::function<bool()> &still = std::function<bool()>());
+    void SaveHeldUrls(HeldUrls kind, const QString &held, const QUrl &base);
 
 public slots:
     void DownloadSuggest(const QUrl&);
@@ -427,6 +431,15 @@ signals:
 
 private:
     QMap<Page::CustomAction, QAction*> m_ActionTable;
+
+    struct MenuTarget {
+        bool up = false;
+        QPoint pos;
+        MediaType type = MediaTypeNone;
+        quint64 load = 0;
+    } m_MenuTarget;
+
+    void CallWithHeldSelection(StringCallBack callBack);
 
     static QMap<QString, SearchEngine> m_SearchEngineMap;
     static QMap<QString, Bookmarklet> m_BookmarkletMap;

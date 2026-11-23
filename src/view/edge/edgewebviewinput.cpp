@@ -11,6 +11,7 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QTimer>
+#include <QApplication>
 #include <QCursor>
 #include <QClipboard>
 #include <QGuiApplication>
@@ -263,14 +264,31 @@ void EdgeWebView::DisplayContextMenuFor(const ContextTarget &target){
         }
         return;
     }
-    if(!page() || !m_TreeBank){
+    if(!page() || !m_TreeBank || target.m_Load != LoadSerial()){
         if(generation) CompleteContextMenu(generation, -1, false);
         return;
     }
 
+    QUrl source = target.m_SourceUrl;
+    int mediaType = target.m_MediaType;
+    const SharedWebElement hit = m_Impl->m_MenuHitLoad == LoadSerial()
+        ? std::exchange(m_Impl->m_MenuHit, SharedWebElement()) : SharedWebElement();
+    m_Impl->m_MenuHit.reset();
+    ++m_Impl->m_MenuHitPress;
+    EdgeInputTrace("menu hit=%d media=%d contains=%d kind=%d source=%d",
+                   hit ? 1 : 0, hit && hit->IsMediaElement() ? 1 : 0,
+                   hit && hit->Rectangle().contains(target.m_Position) ? 1 : 0,
+                   mediaType, source.isEmpty() ? 0 : 1);
+    if(source.isEmpty() && hit &&
+       hit->IsMediaElement() && hit->Rectangle().contains(target.m_Position)){
+        source = hit->ImageUrl();
+        mediaType = Page::MediaTypePlayable;
+    }
     std::shared_ptr<JsWebElement> element = std::make_shared<JsWebElement>();
     *element = JsWebElement(this, target.m_Position, target.m_LinkUrl,
-                            target.m_SourceUrl, target.m_Editable);
+                            source, target.m_Editable);
+    if(hit && hit->IsQueryInputElement() && hit->Rectangle().contains(target.m_Position))
+        element->SetQueryInput(true);
 
     m_SelectedText = target.m_SelectedText;
 
@@ -290,12 +308,26 @@ void EdgeWebView::DisplayContextMenuFor(const ContextTarget &target){
         };
     }
 
+    const bool keyboard = m_Impl->m_HasFocus;
+    m_Impl->m_MenuHoldsKeyboard = true;
+    if(keyboard) TakeKeyboardBack();
+
     page()->DisplayContextMenu(m_TreeBank, element,
                                target.m_Position,
                                mapToGlobal(target.m_Position),
-                               static_cast<Page::MediaType>(target.m_MediaType),
+                               static_cast<Page::MediaType>(mediaType),
                                extra);
     if(!alive) return;
+    m_Impl->m_MenuHoldsKeyboard = false;
+
+    if(keyboard){
+        QTimer::singleShot(0, alive.data(), [alive](){
+            if(!alive || !alive->isVisible()) return;
+            QWidget *focus = QApplication::focusWidget();
+            if(!focus || focus == alive.data() || alive->isAncestorOf(focus) || focus == alive->window())
+                alive->setFocus(Qt::OtherFocusReason);
+        });
+    }
 
     if(generation){
         const int id = *chosen;
@@ -597,6 +629,16 @@ bool EdgeWebView::ForwardMouseEvent(QEvent *ev){
         Application::AddMouseButtonToString(name, me->button());
         const QString action = m_MouseMap.value(name);
         const bool hostWants = !action.isEmpty() && CanCompleteAction(action);
+
+        if(!hostWants && me->button() == Qt::RightButton){
+            m_Impl->m_MenuHit.reset();
+            const quint64 press = ++m_Impl->m_MenuHitPress;
+            m_Impl->m_MenuHitLoad = LoadSerial();
+            QPointer<EdgeWebView> alive(this);
+            CallWithHitElement(me->position().toPoint(), [alive, press](SharedWebElement found){
+                if(alive && alive->m_Impl->m_MenuHitPress == press) alive->m_Impl->m_MenuHit = found;
+            });
+        }
 
         if(!hostWants && m_EnableRightGestureLocal && me->button() == Qt::RightButton &&
            m_Impl->m_Input.Hold(button)){

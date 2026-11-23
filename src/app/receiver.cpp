@@ -14,6 +14,7 @@
 #include <QMenu>
 #include <QFocusEvent>
 #include <QPaintEvent>
+#include <QResizeEvent>
 #include <QWheelEvent>
 #include <QTimerEvent>
 #include <QPointer>
@@ -35,9 +36,11 @@
 #include "settingsschema.hpp"
 #include "view.hpp"
 #include "commandmap.hpp"
+#include "dialog.hpp"
 #include "commandframe.hpp"
 #include "editmenu.hpp"
 #include "nodepreview.hpp"
+#include "menuschema.hpp"
 
 QLocalServer *Receiver::m_LocalServer = nullptr;
 QStringList Receiver::m_History;
@@ -106,10 +109,58 @@ const char *const LineEdit::AddressHoverProperty = "addressHover";
 void LineEdit::SetCount(const QString &count){
     if(m_Count == count) return;
     m_Count = count;
-    const int room = count.isEmpty() ? 0
-        : fontMetrics().horizontalAdvance(count) + ScaleByDevice(RECEIVER_FIELD_PADDING_X);
-    setTextMargins(0, 0, room, 0);
+    UpdateTextMargins();
     update();
+}
+
+namespace {
+    QRect TagRect(const QWidget *field, const QFontMetrics &metrics, const QString &tag, int left, int pad){
+        const int height = metrics.height() + DeviceScale::FromDpi(4, static_cast<int>(field->logicalDpiY()));
+        return QRect(left, (field->height() - height) / 2, metrics.horizontalAdvance(tag) + 2 * pad, height);
+    }
+}
+
+void LineEdit::SetTag(const QString &tag){
+    if(m_Tag == tag) return;
+    m_Tag = tag;
+    UpdateTextMargins();
+    update();
+}
+
+void LineEdit::SetClosable(bool on){
+    if(m_Closable == on) return;
+    m_Closable = on;
+    if(on) setMouseTracking(true);
+    UpdateTextMargins();
+    update();
+}
+
+QRect LineEdit::CloseRect() const {
+    if(!m_Closable) return QRect();
+    const int inset = ScaleByDevice(4);
+    const int side = qMax(0, height() - 2 * inset);
+    return QRect(width() - inset - side, inset, side, side);
+}
+
+int LineEdit::CloseReserve() const {
+    return m_Closable ? width() - CloseRect().left() : 0;
+}
+
+void LineEdit::SetCloseHovered(bool on){
+    if(m_CloseHovered == on) return;
+    m_CloseHovered = on;
+    if(on) setCursor(Qt::ArrowCursor);
+    else unsetCursor();
+    update(CloseRect());
+}
+
+void LineEdit::UpdateTextMargins(){
+    const int pad = ScaleByDevice(RECEIVER_FIELD_PADDING_X);
+    const int right = (m_Count.isEmpty() ? 0 : fontMetrics().horizontalAdvance(m_Count) + pad)
+        + CloseReserve();
+    const int left = m_Tag.isEmpty() ? 0
+        : TagRect(this, fontMetrics(), m_Tag, 0, ScaleByDevice(6)).width() + ScaleByDevice(6);
+    setTextMargins(left, 0, right, 0);
 }
 
 void LineEdit::paintEvent(QPaintEvent *ev){
@@ -127,8 +178,43 @@ void LineEdit::paintEvent(QPaintEvent *ev){
     if(!m_Count.isEmpty()){
         QPainter painter(this);
         painter.setPen(Theme::Pen(Theme::VanillaPageTextDim));
-        painter.drawText(rect().adjusted(0, 0, -ScaleByDevice(RECEIVER_FIELD_PADDING_X), 0),
+        const int right = m_Closable ? CloseReserve() + ScaleByDevice(6)
+                                     : ScaleByDevice(RECEIVER_FIELD_PADDING_X);
+        painter.drawText(rect().adjusted(0, 0, -right, 0),
                          Qt::AlignRight | Qt::AlignVCenter, m_Count);
+    }
+    if(m_Closable){
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        const QRectF button = QRectF(CloseRect());
+        if(m_CloseHovered || m_ClosePressed){
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(Theme::Brush(m_ClosePressed && m_CloseHovered ? Theme::BarButtonPressed
+                                                                          : Theme::FieldButtonHovered));
+            const qreal radius = m_Pill ? button.height() / 2.0 : ScaleByDevice(CHIP_CORNER_RADIUS);
+            painter.drawRoundedRect(button, radius, radius);
+        }
+        QPen pen = Theme::Pen(m_CloseHovered ? Theme::VanillaPageText : Theme::VanillaPageTextDim);
+        pen.setWidthF(qMax(1.0, ScaleByDevice(10) / 10.0));
+        pen.setCapStyle(Qt::RoundCap);
+        painter.setPen(pen);
+        const qreal a = ScaleByDevice(40) / 10.0;
+        const QPointF c = button.center();
+        painter.drawLine(c + QPointF(-a, -a), c + QPointF(a, a));
+        painter.drawLine(c + QPointF(-a, a), c + QPointF(a, -a));
+    }
+    if(!m_Tag.isEmpty()){
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        const int left = m_Pill ? ScaleByDevice(RECEIVER_FIELD_PADDING_X) : ScaleByDevice(FIELD_PADDING_X);
+        const QRectF chip = QRectF(TagRect(this, fontMetrics(), m_Tag, left, ScaleByDevice(6)))
+            .adjusted(0.5, 0.5, -0.5, -0.5);
+        const qreal radius = ScaleByDevice(4);
+        painter.setPen(Theme::Pen(Theme::VanillaPageTextDim));
+        painter.setBrush(Theme::Brush(Theme::ReceiverBackgroundContrast));
+        painter.drawRoundedRect(chip, radius, radius);
+        painter.setPen(Theme::Pen(Theme::ReceiverTextContrast));
+        painter.drawText(chip, Qt::AlignCenter, m_Tag);
     }
 }
 
@@ -221,16 +307,57 @@ void LineEdit::inputMethodEvent(QInputMethodEvent *ev){
 }
 
 void LineEdit::mousePressEvent(QMouseEvent *ev){
+    if(CloseRect().contains(ev->position().toPoint())){
+        if(ev->button() == Qt::LeftButton){
+            m_ClosePressed = true;
+            update(CloseRect());
+        }
+        ev->accept();
+        return;
+    }
     if(ev->button() == Qt::LeftButton && selectedText() == text()) deselect();
     QLineEdit::mousePressEvent(ev);
 }
 
 void LineEdit::mouseReleaseEvent(QMouseEvent *ev){
+    if(m_ClosePressed && ev->button() == Qt::LeftButton){
+        m_ClosePressed = false;
+        update(CloseRect());
+        ev->accept();
+        if(CloseRect().contains(ev->position().toPoint())){
+            SetCloseHovered(false);
+            emit Aborted();
+        }
+        return;
+    }
     QLineEdit::mouseReleaseEvent(ev);
 }
 
 void LineEdit::mouseMoveEvent(QMouseEvent *ev){
+    SetCloseHovered(CloseRect().contains(ev->position().toPoint()));
+    if(m_ClosePressed){
+        ev->accept();
+        return;
+    }
     QLineEdit::mouseMoveEvent(ev);
+}
+
+void LineEdit::mouseDoubleClickEvent(QMouseEvent *ev){
+    if(CloseRect().contains(ev->position().toPoint())){
+        mousePressEvent(ev);
+        return;
+    }
+    QLineEdit::mouseDoubleClickEvent(ev);
+}
+
+void LineEdit::leaveEvent(QEvent *ev){
+    SetCloseHovered(false);
+    QLineEdit::leaveEvent(ev);
+}
+
+void LineEdit::resizeEvent(QResizeEvent *ev){
+    QLineEdit::resizeEvent(ev);
+    if(m_Closable) UpdateTextMargins();
 }
 
 Receiver::Receiver(TreeBank *parent, bool purge)
@@ -261,6 +388,7 @@ Receiver::Receiver(TreeBank *parent, bool purge)
 
     m_LineEdit = new LineEdit(this);
     m_LineEdit->SetPill(true);
+    m_LineEdit->SetClosable(true);
     setFocusProxy(m_LineEdit);
     m_LineEdit->show();
     hide();
@@ -390,9 +518,9 @@ void Receiver::ResizeNotify(QSize size){
     }
     if(rows < m_SuggestStrings.length())
         used -= row + (HasHeading(rows) ? ScaleByDevice(RECEIVER_HEADING_HEIGHT) : 0);
-    if(m_ActiveTab != 0 && rows < m_SuggestStrings.length()) used = room;
+    if(ListScrolls() && rows < m_SuggestStrings.length()) used = room;
     const int h = pad + edge + field + (rows || bar ? gap + bar + used : 0);
-    if(m_ActiveTab == 0 && m_CurrentSuggestIndex >= rows) m_CurrentSuggestIndex = -1;
+    if(!ListScrolls() && m_CurrentSuggestIndex >= rows) m_CurrentSuggestIndex = -1;
 
     if(below){
         pos.setY(at.top() - h + edge + field);
@@ -441,17 +569,22 @@ bool Receiver::SeekWords(const QString &line, QString *words){
 }
 
 bool Receiver::IsSeeking() const {
-    return m_Mode == Search || (m_Mode == Command && m_ActiveTab == 0 && SeekWords(m_LineString));
+    return m_Mode == Search || (m_Mode == Command && TabSeeks() && SeekWords(m_LineString));
+}
+
+bool Receiver::TabSeeks() const {
+    return m_ActiveTab == 0 || m_ActiveTab == SuggestRow::Commands + 1 ||
+        (m_Anchor && m_ActiveTab == SuggestRow::Web + 1);
 }
 
 Receiver::Placement Receiver::CurrentPlacement() const {
-    if(IsSeeking()) return TopRight;
+    if(IsSeeking() && !m_Anchor) return TopRight;
     return m_Anchor ? Anchored : Center;
 }
 
 bool Receiver::HasHeading(int index) const {
     if(m_Rows.isEmpty() || index >= m_Rows.length()) return false;
-    if(m_ActiveTab != 0){
+    if(m_ActiveTab != 0 || m_Mode == Target){
         return !m_Rows[index].section.isEmpty() &&
             (index == 0 || m_Rows[index].section != m_Rows[index - 1].section);
     }
@@ -467,8 +600,12 @@ int Receiver::VisibleSuggestCount() const {
     return count;
 }
 
+bool Receiver::ListScrolls() const {
+    return m_ActiveTab != 0 || m_Rows.isEmpty() || m_Mode == Target;
+}
+
 int Receiver::SelectableSuggestCount() const {
-    return m_ActiveTab == 0 ? VisibleSuggestCount() : static_cast<int>(m_SuggestStrings.length());
+    return ListScrolls() ? static_cast<int>(m_SuggestStrings.length()) : VisibleSuggestCount();
 }
 
 int Receiver::LastSuggestScroll() const {
@@ -499,12 +636,23 @@ void Receiver::KeepSelectionShown(){
 }
 
 void Receiver::ScrollSuggestsBy(int rows){
-    if(m_ActiveTab == 0 || !VisibleSuggestCount() || VisibleSuggestCount() >= m_SuggestStrings.length()) return;
+    if(!ListScrolls() || !VisibleSuggestCount() || VisibleSuggestCount() >= m_SuggestStrings.length()) return;
     m_SuggestScroll = qBound(0, m_SuggestScroll + rows, qMax(0, LastSuggestScroll()));
     if(m_CurrentSuggestIndex != -1)
         m_CurrentSuggestIndex = qBound(m_SuggestScroll, m_CurrentSuggestIndex,
                                        m_SuggestScroll + VisibleSuggestCount() - 1);
     repaint();
+}
+
+bool Receiver::ScrollToPointer(const QPoint &pos){
+    const int count = VisibleSuggestCount();
+    if(!ListScrolls() || !count || count >= m_SuggestStrings.length()) return false;
+    const int top = SuggestRect(m_SuggestScroll).top();
+    const int track = SuggestRect(m_SuggestScroll + count - 1).bottom() - top;
+    if(track <= 0) return false;
+    const int last = LastSuggestScroll();
+    ScrollSuggestsBy(qRound(qreal(pos.y() - top) * last / track) - m_SuggestScroll);
+    return true;
 }
 
 QRect Receiver::SuggestRect(int index) const {
@@ -554,7 +702,7 @@ void Receiver::CloseIfFocusLeft(){
 
 void Receiver::DismissFocusLeft(){
     m_FocusWentElsewhere = true;
-    hide();
+    Dismiss();
 }
 
 void Receiver::InitializeDisplay(Mode mode, int tab, const QString &text){
@@ -579,6 +727,11 @@ void Receiver::InitializeDisplay(Mode mode, int tab, const QString &text){
         m_Rows.clear();
         m_CurrentSuggestIndex = -1;
     }
+    m_LineEdit->SetTag(QString());
+    if(mode != Target){
+        m_Target = TargetArgs();
+        m_TargetRequest++;
+    }
 
     m_Mode = mode;
     m_ActiveTab = tab;
@@ -586,7 +739,7 @@ void Receiver::InitializeDisplay(Mode mode, int tab, const QString &text){
     ReadBindings();
 
     if(!text.isEmpty()) m_LineEdit->setText(text);
-    else if(m_Mode == Command) SuggestFromSources(QString());
+    else if(m_Mode == Command || m_Mode == Target) SuggestFromSources(QString());
 
     UpdatePlaceholder();
 
@@ -609,14 +762,16 @@ void Receiver::InitializeDisplay(Mode mode, int tab, const QString &text){
     m_LineEdit->setFocus(Qt::OtherFocusReason);
 }
 
-void Receiver::OpenTextSeeker(View*){
+void Receiver::OpenTextSeeker(View*, const QString &words){
     if(m_Anchor) Dismiss();
     InitializeDisplay(Search);
+    if(!words.isEmpty()) m_LineEdit->setText(words.simplified());
 }
 
-void Receiver::OpenQueryEditor(View*){
+void Receiver::OpenQueryEditor(View*, const QString &words){
     if(m_Anchor) Dismiss();
     InitializeDisplay(Query);
+    if(!words.isEmpty()) m_LineEdit->setText(words.simplified());
 }
 
 void Receiver::OpenUrlEditor(View*){
@@ -627,6 +782,85 @@ void Receiver::OpenUrlEditor(View*){
 void Receiver::OpenCommand(View*){
     if(m_Anchor) Dismiss();
     InitializeDisplay(Command);
+}
+
+void Receiver::OpenTargetWhenFocused(const TargetArgs &target, QWidget *view){
+    const quint64 request = ++m_TargetRequest;
+    const QPointer<Receiver> self(this);
+    const QPointer<QWidget> base = view;
+    const auto connection = std::make_shared<QMetaObject::Connection>();
+    const auto open = [self, target, request, connection](){
+        QObject::disconnect(*connection);
+        if(!self || self->m_TargetRequest != request) return;
+        if(target.nodes.isEmpty() && !LiveTarget(target, self->m_TreeBank)) return;
+        self->OpenTarget(target);
+    };
+    *connection = connect(qApp, &QApplication::focusChanged, this,
+                          [base, open](QWidget*, QWidget *now){
+        if(base && now && (now == base || base->isAncestorOf(now)))
+            QTimer::singleShot(0, open);
+    });
+    QTimer::singleShot(500, this, open);
+}
+
+Receiver::TargetTables Receiver::CurrentTargetTables(const TargetArgs &target){
+    TargetTables tables;
+    tables.link = View::GetLinkMenu();
+    tables.image = View::GetImageMenu();
+    tables.selection = View::GetSelectionMenu();
+    tables.media = View::GetMediaMenu();
+    tables.field = View::GetTextMenu();
+    if(const MenuSchema::Table *table = MenuSchema::Find(target.nodeTable.isEmpty()
+                                                         ? QStringLiteral("TableNodeMenu") : target.nodeTable))
+        tables.node = MenuSchema::Current(Application::GlobalSettings(), *table).join(QLatin1Char(','));
+    tables.engines = Page::GetSearchEngineMap().keys();
+    for(const auto &command : Application::ExternalCommands()) tables.commands << command.first;
+    return tables;
+}
+
+void Receiver::OpenTarget(const TargetArgs &target){
+    if(TargetRows(target, CurrentTargetTables(target), QString()).isEmpty()){
+        OpenCommand();
+        return;
+    }
+    if(isVisible()) Dismiss();
+    m_Target = target;
+    const quint64 request = ++m_TargetRequest;
+    InitializeDisplay(Target);
+    m_LineEdit->SetTag(m_Target.nodes.isEmpty() ? TargetTag(m_Target) : NodeTag(m_Target));
+
+    if(!m_Target.selection.isEmpty() && m_Target.selectionHtml.isEmpty()){
+        if(const SharedView view = LiveTarget(m_Target, m_TreeBank)){
+            const QPointer<Receiver> self(this);
+            view->CallWithSelectedHtml([self, request](QString html){
+                if(self) self->TakeSelectionHtml(request, html);
+            });
+        }
+    }
+}
+
+void Receiver::TakeSelectionHtml(quint64 request, const QString &html){
+    if(m_TargetRequest == request) m_Target.selectionHtml = html;
+}
+
+ViewNode *Receiver::HeldNode(quint64 serial){
+    if(!serial) return nullptr;
+    for(ViewNode *root : { TreeBank::GetViewRoot(), TreeBank::GetTrashRoot() }){
+        if(!root) continue;
+        foreach(Node *nd, root->GetDescendants())
+            if(nd->IsViewNode() && nd->GetSerial() == serial) return nd->ToViewNode();
+    }
+    return nullptr;
+}
+
+QString Receiver::NodeTag(const TargetArgs &target){
+    static const int length = 25;
+    ViewNode *first = target.nodes.isEmpty() ? nullptr : HeldNode(target.nodes.first());
+    QString title = first ? first->GetTitle().simplified() : QString();
+    if(title.length() > length) title = title.left(length) + QStringLiteral("...");
+    const QString part = TargetPartName(TargetNode);
+    if(target.nodes.length() > 1) return part + QStringLiteral(" ") + tr("%n tab(s)", nullptr, target.nodes.length());
+    return part + QStringLiteral(" ") + title;
 }
 
 void Receiver::OpenAtField(QWidget *field){
@@ -782,7 +1016,7 @@ void Receiver::SetString(QString str){
     }
     if(m_Mode == Command){
         QString words;
-        if(m_ActiveTab == 0 && SeekWords(m_LineString, &words)){
+        if(TabSeeks() && SeekWords(m_LineString, &words)){
             if(!m_SuggestStrings.isEmpty()) SetSuggest(QStringList());
             if(!same) emit SeekText(words, View::HighlightAllOccurrences);
         } else if(wasSeeking){
@@ -790,36 +1024,7 @@ void Receiver::SetString(QString str){
         }
     }
     AskForSuggestions();
-    QStringList list = str.split(QRegularExpression(QStringLiteral("[\n\r\t ]+")));
-    if(m_Mode == Command && m_ActiveTab == 0 && list.length() >= 2 &&
-       Application::ExactMatch(QStringLiteral("[uU]n[sS]et"), list[0])){
-        Settings &s = Application::GlobalSettings();
-
-        switch (list.length()){
-        case 2:{
-            QString command = list[0];
-            QString query = list[1];
-            QStringList path = query.split(QStringLiteral("/"));
-            QSet<QString> cand;
-            foreach(QString key, s.allKeys(query)){
-                QStringList split = key.split(QStringLiteral("/"));
-                while(split.length() >= path.length() + 1)
-                    split.removeLast();
-                if(split.join(QStringLiteral("/")) != key)
-                    split << QString();
-                cand << command + QStringLiteral(" ") + split.join(QStringLiteral("/"));
-            }
-            QStringList result = cand.values();
-            std::sort(result.begin(), result.end());
-            SetSuggest(result);
-            break;
-        }
-        default:{
-            SetSuggest(QStringList());
-            break;
-        }
-        }
-    } else if(m_Mode == Command){
+    if(m_Mode == Command || m_Mode == Target){
         SuggestFromSources(str);
     }
     if(CurrentPlacement() != before) ResizeNotify(m_TreeBank->size());
@@ -950,6 +1155,11 @@ Receiver::SuggestRows Receiver::CommandRows(const QString &typed, int limit, boo
             }
             if(all && !held.contains(binding.action)) held << binding.action;
         }
+        QString spelled;
+        if(CommandMap::Resolve(typed.trimmed(), &spelled) == CommandMap::Signal){
+            itself.removeAll(spelled);
+            itself.prepend(spelled);
+        }
         if(exact) *exact = !itself.isEmpty();
         for(const QString &action : held){
             if(!names.contains(action)) names << action;
@@ -1019,7 +1229,7 @@ Receiver::SuggestRows Receiver::TrashRows(const QString &typed, int limit) const
     return rows;
 }
 
-Receiver::SuggestRows Receiver::SettingRows(const QString &typed, int limit) const {
+Receiver::SuggestRows Receiver::SettingRows(const QString &typed, int limit, bool unset) const {
     static const QStringList first = QStringList()
         << QStringLiteral("application/@ColorScheme")
         << QStringLiteral("application/@EnableTranslucentPanels");
@@ -1043,9 +1253,10 @@ Receiver::SuggestRows Receiver::SettingRows(const QString &typed, int limit) con
             if(!key.contains(word, Qt::CaseInsensitive) && !label.contains(word, Qt::CaseInsensitive)) all = false;
         }
         if(!all) continue;
+        if(unset && !settings.contains(key)) continue;
         const QString value = settings.value(key, QString::fromLatin1(item.fallback)).toString();
         const SuggestRow row{ SuggestRow::Settings, SuggestRow::FillField, label, value,
-                              QStringLiteral("set %1 %2").arg(key, value), 0, QIcon(),
+                              SettingLine(key, value, unset), 0, QIcon(),
                               categories.value(QString::fromLatin1(item.category)), key };
         if(typed.isEmpty() && first.contains(key)) firsts << row;
         else rows << row;
@@ -1057,9 +1268,10 @@ Receiver::SuggestRows Receiver::SettingRows(const QString &typed, int limit) con
             if(listed.contains(key)) continue;
             const QString value = settings.value(key).toString();
             rows << SuggestRow{ SuggestRow::Settings, SuggestRow::FillField, key, value,
-                                QStringLiteral("set %1 %2").arg(key, value), 0, QIcon(), QString(), key };
+                                SettingLine(key, value, unset), 0, QIcon(), QString(), key };
         }
     }
+    if(unset) return (firsts + rows).mid(0, limit);
     SuggestRows itself, bindings;
     for(const InputMapSchema::Binding &binding : m_Bindings){
         const QString haystack = binding.shown + QLatin1Char(' ') + binding.input + QLatin1Char(' ') +
@@ -1081,6 +1293,74 @@ Receiver::SuggestRows Receiver::SettingRows(const QString &typed, int limit) con
     return (itself + firsts + rows + bindings).mid(0, limit);
 }
 
+Receiver::SuggestRows Receiver::ValueRows(const QString &rest, bool *matched){
+    const QStringList words = rest.trimmed().split(LineSpace());
+    const QString key = words.first();
+    const QString typed = words.mid(1).join(QLatin1Char(' '));
+    if(matched) *matched = false;
+    const SettingsSchema::Item *item = SettingsSchema::Find(key);
+    const QList<QPair<QString, QString> > values =
+        item ? SettingsSchema::Values(*item) : QList<QPair<QString, QString> >();
+    if(!values.isEmpty()){
+        SuggestRows exact, like, others;
+        for(const auto &value : values){
+            const bool any = !typed.isEmpty();
+            const SuggestRow row{ SuggestRow::Settings, SuggestRow::RunCommand, value.second,
+                                  value.first == value.second ? QString() : value.first,
+                                  SettingLine(key, value.first, false), 0, QIcon(), QString(), key };
+            if(any && (value.first.compare(typed, Qt::CaseInsensitive) == 0 ||
+                       value.second.compare(typed, Qt::CaseInsensitive) == 0)) exact << row;
+            else if(any && (value.first.contains(typed, Qt::CaseInsensitive) ||
+                            value.second.contains(typed, Qt::CaseInsensitive))) like << row;
+            else if(!any) others << row;
+        }
+        if(matched) *matched = !exact.isEmpty() || !like.isEmpty();
+        return exact + like + others;
+    }
+    if(!SettingsSchema::FromText(key, typed).isValid()) return SuggestRows();
+    if(matched) *matched = true;
+    const QString label = item ? QCoreApplication::translate("SettingsSchema", item->label) : key;
+    return SuggestRows{ SuggestRow{ SuggestRow::Settings, SuggestRow::RunCommand, typed, label,
+                                    SettingLine(key, typed, false), 0, QIcon(), QString(), key } };
+}
+
+QString Receiver::SettingNote(const QString &line){
+    SuggestRow::Source source = SuggestRow::SourceCount;
+    QString rest;
+    bool unset = false;
+    if(!SourceWord(line, &source, &rest, &unset) || source != SuggestRow::Settings || unset)
+        return QString();
+    const QStringList words = rest.trimmed().split(LineSpace());
+    if(words.length() < 2 || !words.first().contains(QLatin1Char('/'))) return QString();
+    const QString key = words.first();
+    if(!SettingsSchema::IsKnownKey(key)) return tr("No such setting");
+    if(SettingsSchema::FromText(key, words.mid(1).join(QLatin1Char(' '))).isValid()) return QString();
+    return tr("Not a value it takes");
+}
+
+QString Receiver::SettingRefusal(const QString &key, const QString &text){
+    if(SettingsSchema::FromText(key, text).isValid()) return QString();
+    if(!SettingsSchema::IsKnownKey(key)) return tr("There is no setting \"%1\".").arg(key);
+    const QString refused = tr("\"%1\" cannot be set to \"%2\".").arg(key, text);
+    const SettingsSchema::Item *item = SettingsSchema::Find(key);
+    if(!item) return refused;
+    QString takes;
+    switch(item->type){
+    case SettingsSchema::Bool:
+    case SettingsSchema::Choice: {
+        QStringList values;
+        for(const auto &value : SettingsSchema::Values(*item)) values << value.first;
+        takes = tr("It takes one of: %1").arg(values.join(QStringLiteral(", ")));
+        break;
+    }
+    case SettingsSchema::Int:      takes = tr("It takes a whole number."); break;
+    case SettingsSchema::Color:    takes = tr("It takes a colour as #rrggbb, or nothing."); break;
+    case SettingsSchema::TextList: takes = tr("It is a list: change it on the settings page."); break;
+    default: break;
+    }
+    return takes.isEmpty() ? refused : refused + QLatin1Char('\n') + takes;
+}
+
 QString Receiver::BindingFind(const InputMapSchema::Binding &binding){
     return binding.input + QLatin1Char(' ') + binding.table;
 }
@@ -1097,12 +1377,31 @@ QString Receiver::SourceName(SuggestRow::Source source){
     return QString();
 }
 
-bool Receiver::IsAssignment(const QString &rest){
-    const QStringList words = rest.trimmed().split(LineSpace());
-    return words.length() >= 2 && words.first().contains(QLatin1Char('/'));
+QString Receiver::SettingLine(const QString &key, const QString &value, bool unset){
+    return unset ? QStringLiteral("unset %1").arg(key) : QStringLiteral("set %1 %2").arg(key, value);
 }
 
-bool Receiver::SourceWord(const QString &line, SuggestRow::Source *source, QString *rest){
+bool Receiver::IsAssignment(const QString &rest, bool unset){
+    const QStringList words = rest.trimmed().split(LineSpace());
+    if(unset) return words.length() == 1 && Application::GlobalSettings().contains(words.first());
+    if(words.length() >= 2) return words.first().contains(QLatin1Char('/'));
+    const SettingsSchema::Item *item = SettingsSchema::Find(words.first());
+    return !rest.isEmpty() && rest.back().isSpace() && item && !SettingsSchema::Values(*item).isEmpty();
+}
+
+bool Receiver::SettingCommand(const QString &line, QString *rest, bool *unset){
+    static const QRegularExpression form(QStringLiteral("^(\\S+)[\\n\\r\\t ]+(.*)$"),
+                                         QRegularExpression::DotMatchesEverythingOption);
+    const QRegularExpressionMatch m = form.match(line);
+    if(!m.hasMatch()) return false;
+    const CommandMap::Kind kind = CommandMap::Resolve(m.captured(1));
+    if(kind != CommandMap::Set && kind != CommandMap::Unset) return false;
+    if(rest) *rest = m.captured(2);
+    if(unset) *unset = kind == CommandMap::Unset;
+    return true;
+}
+
+bool Receiver::SourceWord(const QString &line, SuggestRow::Source *source, QString *rest, bool *unset){
     static const QRegularExpression form(QStringLiteral("^(\\S+)(?:[\\n\\r\\t ]+(.*))?$"),
                                          QRegularExpression::DotMatchesEverythingOption);
     const QRegularExpressionMatch m = form.match(line);
@@ -1127,7 +1426,10 @@ bool Receiver::SourceWord(const QString &line, SuggestRow::Source *source, QStri
     for(int i = 0; i < SuggestRow::SourceCount; i++){
         if(word.compare(SourceName(static_cast<SuggestRow::Source>(i)), Qt::CaseInsensitive) == 0) found = i;
     }
+    const bool resetting = CommandMap::Resolve(word) == CommandMap::Unset;
+    if(resetting) found = SuggestRow::Settings;
     if(found == -1) return false;
+    if(unset) *unset = resetting;
     if(source) *source = static_cast<SuggestRow::Source>(found);
     if(rest) *rest = m.captured(2);
     return true;
@@ -1170,7 +1472,7 @@ void Receiver::RefillKeepingChoice(){
 void Receiver::AskForSuggestions(){
     const bool web = m_Mode == Command && m_ActiveTab == SuggestRow::Web + 1;
     const bool empty = m_LineString.trimmed().isEmpty();
-    const bool address = web && !Page::ExtractUrlsFromText(m_LineString).isEmpty();
+    const bool address = web && (!Page::ExtractUrlsFromText(m_LineString).isEmpty() || IsSeeking());
     if(!web || empty || address) m_WebSuggests.clear();
     if((m_Mode != Query && !web) || address) return;
     if(empty){
@@ -1198,6 +1500,7 @@ void Receiver::UpdatePlaceholder(){
     case Query:   m_LineEdit->setPlaceholderText(tr("Input Query.")); break;
     case UrlEdit: m_LineEdit->setPlaceholderText(tr("Enter a URL.")); break;
     case Search:  m_LineEdit->setPlaceholderText(tr("Incremental Search")); break;
+    case Target:  m_LineEdit->setPlaceholderText(tr("What to do with it")); break;
     }
 }
 
@@ -1236,11 +1539,26 @@ void Receiver::SuggestFromSources(const QString &typed){
 
     SuggestRows rows;
     int selected = -1;
-    if(m_ActiveTab != 0){
+    bool valued = true;
+    if(m_Mode == Target){
+        rows = TargetRows(m_Target, CurrentTargetTables(m_Target), typed);
+        if(!rows.isEmpty()) selected = 0;
+    } else if(TabSeeks() && SeekWords(typed)){
+    } else if(m_ActiveTab != 0){
         const int limit = RECEIVER_SCROLL_ROWS;
         const QString wanted = typed.trimmed();
         switch(static_cast<SuggestRow::Source>(m_ActiveTab - 1)){
-        case SuggestRow::Commands: rows = CommandRows(wanted, limit); break;
+        case SuggestRow::Commands:{
+            QString rest;
+            bool unset = false;
+            if(SettingCommand(typed, &rest, &unset)){
+                if(!IsAssignment(rest, unset)) rows = SettingRows(rest.trimmed(), limit, unset);
+                else if(!unset) rows = ValueRows(rest, &valued);
+            } else {
+                rows = CommandRows(wanted, limit);
+            }
+            break;
+        }
         case SuggestRow::Tabs:     rows = TabRows(wanted, limit);     break;
         case SuggestRow::Trash:    rows = TrashRows(wanted, limit);   break;
         case SuggestRow::Settings: rows = SettingRows(wanted, limit); break;
@@ -1248,16 +1566,16 @@ void Receiver::SuggestFromSources(const QString &typed){
         default: break;
         }
         rows = rows.mid(0, limit);
-        if(!rows.isEmpty()) selected = 0;
-    } else if(SeekWords(typed)){
+        if(!rows.isEmpty() && valued) selected = 0;
     } else {
         SuggestRow::Source named = SuggestRow::SourceCount;
         QString rest;
-        const bool lifted = SourceWord(typed, &named, &rest);
+        bool unset = false;
+        const bool lifted = SourceWord(typed, &named, &rest, &unset);
         const auto wanted = [&](SuggestRow::Source source){
             return lifted && source == named ? rest.trimmed() : typed;
         };
-        const bool assignment = lifted && named == SuggestRow::Settings && IsAssignment(rest);
+        const bool assignment = lifted && named == SuggestRow::Settings && IsAssignment(rest, unset);
 
         const int limit = RowCapacity(1);
         const bool argument = !oneWord && means && !lifted;
@@ -1283,8 +1601,10 @@ void Receiver::SuggestFromSources(const QString &typed){
             }
             tabs = TabRows(wanted(SuggestRow::Tabs), limit);
             trash = TrashRows(wanted(SuggestRow::Trash), limit);
-            settings = SettingRows(wanted(SuggestRow::Settings), limit);
+            settings = SettingRows(wanted(SuggestRow::Settings), limit, unset);
             if(!argument) web = WebRows(wanted(SuggestRow::Web), CurrentAddress());
+        } else if(!unset){
+            settings = ValueRows(rest, &valued);
         }
 
         QVector<SuggestRow::Source> order{ SuggestRow::Commands, SuggestRow::Tabs,
@@ -1320,9 +1640,14 @@ void Receiver::SuggestFromSources(const QString &typed){
         if(asked ||
            (!rows.isEmpty() && !typed.isEmpty() && !means && !Page::GetBookmarkletMap().contains(typed)))
             selected = 0;
+        if(!valued) selected = -1;
     }
 
     if(m_Anchor && m_ActiveTab == SuggestRow::Web + 1) selected = -1;
+
+    const QString note = rows.isEmpty() && m_Mode == Command ? SettingNote(typed) : QString();
+    if(!note.isEmpty() || m_SettingNoted) m_LineEdit->SetCount(note);
+    m_SettingNoted = !note.isEmpty();
 
     m_Rows = rows;
     m_SuggestStrings.clear();
@@ -1380,17 +1705,467 @@ void Receiver::TakeRow(SuggestRow row){
         hide();
         emit OpenUrl(Page::DirtyStringToUrls(row.text));
         break;
+    case SuggestRow::TargetAction:
+    case SuggestRow::TargetSearch:
+    case SuggestRow::TargetCommand:
+        RunTargetRow(row);
+        break;
     }
+}
+
+namespace {
+    QStringList OpenVariants(const QString &what){
+        static const QStringList wheres = QStringList() << QStringLiteral("InNewViewNode")
+            << QStringLiteral("InNewDirectory") << QStringLiteral("OnRoot");
+        static const QStringList hows = QStringList() << QString() << QStringLiteral("Foreground")
+            << QStringLiteral("Background") << QStringLiteral("ThisWindow") << QStringLiteral("NewWindow");
+        QStringList names;
+        for(const QString &where : wheres)
+            for(const QString &how : hows)
+                names << QStringLiteral("Open") + what + where + how;
+        return names;
+    }
+    const QStringList &TargetLinkActions(){
+        static const QStringList names = QStringList()
+            << QStringLiteral("LoadLink") << QStringLiteral("OpenLink")
+            << QStringLiteral("DownloadLink") << QStringLiteral("CopyLinkUrl")
+            << QStringLiteral("CopyLinkHtml") << QStringLiteral("OpenLinkWithDefault")
+            << OpenVariants(QString());
+        return names;
+    }
+    const QStringList &TargetImageActions(){
+        static const QStringList names = QStringList()
+            << QStringLiteral("LoadImage") << QStringLiteral("OpenImage")
+            << QStringLiteral("DownloadImage") << QStringLiteral("CopyImage")
+            << QStringLiteral("CopyImageUrl") << QStringLiteral("CopyImageHtml")
+            << QStringLiteral("OpenImageWithDefault") << OpenVariants(QStringLiteral("Image"));
+        return names;
+    }
+    const QStringList &TargetMediaActions(){
+        static const QStringList names = QStringList()
+            << QStringLiteral("ToggleMediaPlayPause") << QStringLiteral("ToggleMediaMute")
+            << QStringLiteral("ToggleMediaLoop") << QStringLiteral("ToggleMediaControls")
+            << QStringLiteral("LoadMedia") << QStringLiteral("OpenMedia")
+            << QStringLiteral("DownloadMedia") << QStringLiteral("CopyMediaUrl")
+            << QStringLiteral("CopyMediaHtml") << QStringLiteral("OpenMediaWithDefault")
+            << OpenVariants(QStringLiteral("Media"));
+        return names;
+    }
+    const QStringList &TargetElementActions(){
+        static const QStringList names = QStringList()
+            << QStringLiteral("ClickElement") << QStringLiteral("FocusElement") << QStringLiteral("HoverElement");
+        return names;
+    }
+    const QStringList &TargetFieldActions(){
+        static const QStringList names = QStringList()
+            << QStringLiteral("Undo") << QStringLiteral("Redo") << QStringLiteral("Cut")
+            << QStringLiteral("Paste") << QStringLiteral("SelectAll");
+        return names;
+    }
+    const QStringList &TargetSelectionActions(){
+        static const QStringList names = QStringList()
+            << QStringLiteral("Copy") << QStringLiteral("CopySelectedHtml")
+            << QStringLiteral("OpenTextSeeker") << QStringLiteral("OpenAllUrl") << QStringLiteral("SaveAllUrl")
+            << QStringLiteral("OpenAllImage") << QStringLiteral("SaveAllImage")
+            << QStringLiteral("OpenTextAsUrl") << QStringLiteral("SaveTextAsUrl");
+        return names;
+    }
+    const QStringList &TargetNodeActions(){
+        static const QStringList names = QStringList()
+            << QStringLiteral("OpenNode") << QStringLiteral("OpenNodeOnNewWindow")
+            << QStringLiteral("OpenNodeWithDefault") << QStringLiteral("RenameNode")
+            << QStringLiteral("CopyNodeUrl") << QStringLiteral("CopyNodeTitle")
+            << QStringLiteral("CopyNodeAsLink") << QStringLiteral("CloneNode")
+            << QStringLiteral("ReloadNode") << QStringLiteral("CutNode")
+            << QStringLiteral("CopyNode") << QStringLiteral("PasteNode") << QStringLiteral("NewNode")
+            << QStringLiteral("MakeDirectory") << QStringLiteral("MakeDirectoryWithSelectedNode")
+            << QStringLiteral("MakeDirectoryWithSameDomainNode") << QStringLiteral("DeleteNode")
+            << QStringLiteral("DeleteRightNode") << QStringLiteral("DeleteLeftNode")
+            << QStringLiteral("DeleteOtherNode");
+        return names;
+    }
+    const QStringList &TargetTrashActions(){
+        static const QStringList names = QStringList()
+            << QStringLiteral("RestoreNode") << QStringLiteral("OpenNode")
+            << QStringLiteral("OpenNodeWithDefault") << QStringLiteral("CopyNodeUrl")
+            << QStringLiteral("CopyNodeTitle") << QStringLiteral("CopyNodeAsLink")
+            << QStringLiteral("DeleteNode");
+        return names;
+    }
+
+    QString TargetFileName(const QUrl &url, bool query){
+        QStringList list = url.toString().split(QLatin1Char('/'));
+        QString name;
+        while(name.isEmpty() && !list.isEmpty()) name = list.takeLast();
+        if(query){
+            list = name.split(QLatin1Char('?'));
+            name.clear();
+            while(name.isEmpty() && !list.isEmpty()) name = list.takeFirst();
+        }
+        return name;
+    }
+}
+
+bool Receiver::TargetHits(const QString &action){
+    return action == QStringLiteral("CopyImage") || TargetElementActions().contains(action);
+}
+
+bool Receiver::IsSameTarget(const WebElement &held, const WebElement &found){
+    if(found.IsNull()) return false;
+    if(!held.XPath().isEmpty()) return found.XPath() == held.XPath();
+    if(held.LinkUrl().isEmpty() && held.ImageUrl().isEmpty()) return false;
+    return found.LinkUrl() == held.LinkUrl() && found.ImageUrl() == held.ImageUrl();
+}
+
+bool Receiver::IsSameField(const WebElement &held, const WebElement &found){
+    if(found.IsNull()) return false;
+    if(!held.XPath().isEmpty()) return found.XPath() == held.XPath();
+    return found.IsFocusedField();
+}
+
+QString Receiver::TargetPartName(TargetPart part){
+    switch(part){
+    case TargetLink:      return tr("Link");
+    case TargetImage:     return tr("Image");
+    case TargetMedia:     return tr("Video and audio");
+    case TargetSelection: return tr("Selection");
+    case TargetElement:   return tr("Element");
+    case TargetNode:      return tr("Tab");
+    case TargetField:     return tr("Text field");
+    }
+    return QString();
+}
+
+QString Receiver::TargetTag(const TargetArgs &target){
+    static const int length = 25;
+    const auto cut = [](QString text){
+        text = text.simplified();
+        return text.length() > length ? text.left(length) + QStringLiteral("...") : text;
+    };
+    const QUrl link = target.element ? target.element->LinkUrl() : QUrl();
+    const QUrl image = target.element ? target.element->ImageUrl() : QUrl();
+    if(!image.isEmpty())
+        return TargetPartName(target.playable ? TargetMedia : TargetImage) + QStringLiteral(" ") + cut(TargetFileName(image, true));
+    if(!link.isEmpty()) return TargetPartName(TargetLink) + QStringLiteral(" ") + cut(TargetFileName(link, false));
+    if(!target.selection.isEmpty())
+        return TargetPartName(TargetSelection) + QStringLiteral(" 「") + cut(target.selection) + QStringLiteral("」");
+    if(target.element && target.element->IsEditableElement())
+        return TargetPartName(TargetField);
+    if(target.element && !target.element->XPath().isEmpty())
+        return TargetPartName(TargetElement) + QStringLiteral(" ") + target.element->TagName().toLower();
+    return QString();
+}
+
+Receiver::SuggestRows Receiver::TargetRows(const TargetArgs &target, const TargetTables &tables,
+                                           const QString &typed){
+    const QString wanted = typed.trimmed();
+    SuggestRows rows;
+    const auto add = [&](TargetPart part, SuggestRow::Kind kind, const QString &name,
+                         const QString &title, const QString &key){
+        if(!wanted.isEmpty() && !title.contains(wanted, Qt::CaseInsensitive) &&
+           !name.contains(wanted, Qt::CaseInsensitive)) return;
+        for(const SuggestRow &row : std::as_const(rows))
+            if(row.kind == kind && row.serial == quint64(part) && row.text == name) return;
+        SuggestRow row{ SuggestRow::Commands, kind, title, QString(), name, quint64(part),
+                        QIcon(), TargetPartName(part), key, QStringList() };
+        rows << row;
+    };
+    const auto action = [&](TargetPart part, const QString &name){
+        add(part, SuggestRow::TargetAction, name, ActionText::MenuLabel(name), QString());
+    };
+    const auto commands = [&](TargetPart part, const QUrl &url){
+        for(const QString &command : tables.commands)
+            add(part, SuggestRow::TargetCommand, command, command, url.toString());
+    };
+    const auto engines = [&](){
+        for(const QString &engine : tables.engines)
+            add(TargetSelection, SuggestRow::TargetSearch, engine,
+                CommandLabel(engine).isEmpty() ? engine : CommandLabel(engine), QString());
+    };
+    const auto part = [&](TargetPart part, const QString &table, const QString &other,
+                          const QStringList &allowed, const QString &withDefault, const QUrl &url){
+        for(const QString &name : table.split(QLatin1Char(','), Qt::SkipEmptyParts)){
+            if(name == other){
+                action(part, withDefault);
+                commands(part, url);
+            } else if(allowed.contains(name)){
+                action(part, name);
+            }
+        }
+        for(const QString &name : allowed) action(part, name);
+        commands(part, url);
+    };
+
+    if(!target.nodes.isEmpty()){
+        const QStringList &allowed = target.trash ? TargetTrashActions() : TargetNodeActions();
+        const auto node = [&](const QString &name){
+            if(allowed.contains(name))
+                add(TargetNode, SuggestRow::TargetAction, name, MenuSchema::Label(name), QString());
+        };
+        const auto nodeCommands = [&](){
+            for(const QString &command : tables.commands)
+                add(TargetNode, SuggestRow::TargetCommand, command, command, QString());
+        };
+        for(const QString &name : tables.node.split(QLatin1Char(','), Qt::SkipEmptyParts)){
+            if(name == QStringLiteral("OpenNodeWithOtherBrowser")){
+                node(QStringLiteral("OpenNodeWithDefault"));
+                nodeCommands();
+            } else if(name == QStringLiteral("DeleteNodesTogether")){
+                node(QStringLiteral("DeleteRightNode"));
+                node(QStringLiteral("DeleteLeftNode"));
+                node(QStringLiteral("DeleteOtherNode"));
+            } else {
+                node(name);
+            }
+        }
+        for(const QString &name : allowed) node(name);
+        nodeCommands();
+        return rows;
+    }
+
+    const QUrl link = target.element ? target.element->LinkUrl() : QUrl();
+    const QUrl image = target.element ? target.element->ImageUrl() : QUrl();
+    if(!link.isEmpty())
+        part(TargetLink, tables.link, QStringLiteral("OpenLinkWithOtherBrowser"),
+             TargetLinkActions(), QStringLiteral("OpenLinkWithDefault"), link);
+    if(!image.isEmpty() && !target.playable)
+        part(TargetImage, tables.image, QStringLiteral("OpenImageWithOtherBrowser"),
+             TargetImageActions(), QStringLiteral("OpenImageWithDefault"), image);
+    if(!image.isEmpty() && target.playable)
+        part(TargetMedia, tables.media, QStringLiteral("OpenMediaWithOtherBrowser"),
+             TargetMediaActions(), QStringLiteral("OpenMediaWithDefault"), image);
+    if(target.element && target.element->IsEditableElement()){
+        for(const QString &name : tables.field.split(QLatin1Char(','), Qt::SkipEmptyParts))
+            if(TargetFieldActions().contains(name)) action(TargetField, name);
+        for(const QString &name : TargetFieldActions()) action(TargetField, name);
+    }
+    if(!target.selection.isEmpty()){
+        for(const QString &name : tables.selection.split(QLatin1Char(','), Qt::SkipEmptyParts)){
+            if(name == QStringLiteral("SearchMenu")) engines();
+            else if(TargetSelectionActions().contains(name)) action(TargetSelection, name);
+        }
+        for(const QString &name : TargetSelectionActions()) action(TargetSelection, name);
+        engines();
+    }
+    if(target.element && (!target.element->XPath().isEmpty() || !link.isEmpty() || !image.isEmpty())){
+        for(const QString &name : TargetElementActions()) action(TargetElement, name);
+        action(TargetElement, QStringLiteral("InspectElement"));
+    }
+    return rows;
+}
+
+bool Receiver::IsLiveTarget(const View *held, const View *nodeView, const View *current,
+                            quint64 heldLoad, quint64 loadNow){
+    return held && nodeView == held && current == held && loadNow == heldLoad;
+}
+
+SharedView Receiver::LiveTarget(const TargetArgs &target, TreeBank *bank){
+    const SharedView view = target.view.lock();
+    if(!view || !bank || !TreeBank::IsLive(bank)) return SharedView();
+    ViewNode *node = TreeBank::TabOfSerial(target.node);
+    return IsLiveTarget(view.get(), node ? node->GetView() : nullptr, bank->GetCurrentView().get(),
+                        target.loadSerial, view->LoadSerial())
+        ? view : SharedView();
+}
+
+void Receiver::RunTargetRow(const SuggestRow &row){
+    const TargetArgs target = m_Target;
+    const QPointer<TreeBank> bank = m_TreeBank;
+    hide();
+    const quint64 request = m_TargetRequest;
+    if(!target.nodes.isEmpty()){
+        RunNodeRow(row, target, request);
+        return;
+    }
+    const SharedView view = LiveTarget(target, bank);
+    if(!view) return;
+
+    switch(row.kind){
+    case SuggestRow::TargetCommand:
+        Application::RunExternalCommand(row.text, QUrl(row.key));
+        return;
+    case SuggestRow::TargetSearch:
+        if(QObject *page = view->page())
+            QMetaObject::invokeMethod(page, "OpenInNew", Q_ARG(QString, row.text), Q_ARG(QString, target.selection));
+        return;
+    case SuggestRow::TargetAction:
+        break;
+    default:
+        return;
+    }
+
+    if(row.serial == quint64(TargetField) && target.element){
+        const QPointer<Receiver> self(this);
+        const QString name = row.text;
+        view->CallWithHitElement(target.hitPos, [self, bank, target, request, name](SharedWebElement found){
+            if(!self || self->m_TargetRequest != request) return;
+            const SharedView again = LiveTarget(target, bank);
+            if(!again || !found || !IsSameField(*target.element, *found)) return;
+            again->setFocus();
+            if(!target.element->XPath().isEmpty()) found->SetFocus();
+            again->TriggerAction(name);
+        });
+        return;
+    }
+    if(row.serial == quint64(TargetSelection)){
+        Page *page = view->base() ? view->base()->findChild<Page*>() : nullptr;
+        const auto still = [target, bank](){ return LiveTarget(target, bank) != nullptr;};
+        const QString &text = target.selection;
+        const QString &html = target.selectionHtml;
+        if(row.text == QStringLiteral("Copy")){
+            QApplication::clipboard()->setText(text);
+        } else if(row.text == QStringLiteral("CopySelectedHtml")){
+            if(!html.isEmpty()) QApplication::clipboard()->setText(html);
+        } else if(row.text == QStringLiteral("OpenTextSeeker")){
+            OpenTextSeeker(nullptr, text);
+        } else if(!page){
+            return;
+        } else if(row.text == QStringLiteral("OpenTextAsUrl")){
+            page->OpenHeldUrls(Page::AddressesOfText, text, target.base, still);
+        } else if(row.text == QStringLiteral("SaveTextAsUrl")){
+            page->SaveHeldUrls(Page::AddressesOfText, text, target.base);
+        } else if(html.isEmpty()){
+            return;
+        } else if(row.text == QStringLiteral("OpenAllUrl")){
+            page->OpenHeldUrls(Page::LinksOfHtml, html, target.base, still);
+        } else if(row.text == QStringLiteral("OpenAllImage")){
+            page->OpenHeldUrls(Page::ImagesOfHtml, html, target.base, still);
+        } else if(row.text == QStringLiteral("SaveAllUrl")){
+            page->SaveHeldUrls(Page::LinksOfHtml, html, target.base);
+        } else if(row.text == QStringLiteral("SaveAllImage")){
+            page->SaveHeldUrls(Page::ImagesOfHtml, html, target.base);
+        }
+        return;
+    }
+    if(!target.element) return;
+
+    if(TargetHits(row.text)){
+        const QPointer<Receiver> self(this);
+        const QString name = row.text;
+        view->CallWithHitElement(target.hitPos, [self, bank, target, request, name](SharedWebElement found){
+            if(!self || self->m_TargetRequest != request) return;
+            const SharedView again = LiveTarget(target, bank);
+            if(!again || !found || !IsSameTarget(*target.element, *found)) return;
+            if(name == QStringLiteral("FocusElement")){
+                again->setFocus();
+                found->SetFocus();
+                return;
+            }
+            again->TriggerAction(name, QVariant::fromValue(found));
+        });
+        return;
+    }
+    view->TriggerAction(row.text, QVariant::fromValue(target.element));
+}
+
+void Receiver::RunNodeRow(const SuggestRow &row, const TargetArgs &target, quint64 request){
+    const QPointer<Receiver> self(this);
+    const QPointer<TreeBank> bank = m_TreeBank;
+    const QList<quint64> serials = target.nodes;
+    const bool trash = target.trash;
+    const QString name = row.text;
+    const bool command = row.kind == SuggestRow::TargetCommand;
+    TreeBank::WhenItMayChange([self, request, bank, serials, trash, name, command](){
+        if(!self || self->m_TargetRequest != request) return;
+        if(!bank || !TreeBank::IsLive(bank)) return;
+        QList<ViewNode*> nodes;
+        for(const quint64 serial : serials){
+            ViewNode *vn = HeldNode(serial);
+            if(vn && TreeBank::IsTrash(vn) == trash) nodes << vn;
+        }
+        if(nodes.isEmpty()) return;
+        ViewNode *first = nodes.first();
+        NodeList all;
+        QList<quint64> held;
+        for(ViewNode *vn : std::as_const(nodes)){ all << vn; held << vn->GetSerial();}
+        QList<ViewNode*> pages;
+        for(ViewNode *vn : std::as_const(nodes)) if(!vn->IsDirectory()) pages << vn;
+
+        if(command){
+            for(ViewNode *vn : std::as_const(pages)) Application::RunExternalCommand(name, vn->GetUrl());
+        } else if(name == QStringLiteral("OpenNode")){
+            if(pages.isEmpty()) return;
+            if(trash) TreeBank::RestoreBeside(pages.first(), bank->GetCurrentViewNode());
+            bank->SetCurrent(pages.first());
+        } else if(name == QStringLiteral("OpenNodeOnNewWindow")){
+            if(pages.isEmpty()) return;
+            bank->NewWindow()->GetTreeBank()->SetCurrent(pages.first());
+        } else if(name == QStringLiteral("OpenNodeWithDefault")){
+            for(ViewNode *vn : std::as_const(pages)) Application::OpenUrlWithDefaultBrowser(vn->GetUrl());
+        } else if(name == QStringLiteral("CopyNodeUrl")){
+            QStringList urls;
+            for(ViewNode *vn : std::as_const(pages)) urls << vn->GetUrl().toString();
+            if(urls.isEmpty()) return;
+            QApplication::clipboard()->setText(urls.join(QLatin1Char('\n')));
+        } else if(name == QStringLiteral("CopyNodeTitle")){
+            QStringList titles;
+            for(ViewNode *vn : std::as_const(nodes)) titles << vn->GetTitle();
+            QApplication::clipboard()->setText(titles.join(QLatin1Char('\n')));
+        } else if(name == QStringLiteral("CopyNodeAsLink")){
+            QString html;
+            for(ViewNode *vn : std::as_const(pages))
+                html += QStringLiteral("<a href=\"%1\">%2</a>\n")
+                    .arg(QString::fromUtf8(vn->GetUrl().toEncoded()), vn->GetTitle());
+            if(html.isEmpty()) return;
+            QApplication::clipboard()->setText(html);
+        } else if(name == QStringLiteral("CutNode") || name == QStringLiteral("CopyNode")){
+            TreeBank::SetClipboardNodes(all, name == QStringLiteral("CutNode"));
+        } else if(name == QStringLiteral("PasteNode")){
+            TreeBank::PasteClipboardNodes(first->GetParent(), first);
+        } else if(name == QStringLiteral("RenameNode")){
+            bank->RenameNode(first);
+        } else if(name == QStringLiteral("CloneNode")){
+            for(ViewNode *vn : std::as_const(nodes)) bank->CloneViewNode(vn);
+        } else if(name == QStringLiteral("ReloadNode")){
+            for(ViewNode *vn : std::as_const(pages))
+                if(View *view = vn->GetView()) view->TriggerAction(Page::_Reload);
+        } else if(name == QStringLiteral("NewNode")){
+            bank->NewViewNode(first);
+        } else if(name == QStringLiteral("MakeDirectory")){
+            bank->MakeSiblingDirectory(first);
+        } else if(name == QStringLiteral("MakeDirectoryWithSelectedNode")){
+            Node *parent = bank->MakeSiblingDirectory(first);
+            TreeBank::SetChildrenOrder(parent, all);
+        } else if(name == QStringLiteral("MakeDirectoryWithSameDomainNode")){
+            ViewNode *parent = first->GetParent() ? first->GetParent()->ToViewNode() : nullptr;
+            if(!parent) return;
+            QMap<QString, NodeList> groups;
+            for(Node *nd : first->GetSiblings())
+                if(!nd->IsDirectory()) groups[nd->GetUrl().host()] << nd;
+            if(groups.count() <= 1) return;
+            for(const QString &domain : groups.keys()){
+                Node *directory = parent->MakeChild();
+                directory->SetTitle(domain);
+                TreeBank::SetChildrenOrder(directory, groups[domain]);
+            }
+        } else if(name == QStringLiteral("DeleteNode")){
+            if(trash) TreeBank::DiscardFromTrashAsked(held, held.length(), TargetPartName(TargetNode));
+            else bank->DeleteNode(all);
+        } else if(name == QStringLiteral("DeleteRightNode") || name == QStringLiteral("DeleteLeftNode") ||
+                  name == QStringLiteral("DeleteOtherNode")){
+            const NodeList siblings = first->GetSiblings();
+            const int index = siblings.indexOf(first);
+            NodeList list;
+            for(int i = 0; i < siblings.length(); i++){
+                if(name == QStringLiteral("DeleteRightNode") ? i > index
+                   : name == QStringLiteral("DeleteLeftNode") ? i < index : i != index)
+                    list << siblings[i];
+            }
+            bank->DeleteNode(list);
+        } else if(name == QStringLiteral("RestoreNode")){
+            for(ViewNode *vn : std::as_const(nodes)) TreeBank::RestoreBeside(vn, bank->GetCurrentViewNode());
+        }
+    });
 }
 
 QVector<Receiver::RowAction> Receiver::RowActions(const SuggestRow &row){
     QVector<RowAction> actions{ RowAction::Take };
     switch(row.source){
     case SuggestRow::Tabs:
-        actions << RowAction::CloseTab << RowAction::CopyAddress;
+        actions << RowAction::CloseTab << RowAction::CopyAddress << RowAction::OpenCard;
         break;
     case SuggestRow::Trash:
-        actions << RowAction::DiscardTab << RowAction::CopyAddress;
+        actions << RowAction::DiscardTab << RowAction::CopyAddress << RowAction::OpenCard;
         break;
     case SuggestRow::Commands:{
         const QString name = row.text.trimmed();
@@ -1436,6 +2211,7 @@ QString Receiver::RowActionLabel(const SuggestRow &row, RowAction action){
     case RowAction::ChangeAssignment: return tr("Change the assignment");
     case RowAction::OpenInSettings:   return tr("Open in the settings");
     case RowAction::ResetSetting:     return tr("Reset a setting");
+    case RowAction::OpenCard:         return ActionText::MenuLabel(QStringLiteral("OpenCommand"));
     }
     return QString();
 }
@@ -1486,6 +2262,14 @@ void Receiver::RunRowAction(const SuggestRow &row, RowAction action){
             OpenSettingsWhenItMayChange(QString::fromLatin1(item->category) + QStringLiteral("?find=") +
                                         QString::fromLatin1(QUrl::toPercentEncoding(row.key)));
         return;
+    case RowAction::OpenCard:{
+        TargetArgs target;
+        target.nodes << row.serial;
+        target.trash = row.source == SuggestRow::Trash;
+        target.nodeTable = QStringLiteral("TableNodeMenu");
+        OpenTarget(target);
+        return;
+    }
     case RowAction::ResetSetting:
         hide();
         if(row.key.isEmpty()) return;
@@ -1559,7 +2343,7 @@ bool Receiver::HandleMappedKey(QKeyEvent *ev){
         if(action == QStringLiteral("NextCommandLineRow")){ SelectNextSuggest(); return true;}
         if(action == QStringLiteral("PrevCommandLineRow")){ SelectPrevSuggest(); return true;}
         if(action == QStringLiteral("NextCommandLinePage") || action == QStringLiteral("PrevCommandLinePage")){
-            if(!ShowsSourceBar() || m_ActiveTab == 0) return false;
+            if(!ListScrolls() || m_SuggestStrings.isEmpty()) return false;
             const int rows = SelectableSuggestCount();
             const int step = qMax(VisibleSuggestCount() - 1, 1) *
                 (action == QStringLiteral("NextCommandLinePage") ? 1 : -1);
@@ -1669,24 +2453,31 @@ void Receiver::SuitableAction(){
     case Search:
         SeekFromField(m_LineString);
         break;
+    case Target:
+        if(!m_Rows.isEmpty() && m_CurrentSuggestIndex != -1)
+            TakeRow(m_Rows[m_CurrentSuggestIndex]);
+        break;
     case Command:{
-        if(m_Anchor && m_ActiveTab == SuggestRow::Web + 1 && m_CurrentSuggestIndex == -1){
+        bool unset = false;
+        if(QString words; TabSeeks() && SeekWords(m_LineString, &words)){
+            Remember(m_LineString);
+            SeekFromField(words);
+        } else if(m_Anchor && m_ActiveTab == SuggestRow::Web + 1 && m_CurrentSuggestIndex == -1){
             SubmitAddress(m_LineString);
         } else if(!m_Rows.isEmpty() && m_CurrentSuggestIndex != -1){
             TakeRow(m_Rows[m_CurrentSuggestIndex]);
         } else if(!m_SuggestStrings.isEmpty() && m_CurrentSuggestIndex != -1){
             const QString text = WithCurrentValue(m_SuggestStrings[m_CurrentSuggestIndex]);
             if(!text.isEmpty()) m_LineEdit->setText(text);
-        } else if(QString words; m_ActiveTab == 0 && SeekWords(m_LineString, &words)){
-            Remember(m_LineString);
-            SeekFromField(words);
-        } else if(SuggestRow::Source only; m_ActiveTab == 0 && SourceWord(m_LineString, &only, &words) &&
-                  only == SuggestRow::Settings && IsAssignment(words)){
-            const QString line = QStringLiteral("set ") + words.trimmed();
+        } else if(SuggestRow::Source only; m_ActiveTab == 0 && SourceWord(m_LineString, &only, &words, &unset) &&
+                  only == SuggestRow::Settings && IsAssignment(words, unset)){
+            const QString line = (unset ? QStringLiteral("unset ") : QStringLiteral("set ")) + words.trimmed();
+            if(!SettingNote(line).isEmpty()) break;
             hide();
             Remember(line);
             ReceiveCommand(line);
         } else if(m_ActiveTab != 0 && !MeansSomething(m_LineString.split(LineSpace()).first())){
+        } else if(!SettingNote(m_LineString).isEmpty()){
         } else {
             hide();
             Remember(m_LineString);
@@ -1776,9 +2567,14 @@ void Receiver::ReceiveCommand(QString cmd){
         return;
     case CommandMap::Set:
         if(list.length() >= 2){
-            QString key = list.takeFirst();
-            QString val = list.join(" ");
-            Application::GlobalSettings().setValue(key, val);
+            const QString key = list.takeFirst();
+            const QString text = list.join(QStringLiteral(" "));
+            const QVariant value = SettingsSchema::FromText(key, text);
+            if(!value.isValid()){
+                ModelessDialog::Information(tr("Cannot change this setting."), SettingRefusal(key, text));
+                return;
+            }
+            Application::GlobalSettings().setValue(key, value);
             m_TreeBank->Reconfigure();
         }
         return;
@@ -2013,7 +2809,12 @@ void Receiver::PreviewChosenTab(){
 }
 
 void Receiver::hideEvent(QHideEvent *ev){
+    m_TargetRequest++;
+    QTimer::singleShot(0, this, [this](){
+        if(!isVisible()) m_Target = TargetArgs();
+    });
     m_LineEdit->SetCount(QString());
+    m_SettingNoted = false;
     if(m_Previewing) NodePreview::Instance()->Dismiss();
     m_Previewing = false;
     ReleaseAnchor(m_FocusWentElsewhere);
@@ -2080,6 +2881,10 @@ void Receiver::mousePressEvent(QMouseEvent *ev){
         QWidget::mousePressEvent(ev);
         return;
     }
+    if(ev->pos().x() >= width() - ScaleByDevice(RECEIVER_PADDING) && ScrollToPointer(ev->pos())){
+        m_DraggingScroll = true;
+        return;
+    }
     if(!m_SuggestStrings.isEmpty()) m_CurrentSuggestIndex = SuggestAt(ev->pos());
 
     const int source = SourceBarAt(ev->pos());
@@ -2091,7 +2896,7 @@ void Receiver::mousePressEvent(QMouseEvent *ev){
         SuitableAction();
         return;
     }
-    if(m_Mode == Command && !m_Rows.isEmpty()){
+    if((m_Mode == Command || m_Mode == Target) && !m_Rows.isEmpty()){
         if(m_CurrentSuggestIndex != -1){
             TakeRow(m_Rows[m_CurrentSuggestIndex]);
             return;
@@ -2108,10 +2913,16 @@ void Receiver::mousePressEvent(QMouseEvent *ev){
 }
 
 void Receiver::mouseReleaseEvent(QMouseEvent *ev){
+    if(ev->button() == Qt::LeftButton) m_DraggingScroll = false;
     QWidget::mouseReleaseEvent(ev);
 }
 
 void Receiver::mouseMoveEvent(QMouseEvent *ev){
+    if(m_DraggingScroll && (ev->buttons() & Qt::LeftButton)){
+        ScrollToPointer(ev->pos());
+        return;
+    }
+    m_DraggingScroll = false;
     if(!m_SuggestStrings.isEmpty()){
         const int index = SuggestAt(ev->pos());
         if(index != m_CurrentSuggestIndex){

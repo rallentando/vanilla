@@ -1,3 +1,4 @@
+#include "menuschema.hpp"
 #include "switch.hpp"
 #include "const.hpp"
 
@@ -103,8 +104,10 @@ private slots:
     void onlyAMoveOfTwoOrMoreWhichStaysInTheTrashIsNoticed_data();
     void onlyAMoveOfTwoOrMoreWhichStaysInTheTrashIsNoticed();
     void theTrashsNodeMenuOffersTheWayBackFirst();
+    void aTrashsNodeIsRestoredBeforeItIsOpened();
     void theNodeMenuGoesFromTheNodeToLeaving();
     void theTabMenuGoesInTheOverviewsOrder();
+    void theCommandIsTheButtonAtTheEnd();
     void aDiscardedNodeIsNeverFreedInTheTurnItWasBoxed();
     void aDiscardedNodeIsFreedPastTheBarrier();
     void whileTheTreeIsWalkedTheBarrierOnlyRipens();
@@ -850,9 +853,7 @@ void tst_viewnode::cloneCopiesTheSubtree(){
     tab->SetScrollX(3);
     tab->SetScrollY(4);
     tab->SetZoom(1.5f);
-#ifdef MEDIATIME
     tab->SetMediaTime(78.5f);
-#endif
     folder->SetPrimary(tab);
     folder->SetFolded(false);
 
@@ -871,9 +872,7 @@ void tst_viewnode::cloneCopiesTheSubtree(){
     QCOMPARE(clonedTab->GetScrollX(), 3);
     QCOMPARE(clonedTab->GetScrollY(), 4);
     QCOMPARE(clonedTab->GetZoom(), 1.5f);
-#ifdef MEDIATIME
     QCOMPARE(clonedTab->GetMediaTime(), 78.5f);
-#endif
     QVERIFY(clone->GetPrimary() == clonedTab);
 
     delete root;
@@ -1125,47 +1124,56 @@ void tst_viewnode::onlyAMoveOfTwoOrMoreWhichStaysInTheTrashIsNoticed(){
             > body.indexOf(QStringLiteral("if(!moved) return false;")));
 }
 
+void tst_viewnode::aTrashsNodeIsRestoredBeforeItIsOpened(){
+    const QString source = SourceFile(QStringLiteral("/gadgets/graphicstableview.cpp"));
+    const QString restore = QStringLiteral(
+        "if(TreeBank::IsTrash(nd))\n"
+        "                TreeBank::RestoreBeside(nd->ToViewNode(), m_TreeBank->GetCurrentViewNode());");
+
+    const QString open = BodyOf(source, QStringLiteral("bool GraphicsTableView::ThumbList_OpenNode()"));
+    QVERIFY(!open.isEmpty());
+    const int openRestoreAt = open.indexOf(restore);
+    QVERIFY(openRestoreAt >= 0);
+    QVERIFY(open.indexOf(QStringLiteral("m_TreeBank->SetCurrent(nd)")) > openRestoreAt);
+
+    const QString onNew = BodyOf(source, QStringLiteral("bool GraphicsTableView::ThumbList_OpenNodeOnNewWindow()"));
+    QVERIFY(!onNew.isEmpty());
+    const int newRestoreAt = onNew.indexOf(restore);
+    QVERIFY(newRestoreAt >= 0);
+    QVERIFY(onNew.indexOf(QStringLiteral("m_TreeBank->NewWindow()")) > newRestoreAt);
+    QVERIFY(onNew.indexOf(QStringLiteral("->SetCurrent(nd)")) > newRestoreAt);
+}
+
 void tst_viewnode::theTrashsNodeMenuOffersTheWayBackFirst(){
     const QString menu = BodyOf(SourceFile(QStringLiteral("/gadgets/gadgets.cpp")),
                                 QStringLiteral("QMenu *Gadgets::CreateNodeMenu()"));
     QVERIFY(!menu.isEmpty());
 
-    const int trashAt = menu.indexOf(QStringLiteral("if(trash && (hovered || selected)){"));
-    const int firstAt = menu.indexOf(QStringLiteral("menu->addAction("));
-    const int treeAt = menu.indexOf(QStringLiteral("if(!trash){"));
-    const int endAt = menu.indexOf(QStringLiteral("menu->addAction(toggleTrash);"), treeAt);
-    QVERIFY(trashAt >= 0 && treeAt > trashAt && endAt > treeAt);
-    QVERIFY(firstAt > trashAt);
-    const QString inTrash = menu.mid(trashAt, menu.indexOf(QLatin1Char('}'), trashAt) - trashAt);
-    const int elseAt = menu.indexOf(QStringLiteral("} else if(hovered || selected){"), treeAt);
-    QVERIFY(elseAt > treeAt && elseAt < endAt);
-    const QString inTree = menu.mid(treeAt, elseAt - treeAt);
-    const QString inTrashDeletes = menu.mid(elseAt, menu.indexOf(QLatin1Char('}'), elseAt + 1) - elseAt);
-    QVERIFY(inTrashDeletes.contains(QStringLiteral("menu->addAction(deleting);")));
-    QCOMPARE(inTrashDeletes.count(QStringLiteral("addAction(")), 1);
+    const int trashAt = menu.indexOf(QStringLiteral(
+        "if(trash && (hovered || selected) && names.contains(QStringLiteral(\"RestoreNode\")) && !row->Holds(QStringLiteral(\"RestoreNode\"))){"));
+    const int loopAt = menu.indexOf(QStringLiteral("for(const QString &name : names){"));
+    QVERIFY(trashAt >= 0 && loopAt > trashAt);
+    QVERIFY(menu.indexOf(QStringLiteral("menu->addAction(restore);"), trashAt) < loopAt);
+    QCOMPARE(menu.indexOf(QStringLiteral("menu->addAction("), 0), menu.indexOf(QStringLiteral("menu->addAction(restore);")));
+    QVERIFY(menu.contains(QStringLiteral(
+        "if(!trash && !TreeBank::GetTrashRoot()->HasNoChildren()) menu->addAction(restore);")));
 
-    QVERIFY(inTrash.contains(QStringLiteral("menu->addAction(restore);")));
-    QCOMPARE(menu.indexOf(QStringLiteral("menu->addAction(restore);")),
-             menu.indexOf(QStringLiteral("menu->addAction("), trashAt));
-    for(const QString &name : { QStringLiteral("_DeleteRightNode"),
-                                QStringLiteral("_DeleteLeftNode"), QStringLiteral("_DeleteOtherNode"),
-                                QStringLiteral("_NewNode"), QStringLiteral("_MakeDirectory"),
-                                QStringLiteral("_CutNode"), QStringLiteral("_CopyNode"),
-                                QStringLiteral("_PasteNode"), QStringLiteral("_CloneNode")}){
-        QVERIFY2(!inTrash.contains(name), qPrintable(name));
-        if(name != QStringLiteral("_CloneNode"))
-            QCOMPARE(menu.count(name + QLatin1Char(')')), inTree.count(name + QLatin1Char(')')));
-    }
-    QVERIFY(menu.contains(QStringLiteral("if(!trash) menu->addAction(Action(_CloneNode));")));
+    QVERIFY(BodyOf(SourceFile(QStringLiteral("/gadgets/gadgets.cpp")),
+                   QStringLiteral("void Gadgets::OpenNodeTargetCommand()"))
+            .contains(QStringLiteral("target.trash = m_DisplayType == TrashTree;")));
 
-    const int guard = inTree.indexOf(QStringLiteral("if(!TreeBank::GetTrashRoot()->HasNoChildren())"));
-    QVERIFY(guard >= 0);
-    QVERIFY(inTree.indexOf(QStringLiteral("addAction(restore)"), guard) > guard);
+    for(const QString &line : { QStringLiteral("if(!trash) menu->addAction(Action(_NewNode));"),
+                                QStringLiteral("if(!trash) menu->addAction(Action(_MakeDirectory));"),
+                                QStringLiteral("if(!trash && (hovered || selected)) menu->addAction(Action(_CutNode));"),
+                                QStringLiteral("if(!trash && (hovered || selected)) menu->addAction(Action(_CopyNode));"),
+                                QStringLiteral("if(hovered && !trash) menu->addAction(Action(_CloneNode));"),
+                                QStringLiteral("if(!trash && hovered) menu->addAction(Action(_DeleteRightNode));"),
+                                QStringLiteral("if(trash || !hovered) continue;") })
+        QVERIFY2(menu.contains(line), qPrintable(line));
 
     QCOMPARE(menu.count(QStringLiteral("Action(_DeleteNode)")), 1);
     QVERIFY(menu.contains(QStringLiteral("!trash    ? tr(\"DeleteNode\")")));
-    QVERIFY(inTree.contains(QStringLiteral("menu->addAction(deleting);")));
-    QVERIFY(!inTrash.contains(QStringLiteral("deleting")));
+    QVERIFY(menu.contains(QStringLiteral("if(hovered || selected) menu->addAction(deleting);")));
 
     const QString restore = BodyOf(SourceFile(QStringLiteral("/gadgets/graphicstableview.cpp")),
                                    QStringLiteral("bool GraphicsTableView::ThumbList_RestoreNode()"));
@@ -1190,45 +1198,26 @@ void tst_viewnode::theTrashsNodeMenuOffersTheWayBackFirst(){
 }
 
 void tst_viewnode::theNodeMenuGoesFromTheNodeToLeaving(){
+    const QStringList order = MenuSchema::Default(QStringLiteral("TableNodeMenu")).split(QLatin1Char(','));
+    QStringList names = order;
+    names.removeAll(QStringLiteral("Separator"));
+    QCOMPARE(names, QStringList()
+             << QStringLiteral("OpenNode") << QStringLiteral("OpenNodeOnNewWindow")
+             << QStringLiteral("OpenNodeWithOtherBrowser") << QStringLiteral("RenameNode")
+             << QStringLiteral("CopyNodeUrl")
+             << QStringLiteral("DirectorySettings")
+             << QStringLiteral("MakeDirectory") << QStringLiteral("CutNode")
+             << QStringLiteral("CopyNode") << QStringLiteral("PasteNode")
+             << QStringLiteral("MakeDirectoryWithSelectedNode") << QStringLiteral("MakeDirectoryWithSameDomainNode")
+             << QStringLiteral("DeleteNodesTogether")
+             << QStringLiteral("UpDirectory") << QStringLiteral("DownDirectory")
+             << QStringLiteral("ToggleTrash") << QStringLiteral("SortMenu")
+             << QStringLiteral("NodeCollectionTypeMenu") << QStringLiteral("Refresh")
+             << QStringLiteral("Deactivate"));
+
     const QString menu = BodyOf(SourceFile(QStringLiteral("/gadgets/gadgets.cpp")),
                                 QStringLiteral("QMenu *Gadgets::CreateNodeMenu()"));
     QVERIFY(!menu.isEmpty());
-
-    const QStringList order = {
-        QStringLiteral("Action(_OpenNode)"),
-        QStringLiteral("Action(_OpenNodeOnNewWindow)"),
-        QStringLiteral("tr(\"OpenNodeWithOtherBrowser\")"),
-        QStringLiteral("Action(_RenameNode)"),
-        QStringLiteral("Action(_CopyNodeUrl)"),
-        QStringLiteral("Action(_CloneNode)"),
-        QStringLiteral("DirectoryPage::CreateSettingsMenu"),
-        QStringLiteral("Action(_NewNode)"),
-        QStringLiteral("Action(_MakeDirectory)"),
-        QStringLiteral("Action(_CutNode)"),
-        QStringLiteral("Action(_CopyNode)"),
-        QStringLiteral("Action(_PasteNode)"),
-        QStringLiteral("Action(_MakeDirectoryWithSelectedNode)"),
-        QStringLiteral("Action(_MakeDirectoryWithSameDomainNode)"),
-        QStringLiteral("if(hovered || selected)\n            menu->addAction(deleting);"),
-        QStringLiteral("tr(\"DeleteNodesTogether\")"),
-        QStringLiteral("if(!TreeBank::GetTrashRoot()->HasNoChildren())\n            menu->addAction(restore);"),
-        QStringLiteral("} else if(hovered || selected){"),
-        QStringLiteral("Action(_UpDirectory)"),
-        QStringLiteral("Action(_DownDirectory)"),
-        QStringLiteral("menu->addAction(toggleTrash);"),
-        QStringLiteral("CreateSortMenu(menu)"),
-        QStringLiteral("CreateNodeCollectionTypeMenu(menu)"),
-        QStringLiteral("Action(_Refresh)"),
-        QStringLiteral("menu->addAction(deactivate);"),
-    };
-    int last = -1;
-    for(const QString &item : order){
-        const int at = menu.indexOf(item);
-        QVERIFY2(at > last, qPrintable(item));
-        QCOMPARE(menu.count(item), 1);
-        last = at;
-    }
-
     const int together = menu.indexOf(QStringLiteral("tr(\"DeleteNodesTogether\")"));
     const int added = menu.indexOf(QStringLiteral("menu->addMenu(m);"), together);
     for(const QString &item : { QStringLiteral("m->addAction(Action(_DeleteRightNode));"),
@@ -1237,45 +1226,90 @@ void tst_viewnode::theNodeMenuGoesFromTheNodeToLeaving(){
         const int at = menu.indexOf(item);
         QVERIFY2(at > together && at < added, qPrintable(item));
     }
-
     QVERIFY(menu.contains(QStringLiteral("deactivate->setText(tr(\"CloseViewTree\"));")));
     QVERIFY(menu.contains(QStringLiteral("toggleTrash->setText(trash ? tr(\"BackToViewTree\") : tr(\"ShowTrash\"));")));
+    for(const QString &name : MenuSchema::Find(QStringLiteral("TableNodeMenu"))->specials + MenuSchema::NodeNames())
+        QVERIFY2(menu.contains(QStringLiteral("name == QStringLiteral(\"%1\")").arg(name)) ||
+                 name == QStringLiteral("OpenNodeWithDefault"), qPrintable(name));
+}
+
+void tst_viewnode::theCommandIsTheButtonAtTheEnd(){
+    const QString menu = BodyOf(SourceFile(QStringLiteral("/view/page.cpp")),
+                                QStringLiteral("void Page::DisplayContextMenu(QWidget *parent"));
+    QVERIFY(!menu.isEmpty());
+    const int regular = menu.indexOf(QStringLiteral("m_View->AddRegularMenu(menu, elem);"));
+    QVERIFY(!menu.contains(QStringLiteral("_InspectElement")));
+    QVERIFY(!SourceFile(QStringLiteral("/view/view.cpp")).contains(QStringLiteral("Action(Page::_InspectElement)")));
+    QVERIFY(MenuSchema::Default(QStringLiteral("RegularMenu")).endsWith(QStringLiteral("ViewOrApplySource,InspectElement")));
+    const int keys = menu.indexOf(QStringLiteral("MenuKeys::Show(menu, keys);"));
+    const int card = menu.indexOf(QStringLiteral("Action(Page::_OpenCommand, QVariant::fromValue(elem))"));
+    const int exec = menu.indexOf(QStringLiteral("menu->exec(globalPos);"));
+    QVERIFY(regular >= 0 && keys > regular && card > keys && exec > card);
+    QVERIFY(menu.contains(QStringLiteral("View::AddMenuCommandCell(menu, Action(Page::_OpenCommand, QVariant::fromValue(elem)));")));
+    QVERIFY(menu.contains(QStringLiteral("keys.remove(QStringLiteral(\"OpenCommand\"));")));
+    const QString parts = BodyOf(SourceFile(QStringLiteral("/view/view.cpp")),
+                                 QStringLiteral("void View::AddContextMenu(QMenu *menu"));
+    QVERIFY(parts.contains(QStringLiteral("if(!actions.isEmpty() && qobject_cast<QWidgetAction*>(actions.last())) return;")));
+    QCOMPARE(parts.count(QStringLiteral("else if(str == QStringLiteral(\"Separator\")) separate();")), 2);
+    QCOMPARE(parts.count(QStringLiteral("else if(str == QStringLiteral(\"Separator\")) menu->addSeparator();")), 0);
+    const int load = menu.indexOf(QStringLiteral("const quint64 load = m_View->LoadSerial();"));
+    const int made = menu.indexOf(QStringLiteral("QMenu *menu = new QMenu(parent);"));
+    const int held = menu.indexOf(QStringLiteral("m_MenuTarget.load = load;"));
+    QVERIFY(load >= 0 && made > load && held > made && exec > held);
+    const QString open = BodyOf(SourceFile(QStringLiteral("/view/page.cpp")),
+                                QStringLiteral("void Page::OpenCommand()"));
+    QVERIFY(open.contains(QStringLiteral("target.loadSerial = m_MenuTarget.up ? m_MenuTarget.load : m_View->LoadSerial();")));
+    for(const char *view : { "/view/webengine/webengineview.hpp", "/view/webengine/quickwebengineview.hpp" }){
+        const QString header = SourceFile(QString::fromLatin1(view));
+        QVERIFY2(header.contains(QStringLiteral("return m_ScriptMediaLoad == LoadSerial() ? m_ScriptMediaPoint : QPoint(-1, -1);")), view);
+    }
+    for(const char *view : { "/view/webengine/webengineview.cpp", "/view/webengine/quickwebengineview.cpp" }){
+        const QString source = SourceFile(QString::fromLatin1(view));
+        QVERIFY2(source.count(QStringLiteral("if(ScriptMediaPoint().x() >= 0)")) == 4, view);
+        QVERIFY2(!source.contains(QStringLiteral("(m_ScriptMediaPoint)")), view);
+        QVERIFY2(source.contains(QStringLiteral("m_ScriptMediaLoad = LoadSerial();")), view);
+    }
+
+    const QString bar = BodyOf(SourceFile(QStringLiteral("/ui/treebar.cpp")),
+                               QStringLiteral("QMenu *NodeItem::NodeMenu()"));
+    QVERIFY(bar.indexOf(QStringLiteral("View::AddMenuCommandCell(menu, action);")) >
+            bar.indexOf(QStringLiteral("tb->ShowKeys(menu);")));
+    const QString list = BodyOf(SourceFile(QStringLiteral("/gadgets/gadgets.cpp")),
+                                QStringLiteral("QMenu *Gadgets::CreateNodeMenu()"));
+    QVERIFY(!list.contains(QStringLiteral("\"OpenCommand\"))){")));
+    QVERIFY(!bar.contains(QStringLiteral("name == QStringLiteral(\"OpenCommand\")")));
+    QVERIFY(!list.contains(QStringLiteral("name == QStringLiteral(\"OpenCommand\")")));
+    const QString view = SourceFile(QStringLiteral("/view/view.cpp"));
+    QVERIFY(view.contains(QStringLiteral("if(name == QStringLiteral(\"OpenCommand\")) return true;")));
+    QCOMPARE(parts.count(QStringLiteral("else if(held(str)) continue;")), 4);
+    QVERIFY(BodyOf(view, QStringLiteral("void View::AddRegularMenu(QMenu *menu"))
+                .contains(QStringLiteral("else if(IsHeldByIconRow(menu, str)) continue;")));
+    QVERIFY(!BodyOf(SourceFile(QStringLiteral("/gadgets/gadgets.cpp")), QStringLiteral("void Gadgets::LoadSettings()"))
+                .contains(QStringLiteral("Qt::Key_G")));
+    QVERIFY(list.indexOf(QStringLiteral("View::AddMenuCommandCell(menu, card);")) >
+            list.indexOf(QStringLiteral("MenuKeys::Show(menu")));
 }
 
 void tst_viewnode::theTabMenuGoesInTheOverviewsOrder(){
+    QStringList names = MenuSchema::Default(QStringLiteral("TreeBarNodeMenu")).split(QLatin1Char(','));
+    names.removeAll(QStringLiteral("Separator"));
+    QCOMPARE(names, QStringList()
+             << QStringLiteral("OpenNode") << QStringLiteral("OpenNodeOnNewWindow")
+             << QStringLiteral("OpenNodeWithOtherBrowser") << QStringLiteral("RenameNode")
+             << QStringLiteral("DirectorySettings") << QStringLiteral("ReloadNode")
+             << QStringLiteral("MakeDirectory") << QStringLiteral("MakeDirectoryWithSelectedNode")
+             << QStringLiteral("MakeDirectoryWithSameDomainNode")
+             << QStringLiteral("DeleteNodesTogether") << QStringLiteral("RecentlyClosed")
+             << QStringLiteral("TreeBarMenu"));
+
     const QString source = SourceFile(QStringLiteral("/ui/treebar.cpp"));
     const QString menu = BodyOf(source, QStringLiteral("QMenu *NodeItem::NodeMenu()"));
     QVERIFY(!menu.isEmpty());
 
-    const QStringList order = {
-        QStringLiteral("tr(\"OpenViewNode\")"),
-        QStringLiteral("tr(\"OpenViewNodeOnNewWindow\")"),
-        QStringLiteral("tr(\"OpenViewNodeWithOtherBrowser\")"),
-        QStringLiteral("tr(\"RenameViewNode\")"),
-        QStringLiteral("tr(\"ReloadViewNode\")"),
-        QStringLiteral("tr(\"CloneViewNode\")"),
-        QStringLiteral("tr(\"NewViewNode\")"),
-        QStringLiteral("tr(\"MakeDirectory\")"),
-        QStringLiteral("tr(\"MakeDirectoryWithSelectedNode\")"),
-        QStringLiteral("tr(\"MakeDirectoryWithSameDomainNode\")"),
-        QStringLiteral("tr(\"DeleteViewNode\")"),
-        QStringLiteral("tr(\"DeleteViewNodesTogether\")"),
-        QStringLiteral("tr(\"RecentlyClosedViewNode\")"),
-        QStringLiteral("m_TreeBar->TreeBarMenu()"),
-        QStringLiteral("tb->ShowKeys(menu);"),
-    };
-    int last = -1;
-    for(const QString &item : order){
-        const int at = menu.indexOf(item);
-        QVERIFY2(at > last, qPrintable(item));
-        QCOMPARE(menu.count(item), 1);
-        last = at;
-    }
-
-    for(const QString &item : { QStringLiteral("together->addAction(deleteRightNode);"),
-                                QStringLiteral("together->addAction(deleteLeftNode);"),
-                                QStringLiteral("together->addAction(deleteOtherNode);") })
-        QCOMPARE(menu.count(item), 1);
+    const int together = menu.indexOf(QStringLiteral("tr(\"DeleteViewNodesTogether\")"));
+    const int added = menu.indexOf(QStringLiteral("menu->addMenu(together);"), together);
+    QVERIFY(together >= 0 && added > together);
+    QCOMPARE(menu.mid(together, added - together).count(QStringLiteral("add(together,")), 3);
 
     QVERIFY(menu.contains(QStringLiteral("if(current) action->setObjectName(name);")));
     QCOMPARE(menu.count(QStringLiteral("setObjectName(")), 1);
@@ -1286,9 +1320,22 @@ void tst_viewnode::theTabMenuGoesInTheOverviewsOrder(){
     const int next = menu.indexOf(QStringLiteral("tb->MoveNode(t, vn->GetParent(), vn->Index() + 1);"), recent);
     QVERIFY(into > recent && next > into);
     QVERIFY(menu.indexOf(QStringLiteral("if(vn->IsDirectory())"), recent) < into);
+    QVERIFY(menu.indexOf(QStringLiteral("tb->ShowKeys(menu);")) > menu.indexOf(QStringLiteral("for(const QString &name :")));
 
-    const QString layer = BodyOf(source, QStringLiteral("QMenu *LayerItem::MakeNodeMenu()"));
-    QVERIFY(layer.contains(QStringLiteral("AddTrashEntries(menu, tb,")));
+    QVERIFY(!source.contains(QStringLiteral("MakeNodeMenu")));
+    QCOMPARE(source.count(QStringLiteral("AddTrashEntries(")), 2);
+    const int plus = source.indexOf(QStringLiteral("class PlusButton"));
+    const QString click = BodyOf(source.mid(plus), QStringLiteral("void mouseReleaseEvent("));
+    const int left = click.indexOf(QStringLiteral("if(ev->button() == Qt::LeftButton){"));
+    QVERIFY(left >= 0);
+    const QString onLeft = click.mid(left, click.indexOf(QLatin1Char('}'), left) - left);
+    QVERIFY(onLeft.indexOf(QStringLiteral("return;")) > onLeft.indexOf(QStringLiteral("->NewViewNode();")));
+    QVERIFY(onLeft.contains(QStringLiteral("->NewViewNode();")));
+    QVERIFY(click.indexOf(QStringLiteral("menu->exec(")) > click.indexOf(QStringLiteral("m_TreeBar->TreeBarMenu();")));
+    const QString make = BodyOf(source, QStringLiteral("void LayerItem::NewViewNode()"));
+    QVERIFY(make.indexOf(QStringLiteral("if(Node *nd = GetNode())")) >= 0);
+    QVERIFY(make.indexOf(QStringLiteral("m_TreeBank->NewViewNode(nd->ToViewNode());"))
+            > make.indexOf(QStringLiteral("if(Node *nd = GetNode())")));
 }
 
 namespace {

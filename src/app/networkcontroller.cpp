@@ -1177,7 +1177,7 @@ void NetworkAccessManager::SetupProfile(QWebEngineProfile *profile){
             profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
 
         const int megabytes = s.value(QStringLiteral("network/@HttpCacheMaximumSize"), 0).value<int>();
-        profile->setHttpCacheMaximumSize(megabytes > 0 ? megabytes * 1024 * 1024 : 0);
+        profile->setHttpCacheMaximumSize(megabytes > 0 ? qMin(megabytes, INT_MAX / (1024 * 1024)) * 1024 * 1024 : 0);
 
     }
     NetworkController::AdoptPermissions(profile);
@@ -2028,7 +2028,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
             {QStringLiteral("httpCacheType"), static_cast<int>(cacheType == QStringLiteral("NoCache")
                 ? QQuickWebEngineProfile::NoCache : cacheType == QStringLiteral("MemoryHttpCache")
                 ? QQuickWebEngineProfile::MemoryHttpCache : QQuickWebEngineProfile::DiskHttpCache)},
-            {QStringLiteral("httpCacheMaximumSize"), maxMB > 0 ? maxMB * 1024 * 1024 : 0},
+            {QStringLiteral("httpCacheMaximumSize"), maxMB > 0 ? qMin(maxMB, INT_MAX / (1024 * 1024)) * 1024 * 1024 : 0},
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
             {QStringLiteral("persistentPermissionsPolicy"), static_cast<int>(
                 QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk)}
@@ -2064,7 +2064,7 @@ QQuickWebEngineProfile* NetworkController::QuickProfile(const QString &id){
 
         const int megabytes =
             s.value(QStringLiteral("network/@HttpCacheMaximumSize"), 0).value<int>();
-        profile->setHttpCacheMaximumSize(megabytes > 0 ? megabytes * 1024 * 1024 : 0);
+        profile->setHttpCacheMaximumSize(megabytes > 0 ? qMin(megabytes, INT_MAX / (1024 * 1024)) * 1024 * 1024 : 0);
 
         SettingsSchemeHandler::Install(profile);
 

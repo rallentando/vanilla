@@ -13,7 +13,7 @@
 
 ### Qt
 
-**Windows は Qt 6.12.0 + QtWebEngine 6.140.0、Linux はディストリの Qt 6.10.2 で動作確認済み。Qt5 では動かない**（D-003）。
+**Windows は Qt 6.12.1 + QtWebEngine 6.140.0、Linux はディストリの Qt 6.10.2 で動作確認済み。Qt5 では動かない**（D-003）。
 CMake は 6.5 以上を要求する。
 
 必要なモジュール:
@@ -32,9 +32,16 @@ WebEngine が見つからないときは configure 時に警告が出る。
 
 > Qt Maintenance Tool で Qt をインストールする際、**WebEngine は既定で選択されない**ことがある。
 > 明示的にチェックすること。
-> **Qt 6.12 から QtWebEngine は Qt とは別の製品で、版も別**（Qt 6.12.0 と組むのは QtWebEngine 6.140.0。
-> 6.140 は土台の Chromium 140 を表す）。Maintenance Tool では Qt の版の下の「Extensions」に出る。
-> 既定の場所へ入れると `C:/Qt/6.12.0/msvc2022_64` になる。
+> **Qt 6.12 から QtWebEngine は Qt とは別の製品で、版も別**（QtWebEngine 6.140.0 は Qt 6.12.0 でビルドされ、
+> Qt 6.12.0 以降で動く。6.140 は土台の Chromium 140 を表す）。Maintenance Tool では「Extensions」に出て、
+> ビルドに使った Qt の場所（`C:/Qt/6.12.0/msvc2022_64`）にだけ入る。Qt 6.12.1 で使うときは、
+> `C:/Qt/6.12.0/msvc2022_64` にあって `C:/Qt/6.12.1/msvc2022_64` に無いファイルのうち、QtWebEngine と QtPdf のものを
+> 同じ相対パスへ写す。名前に WebEngine か Pdf を含むもの（`bin` の DLL と `QtWebEngineProcess.exe`、`resources/qtwebengine_*.pak`、
+> `translations/qtwebengine_locales`、`lib`・`lib/cmake`、`include/QtWebEngine*`・`include/QtPdf*`、`qml/QtWebEngine`・`qml/QtQuick/Pdf`、
+> `plugins`、`mkspecs/modules`、`metatypes`、`modules`、`sbom`）に加えて、名前に含まない
+> `resources/icudtl.dat`・`resources/v8_context_snapshot*.bin`・`bin/gn.exe`・`lib/cmake/Qt6/Find*.cmake`（GPerf・Gn・Ninja・Nodejs・
+> PkgConfigHost・QWEBindgen・QWELibClang・QWERust・Snappy）も QtWebEngine のもの。`include/QtGui` の `qpdf_p.h` は QtGui のもので写さない。
+> QtWebEngine が使う Qt Positioning は Qt 6.12.1 のものを Maintenance Tool で入れる。
 
 #### Qt WebEngine へのパッチ
 
@@ -174,7 +181,7 @@ vanilla-build/
 
 ```bat
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-set QTDIR=C:\Qt\6.12.0\msvc2022_64
+set QTDIR=C:\Qt\6.12.1\msvc2022_64
 set PATH=C:\Qt\Tools\CMake_64\bin;C:\Qt\Tools\Ninja;%QTDIR%\bin;%PATH%
 
 cmake --preset release
@@ -419,7 +426,7 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
   書き換えること** —— 版が食い違うと configure が warning を出す。
 - **FFmpeg は package の種類で分かれる**（D-241 追記6）。
   - **配布用（既定）は入らない**: deploy に `--no-ffmpeg` と
-    `--exclude-plugins ffmpegmediaplugin` が渡り、`plugins/multimedia/` に残るのは
+    `--exclude-plugins qpdf,ffmpegmediaplugin` が渡り、`plugins/multimedia/` に残るのは
     `windowsmediaplugin.dll` だけになる。
   - **人に配らない、自分のマシンだけで使う package には入れてよい**:
     `cmake --preset release -DVANILLA_PACKAGE_FFMPEG=ON` で configure してから
@@ -427,6 +434,8 @@ Qt の入っていないマシンで動くディレクトリが1発でできる�
     **Qt Multimedia は FFmpeg バックエンドを選ぶ**（`LocalView` は WMF で
     再生できない形式もこちらで動く）。**キャッシュに残るので、配布物を作る前に
     OFF へ戻すこと**。
+- **Qt PDF は入らない**: Qt PDF が Qt と同じ場所にあると windeployqt は PDF の画像形式プラグイン
+  `qpdf.dll` と `Qt6Pdf.dll` を足すので、FFmpeg の有無に関わらず `--exclude-plugins` に `qpdf` を渡す（D-714）。
 - **`vc_redist.x64.exe` が入るのは vcvars を通した環境だけ。** windeployqt は
   既定でコンパイラランタイムを配るが、置き場を `VCINSTALLDIR` から探すので、
   **素のシェルで install すると警告も出さずに落とす**（`--compiler-runtime` を

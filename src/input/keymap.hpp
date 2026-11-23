@@ -1,260 +1,276 @@
 #ifndef KEYMAP_HPP
 #define KEYMAP_HPP
 
-#define TREEBANK_KEYMAP                                                 \
-    m_KeyMap[QKeySequence(QKeySequence::Copy)]          = QStringLiteral("Copy"); \
-    m_KeyMap[QKeySequence(QKeySequence::Cut)]           = QStringLiteral("Cut"); \
-    m_KeyMap[QKeySequence(QKeySequence::Paste)]         = QStringLiteral("Paste"); \
-    m_KeyMap[QKeySequence(QKeySequence::Open)]          = QStringLiteral("Load"); \
-    m_KeyMap[QKeySequence(QKeySequence::Save)]          = QStringLiteral("Save"); \
-    m_KeyMap[QKeySequence(QKeySequence::Print)]         = QStringLiteral("Print"); \
-    m_KeyMap[QKeySequence(QKeySequence::Quit)]          = QStringLiteral("Quit"); \
-    m_KeyMap[QKeySequence(QKeySequence::Undo)]          = QStringLiteral("Undo"); \
-    m_KeyMap[QKeySequence(QKeySequence::Redo)]          = QStringLiteral("Redo"); \
-    m_KeyMap[QKeySequence(QKeySequence::Back)]          = QStringLiteral("Back"); \
-    m_KeyMap[QKeySequence(QKeySequence::Forward)]       = QStringLiteral("Forward"); \
-    m_KeyMap[QKeySequence(QKeySequence::Refresh)]       = QStringLiteral("Reload"); \
-    m_KeyMap[QKeySequence(QKeySequence::ZoomIn)]        = QStringLiteral("ZoomIn"); \
-    m_KeyMap[QKeySequence(QKeySequence::ZoomOut)]       = QStringLiteral("ZoomOut"); \
-    m_KeyMap[QKeySequence(QKeySequence::NextChild)]     = QStringLiteral("NextView"); \
-    m_KeyMap[QKeySequence(QKeySequence::PreviousChild)] = QStringLiteral("PrevView"); \
-    m_KeyMap[QKeySequence(QKeySequence::Find)]          = QStringLiteral("OpenTextSeeker"); \
-    m_KeyMap[QKeySequence(QKeySequence::SelectAll)]     = QStringLiteral("SelectAll"); \
-    m_KeyMap[QKeySequence(QKeySequence::AddTab)]        = QStringLiteral("NewViewNode"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_F4)]    = QStringLiteral("Quit"); \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_Left)]  = QStringLiteral("Back"); \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_Right)] = QStringLiteral("Forward"); \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_Up)]    = QStringLiteral("DigView"); \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_Down)]  = QStringLiteral("BuryView"); \
-    m_KeyMap[QKeySequence(Qt::Key_Backspace)]       = QStringLiteral("Back"); \
-    m_KeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Backspace)] = QStringLiteral("Forward"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_Q)] = QStringLiteral("Quit"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_W)] = QStringLiteral("Close"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_C)] = QStringLiteral("Copy"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_X)] = QStringLiteral("Cut"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_V)] = QStringLiteral("Paste"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_O)] = QStringLiteral("Load"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_S)] = QStringLiteral("Save"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_P)] = QStringLiteral("Print"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_Z)] = QStringLiteral("Undo"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_Y)] = QStringLiteral("Redo"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_F)] = QStringLiteral("OpenTextSeeker"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_Q)]        = QStringLiteral("Close"); \
-    m_KeyMap[QKeySequence(Qt::Key_W)]        = QStringLiteral("Restore"); \
-    m_KeyMap[QKeySequence(Qt::Key_E)]        = QStringLiteral("UpDirectory"); \
-    m_KeyMap[QKeySequence(Qt::Key_R)]        = QStringLiteral("Home");  \
-    m_KeyMap[QKeySequence(Qt::Key_T)]        = QStringLiteral("End");   \
-    m_KeyMap[QKeySequence(Qt::Key_Y)]        = QStringLiteral("End");   \
-    m_KeyMap[QKeySequence(Qt::Key_U)]        = QStringLiteral("Home");  \
-    m_KeyMap[QKeySequence(Qt::Key_I)]        = QStringLiteral("UpDirectory"); \
-    m_KeyMap[QKeySequence(Qt::Key_O)]        = QStringLiteral("Restore"); \
-    m_KeyMap[QKeySequence(Qt::Key_P)]        = QStringLiteral("Close"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_A)]        = QStringLiteral("DisplayAccessKey"); \
-    m_KeyMap[QKeySequence(Qt::Key_S)]        = QStringLiteral("OpenQueryEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_D)]        = QStringLiteral("OpenUrlEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_F)]        = QStringLiteral("DisplayViewTree"); \
-    m_KeyMap[QKeySequence(Qt::Key_G)]        = QStringLiteral("OpenCommand"); \
-    m_KeyMap[QKeySequence(Qt::Key_H)]        = QStringLiteral("OpenCommand"); \
-    m_KeyMap[QKeySequence(Qt::Key_J)]        = QStringLiteral("DisplayViewTree"); \
-    m_KeyMap[QKeySequence(Qt::Key_K)]        = QStringLiteral("OpenUrlEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_L)]        = QStringLiteral("OpenQueryEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_Semicolon)] = QStringLiteral("DisplayAccessKey"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_Z)]        = QStringLiteral("Back");  \
-    m_KeyMap[QKeySequence(Qt::Key_X)]        = QStringLiteral("Forward"); \
-    m_KeyMap[QKeySequence(Qt::Key_C)]        = QStringLiteral("PrevView"); \
-    m_KeyMap[QKeySequence(Qt::Key_V)]        = QStringLiteral("NextView"); \
-    m_KeyMap[QKeySequence(Qt::Key_B)]        = QStringLiteral("Reload"); \
-    m_KeyMap[QKeySequence(Qt::Key_N)]        = QStringLiteral("PrevView"); \
-    m_KeyMap[QKeySequence(Qt::Key_M)]        = QStringLiteral("NextView"); \
-    m_KeyMap[QKeySequence(Qt::Key_Comma)]    = QStringLiteral("Back");  \
-    m_KeyMap[QKeySequence(Qt::Key_Period)]   = QStringLiteral("Forward"); \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_F1)]       = QStringLiteral("OpenUrlEditor"); \
-    m_KeyMap[QKeySequence(Qt::Key_F2)]       = QStringLiteral("Load");  \
-    m_KeyMap[QKeySequence(Qt::Key_F3)]       = QStringLiteral("NewWindow"); \
-    m_KeyMap[QKeySequence(Qt::Key_F4)]       = QStringLiteral("CloseWindow"); \
-    m_KeyMap[QKeySequence(Qt::Key_F5)]       = QStringLiteral("Reload"); \
-    m_KeyMap[QKeySequence(Qt::CTRL | Qt::Key_F5)] = QStringLiteral("ReloadAndBypassCache"); \
-    m_KeyMap[QKeySequence(Qt::Key_F6)]       = QStringLiteral("PrevView"); \
-    m_KeyMap[QKeySequence(Qt::Key_F7)]       = QStringLiteral("NextView"); \
-    m_KeyMap[QKeySequence(Qt::Key_F8)]       = QStringLiteral("SwitchWindow"); \
-    m_KeyMap[QKeySequence(Qt::Key_F9)]       = QStringLiteral("DisplayViewTree"); \
-    m_KeyMap[QKeySequence(Qt::Key_F10)]      = QStringLiteral("ToggleMenuBar"); \
-    m_KeyMap[QKeySequence(Qt::Key_F11)]      = QStringLiteral("ToggleFullScreen"); \
-    m_KeyMap[QKeySequence(Qt::Key_F12)]      = QStringLiteral("DisplayAccessKey"); \
-    m_KeyMap[QKeySequence(Qt::Key_Escape)]   = QStringLiteral("Stop");  \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::Key_Up)]       = QStringLiteral("Up");    \
-    m_KeyMap[QKeySequence(Qt::Key_Down)]     = QStringLiteral("Down");  \
-    m_KeyMap[QKeySequence(Qt::Key_Right)]    = QStringLiteral("Right"); \
-    m_KeyMap[QKeySequence(Qt::Key_Left)]     = QStringLiteral("Left");  \
-    m_KeyMap[QKeySequence(Qt::Key_PageUp)]   = QStringLiteral("PageUp"); \
-    m_KeyMap[QKeySequence(Qt::Key_PageDown)] = QStringLiteral("PageDown"); \
-    m_KeyMap[QKeySequence(Qt::Key_Home)]     = QStringLiteral("Home");  \
-    m_KeyMap[QKeySequence(Qt::Key_End)]      = QStringLiteral("End");   \
-                                                                        \
-    m_KeyMap[QKeySequence(Qt::ALT | Qt::Key_X)] = QStringLiteral("OpenCommand");
+#include <QKeySequence>
 
-#define WEBVIEW_KEYMAP TREEBANK_KEYMAP
+struct DefaultKey {
+    constexpr DefaultKey(QKeySequence::StandardKey standard, const char *action)
+        : standard(standard), key(), action(action){}
+    constexpr DefaultKey(QKeyCombination key, const char *action)
+        : standard(QKeySequence::UnknownKey), key(key), action(action){}
+    QKeySequence::StandardKey standard;
+    QKeyCombination key;
+    const char *action;
+};
 
-#define THUMBLIST_KEYMAP                                                \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::Paste)]         = QStringLiteral("PasteNode"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::Quit)]          = QStringLiteral("Quit"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::Back)]          = QStringLiteral("UpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::Forward)]       = QStringLiteral("DownDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::Refresh)]       = QStringLiteral("Refresh"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::ZoomIn)]        = QStringLiteral("ZoomIn"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::ZoomOut)]       = QStringLiteral("ZoomOut"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::NextChild)]     = QStringLiteral("MoveToRightItem"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::PreviousChild)] = QStringLiteral("MoveToLeftItem"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::Find)]          = QStringLiteral("OpenTextSeeker"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::SelectAll)]     = QStringLiteral("SelectAll"); \
-    m_ThumbListKeyMap[QKeySequence(QKeySequence::AddTab)]        = QStringLiteral("NewNode"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::ALT | Qt::Key_F4)]    = QStringLiteral("Quit"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::ALT | Qt::Key_Left)]  = QStringLiteral("UpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::ALT | Qt::Key_Right)] = QStringLiteral("DownDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::ALT | Qt::Key_Up)]    = QStringLiteral("UpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::ALT | Qt::Key_Down)]  = QStringLiteral("DownDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Backspace)]       = QStringLiteral("UpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Backspace)] = QStringLiteral("DownDirectory"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Q)] = QStringLiteral("Quit"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_W)] = QStringLiteral("Close"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_X)] = QStringLiteral("CutNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_C)] = QStringLiteral("CopyNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_V)] = QStringLiteral("PasteNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_F)] = QStringLiteral("OpenTextSeeker"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Comma)] = QStringLiteral("ScrollUp"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Period)] = QStringLiteral("ScrollDown"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Q)] = QStringLiteral("DeleteNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_W)] = QStringLiteral("RestoreNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_E)] = QStringLiteral("MoveToUpperItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_R)] = QStringLiteral("RestoreNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_T)] = QStringLiteral("ToggleTrash"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Y)] = QStringLiteral("ToggleTrash"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_U)] = QStringLiteral("RestoreNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_I)] = QStringLiteral("MoveToUpperItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_O)] = QStringLiteral("RestoreNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_P)] = QStringLiteral("DeleteNode"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_A)] = QStringLiteral("OpenNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_S)] = QStringLiteral("MoveToLeftItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_D)] = QStringLiteral("MoveToLowerItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F)] = QStringLiteral("MoveToRightItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_G)] = QStringLiteral("RenameNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_H)] = QStringLiteral("RenameNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_J)] = QStringLiteral("MoveToLeftItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_K)] = QStringLiteral("MoveToLowerItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_L)] = QStringLiteral("MoveToRightItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Semicolon)] = QStringLiteral("OpenNode"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Z)] = QStringLiteral("UpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_X)] = QStringLiteral("DownDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_C)] = QStringLiteral("CloneNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_V)] = QStringLiteral("MakeDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_B)] = QStringLiteral("Refresh"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_N)] = QStringLiteral("MakeDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_M)] = QStringLiteral("CloneNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Comma)] = QStringLiteral("UpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Period)] = QStringLiteral("DownDirectory"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F1)]  = QStringLiteral("OpenUrlEditor"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F2)]  = QStringLiteral("RenameNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F3)]  = QStringLiteral("NewWindow"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F4)]  = QStringLiteral("CloseWindow"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F5)]  = QStringLiteral("Refresh"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F6)]  = QStringLiteral("PrevView"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F7)]  = QStringLiteral("NextView"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F8)]  = QStringLiteral("SwitchWindow"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F9)]  = QStringLiteral("DisplayViewTree"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F10)] = QStringLiteral("ToggleMenuBar"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F11)] = QStringLiteral("ToggleFullScreen"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_F12)] = QStringLiteral("DisplayAccessKey"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Escape)] = QStringLiteral("Deactivate"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Z)] = QStringLiteral("MakeLocalNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Period)] = QStringLiteral("MakeLocalNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Backslash)] = QStringLiteral("MakeLocalNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_C)] = QStringLiteral("CloneNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_M)] = QStringLiteral("CloneNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_V)] = QStringLiteral("NewNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_N)] = QStringLiteral("NewNode"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Up)]       = QStringLiteral("MoveToUpperItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Down)]     = QStringLiteral("MoveToLowerItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Right)]    = QStringLiteral("MoveToRightItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Left)]     = QStringLiteral("MoveToLeftItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Home)]     = QStringLiteral("MoveToFirstItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_End)]      = QStringLiteral("MoveToLastItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_PageUp)]   = QStringLiteral("PageUp"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_PageDown)] = QStringLiteral("PageDown"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Enter)]    = QStringLiteral("OpenNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Return)]   = QStringLiteral("OpenNode"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Delete)]   = QStringLiteral("DeleteNode"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Up)]    = QStringLiteral("SelectToUpperItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Down)]  = QStringLiteral("SelectToLowerItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Right)] = QStringLiteral("SelectToRightItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Left)]  = QStringLiteral("SelectToLeftItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_E)]     = QStringLiteral("SelectToUpperItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_D)]     = QStringLiteral("SelectToLowerItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_F)]     = QStringLiteral("SelectToRightItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_S)]     = QStringLiteral("SelectToLeftItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_I)]     = QStringLiteral("SelectToUpperItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_K)]     = QStringLiteral("SelectToLowerItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_L)]     = QStringLiteral("SelectToRightItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_J)]     = QStringLiteral("SelectToLeftItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_PageUp)] = QStringLiteral("SelectToPrevPage"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_PageDown)] = QStringLiteral("SelectToNextPage"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Home)]  = QStringLiteral("SelectToFirstItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_End)]   = QStringLiteral("SelectToLastItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::Key_Space)]             = QStringLiteral("SelectItem"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::SHIFT | Qt::Key_Space)] = QStringLiteral("SelectRange"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Up)]     = QStringLiteral("TransferToUpper"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Down)]   = QStringLiteral("TransferToLower"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Right)]  = QStringLiteral("TransferToRight"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Left)]   = QStringLiteral("TransferToLeft"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_PageUp)] = QStringLiteral("TransferToPrevPage"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_PageDown)] = QStringLiteral("TransferToNextPage"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Home)]   = QStringLiteral("TransferToFirst"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_End)]    = QStringLiteral("TransferToLast"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Backspace)] = QStringLiteral("TransferToUpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Backspace)] = QStringLiteral("TransferToDownDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Z)]      = QStringLiteral("TransferToUpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Comma)]  = QStringLiteral("TransferToUpDirectory"); \
-    m_ThumbListKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Period)] = QStringLiteral("TransferToDownDirectory"); \
-                                                                        \
-    m_ThumbListKeyMap[QKeySequence(Qt::ALT | Qt::Key_X)] = QStringLiteral("OpenCommand");
+inline constexpr DefaultKey TREEBANK_KEYMAP[] = {
+    { QKeySequence::Copy, "Copy" },
+    { QKeySequence::Cut, "Cut" },
+    { QKeySequence::Paste, "Paste" },
+    { QKeySequence::Open, "Load" },
+    { QKeySequence::Save, "Save" },
+    { QKeySequence::Print, "Print" },
+    { QKeySequence::Quit, "Quit" },
+    { QKeySequence::Undo, "Undo" },
+    { QKeySequence::Redo, "Redo" },
+    { QKeySequence::Back, "Back" },
+    { QKeySequence::Forward, "Forward" },
+    { QKeySequence::Refresh, "Reload" },
+    { QKeySequence::ZoomIn, "ZoomIn" },
+    { QKeySequence::ZoomOut, "ZoomOut" },
+    { QKeySequence::NextChild, "NextView" },
+    { QKeySequence::PreviousChild, "PrevView" },
+    { QKeySequence::Find, "OpenTextSeeker" },
+    { QKeySequence::SelectAll, "SelectAll" },
+    { QKeySequence::AddTab, "NewViewNode" },
 
-#define RECEIVER_KEYMAP                                                 \
-    m_ReceiverKeyMap[QKeySequence(Qt::CTRL | Qt::Key_Tab)] = QStringLiteral("NextCommandLineTab"); \
-    m_ReceiverKeyMap[QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Backtab)] = QStringLiteral("PrevCommandLineTab"); \
-    m_ReceiverKeyMap[QKeySequence(Qt::Key_Tab)]      = QStringLiteral("CommandLineRowActions"); \
-    m_ReceiverKeyMap[QKeySequence(Qt::Key_Down)]     = QStringLiteral("NextCommandLineRow"); \
-    m_ReceiverKeyMap[QKeySequence(Qt::Key_Up)]       = QStringLiteral("PrevCommandLineRow"); \
-    m_ReceiverKeyMap[QKeySequence(Qt::Key_PageDown)] = QStringLiteral("NextCommandLinePage"); \
-    m_ReceiverKeyMap[QKeySequence(Qt::Key_PageUp)]   = QStringLiteral("PrevCommandLinePage"); \
-    m_ReceiverKeyMap[QKeySequence(Qt::Key_Escape)]   = QStringLiteral("CloseCommandLine");
+    { Qt::ALT | Qt::Key_F4, "Quit" },
+    { Qt::ALT | Qt::Key_Left, "Back" },
+    { Qt::ALT | Qt::Key_Right, "Forward" },
+    { Qt::ALT | Qt::Key_Up, "DigView" },
+    { Qt::ALT | Qt::Key_Down, "BuryView" },
+    { Qt::Key_Backspace, "Back" },
+    { Qt::SHIFT | Qt::Key_Backspace, "Forward" },
 
-#define ACCESSKEY_KEYMAP                                                \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_E)] = QStringLiteral("OpenOnRootForeground"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_S)] = QStringLiteral("OpenInNewViewNodeForeground"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_C)] = QStringLiteral("OpenInNewDirectoryForeground"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_D)] = QStringLiteral("ClickElement"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_A)] = QStringLiteral("FocusElement"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_X)] = QStringLiteral("HoverElement"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_I)] = QStringLiteral("OpenOnRootForeground"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_J)] = QStringLiteral("OpenInNewViewNodeForeground"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_M)] = QStringLiteral("OpenInNewDirectoryForeground"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_K)] = QStringLiteral("ClickElement"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_Semicolon)] = QStringLiteral("FocusElement"); \
-    m_AccessKeyKeyMap[QKeySequence(Qt::Key_Comma)] = QStringLiteral("HoverElement");
+    { Qt::CTRL | Qt::Key_Q, "Quit" },
+    { Qt::CTRL | Qt::Key_W, "Close" },
+    { Qt::CTRL | Qt::Key_C, "Copy" },
+    { Qt::CTRL | Qt::Key_X, "Cut" },
+    { Qt::CTRL | Qt::Key_V, "Paste" },
+    { Qt::CTRL | Qt::Key_O, "Load" },
+    { Qt::CTRL | Qt::Key_S, "Save" },
+    { Qt::CTRL | Qt::Key_P, "Print" },
+    { Qt::CTRL | Qt::Key_Z, "Undo" },
+    { Qt::CTRL | Qt::Key_Y, "Redo" },
+    { Qt::CTRL | Qt::Key_F, "OpenTextSeeker" },
+
+    { Qt::Key_Q, "Close" },
+    { Qt::Key_W, "Restore" },
+    { Qt::Key_E, "UpDirectory" },
+    { Qt::Key_R, "Home" },
+    { Qt::Key_T, "End" },
+    { Qt::Key_Y, "End" },
+    { Qt::Key_U, "Home" },
+    { Qt::Key_I, "UpDirectory" },
+    { Qt::Key_O, "Restore" },
+    { Qt::Key_P, "Close" },
+
+    { Qt::Key_A, "DisplayAccessKey" },
+    { Qt::Key_S, "OpenQueryEditor" },
+    { Qt::Key_D, "OpenUrlEditor" },
+    { Qt::Key_F, "DisplayViewTree" },
+    { Qt::Key_G, "OpenCommand" },
+    { Qt::Key_H, "OpenCommand" },
+    { Qt::Key_J, "DisplayViewTree" },
+    { Qt::Key_K, "OpenUrlEditor" },
+    { Qt::Key_L, "OpenQueryEditor" },
+    { Qt::Key_Semicolon, "DisplayAccessKey" },
+
+    { Qt::Key_Z, "Back" },
+    { Qt::Key_X, "Forward" },
+    { Qt::Key_C, "PrevView" },
+    { Qt::Key_V, "NextView" },
+    { Qt::Key_B, "Reload" },
+    { Qt::Key_N, "PrevView" },
+    { Qt::Key_M, "NextView" },
+    { Qt::Key_Comma, "Back" },
+    { Qt::Key_Period, "Forward" },
+
+    { Qt::Key_F1, "OpenUrlEditor" },
+    { Qt::Key_F2, "Load" },
+    { Qt::Key_F3, "NewWindow" },
+    { Qt::Key_F4, "CloseWindow" },
+    { Qt::Key_F5, "Reload" },
+    { Qt::CTRL | Qt::Key_F5, "ReloadAndBypassCache" },
+    { Qt::Key_F6, "PrevView" },
+    { Qt::Key_F7, "NextView" },
+    { Qt::Key_F8, "SwitchWindow" },
+    { Qt::Key_F9, "DisplayViewTree" },
+    { Qt::Key_F10, "ToggleMenuBar" },
+    { Qt::Key_F11, "ToggleFullScreen" },
+    { Qt::Key_F12, "DisplayAccessKey" },
+    { Qt::Key_Escape, "Stop" },
+
+    { Qt::Key_Up, "Up" },
+    { Qt::Key_Down, "Down" },
+    { Qt::Key_Right, "Right" },
+    { Qt::Key_Left, "Left" },
+    { Qt::Key_PageUp, "PageUp" },
+    { Qt::Key_PageDown, "PageDown" },
+    { Qt::Key_Home, "Home" },
+    { Qt::Key_End, "End" },
+
+    { Qt::ALT | Qt::Key_X, "OpenCommand" },
+};
+
+inline constexpr DefaultKey THUMBLIST_KEYMAP[] = {
+    { QKeySequence::Paste, "PasteNode" },
+    { QKeySequence::Quit, "Quit" },
+    { QKeySequence::Back, "UpDirectory" },
+    { QKeySequence::Forward, "DownDirectory" },
+    { QKeySequence::Refresh, "Refresh" },
+    { QKeySequence::ZoomIn, "ZoomIn" },
+    { QKeySequence::ZoomOut, "ZoomOut" },
+    { QKeySequence::NextChild, "MoveToRightItem" },
+    { QKeySequence::PreviousChild, "MoveToLeftItem" },
+    { QKeySequence::Find, "OpenTextSeeker" },
+    { QKeySequence::SelectAll, "SelectAll" },
+    { QKeySequence::AddTab, "NewNode" },
+
+    { Qt::ALT | Qt::Key_F4, "Quit" },
+    { Qt::ALT | Qt::Key_Left, "UpDirectory" },
+    { Qt::ALT | Qt::Key_Right, "DownDirectory" },
+    { Qt::ALT | Qt::Key_Up, "UpDirectory" },
+    { Qt::ALT | Qt::Key_Down, "DownDirectory" },
+    { Qt::Key_Backspace, "UpDirectory" },
+    { Qt::SHIFT | Qt::Key_Backspace, "DownDirectory" },
+
+    { Qt::CTRL | Qt::Key_Q, "Quit" },
+    { Qt::CTRL | Qt::Key_W, "Close" },
+    { Qt::CTRL | Qt::Key_X, "CutNode" },
+    { Qt::CTRL | Qt::Key_C, "CopyNode" },
+    { Qt::CTRL | Qt::Key_V, "PasteNode" },
+    { Qt::CTRL | Qt::Key_F, "OpenTextSeeker" },
+    { Qt::CTRL | Qt::Key_Comma, "ScrollUp" },
+    { Qt::CTRL | Qt::Key_Period, "ScrollDown" },
+
+    { Qt::Key_Q, "DeleteNode" },
+    { Qt::Key_W, "RestoreNode" },
+    { Qt::Key_E, "MoveToUpperItem" },
+    { Qt::Key_R, "RestoreNode" },
+    { Qt::Key_T, "ToggleTrash" },
+    { Qt::Key_Y, "ToggleTrash" },
+    { Qt::Key_U, "RestoreNode" },
+    { Qt::Key_I, "MoveToUpperItem" },
+    { Qt::Key_O, "RestoreNode" },
+    { Qt::Key_P, "DeleteNode" },
+
+    { Qt::Key_A, "OpenNode" },
+    { Qt::Key_S, "MoveToLeftItem" },
+    { Qt::Key_D, "MoveToLowerItem" },
+    { Qt::Key_F, "MoveToRightItem" },
+    { Qt::Key_G, "RenameNode" },
+    { Qt::Key_H, "RenameNode" },
+    { Qt::Key_J, "MoveToLeftItem" },
+    { Qt::Key_K, "MoveToLowerItem" },
+    { Qt::Key_L, "MoveToRightItem" },
+    { Qt::Key_Semicolon, "OpenNode" },
+
+    { Qt::Key_Z, "UpDirectory" },
+    { Qt::Key_X, "DownDirectory" },
+    { Qt::Key_C, "CloneNode" },
+    { Qt::Key_V, "MakeDirectory" },
+    { Qt::Key_B, "Refresh" },
+    { Qt::Key_N, "MakeDirectory" },
+    { Qt::Key_M, "CloneNode" },
+    { Qt::Key_Comma, "UpDirectory" },
+    { Qt::Key_Period, "DownDirectory" },
+
+    { Qt::Key_F1, "OpenUrlEditor" },
+    { Qt::Key_F2, "RenameNode" },
+    { Qt::Key_F3, "NewWindow" },
+    { Qt::Key_F4, "CloseWindow" },
+    { Qt::Key_F5, "Refresh" },
+    { Qt::Key_F6, "PrevView" },
+    { Qt::Key_F7, "NextView" },
+    { Qt::Key_F8, "SwitchWindow" },
+    { Qt::Key_F9, "DisplayViewTree" },
+    { Qt::Key_F10, "ToggleMenuBar" },
+    { Qt::Key_F11, "ToggleFullScreen" },
+    { Qt::Key_F12, "DisplayAccessKey" },
+    { Qt::Key_Escape, "Deactivate" },
+
+    { Qt::SHIFT | Qt::Key_Z, "MakeLocalNode" },
+    { Qt::SHIFT | Qt::Key_Period, "MakeLocalNode" },
+    { Qt::SHIFT | Qt::Key_Backslash, "MakeLocalNode" },
+    { Qt::SHIFT | Qt::Key_C, "CloneNode" },
+    { Qt::SHIFT | Qt::Key_M, "CloneNode" },
+    { Qt::SHIFT | Qt::Key_V, "NewNode" },
+    { Qt::SHIFT | Qt::Key_N, "NewNode" },
+
+    { Qt::Key_Up, "MoveToUpperItem" },
+    { Qt::Key_Down, "MoveToLowerItem" },
+    { Qt::Key_Right, "MoveToRightItem" },
+    { Qt::Key_Left, "MoveToLeftItem" },
+    { Qt::Key_Home, "MoveToFirstItem" },
+    { Qt::Key_End, "MoveToLastItem" },
+    { Qt::Key_PageUp, "PageUp" },
+    { Qt::Key_PageDown, "PageDown" },
+    { Qt::Key_Enter, "OpenNode" },
+    { Qt::Key_Return, "OpenNode" },
+    { Qt::Key_Delete, "DeleteNode" },
+
+    { Qt::SHIFT | Qt::Key_Up, "SelectToUpperItem" },
+    { Qt::SHIFT | Qt::Key_Down, "SelectToLowerItem" },
+    { Qt::SHIFT | Qt::Key_Right, "SelectToRightItem" },
+    { Qt::SHIFT | Qt::Key_Left, "SelectToLeftItem" },
+    { Qt::SHIFT | Qt::Key_E, "SelectToUpperItem" },
+    { Qt::SHIFT | Qt::Key_D, "SelectToLowerItem" },
+    { Qt::SHIFT | Qt::Key_F, "SelectToRightItem" },
+    { Qt::SHIFT | Qt::Key_S, "SelectToLeftItem" },
+    { Qt::SHIFT | Qt::Key_I, "SelectToUpperItem" },
+    { Qt::SHIFT | Qt::Key_K, "SelectToLowerItem" },
+    { Qt::SHIFT | Qt::Key_L, "SelectToRightItem" },
+    { Qt::SHIFT | Qt::Key_J, "SelectToLeftItem" },
+    { Qt::SHIFT | Qt::Key_PageUp, "SelectToPrevPage" },
+    { Qt::SHIFT | Qt::Key_PageDown, "SelectToNextPage" },
+    { Qt::SHIFT | Qt::Key_Home, "SelectToFirstItem" },
+    { Qt::SHIFT | Qt::Key_End, "SelectToLastItem" },
+    { Qt::Key_Space, "SelectItem" },
+    { Qt::SHIFT | Qt::Key_Space, "SelectRange" },
+    { Qt::CTRL | Qt::Key_Up, "TransferToUpper" },
+    { Qt::CTRL | Qt::Key_Down, "TransferToLower" },
+    { Qt::CTRL | Qt::Key_Right, "TransferToRight" },
+    { Qt::CTRL | Qt::Key_Left, "TransferToLeft" },
+    { Qt::CTRL | Qt::Key_PageUp, "TransferToPrevPage" },
+    { Qt::CTRL | Qt::Key_PageDown, "TransferToNextPage" },
+    { Qt::CTRL | Qt::Key_Home, "TransferToFirst" },
+    { Qt::CTRL | Qt::Key_End, "TransferToLast" },
+    { Qt::CTRL | Qt::Key_Backspace, "TransferToUpDirectory" },
+    { Qt::CTRL | Qt::SHIFT | Qt::Key_Backspace, "TransferToDownDirectory" },
+    { Qt::CTRL | Qt::Key_Z, "TransferToUpDirectory" },
+    { Qt::CTRL | Qt::Key_Comma, "TransferToUpDirectory" },
+    { Qt::CTRL | Qt::Key_Period, "TransferToDownDirectory" },
+
+    { Qt::ALT | Qt::Key_X, "OpenCommand" },
+};
+
+inline constexpr DefaultKey RECEIVER_KEYMAP[] = {
+    { Qt::CTRL | Qt::Key_Tab, "NextCommandLineTab" },
+    { Qt::CTRL | Qt::SHIFT | Qt::Key_Backtab, "PrevCommandLineTab" },
+    { Qt::Key_Tab, "CommandLineRowActions" },
+    { Qt::Key_Down, "NextCommandLineRow" },
+    { Qt::Key_Up, "PrevCommandLineRow" },
+    { Qt::Key_PageDown, "NextCommandLinePage" },
+    { Qt::Key_PageUp, "PrevCommandLinePage" },
+    { Qt::Key_Escape, "CloseCommandLine" },
+};
+
+inline constexpr DefaultKey ACCESSKEY_KEYMAP[] = {
+    { Qt::Key_E, "OpenOnRootForeground" },
+    { Qt::Key_S, "OpenInNewViewNodeForeground" },
+    { Qt::Key_C, "OpenInNewDirectoryForeground" },
+    { Qt::Key_D, "ClickElement" },
+    { Qt::Key_A, "FocusElement" },
+    { Qt::Key_X, "HoverElement" },
+    { Qt::Key_G, "OpenCommand" },
+    { Qt::Key_I, "OpenOnRootForeground" },
+    { Qt::Key_J, "OpenInNewViewNodeForeground" },
+    { Qt::Key_M, "OpenInNewDirectoryForeground" },
+    { Qt::Key_K, "ClickElement" },
+    { Qt::Key_Semicolon, "FocusElement" },
+    { Qt::Key_Comma, "HoverElement" },
+    { Qt::Key_H, "OpenCommand" },
+};
 
 #endif

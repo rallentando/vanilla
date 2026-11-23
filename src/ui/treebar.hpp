@@ -255,12 +255,8 @@ public:
     void SwapWithNext(int index);
     void SwapWithPrev(int index);
 
-    QMenu *MakeNodeMenu();
-
 public slots:
     void NewViewNode();
-    void CloneViewNode();
-    void DisplayTrashTree();
 
 protected:
     void timerEvent(QTimerEvent *ev) override;
@@ -384,6 +380,8 @@ public slots:
 
     void OpenViewNodeWithDefault();
     void OpenViewNodeWithCommand();
+    void CopyViewNodeUrl();
+    void OpenTargetCommand();
 
     void ResetTargetPosition();
 

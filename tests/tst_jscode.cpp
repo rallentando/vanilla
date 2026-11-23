@@ -53,10 +53,8 @@ private:
         ADD(FireClickEventJsCode(xpath, pos));
         ADD(GetScrollValuePointJsCode());
         ADD(SetScrollValuePointJsCode(pos));
-#ifdef MEDIATIME
         ADD(GetMediaTimeJsCode());
         ADD(SetMediaTimeJsCode(12.5f));
-#endif
         ADD(GetScrollBarStateJsCode());
         ADD(GetScrollRatioPointJsCode());
         ADD(SetScrollRatioPointJsCode(ratio));
@@ -74,6 +72,8 @@ private:
         ADD(ToggleMediaControlsJsCode());
         ADD(ToggleMediaLoopJsCode());
         ADD(ToggleMediaPlayPauseJsCode());
+        ADD(ToggleMediaPlayPauseJsCode(pos));
+        ADD(ToggleMediaMuteAtJsCode(pos));
         ADD(InstallEventFilterJsCode(types));
 #ifdef EDGEWEBVIEW
         ADD(EdgeInputBridgeJsCode(QList<int>() << 81 << 87, QList<int>() << 81));
@@ -105,10 +105,8 @@ private slots:
     void everyHelperIsJavascript(){
         QJSEngine engine;
         const QList<NamedScript> helpers = Helpers();
-        int expected = 40;
-#ifdef MEDIATIME
+        int expected = 42;
         expected += 2;
-#endif
 #ifdef EDGEWEBVIEW
         expected += 3;
 #endif
@@ -1033,6 +1031,245 @@ private slots:
         QCOMPARE(engine.evaluate(QStringLiteral("init.clientY")).toInt(), 4);
     }
 
+    void theHitTestFindsAPlayerUnderItsCover(){
+        QJSEngine engine;
+        const QJSValue setup = engine.evaluate(QStringLiteral(
+            "var top = {}, devicePixelRatio = 1;\n"
+            "var location = { protocol: 'https:', hostname: 'example.com', port: '' };\n"
+            "function el(tag, parent, extra){\n"
+            "    var e = { tagName: tag, nodeType: 1, parentNode: parent, childNodes: [],\n"
+            "              getBoundingClientRect: function(){ return { left: 0, top: 0, width: 9, height: 9 }; },\n"
+            "              getClientRects: function(){ return []; },\n"
+            "              getAttribute: function(){ return null; } };\n"
+            "    for(var k in extra) e[k] = extra[k];\n"
+            "    if(parent) parent.childNodes.push(e);\n"
+            "    return e;\n"
+            "}\n"
+            "var document = { nodeType: 9, childNodes: [], defaultView: top,\n"
+            "    documentElement: { scrollLeft: 0, scrollTop: 0 }, body: {},\n"
+            "    getElementsByTagName: function(){ return []; } };\n"
+            "var box = el('DIV', document, { ownerDocument: document });\n"
+            "var video = el('VIDEO', box, { ownerDocument: document, src: '', currentSrc: 'https://example.com/v.mp4' });\n"
+            "var cover = el('DIV', box, { ownerDocument: document });\n"
+            "var image = el('IMG', box, { ownerDocument: document, src: 'https://example.com/i.png' });\n"
+            "var hit = cover, stack = [cover, video, box];\n"
+            "document.elementFromPoint = function(){ return hit; };\n"
+            "document.elementsFromPoint = function(){ return stack; };\n"));
+        QVERIFY2(!setup.isError(), qPrintable(setup.toString()));
+
+        QJSValue data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QVERIFY2(!data.isError(), qPrintable(data.toString()));
+        QCOMPARE(data.property(QStringLiteral("imageUrl")).toString(), QStringLiteral("https://example.com/v.mp4"));
+        QVERIFY(data.property(QStringLiteral("isMedia")).toBool());
+        QCOMPARE(data.property(QStringLiteral("tagName")).toString(), QStringLiteral("DIV"));
+
+        engine.evaluate(QStringLiteral("stack = [cover, box];"));
+        data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QVERIFY(data.property(QStringLiteral("imageUrl")).isUndefined());
+        QVERIFY(!data.property(QStringLiteral("isMedia")).toBool());
+
+        engine.evaluate(QStringLiteral("hit = image; stack = [image, video];"));
+        data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QCOMPARE(data.property(QStringLiteral("imageUrl")).toString(), QStringLiteral("https://example.com/i.png"));
+        QVERIFY(!data.property(QStringLiteral("isMedia")).toBool());
+    }
+
+    void theMediaTogglesTakeThePlayerUnderTheMenu(){
+        QJSEngine engine;
+        const QJSValue setup = engine.evaluate(QStringLiteral(
+            "function rect(w, h){ return function(){ return { width: w, height: h }; }; }\n"
+            "var small = { tagName: 'VIDEO', paused: true, muted: false, loop: false,\n"
+            "              getBoundingClientRect: rect(10, 10) };\n"
+            "var large = { tagName: 'VIDEO', paused: true, muted: false, loop: false,\n"
+            "              getBoundingClientRect: rect(100, 100) };\n"
+            "var cover = { tagName: 'DIV' };\n"
+            "var asked = null;\n"
+            "var document = {\n"
+            "    querySelectorAll: function(){ return [small, large]; },\n"
+            "    elementsFromPoint: function(x, y){ asked = [x, y];\n"
+            "        return x == 3 ? [cover, small] : [cover]; } };\n"));
+        QVERIFY2(!setup.isError(), qPrintable(setup.toString()));
+
+        QJSValue result = engine.evaluate(View::ToggleMediaLoopJsCode(QPoint(3, 4)));
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+        QVERIFY(engine.evaluate(QStringLiteral("small.loop && !large.loop")).toBool());
+        QVERIFY(engine.evaluate(QStringLiteral("asked[0] == 3 && asked[1] == 4")).toBool());
+        engine.evaluate(View::ToggleMediaLoopJsCode(QPoint(5, 5)));
+        QVERIFY(engine.evaluate(QStringLiteral("large.loop")).toBool());
+        engine.evaluate(QStringLiteral("asked = null;"));
+        engine.evaluate(View::ToggleMediaControlsJsCode());
+        QVERIFY(engine.evaluate(QStringLiteral("asked === null && large.controls === true")).toBool());
+
+        QVERIFY(engine.evaluate(View::ToggleMediaMuteAtJsCode(QPoint(3, 4))).toBool());
+        QVERIFY(engine.evaluate(QStringLiteral("small.muted && !large.muted")).toBool());
+        QVERIFY(!engine.evaluate(View::ToggleMediaMuteAtJsCode(QPoint(5, 5))).toBool());
+        QVERIFY(engine.evaluate(QStringLiteral("!large.muted")).toBool());
+    }
+
+    void thePlayerInAFrameOrAComponentIsTheOneThere(){
+        QJSEngine engine;
+        const QJSValue setup = engine.evaluate(QStringLiteral(
+            "function rect(l, t, w, h){ return function(){ return { left: l, top: t, width: w, height: h }; }; }\n"
+            "var outer = { tagName: 'VIDEO', paused: true, loop: false, currentSrc: 'https://example.com/o.mp4',\n"
+            "              getBoundingClientRect: rect(0, 0, 100, 100) };\n"
+            "var inner = { tagName: 'VIDEO', paused: true, loop: false, currentSrc: 'https://example.com/i.mp4',\n"
+            "              outerHTML: '<video>', getBoundingClientRect: rect(0, 0, 10, 10) };\n"
+            "var cover = { tagName: 'DIV' };\n"
+            "var shadow = { elementsFromPoint: function(x, y){ return [cover, inner, host]; } };\n"
+            "var host = { tagName: 'X-PLAYER', shadowRoot: shadow };\n"
+            "var asked = null;\n"
+            "var frameDocument = { elementsFromPoint: function(x, y){ asked = [x, y]; return [inner]; } };\n"
+            "var frame = { tagName: 'IFRAME', contentDocument: frameDocument, getBoundingClientRect: rect(20, 30, 50, 50),\n"
+            "              clientLeft: 2, clientTop: 3 };\n"
+            "var stack = [host];\n"
+            "var document = {\n"
+            "    querySelectorAll: function(){ return [outer]; },\n"
+            "    elementsFromPoint: function(){ return stack; } };\n"));
+        QVERIFY2(!setup.isError(), qPrintable(setup.toString()));
+
+        QJSValue result = engine.evaluate(View::ToggleMediaLoopJsCode(QPoint(3, 4)));
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+        QVERIFY(engine.evaluate(QStringLiteral("inner.loop && !outer.loop")).toBool());
+
+        engine.evaluate(QStringLiteral("inner.loop = false; stack = [frame];"));
+        engine.evaluate(View::ToggleMediaLoopJsCode(QPoint(25, 35)));
+        QVERIFY(engine.evaluate(QStringLiteral("inner.loop && !outer.loop")).toBool());
+        QVERIFY(engine.evaluate(QStringLiteral("asked[0] == 3 && asked[1] == 2")).toBool());
+
+        engine.evaluate(QStringLiteral(
+            "inner.loop = false;\n"
+            "Object.defineProperty(frame, 'contentDocument', { get: function(){ throw new Error('origin'); } });"));
+        engine.evaluate(View::ToggleMediaLoopJsCode(QPoint(25, 35)));
+        QVERIFY(engine.evaluate(QStringLiteral("!inner.loop && outer.loop")).toBool());
+
+        const QJSValue page = engine.evaluate(QStringLiteral(
+            "var top = {}, devicePixelRatio = 1;\n"
+            "var location = { protocol: 'https:', hostname: 'example.com', port: '' };\n"
+            "host.ownerDocument = document; host.parentNode = document; host.childNodes = [];\n"
+            "host.nodeType = 1; host.getAttribute = function(){ return null; };\n"
+            "host.getBoundingClientRect = rect(0, 0, 9, 9); host.getClientRects = function(){ return []; };\n"
+            "document.nodeType = 9; document.childNodes = [host]; document.defaultView = top;\n"
+            "document.documentElement = { scrollLeft: 0, scrollTop: 0 }; document.body = {};\n"
+            "document.getElementsByTagName = function(){ return []; };\n"
+            "document.elementFromPoint = function(){ return host; };\n"
+            "stack = [host];\n"));
+        QVERIFY2(!page.isError(), qPrintable(page.toString()));
+        const QJSValue data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QVERIFY2(!data.isError(), qPrintable(data.toString()));
+        QCOMPARE(data.property(QStringLiteral("imageUrl")).toString(), QStringLiteral("https://example.com/i.mp4"));
+        QVERIFY(data.property(QStringLiteral("isMedia")).toBool());
+        QCOMPARE(data.property(QStringLiteral("tagName")).toString(), QStringLiteral("X-PLAYER"));
+    }
+
+    void theLinkAndTheImageInAFrameAreTheOnesThere(){
+        QJSEngine engine;
+        const QJSValue setup = engine.evaluate(QStringLiteral(
+            "var asked = null;\n"
+            "var anchor = { href: 'https://example.com/a', parentNode: null };\n"
+            "var image = { src: 'https://example.com/i.png', parentNode: null };\n"
+            "var target = anchor;\n"
+            "var frameDocument = { elementFromPoint: function(x, y){ asked = [x, y]; return target; } };\n"
+            "var frame = { tagName: 'IFRAME', contentDocument: frameDocument, clientLeft: 2, clientTop: 3,\n"
+            "              getBoundingClientRect: function(){ return { left: 20, top: 30 }; } };\n"
+            "var document = { elementFromPoint: function(){ return frame; } };\n"));
+        QVERIFY2(!setup.isError(), qPrintable(setup.toString()));
+
+        QCOMPARE(engine.evaluate(View::HitLinkUrlJsCode(QPoint(25, 35))).toString(),
+                 QStringLiteral("https://example.com/a"));
+        QVERIFY(engine.evaluate(QStringLiteral("asked[0] == 3 && asked[1] == 2")).toBool());
+
+        engine.evaluate(QStringLiteral("target = image; asked = null;"));
+        QCOMPARE(engine.evaluate(View::HitImageUrlJsCode(QPoint(25, 35))).toString(),
+                 QStringLiteral("https://example.com/i.png"));
+        QVERIFY(engine.evaluate(QStringLiteral("asked[0] == 3 && asked[1] == 2")).toBool());
+    }
+
+    void theHitTestTellsTheFocusedField(){
+        QJSEngine engine;
+        const QJSValue setup = engine.evaluate(QStringLiteral(
+            "var top = {}, devicePixelRatio = 1;\n"
+            "var location = { protocol: 'https:', hostname: 'example.com', port: '' };\n"
+            "function el(tag, parent, extra){\n"
+            "    var e = { tagName: tag, nodeType: 1, parentNode: parent, childNodes: [],\n"
+            "              getBoundingClientRect: function(){ return { left: 0, top: 0, width: 9, height: 9 }; },\n"
+            "              getClientRects: function(){ return []; },\n"
+            "              getAttribute: function(){ return null; } };\n"
+            "    for(var k in extra) e[k] = extra[k];\n"
+            "    if(parent) parent.childNodes.push(e);\n"
+            "    return e;\n"
+            "}\n"
+            "var document = { nodeType: 9, childNodes: [], defaultView: top,\n"
+            "    documentElement: { scrollLeft: 0, scrollTop: 0 }, body: {},\n"
+            "    getElementsByTagName: function(){ return []; },\n"
+            "    elementsFromPoint: function(){ return []; } };\n"
+            "var mail = el('INPUT', null, { type: 'email' });\n"
+            "var other = el('INPUT', null, { type: 'text' });\n"
+            "var shadow = { activeElement: mail, elementFromPoint: function(){ return mail; },\n"
+            "               elementsFromPoint: function(){ return [mail]; } };\n"
+            "var host = el('X-FIELD', document, { ownerDocument: document, shadowRoot: shadow });\n"
+            "document.activeElement = host;\n"
+            "document.elementFromPoint = function(){ return host; };\n"));
+        QVERIFY2(!setup.isError(), qPrintable(setup.toString()));
+
+        QJSValue data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QVERIFY2(!data.isError(), qPrintable(data.toString()));
+        QVERIFY(data.property(QStringLiteral("isFocusedField")).toBool());
+        engine.evaluate(QStringLiteral("shadow.activeElement = other;"));
+        data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QVERIFY(!data.property(QStringLiteral("isFocusedField")).toBool());
+        engine.evaluate(QStringLiteral("shadow.activeElement = mail; mail.type = 'submit';"));
+        data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QVERIFY(!data.property(QStringLiteral("isFocusedField")).toBool());
+
+        const QJSValue framed = engine.evaluate(QStringLiteral(
+            "mail.type = 'email';\n"
+            "var asked = null;\n"
+            "var inside = { activeElement: mail,\n"
+            "               elementFromPoint: function(x, y){ asked = [x, y]; return mail; } };\n"
+            "var frame = el('IFRAME', null, { contentDocument: inside, clientLeft: 2, clientTop: 1,\n"
+            "    getBoundingClientRect: function(){ return { left: 1, top: 1, width: 50, height: 50 }; } });\n"
+            "shadow.activeElement = frame;\n"
+            "shadow.elementFromPoint = function(){ return frame; };\n"));
+        QVERIFY2(!framed.isError(), qPrintable(framed.toString()));
+        data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QVERIFY2(!data.isError(), qPrintable(data.toString()));
+        QVERIFY(data.property(QStringLiteral("isFocusedField")).toBool());
+        QVERIFY(engine.evaluate(QStringLiteral("asked[0] == 0 && asked[1] == 2")).toBool());
+        engine.evaluate(QStringLiteral("inside.activeElement = other;"));
+        data = engine.evaluate(View::HitElementJsCode(QPoint(3, 4)));
+        QVERIFY(!data.property(QStringLiteral("isFocusedField")).toBool());
+    }
+
+    void theHitTestGoesIntoAFrameInsideItsBorder(){
+        QJSEngine engine;
+        const QJSValue setup = engine.evaluate(QStringLiteral(
+            "var top = {}, devicePixelRatio = 1;\n"
+            "var location = { protocol: 'https:', hostname: 'example.com', port: '' };\n"
+            "var asked = null;\n"
+            "var inner = { nodeType: 9, childNodes: [], documentElement: {}, body: {},\n"
+            "    elementsFromPoint: function(){ return []; } };\n"
+            "var field = { tagName: 'TEXTAREA', nodeType: 1, parentNode: inner, childNodes: [], ownerDocument: inner,\n"
+            "    getBoundingClientRect: function(){ return { left: 0, top: 0, width: 9, height: 9 }; },\n"
+            "    getClientRects: function(){ return []; }, getAttribute: function(){ return null; } };\n"
+            "inner.childNodes.push(field);\n"
+            "inner.activeElement = field;\n"
+            "inner.elementFromPoint = function(x, y){ asked = [x, y]; return field; };\n"
+            "var document = { nodeType: 9, childNodes: [], defaultView: top,\n"
+            "    documentElement: { scrollLeft: 0, scrollTop: 0 }, body: {},\n"
+            "    getElementsByTagName: function(){ return []; } };\n"
+            "var frame = { tagName: 'IFRAME', contentDocument: inner, clientLeft: 2, clientTop: 3,\n"
+            "    getBoundingClientRect: function(){ return { left: 20, top: 30, width: 50, height: 50 }; } };\n"
+            "inner.defaultView = { frameElement: frame, parent: top };\n"
+            "document.elementFromPoint = function(){ return frame; };\n"));
+        QVERIFY2(!setup.isError(), qPrintable(setup.toString()));
+        const QJSValue data = engine.evaluate(View::HitElementJsCode(QPoint(25, 35)));
+        QVERIFY2(!data.isError(), qPrintable(data.toString()));
+        QVERIFY(engine.evaluate(QStringLiteral("asked[0] == 3 && asked[1] == 2")).toBool());
+        QVERIFY(data.property(QStringLiteral("isFocusedField")).toBool());
+        QCOMPARE(data.property(QStringLiteral("x")).toInt(), 22);
+        QCOMPARE(data.property(QStringLiteral("y")).toInt(), 33);
+    }
+
     void theCollectorWalksShadowRoots(){
         QJSEngine engine;
         const QJSValue setup = engine.evaluate(ShadowTree() + View::CollectElementsJsCode());
@@ -1076,20 +1313,32 @@ private slots:
     }
 
     void noDropHandlerEscapesTheTextItself(){
+        auto read = [](const QString &name){
+            QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + name);
+            if(!file.open(QFile::ReadOnly | QFile::Text)) return QString();
+            return QString::fromUtf8(file.readAll());
+        };
+
+        const QString view = read(QStringLiteral("/view/view.cpp"));
+        const int begin = view.indexOf(QStringLiteral("void View::DropWithGestures("));
+        QVERIFY(begin >= 0);
+        const int end = view.indexOf(QStringLiteral("\n}\n"), begin);
+        QVERIFY(end > begin);
+        const QString body = view.mid(begin, end - begin);
+        QVERIFY2(!body.contains(QStringLiteral("text.replace(")),
+                 "the drop handler escapes the dropped text itself (A-25)");
+        QVERIFY(body.contains(QStringLiteral("SetText(text)")));
+
         static const QStringList sources = QStringList()
             << QStringLiteral("/view/webengine/webengineview.cpp")
             << QStringLiteral("/view/webengine/quickwebengineview.cpp")
             << QStringLiteral("/view/quicknativewebview.cpp");
 
         foreach(const QString &name, sources){
-            QFile file(QStringLiteral(VANILLA_SOURCE_DIR) + name);
-            QVERIFY2(file.open(QFile::ReadOnly | QFile::Text),
-                     qPrintable(file.fileName()));
-            const QString source = QString::fromUtf8(file.readAll());
-            file.close();
-
-            QVERIFY2(source.contains(QStringLiteral("::dropEvent(")),
-                     qPrintable(name + QStringLiteral(" has no dropEvent")));
+            const QString source = read(name);
+            QVERIFY2(!source.isEmpty(), qPrintable(name));
+            QVERIFY2(source.contains(QStringLiteral("DropWithGestures(ev, hooks)")),
+                     qPrintable(name + QStringLiteral(" does not hand its drop to 'View'")));
             QVERIFY2(!source.contains(QStringLiteral("text.replace(")),
                      qPrintable(name + QStringLiteral(" escapes the dropped "
                                                       "text itself (A-25)")));

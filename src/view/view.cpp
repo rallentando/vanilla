@@ -1,12 +1,13 @@
 #include "switch.hpp"
 #include "const.hpp"
 #include "theme.hpp"
-#include "keymap.hpp"
-#include "mousemap.hpp"
 
 #include "view.hpp"
+#include "menuschema.hpp"
 #include "inputmap.hpp"
+#include "inputmapschema.hpp"
 #include "devicescale.hpp"
+#include "menuiconrow.hpp"
 #include "extensioncontroller.hpp"
 
 #include <functional>
@@ -25,6 +26,7 @@
 #include <QWidgetAction>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPainter>
 #include <QDrag>
 #include <QMimeData>
 #include <QLineF>
@@ -176,7 +178,6 @@ View::View(TreeBank *parent, QString id, QStringList set){
     m_Page = 0;
     m_EnableDragGestureLocal = m_EnableDragGesture;
     m_EnableRightGestureLocal = m_EnableMouseGesture;
-    m_LoadProgress = 0;
     m_IsLoading = false;
     m_DisplayObscured = false;
 }
@@ -730,6 +731,16 @@ QWidgetAction *View::MenuCaption(QMenu *menu, const QString &text, Qt::Alignment
     return action;
 }
 
+static bool IsHeldByIconRow(QMenu *menu, const QString &name){
+    if(name == QStringLiteral("OpenCommand")) return true;
+    MenuIconRow *row = MenuIconRow::Of(menu);
+    return row && row->Holds(name);
+}
+
+void View::AddMenuCommandCell(QMenu *menu, QAction *action){
+    if(MenuIconRow *row = MenuIconRow::Of(menu)) row->AddCommandCell(action);
+}
+
 void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType type){
     QVariant data = QVariant::fromValue(elem);
 
@@ -742,22 +753,57 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
     const QString slash = QStringLiteral("/");
     const QString quest = QStringLiteral("?");
 
-    if(linkUrl.isEmpty() && imageUrl.isEmpty() && m_SelectedText.isEmpty()){
-
-        if(CanGoBack())    menu->addAction(Action(Page::_Back));
-        if(CanGoForward()) menu->addAction(Action(Page::_Forward));
-
-        if(!EnableDestinationInferrer()){
-            if(CanGoBack())
-                menu->addAction(Action(Page::_Rewind));
-            menu->addAction(Action(Page::_FastForward));
+    {
+        QStringList parts;
+        if(!linkUrl.isEmpty()) parts << QStringLiteral("LinkMenu");
+        if(!imageUrl.isEmpty())
+            parts << (type == Page::MediaTypePlayable ? QStringLiteral("MediaMenu") : QStringLiteral("ImageMenu"));
+        if(editable) parts << QStringLiteral("TextMenu");
+        if(!m_SelectedText.isEmpty()) parts << QStringLiteral("SelectionMenu");
+        if(parts.isEmpty()) parts << QStringLiteral("RegularMenu");
+        MenuIconRow *row = new MenuIconRow(menu);
+        for(const QString &lines : parts){
+            const MenuSchema::Table *icons = MenuSchema::IconsOf(lines);
+            if(!icons) continue;
+            row->AddDivider();
+            for(const QString &name : MenuSchema::Current(Application::GlobalSettings(), *icons)){
+                if(!MenuSchema::IsKnown(*icons, name) || row->Holds(name)) continue;
+                QString icon = MenuIconRow::IconOf(name);
+                bool enabled = true;
+                QAction *action = nullptr;
+                if(name == QStringLiteral("Back")){
+                    action = Action(Page::_Back);
+                    enabled = CanGoBack();
+                } else if(name == QStringLiteral("Forward")){
+                    action = Action(Page::_Forward);
+                    enabled = CanGoForward();
+                } else if(name == QStringLiteral("Rewind")){
+                    action = Action(Page::_Rewind);
+                    enabled = CanGoBack() && !EnableDestinationInferrer();
+                } else if(name == QStringLiteral("FastForward")){
+                    action = Action(Page::_FastForward);
+                    enabled = !EnableDestinationInferrer();
+                } else if(name == QStringLiteral("Reload")){
+                    action = Action(IsLoading() ? Page::_Stop : Page::_Reload);
+                    if(IsLoading()) icon = QStringLiteral("Stop");
+                } else {
+                    action = Action(name, data);
+                    if(name == QStringLiteral("ToggleMediaMute") && action && action->isChecked())
+                        icon = QStringLiteral("Muted");
+                }
+                if(action) row->AddCell(name, action, icon, enabled);
+            }
         }
-
-        if(IsLoading())
-            menu->addAction(Action(Page::_Stop));
-        else
-            menu->addAction(Action(Page::_Reload));
+        row->Install();
     }
+    const auto held = [menu](const QString &name){
+        return IsHeldByIconRow(menu, name);
+    };
+    const auto separate = [menu](){
+        const QList<QAction*> actions = menu->actions();
+        if(!actions.isEmpty() && qobject_cast<QWidgetAction*>(actions.last())) return;
+        menu->addSeparator();
+    };
 
     if(!linkUrl.isEmpty()){
         if(!menu->isEmpty()) menu->addSeparator();
@@ -769,11 +815,12 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
             name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
         name = QStringLiteral("(") + name + QStringLiteral(")");
 
-        for(QString str : View::GetLinkMenu().split(comma)){
+        for(QString str : View::GetLinkMenu().split(comma, Qt::SkipEmptyParts)){
             if(str == QStringLiteral("LinkUrl")){
                 menu->addAction(MenuCaption(menu, name, Qt::AlignLeft));
             }
-            else if(str == QStringLiteral("Separator")) menu->addSeparator();
+            else if(str == QStringLiteral("Separator")) separate();
+            else if(held(str)) continue;
             else if(str == QStringLiteral("OpenLinkWithOtherBrowser"))
                 menu->addMenu(OpenLinkWithOtherBrowserMenu(data));
             else menu->addAction(Action(str, data));
@@ -794,11 +841,12 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
             name = name.left(max_filename_length_at_contextmenu) + QStringLiteral("...");
         name = QStringLiteral("(") + name + QStringLiteral(")");
 
-        for(QString str : type == Page::MediaTypePlayable ? View::GetMediaMenu().split(comma) : View::GetImageMenu().split(comma)){
+        for(QString str : type == Page::MediaTypePlayable ? View::GetMediaMenu().split(comma, Qt::SkipEmptyParts) : View::GetImageMenu().split(comma, Qt::SkipEmptyParts)){
             if(str == QStringLiteral("ImageUrl") || str == QStringLiteral("MediaUrl")){
                 menu->addAction(MenuCaption(menu, name, Qt::AlignLeft));
             }
-            else if(str == QStringLiteral("Separator")) menu->addSeparator();
+            else if(str == QStringLiteral("Separator")) separate();
+            else if(held(str)) continue;
             else if(str == QStringLiteral("OpenImageWithOtherBrowser"))
                 menu->addMenu(OpenImageWithOtherBrowserMenu(data));
             else if(str == QStringLiteral("OpenMediaWithOtherBrowser"))
@@ -810,8 +858,9 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
     if(editable){
         if(!menu->isEmpty()) menu->addSeparator();
 
-        for(QString str : View::GetTextMenu().split(comma)){
+        for(QString str : View::GetTextMenu().split(comma, Qt::SkipEmptyParts)){
             if(str == QStringLiteral("Separator")) menu->addSeparator();
+            else if(held(str)) continue;
             else menu->addAction(Action(str, data));
         }
     }
@@ -820,8 +869,9 @@ void View::AddContextMenu(QMenu *menu, SharedWebElement elem, Page::MediaType ty
         if(!menu->isEmpty() && !editable)
             menu->addSeparator();
 
-        for(QString str : View::GetSelectionMenu().split(comma)){
+        for(QString str : View::GetSelectionMenu().split(comma, Qt::SkipEmptyParts)){
             if     (str == QStringLiteral("Separator"))  menu->addSeparator();
+            else if(held(str)) continue;
             else if(str == QStringLiteral("SearchMenu")) menu->addMenu(SearchMenu());
             else menu->addAction(Action(str, data));
         }
@@ -905,8 +955,9 @@ void View::AddRegularMenu(QMenu *menu, SharedWebElement elem){
 
     if(!menu->isEmpty()) menu->addSeparator();
 
-    for(QString str : View::GetRegularMenu().split(comma)){
+    for(QString str : View::GetRegularMenu().split(comma, Qt::SkipEmptyParts)){
         if     (str == QStringLiteral("Separator"))       menu->addSeparator();
+        else if(IsHeldByIconRow(menu, str)) continue;
         else if(str == QStringLiteral("BookmarkletMenu")) menu->addMenu(BookmarkletMenu());
         else if(str == QStringLiteral("OpenWithOtherBrowser"))
             menu->addMenu(OpenWithOtherBrowserMenu());
@@ -1062,80 +1113,34 @@ void View::LoadSettings(){
     gwes->setFontSize(QWebEngineSettings::DefaultFixedFontSize,   s.value(QStringLiteral("webview/font/DefaultFixedFontSize"),   EngineDefault(gwes, QWebEngineSettings::DefaultFixedFontSize)   ).value<int>());
 #endif
 
-    m_LinkMenu = s.value(QStringLiteral("webview/menu/LinkMenu"), QStringLiteral(
-        "LinkUrl,"
-        "OpenLink,"
-        "DownloadLink,"
-        "CopyLinkUrl,"
-        "CopyLinkHtml,"
-        "OpenLinkWithOtherBrowser")).value<QString>();
-
-    m_ImageMenu = s.value(QStringLiteral("webview/menu/ImageMenu"), QStringLiteral(
-        "ImageUrl,"
-        "OpenImage,"
-        "DownloadImage,"
-        "CopyImage,"
-        "CopyImageUrl,"
-        "CopyImageHtml,"
-        "OpenImageWithOtherBrowser")).value<QString>();
-
-    m_MediaMenu = s.value(QStringLiteral("webview/menu/MediaMenu"), QStringLiteral(
-        "MediaUrl,"
-        "ToggleMediaPlayPause,"
-        "ToggleMediaMute,"
-        "ToggleMediaLoop,"
-        "Separator,"
-        "OpenMedia,"
-        "DownloadMedia,"
-        "CopyMediaUrl,"
-        "CopyMediaHtml,"
-        "OpenMediaWithOtherBrowser")).value<QString>();
-
-    m_TextMenu = s.value(QStringLiteral("webview/menu/TextMenu"), QStringLiteral(
-        "Undo,"
-        "Redo,"
-        "SelectAll,"
-        "Paste,"
-        "Cut")).value<QString>();
-
-    m_SelectionMenu = s.value(QStringLiteral("webview/menu/SelectionMenu"), QStringLiteral(
-        "Copy,"
-        "CopySelectedHtml,"
-        "Separator,"
-        "SearchMenu,"
-        "OpenAllUrl,"
-        "SaveAllUrl,"
-        "OpenAllImage,"
-        "SaveAllImage,"
-        "OpenTextAsUrl,"
-        "SaveTextAsUrl")).value<QString>();
-
-    m_RegularMenu = s.value(QStringLiteral("webview/menu/RegularMenu"), QStringLiteral(
-        "NewViewNode,"
-        "CloneViewNode,"
-        "CopyUrl,"
-        "CopyPageAsLink,"
-        "OpenWithOtherBrowser,"
-        "ViewOrApplySource")).value<QString>();
+    const auto read = [&s](const char *name){
+        return MenuSchema::Current(s, *MenuSchema::Find(QString::fromLatin1(name))).join(QLatin1Char(','));
+    };
+    m_LinkMenu      = read("LinkMenu");
+    m_ImageMenu     = read("ImageMenu");
+    m_MediaMenu     = read("MediaMenu");
+    m_TextMenu      = read("TextMenu");
+    m_SelectionMenu = read("SelectionMenu");
+    m_RegularMenu   = read("RegularMenu");
 
     {
-        WEBVIEW_KEYMAP
+        m_KeyMap = InputMapSchema::DefaultKeyMap(QStringLiteral("webview/keymap"));
         InputMap::LoadKeyMap(s, QStringLiteral("webview/keymap"), m_KeyMap, InputMap::Hooks(Page::IsValidAction));
     }
     {
-        WEBVIEW_MOUSEMAP
+        m_MouseMap = InputMapSchema::DefaultGestureMap(QStringLiteral("webview/mouse"));
         InputMap::LoadGestureMap(s, QStringLiteral("webview/mouse"), m_MouseMap, InputMap::Hooks(Page::IsValidAction));
     }
     {
-        WEBVIEW_RIGHTGESTURE
+        m_RightGestureMap = InputMapSchema::DefaultGestureMap(QStringLiteral("webview/rightgesture"));
         InputMap::LoadGestureMap(s, QStringLiteral("webview/rightgesture"), m_RightGestureMap, InputMap::Hooks(Page::IsValidAction));
     }
     {
-        WEBVIEW_DRAGGESTURE
+        m_DragGestureMap = InputMapSchema::DefaultGestureMap(QStringLiteral("webview/leftgesture"));
         InputMap::LoadGestureMap(s, QStringLiteral("webview/leftgesture"), m_DragGestureMap, InputMap::Hooks(Page::IsValidAction));
     }
     {
-        WEBVIEW_SCROLLGESTURE
+        m_ScrollGestureMap = InputMapSchema::DefaultGestureMap(QStringLiteral("webview/scrollgesture"));
         InputMap::LoadGestureMap(s, QStringLiteral("webview/scrollgesture"), m_ScrollGestureMap, InputMap::Hooks(Page::IsValidAction));
     }
     {   QStringList keys = s.allKeys(QStringLiteral("webview/searchengine"));
@@ -1211,13 +1216,6 @@ void View::SaveSettings(){
     if(schemePolicy == QWebEngineSettings::AllowAllUnknownUrlSchemes)
         s.setValue(QStringLiteral("webview/detail/UnknownUrlSchemePolicy"), QStringLiteral("AllowAllUnknownUrlSchemes"));
 #endif
-
-    s.setValue(QStringLiteral("webview/menu/LinkMenu"),      m_LinkMenu);
-    s.setValue(QStringLiteral("webview/menu/ImageMenu"),     m_ImageMenu);
-    s.setValue(QStringLiteral("webview/menu/MediaMenu"),     m_MediaMenu);
-    s.setValue(QStringLiteral("webview/menu/TextMenu"),      m_TextMenu);
-    s.setValue(QStringLiteral("webview/menu/SelectionMenu"), m_SelectionMenu);
-    s.setValue(QStringLiteral("webview/menu/RegularMenu"),   m_RegularMenu);
 
     InputMap::SaveKeyMap    (s, QStringLiteral("webview/keymap"),        m_KeyMap);
     InputMap::SaveGestureMap(s, QStringLiteral("webview/mouse"),         m_MouseMap);
@@ -1382,7 +1380,7 @@ void View::ApplySpecificSettings(QStringList set){
 namespace {
 
     void Wire(bool on, QObject *sender, const char *signal, QObject *receiver, const char *slot){
-        if(on) QObject::connect(sender, signal, receiver, slot);
+        if(on) QObject::connect(sender, signal, receiver, slot, Qt::UniqueConnection);
         else   QObject::disconnect(sender, signal, receiver, slot);
     }
 
@@ -1616,15 +1614,7 @@ void View::Load(const QNetworkRequest &req){
             else
                 TriggerNativeLoadAction(QNetworkRequest(BLANK_URL));
         } else if(str.startsWith(QStringLiteral("view-source:"))){
-            bool native = false;
-#ifdef WEBENGINEVIEW
-            if(qobject_cast<WebEngineView*>(base()) ||
-               qobject_cast<QuickWebEngineView*>(base())) native = true;
-#endif
-#ifdef EDGEWEBVIEW
-            if(qobject_cast<EdgeWebView*>(base())) native = true;
-#endif
-            if(native) TriggerNativeLoadAction(newreq.url());
+            if(TreeBank::DrawsViewSource(this)) TriggerNativeLoadAction(newreq.url());
             else       SetSource(QUrl::fromEncoded(str.toLatin1()));
         } else {
             TriggerNativeLoadAction(newreq);
@@ -1891,6 +1881,60 @@ void View::MouseReleaseWithGestures(QMouseEvent *ev, const ButtonHooks &hooks){
     ev->setAccepted(hooks.acceptForwarded);
 }
 
+void View::DropWithGestures(QDropEvent *ev, const DropHooks &hooks){
+    hooks.clearStatus();
+    bool isLocal = false;
+    QPoint pos = ev->position().toPoint();
+    QObject *source = ev->source();
+    QString text = ev->mimeData()->text();
+    QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
+
+    for(QUrl u : std::as_const(urls)){ if(u.isLocalFile()) isLocal = true;}
+
+    if(text.isEmpty() && !urls.isEmpty()){
+        foreach(QUrl u, urls){
+            if(text.isEmpty()) text = u.toString();
+            else text += QStringLiteral("\n") + u.toString();
+        }
+    }
+
+    const bool own = IsOwnDragSource(source);
+
+    CallWithHitElement(pos, [this, pos, own, text, urls](SharedWebElement elem){
+
+    if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
+
+        GestureAborted();
+        elem->SetText(text);
+        return;
+    }
+
+    if(!m_Gesture.isEmpty() && own){
+        GestureFinished(pos, Qt::LeftButton);
+        return;
+    }
+
+    GestureAborted();
+
+    if(!urls.isEmpty() && !own){
+        m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
+    }
+
+    });
+
+    const bool consumed = (!m_Gesture.isEmpty() && own) || (!urls.isEmpty() && !own);
+
+    if(isLocal || consumed ||
+       (DragToStartDownload() && !urls.isEmpty() && own))
+        ;
+    else {
+        if(own && !urls.isEmpty()) MarkOwnDrop();
+        hooks.toEngine(ev);
+    }
+
+    ev->setAccepted(true);
+}
+
 void View::WheelWithMap(QWheelEvent *ev, const WheelHooks &hooks){
     if(ev->source() != Qt::MouseEventSynthesizedBySystem){
         QString wheel;
@@ -2120,7 +2164,6 @@ bool View::RunExtensionCommand(const QKeySequence &seq, const QString &key, bool
 }
 
 void View::OnLoadStarted(){
-    m_LoadProgress = 0;
     m_IsLoading = true;
     static quint64 serial = 0;
     m_LoadSerial = ++serial;
@@ -2132,7 +2175,6 @@ void View::UploadStarted(const QUrl &url){
 }
 
 void View::OnLoadFinished(bool ok){
-    m_LoadProgress = 100;
     m_IsLoading = false;
     RunningUploads::Instance()->Ended(this);
     if(ok) m_RenderProcessLedger.Clear();
@@ -2156,9 +2198,7 @@ void View::ChangeNodeUrl(const QUrl &url){
 void View::SaveViewState(){
     SaveScroll();
     SaveZoom();
-#ifdef MEDIATIME
     SaveMediaTime();
-#endif
 }
 
 void View::RestoreViewState(){

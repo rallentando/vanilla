@@ -3,9 +3,11 @@
 #include "mainwindow.hpp"
 #include "treebank.hpp"
 #include "notifier.hpp"
+#include "lightnode.hpp"
 #include "testsupport.hpp"
 
 #include <QtTest>
+#include <QDir>
 #include <QPainter>
 #include <QTimer>
 
@@ -129,6 +131,31 @@ private slots:
         QVERIFY(m_Notifier->isVisible());
         QCOMPARE(m_Notifier->m_LowerText, QStringLiteral("https://example.com/"));
         m_Notifier->m_StatusTimer->setInterval(NOTIFIER_STATUS_DURATION);
+    }
+
+    void anotherTabTakesTheHoveredLinkAway(){
+        TreeBank *tb = m_Window->GetTreeBank();
+        const QString url = QUrl::fromLocalFile(QDir::tempPath()).toString();
+        ViewNode *a = TreeBank::GetViewRoot()->MakeChild();
+        ViewNode *b = TreeBank::GetViewRoot()->MakeChild();
+        for(ViewNode *vn : {a, b}){
+            vn->SetHoldView(true);
+            vn->SetUrl(QUrl(url));
+        }
+        QVERIFY(tb->SetCurrent(a));
+
+        m_Notifier->SetLink(QStringLiteral("https://example.com/"),
+                            QStringLiteral("Example"), QString());
+        QVERIFY(m_Notifier->isVisible());
+
+        QVERIFY(tb->SetCurrent(b));
+        QVERIFY(m_Notifier->m_UpperText.isEmpty());
+        QVERIFY(m_Notifier->m_LowerText.isEmpty());
+        QVERIFY(!m_Notifier->isVisible());
+
+        QVERIFY(tb->DeleteNode(NodeList() << a << b));
+        QTRY_COMPARE(TreeBank::FreshDeleteCount(), 0);
+        TreeBank::DoDelete();
     }
 
     void theCardIsAsWideAsItsTextUpToItsWidest(){

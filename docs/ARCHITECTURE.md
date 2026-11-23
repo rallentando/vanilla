@@ -1,6 +1,6 @@
 # アーキテクチャ
 
-最終更新: 2026-11-03
+最終更新: 2026-11-22
 
 vanilla の**いまの構造の地図**。何がどのファイルにあり、どう繋がっているかだけを書く。
 
@@ -178,7 +178,7 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 - 保存先ディレクトリの決定、翻訳、ブックマークの入出力、証明書の判断、アイコンのデータベース
 - `BootApplication()` が起動時の初期化をまとめて行う
 - 主窓は最初のフレームを描いてから見せる（`MainWindow::ShowWithFirstFrame`。`show()` の間 DWM の cloak で隠す）。PurgeView とユーザー操作の窓は作った時点で見せる。詳細: D-513
-- アプリが描くタイトルバー（`application/@EnableCustomTitleBar`、D-664 までの名前はフレームレス窓）は、Windows ではシステムの枠から上（キャプション）だけを外し（`WM_NCCALCSIZE`）、タイトルバーは窓の中の子 `TitleBar`（`src/ui/titlebar.cpp`）にする。影・角丸・スナップ・リサイズの縁はシステムのもので、バーはキャプションとして当たり判定に答える（`MainWindow::FramelessNativeEvent`、規則は `WindowFrameHit`）。最大化中の右上の帯とシェード中の帯は別窓の `TitleBar` で、最大化中の帯は窓の高さを伸び縮みさせて上から滑って出入りする（D-665）。Windows 以外は窓の外のタイトルバーと縁の別窓 8 枚。全画面の縁の 1px は `application/@WindowEdgeColor` の色で塗り（`PaintFullScreenBorder`）、最大化中にクライアントの上に残す 1px はその色を DWM のキャプションの色にする（`ApplyEdgeCaption`）。空ならシステムに任せる。詳細: D-658、D-666
+- アプリが描くタイトルバー（`application/@EnableCustomTitleBar`、D-664 までの名前はフレームレス窓）は、Windows ではシステムの枠から上（キャプション）だけを外し（`WM_NCCALCSIZE`）、タイトルバーは窓の中の子 `TitleBar`（`src/ui/titlebar.cpp`）にする。影・角丸・スナップ・リサイズの縁はシステムのもので、バーはキャプションとして当たり判定に答える（`MainWindow::FramelessNativeEvent`、規則は `WindowFrameHit`）。最大化中の右上の帯とシェード中の帯は別窓の `TitleBar` で、最大化中の帯は窓の高さを伸び縮みさせて上から滑って出入りする（D-665）。最大化中の帯はモニターの上端から出してクライアントの上の 1px も覆い、その 1px でシステムが答えるボタンはキャプションにする（`WindowFrameHit::SystemAnswer`、D-696）。Windows 以外は窓の外のタイトルバーと縁の別窓 8 枚。全画面の縁の 1px は `application/@WindowEdgeColor` の色で塗り（`PaintFullScreenBorder`）、最大化中にクライアントの上に残す 1px はその色を DWM のキャプションの色にする（`ApplyEdgeCaption`）。空ならシステムに任せる。詳細: D-658、D-666、D-696
 - 窓の中のタイトルバーは、題名の文字をクリックするとその場でアドレスの列になる。URL を見せる欄と、その左右に並べるツールバーのボタン・拡張のバーは `TitleEditRow`（`src/ui/titlebar.cpp`）が持ち、欄の上にはツールバーと同じくコマンドバーが重なって開く。編集はコマンドバーが欄の上にある間だけ続き（`Receiver::AnchorReleased` で終わる）、タイトルバーが隠れると欄ごとコマンドバーも閉じる。詳細: D-659・D-667。最大化中は帯の左の「<」で帯を窓の幅に広げ、題名とアドレス欄を使える。詳細: D-662
 - 前の回の窓（設定の `mainwindow/<名前><id>`）は、最初の WebEngine プロファイルと木の読みより前に空の殻として作って見せる。木の読みは同じ id の殻に current を付け、木に無い id の殻は読みのあと消す。殻の間（`Application::IsRestoringWindows()`）は主窓への入力と閉じる操作を受けない。詳細: D-514
 - 殻が出るまでの床（Windows）は「DirectWrite の全ファミリーの一覧構築（殻の文字の fallback 照会が要る）→ 殻の生成」で、構築を別スレッドへ出しても、WebEngine の全体設定を殻の後へ回しても縮まない（測って採らず）。詳細: D-516・D-530・D-531
@@ -225,11 +225,12 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 
 - `EdgeWebView` のページは DirectComposition のビジュアルに描かれ、マウスはこちらが `SendMouseInput` で渡す
 - [page.hpp](../src/view/page.hpp) の `Page` はエンジンに依らないページの共通処理
+- ページで走らせるスクリプトを組む `View::…JsCode` は、宣言と説明が `view.hpp`、本体が [viewjscode.cpp](../src/view/viewjscode.cpp)
 - **描画プロセスが落ちたら**、報せて読み直す。`RenderProcessLedger` が回数を数え、10 回目で読み直しをやめる
 - ページの右クリックの既定のメニュー（`View::LoadSettings` の RegularMenu）は「新しいタブ」から始まる。
   ブックマークレットの項目は既定から外してある（コマンドからは使える）
 
-詳細: D-024、D-061、D-070、D-166、D-168、D-190、D-249、D-253
+詳細: D-024、D-061、D-070、D-166、D-168、D-190、D-249、D-253、D-709
 
 ### ビューの実装ごとの機能
 
@@ -325,8 +326,8 @@ URL はパーセントエンコードして書く。`Application::Import` / `Exp
 - **タブの休止**: Edge は凍結（Frozen）だけで、破棄（Discarded）は無い。QuickWebEngine は凍結をテストで確かめ、破棄は未確認（隠れたビューをエンジンにも隠すまで、どちらも効いていなかった: D-587）
 - **キャッシュを無視した再読み込み**: Edge はヘッダだけで、次の1回だけ
 - **キーマップ・ページ内のキー**: Edge は許可リスト制で、トップ文書だけ
-- **検索エンジンの追加**: 本体は `Page::AddSearchEngineAt` で 4 実装共通。Edge の右クリックの位置は本物のカーソルから取るので、
-  合成入力の検証ではフォームを探せない。人手では確認済み（2026-10-11、D-533 追記 5）
+- **検索エンジンの追加**: 本体は `Page::AddSearchEngineAt` で 4 実装共通。右クリックのメニューには、押した点が `text` / `search` の `<input>` のときに出る。
+  Edge はメニューの要素を WebView2 の情報から組むので、検索欄かどうかは右押しの当たり判定から取る。Edge の右クリックの位置は本物のカーソルから取る（D-533 追記 5、D-710、D-711）
 - **ディレクトリの設定・UA**: QuickNative は一部（UA は効く）。Edge は JS とエラーページの設定だけ
 - **`vanilla://`**: QuickNative では開けず、代わりに WebEngine が開く
 - **印刷**: QuickNative は PDF の書き出しだけ
@@ -347,10 +348,11 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 - `GraphicsTableView` が一覧の本体。`DisplayType` で ViewTree / TrashTree / LocalFolderTree などを切り替える
 - 表示の種類は「現在のディレクトリ」「配下すべて（全展開）」「配下すべて（展開可）」の3つ（D-497 追記 4）
 - 個々の項目は `AbstractNodeItem` / `Thumbnail` / `NodeTitle`
-- ノードのメニュー（`Gadgets::CreateNodeMenu`）はどこで開いても同じ並び（開く・ノード・作る・消す/戻す・行き先と見せ方・中止）。ゴミ箱は復元が先頭で、作るが無く、消すは「完全に削除」（D-551、D-552、D-589）。ゴミ箱の一覧ではサムネイルの複製ボタンが復元ボタン、閉じるボタン・削除のコマンドは確認のあと完全に削除（D-572、D-589。スタートページの履歴と同じ `TreeBank::DiscardFromTrashAsked`）
+- ノードのメニュー（`Gadgets::CreateNodeMenu`）はどこで開いても同じ並び（開く・ノード・作る・消す/戻す・行き先と見せ方・中止）。ゴミ箱は復元が先頭で、作るが無く、消すは「完全に削除」（D-551、D-552、D-589）。ゴミ箱の一覧ではサムネイルの複製ボタンが復元ボタン、閉じるボタン・削除のコマンドは確認のあと完全に削除（D-572、D-589。スタートページの履歴と同じ `TreeBank::DiscardFromTrashAsked`）。ゴミ箱のノードを開くと、その窓の current の隣へ復元してから開く（D-704）
 - 描画は `GadgetsStyle`。`PlainStyle`（Flat と同じ格子を単色の面に、既定。D-652）、`FlatStyle`（カードの格子）、`GlassStyle`（暗い半透明）の3つ
 - 上端に固定のバー（`TableHeader`）。上へ・ゴミ箱のボタン、パンくず、絞り込み欄（`HeaderFilter`）、タブ一覧とゴミ箱では右端に閉じるボタン（`CloseTableButton`）が並び、カードはその下から始まる（D-602、D-603）
-- ノードを並べている間、背景は（Plain は半透明の窓のときだけ）一覧の current のノードのページを絵にしてぼかしたもの（どのバックエンドでも止まった絵）。AccessKey の間と設定でオフのときは従来どおり（D-590）
+- ノードを並べている間、背景は（Plain は半透明の窓のときだけ）一覧の current のノードのページを絵にしてぼかしたもの（どのバックエンドでも止まった絵）。AccessKey の間と設定でオフのときは従来どおり（D-590）。スタイルの面の色はその絵に焼き込み、毎フレームは重ねない（D-713）
+- ホイールのスクロールのアニメーションは、出だしのあと Qt の 16 ms のタイマーから外し（pause）、描くたびと画面のリフレッシュの間隔で経過時間へ進める（D-713）
 - 表示中のタブは淡い背景とアクセントの線で示す。折りたたみの開閉は 200ms で補間する
 
 詳細: D-300〜D-305、D-308、D-338、D-592（開くときの描く順）、D-602（バー）、D-603（閉じるボタン）、D-652（Plain）
@@ -361,10 +363,10 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 |---|---|
 | [actionmapper.hpp](../src/input/actionmapper.hpp) | アクション名の一覧。編集アクションには QML 側の関数名（先頭小文字）も並べる |
 | [actiontext.hpp](../src/core/actiontext.hpp) | アクションの表示名（訳の文脈 `ActionText` の 1 表）。メニュー・キーの設定・コマンドバー・入力欄のメニューが引く。4 つのクラスの `Action()` は一覧のマクロで接続だけを書く（D-678） |
-| [keymap.hpp](../src/input/keymap.hpp) | キー → アクション名の既定。修飾キーの無い単独キーは設定 `webview/@EnableSingleKeyShortcut`（既定オフ）のときだけ効く |
-| [mousemap.hpp](../src/input/mousemap.hpp) | マウスジェスチャ → アクション名の既定 |
+| [keymap.hpp](../src/input/keymap.hpp) | キー → アクション名の既定（`constexpr` の表。写像にするのは `InputMapSchema::DefaultKeyMap` だけ。D-708）。修飾キーの無い単独キーは設定 `webview/@EnableSingleKeyShortcut`（既定オフ）のときだけ効く |
+| [mousemap.hpp](../src/input/mousemap.hpp) | マウスジェスチャ → アクション名の既定（表。写像にするのは `InputMapSchema::DefaultGestureMap`） |
 | [commandmap.hpp](../src/core/commandmap.hpp) | コマンドの綴り → アクション名。綴りの揺れはここにだけある |
-| [receiver.hpp](../src/app/receiver.hpp) | 入力欄のカード。Command / Query / UrlEdit / Search の4モード。中央に浮かび、ページ内検索（`search <語>` を含む）は右上。コマンドバーの候補はコマンド（検索エンジンとブックマークレットの名前を含む）・タブ・ゴミ箱・設定・Web のソース別で、行の操作は Tab か右クリックの一覧（D-622、D-625、D-633）。タブとゴミ箱の行を選ぶとカードの脇にタブのプレビュー（D-692） |
+| [receiver.hpp](../src/app/receiver.hpp) | 入力欄のカード。Command / Query / UrlEdit / Search / Target の5モード。Target は右クリックメニューの「コマンド」（操作 OpenCommand に要素を持たせたもの。メニューの先頭のアイコンの列 `MenuIconRow` の右端の「⋯」。列の中身はメニューごとの表で設定画面から編集、D-706）かアクセスキーから、要素と選択を値で持って開き、その部分を取るアクションを表の並びを先に出す（D-705）。タブバーとタブ一覧のメニューの「コマンド」からはタブを持って開く（D-706）。中央に浮かび、ページ内検索（`search <語>` を含む）は右上。ツールバー・タイトルバーの欄から開くと欄の上に重なり、`search <語>` もそこで探す（D-667、D-697）。コマンドバーの候補はコマンド（検索エンジンとブックマークレットの名前を含む）・タブ・ゴミ箱・設定・Web のソース別で、行の操作は Tab か右クリックの一覧（D-622、D-625、D-633）。タブとゴミ箱の行を選ぶとカードの脇にタブのプレビュー（D-692）。入力行の右端の × は Esc と同じく閉じる（D-712） |
 | [searchsuggest.hpp](../src/core/searchsuggest.hpp) | 検索の候補を問い合わせる URL と答えの読み取り（Google / Bing / DuckDuckGo。D-622） |
 
 アクション名と入力の綴りの2系統は互換性のために残る。綴りの表の全体は `tst_commandmap` が固定する。ページから叩く JavaScript の API は無い。
@@ -410,6 +412,7 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 | 何を描くかの表（型・ラベル・分類・既定値・選択肢） | [settingsschema.cpp](../src/core/settingsschema.cpp) |
 | 選択肢の表示名（Choice の値 → 画面の言葉） | 同じファイルの `ChoiceLabels()`。無い選択肢は値の綴りのまま出る |
 | キー・マウス・ジェスチャの表 | [inputmapschema.hpp](../src/core/inputmapschema.hpp) |
+| 右クリックメニューの 6 表（既定の並びもここ。`View::LoadSettings` が読む） | [menuschema.hpp](../src/core/menuschema.hpp) |
 | ページ本体 | [resources/settings/](../resources/settings/)。文書には `/api/schema` の JSON とシートとスクリプトが埋め込まれて 1 往復で届く（`WithEmbeddedSchema` / `WithInlineResources`） |
 
 **設定を1つ画面に出すには、`settingsschema.cpp` の表に1行足すだけ。** HTML も JS も触らない。
@@ -424,7 +427,7 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
   前の3つは `TreeBank::OpenSettings(category)` で同じ1つのタブを使う。タブのビューは、ディレクトリが指す種類
   （`ViewKindFor`）と同じなら作り直さず前面に出すだけ（D-537）
 - 表示中のカテゴリは URL のフラグメント（`vanilla://settings/#network`）で持つ
-- **隠し設定**: 普段は誰でも押せる箱にしない設定（ページが普段止められていることの抜け道・具合の悪いときに切るエンジンの切り替え・総称フォント・名乗る UA のテンプレート）は、分類 `hidden` の行にする。ページは題を 3 回クリックするまでその分類を一覧・検索・フラグメントから外す。開いた状態は保存しない。エンジンの属性とフォントは WebEngine のビューだけが読む（詳細: D-685）
+- **隠すカテゴリ**: 普段は誰でも押せる箱にしない設定（ページが普段止められていることの抜け道・具合の悪いときに切るエンジンの切り替え・総称フォント・名乗る UA のテンプレート）は、分類 `hidden`（画面の名前は「その他の設定」）の行にする。右クリックメニューの編集（分類 `menu`、「キーとマウス」の下）は隠さない。隠す分類は `SettingsSchema::HiddenCategories()`。ページは題を 3 回クリックするまでその分類を一覧・検索・フラグメントから外し、クリックで最初の隠す分類へ移る。開いた状態は保存しない。エンジンの属性とフォントは WebEngine のビューだけが読む（詳細: D-685、D-695）
 - 別の設定しだいで使われない行は、表の `appliesWhen`（`"key=value|…"`、どれか 1 つが成り立てば使われる）で宣言する。
   ページがその行を灰色にして入力を拒み、どの設定のせいかを下に書く。条件は hint に重ねて書かない（D-571）
 - `needsRestart` の行の値が変わると、`ModelessDialog` のカードが「再起動」を勧める（自動では閉じない）。
@@ -438,7 +441,7 @@ Edge の × が「API が無い」ことは D-196、QuickWebEngine の残る × 
 （ラベルは表の `QT_TRANSLATE_NOOP("SettingsSchema", ...)`、ページ自身の言葉は `SettingsSchema::PageStrings()`）。
 **`QT_TRANSLATE_NOOP` をマクロで短くしないこと。** lupdate はマクロを展開せず、拾われなかった文字列は黙って英語のままになる。
 
-詳細: D-020、D-218、D-431、D-455、D-462、D-475、D-537、D-549、D-561、D-571、D-575、D-582、D-666
+詳細: D-020、D-218、D-431、D-455、D-462、D-475、D-537、D-549、D-561、D-571、D-575、D-582、D-666、D-695
 
 ### スタートページ（`vanilla://start`）
 
@@ -555,6 +558,10 @@ Web のタブ・今の URL を全選択・行は選ばない。行を選ばな�
 欄に重なっている間の Receiver は主窓に所有された窓で、閉じたあと木の子へ戻す。入力行は欄と同じ高さ・同じ見た目で欄に重なり、欄が下にあるとき（下のツールバー）は入力行がカードの下端、ソースのタブがそのすぐ上に来て、候補はさらに上へ伸びる。タイトルバーの列のボタンや拡張を押すとコマンドバーは閉じ、列は URL を見せる欄とともに残る（欄を押せばまた開く）。
 欄の左にはサイト情報のボタン（`SiteButton`）があり、吹き出し（`SiteInfoPanel`、`Qt::Popup`）にホスト・接続（URL と保存した証明書の例外から言えることだけ）・保存した許可（`SitePermissions`、選択で書き換え）・Cookie の件数とサイトデータの削除・サイトの設定を出す。Cookie とサイトデータは、ビューが出す DevTools プロトコルの口（`View::OpenSiteDataLink` が返す `SiteDataLink`。Edge は `CallDevToolsProtocolMethod`、WebEngine は利用者のインスペクターか、吹き出しの間だけつなぐ隠れた devtools ページ。Quick は同じ形で、隠れた QML のビューを `devToolsView` に渡す。ネイティブのビューは出さない）を通し、`SiteCookies` が数えて 2 回押すと消す。詳細: D-668、D-674
 詳細: D-667
+
+機能の入口を比べる机上の道具は `tools/ux-discoverability/`。抽出したコマンド・既定割り当て・メニューと、
+手書きの発見グラフを使い、文脈／ハブ経由の到達率・重みを変えた順位の幅を CSV と JSON へ出す。
+再実行とモデルの仮定は同所 README。詳細: D-701、D-702
 
 ---
 

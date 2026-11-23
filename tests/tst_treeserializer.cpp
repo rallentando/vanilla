@@ -166,9 +166,7 @@ void tst_treeserializer::roundTripKeepsTheTree(){
         tab->SetScrollX(12);
         tab->SetScrollY(345);
         tab->SetZoom(1.25f);
-#ifdef MEDIATIME
         tab->SetMediaTime(78.5f);
-#endif
         root->SetPrimary(tab);
 
         ViewNode *folder = MakeFolder(root, QStringLiteral("folder"));
@@ -187,9 +185,7 @@ void tst_treeserializer::roundTripKeepsTheTree(){
     QVERIFY(text.contains(QStringLiteral("\"scrollx\": 12")));
     QVERIFY(text.contains(QStringLiteral("\"scrolly\": 345")));
     QVERIFY(text.contains(QStringLiteral("\"zoom\": 1.25")));
-#ifdef MEDIATIME
     QVERIFY(text.contains(QStringLiteral("\"mediatime\": 78.5")));
-#endif
     QVERIFY(text.contains(QStringLiteral("\"title\": \"nested\"")));
     QVERIFY(text.contains(QStringLiteral("\"create\": \"") + BASE_DATE + QStringLiteral("\"")));
     QVERIFY(text.contains(QStringLiteral("\"children\": []")));
@@ -324,9 +320,7 @@ void tst_treeserializer::readsAHandWrittenFile(){
     QCOMPARE(tab->GetScrollX(), 7);
     QCOMPARE(tab->GetScrollY(), 8);
     QCOMPARE(tab->GetZoom(), 1.5f);
-#ifdef MEDIATIME
     QCOMPARE(tab->GetMediaTime(), 78.5f);
-#endif
     QCOMPARE(tab->GetHistoryFileName(), QStringLiteral("hist.dat"));
     QCOMPARE(tab->GetImageFileName(), QStringLiteral("thumb.jpg"));
 
@@ -354,9 +348,7 @@ void tst_treeserializer::readsZoomWrittenAsAPercentage(){
     QCOMPARE(root->GetChildAt(0)->GetZoom(), 1.25f);
     QCOMPARE(root->GetChildAt(1)->GetZoom(), 1.25f);
     QCOMPARE(root->GetChildAt(2)->GetZoom(), 1.0f);
-#ifdef MEDIATIME
     QCOMPARE(root->GetChildAt(2)->ToViewNode()->GetMediaTime(), 0.0f);
-#endif
 
     delete root;
 }

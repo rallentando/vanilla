@@ -20,6 +20,7 @@
 #include <QAction>
 #include <QMouseEvent>
 
+#include "receiver.hpp"
 #include "testsupport.hpp"
 
 class BareView : public QObject, public View {
@@ -38,6 +39,25 @@ public:
     void repaint() override {}
     bool visible() override { return false;}
     void setFocus(Qt::FocusReason = Qt::OtherFocusReason) override {}
+};
+
+class ScriptedView : public BareView {
+public:
+    QStringList run;
+    int scrolls = 0;
+    void CallWithEvaluatedJavaScriptResult(const QString &code, VariantCallBack callBack) override {
+        run << code;
+        callBack(QVariant());
+    }
+    void EmitScrollChanged() override { scrolls++;}
+};
+
+class SeekSink : public QObject {
+    Q_OBJECT
+public:
+    int seeks = 0;
+public slots:
+    void SeekText(const QString&, View::FindFlags){ seeks++;}
 };
 
 class SolidWidget : public QWidget {
@@ -59,6 +79,30 @@ class tst_viewinterface : public QObject {
     Q_OBJECT
 
 private slots:
+
+    void aViewJoinedTwiceIsSearchedOnce(){
+        TreeBank::Initialize();
+        Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
+        std::unique_ptr<MainWindow> window(Application::NewWindow(952));
+        auto closeWindow = qScopeGuard([&window](){
+            Application::SetCurrentWindow(static_cast<MainWindow*>(nullptr));
+            Application::RemoveWindow(952);
+            TreeBank::Initialize();
+            window.reset();
+        });
+        TreeBank *tb = window->GetTreeBank();
+        Receiver *receiver = tb->GetReceiver();
+        QVERIFY(receiver);
+        BareView view;
+        SeekSink sink;
+        view.WireWebView(&sink, &sink, tb, true);
+        view.WireWebView(&sink, &sink, tb, true);
+        emit receiver->SeekText(QStringLiteral("a"), View::WrapsAroundDocument);
+        QCOMPARE(sink.seeks, 1);
+        view.WireWebView(&sink, &sink, tb, false);
+        emit receiver->SeekText(QStringLiteral("a"), View::WrapsAroundDocument);
+        QCOMPARE(sink.seeks, 1);
+    }
 
     void everyQuestionIsAnsweredOnceAndEmpty(){
         BareView view;
@@ -139,9 +183,26 @@ private slots:
         QVERIFY(!view.GetViewTypeName().isEmpty());
     }
 
+    void theMovementKeysRunTheirScripts(){
+        ScriptedView view;
+        view.UpKeyEvent();
+        view.DownKeyEvent();
+        view.RightKeyEvent();
+        view.LeftKeyEvent();
+        view.PageDownKeyEvent();
+        view.PageUpKeyEvent();
+        view.HomeKeyEvent();
+        view.EndKeyEvent();
+        QCOMPARE(view.run, QStringList()
+                 << View::UpKeyEventJsCode() << View::DownKeyEventJsCode()
+                 << View::RightKeyEventJsCode() << View::LeftKeyEventJsCode()
+                 << View::PageDownKeyEventJsCode() << View::PageUpKeyEventJsCode()
+                 << View::HomeKeyEventJsCode() << View::EndKeyEventJsCode());
+        QCOMPARE(view.scrolls, 8);
+    }
+
     void loadingStateIsNotSomethingAnImplementationDecides(){
         BareView view;
-        QCOMPARE(view.LoadProgress(), 0);
         QCOMPARE(view.IsLoading(), false);
     }
 

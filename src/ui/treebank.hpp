@@ -190,6 +190,7 @@ public:
     static Node* GetRoot(Node*);
     static bool  IsTrash(Node*);
     bool IsDisplayingTableView();
+    void ConnectSeekToMiniMap();
     bool IsCurrent(Node*);
     bool IsCurrent(SharedView);
 
@@ -211,9 +212,7 @@ public:
     static QSet<quint64> LeftOutOfSaves();
     static bool SaveTree(const WindowIndexMap &windowIndices,
                          const QSet<quint64> &leftOut = QSet<quint64>());
-#ifdef MEDIATIME
     static void SaveMediaTimesForQuit(VoidCallBack finished);
-#endif
     static void UpdateCurrentThumbnails();
 
     static void LoadSettings();
@@ -561,6 +560,18 @@ public:
     static ViewKind ViewKindFor(const QUrl &url, const QStringList &set);
     static ViewKind ViewKindNamedIn(const QStringList &set);
     static ViewKind KindOf(View *view);
+    static bool IsWebView(View *view){
+        const ViewKind kind = KindOf(view);
+        return kind != NoView && kind != LocalKind;
+    }
+    static bool HasWindowOfItsOwn(View *view){
+        const ViewKind kind = KindOf(view);
+        return kind == QuickNativeKind || kind == EdgeKind;
+    }
+    static bool DrawsViewSource(View *view){
+        const ViewKind kind = KindOf(view);
+        return kind == WebEngineKind || kind == QuickWebEngineKind || kind == EdgeKind;
+    }
     static bool PurgeView(){ return m_PurgeView;}
     static bool EnableNotifierScrollArea(){ return m_EnableNotifierScrollArea;}
 };

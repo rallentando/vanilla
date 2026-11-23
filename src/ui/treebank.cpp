@@ -3,8 +3,6 @@
 #include "theme.hpp"
 #include "settingspage.hpp"
 #include "directorypage.hpp"
-#include "keymap.hpp"
-#include "mousemap.hpp"
 
 #include "treebank.hpp"
 #include "actiontext.hpp"
@@ -43,6 +41,7 @@
 #include "treeserializer.hpp"
 #include "fileexchange.hpp"
 #include "inputmap.hpp"
+#include "inputmapschema.hpp"
 #include "networkcontroller.hpp"
 #include "saver.hpp"
 #include "notifier.hpp"
@@ -313,8 +312,7 @@ void TreeBank::ConnectToReceiver(){
                 this, QOverload<QString>::of(&TreeBank::OpenInNewIfNeed));
         connect(m_Receiver, &Receiver::SearchWith,
                 this, QOverload<QString, QString>::of(&TreeBank::OpenInNewIfNeed));
-        if(m_MiniMap)
-            connect(m_Receiver, &Receiver::SeekText, m_MiniMap, &MiniMap::SetSeekTerm);
+        if(m_MiniMap) ConnectSeekToMiniMap();
     }
 }
 
@@ -1147,6 +1145,12 @@ bool TreeBank::IsTrash(Node* nd){
     return false;
 }
 
+void TreeBank::ConnectSeekToMiniMap(){
+    connect(m_Receiver, &Receiver::SeekText, m_MiniMap, [this](const QString &words){
+        if(m_MiniMap && !IsDisplayingTableView()) m_MiniMap->SetSeekTerm(words);
+    });
+}
+
 bool TreeBank::IsDisplayingTableView(){
     return (m_Gadgets && m_Gadgets->IsActive())
 #ifdef LOCALVIEW
@@ -1366,7 +1370,6 @@ bool TreeBank::SaveTree(const WindowIndexMap &windowIndices, const QSet<quint64>
     return primarySaved && secondarySaved;
 }
 
-#ifdef MEDIATIME
 void TreeBank::SaveMediaTimesForQuit(VoidCallBack finished){
     static const int FinalMediaTimeTimeout = 2000;
 
@@ -1386,7 +1389,6 @@ void TreeBank::SaveMediaTimesForQuit(VoidCallBack finished){
     QTimer::singleShot(FinalMediaTimeTimeout, Application::GetInstance(),
                        [barrier](){ barrier->Expire();});
 }
-#endif
 
 void TreeBank::LoadSettings(){
     Settings &s = Application::GlobalSettings();
@@ -1405,17 +1407,15 @@ void TreeBank::LoadSettings(){
     if(viewport == QStringLiteral("GLWidget"))     m_Viewport = OpenGLWidget;
     if(viewport == QStringLiteral("OpenGLWidget")) m_Viewport = OpenGLWidget;
 
-    if(m_MaxViewCount == -1)       m_MaxViewCount       = s.value(QStringLiteral("application/@MaxView")  , -1).value<int>();
     if(m_MaxViewCount == -1)       m_MaxViewCount       = 10;
-    if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = s.value(QStringLiteral("application/@MaxTrash") , -1).value<int>();
     if(m_MaxTrashEntryCount == -1) m_MaxTrashEntryCount = 500;
 
     {
-        TREEBANK_KEYMAP
+        m_KeyMap = InputMapSchema::DefaultKeyMap(QStringLiteral("application/keymap"));
         InputMap::LoadKeyMap(s, QStringLiteral("application/keymap"), m_KeyMap, InputMap::Hooks(IsValidAction));
     }
     {
-        TREEBANK_MOUSEMAP
+        m_MouseMap = InputMapSchema::DefaultGestureMap(QStringLiteral("application/mouse"));
         InputMap::LoadGestureMap(s, QStringLiteral("application/mouse"), m_MouseMap, InputMap::Hooks(Page::IsValidAction));
     }
     Node::LoadSettings();
@@ -2023,7 +2023,10 @@ bool TreeBank::SetCurrent(Node *nd){
     }
 
     if(m_Receiver) m_Receiver->Dismiss();
-    if(m_Notifier) m_Notifier->ResetStatus();
+    if(m_Notifier){
+        m_Notifier->ResetStatus();
+        m_Notifier->ResetLink();
+    }
 
     if(m_Gadgets && m_Gadgets->IsActive()) m_Gadgets->Dismiss();
 
@@ -3054,8 +3057,7 @@ void TreeBank::ToggleMiniMap(){
         m_MiniMap = nullptr;
     } else {
         m_MiniMap = new MiniMap(this);
-        if(m_Receiver)
-            connect(m_Receiver, &Receiver::SeekText, m_MiniMap, &MiniMap::SetSeekTerm);
+        if(m_Receiver) ConnectSeekToMiniMap();
         m_MiniMap->SetShelved(GetMainWindow()->IsContentFullScreen());
         m_MiniMap->ResizeNotify(size());
         if(m_CurrentView) m_MiniMap->SetView(m_CurrentView.get());

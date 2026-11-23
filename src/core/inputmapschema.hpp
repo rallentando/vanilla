@@ -4,6 +4,7 @@
 #include "switch.hpp"
 
 #include "settingsio.hpp"
+#include "inputmap.hpp"
 
 #include <QJsonArray>
 #include <QJsonObject>
@@ -47,6 +48,9 @@ bool TypesIntoTheField(const QKeySequence &seq);
 
 QString Placeholder();
 
+InputMap::KeyMap DefaultKeyMap(const QString &group);
+InputMap::GestureMap DefaultGestureMap(const QString &group);
+
 QList<QPair<QString, QString> > Defaults(const Table &table);
 QList<QPair<QString, QString> > Current(const SettingsIO::Map &settings, const Table &table);
 
@@ -64,6 +68,7 @@ struct Binding {
 QList<Binding> Bindings(const SettingsIO::Map &settings, bool singleKeys);
 bool IsThisInput(const Binding &binding, const QString &typed);
 
+QJsonArray DescribeVocabulary(Vocabulary vocabulary);
 QJsonObject DescribeTable(const SettingsIO::Map &settings, const Table &table);
 QJsonObject Describe(const SettingsIO::Map &settings);
 

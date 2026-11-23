@@ -264,7 +264,8 @@ static const QString FOR_ACCESSKEY_CSS_SELECTOR =
     QStringLiteral("a,*[href],*[onclick],*[onmouseover],*[contenteditable=\"true\"],"
                    "*[role=\"button\"],*[role=\"link\"],*[role=\"menu\"],"
                    "button,select,label,legend,input,textarea,object,embed,frame,iframe,"
-                   "*[role=\"checkbox\"],*[role=\"radio\"],*[role=\"tab\"]");
+                   "*[role=\"checkbox\"],*[role=\"radio\"],*[role=\"tab\"],"
+                   "video,audio");
 static const QString HAVE_SOURCE_CSS_SELECTOR = QStringLiteral("*[src]");
 static const QString HAVE_REFERENCE_CSS_SELECTOR = QStringLiteral("*[href]");
 static const QString REL_IS_NEXT_CSS_SELECTOR = QStringLiteral("*[rel=\"next\"]");

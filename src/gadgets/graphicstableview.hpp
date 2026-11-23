@@ -8,6 +8,7 @@
 #include <QGraphicsObject>
 #include <QGraphicsTextItem>
 #include <QTimer>
+#include <QElapsedTimer>
 
 #include "treebank.hpp"
 #include "thumbnail.hpp"
@@ -292,6 +293,7 @@ public:
 
     qreal GetScroll() const;
     void Scroll(qreal delta);
+    qreal ScrollForItem(qreal target) const;
     void ScrollToItem(qreal target);
     void ResetTargetScroll();
 
@@ -452,6 +454,12 @@ protected:
     }
 
     QPropertyAnimation *m_ScrollAnimation;
+    QTimer m_ScrollPump;
+    QElapsedTimer m_ScrollClock;
+    bool m_ScrollStepQueued = false;
+    void PumpScrollAnimation();
+    void StepScrollAnimation();
+    int ScrollPumpInterval() const;
     struct FoldTransition {
         QGraphicsItem *item;
         QRectF from;

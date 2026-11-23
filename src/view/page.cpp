@@ -926,20 +926,35 @@ void Page::DisplayTrashTree(){
     GetTB()->DisplayTrashTree();
 }
 
+void Page::CallWithHeldSelection(StringCallBack callBack){
+    if(m_MenuTarget.up){
+        callBack(View::MenuSelectedText());
+        return;
+    }
+    const QPointer<Page> alive(this);
+    m_View->CallWithSelectedText([alive, callBack](QString text){
+        if(alive) callBack(text);
+    });
+}
+
 void Page::OpenTextSeeker(){
-    GetTB()->OpenTextSeeker();
+    CallWithHeldSelection([this](const QString &words){
+        TreeBank *tb = GetTB();
+        if(!words.isEmpty() && tb->GetReceiver()) tb->GetReceiver()->OpenTextSeeker(m_View, words);
+        else tb->OpenTextSeeker();
+    });
 }
 
 void Page::OpenQueryEditor(){
-    GetTB()->OpenQueryEditor();
+    CallWithHeldSelection([this](const QString &words){
+        TreeBank *tb = GetTB();
+        if(!words.isEmpty() && tb->GetReceiver()) tb->GetReceiver()->OpenQueryEditor(m_View, words);
+        else tb->OpenQueryEditor();
+    });
 }
 
 void Page::OpenUrlEditor(){
     GetTB()->OpenUrlEditor();
-}
-
-void Page::OpenCommand(){
-    GetTB()->OpenCommand();
 }
 
 void Page::ReleaseHiddenView(){
@@ -1021,16 +1036,7 @@ void Page::ViewSource(){
     QUrl newUrl = QUrl::fromEncoded("view-source:" + m_View->url().toEncoded());
     SharedView newView = SharedView();
 
-    bool native = false;
-#ifdef WEBENGINEVIEW
-    if(qobject_cast<WebEngineView*>(m_View->base()) ||
-       qobject_cast<QuickWebEngineView*>(m_View->base())) native = true;
-#endif
-#ifdef EDGEWEBVIEW
-    if(qobject_cast<EdgeWebView*>(m_View->base())) native = true;
-#endif
-
-    if(native){
+    if(TreeBank::DrawsViewSource(m_View)){
         newView = SuitTB()->OpenInNewViewNode(newUrl, Activate()||ShiftMod(), m_View->GetViewNode());
     } else {
         newView = SuitTB()->OpenInNewViewNode(QUrl(), Activate()||ShiftMod(), m_View->GetViewNode());
@@ -1070,11 +1076,12 @@ void Page::AddSearchEngine(){
             if(SharedWebElement e = action->data().value<SharedWebElement>()){
                 if(!e->IsNull()){
 #ifdef WEBENGINEVIEW
-                    if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
-                        m_View->AddSearchEngine(e->Position() / w->zoomFactor());
-                    else
+                    if(qobject_cast<QuickWebEngineView*>(m_View->base())){
+                        AddSearchEngineAt(e->Position());
+                        return;
+                    }
 #endif
-                        m_View->AddSearchEngine(e->Position());
+                    m_View->AddSearchEngine(e->Position());
                 }
             }
         } else {
@@ -1088,12 +1095,7 @@ void Page::AddBookmarklet(){
         if(action->data().canConvert<SharedWebElement>()){
             if(SharedWebElement e = action->data().value<SharedWebElement>()){
                 if(!e->IsNull()){
-#ifdef WEBENGINEVIEW
-                    if(WebEngineView *w = qobject_cast<WebEngineView*>(m_View->base()))
-                        m_View->AddBookmarklet(e->Position() / w->zoomFactor());
-                    else
-#endif
-                        m_View->AddBookmarklet(e->Position());
+                    m_View->AddBookmarklet(e->Position());
                 }
             }
         } else {
@@ -1105,21 +1107,12 @@ void Page::AddBookmarklet(){
 void Page::AddSearchEngineAt(QPoint pos){
     m_View->CallWithGotCurrentBaseUrl([this, pos](QUrl base){
 
-    m_View->CallWithEvaluatedJavaScriptResult(QStringLiteral(
+    m_View->CallWithEvaluatedJavaScriptResult((QStringLiteral(
 "(function(){\n"
 "    var x = %1;\n"
-"    var y = %2;\n"
-"    var elem = document.elementFromPoint(x, y);\n"
-"    while(elem && (elem.tagName == \"FRAME\" || elem.tagName == \"IFRAME\")){\n"
-"        try{\n"
-"            var frameDocument = elem.contentDocument;\n"
-"            var rect = elem.getBoundingClientRect();\n"
-"            x -= rect.left;\n"
-"            y -= rect.top;\n"
-"            elem = frameDocument.elementFromPoint(x, y);\n"
-"        }\n"
-"        catch(e){ break;}\n"
-"    }\n"
+"    var y = %2;\n")
++ View::ElementAtPointJsCode() +
+QStringLiteral(
 "    if(!elem) return {};\n"
 "    var name = elem.name;\n"
 "    var form = elem;\n"
@@ -1171,7 +1164,7 @@ void Page::AddSearchEngineAt(QPoint pos){
 "    result[4] = engines;\n"
 "    result[5] = tag;\n"
 "    return result;\n"
-"})();").arg(pos.x()).arg(pos.y()),
+"})();")).arg(pos.x()).arg(pos.y()),
 [this, base](QVariant var){
 
     if(!var.isValid()) return;
@@ -1425,6 +1418,37 @@ void Page::HoverElement(){
             QCursor::setPos(tb->mapToGlobal(pos));
         }
     }
+}
+
+void Page::OpenCommand(){
+    TreeBank *tb = GetTB();
+    if(!tb) return;
+    QAction *action = qobject_cast<QAction*>(sender());
+    SharedWebElement e = action && action->data().canConvert<SharedWebElement>()
+        ? action->data().value<SharedWebElement>() : SharedWebElement();
+    if(!e || e->IsNull() || !tb->GetReceiver() || !m_View->GetViewNode()){
+        tb->OpenCommand();
+        return;
+    }
+
+    Receiver::TargetArgs target;
+    target.element = e;
+    target.view = m_View->GetThis();
+    target.node = m_View->GetViewNode()->GetSerial();
+    target.loadSerial = m_MenuTarget.up ? m_MenuTarget.load : m_View->LoadSerial();
+    target.base = e->BaseUrl().isEmpty() ? m_View->url() : e->BaseUrl();
+    if(m_MenuTarget.up){
+        target.selection = View::MenuSelectedText();
+        target.hitPos = m_MenuTarget.pos;
+        target.playable = m_MenuTarget.type == MediaTypePlayable;
+    } else {
+        target.hitPos = e->Position();
+        const QString tag = e->TagName().toUpper();
+        target.playable = tag == QStringLiteral("VIDEO") || tag == QStringLiteral("AUDIO");
+        tb->GetReceiver()->OpenTargetWhenFocused(target, qobject_cast<QWidget*>(m_View->base()));
+        return;
+    }
+    tb->GetReceiver()->OpenTarget(target);
 }
 
 #define ELEMENT_ACTION(BLOCK)                                           \
@@ -1702,18 +1726,39 @@ void Page::OpenAllImage(){
 }
 
 void Page::OpenTextAsUrl(){
+    m_View->CallWithGotCurrentBaseUrl([this](QUrl base){
+    m_View->CallWithSelectedText([this, base](QString text){
+        OpenHeldUrls(AddressesOfText, text, base);
+    });});
+}
+
+namespace {
+    QList<QUrl> HeldUrlList(Page::HeldUrls kind, const QString &held, const QUrl &base){
+        switch(kind){
+        case Page::AddressesOfText: return Page::ExtractUrlsFromText(held, base);
+        case Page::LinksOfHtml:     return Page::ExtractUrlsFromHtml(held, base, Page::HaveReference);
+        case Page::ImagesOfHtml:    return Page::ExtractUrlsFromHtml(held, base, Page::HaveSource);
+        }
+        return QList<QUrl>();
+    }
+}
+
+void Page::OpenHeldUrls(HeldUrls kind, const QString &held, const QUrl &base, const std::function<bool()> &still){
     auto open = AsAskedBy([this](QList<QNetworkRequest> reqs){
         SuitTB()->OpenInNewViewNode(reqs, Activate()||ShiftMod(), m_View->GetViewNode());
     });
-    m_View->CallWithGotCurrentBaseUrl([this, open](QUrl base){
-    m_View->CallWithSelectedText([this, open, base](QString text){
 
-    QList<QUrl> urls = ExtractUrlsFromText(text, base);
+    const QList<QUrl> urls = HeldUrlList(kind, held, base);
+    const bool referer = kind != AddressesOfText;
 
-    UrlCountCheck(urls.length(), [this, open, urls](bool result){
+    UrlCountCheck(urls.length(), [open, urls, still, referer, this](bool result){
 
-    if(result) open(RequestsFor(urls, false));
-});});});
+    if(result && (!still || still())) open(RequestsFor(urls, referer));
+});
+}
+
+void Page::SaveHeldUrls(HeldUrls kind, const QString &held, const QUrl &base){
+    DownloadInto(HeldUrlList(kind, held, base), kind != AddressesOfText);
 }
 
 void Page::SaveAllUrl(){
@@ -1972,6 +2017,7 @@ void Page::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
                               QPoint localPos, QPoint globalPos, MediaType type,
                               const std::function<void(QMenu*)> &extra){
 
+    const quint64 load = m_View->LoadSerial();
     QMenu *menu = new QMenu(parent);
     menu->setToolTipsVisible(true);
 
@@ -1984,9 +2030,6 @@ void Page::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
         extra(menu);
     }
 
-    menu->addSeparator();
-    menu->addAction(Action(Page::_InspectElement));
-
     if(elem && !elem->IsNull() && elem->IsQueryInputElement()){
         if(!menu->isEmpty()) menu->addSeparator();
         menu->addAction(Action(Page::_AddSearchEngine, localPos));
@@ -1994,9 +2037,19 @@ void Page::DisplayContextMenu(QWidget *parent, SharedWebElement elem,
 
     m_View->AddRegularMenu(menu, elem);
 
-    MenuKeys::Show(menu, InputMap::ShownKeys(View::KeyLayers()));
+    QHash<QString, QKeySequence> keys = InputMap::ShownKeys(View::KeyLayers());
+    keys.remove(QStringLiteral("OpenCommand"));
+    MenuKeys::Show(menu, keys);
 
+    View::AddMenuCommandCell(menu, Action(Page::_OpenCommand, QVariant::fromValue(elem)));
+
+    m_MenuTarget.up = true;
+    m_MenuTarget.pos = localPos;
+    m_MenuTarget.type = type;
+    m_MenuTarget.load = load;
+    const QPointer<Page> alive(this);
     menu->exec(globalPos);
+    if(alive) m_MenuTarget = MenuTarget();
     delete menu;
 }
 

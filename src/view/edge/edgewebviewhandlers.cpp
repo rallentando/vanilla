@@ -998,9 +998,11 @@ void EdgeWebView::RegisterDocumentHandlers(){
                  }
 
                  ContextTarget target;
+                 target.m_Load = LoadSerial();
                  target.m_Sequence = sequence;
 
                  target.m_Position = mapFromGlobal(QCursor::pos());
+                 m_Impl->m_MenuPoint = target.m_Position;
 
                  ComPtr<ICoreWebView2ContextMenuTarget> hit;
                  if(SUCCEEDED(args->get_ContextMenuTarget(&hit)) && hit){
@@ -1371,7 +1373,7 @@ void EdgeWebView::RegisterInputHandlers(){
              ([this](ICoreWebView2Controller*, IUnknown*) -> HRESULT {
                  m_Impl->m_HasFocus = false;
                  m_Impl->m_HandledKeys.clear();
-                 OnFocusOut();
+                 if(!m_Impl->m_MenuHoldsKeyboard) OnFocusOut();
                  return S_OK;
              }).Get(), &token)))
             VANILLA_KEEP_CONTROLLER_EVENT(controller, LostFocus, token);

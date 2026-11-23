@@ -40,10 +40,6 @@
 #include "treebar.hpp"
 #include "toolbar.hpp"
 #include "gadgetsstyle.hpp"
-#include "webengineview.hpp"
-#include "quickwebengineview.hpp"
-#include "quicknativewebview.hpp"
-#include "edgewebview.hpp"
 #include "dialog.hpp"
 
 int LocalView::m_MediaVolume = 50;
@@ -267,16 +263,8 @@ void LocalView::RenderBackground(QPainter *painter){
         return;
     }
 
-    bool nativeMasterBehind = false;
-#ifdef NATIVEWEBVIEW
-    if(SharedView master = GetMaster().lock())
-        nativeMasterBehind = qobject_cast<QuickNativeWebView*>(master->base()) != nullptr;
-#endif
-#ifdef EDGEWEBVIEW
-    if(!nativeMasterBehind)
-        if(SharedView master = GetMaster().lock())
-            nativeMasterBehind = qobject_cast<EdgeWebView*>(master->base()) != nullptr;
-#endif
+    const bool nativeMasterBehind =
+        TreeBank::HasWindowOfItsOwn(GetMaster().lock().get());
     if(!dynamic_cast<FlatStyle*>(GetStyle())
        && !nativeMasterBehind){
         GraphicsTableView::RenderBackground(painter);
@@ -292,22 +280,8 @@ void LocalView::RenderBackground(QPainter *painter){
     }
 
     if(!view && GetTreeBank()->GetCurrentView()){
-        if(0);
-#ifdef WEBENGINEVIEW
-        else if(WebEngineView *w = qobject_cast<WebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-        else if(QuickWebEngineView *w = qobject_cast<QuickWebEngineView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-#endif
-#ifdef NATIVEWEBVIEW
-        else if(QuickNativeWebView *w = qobject_cast<QuickNativeWebView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-#endif
-#ifdef EDGEWEBVIEW
-        else if(EdgeWebView *w = qobject_cast<EdgeWebView*>(GetTreeBank()->GetCurrentView()->base()))
-            view = w;
-#endif
-        else;
+        if(TreeBank::IsWebView(GetTreeBank()->GetCurrentView().get()))
+            view = GetTreeBank()->GetCurrentView().get();
     }
 
     if(view){
@@ -482,36 +456,36 @@ void LocalView::Connect(TreeBank *tb){
 
     if(tb){
         connect(this, SIGNAL(titleChanged(const QString&)),
-                tb->parent(), SLOT(SetWindowTitle(const QString&)));
+                tb->parent(), SLOT(SetWindowTitle(const QString&)), Qt::UniqueConnection);
         if(Notifier *notifier = tb->GetNotifier()){
             connect(this, QOverload<const QString&>::of(&LocalView::statusBarMessage),
-                    notifier, QOverload<QString>::of(&Notifier::SetStatus));
+                    notifier, QOverload<QString>::of(&Notifier::SetStatus), Qt::UniqueConnection);
             connect(this, QOverload<const QString&, const QString&>::of(&LocalView::statusBarMessage2),
-                    notifier, QOverload<QString, QString>::of(&Notifier::SetStatus));
+                    notifier, QOverload<QString, QString>::of(&Notifier::SetStatus), Qt::UniqueConnection);
             connect(this, &LocalView::ItemHovered,
-                    notifier, &Notifier::SetLink);
+                    notifier, &Notifier::SetLink, Qt::UniqueConnection);
 
             connect(this, &LocalView::ScrollChanged,
-                    notifier, &Notifier::SetScroll);
+                    notifier, &Notifier::SetScroll, Qt::UniqueConnection);
             connect(notifier, &Notifier::ScrollRequest,
-                    this, QOverload<QPointF>::of(&LocalView::SetScroll));
+                    this, QOverload<QPointF>::of(&LocalView::SetScroll), Qt::UniqueConnection);
         }
         if(Receiver *receiver = tb->GetReceiver()){
             connect(receiver, &Receiver::Download,
-                    this, &LocalView::Download);
+                    this, &LocalView::Download, Qt::UniqueConnection);
             connect(receiver, &Receiver::SeekText,
-                    this, &LocalView::SeekText);
+                    this, &LocalView::SeekText, Qt::UniqueConnection);
             connect(receiver, &Receiver::KeyEvent,
-                    this, &LocalView::KeyEvent);
+                    this, &LocalView::KeyEvent, Qt::UniqueConnection);
             connect(receiver, &Receiver::OpenNodeWithCommand,
-                    this, QOverload<QString>::of(&LocalView::ThumbList_OpenNodeWithCommand));
+                    this, QOverload<QString>::of(&LocalView::ThumbList_OpenNodeWithCommand), Qt::UniqueConnection);
 
         }
     }
 
     if(m_VideoItem){
         connect(m_VideoItem, &VideoItem::statusBarMessage,
-                this, QOverload<const QString&>::of(&LocalView::statusBarMessage));
+                this, QOverload<const QString&>::of(&LocalView::statusBarMessage), Qt::UniqueConnection);
     }
 }
 

@@ -13,6 +13,7 @@ const state = {
     current: null,
     query: '',
     inputs: null,
+    menus: null,
     inputEditing: false,
     inputBusy: false,
     passwords: null,
@@ -410,6 +411,10 @@ function actionMatches(action, groupLabel, words) {
     return words.every(word => text.includes(word));
 }
 
+function actionGroups(table) {
+    return table.groups || state.inputs.vocabularies[table.vocabulary];
+}
+
 let closeActionPicker = null;
 
 function actionSelect(table, value) {
@@ -419,7 +424,7 @@ function actionSelect(table, value) {
     button.setAttribute('aria-haspopup', 'listbox');
     button.value = value || 'NoAction';
     button.textContent = button.value;
-    for (const group of state.inputs.vocabularies[table.vocabulary]) {
+    for (const group of actionGroups(table)) {
         for (const action of group.actions) {
             if (action.name === button.value) button.textContent = action.label;
         }
@@ -480,7 +485,7 @@ function openActionPicker(button, table) {
         list.textContent = '';
         options = [];
         active = -1;
-        for (const group of state.inputs.vocabularies[table.vocabulary]) {
+        for (const group of actionGroups(table)) {
             const actions = group.actions.filter(a => actionMatches(a, group.label, words));
             if (!actions.length) continue;
             const heading = document.createElement('div');
@@ -927,13 +932,13 @@ function inputContents(sections) {
     return nav;
 }
 
-function inputToolbar() {
+function inputToolbar(heading) {
     const words = state.inputs.strings;
     const bar = document.createElement('section');
     bar.className = 'input-toolbar';
     const title = document.createElement('h3');
     title.className = 'group';
-    title.textContent = words.assignments;
+    title.textContent = heading || words.assignments;
     bar.appendChild(title);
     const edit = document.createElement('button');
     edit.type = 'button';
@@ -966,6 +971,7 @@ function tableInView() {
 }
 
 function watchFloatingToggle(toolbar) {
+    if (floatingToggle.observer) floatingToggle.observer.disconnect();
     if (!floatingToggle.node) {
         const toggle = document.createElement('button');
         toggle.type = 'button';
@@ -1020,6 +1026,224 @@ function renderInputs(query, searching, label, headed) {
 async function refreshInputs() {
     try {
         state.inputs = await api('inputs');
+        render();
+    } catch (e) {
+    }
+}
+
+function menuMatches(table, entry, query) {
+    if (!query) return true;
+    const haystack = (table.label + ' ' + entry.label + ' ' + entry.name).toLowerCase();
+    return query.split(/\s+/).every(word => haystack.includes(word));
+}
+
+function replaceMenu(described) {
+    const tables = state.menus.tables;
+    const i = tables.findIndex(t => t.group === described.group);
+    if (i >= 0) tables[i] = {...tables[i], ...described};
+}
+
+async function sendMenu(endpoint, body) {
+    if (state.inputBusy) return;
+    holdInputs();
+    try {
+        const reply = await api(endpoint, body);
+        if (reply.error) throw new Error(reply.error);
+        replaceMenu(reply);
+        toast(state.strings.saved);
+    } catch (e) {
+        toast(state.strings.failed);
+    } finally {
+        state.inputBusy = false;
+        render();
+    }
+}
+
+function writeMenu(table, names) {
+    return sendMenu('menu-set', {group: table.group, names});
+}
+
+function resetMenu(table) {
+    return sendMenu('menu-reset', {group: table.group});
+}
+
+function menuButton(className, text, title, onClick) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = className;
+    button.textContent = text;
+    button.title = title;
+    button.setAttribute('aria-label', title);
+    button.addEventListener('click', onClick);
+    return button;
+}
+
+function menuRow(table, entry, index) {
+    const words = state.menus.strings;
+    const names = table.entries.map(e => e.name);
+    const row = document.createElement('div');
+    row.className = 'binding';
+    const separator = entry.name === 'Separator';
+    if (separator) row.classList.add('separator');
+    if (!entry.known) row.title = words.unknown;
+
+    if (state.inputEditing && !separator) {
+        const select = actionSelect(table, entry.name);
+        select.addEventListener('change', () => {
+            const changed = names.slice();
+            changed[index] = select.value;
+            writeMenu(table, changed);
+        });
+        row.appendChild(select);
+    } else {
+        const label = document.createElement('span');
+        label.className = state.inputEditing ? 'action rule' : 'does';
+        if (separator) {
+            label.appendChild(document.createElement('hr'));
+            label.title = words.separator;
+        } else {
+            label.textContent = entry.label || entry.name;
+        }
+        row.appendChild(label);
+    }
+
+    if (state.inputEditing) {
+        const move = step => () => {
+            const moved = names.slice();
+            [moved[index], moved[index + step]] = [moved[index + step], moved[index]];
+            writeMenu(table, moved);
+        };
+        const up = menuButton('arrow', '↑', words.moveUp, move(-1));
+        up.disabled = index === 0;
+        const down = menuButton('arrow', '↓', words.moveDown, move(1));
+        down.disabled = index === names.length - 1;
+        const remove = menuButton('remove', '×', state.inputs.strings.remove,
+                                  () => writeMenu(table, names.filter((_, i) => i !== index)));
+        row.append(up, down, remove);
+    }
+    return row;
+}
+
+function menuAddRow(table) {
+    const words = state.menus.strings;
+    const names = table.entries.map(e => e.name);
+    const row = document.createElement('div');
+    row.className = 'binding adding';
+    const select = actionSelect(table, '');
+    select.textContent = state.inputs.strings.add;
+    select.addEventListener('change', () => writeMenu(table, names.concat([select.value])));
+    const separator = menuButton('arrow', words.addSeparator, words.addSeparator,
+                                 () => writeMenu(table, names.concat(['Separator'])));
+    row.append(select, separator);
+    return row;
+}
+
+function menuSection(table, query) {
+    const words = state.inputs.strings;
+    const indexed = table.entries.map((entry, index) => ({entry, index}));
+    const shown = indexed.filter(({entry}) => entry.name !== 'Separator' && menuMatches(table, entry, query));
+    if (query && !shown.length) return null;
+
+    const section = document.createElement('div');
+    section.className = 'menu-part';
+    section.dataset.group = table.group;
+
+    const head = document.createElement('div');
+    head.className = 'input-head';
+    const title = document.createElement('h4');
+    title.textContent = state.menus.strings[table.part] || table.label;
+    if (table.changed) {
+        const badge = document.createElement('span');
+        badge.className = 'restart';
+        badge.textContent = words.changed;
+        title.appendChild(badge);
+    }
+    head.appendChild(title);
+    if (state.inputEditing && table.changed) {
+        const reset = document.createElement('button');
+        reset.type = 'button';
+        reset.className = 'reset visible';
+        reset.textContent = words.resetTable;
+        reset.addEventListener('click', () => resetMenu(table));
+        head.appendChild(reset);
+    }
+    section.appendChild(head);
+
+    if (table.hint && table.part !== 'items') {
+        const hint = document.createElement('p');
+        hint.className = 'hint';
+        hint.textContent = table.hint;
+        section.appendChild(hint);
+    }
+
+    const list = document.createElement('div');
+    list.className = 'bindings menu-items';
+    for (const {entry, index} of (query ? shown : indexed)) list.appendChild(menuRow(table, entry, index));
+    if (!table.entries.length) {
+        const empty = document.createElement('p');
+        empty.className = 'hint';
+        empty.textContent = state.menus.strings.empty;
+        list.appendChild(empty);
+    }
+    if (state.inputEditing && !query) list.appendChild(menuAddRow(table));
+    section.appendChild(list);
+    return {section, count: shown.length};
+}
+
+function menuGroup(first) {
+    const section = document.createElement('section');
+    section.className = 'input-table menu-table';
+    section.dataset.group = first.menu;
+    const head = document.createElement('div');
+    head.className = 'input-head';
+    const title = document.createElement('h3');
+    title.textContent = first.menuLabel;
+    head.appendChild(title);
+    section.appendChild(head);
+    if (first.menuHint) {
+        const hint = document.createElement('p');
+        hint.className = 'hint';
+        hint.textContent = first.menuHint;
+        section.appendChild(hint);
+    }
+    return section;
+}
+
+function renderMenus(query, searching, label) {
+    let shown = 0;
+    const sections = [];
+    let group = null;
+    for (const table of state.menus.tables) {
+        const drawn = menuSection(table, query);
+        if (!drawn) continue;
+        if (!group || group.dataset.group !== table.menu) {
+            group = menuGroup(table);
+            sections.push(group);
+        }
+        group.appendChild(drawn.section);
+        shown += drawn.count;
+    }
+    if (!sections.length) return 0;
+
+    if (searching) {
+        const heading = document.createElement('section');
+        const h2 = document.createElement('h2');
+        h2.textContent = label;
+        heading.appendChild(h2);
+        el.main.appendChild(heading);
+    }
+    const toolbar = inputToolbar(state.menus.strings.menus);
+    el.main.appendChild(toolbar);
+    if (sections.length > 1) el.main.appendChild(inputContents(sections));
+    for (const section of sections) el.main.appendChild(section);
+    watchFloatingToggle(toolbar);
+    if (state.inputBusy) holdInputs();
+    return Math.max(shown, 1);
+}
+
+async function refreshMenus() {
+    try {
+        state.menus = await api('menus');
         render();
     } catch (e) {
     }
@@ -2244,6 +2468,10 @@ function render() {
             shown += rows + renderInputs(query, searching, category.label, rows > 0);
             continue;
         }
+        if (state.menus && category.name === state.menus.category) {
+            shown += renderMenus(query, searching, category.label);
+            continue;
+        }
         if (category.name === 'passwords') {
             shown += renderPasswords(query, searching, category.label);
             continue;
@@ -2309,6 +2537,7 @@ function showCategory(name) {
         }
     }
     if (state.inputs && name === state.inputs.category) refreshInputs();
+    if (state.menus && name === state.menus.category) refreshMenus();
     if (name === 'passwords') refreshPasswords();
     if (name === 'permissions') refreshPermissions();
     if (name === 'profiles') refreshProfiles();
@@ -2382,6 +2611,8 @@ async function refreshValues() {
         refreshDirectory(state.directoryId);
     else if (changed)
         render();
+    if (!state.inputBusy && state.inputs && state.current === state.inputs.category) refreshInputs();
+    if (!state.inputBusy && state.menus && state.current === state.menus.category) refreshMenus();
 }
 
 async function main() {
@@ -2393,6 +2624,7 @@ async function main() {
     state.categories = schema.categories;
     state.items = schema.items;
     state.inputs = schema.inputs || null;
+    state.menus = schema.menus || null;
     state.current = categoryOfFragment();
 
     document.title = state.strings.title;

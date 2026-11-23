@@ -52,6 +52,7 @@ set(VANILLA_HEADERS
     src/core/settingsio.hpp
     src/core/inputmap.hpp
     src/core/inputmapschema.hpp
+    src/core/menuschema.hpp
     src/core/commandmap.hpp
     src/core/actiontext.hpp
     src/core/searchsuggest.hpp
@@ -161,6 +162,7 @@ set(VANILLA_SOURCES
     src/core/settingsio.cpp
     src/core/inputmap.cpp
     src/core/inputmapschema.cpp
+    src/core/menuschema.cpp
     src/core/commandmap.cpp
     src/core/actiontext.cpp
     src/core/searchsuggest.cpp
@@ -209,7 +211,9 @@ set(VANILLA_SOURCES
     src/ui/dialog.cpp
     src/ui/editmenu.cpp
     src/ui/menukeys.cpp
+    src/ui/menuiconrow.cpp
     src/view/view.cpp
+    src/view/viewjscode.cpp
     src/view/page.cpp
     src/view/webelement.cpp
     src/view/mediatype.cpp
@@ -266,14 +270,6 @@ target_include_directories(vanilla_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/gadgets)
 
 target_compile_definitions(vanilla_core PUBLIC LOCALVIEW)
-
-# saving and restoring the playback position of a page's video (A-1). on by
-# default since D-063 追記 (2026-09-01): the cost -- a float on every view
-# node and a field in the session file -- was accepted.
-option(VANILLA_MEDIATIME "save and restore the playback position of videos" ON)
-if(VANILLA_MEDIATIME)
-    target_compile_definitions(vanilla_core PUBLIC MEDIATIME)
-endif()
 
 target_link_libraries(vanilla_core PUBLIC
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml Qt6::Network
@@ -674,10 +670,17 @@ if(WIN32)
     option(VANILLA_PACKAGE_FFMPEG
         "Ship Qt Multimedia's FFmpeg backend in the package (local packages only; a distributed package excludes it, D-241)"
         OFF)
+    # the PDF image format plugin is deployed whenever Qt PDF is installed
+    # beside Qt, and it brings 'Qt6Pdf.dll' with it; nothing in vanilla reads
+    # a PDF as an image (D-714). '--exclude-plugins' takes one list, so the
+    # plugins left out are gathered here.
+    set(VANILLA_EXCLUDED_PLUGINS qpdf)
     if(NOT VANILLA_PACKAGE_FFMPEG)
-        list(APPEND VANILLA_DEPLOY_OPTIONS
-            --no-ffmpeg --exclude-plugins ffmpegmediaplugin)
+        list(APPEND VANILLA_DEPLOY_OPTIONS --no-ffmpeg)
+        list(APPEND VANILLA_EXCLUDED_PLUGINS ffmpegmediaplugin)
     endif()
+    list(JOIN VANILLA_EXCLUDED_PLUGINS "," VANILLA_EXCLUDED_PLUGINS)
+    list(APPEND VANILLA_DEPLOY_OPTIONS --exclude-plugins ${VANILLA_EXCLUDED_PLUGINS})
 
     # 'vc_redist.x64.exe' belongs in the package (D-241). the tool deploys
     # it by default, so this only says so out loud -- it does NOT make a

@@ -10,6 +10,12 @@
 #include "nodepreview.hpp"
 #include "plaintooltip.hpp"
 #include "webengineview.hpp"
+#include "menuschema.hpp"
+#include "actiontext.hpp"
+#include "receiver.hpp"
+#include "view.hpp"
+#include "menuiconrow.hpp"
+#include "application.hpp"
 
 #include <QPainter>
 #include <QFontMetricsF>
@@ -24,6 +30,7 @@
 #include <QStyleOptionToolBar>
 #include <QUrl>
 #include <QCursor>
+#include <QClipboard>
 
 #include <math.h>
 
@@ -383,11 +390,12 @@ namespace {
             GraphicsButton::mouseReleaseEvent(ev);
             if(!IsClick(ev)) return;
 
-            QMenu *menu = nullptr;
-            if(ev->button() == Qt::LeftButton)
-                menu = static_cast<LayerItem*>(parentItem())->MakeNodeMenu();
-            else if(ev->button() == Qt::RightButton)
-                menu = m_TreeBar->TreeBarMenu();
+            if(ev->button() == Qt::LeftButton){
+                static_cast<LayerItem*>(parentItem())->NewViewNode();
+                return;
+            }
+            if(ev->button() != Qt::RightButton) return;
+            QMenu *menu = m_TreeBar->TreeBarMenu();
             if(!menu) return;
             menu->exec(ev->screenPos());
             delete menu;
@@ -2484,39 +2492,6 @@ static void AddTrashEntries(QMenu *menu, TreeBank *tb,
     restoreMenu->addAction(displayTrashTree);
 }
 
-QMenu *LayerItem::MakeNodeMenu(){
-    QMenu *menu = HoldingPreviewWhenHidden(new QMenu(m_TreeBar));
-    menu->setToolTipsVisible(true);
-
-    QAction *newViewNode = new QAction(menu);
-    newViewNode->setText(QObject::tr("NewViewNode"));
-    newViewNode->connect(newViewNode, &QAction::triggered, this, &LayerItem::NewViewNode);
-    menu->addAction(newViewNode);
-
-    QAction *cloneViewNode = new QAction(menu);
-    cloneViewNode->setText(QObject::tr("CloneViewNode"));
-    cloneViewNode->connect(cloneViewNode, &QAction::triggered, this, &LayerItem::CloneViewNode);
-    menu->addAction(cloneViewNode);
-
-    if(!TreeBank::GetTrashRoot()->HasNoChildren())
-        menu->addSeparator();
-
-    TreeBank *tb = m_TreeBank;
-    Node *nd = GetNode();
-    Node *pnd = m_DummyNode->GetParent();
-
-    AddTrashEntries(menu, tb, [tb, nd, pnd](ViewNode *t){
-        if(nd)
-            tb->MoveNode(t, nd->GetParent(), nd->Index() + 1);
-        else if(pnd)
-            tb->MoveNode(t, pnd);
-        else
-            tb->MoveNode(t, TreeBank::GetViewRoot());
-    });
-
-    return menu;
-}
-
 void LayerItem::NewViewNode(){
     if(Node *nd = GetNode())
         m_TreeBank->NewViewNode(nd->ToViewNode());
@@ -2524,15 +2499,6 @@ void LayerItem::NewViewNode(){
         m_TreeBank->OpenOnSuitableNode(START_URL, true, nd->ToViewNode());
     else
         m_TreeBank->OpenOnSuitableNode(START_URL, true);
-}
-
-void LayerItem::CloneViewNode(){
-    if(Node *nd = GetNode())
-        m_TreeBank->CloneViewNode(nd->ToViewNode());
-}
-
-void LayerItem::DisplayTrashTree(){
-    m_TreeBank->DisplayTrashTree();
 }
 
 void LayerItem::timerEvent(QTimerEvent *ev){
@@ -3834,142 +3800,149 @@ QMenu *NodeItem::NodeMenu(){
     if(!vn) return menu;
 
     const bool current = tb->IsCurrent(vn);
+    const bool directory = vn->IsDirectory();
 
     auto named = [current](QAction *action, const QString &name){
         if(current) action->setObjectName(name);
     };
+    auto add = [this](QMenu *into, const QString &text, void (NodeItem::*slot)()){
+        QAction *action = new QAction(into);
+        action->setText(text);
+        action->connect(action, &QAction::triggered, this, slot);
+        into->addAction(action);
+        return action;
+    };
 
-    if(!vn->IsDirectory()){
-        if(!current){
-            QAction *open = new QAction(menu);
-            open->setText(QObject::tr("OpenViewNode"));
-            open->connect(open, &QAction::triggered, this, &NodeItem::OpenViewNode);
-            menu->addAction(open);
-            QAction *openOnNewWindow = new QAction(menu);
-            openOnNewWindow->setText(QObject::tr("OpenViewNodeOnNewWindow"));
-            openOnNewWindow->connect(openOnNewWindow, &QAction::triggered,
-                                     this, &NodeItem::OpenViewNodeOnNewWindow);
-            menu->addAction(openOnNewWindow);
-        }
+    const MenuSchema::Table *table = MenuSchema::Find(QStringLiteral("TreeBarNodeMenu"));
+    const QStringList names = MenuSchema::Current(Application::GlobalSettings(), *table);
 
-        QMenu *m = new QMenu(tr("OpenViewNodeWithOtherBrowser"), menu);
-        {
-            QAction *a = new QAction(m);
-            a->setText(tr("OpenViewNodeWithDefault"));
-            a->connect(a, &QAction::triggered, this, &NodeItem::OpenViewNodeWithDefault);
-            m->addAction(a);
-        }
-        const QList<QPair<QString, QString> > commands = Application::ExternalCommands();
-        for(int i = 0; i < commands.length(); i++){
-            QAction *a = new QAction(m);
-            a->setText(commands[i].first);
-            a->setProperty(EXTERNAL_COMMAND_PROPERTY, commands[i].first);
-            a->connect(a, &QAction::triggered, this, &NodeItem::OpenViewNodeWithCommand);
-            m->addAction(a);
-        }
-        menu->addMenu(m);
+    const MenuSchema::Table *iconTable = MenuSchema::IconsOf(QStringLiteral("TreeBarNodeMenu"));
+    const QStringList icons = MenuSchema::Current(Application::GlobalSettings(), *iconTable);
+    MenuIconRow *row = new MenuIconRow(menu);
+    for(const QString &name : icons){
+        void (NodeItem::*slot)() = nullptr;
+        QString text, key;
+        bool enabled = true;
+        if(name == QStringLiteral("NewNode")){
+            slot = &NodeItem::NewViewNode; text = QObject::tr("NewViewNode"); key = QStringLiteral("NewViewNode");
+        } else if(name == QStringLiteral("CloneNode")){
+            slot = &NodeItem::CloneViewNode; text = QObject::tr("CloneViewNode"); key = QStringLiteral("CloneViewNode");
+        } else if(name == QStringLiteral("DeleteNode")){
+            slot = &NodeItem::DeleteViewNode; text = QObject::tr("DeleteViewNode"); key = QStringLiteral("Close");
+        } else if(name == QStringLiteral("ReloadNode")){
+            slot = &NodeItem::ReloadViewNode; text = QObject::tr("ReloadViewNode"); key = QStringLiteral("Reload");
+            enabled = !directory;
+        } else continue;
+        QAction *action = new QAction(text, menu);
+        action->connect(action, &QAction::triggered, this, slot);
+        named(action, key);
+        row->AddCell(name, action, MenuIconRow::IconOf(name), enabled);
     }
+    row->Install();
 
-    menu->addSeparator();
-
-    if(vn->IsDirectory()){
-        QAction *rename = new QAction(menu);
-        rename->setText(QObject::tr("RenameViewNode"));
-        rename->connect(rename, &QAction::triggered, this, &NodeItem::RenameViewNode);
-        menu->addAction(rename);
-
-        menu->addMenu(DirectoryPage::CreateSettingsMenu
-                      (vn, [tb, vn](){ tb->OpenDirectorySettings(vn); }, menu));
-
-    } else {
-        QAction *reload = new QAction(menu);
-        reload->setText(QObject::tr("ReloadViewNode"));
-        reload->connect(reload, &QAction::triggered, this, &NodeItem::ReloadViewNode);
-        named(reload, QStringLiteral("Reload"));
-        menu->addAction(reload);
+    for(const QString &name : names){
+        if(name != QStringLiteral("Separator") && row->Holds(name)) continue;
+        if(name == QStringLiteral("Separator")){
+            menu->addSeparator();
+        } else if(name == QStringLiteral("OpenNode")){
+            if(!directory && !current) add(menu, QObject::tr("OpenViewNode"), &NodeItem::OpenViewNode);
+        } else if(name == QStringLiteral("OpenNodeOnNewWindow")){
+            if(!directory && !current)
+                add(menu, QObject::tr("OpenViewNodeOnNewWindow"), &NodeItem::OpenViewNodeOnNewWindow);
+        } else if(name == QStringLiteral("OpenNodeWithDefault")){
+            if(!directory) add(menu, tr("OpenViewNodeWithDefault"), &NodeItem::OpenViewNodeWithDefault);
+        } else if(name == QStringLiteral("OpenNodeWithOtherBrowser")){
+            if(directory) continue;
+            QMenu *m = new QMenu(tr("OpenViewNodeWithOtherBrowser"), menu);
+            add(m, tr("OpenViewNodeWithDefault"), &NodeItem::OpenViewNodeWithDefault);
+            const QList<QPair<QString, QString> > commands = Application::ExternalCommands();
+            for(int i = 0; i < commands.length(); i++){
+                QAction *a = add(m, commands[i].first, &NodeItem::OpenViewNodeWithCommand);
+                a->setProperty(EXTERNAL_COMMAND_PROPERTY, commands[i].first);
+            }
+            menu->addMenu(m);
+        } else if(name == QStringLiteral("RenameNode")){
+            if(directory) add(menu, QObject::tr("RenameViewNode"), &NodeItem::RenameViewNode);
+        } else if(name == QStringLiteral("DirectorySettings")){
+            if(directory)
+                menu->addMenu(DirectoryPage::CreateSettingsMenu
+                              (vn, [tb, vn](){ tb->OpenDirectorySettings(vn); }, menu));
+        } else if(name == QStringLiteral("ReloadNode")){
+            if(!directory) named(add(menu, QObject::tr("ReloadViewNode"), &NodeItem::ReloadViewNode),
+                                 QStringLiteral("Reload"));
+        } else if(name == QStringLiteral("CopyNodeUrl")){
+            if(!directory) add(menu, MenuSchema::Label(name), &NodeItem::CopyViewNodeUrl);
+        } else if(name == QStringLiteral("CloneNode")){
+            named(add(menu, QObject::tr("CloneViewNode"), &NodeItem::CloneViewNode), QStringLiteral("CloneViewNode"));
+        } else if(name == QStringLiteral("NewNode")){
+            named(add(menu, QObject::tr("NewViewNode"), &NodeItem::NewViewNode), QStringLiteral("NewViewNode"));
+        } else if(name == QStringLiteral("MakeDirectory")){
+            add(menu, QObject::tr("MakeDirectory"), &NodeItem::MakeDirectory);
+        } else if(name == QStringLiteral("MakeDirectoryWithSelectedNode")){
+            add(menu, QObject::tr("MakeDirectoryWithSelectedNode"), &NodeItem::MakeDirectoryWithSelectedNode);
+        } else if(name == QStringLiteral("MakeDirectoryWithSameDomainNode")){
+            add(menu, QObject::tr("MakeDirectoryWithSameDomainNode"), &NodeItem::MakeDirectoryWithSameDomainNode);
+        } else if(name == QStringLiteral("DeleteNode")){
+            named(add(menu, QObject::tr("DeleteViewNode"), &NodeItem::DeleteViewNode), QStringLiteral("Close"));
+        } else if(name == QStringLiteral("DeleteRightNode")){
+            add(menu, m_TreeBar->orientation() == Qt::Horizontal
+                ? QObject::tr("DeleteRightViewNode") : QObject::tr("DeleteLowerViewNode"),
+                &NodeItem::DeleteRightViewNode);
+        } else if(name == QStringLiteral("DeleteLeftNode")){
+            add(menu, m_TreeBar->orientation() == Qt::Horizontal
+                ? QObject::tr("DeleteLeftViewNode") : QObject::tr("DeleteUpperViewNode"),
+                &NodeItem::DeleteLeftViewNode);
+        } else if(name == QStringLiteral("DeleteOtherNode")){
+            add(menu, QObject::tr("DeleteOtherViewNode"), &NodeItem::DeleteOtherViewNode);
+        } else if(name == QStringLiteral("DeleteNodesTogether")){
+            QMenu *together = new QMenu(QObject::tr("DeleteViewNodesTogether"), menu);
+            add(together, m_TreeBar->orientation() == Qt::Horizontal
+                ? QObject::tr("DeleteRightViewNode") : QObject::tr("DeleteLowerViewNode"),
+                &NodeItem::DeleteRightViewNode);
+            add(together, m_TreeBar->orientation() == Qt::Horizontal
+                ? QObject::tr("DeleteLeftViewNode") : QObject::tr("DeleteUpperViewNode"),
+                &NodeItem::DeleteLeftViewNode);
+            add(together, QObject::tr("DeleteOtherViewNode"), &NodeItem::DeleteOtherViewNode);
+            menu->addMenu(together);
+        } else if(name == QStringLiteral("RecentlyClosed")){
+            if(TreeBank::GetTrashRoot()->HasNoChildren()) continue;
+            QMenu *recent = new QMenu(QObject::tr("RecentlyClosedViewNode"), menu);
+            AddTrashEntries(recent, tb, [tb, vn](ViewNode *t){
+                if(vn->IsDirectory())
+                    tb->MoveNode(t, vn);
+                else
+                    tb->MoveNode(t, vn->GetParent(), vn->Index() + 1);
+            });
+            menu->addMenu(recent);
+        } else if(name == QStringLiteral("TreeBarMenu")){
+            QMenu *treeBarMenu = m_TreeBar->TreeBarMenu();
+            treeBarMenu->setParent(menu, treeBarMenu->windowFlags());
+            treeBarMenu->setTitle(m_TreeBar->windowTitle());
+            menu->addMenu(treeBarMenu);
+        }
     }
-
-    QAction *cloneViewNode = new QAction(menu);
-    cloneViewNode->setText(QObject::tr("CloneViewNode"));
-    cloneViewNode->connect(cloneViewNode, &QAction::triggered, this, &NodeItem::CloneViewNode);
-    named(cloneViewNode, QStringLiteral("CloneViewNode"));
-    menu->addAction(cloneViewNode);
-
-    menu->addSeparator();
-
-    QAction *newViewNode = new QAction(menu);
-    newViewNode->setText(QObject::tr("NewViewNode"));
-    newViewNode->connect(newViewNode, &QAction::triggered, this, &NodeItem::NewViewNode);
-    named(newViewNode, QStringLiteral("NewViewNode"));
-    menu->addAction(newViewNode);
-
-    QAction *makeDirectory = new QAction(menu);
-    makeDirectory->setText(QObject::tr("MakeDirectory"));
-    makeDirectory->connect(makeDirectory, &QAction::triggered, this, &NodeItem::MakeDirectory);
-    menu->addAction(makeDirectory);
-    QAction *makeDirectoryWithSelected = new QAction(menu);
-    makeDirectoryWithSelected->setText(QObject::tr("MakeDirectoryWithSelectedNode"));
-    makeDirectoryWithSelected->connect
-        (makeDirectoryWithSelected, &QAction::triggered,
-         this, &NodeItem::MakeDirectoryWithSelectedNode);
-    menu->addAction(makeDirectoryWithSelected);
-    QAction *makeDirectoryWithSameDomain = new QAction(menu);
-    makeDirectoryWithSameDomain->setText(QObject::tr("MakeDirectoryWithSameDomainNode"));
-    makeDirectoryWithSameDomain->connect
-        (makeDirectoryWithSameDomain, &QAction::triggered,
-         this, &NodeItem::MakeDirectoryWithSameDomainNode);
-    menu->addAction(makeDirectoryWithSameDomain);
-
-    menu->addSeparator();
-
-    QAction *deleteViewNode = new QAction(menu);
-    deleteViewNode->setText(QObject::tr("DeleteViewNode"));
-    deleteViewNode->connect(deleteViewNode, &QAction::triggered, this, &NodeItem::DeleteViewNode);
-    named(deleteViewNode, QStringLiteral("Close"));
-    menu->addAction(deleteViewNode);
-
-    QMenu *together = new QMenu(QObject::tr("DeleteViewNodesTogether"), menu);
-    QAction *deleteRightNode = new QAction(together);
-    deleteRightNode->setText(m_TreeBar->orientation() == Qt::Horizontal
-                             ? QObject::tr("DeleteRightViewNode")
-                             : QObject::tr("DeleteLowerViewNode"));
-    deleteRightNode->connect(deleteRightNode, &QAction::triggered,
-                             this, &NodeItem::DeleteRightViewNode);
-    together->addAction(deleteRightNode);
-    QAction *deleteLeftNode = new QAction(together);
-    deleteLeftNode->setText(m_TreeBar->orientation() == Qt::Horizontal
-                            ? QObject::tr("DeleteLeftViewNode")
-                            : QObject::tr("DeleteUpperViewNode"));
-    deleteLeftNode->connect(deleteLeftNode, &QAction::triggered,
-                            this, &NodeItem::DeleteLeftViewNode);
-    together->addAction(deleteLeftNode);
-    QAction *deleteOtherNode = new QAction(together);
-    deleteOtherNode->setText(QObject::tr("DeleteOtherViewNode"));
-    deleteOtherNode->connect(deleteOtherNode, &QAction::triggered,
-                             this, &NodeItem::DeleteOtherViewNode);
-    together->addAction(deleteOtherNode);
-    menu->addMenu(together);
-
-    if(!TreeBank::GetTrashRoot()->HasNoChildren()){
-        QMenu *recent = new QMenu(QObject::tr("RecentlyClosedViewNode"), menu);
-        AddTrashEntries(recent, tb, [tb, vn](ViewNode *t){
-            if(vn->IsDirectory())
-                tb->MoveNode(t, vn);
-            else
-                tb->MoveNode(t, vn->GetParent(), vn->Index() + 1);
-        });
-        menu->addMenu(recent);
-    }
-
-    menu->addSeparator();
-    QMenu *treeBarMenu = m_TreeBar->TreeBarMenu();
-    treeBarMenu->setParent(menu, treeBarMenu->windowFlags());
-    treeBarMenu->setTitle(m_TreeBar->windowTitle());
-    menu->addMenu(treeBarMenu);
 
     tb->ShowKeys(menu);
 
+    QAction *action = new QAction(ActionText::MenuLabel(QStringLiteral("OpenCommand")), menu);
+    action->connect(action, &QAction::triggered, this, &NodeItem::OpenTargetCommand);
+    View::AddMenuCommandCell(menu, action);
+
     return menu;
+}
+
+void NodeItem::CopyViewNodeUrl(){
+    if(ViewNode *vn = GetNode() ? GetNode()->ToViewNode() : nullptr)
+        QApplication::clipboard()->setText(vn->GetUrl().toString());
+}
+
+void NodeItem::OpenTargetCommand(){
+    ViewNode *vn = GetNode() ? GetNode()->ToViewNode() : nullptr;
+    if(!vn || !m_TreeBank || !m_TreeBank->GetReceiver()) return;
+    Receiver::TargetArgs target;
+    target.nodes << vn->GetSerial();
+    target.nodeTable = QStringLiteral("TreeBarNodeMenu");
+    m_TreeBank->GetReceiver()->OpenTarget(target);
 }
 
 void NodeItem::NewViewNode(){

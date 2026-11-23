@@ -490,9 +490,26 @@ private slots:
     var first = text('ab Nov 11月 x 11月', 100);
     var second = text('nothing here', 200);
     var third = text('11月10日', 300);
+    // a button: one control, and the words on it found all the same (D-698).
+    var label = text('11月', 400);
+    var button = {
+        nodeType: 1, ownerDocument: document, tagName: 'BUTTON', firstChild: label,
+        style: { display: 'block', visibility: 'visible', position: 'static' },
+        getBoundingClientRect: function(){
+            return { left: 0, top: 400, width: 100, height: 20 };
+        }
+    };
+    document.createTreeWalker = function(root, show){
+        var at = null;
+        return { nextNode: function(){
+            at = at ? at.nextSibling : root.firstChild;
+            return at;
+        }};
+    };
     body.firstChild = first;
     first.nextSibling = second;
     second.nextSibling = third;
+    third.nextSibling = button;
     return %1;
 })()
 )JS");
@@ -505,19 +522,21 @@ private slots:
             bool over = true;
             const auto blocks = MiniMap::ParseBlocks(result.toVariant(), &size, &over);
             QList<QRectF> matches;
-            int texts = 0;
+            int texts = 0, controls = 0;
             for(const MiniMap::Block &block : blocks){
                 if(block.kind == MiniMap::MatchBlock) matches << block.rect;
                 if(block.kind == MiniMap::TextBlock) ++texts;
+                if(block.kind == MiniMap::ControlBlock) ++controls;
             }
             QCOMPARE(texts, 3);
+            QCOMPARE(controls, 1);
             if(term.isEmpty()){
                 QVERIFY(matches.isEmpty());
                 continue;
             }
             QCOMPARE(matches, (QList<QRectF>{
                          QRectF(70, 100, 30, 10), QRectF(130, 100, 30, 10),
-                         QRectF(0, 300, 30, 10)}));
+                         QRectF(0, 300, 30, 10), QRectF(0, 400, 30, 10)}));
         }
         QJSEngine engine;
         const QJSValue upper = engine.evaluate

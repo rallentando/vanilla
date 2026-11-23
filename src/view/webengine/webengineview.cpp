@@ -72,9 +72,7 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
     m_PreventScrollRestoration = false;
     m_ReportedZoomFactor = 0.0;
     m_ScrollSignalTimer = 0;
-#ifdef MEDIATIME
     m_MediaTimeSaveTimer = 0;
-#endif
     connect(this, SIGNAL(iconChanged(const QIcon&)),
             this, SLOT(OnIconChanged(const QIcon&)));
     connect(page(), &QWebEnginePage::zoomFactorChanged,
@@ -84,7 +82,6 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
     connect(page(), &QWebEnginePage::audioMutedChanged,
             this, [](bool){ TreeBank::TabsLookChanged();});
 
-#ifdef MEDIATIME
     connect(page(), &QWebEnginePage::recentlyAudibleChanged,
             this, [this](bool audible){
                 if(audible){
@@ -98,7 +95,6 @@ WebEngineView::WebEngineView(TreeBank *parent, QString id, QStringList set)
                     SaveMediaTime();
                 }
             });
-#endif
 
 }
 
@@ -353,9 +349,7 @@ void WebEngineView::OnLoadFinished(bool ok){
     }
 
     RestoreScroll();
-#ifdef MEDIATIME
     RestoreMediaTime();
-#endif
     emit ViewChanged();
     emit statusBarMessage(tr("Finished loading."));
 
@@ -372,10 +366,8 @@ void WebEngineView::OnTitleChanged(const QString &title){
 void WebEngineView::OnUrlChanged(const QUrl &uri){
     if(!GetViewNode()) return;
     SaveHistory();
-#ifdef MEDIATIME
     if(uri != GetViewNode()->GetUrl())
         GetViewNode()->SetMediaTime(0);
-#endif
     ChangeNodeUrl(uri);
 }
 
@@ -445,7 +437,6 @@ bool WebEngineView::RestoreScroll(){
     return true;
 }
 
-#ifdef MEDIATIME
 bool WebEngineView::SaveMediaTime(VoidCallBack settled){
     if(!page()){
         if(settled) settled();
@@ -477,7 +468,6 @@ bool WebEngineView::RestoreMediaTime(){
     page()->runJavaScript(SetMediaTimeJsCode(time));
     return true;
 }
-#endif
 
 bool WebEngineView::SaveZoom(){
     if(!GetViewNode()) return false;
@@ -652,22 +642,30 @@ void WebEngineView::ZoomOut(){
 }
 
 void WebEngineView::ToggleMediaControls(){
-    if(page() && lastContextMenuRequest())
+    if(ScriptMediaPoint().x() >= 0)
+        CallWithEvaluatedJavaScriptResult(ToggleMediaControlsJsCode(ScriptMediaPoint()), [](QVariant){});
+    else if(page() && lastContextMenuRequest())
         page()->triggerAction(QWebEnginePage::ToggleMediaControls);
 }
 
 void WebEngineView::ToggleMediaLoop(){
-    if(page() && lastContextMenuRequest())
+    if(ScriptMediaPoint().x() >= 0)
+        CallWithEvaluatedJavaScriptResult(ToggleMediaLoopJsCode(ScriptMediaPoint()), [](QVariant){});
+    else if(page() && lastContextMenuRequest())
          page()->triggerAction(QWebEnginePage::ToggleMediaLoop);
 }
 
 void WebEngineView::ToggleMediaPlayPause(){
-    if(page() && lastContextMenuRequest())
+    if(ScriptMediaPoint().x() >= 0)
+        CallWithEvaluatedJavaScriptResult(ToggleMediaPlayPauseJsCode(ScriptMediaPoint()), [](QVariant){});
+    else if(page() && lastContextMenuRequest())
         page()->triggerAction(QWebEnginePage::ToggleMediaPlayPause);
 }
 
 void WebEngineView::ToggleMediaMute(){
-    if(page() && lastContextMenuRequest())
+    if(ScriptMediaPoint().x() >= 0)
+        CallWithEvaluatedJavaScriptResult(ToggleMediaMuteAtJsCode(ScriptMediaPoint()), [](QVariant){});
+    else if(page() && lastContextMenuRequest())
         page()->triggerAction(QWebEnginePage::ToggleMediaMute);
 }
 
@@ -734,7 +732,7 @@ void WebEngineView::CloseInspector(){
 }
 
 void WebEngineView::AddSearchEngine(QPoint pos){
-    if(page()) page()->AddSearchEngine(pos);
+    if(page()) page()->AddSearchEngine(pos / zoomFactor());
 }
 
 void WebEngineView::AddBookmarklet(QPoint pos){
@@ -748,11 +746,9 @@ void WebEngineView::timerEvent(QTimerEvent *ev){
         killTimer(m_ScrollSignalTimer);
         m_ScrollSignalTimer = 0;
     }
-#ifdef MEDIATIME
     if(ev->timerId() == m_MediaTimeSaveTimer){
         SaveMediaTime();
     }
-#endif
 }
 
 void WebEngineView::childEvent(QChildEvent *ev){
@@ -832,6 +828,12 @@ void WebEngineView::contextMenuEvent(QContextMenuEvent *ev){
         }
         m_SelectedText = data->selectedText();
     }
+    m_ScriptMediaPoint = QPoint(-1, -1);
+    if(type == Page::MediaTypeNone && elem && elem->IsMediaElement()){
+        type = Page::MediaTypePlayable;
+        m_ScriptMediaPoint = ev->pos() / zoomFactor();
+        m_ScriptMediaLoad = LoadSerial();
+    }
     page()->DisplayContextMenu(m_TreeBank, elem, ev->pos(), ev->globalPos(), type);
     GestureAborted();
     ev->setAccepted(true);
@@ -890,60 +892,14 @@ void WebEngineView::dragMoveEvent(QDragMoveEvent *ev){
 }
 
 void WebEngineView::dropEvent(QDropEvent *ev){
-    emit statusBarMessage(QString());
-    bool isLocal = false;
-    QPoint pos = ev->position().toPoint();
-    QObject *source = ev->source();
-    QString text = ev->mimeData()->text();
-    QList<QUrl> urls = Page::MimeDataToUrls(ev->mimeData(), source);
-
-    for(QUrl u : std::as_const(urls)){ if(u.isLocalFile()) isLocal = true;}
-
-    if(text.isEmpty() && !urls.isEmpty()){
-        foreach(QUrl u, urls){
-            if(text.isEmpty()) text = u.toString();
-            else text += QStringLiteral("\n") + u.toString();
-        }
-    }
-
-    const bool own = IsOwnDragSource(source);
-
-    CallWithHitElement(pos, [this, pos, own, text, urls](SharedWebElement elem){
-
-    if(elem && !elem->IsNull() && (elem->IsEditableElement() || elem->IsTextInputElement())){
-
-        GestureAborted();
-        elem->SetText(text);
-        return;
-    }
-
-    if(!m_Gesture.isEmpty() && own){
-        GestureFinished(pos, Qt::LeftButton);
-        return;
-    }
-
-    GestureAborted();
-
-    if(!urls.isEmpty() && !own){
-        m_TreeBank->OpenInNewViewNode(urls, true, GetViewNode());
-    }
-
-    });
-
-    const bool consumed = (!m_Gesture.isEmpty() && own) || (!urls.isEmpty() && !own);
-
+    DropHooks hooks;
 #if defined(Q_OS_MAC)
+    hooks.toEngine = [](QDropEvent*){};
 #else
-    if(isLocal || consumed ||
-       (DragToStartDownload() && !urls.isEmpty() && own))
-        ;
-    else {
-        if(own && !urls.isEmpty()) MarkOwnDrop();
-        QWebEngineView::dropEvent(ev);
-    }
+    hooks.toEngine = [this](QDropEvent *ev){ QWebEngineView::dropEvent(ev);};
 #endif
-
-    ev->setAccepted(true);
+    hooks.clearStatus = [this](){ emit statusBarMessage(QString());};
+    DropWithGestures(ev, hooks);
 }
 
 void WebEngineView::dragLeaveEvent(QDragLeaveEvent *ev){

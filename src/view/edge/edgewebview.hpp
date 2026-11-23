@@ -256,10 +256,8 @@ public:
     bool IsAudioMuted() override;
     void SetAudioMuted(bool muted) override;
 
-#ifdef MEDIATIME
     bool SaveMediaTime(VoidCallBack settled = VoidCallBack()) override;
     bool RestoreMediaTime() override;
-#endif
 
 private:
 
@@ -354,12 +352,13 @@ private:
         int m_Generation;
         bool m_Superseded;
         int m_Sequence;
+        quint64 m_Load;
 
         ContextTarget()
             : m_Position(QPoint()), m_LinkUrl(QUrl()), m_SourceUrl(QUrl())
             , m_SelectedText(QString()), m_Editable(false), m_MediaType(0)
             , m_ExtensionItems(QList<EdgeMenuItem>()), m_PasteCommandId(-1), m_Generation(0)
-            , m_Superseded(false), m_Sequence(0) {}
+            , m_Superseded(false), m_Sequence(0), m_Load(0) {}
     };
     void DisplayContextMenuFor(const ContextTarget &target);
     void CompleteContextMenu(int generation, int commandId, bool extension);
@@ -392,19 +391,13 @@ public:
                                            VariantCallBack callBack) override;
 
     void WheelEvent(QWheelEvent *ev) override;
-    void UpKeyEvent()       override { RunScript(UpKeyEventJsCode());}
-    void DownKeyEvent()     override { RunScript(DownKeyEventJsCode());}
-    void RightKeyEvent()    override { RunScript(RightKeyEventJsCode());}
-    void LeftKeyEvent()     override { RunScript(LeftKeyEventJsCode());}
-    void PageDownKeyEvent() override { RunScript(PageDownKeyEventJsCode());}
-    void PageUpKeyEvent()   override { RunScript(PageUpKeyEventJsCode());}
-    void HomeKeyEvent()     override { RunScript(HomeKeyEventJsCode());}
-    void EndKeyEvent()      override { RunScript(EndKeyEventJsCode());}
+    void RunMoveScript(const QString &code) override { RunScript(code);}
 
 private:
 
     qreal PageScale() const;
     QPoint PagePointOf(const QPoint &widgetPoint) const;
+    QPoint MediaPoint() const;
     QRect WidgetRectOf(const QRect &pageRect) const;
     bool HandleAcceleratorKey(int virtualKey, bool down, bool repeat);
     void ApplyPendingState();

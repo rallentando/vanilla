@@ -60,7 +60,7 @@ public:
         m_EnableMouseGesture = enabled;
     }
 
-    bool RightGestureEnabled() const { return EnableRightGestureLocal(); }
+    bool RightGestureEnabled() const { return m_EnableRightGestureLocal; }
 };
 
 class QuickViewHarness : public QuickWebEngineView {

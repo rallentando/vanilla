@@ -190,7 +190,8 @@ namespace {
         { "webview/@OpenCommandOperation", SettingsSchema::Choice, "page",
           QT_TRANSLATE_NOOP("SettingsSchema", "Where a link opens"), "",
           "InNewViewNode|InNewDirectory|OnRoot|InNewViewNodeBackground|"
-          "InNewDirectoryBackground|OnRootBackground",
+          "InNewDirectoryBackground|OnRootBackground|InNewViewNodeNewWindow|"
+          "InNewDirectoryNewWindow|OnRootNewWindow",
           "InNewViewNode", false },
 
         { "webview/@EnableDestinationInferrer", SettingsSchema::Bool, "page",
@@ -374,7 +375,8 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "What choosing a link does"), "",
           "OpenMenu|ClickElement|FocusElement|HoverElement|OpenInNewViewNode|"
           "OpenInNewDirectory|OpenOnRoot|OpenInNewViewNodeBackground|"
-          "OpenInNewDirectoryBackground",
+          "OpenInNewDirectoryBackground|OpenOnRootBackground|"
+          "OpenInNewViewNodeNewWindow|OpenInNewDirectoryNewWindow|OpenOnRootNewWindow|OpenCommand",
           "OpenMenu", false },
 
         { "gadgets/accesskey/@AccessKeySelectBlockMethod", SettingsSchema::Choice, "accesskey",
@@ -394,8 +396,7 @@ namespace {
           QT_TRANSLATE_NOOP("SettingsSchema", "Mouse gestures"), "", "", "true", false },
 
         { "webview/@GestureMode", SettingsSchema::Choice, "input",
-          QT_TRANSLATE_NOOP("SettingsSchema", "Gesture directions"),
-          QT_TRANSLATE_NOOP("SettingsSchema", "For mouse gestures and super drag."),
+          QT_TRANSLATE_NOOP("SettingsSchema", "Gesture directions"), "",
           "4|8", "4", false },
 
         { "webview/@EnableDragGesture", SettingsSchema::Bool, "input",
@@ -901,6 +902,8 @@ QList<QPair<QString, QString> > Categories(){
                       QCoreApplication::translate("SettingsSchema", "Access keys"));
     list << qMakePair(QStringLiteral("input"),
                       QCoreApplication::translate("SettingsSchema", "Keys and mouse"));
+    list << qMakePair(QStringLiteral("menu"),
+                      QCoreApplication::translate("SettingsSchema", "Context menus"));
     list << qMakePair(QStringLiteral("downloads"),
                       QCoreApplication::translate("SettingsSchema", "Downloads"));
     list << qMakePair(QStringLiteral("extensions"),
@@ -922,8 +925,12 @@ QList<QPair<QString, QString> > Categories(){
     list << qMakePair(QStringLiteral("engine"),
                       QCoreApplication::translate("SettingsSchema", "Rendering and engine"));
     list << qMakePair(QStringLiteral("hidden"),
-                      QCoreApplication::translate("SettingsSchema", "Hidden settings"));
+                      QCoreApplication::translate("SettingsSchema", "Other settings"));
     return list;
+}
+
+QStringList HiddenCategories(){
+    return QStringList() << QStringLiteral("hidden");
 }
 
 QStringList CategoriesBeginningARun(){
@@ -940,8 +947,8 @@ const QList<ChoiceLabel> &ChoiceLabels(){
         { "application/@ColorScheme", "Light", QT_TRANSLATE_NOOP("SettingsSchema", "Light") },
         { "application/@ColorScheme", "Dark",  QT_TRANSLATE_NOOP("SettingsSchema", "Dark") },
 
-        { "webview/@GestureMode", "4", QT_TRANSLATE_NOOP("SettingsSchema", "Four (up, down, left, right)") },
-        { "webview/@GestureMode", "8", QT_TRANSLATE_NOOP("SettingsSchema", "Eight (diagonals too)") },
+        { "webview/@GestureMode", "4", QT_TRANSLATE_NOOP("SettingsSchema", "Four") },
+        { "webview/@GestureMode", "8", QT_TRANSLATE_NOOP("SettingsSchema", "Eight") },
 
         { "application/@SuggestEngine", "Google", QT_TRANSLATE_NOOP("SettingsSchema", "Google") },
         { "application/@SuggestEngine", "Bing", QT_TRANSLATE_NOOP("SettingsSchema", "Bing") },
@@ -1021,6 +1028,12 @@ const QList<ChoiceLabel> &ChoiceLabels(){
           QT_TRANSLATE_NOOP("SettingsSchema", "In a new directory, in the background") },
         { "webview/@OpenCommandOperation", "OnRootBackground",
           QT_TRANSLATE_NOOP("SettingsSchema", "At the top level, in the background") },
+        { "webview/@OpenCommandOperation", "InNewViewNodeNewWindow",
+          QT_TRANSLATE_NOOP("SettingsSchema", "In a new tab, in a new window") },
+        { "webview/@OpenCommandOperation", "InNewDirectoryNewWindow",
+          QT_TRANSLATE_NOOP("SettingsSchema", "In a new directory, in a new window") },
+        { "webview/@OpenCommandOperation", "OnRootNewWindow",
+          QT_TRANSLATE_NOOP("SettingsSchema", "At the top level, in a new window") },
 
         { "webview/@SavePageFormat", "MimeHtmlSaveFormat",
           QT_TRANSLATE_NOOP("SettingsSchema", "One .mhtml file") },
@@ -1052,6 +1065,16 @@ const QList<ChoiceLabel> &ChoiceLabels(){
           QT_TRANSLATE_NOOP("SettingsSchema", "Open in a new tab, in the background") },
         { "gadgets/accesskey/@AccessKeyAction", "OpenInNewDirectoryBackground",
           QT_TRANSLATE_NOOP("SettingsSchema", "Open in a new directory, in the background") },
+        { "gadgets/accesskey/@AccessKeyAction", "OpenOnRootBackground",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Open at the top level, in the background") },
+        { "gadgets/accesskey/@AccessKeyAction", "OpenInNewViewNodeNewWindow",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Open in a new tab, in a new window") },
+        { "gadgets/accesskey/@AccessKeyAction", "OpenInNewDirectoryNewWindow",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Open in a new directory, in a new window") },
+        { "gadgets/accesskey/@AccessKeyAction", "OpenOnRootNewWindow",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Open at the top level, in a new window") },
+        { "gadgets/accesskey/@AccessKeyAction", "OpenCommand",
+          QT_TRANSLATE_NOOP("SettingsSchema", "Open the command bar for it") },
 
         { "gadgets/accesskey/@AccessKeySelectBlockMethod", "Number",
           QT_TRANSLATE_NOOP("SettingsSchema", "A number") },
@@ -1126,6 +1149,7 @@ namespace {
         { "webview/@SuspendHiddenViews", "Off", "Active" },
         { "application/@GraphicsApi", "d3d11", "Direct3D11" },
         { "application/@GraphicsApi", "d3d12", "Direct3D12" },
+        { "application/@Viewport", "GLWidget", "OpenGLWidget" },
     };
 
     QString Canonical(const Item &item, const QString &value){
@@ -1243,6 +1267,87 @@ QJsonValue ToJson(const Item &item, const QVariant &value){
     return QJsonValue();
 }
 
+static bool IsChoice(const Item &item, const QString &value){
+    return QString::fromLatin1(item.choices).split(QLatin1Char('|')).contains(value);
+}
+
+QVariant FromText(const QString &key, const QString &text){
+    const Item *item = Find(key);
+    if(!item) return IsKnownKey(key) ? QVariant(text) : QVariant();
+    switch(item->type){
+    case Bool:
+        if(text.compare(QStringLiteral("true"),  Qt::CaseInsensitive) == 0) return QVariant(true);
+        if(text.compare(QStringLiteral("false"), Qt::CaseInsensitive) == 0) return QVariant(false);
+        return QVariant();
+    case Int: {
+        bool ok = false;
+        const int number = text.trimmed().toInt(&ok);
+        return ok ? QVariant(number) : QVariant();
+    }
+    case Choice: {
+        const QString canonical = Canonical(*item, text.trimmed());
+        return IsChoice(*item, canonical) ? QVariant(canonical) : QVariant();
+    }
+    case Text:
+    case Directory:
+    case Color:
+        return FromJson(*item, QJsonValue(text));
+    case TextList:
+        break;
+    }
+    return QVariant();
+}
+
+QList<QPair<QString, QString> > Values(const Item &item){
+    QList<QPair<QString, QString> > values;
+    if(item.type == Bool){
+        values << qMakePair(QStringLiteral("true"), QStringLiteral("true"))
+               << qMakePair(QStringLiteral("false"), QStringLiteral("false"));
+    } else if(item.type == Choice){
+        for(const QString &choice : QString::fromLatin1(item.choices).split(QLatin1Char('|')))
+            values << qMakePair(choice, LabelOfChoice(item, choice));
+    }
+    return values;
+}
+
+QStringList DropInvalidValues(QMap<QString, QVariant> &map){
+    QStringList dropped;
+    for(auto it = map.begin(); it != map.end();){
+        const Item *item = Find(it.key());
+        if(!item){ ++it; continue; }
+        const QVariant value = it.value();
+        const bool text = value.typeId() == QMetaType::QString;
+        bool valid = true;
+        switch(item->type){
+        case Bool:
+            valid = !text || QStringList{ QStringLiteral("true"), QStringLiteral("false"),
+                                          QStringLiteral("1"), QStringLiteral("0") }
+                                 .contains(value.toString().trimmed(), Qt::CaseInsensitive);
+            break;
+        case Int:
+            value.toString().trimmed().toInt(&valid);
+            break;
+        case Choice: {
+            const QString canonical = Canonical(*item, value.toString().trimmed());
+            valid = IsChoice(*item, canonical);
+            if(valid && canonical != value.toString()) it.value() = canonical;
+            break;
+        }
+        case Color:
+            valid = FromJson(*item, QJsonValue(value.toString())).isValid();
+            break;
+        case Text:
+        case Directory:
+        case TextList:
+            break;
+        }
+        if(valid){ ++it; continue; }
+        dropped << it.key();
+        it = map.erase(it);
+    }
+    return dropped;
+}
+
 QString EmptyDirectory(const Item &item){
     const QLatin1String key(item.key);
     QStandardPaths::StandardLocation where;
@@ -1262,11 +1367,19 @@ QStringList UnlistedKeys(){
         << QStringLiteral("webview/menu/RegularMenu")
         << QStringLiteral("webview/menu/SelectionMenu")
         << QStringLiteral("webview/menu/TextMenu")
+        << QStringLiteral("webview/menu/TreeBarNodeMenu")
+        << QStringLiteral("webview/menu/TableNodeMenu")
+        << QStringLiteral("webview/menu/PageIcons")
+        << QStringLiteral("webview/menu/LinkIcons")
+        << QStringLiteral("webview/menu/ImageIcons")
+        << QStringLiteral("webview/menu/MediaIcons")
+        << QStringLiteral("webview/menu/TextIcons")
+        << QStringLiteral("webview/menu/SelectionIcons")
+        << QStringLiteral("webview/menu/TreeBarNodeIcons")
+        << QStringLiteral("webview/menu/TableNodeIcons")
         << QStringLiteral("application/@RootName")
         << QStringLiteral("network/@DisabledExtensions")
         << QStringLiteral("network/@PinnedExtensions")
-        << QStringLiteral("application/@MaxView")
-        << QStringLiteral("application/@MaxTrash")
         << QStringLiteral("webview/@EnableScrollGesture")
         << QStringLiteral("webview/@SavePasswords")
         << QStringLiteral("webview/@TrackingPrevention")
@@ -1315,7 +1428,7 @@ QJsonObject Describe(){
         category[QStringLiteral("label")] = names[i].second;
         if(runs.contains(names[i].first))
             category[QStringLiteral("divider")] = true;
-        if(names[i].first == QStringLiteral("hidden"))
+        if(HiddenCategories().contains(names[i].first))
             category[QStringLiteral("hidden")] = true;
         categories.append(category);
     }

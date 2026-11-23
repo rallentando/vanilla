@@ -21,6 +21,7 @@ class QKeySequence;
 class QFocusEvent;
 class QPaintEvent;
 class QTimerEvent;
+class QResizeEvent;
 class QLocalServer;
 class QLocalSocket;
 
@@ -40,6 +41,10 @@ public:
     bool IsPill() const { return m_Pill;}
     void SetCount(const QString &count);
     QString Count() const { return m_Count;}
+    void SetTag(const QString &tag);
+    QString Tag() const { return m_Tag;}
+    void SetClosable(bool on);
+    QRect CloseRect() const;
 
     static const char *const AddressHoverProperty;
     static QRect AddressRect(const QWidget *site, const QWidget *field);
@@ -60,6 +65,9 @@ protected:
     void mousePressEvent(QMouseEvent *ev) override;
     void mouseReleaseEvent(QMouseEvent *ev) override;
     void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseDoubleClickEvent(QMouseEvent *ev) override;
+    void leaveEvent(QEvent *ev) override;
+    void resizeEvent(QResizeEvent *ev) override;
 
 signals:
     void Returned();
@@ -72,6 +80,13 @@ signals:
 private:
     bool m_Pill = false;
     QString m_Count;
+    QString m_Tag;
+    bool m_Closable = false;
+    bool m_CloseHovered = false;
+    bool m_ClosePressed = false;
+    void SetCloseHovered(bool on);
+    int CloseReserve() const;
+    void UpdateTextMargins();
 };
 
 class Receiver : public QWidget {
@@ -93,12 +108,29 @@ public:
     QString SoughtWords() const;
     void RefillKeepingChoice();
     void AskForSuggestions();
-    void OpenTextSeeker(View* = nullptr);
-    void OpenQueryEditor(View* = nullptr);
+    void OpenTextSeeker(View* = nullptr, const QString &words = QString());
+    void OpenQueryEditor(View* = nullptr, const QString &words = QString());
     void OpenUrlEditor(View* = nullptr);
     void OpenCommand(View* = nullptr);
     void OpenAtField(QWidget *field);
     bool IsAnchored() const { return m_Anchor;}
+
+    struct TargetArgs {
+        SharedWebElement element;
+        WeakView view;
+        quint64 node = 0;
+        quint64 loadSerial = 0;
+        QString selection;
+        QUrl base;
+        QPoint hitPos;
+        bool playable = false;
+        QString selectionHtml;
+        QList<quint64> nodes;
+        QString nodeTable;
+        bool trash = false;
+    };
+    void OpenTarget(const TargetArgs &target);
+    void OpenTargetWhenFocused(const TargetArgs &target, QWidget *view);
 
     static QStringList UrlAncestors(const QString &text, const QUrl &current);
     static bool IsUrlToLoadInPlace(const QString &text);
@@ -133,6 +165,7 @@ private:
         Query,
         UrlEdit,
         Search,
+        Target,
     } m_Mode;
 
     enum Placement {
@@ -141,18 +174,23 @@ private:
         Anchored,
     };
     bool IsSeeking() const;
+    bool TabSeeks() const;
     Placement CurrentPlacement() const;
 
+    bool ListScrolls() const;
     int VisibleSuggestCount() const;
     int SelectableSuggestCount() const;
     void ScrollSuggestsBy(int rows);
     void KeepSelectionShown();
     int LastSuggestScroll() const;
     int m_SuggestScroll = 0;
+    bool ScrollToPointer(const QPoint &pos);
+    bool m_DraggingScroll = false;
     QRect SuggestRect(int index) const;
 
     void PreviewChosenTab();
     bool m_Previewing = false;
+    bool m_SettingNoted = false;
     int SuggestAt(const QPoint &pos) const;
 
     void SeekFromField(const QString &words);
@@ -195,6 +233,9 @@ private:
             OpenTab,
             SearchWeb,
             OpenAddress,
+            TargetAction,
+            TargetSearch,
+            TargetCommand,
         } kind;
         QString title;
         QString hint;
@@ -207,6 +248,37 @@ private:
     };
     typedef QVector<SuggestRow> SuggestRows;
 
+    enum TargetPart { TargetLink, TargetImage, TargetSelection, TargetMedia, TargetElement, TargetNode,
+                      TargetField };
+    struct TargetTables {
+        QString node;
+        QString link;
+        QString image;
+        QString media;
+        QString selection;
+        QString field;
+        QStringList engines;
+        QStringList commands;
+    };
+    static TargetTables CurrentTargetTables(const TargetArgs &target);
+    static SuggestRows TargetRows(const TargetArgs &target, const TargetTables &tables,
+                                  const QString &typed);
+    static QString TargetPartName(TargetPart part);
+    static bool TargetHits(const QString &action);
+    static bool IsSameTarget(const WebElement &held, const WebElement &found);
+    static bool IsSameField(const WebElement &held, const WebElement &found);
+    static QString TargetTag(const TargetArgs &target);
+    static SharedView LiveTarget(const TargetArgs &target, TreeBank *bank);
+    static bool IsLiveTarget(const View *held, const View *nodeView, const View *current,
+                             quint64 heldLoad, quint64 loadNow);
+    void RunTargetRow(const SuggestRow &row);
+    void RunNodeRow(const SuggestRow &row, const TargetArgs &target, quint64 request);
+    void TakeSelectionHtml(quint64 request, const QString &html);
+    static ViewNode *HeldNode(quint64 serial);
+    static QString NodeTag(const TargetArgs &target);
+    TargetArgs m_Target;
+    quint64 m_TargetRequest = 0;
+
     static SuggestRows ComposeRows(const QVector<SuggestRows> &sources, int capacity);
 
     int RowCapacity(int sources) const;
@@ -217,14 +289,20 @@ private:
     static int InputsWidth(const QList<int> &widths, int shown, int gap, int more);
     SuggestRows TabRows(const QString &typed, int limit) const;
     SuggestRows TrashRows(const QString &typed, int limit) const;
-    SuggestRows SettingRows(const QString &typed, int limit = 1000) const;
+    SuggestRows SettingRows(const QString &typed, int limit = 1000, bool unset = false) const;
+    static QString SettingLine(const QString &key, const QString &value, bool unset);
+    static SuggestRows ValueRows(const QString &rest, bool *matched);
+    static QString SettingRefusal(const QString &key, const QString &text);
+    static QString SettingNote(const QString &line);
     static QString BindingFind(const InputMapSchema::Binding &binding);
     SuggestRows WebRows(const QString &typed, const QUrl &here) const;
     QUrl CurrentAddress() const;
 
-    static bool SourceWord(const QString &line, SuggestRow::Source *source, QString *rest);
+    static bool SourceWord(const QString &line, SuggestRow::Source *source, QString *rest,
+                           bool *unset = nullptr);
+    static bool SettingCommand(const QString &line, QString *rest, bool *unset);
     static QString SourceName(SuggestRow::Source source);
-    static bool IsAssignment(const QString &rest);
+    static bool IsAssignment(const QString &rest, bool unset = false);
 
     bool ShowsSourceBar() const;
     QRect SourceBarRect(int index) const;
@@ -250,6 +328,7 @@ private:
         ChangeAssignment,
         OpenInSettings,
         ResetSetting,
+        OpenCard,
     };
     static QVector<RowAction> RowActions(const SuggestRow &row);
     static QString RowActionLabel(const SuggestRow &row, RowAction action);

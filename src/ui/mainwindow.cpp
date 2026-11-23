@@ -823,11 +823,12 @@ void MainWindow::ApplyTitleBarVisibility(const QPoint &cursor, bool active, bool
     const int t = m_TitleStrip->ScaleByDevice(TITLE_BAR_HEIGHT);
     const int titleWidth = isMaximized() && !IsStripExpanded()
         ? qMin(rect.width(), m_TitleStrip->CompactWidth()) : rect.width();
-    const int titleTop = isMaximized() || !outer ? rect.top() : rect.top()-t;
+    const QRect monitor = screen() ? screen()->geometry() : QRect();
+    const int titleTop = isMaximized() ? (monitor.isValid() ? monitor.top() : rect.top())
+                       : !outer ? rect.top() : rect.top()-t;
     m_TitleStrip->SetStripGeometry(QRect(rect.right()+1-titleWidth, titleTop, titleWidth, t));
     const bool frameVisible = IsFrameShown();
     const bool enabled = frameVisible && isMaximized();
-    const QRect monitor = screen() ? screen()->geometry() : QRect();
     const QRect strip = QRect(QPoint(geometry().left(), monitor.top()),
                                QPoint(geometry().right(), titleTop + t - 1))
                             .intersected(monitor);
@@ -1500,7 +1501,7 @@ bool MainWindow::FramelessNativeEvent(void *message, qintptr *result){
         if(isFullScreen() || m_ContentFullScreen) return false;
         const LRESULT frame = ::DefWindowProcW(hwnd, msg->message, msg->wParam, msg->lParam);
         if(frame != HTCLIENT){
-            *result = frame;
+            *result = WindowFrameHit::SystemAnswer(static_cast<long>(frame));
             return true;
         }
         POINT point = { static_cast<short>(LOWORD(msg->lParam)), static_cast<short>(HIWORD(msg->lParam)) };
@@ -1547,6 +1548,10 @@ bool MainWindow::FramelessNativeEvent(void *message, qintptr *result){
         *result = 0;
         return true;
     }
+    case WM_NCRBUTTONDOWN:
+        if(msg->wParam != HTCAPTION || Application::IsRestoringWindows()) return false;
+        *result = 0;
+        return true;
     case WM_NCRBUTTONUP:
         if(msg->wParam != HTCAPTION || Application::IsRestoringWindows()) return false;
         QTimer::singleShot(0, this, &MainWindow::ToggleShaded);

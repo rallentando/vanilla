@@ -18,6 +18,8 @@ it aims to keep large numbers of pages open while preserving their structure.
 - **Chrome extensions** — Loads Manifest V3 extensions from unpacked folders (see [docs/EXTENSIONS.md](docs/EXTENSIONS.md) for what is supported)
 - **Command bar** — A command input in the style of Emacs's Anything/Helm. Narrow down and choose from commands, tabs, trash, settings, and web search suggestions
 - **Address bar** — Suggests the current tab's surroundings (parent URLs, tabs at the same level, typed URL history) and actions on the page
+- **Site information** — A button left of the address field shows the connection, the permissions kept for the site, and a link to its settings. In Edge, Qt WebEngine, and Qt Quick WebEngine views it also counts the site's cookies and can delete its cookies and site data
+- **Title bar drawn by the application** — On Windows, the application can draw the title bar inside the window (off by default). The system still draws the window's edge, shadow, and rounded corners, and the window snaps as usual. Clicking the title turns it into the address field
 - **Start page** — A search box, cards for recently viewed tabs, and a tab history that includes closed tabs (`vanilla://start`)
 - **Keyboard and mouse gestures** — Most actions can be bound to keys and gestures. Bindings can be changed in the settings page (`vanilla://settings`)
 - **Password saving** — Offers to save passwords from login forms and fills in the account you choose. Qt WebEngine views keep passwords in the operating system's credential store
@@ -29,7 +31,7 @@ it aims to keep large numbers of pages open while preserving their structure.
 
 | Item | Details |
 |---|---|
-| Qt | **Tested with Qt 6.12.0 + Qt WebEngine 6.140.0 (Windows) and Qt 6.10.2 (Linux)** (the CMake build requires Qt 6.5 or later). Does not work with Qt 5 |
+| Qt | **Tested with Qt 6.12.1 + Qt WebEngine 6.140.0 (Windows) and Qt 6.10.2 (Linux)** (the CMake build requires Qt 6.5 or later). Does not work with Qt 5 |
 | Compiler | Tested with **MSVC 2022 (Windows)** and **GCC 15 (Linux)**. Not yet built on macOS |
 | Required Qt modules | Core, Gui, Widgets, Network, Xml, OpenGL(+Widgets), WebChannel, Multimedia(+Widgets), Qml, Quick(+Widgets). LinguistTools at build time only |
 | Optional Qt modules | **WebEngine** (the default view outside Windows), PrintSupport, WebView (enables `QuickNativeWebView`) |
@@ -94,6 +96,8 @@ BSD 3-Clause License. Copyright (c) 2016, rallentando. See [LICENSE](LICENSE) fo
 - **Chrome 拡張** — 展開済みのフォルダから Manifest V3 の拡張を読み込める（対応状況は [docs/EXTENSIONS.md](docs/EXTENSIONS.md)）
 - **コマンドバー** — Emacs の Anything/Helm ライクなコマンド入力欄。コマンド・タブ・ゴミ箱・設定・Web 検索の候補を絞り込んで選べる
 - **アドレスバー** — 候補は今のタブとその周辺（上の階層の URL、同じ階層のタブ、入力した URL の履歴）とページへの操作
+- **サイト情報** — アドレス欄の左のボタンで、接続・そのサイトに保存した許可・サイトの設定へのリンクを出す。Edge・Qt WebEngine・Qt Quick WebEngine のビューでは、サイトの Cookie の件数も出し、Cookie とサイトデータを削除できる
+- **アプリケーションが描くタイトルバー** — Windows では、タイトルバーを窓の中にアプリケーションが描ける（既定はオフ）。窓の縁・影・角丸はシステムが描き、スナップもふつうの窓と同じ。タイトルをクリックするとその場でアドレス欄になる
 - **スタートページ** — 検索欄、最後に見た順のタブのカード、閉じたタブも含むタブ履歴（`vanilla://start`）
 - **キーボード操作とマウスジェスチャ** — 大半の操作にキーとジェスチャを割り当て可能。割り当ては設定画面（`vanilla://settings`）で変えられる
 - **パスワードの保存** — ログインフォームで保存するかを聞き、選んだアカウントを入力する。Qt WebEngine のビューでは OS の資格情報の保管庫に保存する
@@ -105,7 +109,7 @@ BSD 3-Clause License. Copyright (c) 2016, rallentando. See [LICENSE](LICENSE) fo
 
 | 項目 | 内容 |
 |---|---|
-| Qt | **Qt 6.12.0 + Qt WebEngine 6.140.0（Windows）と Qt 6.10.2（Linux）で動作確認済み**（CMake の要求は Qt 6.5 以上）。Qt 5 では動かない |
+| Qt | **Qt 6.12.1 + Qt WebEngine 6.140.0（Windows）と Qt 6.10.2（Linux）で動作確認済み**（CMake の要求は Qt 6.5 以上）。Qt 5 では動かない |
 | コンパイラ | **MSVC 2022（Windows）** と **GCC 15（Linux）** で確認済み。macOS はまだビルドしていない |
 | 必須 Qt モジュール | Core, Gui, Widgets, Network, Xml, OpenGL(+Widgets), WebChannel, Multimedia(+Widgets), Qml, Quick(+Widgets)。ビルド時のみ LinguistTools |
 | 任意 Qt モジュール | **WebEngine**（Windows 以外の既定のビュー）, PrintSupport, WebView（`QuickNativeWebView` が有効になる） |

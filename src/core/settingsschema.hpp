@@ -53,6 +53,7 @@ QList<QPair<QString, QString> > AppliesWhenClauses(const Item &item);
 QList<QPair<QString, QString> > Categories();
 
 QStringList CategoriesBeginningARun();
+QStringList HiddenCategories();
 
 struct ChoiceLabel {
     const char *key;
@@ -64,6 +65,10 @@ const QList<ChoiceLabel> &ChoiceLabels();
 QVariant Fallback(const Item &item);
 QVariant FromJson(const Item &item, const QJsonValue &value);
 QJsonValue ToJson(const Item &item, const QVariant &value);
+
+QVariant FromText(const QString &key, const QString &text);
+QList<QPair<QString, QString> > Values(const Item &item);
+QStringList DropInvalidValues(QMap<QString, QVariant> &map);
 
 QString EmptyDirectory(const Item &item);
 

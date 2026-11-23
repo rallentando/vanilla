@@ -232,9 +232,7 @@ ViewNode::ViewNode()
     m_ScrollX = 0;
     m_ScrollY = 0;
     m_Zoom    = 1.0;
-#ifdef MEDIATIME
     m_MediaTime = 0.0f;
-#endif
     m_Type    = ViewTypeNode;
 }
 
@@ -492,9 +490,7 @@ ViewNode *ViewNode::Clone(ViewNode *parent, bool offDisk){
         clone->m_ScrollX.store(m_ScrollX.load());
         clone->m_ScrollY.store(m_ScrollY.load());
         clone->m_Zoom.store(m_Zoom.load());
-#ifdef MEDIATIME
         clone->m_MediaTime.store(m_MediaTime.load());
-#endif
     }
     return clone;
 }
@@ -556,11 +552,9 @@ float ViewNode::GetZoom(){
     return m_Zoom;
 }
 
-#ifdef MEDIATIME
 float ViewNode::GetMediaTime(){
     return m_MediaTime;
 }
-#endif
 
 QDateTime ViewNode::GetCreateDate(){
     QMutexLocker locker(&m_DataMutex);
@@ -687,11 +681,9 @@ void ViewNode::SetZoom(float z){
     m_Zoom = z;
 }
 
-#ifdef MEDIATIME
 void ViewNode::SetMediaTime(float t){
     m_MediaTime = t;
 }
-#endif
 
 QString ViewNode::GetImageFileName(){
     QMutexLocker locker(&m_DataMutex);

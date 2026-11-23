@@ -18,6 +18,8 @@ public:
 
     virtual void ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const = 0;
     virtual void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const = 0;
+    virtual QColor BackgroundVeil(GraphicsTableView *gtv) const = 0;
+    virtual void RenderBackgroundOverVeil(GraphicsTableView *gtv, QPainter *painter) const = 0;
     virtual void Render(Thumbnail *thumb, QPainter *painter) const = 0;
     virtual void Render(NodeTitle *title, QPainter *painter) const = 0;
     virtual void Render(SpotLight *light, QPainter *painter) const = 0;
@@ -84,6 +86,8 @@ public:
 
     void ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const override;
     void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const override;
+    QColor BackgroundVeil(GraphicsTableView *gtv) const override;
+    void RenderBackgroundOverVeil(GraphicsTableView *gtv, QPainter *painter) const override;
     void Render(Thumbnail *thumb, QPainter *painter) const override;
     void Render(NodeTitle *title, QPainter *painter) const override;
     void Render(SpotLight *light, QPainter *painter) const override;
@@ -140,6 +144,8 @@ public:
 
     void ComputeContentsLayout(GraphicsTableView *gtv, int &col, int &line, int &thumbWidth, int &thumbHeight) const override;
     void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const override;
+    QColor BackgroundVeil(GraphicsTableView *gtv) const override;
+    void RenderBackgroundOverVeil(GraphicsTableView *gtv, QPainter *painter) const override;
     void Render(Thumbnail *thumb, QPainter *painter) const override;
     void Render(NodeTitle *title, QPainter *painter) const override;
     void Render(SpotLight *light, QPainter *painter) const override;
@@ -196,6 +202,8 @@ public:
     static const int m_RoundedCellMinWidth;
 
     void RenderBackground(GraphicsTableView *gtv, QPainter *painter) const override;
+    QColor BackgroundVeil(GraphicsTableView *gtv) const override;
+    void RenderBackgroundOverVeil(GraphicsTableView *gtv, QPainter *painter) const override;
     void Render(Thumbnail *thumb, QPainter *painter) const override;
     void Render(CloseButton *button, QPainter *painter) const override;
     void Render(CloneButton *button, QPainter *painter) const override;

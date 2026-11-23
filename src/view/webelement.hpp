@@ -44,7 +44,10 @@ public:
     virtual bool IsLooped() const { return false;}
     virtual bool IsPaused() const { return false;}
     virtual bool IsMuted() const { return false;}
+    virtual bool IsMediaElement() const { return false;}
+    virtual bool IsFocusedField() const { return false;}
     virtual Action GetAction() const { return None;}
+    virtual QString XPath() const { return QString();}
 };
 
 typedef std::shared_ptr<WebElement> SharedWebElement;
@@ -84,7 +87,11 @@ public:
     virtual bool IsLooped() const override;
     virtual bool IsPaused() const override;
     virtual bool IsMuted() const override;
+    virtual bool IsMediaElement() const override { return m_IsMedia;}
+    virtual bool IsFocusedField() const override { return m_IsFocusedField;}
+    void SetQueryInput(bool on){ m_IsQueryInput = on;}
     virtual Action GetAction() const override;
+    virtual QString XPath() const override { return m_XPath;}
 
 protected:
     View *m_Provider;
@@ -104,6 +111,8 @@ protected:
     bool m_IsLooped;
     bool m_IsPaused;
     bool m_IsMuted;
+    bool m_IsMedia;
+    bool m_IsFocusedField = false;
     QString m_XPath;
     QString m_Action;
 };

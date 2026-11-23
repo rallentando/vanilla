@@ -58,6 +58,7 @@ EdgeWebView::EdgeWebView(TreeBank *parent, QString id, QStringList set)
     host->QuietContainerFocusIn(m_Impl->m_Container);
     connect(host, &EdgeHostWindow::ReactivatedWithFocus, this, [this](){
         if(m_Impl->m_State.IsRetired() || !visible()) return;
+        if(m_Impl->m_MenuHoldsKeyboard) return;
         const ComPtr<ICoreWebView2Controller> controller = m_Impl->m_Controller;
         if(controller) controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
     });
@@ -151,12 +152,10 @@ void EdgeWebView::Retire(bool force){
 
     m_Impl->m_Aborts.Retire();
 
-#ifdef MEDIATIME
     if(m_Impl->m_MediaTimeSaveTimer){
         killTimer(m_Impl->m_MediaTimeSaveTimer);
         m_Impl->m_MediaTimeSaveTimer = 0;
     }
-#endif
 
     ReleaseInspector(InspectorRelease::Close);
 
@@ -821,9 +820,7 @@ void EdgeWebView::OnTitleChanged(const QString &title){
 
 void EdgeWebView::OnUrlChanged(const QUrl &url){
     if(!GetViewNode()) return;
-#ifdef MEDIATIME
     if(url != GetViewNode()->GetUrl()) GetViewNode()->SetMediaTime(0);
-#endif
     ChangeNodeUrl(url);
 }
 

@@ -4,6 +4,7 @@
 #include "inputmap.hpp"
 
 #include <QAction>
+#include <QWidgetAction>
 #include <QEvent>
 #include <QMenu>
 
@@ -29,6 +30,16 @@ void MuteOnce(QAction *action){
     new Mute(action);
 }
 
+void ShowOn(QAction *action, const QHash<QString, QKeySequence> &keys){
+    if(action->isSeparator()) return;
+    const QString name = action->objectName();
+    if(name.isEmpty()) return;
+    action->setShortcut(InputMap::DisplayKey(keys.value(name)));
+    action->setShortcutContext(Qt::WidgetShortcut);
+    action->setShortcutVisibleInContextMenu(true);
+    MuteOnce(action);
+}
+
 }
 
 void Show(QMenu *menu, const QHash<QString, QKeySequence> &keys){
@@ -38,13 +49,12 @@ void Show(QMenu *menu, const QHash<QString, QKeySequence> &keys){
             Show(sub, keys);
             continue;
         }
-        if(action->isSeparator()) continue;
-        const QString name = action->objectName();
-        if(name.isEmpty()) continue;
-        action->setShortcut(InputMap::DisplayKey(keys.value(name)));
-        action->setShortcutContext(Qt::WidgetShortcut);
-        action->setShortcutVisibleInContextMenu(true);
-        MuteOnce(action);
+        if(QWidgetAction *row = qobject_cast<QWidgetAction*>(action)){
+            if(QWidget *widget = row->defaultWidget())
+                foreach(QAction *inner, widget->actions()) ShowOn(inner, keys);
+            continue;
+        }
+        ShowOn(action, keys);
     }
 }
 

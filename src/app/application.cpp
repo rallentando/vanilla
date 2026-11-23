@@ -816,15 +816,10 @@ void Application::TakeDown(){
         return;
 
     if(action == ShutdownFlow::Action::CaptureMedia){
-#ifdef MEDIATIME
         TreeBank::SaveMediaTimesForQuit([](){
             m_ShutdownFlow.MediaSettled();
         });
         return;
-#else
-        m_ShutdownFlow.MediaSettled();
-        return;
-#endif
     }
 
     if(action != ShutdownFlow::Action::FinalSave) return;
@@ -922,6 +917,9 @@ void Application::LoadGlobalSettings(){
     const QStringList dropped = SettingsSchema::DropUnknownKeys(s);
     if(!dropped.isEmpty())
         qWarning() << "settings: dropped keys nothing reads:" << dropped;
+    const QStringList invalid = SettingsSchema::DropInvalidValues(s);
+    if(!invalid.isEmpty())
+        qWarning() << "settings: dropped values the setting does not take:" << invalid;
 
     m_EnableGoogleSuggest      = s.value(QStringLiteral("application/@EnableGoogleSuggest"), false).value<bool>();
     m_SuggestEngine            = s.value(QStringLiteral("application/@SuggestEngine"), QStringLiteral("Google")).toString();
@@ -1946,7 +1944,7 @@ void Application::CreateBackUpFiles(){
 
     QStringList list = dir.entryList(BackUpFileFilters(), QDir::NoFilter, QDir::Name);
 
-    while(list.length() > m_MaxBackUpGenerationCount*backupfiles.length()){
+    while(list.length() > qMax(0, m_MaxBackUpGenerationCount)*backupfiles.length()){
         QFile::remove(StateDirectory() + list.takeFirst());
     }
 }
